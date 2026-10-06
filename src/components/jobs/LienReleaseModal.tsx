@@ -207,6 +207,9 @@ export default function LienReleaseModal({
   // The row this modal session works on: an autosaving draft until an output
   // action mints it (v2.2619 — the mint gate), then the locked minted row.
   const [releaseRow, setReleaseRow] = useState<JobLienReleaseRow | null>(null)
+  /** The row as the masters load sees it (#87 N): a draft's saved leader off the list gives way to the default. */
+  const releaseRowRef = useRef<JobLienReleaseRow | null>(null)
+  releaseRowRef.current = releaseRow
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error' | 'held'>('idle')
   const [mintBusy, setMintBusy] = useState(false)
   const [signOpen, setSignOpen] = useState(false)
@@ -291,7 +294,13 @@ export default function LienReleaseModal({
         const companySigner = (getPhysicalInvoiceIssuerDraft().signerName ?? '').trim().toLowerCase()
         const byCompany = companySigner ? rows.find((r) => r.name.trim().toLowerCase() === companySigner)?.id : undefined
         defaultSignerRef.current = byCompany ?? job.master_user_id ?? rows[0]?.id ?? null
-        setPresentSignerId((cur) => cur ?? defaultSignerRef.current)
+        // #87 N: a draft's saved leader who is off the list now gives way; a waiting request's asked leader does not (#87 M).
+        setPresentSignerId((cur) => {
+          if (!cur) return defaultSignerRef.current
+          const row = releaseRowRef.current
+          const offList = !rows.some((r) => r.id === cur)
+          return offList && row && lienReleaseStatus(row) === 'draft' && row.signer_user_id === cur ? defaultSignerRef.current : cur
+        })
       } catch {
         setMasters([])
       }
@@ -477,9 +486,13 @@ export default function LienReleaseModal({
     setSelectedInvoiceIds(new Set(draft.invoice_ids ?? []))
     const s = lienReleaseFieldsFromSnapshot(draft.fields)
     // #87 M: a waiting request names the leader it asked. The Signs pick shows him, and He signs now
-    // keeps him; the job's default would reassign the request on the next press. A draft keeps the
-    // default (#87 N).
-    if (lienReleaseStatus(draft) === 'awaiting_signature' && draft.signer_user_id) {
+    // keeps him; the job's default would reassign the request on the next press.
+    // #87 N: a draft saved its pick (or kept the leader a taken-back request asked), so it reopens on
+    // him; one no longer on the list falls back to the default, here or when the list arrives.
+    if (lienReleaseStatus(draft) === 'draft' && draft.signer_user_id) {
+      const savedId = draft.signer_user_id
+      setPresentSignerId(masters.length > 0 && !masters.some((m) => m.id === savedId) ? defaultSignerRef.current : savedId)
+    } else if (lienReleaseStatus(draft) === 'awaiting_signature' && draft.signer_user_id) {
       const askedId = draft.signer_user_id
       setPresentSignerId(askedId)
       setWaitingAsk({ id: askedId, name: null })
@@ -540,7 +553,8 @@ export default function LienReleaseModal({
    * locks to drawing, so a typed name can never stand in for the leader's hand (job 650's first waiver).
    */
   const signerOfRecord = useMemo(() => {
-    const id = releaseRow?.signer_user_id ?? presentSignerId
+    // #87 N: a draft's saved id trails the pick (its autosave reads nothing back), so the pick rules there.
+    const id = (releaseRow && lienReleaseStatus(releaseRow) !== 'draft' ? releaseRow.signer_user_id : null) ?? presentSignerId
     const listed = (id ? masters.find((x) => x.id === id) : null) ?? presentSigner
     // #87 M: the leader a waiting request asked is its signer of record even off the list (archived, or no longer a leader).
     const askedOffList =
@@ -651,9 +665,11 @@ export default function LienReleaseModal({
       amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
       through_date: usesThrough && fields.throughDate ? fields.throughDate : null,
       signed_date: fields.signedDate || null,
+      // #87 N: the Signs pick rides with the draft, so a draft reopens on the leader its Signed by line names.
+      signer_user_id: presentSignerId ?? releaseRow?.signer_user_id ?? null,
       fields: { ...fields } as Record<string, string>,
     }
-  }, [fields, job, formType, selectedInvoiceIds])
+  }, [fields, job, formType, selectedInvoiceIds, presentSignerId, releaseRow?.signer_user_id])
 
   // Autosave (v2.2619): the draft writes itself, debounced, from the first
   // real edit — no Save button, ✕ just closes. Stops the moment the row mints.
@@ -1456,7 +1472,10 @@ export default function LienReleaseModal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Signs</span>
                   {masters.length > 1 ? (
-                    <select value={presentSignerId ?? ''} onChange={(e) => setPresentSignerId(e.target.value || null)} aria-label="Who signs" disabled={asked} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }}>
+                    <select value={presentSignerId ?? ''} onChange={(e) => {
+                        userTouchedRef.current = true
+                        setPresentSignerId(e.target.value || null)
+                      }} aria-label="Who signs" disabled={asked} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }}>
                       {asked && waitingAsk?.name && presentSignerId === waitingAsk.id && !masters.some((m) => m.id === waitingAsk.id) ? (
                         <option value={waitingAsk.id}>{waitingAsk.name}</option>
                       ) : null}

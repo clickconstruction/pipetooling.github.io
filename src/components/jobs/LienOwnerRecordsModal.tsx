@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatDenverCalendarDayWithYear, formatDenverTimeOnly, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
@@ -19,6 +19,7 @@ import {
   ownerRecordsFootWords,
   ownerRecordsMissing,
   ownerRecordsPropertyMatches,
+  ownerRecordsRowForJob,
   ownerRecordsSteps,
   type OwnerPacketJobInput,
   type OwnerRecordsFile,
@@ -85,6 +86,7 @@ export default function LienOwnerRecordsModal({
   authName,
   isLeader,
   isMobile = false,
+  initialJobId = null,
   onClose,
 }: {
   open: boolean
@@ -99,6 +101,8 @@ export default function LienOwnerRecordsModal({
   authName: string
   isLeader: boolean
   isMobile?: boolean
+  /** A door's job (punch list #86, the Dashboard's line): open on the property holding it once the rows are in. */
+  initialJobId?: string | null
   onClose: () => void
 }) {
   const { showToast } = useToastContext()
@@ -131,6 +135,21 @@ export default function LienOwnerRecordsModal({
     setPicked(null)
     setQuery('')
   }, [open])
+
+  // A door's job (punch list #86): land on its property once the desk's rows hold it, once per opening.
+  // A job the rows never hold leaves the picker, as the desk's own button opens it.
+  const landedRef = useRef(false)
+  useEffect(() => {
+    if (!open) {
+      landedRef.current = false
+      return
+    }
+    if (landedRef.current || !initialJobId || picked) return
+    const row = ownerRecordsRowForJob(properties, initialJobId)
+    if (!row) return
+    landedRef.current = true
+    setPicked(row)
+  }, [open, initialJobId, properties, picked])
 
   const seed = picked ? seedFor(picked.seedJobId) : null
   useEffect(() => {

@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-06
 ---
 
 ## Overview
@@ -405,17 +405,17 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 
 > **This section's line numbers are as of `7379b248f`** (2026-10-05), not the `mapped_at` commit above. Regenerate the fact sheet with `npm run map -- src/lib/dashboardNeedsYou.ts`. 64 commits in 90 days: search the item key, not the line.
 
-**1,585 lines** · no component, no hook, no table, RPC or edge-function call · 12 module functions, 5 exported types · 23 local imports, no package import. [`dashboardNeedsYou.ts`](../src/lib/dashboardNeedsYou.ts) turns what every attention hook found into the one list `DashboardNeedsYouCard` draws (§3 above): 50 item keys, one severity each, ranked worst first. Glossary: *Needs You card (Dashboard / Quickfill)*.
+**1,585 lines** · no component, no hook, no table, RPC or edge-function call · 12 module functions, 5 exported types · 23 local imports, no package import. [`dashboardNeedsYou.ts`](../src/lib/dashboardNeedsYou.ts) turns what every attention hook found into the one list `DashboardNeedsYouCard` draws (§3 above): 51 item keys, one severity each, ranked worst first. Glossary: *Needs You card (Dashboard / Quickfill)*.
 
-**Who calls it:** `buildNeedsYouItems` has two callers — [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) 517 (every one of the 91 inputs) and [`QuickfillNeedsYouSection`](../src/components/quickfill/QuickfillNeedsYouSection.tsx) 106 (a subset: six sources passed as `…Enabled: false`, most optional inputs left out). [`DashboardNeedsYouCard`](../src/components/dashboard/DashboardNeedsYouCard.tsx) imports the item types, `needsYouClickTarget` and the mode storage. `usePriceMatrixReadyNudge` and `usePriceRequestsLateNudge` type their result as `NeedsYouInputs['priceMatrixReady' | 'priceRequestsLate']`; `lib/dashboard/phoneOffice.ts` imports `NeedsYouMode`.
+**Who calls it:** `buildNeedsYouItems` has two callers — [`DashboardPinnedQuickRow`](../src/components/dashboard/DashboardPinnedQuickRow.tsx) 517 (every one of the 93 inputs) and [`QuickfillNeedsYouSection`](../src/components/quickfill/QuickfillNeedsYouSection.tsx) 106 (a subset: six sources passed as `…Enabled: false`, most optional inputs left out). [`DashboardNeedsYouCard`](../src/components/dashboard/DashboardNeedsYouCard.tsx) imports the item types, `needsYouClickTarget` and the mode storage. `usePriceMatrixReadyNudge` and `usePriceRequestsLateNudge` type their result as `NeedsYouInputs['priceMatrixReady' | 'priceRequestsLate']`; `lib/dashboard/phoneOffice.ts` imports `NeedsYouMode`.
 
 | Region | Anchor (symbol · lines) | ~Lines | Exported | Notes |
 |---|---|---|---|---|
 | A. Imports and date helpers | imports 1–17, 37–42 · `daysUntilYmd` 45–47 · `monthDayLabel` 50–53 | ~50 | — | the file's doc comment (19–34) sits between two import runs |
 | B. The item type | `NeedsYouSeverity` 55 · `NeedsYouKind` 65 · `NeedsYouItem` 67–141 (the `key` union 69–119) | ~90 | yes | `key` is also the telemetry target and the action handle |
 | C. Rank and visibility | `NEEDS_YOU_RANK` 152–210 · `figureValue` 213–217 · `needsYouKind` 220–222 · `KIND_ORDER` 224 · `rankNeedsYouItems` 231–240 · `visibleNeedsYouItems` 248–251 | ~100 | all but `figureValue`, `KIND_ORDER` | a `Record` over the key union: a new key without a tier does not compile |
-| D. The inputs type | `NeedsYouInputs` 253–552 | 300 | yes | 91 fields: 41 required, 50 optional; most sources are an `…Enabled` flag beside a payload |
-| E. The builder | `buildNeedsYouItems` 554–1543 | 990 | yes | 53 `key:` literals for the 50 keys, then `rankNeedsYouItems(visibleNeedsYouItems(items, inputs.role))` 1542 |
+| D. The inputs type | `NeedsYouInputs` 253–552 | 300 | yes | 93 fields: 41 required, 52 optional; most sources are an `…Enabled` flag beside a payload |
+| E. The builder | `buildNeedsYouItems` 554–1543 | 990 | yes | 54 `key:` literals for the 51 keys, then `rankNeedsYouItems(visibleNeedsYouItems(items, inputs.role))` 1542 |
 | F. Click telemetry | `needsYouClickTarget` 1551–1554 | 4 | yes | `#<key>`, plus `&dest=<n>` when `destinationFigure` differs from `figure` |
 | G. Cards / Walk preference | `needsYouModeStorageKey` 1557 · `NeedsYouMode` 1561 · `readStoredNeedsYouMode` 1564–1572 · `readNeedsYouMode` 1574 · `writeNeedsYouMode` 1578–1585 | ~30 | yes | the only `localStorage` use in the file |
 
@@ -426,6 +426,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | 557–576 | `lien-suit-year` | `lienWatchEnabled`, `lienWatch.suitDue` | red when run out or ≤ 30 days, else amber |
 | 578–591 | `lien-serve-copy` | `lienWatchEnabled`, `lienWatch.serveDue` | red |
 | 593–606 | `lien-tracking-owed` | `lienWatchEnabled`, `lienWatch.trackingOwed` | amber |
+| v2.4702 | `owner-records-signed` | `ownerRecordsSignedEnabled`, `ownerRecordsSigned.count` (`useOwnerRecordsSignedNudge` → `ownerRecordsSignedWaiting`) | amber |
 | 610–659 | `lien-notice-draft` (two shapes) or `lien-window-missed` | `lienDeskEnabled`, `lienDesk.office` / `.missed` | next deadline: red ≤ 7 days, amber ≤ 14, else gray · letter two: red when any is past day 14, else amber · missed: gray |
 | 662–679 | `lien-notice-batch` | `lienDeskEnabled`, `lienDeskLeader`, `lienDesk.leader.batches` | red ≤ 7 days, else blue |
 | 681–695 | `lien-notice-approve` | the same, `leader.jobs` less the batch jobs | red ≤ 7 days, else blue |
@@ -455,6 +456,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | 1286–1324 | `dispatch-requests-aged`, `hr-reports-pending` | each `…Enabled` | red at `…RedDays`, else amber |
 | 1326–1341 | `claim-dev` | `claimDevRefusedCount` | red; snooze / dismiss secondaries |
 | 1343–1362 | `job-account-missing` | `jobAccountGapsEnabled` | gray |
+| v2.4700 (after `mapped_at`) | `vehicle-records-missing` | `vehicleRecordGapsEnabled` (dev, assistant, controller; `useVehicleRecordGapsNudge` over `lib/vehicleRecordGaps.ts`; both hosts) | gray |
 | 1364–1419 | `submittal-lead-time`, `-sent-back`, `-unopened`, `-not-started` | `submittalsEnabled`, `submittalNudge` | red, red, blue, amber |
 | 1421–1456 | `price-matrix-ready`, `price-requests-late` | each `…Enabled` | amber when a pick waits to settle, else blue; amber |
 | 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |
@@ -463,7 +465,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 
 **Where the click goes** is not in this file: each host's `onAction` is an `if / else if` chain on `item.key` (`DashboardPinnedQuickRow` 715–841, `QuickfillNeedsYouSection` 183–234) and `onSecondary` beside it (842–858, 235–245).
 
-**Tests:** [`dashboardNeedsYou.test.ts`](../src/lib/dashboardNeedsYou.test.ts) — 1,224 lines, 82 `it` in 19 `describe`. Three keys are named by no test in the repo: `contract-missing`, `contract-stale`, `test-reports-ready`. The card has a render smoke (8), the pinned row has one (3), `phoneOffice` 6, `tallyStaleGloss` 4. `QuickfillNeedsYouSection` has no test of its own.
+**Tests:** [`dashboardNeedsYou.test.ts`](../src/lib/dashboardNeedsYou.test.ts) — 1,224 lines, 82 `it` in 19 `describe`; `owner-records-signed` keeps its tests in its own file (`dashboardNeedsYou.ownerRecords.test.ts`, v2.4702) so they stay out of the shared file's tail. Three keys are named by no test in the repo: `contract-missing`, `contract-stale`, `test-reports-ready`. The card has a render smoke (8), the pinned row has one (3), `phoneOffice` 6, `tallyStaleGloss` 4. `QuickfillNeedsYouSection` has no test of its own.
 
 **Hazards**
 

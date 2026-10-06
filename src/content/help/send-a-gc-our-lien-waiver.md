@@ -158,7 +158,7 @@ The Release of Lien window now opens on him. His name and title print under the 
 
 ## Get the leader to sign
 
-Step 5 names the leader who signs. Step 5 opens on the company's signer. Pick another leader from the list if this job needs one. There are two ways to sign.
+Step 5 names the leader who signs. Step 5 opens on the company's signer. Pick another leader from the list if this job needs one. A draft you come back to keeps the leader you picked. There are two ways to sign.
 
 - {{button:blue|✍ He is here, he signs now}} opens the signing pad right here. Use this when he is with you. Hand him the phone, or turn your screen to him.
 - {{button:outline|Send it to his desk}} sends the waiver to his Dashboard. He signs it when he is next at his own screen. It comes back to the window signed.
