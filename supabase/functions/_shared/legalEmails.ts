@@ -7,6 +7,9 @@
  * wording is the senders' own, moved here verbatim; the company name is passed in.
  */
 import { todayYmdInAppTz } from './appTimeZone.ts'
+import { LEGAL_STAGE_LIST } from './legalStages.ts'
+
+type LegalStageKey = (typeof LEGAL_STAGE_LIST)[number]
 
 export function legalEsc(s: unknown): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -19,21 +22,27 @@ export type LegalEmail = { subject: string; text: string; html: string }
  * email and the firm's print packet read this one map. The office keeps its own labels
  * (`legalStageLabel` in `src/lib/legal/legalMatters.ts`, *With the firm · new*) for the desk.
  */
+/** The one string for a pulled-back matter, in the email's subject, the digest's events and the stage word. */
+export const LEGAL_REFERRAL_WITHDRAWN = 'Referral withdrawn'
+
+/** Keyed to `LEGAL_STAGE_LIST` (#85 item 16): a stage added there and not worded here fails the typecheck. */
+export const LEGAL_FIRM_STAGE_WORDS: Record<LegalStageKey, string> = {
+  review: 'under review by the office',
+  referred: 'referred',
+  demand: 'demand sent',
+  suit: 'suit filed',
+  judgment: 'judgment entered',
+  post_judgment: 'after judgment',
+  payment_plan: 'payment plan',
+  settled: 'settled',
+  uncollectible: 'uncollectible',
+  dismissed: 'dismissed',
+  written_down: 'written down by the office',
+  pulled: LEGAL_REFERRAL_WITHDRAWN.toLowerCase(),
+}
+
 export function legalFirmStageWords(stage: string | null | undefined): string {
-  switch (stage) {
-    case 'referred': return 'referred'
-    case 'demand': return 'demand sent'
-    case 'suit': return 'suit filed'
-    case 'judgment': return 'judgment entered'
-    case 'settled': return 'settled'
-    case 'post_judgment': return 'judgment being collected'
-    case 'payment_plan': return 'payment plan'
-    case 'uncollectible': return 'written off as uncollectible'
-    case 'dismissed': return 'dismissed'
-    case 'pulled': return 'referral withdrawn'
-    case 'written_down': return 'written down by the office'
-    default: return 'under review by the office'
-  }
+  return (LEGAL_FIRM_STAGE_WORDS as Record<string, string>)[stage ?? ''] ?? LEGAL_FIRM_STAGE_WORDS.review
 }
 
 /** The two choices of a person's email rule, as the portal's Notifications control reads them; the welcome email names them in the same words. */
@@ -71,7 +80,7 @@ export function buildLegalNowEmail(i: {
   unsubscribeUrl: string
 }): LegalEmail {
   const payer = i.payer || 'an account'
-  const subject = i.trigger === 'referred' ? `New account referred: ${payer}` : i.trigger === 'answer' ? `${i.companyName} answered on ${payer}` : `Referral withdrawn: ${payer}`
+  const subject = i.trigger === 'referred' ? `New account referred: ${payer}` : i.trigger === 'answer' ? `${i.companyName} answered on ${payer}` : `${LEGAL_REFERRAL_WITHDRAWN}: ${payer}`
   const line =
     i.trigger === 'referred'
       ? `${legalEsc(i.companyName)} has referred <b>${legalEsc(payer)}</b> to ${legalEsc(i.firmName)}${i.handling ? ` — handling: ${legalEsc(i.handling)}` : ''}.${i.note ? `<br><i>“${legalEsc(i.note)}”</i>` : ''}`
@@ -92,7 +101,7 @@ export function buildLegalDigestEmail(i: { companyName: string; recipientName: s
     ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(legalFirmStageWords(m.stage))}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(todayYmdInAppTz(new Date(m.releasedAt)))}` : ''}</li>`).join('')
     : '<li>No open matters.</li>'
   const eventLines = i.events.length
-    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : 'Referral withdrawn'}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'pulled' && e.reason ? ` — ${legalEsc(e.reason)}` : ''}${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
+    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : LEGAL_REFERRAL_WITHDRAWN}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'pulled' && e.reason ? ` — ${legalEsc(e.reason)}` : ''}${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
     : '<li>Nothing new since your last digest.</li>'
   const subject = `Weekly digest — ${i.matters.length} open matter${i.matters.length === 1 ? '' : 's'} at ${i.companyName}`
   const html = legalWrapHtml(i.companyName, `<p>Your weekly digest, ${legalEsc(i.recipientName)}.</p><h3 style="font-size:14px;margin:12px 0 4px">Open matters</h3><ul>${matterLines}</ul><h3 style="font-size:14px;margin:12px 0 4px">Since your last digest</h3><ul>${eventLines}</ul>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)

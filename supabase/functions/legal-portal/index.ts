@@ -153,6 +153,14 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
   }
 }
 
+/** Which of a pulled-back matter's entries the firm still reads: its fees and costs and the questions and answers, from before the pull-back, never voided. */
+function pulledEntryTravels(e: Row, pulledAt: string | null): boolean {
+  if (!['fee', 'cost', 'question', 'answer'].includes(e.kind as string)) return false
+  if ((e as { voided_at?: string | null }).voided_at) return false
+  if (pulledAt && typeof e.created_at === 'string' && e.created_at > pulledAt) return false
+  return true
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...corsHeaders, ...privateHeaders } })
   try {
@@ -228,7 +236,9 @@ serve(async (req) => {
       payerName: p.payer_name,
       pulledAt: p.pulled_at ? todayYmdInAppTz(new Date(p.pulled_at as string)) : null,
       reason: (p.pulled_reason as string | null) ?? '',
-      entries: ((pulledEntryRows ?? []) as Row[]).filter((e) => e.matter_id === p.id),
+      // Slim (#85 item 16 review): only the firm's own fee and cost rows and the conversation, dated before the
+      // pull-back, and never a voided row. The office's steps, notes and anything after the pull-back stay home.
+      entries: ((pulledEntryRows ?? []) as Row[]).filter((e) => e.matter_id === p.id && pulledEntryTravels(e, p.pulled_at as string | null)),
     }))
     if (matters.length === 0) {
       return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
