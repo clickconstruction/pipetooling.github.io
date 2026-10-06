@@ -1162,6 +1162,58 @@ list. The kernel is `gcCrewCounts.ts`, tested, out of the barrel. The portal lin
 
 Left out, by the lead's word: a portal-home to-do asking for next week's count, which would fire
 on the made-up data today and move the pinned portal to-dos; and the office typing a count from a
+
+## Later, the what-if copy, as built (2026-10-06)
+
+G-81, built by Helper 1 from `mockups/G-81.md` with the lead's go. `gcWhatIf.ts` (tested, out of the
+barrel), `GcWhatIf.tsx`, and four actions: `startWhatIf`, `inWhatIf`, `keepWhatIf` and
+`throwAwayWhatIf`.
+
+- **The copy sits beside the schedule, never inside it** (`GcProject.whatIf`). It starts as the real
+  schedule with a history of its own and no walks. Nothing outside the Schedule tab reads it: not
+  the portals, Follow up, Needs you, the call list, the board row, the Friday report, the customer's
+  views or the billing forecast's months. A test holds that with a copy open and two moves tried,
+  every one of them reads as with no copy.
+- **The way in** is **What if…** on the chart's toolbar. With a copy open it reads **What if · 2**,
+  and inside the copy **See the real schedule**. The copy stays open while the real one is shown.
+- **In the copy**, every move, pull (G-37), day got back (G-82) and wait the real schedule allows is
+  tried through the same windows, with Undo and Redo on the copy's own history. Why it moved is optional: *Try it*
+  saves with a reason when one is given whole, else with none yet (`ScheduleMove.noWhy`). One
+  wrapper action, `inWhatIf`, runs the move through the reducer on the copy and keeps only the
+  schedule that comes out. Any other action is refused. The walk, actual dates, inspections, waits,
+  milestones, baselines, sends, late notices and Tell the trades stay on the real schedule, and
+  their cards are hidden in the copy.
+- **The violet line** over the chart says what the copy does against the real one. On Fair Oaks D,
+  after Summit's TPO membrane a week later for the rain and our crew's Top out three days longer
+  with no reason: "2 moves tried. 5 bars differ from the real schedule. The job still finishes Tue
+  Dec 8, as in the real one. The bills: $22,661 of the Oct 25 bill moves to Nov 25. 1 move has no
+  reason yet." Each bar that differs has its real dates as a dashed outline over it, and *Real* on
+  its hover card.
+- **Keep** puts the copy's standing moves on the real schedule, oldest first, as real moves. Each
+  keeps its reason and words; one tried with none asks for them in the Keep window. Each is by the
+  person who kept it, today, marked *Tried in a what-if first* (`fromWhatIf`). The real activities
+  take the copy's planned dates and waits, and their actual dates and reports stay. Tell the trades,
+  the customer's What changed, Days lost and the billing forecast read them as moves. Undo takes
+  them off one at a time, and a test holds that two undos return the real schedule to before Keep.
+  A violet line then names the companies not told, with **Tell the trades**.
+- **Keep is refused once the real schedule moved since the copy was made**. That means a planned
+  date or a wait changed, not a report or an actual date. The window names the bar and says to make
+  a new copy, the way Undo stops when a later move stands.
+- **Throw it away** asks once inline, then drops the copy. The real schedule stays as it was.
+- Tests: `gcWhatIf.test.ts` (15) and `GcWhatIf.render.test.tsx` (6). The golden test did not move:
+  no fixture data and no new step; the four actions are in its list.
+
+What the second look changed:
+
+- **The real dates are an outline over the bar, not a shape behind it.** Drawn behind, a bar the
+  copy only made longer hid its real dates entirely.
+- **The copy's line carries its money** (G-97's forecast on the copy's dates against the real ones),
+  because a slip that holds the finish can still move a bill.
+- **The editor and the move window say *Try it*** in the copy, and the editor hides the real days,
+  so nothing there reads as if it were saved for real.
+
+Not done, on purpose: more than one copy at a time, keeping only some of the moves, a copy shown to
+the customer or a trade, a copy across a reload, and a list inside the copy of who it would need to
 call.
 
 ## Later, people on site per week, as built (2026-10-06)

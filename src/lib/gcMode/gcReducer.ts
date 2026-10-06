@@ -20,6 +20,7 @@ import { crewCountAllowed, crewCountLogWords, crewCountProblem, crewCountsNow } 
 import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { recoveryMove, recoveryOffers } from './gcRecovery'
+import { WHAT_IF_NO_WHY, keepWhatIf, whatIfCopy, whatIfTried } from './gcWhatIf'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
@@ -2789,6 +2790,65 @@ function reduce(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, crewCounts: [count, ...(p.crewCounts ?? [])] })),
         'trade',
         crewCountLogWords(project, partner, count),
+      )
+    }
+
+    case 'startWhatIf': {
+      // A what-if copy of the schedule (G-81): one per job, beside the real one and never inside it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const copy = project && !project.whatIf ? whatIfCopy(project, action.by, state.today) : null
+      if (!project || !copy) return state
+      return mapProject(state, project.id, (p) => ({ ...p, whatIf: copy }))
+    }
+
+    case 'inWhatIf': {
+      // A move tried on the copy (G-81): the reducer runs it on a state whose project has the copy as its
+      // schedule, and keeps only the schedule that comes out, as the copy. The real schedule and the log stay as they were.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const copy = project?.whatIf
+      const inner = action.action
+      if (!project || !copy) return state
+      if (inner.type !== 'setScheduleActivity' && inner.type !== 'pullScheduleEarlier' && inner.type !== 'undoScheduleMove' && inner.type !== 'redoScheduleMove' && inner.type !== 'recoverScheduleDays') return state
+      if (inner.projectId !== project.id) return state
+      // Why it moved is optional in the copy: a move with none keeps a stand-in, marked, so the copy's history has it.
+      const noWhy = inner.type === 'setScheduleActivity' && !inner.why
+      const run: GcAction = inner.type === 'setScheduleActivity' && !inner.why ? { ...inner, why: { ...WHAT_IF_NO_WHY, by: action.by } } : inner
+      const tried = mapProject(state, project.id, (p) => ({ ...p, schedule: copy.schedule }))
+      const out = gcReducer(tried, run)
+      const schedule = out === tried ? null : out.projects.find((p) => p.id === project.id)?.schedule
+      if (!schedule) return state
+      const had = new Set((copy.schedule.moves ?? []).map((m) => m.id))
+      const moves = (schedule.moves ?? []).map((m) => (noWhy && !had.has(m.id) ? { ...m, noWhy: true } : m))
+      return mapProject(state, project.id, (p) => ({ ...p, whatIf: { ...copy, schedule: { ...schedule, moves } } }))
+    }
+
+    case 'keepWhatIf': {
+      // Keep the what-if (G-81): its moves on the real schedule, oldest first, as real moves with their reasons. The copy goes.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const kept = project ? keepWhatIf(project, action.whys, action.by.trim() || 'The office', state.today) : null
+      if (!project || !kept || 'problem' in kept) return state
+      return logged(
+        mapProject(state, project.id, (p) => {
+          const { whatIf: _whatIf, ...rest } = p
+          return { ...rest, schedule: kept.schedule }
+        }),
+        'office',
+        `${action.by} kept a what-if on ${project.name}: ${kept.kept.length} ${kept.kept.length === 1 ? 'move' : 'moves'} on the schedule, each with its reason.`,
+      )
+    }
+
+    case 'throwAwayWhatIf': {
+      // Throw the what-if away (G-81): the copy goes, the real schedule stays as it is.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      if (!project?.whatIf) return state
+      const tried = whatIfTried(project).length
+      return logged(
+        mapProject(state, project.id, (p) => {
+          const { whatIf: _whatIf, ...rest } = p
+          return rest
+        }),
+        'office',
+        `${action.by} threw away a what-if on ${project.name}: ${tried} ${tried === 1 ? 'move' : 'moves'} tried.`,
       )
     }
   }

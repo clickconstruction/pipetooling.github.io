@@ -43,6 +43,8 @@ import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcLateNotices } from './GcLateNotices'
 import { GcLogVsChart } from './GcLogVsChart'
 import { GcPullBox, GcPullLine, GcPullWindow } from './GcPullEarlier'
+import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWhatIf'
+import { whatIfGhosts, whatIfProject } from '../../lib/gcMode/gcWhatIf'
 import { planPull, pullGhosts } from '../../lib/gcMode/gcPullEarlier'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
@@ -93,8 +95,16 @@ function useMeName(): string | null {
 /** A box at the height of the button beside it (the owner, 2026-10-04): a date input runs taller on its own. */
 const rowBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
-export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps) {
+export function GcBuildingScheduleTab({ state, project: realProject, dispatch: realDispatch }: GcPaneProps) {
   const me = useMeName() ?? 'The office'
+  // A what-if copy (G-81): while it is shown, the tab reads the copy, and every move it makes goes to the copy.
+  const [copyShown, setCopyShown] = useState(false)
+  const [keeping, setKeeping] = useState(false)
+  const copyProject = useMemo(() => whatIfProject(realProject), [realProject])
+  const inCopy = copyShown && copyProject !== null
+  const project = inCopy && copyProject ? copyProject : realProject
+  const dispatch = useCallback<Dispatch<GcAction>>((a) => realDispatch(inCopy ? { type: 'inWhatIf', projectId: realProject.id, action: a, by: me } : a), [inCopy, realDispatch, realProject.id, me])
+  const realGhosts = useMemo(() => whatIfGhosts(realProject), [realProject])
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   // The finish against the contract (G-98): the days, the money at its fee, whose days, the change orders. One call for every count.
   const late = useMemo(() => lateFinish(state, project), [state, project])
@@ -216,10 +226,10 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
             started={Boolean(project.startedOn)}
             onSave={(start, finish, after, limits) => setPending({ lineId: pickedRow.activity.lineId, start, finish, after, limits })}
             today={state.today}
-            onActual={(actualStart, actualFinish) => dispatch({ type: 'setActualDates', projectId: project.id, lineId: pickedRow.activity.lineId, actualStart, actualFinish, by: me })}
-            ready={<GcNotReady state={state} project={project} lineId={pickedRow.activity.lineId} />}
+            {...(inCopy ? {} : { onActual: (actualStart: string | null, actualFinish: string | null) => dispatch({ type: 'setActualDates', projectId: project.id, lineId: pickedRow.activity.lineId, actualStart, actualFinish, by: me }) })}
+            ready={inCopy ? undefined : <GcNotReady state={state} project={project} lineId={pickedRow.activity.lineId} />}
             extra={
-              pickedRow.activity.added ? (
+              inCopy ? undefined : pickedRow.activity.added ? (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{pickedRow.activity.added.who}. Nobody reports it: mark it here.</span>
                   {pickedRow.activity.added.doneOn ? (
@@ -246,11 +256,12 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
               ) : undefined
             }
             check={
-              building && pickedInspection && !pickedInspection.passedOn ? (
+              !inCopy && building && pickedInspection && !pickedInspection.passedOn ? (
                 <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
               ) : undefined
             }
             onClose={() => setPicked(null)}
+            tryIt={inCopy}
           />
         </div>
       )}
@@ -259,7 +270,14 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       {pickedRow && offer && <GcPullBox offer={offer} lineId={pickedRow.activity.lineId} onPull={() => setPulling(true)} />}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        {building && <GcWalkLine state={state} project={project} holds={holds} onWalk={() => setWalking(true)} />}
+        {inCopy ? (
+          <GcWhatIfLine state={state} project={realProject} dispatch={realDispatch} onKeep={() => setKeeping(true)} onReal={() => setCopyShown(false)} />
+        ) : (
+          <>
+            {building && <GcWalkLine state={state} project={project} holds={holds} onWalk={() => setWalking(true)} />}
+            <GcWhatIfKept state={state} project={realProject} dispatch={realDispatch} />
+          </>
+        )}
         {building && offer && <GcPullLine offer={offer} onPull={() => setPulling(true)} />}
         <GcGantt
           holds={holds}
@@ -269,8 +287,10 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           lateSaid={lateSaid}
           logNotes={logNotes}
           uninsured={uninsured}
-          {...(printJob ? { print: printJob } : {})}
+          {...(printJob && !inCopy ? { print: printJob } : {})}
           earlier={earlier}
+          {...(inCopy ? { real: realGhosts } : {})}
+          toolbarExtra={<GcWhatIfButton project={realProject} shown={inCopy} dispatch={realDispatch} onShow={setCopyShown} />}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -290,7 +310,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
             if (a) setPending({ lineId: to, start: a.start, finish: a.finish, after: a.after.filter((id) => id !== from) })
           }}
           callList={
-            calls ? (
+            calls && !inCopy ? (
               <GcCallList list={calls} onFollowUp={(person, calling) => setSheet({ partnerId: callSheetId(person), calling })} onWorkList={() => setSheet({})} onReason={openBar} />
             ) : undefined
           }
@@ -298,7 +318,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       </Card>
 
       {/* What this week's daily log says against the chart (G-60): a trade on site with no bar, a bar with nobody on site. */}
-      {building && <GcLogVsChart project={project} gaps={logGaps} dispatch={dispatch} onOpen={openFromCard} />}
+      {building && !inCopy && <GcLogVsChart project={project} gaps={logGaps} dispatch={dispatch} onOpen={openFromCard} />}
 
       {sheet && (
         // The call list's people (G-115) on the Follow up sheet, with this job's reasons and the schedule's.
@@ -320,39 +340,46 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
 
       {pulling && <GcPullWindow state={state} project={project} dispatch={dispatch} onClose={() => setPulling(false)} />}
 
-      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
+      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} tryIt={inCopy} />}
+
+      {keeping && <GcWhatIfKeep state={state} project={realProject} dispatch={realDispatch} onClose={() => setKeeping(false)} onKept={() => setCopyShown(false)} />}
 
       {/* Trades say they will be late (G-117): take the day as a move, or push back. */}
-      {building && <GcLateNotices state={state} project={project} dispatch={dispatch} onTake={(move) => setPending(move)} />}
+      {building && !inCopy && <GcLateNotices state={state} project={project} dispatch={dispatch} onTake={(move) => setPending(move)} />}
 
-      <GcMoveHistory state={state} project={project} dispatch={dispatch} />
+      <GcMoveHistory state={state} project={project} dispatch={dispatch} tryIt={inCopy} />
 
-      {building && <DaysLostCard project={project} />}
+      {/* Below here, what records what happened, or reaches someone outside the office: the real schedule's only (G-81). */}
+      {building && !inCopy && <DaysLostCard project={project} />}
 
-      <ChangeOrderDaysCard
-        project={project}
-        today={state.today}
-        onPut={(r) => {
-          const move = changeOrderMove(project, r.co, state.today)
-          if (move) setPending(move)
-        }}
-      />
+      {!inCopy && (
+        <>
+          <ChangeOrderDaysCard
+            project={project}
+            today={state.today}
+            onPut={(r) => {
+              const move = changeOrderMove(project, r.co, state.today)
+              if (move) setPending(move)
+            }}
+          />
 
-      <WaitsCard state={state} project={project} rows={waits} items={m.items} dispatch={dispatch} />
+          <WaitsCard state={state} project={project} rows={waits} items={m.items} dispatch={dispatch} />
 
-      <AddActivityCard project={project} items={m.items} today={state.today} by={me} dispatch={dispatch} />
+          <AddActivityCard project={project} items={m.items} today={state.today} by={me} dispatch={dispatch} />
 
-      <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
+          <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
 
-      {schedule.baseline && <BaselineCard project={project} today={state.today} by={me} dispatch={dispatch} />}
+          {schedule.baseline && <BaselineCard project={project} today={state.today} by={me} dispatch={dispatch} />}
 
-      {building && <ScheduleSendCard state={state} project={project} by={me} dispatch={dispatch} />}
+          {building && <ScheduleSendCard state={state} project={project} by={me} dispatch={dispatch} />}
 
-      {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
+          {building && <VerifyCard project={project} rows={m.rows} today={state.today} dispatch={dispatch} />}
 
-      {building && <StartsCard state={state} project={project} dispatch={dispatch} />}
+          {building && <StartsCard state={state} project={project} dispatch={dispatch} />}
 
-      {building && <LookAhead weeks={m.lookAhead} />}
+          {building && <LookAhead weeks={m.lookAhead} />}
+        </>
+      )}
     </div>
   )
 }
@@ -414,6 +441,7 @@ function ActivityEditor({
   onActual,
   ready,
   onClose,
+  tryIt,
 }: {
   project: GcProject
   row: ScheduleItem
@@ -425,11 +453,13 @@ function ActivityEditor({
   /** An added activity's own buttons (G-38): done, not done, off the schedule. */
   extra?: ReactNode
   today: string
-  /** The real start and finish, recorded (G-55). Null clears one. */
-  onActual: (actualStart: string | null, actualFinish: string | null) => void
+  /** The real start and finish, recorded (G-55). Null clears one. Unset: not shown, as in a what-if copy (G-81). */
+  onActual?: (actualStart: string | null, actualFinish: string | null) => void
   /** Its trade is not ready to start it (G-77): what is not in, first under its name. */
   ready?: ReactNode
   onClose: () => void
+  /** In a what-if copy (G-81): the change is tried, and a reason is optional. */
+  tryIt?: boolean
 }) {
   const a = row.activity
   const [start, setStart] = useState(a.start)
@@ -547,7 +577,7 @@ function ActivityEditor({
         )}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Btn kind="primary" disabled={bad || !changed} onClick={() => onSave(start, finish, after, limits)}>
-            Save, and say why
+            {tryIt ? 'Try it…' : 'Save, and say why'}
           </Btn>
           {started && <span style={{ color: 'var(--text-muted)' }}>The plan at Start stays as the baseline this is measured against.</span>}
         </div>
@@ -563,7 +593,7 @@ function ActivityEditor({
             ))}
           </div>
         )}
-        {!a.inspection && (
+        {!a.inspection && onActual && (
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
             <span style={{ color: 'var(--text-muted)' }}>Really</span>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>

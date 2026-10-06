@@ -180,21 +180,21 @@ export function moveRows(project: GcProject): MoveRow[] {
     const days = daysBetween(move.finishFrom, move.finishTo)
     const moved = move.from.start !== move.to.start || move.from.finish !== move.to.finish
     const name = moveActivityName(project, move.lineId)
-    if (move.pull) return pullRow(project, move, name, days)
-    if (move.recovery) return recoveryRow(project, move, name, days)
+    if (move.pull) return withWhatIfWords(pullRow(project, move, name, days))
+    if (move.recovery) return withWhatIfWords(recoveryRow(project, move, name, days))
     const what = moved
       ? `${name} moved from ${spanWords(move.from)}, to ${spanWords(move.to)}.${move.linksChanged ? ' What it waits on changed too.' : ''}`
       : `${name}: what it waits on changed.`
     const pushWords = move.pushed.length === 0 ? '' : move.pushed.length === 1 ? `${moveActivityName(project, move.pushed[0]?.lineId ?? '')} moved out with it.` : `${move.pushed.length} after it moved out.`
     const finishWords = days === 0 ? '' : `The finish moved ${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'} ${days > 0 ? 'later' : 'sooner'}, to ${shortDate(move.finishTo)}.`
-    return {
+    return withWhatIfWords({
       move,
       who: `${weekdayDate(move.on)} · ${move.by}`,
       what,
       effect: [pushWords, finishWords].filter(Boolean).join(' '),
       reason: moveReasonLabel(move.reason),
       undone: move.undoneOn ? `Undone ${shortDate(move.undoneOn)}${move.undoneBy ? ` by ${move.undoneBy}` : ''}.` : null,
-    }
+    })
   })
 }
 
@@ -215,6 +215,17 @@ function recoveryRow(project: GcProject, move: ScheduleMove, name: string, days:
     effect: [pullWords, finishWords].filter(Boolean).join(' '),
     reason: moveReasonLabel(move.reason),
     undone: move.undoneOn ? `Undone ${shortDate(move.undoneOn)}${move.undoneBy ? ` by ${move.undoneBy}` : ''}.` : null,
+  }
+}
+
+/** A move tried in a what-if with no reason yet, or kept from one (G-81): its chip, and a word on its row. Any other row as it was. */
+function withWhatIfWords(row: MoveRow): MoveRow {
+  const m = row.move
+  if (!m.noWhy && !m.fromWhatIf) return row
+  return {
+    ...row,
+    ...(m.noWhy ? { reason: 'No reason yet' } : {}),
+    ...(m.fromWhatIf ? { effect: [row.effect, 'Tried in a what-if first.'].filter(Boolean).join(' ') } : {}),
   }
 }
 
