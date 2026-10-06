@@ -1561,7 +1561,7 @@ export default function LienDeskModal({
       {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
       <LienDeskMonths
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={onChanged} />}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={onChanged} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}
