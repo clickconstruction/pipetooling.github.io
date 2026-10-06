@@ -13,7 +13,8 @@ import { customerBarWords, customerDoneWords, customerSchedulePicture, customerS
 import { forWords, type GanttPrintInput } from './gcGanttPrint'
 import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_STAGES_GROUP, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, exportFileName, isMilestoneRow, scheduleCsv, scheduleExport, scheduleMspdi, type ExportRow, type ScheduleExport } from './gcScheduleExport'
 import { plainWordsFailures } from '../plainWords'
-import type { GcProject } from './gcTypes'
+import { gcReducer } from './gcReducer'
+import type { GcAction, GcProject, GcState } from './gcTypes'
 
 /** Fair Oaks Shops, Building D, today Fri Oct 2 2026: the chart's bars with the waits' holds, as Print or PDF is fed. */
 function fairOaks(change: (p: GcProject) => GcProject = (p) => p) {
@@ -208,6 +209,31 @@ describe('Export the schedule: our team’s file is the whole schedule (G-136)',
       ['Rough-in inspection', '2026-10-13', '2026-10-13', 'due', null],
       ['Substantial completion', '2026-12-11', '2026-12-11', 'due', null],
     ])
+  })
+
+  it('never reads the what-if copy (G-81): a job with one open and two moves tried exports exactly what it exports without it', () => {
+    const play = (st: GcState, ...actions: GcAction[]) => actions.reduce((x, a) => gcReducer(x, a), st)
+    const jobOf = (st: GcState) => st.projects.find((p) => p.id === 'fairoaksd') as GcProject
+    const tryFinish = (st: GcState, label: string, days: number): GcState => {
+      const lineId = fairOaks().bars.find((b) => b.item.label === label)?.id ?? ''
+      const a = jobOf(st).whatIf?.schedule.activities.find((x) => x.lineId === lineId)
+      if (!a) throw new Error(`no ${label} in the copy`)
+      const finish = new Date(Date.parse(`${a.finish}T00:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10)
+      return play(st, { type: 'inWhatIf', projectId: 'fairoaksd', by: 'Robert', action: { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId, start: a.start, finish, after: a.after } })
+    }
+    const tried = tryFinish(tryFinish(play(initialGcState(), { type: 'startWhatIf', projectId: 'fairoaksd', by: 'Robert' }), 'TPO membrane', 7), 'Top out', 3)
+    const copy = jobOf(tried).whatIf
+    expect(copy?.schedule.activities.find((a) => a.lineId === 'froof-1')?.finish).toBe('2026-10-16')
+    const without = fairOaks()
+    const withCopy = fairOaks(() => jobOf(tried))
+    for (const f of ['team', 'customer'] as const) {
+      const a = scheduleExport({ ...without.input, for: f })
+      const b = scheduleExport({ ...withCopy.input, for: f })
+      expect(b).toEqual(a)
+      expect(scheduleCsv(b)).toBe(scheduleCsv(a))
+      expect(scheduleMspdi(b)).toBe(scheduleMspdi(a))
+    }
+    expect(named(scheduleExport(withCopy.input), 'TPO membrane').finish).toBe('2026-10-09')
   })
 
   it('never reads the rough: a job with one exports exactly what it exports without it', () => {

@@ -1270,8 +1270,12 @@ file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWo
   the job* (their portal's stages, dates, percent and words) and *Dates to meet*. A GC or an owner's
   rep gets every bar of their list by stage, in their words (*on plan*, *not started*), in the order
   built: the list puts today first, a file reads top to bottom. No company, no trade, no spare days,
-  no waits, nothing from outside the trades. Never the rough (a test exports a job with one) and never
-  a what-if copy: a file reads the chart's bars, which read `project.schedule`.
+  no waits, nothing from outside the trades.
+- **Never the rough or the what-if copy** (G-45, G-81): a file reads the chart's bars, which read
+  `project.schedule`. A test exports a job with a rough, and one with a copy open and two moves tried
+  in it, and gets the same files as without. Inside the copy the toolbar has no Export, since the tab
+  gives the chart no print job there; a render test on the real tab holds that, and that Export on the
+  real schedule saves the real one while a copy is open.
 - **The spreadsheet**: `.csv`, UTF-8 with the byte-order mark Excel looks for, dates as 2026-10-09,
   RFC 4180 quoting, CRLF, one line for each row under a group, the group in its own column. A cell a
   spreadsheet would run as a formula starts with a quote mark (OWASP's rule for CSV files). Columns:
@@ -1303,9 +1307,10 @@ file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWo
   checks the first real import with a scheduler's copy of each program. The window says so under
   Project file: *Nobody has opened this file in Project or Primavera yet. The owner checks the first
   import with a scheduler's copy of each program.*
-- **Tests**: `gcScheduleExport.test.ts` (22: the rows, the filters and folds, the waits and gaps, the
-  outside waits, the dates, the rough, both customer copies, the spreadsheet, the project file, the
-  lead's pins, the words), `GcScheduleExport.render.test.tsx` (7, one on the real Schedule tab).
+- **Tests**: `gcScheduleExport.test.ts` (23: the rows, the filters and folds, the waits and gaps, the
+  outside waits, the dates, the what-if copy, the rough, both customer copies, the spreadsheet, the
+  project file, the lead's pins, the words), `GcScheduleExport.render.test.tsx` (8, two on the real
+  Schedule tab).
 
 What changed from the mock-up: each task is held to its day (above); the owner's spreadsheet has a
 *Group* and a *Name* column, since *Dry-in* is both a stage and a date to meet; the count names the

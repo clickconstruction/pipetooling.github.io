@@ -15,6 +15,8 @@ import { customerDoneWords, customerSchedulePicture, customerStanding } from '..
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 import { downloadTextFile } from '../../lib/gcMode/gcDownloadFile'
 import { plainWordsFailures } from '../../lib/plainWords'
+import { gcReducer } from '../../lib/gcMode/gcReducer'
+import type { GcAction, GcState } from '../../lib/gcMode/gcTypes'
 
 vi.mock('../../lib/gcMode/gcDownloadFile', () => ({ downloadTextFile: vi.fn() }))
 
@@ -141,5 +143,39 @@ describe('Export from the real Schedule tab (G-136)', () => {
     expect(csv).toContain('What the work waits on,Rooftop units on site,delivery,HVAC,')
     // The tab's holds reach the file as the chart shows them: Site lighting held by Pecan Valley's papers.
     expect(csv).toMatch(/\r\nElectrical,Site lighting,activity,Electrical,Pecan Valley Electric,[^\r]*,held,/)
+  })
+})
+
+describe('Export and the what-if copy (G-136 after G-81)', () => {
+  const ID = 'fairoaksd'
+  const play = (st: GcState, ...actions: GcAction[]) => actions.reduce((x, a) => gcReducer(x, a), st)
+  const job = (st: GcState) => st.projects.find((p) => p.id === ID)!
+  /** A copy open with the TPO membrane a week later in it. */
+  const withCopy = (): GcState => {
+    const s1 = play(initialGcState(), { type: 'startWhatIf', projectId: ID, by: 'Robert' })
+    const a = job(s1).whatIf!.schedule.activities.find((x) => x.lineId === 'froof-1')!
+    return play(s1, { type: 'inWhatIf', projectId: ID, by: 'Robert', action: { type: 'setScheduleActivity', projectId: ID, lineId: a.lineId, start: a.start, finish: '2026-10-16', after: a.after } })
+  }
+  const toolbar = () => document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement
+
+  it('has no Export inside the copy, and on the real schedule saves the real one, whatever the copy holds', () => {
+    const plain = render(<GcBuildingScheduleTab state={initialGcState()} project={job(initialGcState())} dispatch={vi.fn()} />)
+    fireEvent.click(exportButton())
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Spreadsheet' }))
+    const real = saves()[0]?.text
+    plain.unmount()
+    vi.mocked(downloadTextFile).mockClear()
+
+    const state = withCopy()
+    render(<GcBuildingScheduleTab state={state} project={job(state)} dispatch={vi.fn()} />)
+    fireEvent.click(within(toolbar()).getByRole('button', { name: 'What if · 1' }))
+    expect(within(toolbar()).getByRole('button', { name: 'See the real schedule' })).toBeTruthy()
+    expect(within(toolbar()).queryByRole('button', { name: 'Export' })).toBeNull()
+    expect(within(toolbar()).queryByRole('button', { name: 'Print or PDF' })).toBeNull()
+    fireEvent.click(within(toolbar()).getByRole('button', { name: 'See the real schedule' }))
+    fireEvent.click(exportButton())
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Spreadsheet' }))
+    expect(saves()[0]?.text).toBe(real)
+    expect(real).toContain('Roofing,TPO membrane,activity,Roofing,Summit Roofing,2026-09-21,2026-10-09,')
   })
 })
