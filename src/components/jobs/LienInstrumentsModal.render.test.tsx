@@ -148,6 +148,36 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     }
   })
 
+  it('the LAST WORK stop’s change › opens the last day’s line editing under the timeline; Save the day opens the window that shows what moves; Cancel folds it away (v2.4735)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    const door = await waitFor(() => {
+      const el = document.querySelector('[data-lien-timeline-last-work-door]') as HTMLButtonElement | null
+      expect(el).toBeTruthy()
+      return el!
+    })
+    expect(door.textContent).toBe('change ›')
+    expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-last-work-editor')).toBeTruthy()
+    expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
+    fireEvent.click(screen.getByTestId('lien-last-work-save'))
+    expect(screen.getByTestId('lien-last-work-confirm')).toBeTruthy()
+    fireEvent.click(within(screen.getByTestId('lien-last-work-confirm')).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull()
+    fireEvent.click(within(screen.getByTestId('lien-last-work-editor')).getByRole('button', { name: 'Cancel' }))
+    expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
+    expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeTruthy()
+  })
+
+  it('reads a day set by hand on its timeline, and the Deadlines door opens it already editing (v2.4735)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ created_at: '2026-02-03T15:00:00Z', last_work_date: null, lien_last_work_on: '2026-08-11', lien_last_work_note: 'The crew’s last trip' })} openLastWork />)
+    await waitFor(() => expect(document.querySelector('[data-lien-timeline-step="last_work"]')).toBeTruthy())
+    const stop = document.querySelector('[data-lien-timeline-step="last_work"]') as HTMLElement
+    expect(stop.textContent).toContain('Aug 2026')
+    expect(stop.textContent).not.toMatch(/creation/)
+    expect(screen.getByTestId('lien-last-work-editor')).toBeTruthy()
+  })
+
   it('names the next step above the papers, with its door, and links to Release of Lien (punch list #82)', async () => {
     const onOpenLienDesk = vi.fn()
     const onOpenRelease = vi.fn()

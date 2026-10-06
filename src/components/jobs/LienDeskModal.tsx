@@ -169,12 +169,14 @@ export type LienDeskModalProps = {
   calendarRows?: ReadonlyArray<LienCalendarJob> | null
   /** A Calendar row opens the job's Lien window. */
   onOpenCalendarJob?: (jobId: string) => void
+  /** The Deadlines grid's last-day label (v2.4735): the Lien window with the last day's line already editing. */
+  onOpenCalendarLastWork?: (jobId: string) => void
   /** The title bar's door for an owner who asks for our records on their property (v2.4544). */
   onOpenOwnerRecords?: () => void
   /** A job number opens the job itself: the Job window, with its history and Edit (v2.4531 the Calendar; v2.4535 the Timeline and the three panes' headings). */
   onOpenJob?: (jobId: string) => void
   /** The Calendar's pen wrote something (v2.4153): a pay date, or a property kind — the Pipeline re-reads what changed. */
-  onCalendarChanged?: (what: 'promise' | 'kind') => void
+  onCalendarChanged?: (what: 'promise' | 'kind' | 'last_work') => void
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Bumped by a door that re-aims an open desk (v2.4612): the tab is applied even when the job is the one already named. */
@@ -273,6 +275,7 @@ export default function LienDeskModal({
   onOpenJob,
   onOpenOwnerRecords,
   onCalendarChanged,
+  onOpenCalendarLastWork,
   initialPile,
   aimKey,
   onPutGcOnNotice,
@@ -1801,7 +1804,7 @@ export default function LienDeskModal({
       {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
       <LienDeskMonths
         grid={monthGrid!}
-        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={onChanged} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
+        lastWork={<LienLastWorkDayLine jobId={selected.jobId} job={job ?? null} todayYmd={todayYmd} canEdit={office} userId={authUserId} onSaved={() => (onCalendarChanged ? onCalendarChanged('last_work') : onChanged())} jobLabel={`${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''} · ${(job?.job_name ?? '').trim()}`} clockMonths={selected.months.filter((m) => !m.fromCreation && !m.byHand).map((m) => m.key)} noticedMonths={selected.months.filter((m) => m.noticed).map((m) => m.key)} propertyKind={selected.propertyKind} />}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}
@@ -2771,6 +2774,7 @@ export default function LienDeskModal({
               isMobile={isMobile}
               canWrite={office}
               onOpenJob={(jobId) => (onOpenCalendarJob ?? onOpenLienInstruments)(jobId)}
+              onOpenLastWork={office ? onOpenCalendarLastWork : undefined}
               onOpenJobWindow={onOpenJob}
               onOpenEditJob={(jobId) => onOpenEditJob(jobId, 'property-record')}
               onChanged={(what) => {

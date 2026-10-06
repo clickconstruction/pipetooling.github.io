@@ -40,6 +40,8 @@ export function LienLastWorkDayLine({
   clockMonths,
   noticedMonths,
   propertyKind,
+  startEditing = false,
+  onCancel,
 }: {
   jobId: string
   job: LienLastWorkJob | null | undefined
@@ -57,16 +59,21 @@ export function LienLastWorkDayLine({
   noticedMonths?: ReadonlyArray<string>
   /** 'residential' | 'commercial'; '' or absent draws the words without the table. */
   propertyKind?: string
+  /** Open on the editor (v2.4733): the Lien window draws the line only when its timeline's *change ›* is pressed. */
+  startEditing?: boolean
+  /** Cancel pressed: the Lien window folds the line away again. */
+  onCancel?: () => void
 }) {
   const { showToast } = useToastContext()
   const d = lienLastWorkDay(job)
-  const [editing, setEditing] = useState(false)
+  const [editing, setEditing] = useState(startEditing)
   const [dayDraft, setDayDraft] = useState(d.day ?? '')
   const [noteDraft, setNoteDraft] = useState(d.note)
   const [busy, setBusy] = useState(false)
   const [confirming, setConfirming] = useState(false)
   useEffect(() => {
-    setEditing(false)
+    // Back to how the line opened (the Lien window opens it editing) whenever the job or its day changes.
+    setEditing(startEditing)
     setConfirming(false)
     setDayDraft(d.day ?? '')
     setNoteDraft(d.note)
@@ -126,7 +133,15 @@ export function LienLastWorkDayLine({
                 {job?.last_work_date ? 'Back to clock hours' : "Back to the job's creation day"}
               </button>
             ) : null}
-            <button type="button" onClick={() => setEditing(false)} disabled={busy} style={btn()}>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false)
+                onCancel?.()
+              }}
+              disabled={busy}
+              style={btn()}
+            >
               Cancel
             </button>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Clock hours and pay are not changed. The day sets the lien months only.</span>
