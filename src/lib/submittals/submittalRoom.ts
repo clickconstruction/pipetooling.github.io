@@ -7,6 +7,7 @@
 import type { Database } from '../../types/database'
 import { withPreviewFlag } from '../publicViewCounting'
 import { asRoomRole, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomPayload, type RoomMessage} from '../../../supabase/functions/_shared/submittalRoomPayload'
+import type { RecordRoomPayload } from '../../../supabase/functions/_shared/submittalRecord'
 
 export type SubmittalRoomRow = Database['public']['Tables']['bid_submittal_rooms']['Row']
 export type SubmittalPersonRow = Database['public']['Tables']['bid_submittal_people']['Row']
@@ -101,7 +102,7 @@ export function describeRoomLine(room: Pick<SubmittalRoomRow, 'status' | 'shared
 }
 
 /** Defensive parse of the function's JSON — the page never trusts the wire blindly. */
-export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload | null {
+export function parseSubmittalRoomPayload(json: unknown): RecordRoomPayload | null {
   if (!json || typeof json !== 'object') return null
   const j = json as Record<string, unknown>
   const bid = j.bid as Record<string, unknown> | undefined
@@ -125,6 +126,7 @@ export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload |
         id: String(r.id ?? ''),
         rev: Number(r.rev ?? 0),
         sharedAt: typeof r.sharedAt === 'string' ? r.sharedAt : null,
+        answeredByEmailAt: typeof r.answeredByEmailAt === 'string' ? r.answeredByEmailAt : null,
         current: r.current === true,
         hasPackage: r.hasPackage === true,
         rows: Array.isArray(r.rows) ? (r.rows as SubmittalRoomPayload['revisions'][number]['rows']) : [],

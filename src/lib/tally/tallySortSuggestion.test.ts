@@ -35,7 +35,7 @@ const charge = (
   amount: number,
   counterparty: string,
   category: string | null,
-): TallyCharge => ({ id, holderId: 'h', postedAt: at(ymd, hm), amount, counterparty, category })
+): TallyCharge => ({ id, holderId: 'h', madeAt: at(ymd, hm), amount, counterparty, category })
 const session = (ymd: string, jobId: string | null, from: string, to: string | null): TallyClockSession => ({
   workDate: ymd,
   jobId,
@@ -63,6 +63,7 @@ function day(over: Partial<TallyDayInput> & Pick<TallyDayInput, 'ymd' | 'charges
 }
 
 const chipsOf = (d: TallyDaySuggestion) => d.chips.map((c) => [c.choice, c.rule, c.confidence])
+const hoursOf = (d: TallyDaySuggestion) => d.clockedJobs.map(({ jobId, hours }) => ({ jobId, hours }))
 
 describe('suggestTallyDay — the pass-2 day cards', () => {
   it('a one-job day: the job clocked that day is likely, and the fuel line takes it', () => {
@@ -78,7 +79,7 @@ describe('suggestTallyDay — the pass-2 day cards', () => {
     ])
     expect(d.lines[0]).toMatchObject({ best: d.best, own: [], even: null, byHours: null })
     expect(d.allSure).toBe(false)
-    expect(d.clockedJobs).toEqual([{ jobId: JOB_A, hours: 9.5 }])
+    expect(hoursOf(d)).toEqual([{ jobId: JOB_A, hours: 9.5 }])
   })
 
   it("no clock: the store's run is offered on the line, never chosen", () => {
@@ -100,7 +101,7 @@ describe('suggestTallyDay — the pass-2 day cards', () => {
     expect(chipsOf(d)).toEqual([[job(OFFICE), 'office', 'none']])
   })
 
-  it('a two-job day: both jobs and the even split lead, by hours comes last; nothing likely', () => {
+  it('a two-job day: both jobs and the even split; by hours rides on the line, not as a chip; nothing likely', () => {
     const d = day({
       ymd: '2026-09-30',
       charges: [charge('t3', '2026-09-30', '12:10', -88.2, 'Valley Plumbing Supply', 'Retail')],
@@ -108,9 +109,8 @@ describe('suggestTallyDay — the pass-2 day cards', () => {
       history: [sorted('h5', '2026-09-24', '10:00', 'Valley Plumbing Supply', JOB_C)],
     })
     expect(d.best).toBeNull()
-    expect(d.chips.map((c) => c.rule)).toEqual(['clock-job', 'clock-job', 'split-even', 'office', 'split-by-hours'])
+    expect(d.chips.map((c) => c.rule)).toEqual(['clock-job', 'clock-job', 'split-even', 'office'])
     expect(d.chips[2]!.choice).toEqual({ kind: 'split', how: 'even', jobIds: [JOB_C, JOB_D] })
-    expect(d.chips[4]!.choice).toEqual({ kind: 'split', how: 'hours', jobIds: [JOB_C, JOB_D] })
     const line = d.lines[0]!
     expect(line.best).toBeNull()
     expect(line.own).toEqual([
@@ -290,7 +290,7 @@ describe('suggestTallyDay — the day rules', () => {
       sessions: [session('2026-09-30', JOB_A, '07:00', '11:00'), session('2026-09-30', JOB_A, '11:30', '15:00')],
     })
     expect(d.best?.rule).toBe('clock-one-job')
-    expect(d.clockedJobs).toEqual([{ jobId: JOB_A, hours: 7.5 }])
+    expect(hoursOf(d)).toEqual([{ jobId: JOB_A, hours: 7.5 }])
   })
 
   it('no clock and one job scheduled: likely; two scheduled: both offered', () => {
@@ -362,7 +362,6 @@ describe('suggestTallyDay — the day rules', () => {
       'neighbour-day',
       'same-day-sorted',
       'office',
-      'split-by-hours',
     ])
     const capped = day(busy)
     expect(capped.chips).toEqual(all.chips.slice(0, TALLY_DAY_CHIP_CAP))
@@ -374,11 +373,11 @@ describe('suggestTallyDay — the day rules', () => {
       charges: one,
       sessions: [session('2026-09-30', JOB_C, '07:00', '12:00'), session('2026-09-30', JOB_D, '12:30', null)],
     })
-    expect(d.clockedJobs).toEqual([
+    expect(hoursOf(d)).toEqual([
       { jobId: JOB_C, hours: 5 },
       { jobId: JOB_D, hours: 4.5 },
     ])
-    expect(d.chips.some((c) => c.rule === 'split-by-hours')).toBe(true)
+    expect(d.lines[0]!.byHours).not.toBeNull()
   })
 
   it('a past day still clocked in has no hours: the even split only', () => {
@@ -387,7 +386,7 @@ describe('suggestTallyDay — the day rules', () => {
       charges: [charge('c1', '2026-09-28', '12:10', -30, 'Ridge Supply', 'Retail')],
       sessions: [session('2026-09-28', JOB_C, '07:00', '12:00'), session('2026-09-28', JOB_D, '12:30', null)],
     })
-    expect(d.clockedJobs[1]).toEqual({ jobId: JOB_D, hours: null })
+    expect(hoursOf(d)[1]).toEqual({ jobId: JOB_D, hours: null })
     expect(d.chips.map((c) => c.rule)).toEqual(['clock-job', 'clock-job', 'split-even', 'office'])
     expect(d.lines[0]!.byHours).toBeNull()
     expect(d.lines[0]!.even).toEqual([
@@ -414,10 +413,53 @@ describe('suggestTallyDay — the day rules', () => {
     expect(d.chips.map((c) => c.rule)).toEqual(['office'])
   })
 
+  it('a refund is not history: it starts no store run and names no same-day job', () => {
+    const refund = (id: string, ymd: string, hm: string, jobId: string): TallySortedCharge => ({
+      id,
+      postedAt: at(ymd, hm),
+      counterparty: 'Ridge Supply',
+      splits: [{ jobId, amount: 25 }],
+    })
+    const d = day({
+      ymd: '2026-09-30',
+      charges: [charge('c1', '2026-09-30', '12:00', -50, 'Ridge Supply', 'Retail')],
+      history: [
+        refund('r0', '2026-09-30', '09:00', JOB_F),
+        refund('r1', '2026-09-28', '09:00', JOB_F),
+        sorted('p1', '2026-09-27', '09:00', 'Ridge Supply', JOB_B),
+      ],
+    })
+    expect(d.lines[0]!.own).toEqual([
+      { choice: job(JOB_B), rule: 'store-last', confidence: 'none', facts: { store: 'Ridge Supply', count: 1 } },
+    ])
+    expect(d.chips.some((c) => c.choice.kind === 'job' && c.choice.jobId === JOB_F)).toBe(false)
+  })
+
+  it('carries the facts the evidence line reads: spans, other time, the schedule and the neighbours', () => {
+    const worked = day({
+      ymd: '2026-09-30',
+      charges: one,
+      sessions: [
+        session('2026-09-30', JOB_A, '11:30', '15:00'),
+        session('2026-09-30', JOB_A, '07:00', '11:00'),
+        session('2026-09-30', null, '15:30', '16:00'),
+        session('2026-09-29', JOB_C, '07:00', '15:00'),
+      ],
+      scheduled: [{ workDate: '2026-09-30', jobId: JOB_B }],
+    })
+    expect(worked.clockedJobs[0]!.spans).toEqual([
+      { clockedInAt: at('2026-09-30', '07:00'), clockedOutAt: at('2026-09-30', '11:00') },
+      { clockedInAt: at('2026-09-30', '11:30'), clockedOutAt: at('2026-09-30', '15:00') },
+    ])
+    expect(worked.otherTime).toBe(true)
+    expect(worked.scheduledJobs).toEqual([JOB_B])
+    expect(worked.neighbours).toEqual([{ jobId: JOB_C, days: ['2026-09-29'] }])
+  })
+
   it('an evening charge keeps its company day, the day its clock session is dated', () => {
     // 8:30 PM Chicago is 01:30 the next morning in UTC.
     const evening = charge('e1', '2026-09-29', '20:30', -42.75, 'Corner Fuel', 'FuelAndGas')
-    expect(new Date(evening.postedAt).toISOString().slice(0, 10)).toBe('2026-09-30')
+    expect(new Date(evening.madeAt).toISOString().slice(0, 10)).toBe('2026-09-30')
     const [group] = groupTallyChargesByDay([evening])
     expect(group!.ymd).toBe('2026-09-29')
     const d = day({ ymd: group!.ymd, charges: group!.charges, sessions: [session('2026-09-29', JOB_A, '07:00', '16:00')] })
@@ -425,7 +467,7 @@ describe('suggestTallyDay — the day rules', () => {
   })
 })
 
-describe('rule set v1', () => {
+describe('rule set v2', () => {
   it('no rule is sure: the replay found none at 95% on 40 or more charges', () => {
     expect(Object.values(TALLY_RULE_CONFIDENCE)).not.toContain('sure')
   })
@@ -440,7 +482,6 @@ describe('rule set v1', () => {
       'clock-office': 'none',
       'clock-job': 'none',
       'split-even': 'none',
-      'split-by-hours': 'none',
       'schedule-one-job': 'likely',
       'schedule-job': 'none',
       'same-day-sorted': 'none',
@@ -542,11 +583,11 @@ describe('tallyRowsForChoice', () => {
 describe('groupTallyChargesByDay', () => {
   it('groups by holder and company day, newest day first, charges in posted order', () => {
     const rows = [
-      { id: 'a', holderId: 'u2', postedAt: '2026-09-29T10:00:00-05:00' },
-      { id: 'b', holderId: 'u1', postedAt: '2026-09-29T23:30:00-05:00' },
-      { id: 'c', holderId: 'u1', postedAt: '2026-09-29T08:00:00-05:00' },
-      { id: 'd', holderId: 'u1', postedAt: '2026-09-30T06:03:00-05:00' },
-      { id: 'e', holderId: 'u1', postedAt: 'not a date' },
+      { id: 'a', holderId: 'u2', madeAt: '2026-09-29T10:00:00-05:00' },
+      { id: 'b', holderId: 'u1', madeAt: '2026-09-29T23:30:00-05:00' },
+      { id: 'c', holderId: 'u1', madeAt: '2026-09-29T08:00:00-05:00' },
+      { id: 'd', holderId: 'u1', madeAt: '2026-09-30T06:03:00-05:00' },
+      { id: 'e', holderId: 'u1', madeAt: 'not a date' },
     ]
     expect(groupTallyChargesByDay(rows).map((g) => [g.holderId, g.ymd, g.charges.map((c) => c.id)])).toEqual([
       ['u1', '2026-09-30', ['d']],

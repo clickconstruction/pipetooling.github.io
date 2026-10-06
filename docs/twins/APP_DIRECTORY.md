@@ -198,8 +198,9 @@ Homeowner-style quotes (separate from bids): line items, send for acceptance, �
 Roles: dev, master, assistant, controller, estimator, primary; super limited.
 
 ### /tally — Tally
-Company transaction tally: payroll marks, categorization, follow-up.
-Roles: all (feature access varies; payroll actions gated).
+Company card charges sorted to jobs: the office's Team queue (one card per person per day,
+the likely job first), each holder's own card, payroll marks, follow-up.
+Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 
 ### /banking — Banking
 Mercury bank ledger: user/drag sort, accounting labels, card + category review,

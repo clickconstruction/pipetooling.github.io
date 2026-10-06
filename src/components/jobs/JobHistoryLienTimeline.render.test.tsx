@@ -39,9 +39,15 @@ describe('JobHistoryLienTimeline', () => {
     const job = makeJob({ id: 'job-1', revenue: 8940, payments_made: 0, gc_customer_id: 'gc-1', customer_address_id: 'addr-1', last_work_date: '2026-07-30' })
     const { container } = render(<JobHistoryLienTimeline job={job} />)
     await waitFor(() => expect(container.querySelector('[data-job-history-lien-timeline]')).toBeTruthy())
-    expect(container.querySelector('[data-lien-timeline-step="demand"]')?.textContent).toContain('reply by Sep 28')
+    // The calendar, fixed (v2.4652): no Steps · Windows switch, the verdict band first, the letter as a row, whose move under the live rows.
+    expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('windows')
+    expect(container.querySelector('[data-lien-timeline-view]')).toBeNull()
+    const verdict = container.querySelector('[data-lien-timeline-verdict]')!
+    const chart = container.querySelector('[data-lien-timeline-windows]')!
+    expect(verdict.compareDocumentPosition(chart) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector('[data-lien-timeline-window="demand"]')?.textContent).toContain('reply by Sep 28')
     expect(container.querySelector('[data-lien-timeline-waiting]')?.textContent).toContain('the GC')
-    expect(container.querySelector('[data-lien-timeline-step="affidavit"] [data-lien-timeline-move="ours"]')).toBeTruthy()
+    expect(container.querySelector('[data-lien-timeline-window="affidavit"] [data-lien-timeline-move="ours"]')).toBeTruthy()
   })
 
   it('draws nothing for a paid job with no filing and no letter', async () => {

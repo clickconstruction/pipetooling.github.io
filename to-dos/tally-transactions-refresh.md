@@ -2,7 +2,7 @@
 name: "Job Parts Tally → Transactions: the team's queue, sorted where it is"
 number: 72
 group: waiting
-status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · PR 1, the suggestion kernel, v2.4591 on `feat/tally-sort-suggestion-kernel` 2026-10-05; its replay of 90 days found no rule sure enough to sort a day in one press · PR 2 onward waits on the owner
+status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · PR 1, the suggestion kernel, v2.4591 on `feat/tally-sort-suggestion-kernel` 2026-10-05; its replay of 90 days found no rule sure enough to sort a day in one press · the owner's go 2026-10-06 on a faster queue, the likely chip first and never pre-selected · PR 2a, the team queue, v2.4654 on `feat/tally-team-queue`, keyed on the day of the swipe
 summary: >
   The Transactions tab was built for the card holder to sort their own purchases, with a phone
   Sort mode and a clock-out nudge. Ninety days of production say the field does not: one assistant
@@ -17,15 +17,14 @@ summary: >
   carrying the same chips, and the page measuring its own guesses. A bar that sorts the obvious
   days in one press, and any rule that applies itself, wait until a rule measures sure.
 next: >
-  The owner's call on the changed promise: without a sure rule there is no one-press bar and no
-  page that shrinks each month yet, so PR 2 is a faster queue, not a self-sorting one. If the owner says
-  build, PR 2's plan answers whether the likely chip arrives selected or not, then the team queue.
-  Ten minutes with Taunya on the wrong-guess cases first; the answers are the next rules the
-  replay scores. Even split leads on a two-job day (settled by the replay); dev, master, assistant
-  and controller see the team view; Materials Estimate retires.
+  PR 2a's review and merge, then a few days of the office sorting on it before PR 2b moves the
+  Dashboard and Quickfill doors here and retires the Team purchases window. PR 2c (a keyboard path)
+  after one real sorting session. Two follow-ups found by 2a, each its own PR: the Assign window's
+  "that day" and the holder's Sort mode move to the swipe day, and `list_card_charges_window`
+  gains the swipe time. The wrong-guess answers from the field become rules the replay scores.
 size: M (five PRs; the kernel and the queue are the two real ones)
-blocker: The owner's call on a queue without the one-press bar.
-ver: v2.4591 (PR 1)
+blocker: PR 2a's review; then a few days of real use before 2b.
+ver: v2.4591 (PR 1) · v2.4654 (PR 2a)
 opinion: build — the sorter's minute per charge becomes a glance and a tap, and the page can prove its rules before any of them runs on its own.
 mockup: tally-transactions-refresh-before-after.html
 ---
@@ -85,8 +84,11 @@ callout, chip reason and owner's call on it is the build list; the plan below is
 PR 1, the kernel, is on `feat/tally-sort-suggestion-kernel` (v2.4591). Its replay of 90 days of
 real sorting changed the spec in three places, and the plan below says so: no rule is sure, so
 there is no one-press bar yet; a store's run is offered, never kept as the line's pick; the split
-leads even. Whether PR 2, a faster queue without the one-press bar, is still worth building is
-the owner's call.
+leads even. On 2026-10-06 the owner said build the faster queue: the likely chip leads the day
+but nothing is selected until the sorter taps. PR 2a (v2.4654) found that Mercury's posting time is
+not the day of the work: a charge posts a median 8 hours after the swipe, on a later day for two in
+five. The queue keys a charge's day on the swipe (`raw.createdAt`); where the two days had
+different jobs, past sorts followed the posting day the Assign window shows, 48 times to 6.
 
 ## The decision (drawn; the owner's go taken)
 
@@ -117,7 +119,10 @@ Assign window, which is what the After replaces.
   day, the source and the hours the kernel needs), the holder's sorted charges 30 days back with
   their splits and Mercury category from `list_card_charges_window` (#52's read, office roles,
   paged; agreed 2026-10-05 so one read serves both, since the v2.4566 Sorted read stops at 300
-  rows for the whole team), `raw.mercuryCategory` on the unsorted rows.
+  rows for the whole team), `raw.mercuryCategory` on the unsorted rows. That read returns card
+  refunds too since v2.4611, so store runs and same-day history are built from purchases only
+  (`amount < 0`); a refund in the queue may later earn its own rule, the job of the purchase it
+  returns.
 - Writes: unchanged — `replace_mercury_job_splits_for_linked_card_as_staff` (office) and
   `replace_mercury_job_splits_for_my_linked_card` (holder), `set_tally_payroll_flag`, the rules RPCs.
 - Screens: `src/pages/JobTally.tsx` (the Transactions block, 934–1827 at the map's commit — see
@@ -142,12 +147,20 @@ Assign window, which is what the After replaces.
    to the field job), reached only ±1 (a Saturday needs Monday) and let a store's run beat the
    clock (right 2 times in 12). The replay set the levels: nothing is sure in rule set v1; the
    table is in the kernel and `docs/recent-features/v2.4591.md`. Pure, tested. No screen change.
-2. **PR 2 — the team queue** on the Transactions tab for office roles: the people strip, the
-   through-date, the day cards, the evidence line, the chips, *Sort the day* through the staff
-   RPC (one write per charge), *Another job…* opening today's Assign window; the Dashboard and
-   Quickfill doors open here. Lands as `TallyTransactionsTab` per the architecture map. Guide
-   *sort my card purchases to jobs* gains the office section; GLOSSARY and PROJECT_DOCUMENTATION
-   amended.
+2. **PR 2a — the team queue** (v2.4654) on the Transactions tab for office roles, behind a
+   **Team | My card** switch: the people strip, the through-date, the day cards keyed on the day of
+   the swipe, the evidence sentence, the chips (likely first, nothing pre-selected), *Sort the day*
+   through the staff RPC (one write per charge), *Another job…* (today's Assign window), Invoices,
+   Backcharge and the Sorted list on every card. Kernel v2: a refund is not history, by hours is
+   not a chip. Lands as its own component, `TallyTeamQueue`; the guide *sort the team's card
+   purchases from the office* gains the Job Parts Tally section (this plan first named the field
+   guide), GLOSSARY and PROJECT_DOCUMENTATION amended.
+   **PR 2b** — after a few days of real use, the Dashboard and Quickfill doors open here and the
+   Team purchases window retires. **PR 2c** — a keyboard path for the desktop sorter, after one
+   real session. The own-card block's extraction into `TallyTransactionsTab` is its own PR.
+   **Follow-ups found by 2a**: the Assign window's "that day" and the holder's Sort mode move to
+   the swipe day (about 48 charges in 90 days may sit on the next day's job); `list_card_charges_window`
+   gains the swipe time so store runs and same-day chips move too (#52).
 3. **PR 3 — the pay bar**: the pay-send bar that marks and widens the matching payroll rule, and
    undo per line. The obvious bar (sort-all for ✓ days) waits until PR 5 promotes a rule to sure;
    with the levels the replay found, it would have written a wrong charge on about 4 obvious days

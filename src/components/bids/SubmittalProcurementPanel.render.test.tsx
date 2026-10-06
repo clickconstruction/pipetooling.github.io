@@ -639,6 +639,36 @@ describe('SubmittalProcurementPanel', () => {
     await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer.'))
   })
 
+  it('v2.4663 · a draft nobody has shared: the first step and the pill read Not sent yet, the Next line says to share Rev 4, the orders sit under Not sent to the GC yet with no door; shared, the same rows wait on the GC', async () => {
+    localStorage.removeItem('submittals_procure_lens')
+    state.records = []
+    const onCounts = vi.fn()
+    const onAnswerItem = vi.fn()
+    const lines: ProcurementItemSource[] = [
+      { tag: 'LAV-2', product: 'KOHLER 2215-0 LADENA WHITE', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: null, shared: false, partKey: 'k-lav', partOrder: 1, itemId: 'row-lav2', fixture: 'LAV2', fixtureCount: 6 },
+      { tag: 'LAV-2', product: 'BOBRICK B-8236', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: null, shared: false, partKey: 'k-soap', partOrder: 2, itemId: 'row-lav2', fixture: 'LAV2', fixtureCount: 6 },
+      { tag: 'WC-1', product: 'TOTO TET2UB31#SS', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: null, shared: false, itemId: 'row-wc' },
+    ]
+    const { unmount } = renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B398" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onCounts={onCounts} onAnswerItem={onAnswerItem} draftRev={4} />)
+    await waitFor(() => expect(stepWords()).toEqual(['Not sent yet3Share Rev 4 first', 'To order0nothing approved yet', 'On order0', 'On site0']))
+    expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. Share Rev 4 first. 3 parts have not been sent.')
+    expect(onCounts).toHaveBeenLastCalledWith(expect.objectContaining({ gcLabel: 'Not sent yet', steps: { gc: 3, to_order: 0, on_order: 0, on_site: 0 } }))
+    expect(screen.getAllByTestId('procurement-section').map((r) => [r.getAttribute('data-kind'), r.textContent])).toEqual([['not_sent', 'Not sent to the GC yet32 fixtures · share Rev 4 to get an answer']])
+    // No Their answer… door on a fixture the GC has never seen, and no right-hand words.
+    expect(screen.queryByTestId('procurement-fixture-answer')).toBeNull()
+    expect(screen.getAllByTestId('procurement-group').map((g) => g.textContent)).toEqual(['LAV-22LAV2 × 6 · 2 parts', 'WC-11TOTO TET2UB31#SS'])
+    // The step pressed says its own name.
+    fireEvent.click(screen.getByTestId('procurement-step-gc'))
+    expect(screen.getByTestId('procurement-only').textContent).toBe('Not sent yet: 3 parts. The other lines are hidden.Show every line')
+    unmount()
+    // The same rows once Rev 4 is shared (the tab hands no draft number): the GC is waiting, with the door.
+    renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B398" companyName="Click" items={lines.map((l) => ({ ...l, shared: true }))} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onCounts={onCounts} onAnswerItem={onAnswerItem} />)
+    await waitFor(() => expect(stepWords()).toEqual(['Waiting on the GC3', 'To order0nothing approved yet', 'On order0', 'On site0']))
+    expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. 3 parts wait on their answer.')
+    expect(screen.getAllByTestId('procurement-section').map((r) => r.getAttribute('data-kind'))).toEqual(['waiting'])
+    expect(screen.getAllByTestId('procurement-fixture-answer')).toHaveLength(2)
+  })
+
   it('v2.4587 · orders by PO, on site by PO, a part sent back with what they wrote and its two doors, a waiting fixture with Their answer…', async () => {
     localStorage.removeItem('submittals_procure_lens')
     state.updates = []

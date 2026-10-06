@@ -3,16 +3,16 @@ name: People spine — residuals
 number: 29
 group: residual
 status: >
-  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; items 3–5 open
+  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; items 3–4 open
 summary: >
   **People spine residuals**: after the roster view, Leave, Hire, the Users lenses and the pointers
   landed, small things stayed open. Done in v2.4658: the edge functions' hand-written sample
   filters (one shared rule that also refuses twins), and the crew pickers (pinned to the view, not
-  moved). Open: `get_archived_user_names()` still serves four surfaces, one fixture account has its
-  twin flag unset in prod, and the `as never` cast outlived the regen.
+  moved); in v2.4664, the `as never` cast. Open: `get_archived_user_names()` still serves five
+  surfaces, and one fixture account has its twin flag unset in prod.
 next: >
   After v2.4658's deploy waves: Offsets, Contracts, the Teams member filter and the Hours grid take
-  the view's `is_archived` and the RPC drops (separate PRs); then the `as never` cast (one line).
+  the view's `is_archived` and the RPC drops (separate PRs, plan first).
 size: S
 blocker: none
 ver: v2.3698 · 3700 · 3701 · 3702 · 3705
@@ -43,7 +43,7 @@ The train: [`docs/recent-features/v2.3698.md`](../docs/recent-features/v2.3698.m
    - **3b:** drop the RPC once 3a has been live a day (REVOKE and DROP in one file; `20260906180000` revoked anon on it). PUNCHLIST pushes it.
    - **3c:** the types PR after that push. It regenerates `database.ts` and dev-mcp's `catalog.ts`.
 4. **Twin Estimator 2** (`twin-estimator-2@twins.pipetooling.local`) has `is_digital_twin = false` in prod, so it sits in the People → Users roster under Estimators and the roster view calls it a person. Until the flag is set, v2.4658's twin refusal does not catch it either. A dev sets the flag from Settings → System → Digital twins & samples (the twin minter sets it after `create-user`; this one predates that). Data, not code — the owner's.
-5. **The `as never` cast** in `src/lib/people/rosterPeople.ts` — `src/types/database.ts` has carried `roster_people` since the 2026-09-22 regen, so this is a one-line PR that is simply not done yet.
+5. **The `as never` cast** in `src/lib/people/rosterPeople.ts` — done in v2.4664: `fetchRosterPeople` takes the typed client and reads `roster_people` by name (`src/types/database.ts` has carried the view since the 2026-09-22 regen).
 
 ## How to verify the sweep
 

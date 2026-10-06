@@ -7,8 +7,13 @@
  * v2.4593: the line and the window say what the link shows today. "The GC sees nothing until
  * you share" was false on every draft over a shared revision (BP398's Rev 4 draft, while the
  * link shows Rev 2), and "That is what the link shows now" was false once the room closed.
+ *
+ * 2026-10-06: what the link shows is the newest revision on the GC's record, the one rule in
+ * `_shared/submittalRecord.ts` the three room functions read. A revision answered by email with its
+ * package built is on it, so BP398's link shows Rev 3, answered by email, until Rev 4 is shared.
  */
 import { roomCounts, roomHeadline, roomRowsFrom, roomSubline, type RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { answeredByEmailAt, linkShows, onRecord, type RecordStanding, type RevisionStanding } from '../../../supabase/functions/_shared/submittalRecord'
 
 export type ReviewerLine = {
   /** "The GC’s page will read:" / "The GC’s page reads:". */
@@ -25,50 +30,78 @@ export type ReviewerLine = {
 export type LinkView = {
   /** The revision on screen: the newest, the only one the line and the window describe. */
   rev: number
-  /** The revision the link shows now (`linkShowsRevOf`); null while nothing is shared. */
+  /** The revision the link shows now (`linkShowsRevOf`); null while nothing is on the GC's record. */
   linkShowsRev: number | null
+  /** That revision reached the record by email: answered by email, its package built (2026-10-06). */
+  linkShowsByEmail?: boolean
   /** The room is closed: its link says only that the review is closed. */
   roomClosed: boolean
 }
 
+/** One revision as the record reads it: its standing comes from `_shared/submittalRecord.ts`. */
+export type LinkRevision = Pick<RevisionStanding, 'id' | 'rev_number' | 'shared_at' | 'standing' | 'typedAnswerAt'>
+
 /**
- * The revision the room's link shows now, by get-submittal-room's own rule: the newest revision
- * with a share date. A revision answered by email and never shared has none, so the link skips it.
- * It restates the function's one-line query on purpose: sharing code would cost a deploy for no
- * change in behaviour, and the BP398 case in the test pins the rule.
+ * The revision the room's link shows now: the newest on the GC's record, by the one rule the three
+ * functions read (`_shared/submittalRecord.ts`). Shared, or answered by email with its package built.
  */
-export function linkShowsRevOf(revisions: ReadonlyArray<{ rev_number: number; shared_at: string | null }>): number | null {
-  let newest: number | null = null
-  for (const r of revisions) if (r.shared_at && (newest == null || r.rev_number > newest)) newest = r.rev_number
-  return newest
+export function linkShowsRevOf(revisions: ReadonlyArray<Pick<RevisionStanding, 'rev_number' | 'standing' | 'typedAnswerAt'>>): number | null {
+  return linkShows(revisions)?.rev ?? null
+}
+
+/** What the link shows now, ready for `describeLink`: the revision, whether it got there by email, the room's state. */
+export function linkViewOf(revisions: ReadonlyArray<Pick<RevisionStanding, 'rev_number' | 'standing' | 'typedAnswerAt'>>, roomClosed: boolean): Omit<LinkView, 'rev'> {
+  const shows = linkShows(revisions)
+  return { linkShowsRev: shows?.rev ?? null, linkShowsByEmail: shows?.byEmail ?? false, roomClosed }
 }
 
 /** One revision as the GC's chips will read it. */
-export type LinkChip = { id: string; rev: number; current: boolean; sharedAt: string | null }
+export type LinkChip = { id: string; rev: number; current: boolean; sharedAt: string | null; answeredByEmailAt?: string | null }
 
 /**
  * The revisions the GC's page will list once `rev` is shared (v2.4606, #62 PR 1b): `rev` as the
- * current one, then every other revision with a share date, newest first, as get-submittal-room
- * lists them. `neverShared` names the older revisions the list skips, answered by email or
- * replaced before a share, so the office sees the gap before anyone shares.
+ * current one, then every other revision on the record, newest first, as get-submittal-room lists
+ * them. A revision answered by email with its package built is on it (2026-10-06). `neverShared`
+ * names the older revisions the list skips because nobody shared or answered them; `waitsForPackage`
+ * the ones answered by email that go on once their package is built.
  */
-export function linkRevisionsAfterShare(revisions: ReadonlyArray<{ id: string; rev_number: number; shared_at: string | null }>, rev: number): { chips: LinkChip[]; neverShared: number[] } {
+export function linkRevisionsAfterShare(revisions: ReadonlyArray<LinkRevision>, rev: number): { chips: LinkChip[]; neverShared: number[]; waitsForPackage: number[] } {
   const self = revisions.find((r) => r.rev_number === rev)
-  const shared = revisions.filter((r) => r.rev_number !== rev && r.shared_at).sort((a, b) => b.rev_number - a.rev_number)
+  const others = onRecord(revisions.filter((r) => r.rev_number !== rev))
+  const older = (standing: RecordStanding) => revisions.filter((r) => r.rev_number < rev && r.standing === standing).map((r) => r.rev_number).sort((a, b) => b - a)
   return {
-    chips: [{ id: self?.id ?? `rev-${rev}`, rev, current: true, sharedAt: self?.shared_at ?? null }, ...shared.map((r) => ({ id: r.id, rev: r.rev_number, current: false, sharedAt: r.shared_at }))],
-    neverShared: revisions.filter((r) => r.rev_number < rev && !r.shared_at).map((r) => r.rev_number).sort((a, b) => b - a),
+    chips: [{ id: self?.id ?? `rev-${rev}`, rev, current: true, sharedAt: self?.shared_at ?? null }, ...others.map((r) => ({ id: r.id, rev: r.rev_number, current: false, sharedAt: r.shared_at, answeredByEmailAt: answeredByEmailAt(r) }))],
+    neverShared: older('never'),
+    waitsForPackage: older('waits_for_package'),
   }
 }
 
+const revList = (revs: ReadonlyArray<number>) => {
+  const n = revs.map((r) => `Rev ${r}`)
+  return n.length === 1 ? n[0]! : `${n.slice(0, -1).join(', ')} and ${n[n.length - 1]}`
+}
+
 /** The quiet line under the window's chips: the record under the current one, and what the list skips. Empty when nothing is older. */
-export function linkListLine(list: { chips: ReadonlyArray<LinkChip>; neverShared: ReadonlyArray<number> }): string {
+export function linkListLine(list: { chips: ReadonlyArray<LinkChip>; neverShared: ReadonlyArray<number>; waitsForPackage?: ReadonlyArray<number> }): string {
   const bits: string[] = []
   if (list.chips.length > 1) bits.push('Older revisions stay under it as the record.')
-  const n = list.neverShared.map((r) => `Rev ${r}`)
-  if (n.length === 1) bits.push(`${n[0]} is not on their page, because it was never shared.`)
-  else if (n.length > 1) bits.push(`${n.slice(0, -1).join(', ')} and ${n[n.length - 1]} are not on their page, because they were never shared.`)
+  if (list.neverShared.length === 1) bits.push(`${revList(list.neverShared)} is not on their page, because it was never shared.`)
+  else if (list.neverShared.length > 1) bits.push(`${revList(list.neverShared)} are not on their page, because they were never shared.`)
+  const waits = list.waitsForPackage ?? []
+  if (waits.length === 1) bits.push(`${revList(waits)} goes on their page once it has a package.`)
+  else if (waits.length > 1) bits.push(`${revList(waits)} go on their page once each has a package.`)
   return bits.join(' ')
+}
+
+/**
+ * The heads-up in Their call (2026-10-06): typing a reviewer's answer onto a revision nobody shared
+ * puts it on the GC's page as the record, once it has a package (`_shared/submittalRecord.ts`). It
+ * says so before the first answer is typed, and after. Empty for a shared revision.
+ */
+export function emailedRecordLine(r: { rev: number; shared: boolean; hasPackage: boolean; hasAnswer: boolean }): string {
+  if (r.shared) return ''
+  if (r.hasAnswer) return r.hasPackage ? `Rev ${r.rev} is on the GC’s page as the record, answered by email.` : `Rev ${r.rev} goes on the GC’s page as the record once it has a package.`
+  return r.hasPackage ? `Typing their answer puts Rev ${r.rev} on the GC’s page as the record.` : `Typing their answer will put Rev ${r.rev} on the GC’s page once it has a package.`
 }
 
 /** The room is closed for everyone on the link, by get-submittal-room's own test. */
@@ -111,7 +144,7 @@ export function describeLink(view: LinkView): Omit<ReviewerLine, 'line'> {
   let note = 'The GC sees nothing until you share.'
   if (view.roomClosed) note = `The room is closed. Its link says only that the review is closed. ${view.linkShowsRev === view.rev ? 'Reopen it to show this again.' : `Reopen it, then share Rev ${view.rev}.`}`
   else if (live) note = 'That is what the link shows now.'
-  else if (view.linkShowsRev != null) note = `Until you share Rev ${view.rev}, the link shows Rev ${view.linkShowsRev}.`
+  else if (view.linkShowsRev != null) note = `Until you share Rev ${view.rev}, the link shows Rev ${view.linkShowsRev}${view.linkShowsByEmail ? ', answered by email' : ''}.`
   return {
     lead: live ? 'The GC’s page reads:' : 'The GC’s page will read:',
     note,

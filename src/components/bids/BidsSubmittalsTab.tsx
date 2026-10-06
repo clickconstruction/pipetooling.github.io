@@ -29,7 +29,7 @@ import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
-import { describeForReviewer, isRoomClosed, linkShowsRevOf } from '../../lib/submittals/seeWhatTheySee'
+import { describeForReviewer, emailedRecordLine, isRoomClosed, linkViewOf } from '../../lib/submittals/seeWhatTheySee'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
@@ -76,6 +76,7 @@ import { SubmittalResubmitChooser } from './SubmittalResubmitChooser'
 import { describeRoomLine, roomLink, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, parseRoomMessage, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { isReviewerAnswer, loadRevisionStandings, revisionStandings, type RevisionStanding } from '../../../supabase/functions/_shared/submittalRecord'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
 import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRows'
@@ -188,7 +189,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 2026-10-03 · the newest answer on each earlier revision's rows, by revision id: a replaced draft that holds answers reads "answered", not "superseded".
   const [answeredByRev, setAnsweredByRev] = useState<Map<string, string>>(() => new Map())
   const [standing, setStanding] = useState<{ items: SubmittalItemRow[]; parts: SubmittalPartRow[]; revOf: Map<string, number> }>({ items: [], parts: [], revOf: new Map() })
-  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number; steps: { gc: number; to_order: number; on_order: number; on_site: number } } | null>(null)
+  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number; steps: { gc: number; to_order: number; on_order: number; on_site: number }; gcLabel: string } | null>(null)
   const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
   const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
@@ -309,6 +310,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [nextDraftRows, setNextDraftRows] = useState<ResubmitRows>('need')
 
   const bidId = selectedBid?.id ?? null
+  // 2026-10-06 · the GC's record: the revisions the room serves (shared, or answered by email with a package built),
+  // read by the three room functions' own rule (`_shared/submittalRecord.ts`). Read again when a share, a package
+  // or a typed answer changes; until it lands, the shared revisions stand in.
+  const [standings, setStandings] = useState<{ bidId: string; list: RevisionStanding[] } | null>(null)
+  const revisionsKey = revisions.map((r) => `${r.id}:${r.shared_at ?? ''}:${r.package_path ?? ''}`).join('|')
+  const answersKey = [...items, ...parts].map((x) => `${x.id}:${x.review_decision ?? ''}:${x.decision_source ?? ''}`).join('|')
+  useEffect(() => {
+    if (!bidId) return
+    let cancelled = false
+    void loadRevisionStandings(db, bidId)
+      .then((list) => { if (!cancelled) setStandings({ bidId, list }) })
+      .catch(() => { if (!cancelled) setStandings(null) })
+    return () => {
+      cancelled = true
+    }
+  }, [bidId, revisionsKey, answersKey])
+  const recordList = standings && standings.bidId === bidId ? standings.list : revisionStandings(revisions, new Map())
   // The won question's "not needed on this job" (4c) — local so undo reads back at once.
   const [notNeededAt, setNotNeededAt] = useState<string | null>(null)
   useEffect(() => {
@@ -2140,8 +2158,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else toggleSection(key)
   }
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
-  // v2.4593 · what the room's link shows now (the newest shared revision; a closed room shows only that), for the line under the rows and the window.
-  const link = { linkShowsRev: linkShowsRevOf(revisions), roomClosed: isRoomClosed(room) }
+  // v2.4593 · what the room's link shows now, for the line under the rows and the window: the newest revision on the GC's record
+  // (2026-10-06: shared, or answered by email with its package); a closed room shows only that.
+  const link = linkViewOf(recordList, isRoomClosed(room))
   /** The number the next draft takes: one past the newest revision, whichever one is on screen. */
   const nextRevNumber = (newestRev?.rev_number ?? selectedRev?.rev_number ?? 0) + 1
 
@@ -2527,6 +2546,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     isNewest={isNewest}
                     nextRev={selectedRev.rev_number + 1}
                     sharedLine={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''}
+                    recordLine={emailedRecordLine({ rev: selectedRev.rev_number, shared: !!selectedRev.shared_at, hasPackage: !!selectedRev.package_path, hasAnswer: items.some(isReviewerAnswer) || parts.some(isReviewerAnswer) })}
                     onEdit={setEditing}
                     onAnswer={setAnswering}
                     decisions={decisions}
@@ -2576,7 +2596,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
             <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} onJump={() => jumpToSection('procure')} anchor="submittals-procure-section" last always
               summaryWhenOpen={!procCounts}
-              summary={procCounts ? `${procCounts.steps.gc} waiting on the GC · ${procCounts.steps.to_order} to order · ${procCounts.steps.on_order} on order · ${procCounts.steps.on_site} on site${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
+              summary={procCounts ? `${procCounts.steps.gc} ${procCounts.gcLabel.toLowerCase()} · ${procCounts.steps.to_order} to order · ${procCounts.steps.on_order} on order · ${procCounts.steps.on_site} on site${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
               {(isNewest || !selectedRev) && bidId && selectedBid ? (
                 <SubmittalProcurementPanel
                   bidId={bidId}
@@ -2591,6 +2611,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
                   busy={busy}
                   onCounts={setProcCounts}
+                  // v2.4663 · a draft nobody has shared: its lines read Not sent yet, not Waiting on the GC.
+                  draftRev={selectedRev && selectedRev.status === 'draft' ? selectedRev.rev_number : null}
                   // The Next line's door to the approve-all window, while a row still has no call (v2.4581).
                   onEnterApproval={isNewest && selectedRev && approvableRows.length > 0 ? () => setApprovingAll(true) : undefined}
                   houses={houses}
@@ -2716,7 +2738,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         items={items}
         parts={parts}
         revNumber={selectedRev.rev_number}
-        revisions={revisions}
+        revisions={recordList}
         link={link}
         roomToken={room?.token ?? null}
         hasPackage={Boolean(selectedRev.package_path)}

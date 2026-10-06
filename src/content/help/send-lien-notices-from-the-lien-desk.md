@@ -86,7 +86,7 @@ The steps are these:
 
 Each step wears a mark. {{chip:green|✓}} means done. {{chip:yellow|!}} means due, and it turns red inside a week. {{chip:red|✗}} means missed. A grey dash means blocked. A dashed ring is a step the app cannot date yet, with a door to set the date.
 
-**Next on the path** sits under the steps. It names the one thing to do and how many days are left. When every window closed with nothing sent, it says so plainly. The lien is gone, and the money is still owed in Collections.
+**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band turns red and says so plainly. The lien is gone, and the money is still owed in Collections.
 
 Under each step still to come, a small word says whose move it is. {{chip:blue|ours}} marks the notices, the retainage notice, the affidavit and the serve. {{chip:purple|the GC}} or {{chip:yellow|the owner}} marks the release until it is paid. {{chip:yellow|the owner}} also marks the owner's hold. {{chip:gray|counsel}} marks the year to sue, which the firm takes. **Waiting on** says who we wait on and for what.
 
@@ -94,7 +94,7 @@ Under each step still to come, a small word says whose move it is. {{chip:blue|o
 - **A missed month** stays where it fell. Several missed months in a row fold into one stacked mark with a count. Press *show the months ›* to see each one, with its closing date and who noted it.
 - **An unknown property kind** shows commercial dates, and the box says a residential date is a month earlier. Set the kind on gate 3, and the dates move.
 - **A green line** above a date says when that paper's window opened. A month's notice can go out from the 1st of the month after the work. The affidavit opens once the notice is mailed. Every date on the strip is the last day, and the green line is the first.
-- **Steps or Windows.** {{button:outline|Steps}} and {{button:blue|Windows}} in the box's corner switch the picture. Windows draws each paper as a bar from its first day to its last, with the days gone hatched. The choice is remembered on this device. The **Months on this job** grid follows it.
+- **Steps or Windows.** {{button:outline|Steps}} and {{button:blue|Windows}} in the box's corner switch the picture. Windows is a calendar. It draws each paper as a bar from its first day to its last, with the days gone hatched. A month whose window closed is a grey bar with a red ✗ at its last day. It says *not noted* until someone writes it down. A lien that can no longer be filed is a dotted outline under the notice it needed, with no date. The calendar always shows at least three months. The choice is remembered on this device. The **Months on this job** grid follows it. The Job window's **History** tab shows the calendar only.
 - **On a phone** the steps stack as a list.
 
 :::example 273, Dudley Lennox, a residential job read on Sep 23
