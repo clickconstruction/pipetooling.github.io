@@ -906,6 +906,12 @@ export default function LienDeskModal({
   }, [open, previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
 
   if (!open) return null
+  const rulesAndCaller = (
+    <>
+      <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
+      {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
+    </>
+  )
 
   const counts = data?.queue.counts
   const affEntries = data?.affidavits.entries ?? []
@@ -2108,8 +2114,8 @@ export default function LienDeskModal({
               ))}
             </div>
           ) : null}
-          <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
-          {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
+          {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
+          {isMobile ? rulesAndCaller : null}
           {/* An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. */}
           {office && onOpenOwnerRecords ? (
             <button
@@ -2123,7 +2129,8 @@ export default function LienDeskModal({
             </button>
           ) : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
-          <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', marginLeft: 'auto' }}>
+          <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            {isMobile ? null : rulesAndCaller}
             <button
               type="button"
               onClick={() => setShareOpen((o) => !o)}

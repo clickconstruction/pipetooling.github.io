@@ -87,8 +87,8 @@ export function LienCallerDoor({ input, onPick, onOpenJob, onPractice, style }: 
 
   return (
     <span style={{ position: 'relative', display: 'inline-flex', ...style }} data-lien-caller-door>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} title="An owner is calling about a letter — find the job by its number, the street, the owner or the GC" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid transparent', background: 'var(--text-link)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-        ☎ Someone’s calling ›
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Someone’s calling" title="Someone’s calling — an owner is calling about a letter: find the job by its number, the street, the owner or the GC" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid transparent', background: 'var(--text-link)', color: '#fff', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+        ☎
       </button>
       {open ? (
         <div role="dialog" aria-label="Find the caller" style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, width: 'min(34rem, calc(100vw - 2rem))', maxHeight: 'min(34rem, calc(100vh - 9rem))', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 18px 40px -18px rgba(0, 0, 0, 0.6)', padding: '0.6rem', fontSize: '0.8125rem' }}>

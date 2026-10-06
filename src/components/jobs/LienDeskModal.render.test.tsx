@@ -1070,7 +1070,7 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
     d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
-    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
     // before a word is typed: the letter that is out, newest first (v2.4249)
     expect((document.querySelector('[data-lien-caller-out]') as HTMLElement).querySelector('[data-lien-caller-hit="j650"]')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'elbel' } })
@@ -1086,7 +1086,7 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(dialog.querySelector('[data-lien-owner-call-holding]')!.textContent).toContain('Elbel Holdings LLC is holding')
     // a GC's name is a signpost, not a sheet
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
-    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
     fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'loberg' } })
     const gcHead = document.querySelector('[data-lien-caller-gc="loberg"]') as HTMLElement
     expect(gcHead.textContent).toContain('Loberg Contracting · 1 job on the desk')
@@ -1098,7 +1098,7 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     await settle()
     // the To draft pile is empty, so no job is on the pane
     expect(document.querySelector('[data-lien-desk-timeline]')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
     // nothing typed: words to try cut from the desk, no letters out, the practice call
     expect((document.querySelector('[data-lien-caller-try]') as HTMLElement).textContent).toContain('650')
     expect((document.querySelector('[data-lien-caller-out]') as HTMLElement).textContent).toContain('No letters are out right now')
@@ -1121,7 +1121,7 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(document.querySelector('[data-lien-desk-timeline]')).toBeTruthy()
     expect(document.querySelector('[data-lien-owner-call-dialog]')).toBeNull()
     // a word that is nowhere on the desk says so, and still offers the practice call
-    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
     expect((screen.getByLabelText('Find a job on the Lien desk') as HTMLInputElement).value).toBe('') // a pick clears the words for the next caller
     fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'oak hollow' } })
     expect((document.querySelector('[data-lien-caller-none]') as HTMLElement).textContent).toContain('No job on the Lien desk matches “oak hollow”')
@@ -1132,7 +1132,7 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     ownerCallMock.mockClear()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
     fireEvent.click(screen.getByRole('button', { name: '▶ Practice call' }))
     const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
     expect(dialog.getAttribute('data-lien-owner-call-practice')).toBe('yes')
