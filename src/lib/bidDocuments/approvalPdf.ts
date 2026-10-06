@@ -34,10 +34,10 @@ import {
   type GcPacketCustomer,
 } from '../bids/coverLetterGcPackets'
 import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../bids/coverLetterDocument'
-import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, type CoverLetterAltsLayout } from '../bids/coverLetterSamePage'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock, buildOptionsBlock, optionsAlternateCount, parseCoverLetterAltTexts, type CoverLetterAltsLayout } from '../bids/coverLetterSamePage'
 import { COVER_LETTER_ADD_ALTS_HEADING_DEFAULT, buildAddAlternatesBlock, offeredAddAlternates, splitLetterTotalsByAlternate } from '../bids/coverLetterAddAlternates'
 import { sectionLabel, type BundlePricing, type BundleVersion } from '../bids/coverLetterVersionBundle'
-import { buildCombinedCoverLetterText, buildCoverLetterText, numberToWords, type CoverLetterAlternatesBlock, type CoverLetterScheduleOfValues } from './coverLetter'
+import { buildCombinedCoverLetterText, buildCoverLetterText, numberToWords, type CoverLetterAlternatesBlock, type CoverLetterOptionsBlock, type CoverLetterScheduleOfValues } from './coverLetter'
 import { COVER_LETTER_ORG_DEFAULT_KEYS, coverLetterOrgDefaultsFrom, letterWording } from './coverLetterWording'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -566,8 +566,8 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const bidBasis = basisFlagRes.data?.bid_to_marked_plans === true && basisCurrent
     ? { clause: bidBasisClause({ planDateFormatted: designDrawingPlanDateFormatted, sheets: shortSheetLabels(basisCurrent.sheet_labels ?? [], basisCurrent.ct_project_name ?? null) }) }
     : null
-  const letterText = (amount: number, fixtureRows: { fixture: string; count: number }[], alternates: CoverLetterAlternatesBlock | null, addAlternates: CoverLetterAlternatesBlock | null) =>
-    buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(amount).toUpperCase(), `$${formatCurrency(amount)}`, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentScheduleFor(amount), orgWording.closing, alternates, bidBasis, materialsByStage, scheduleOfValuesFor(amount), addAlternates)
+  const letterText = (amount: number, fixtureRows: { fixture: string; count: number }[], alternates: CoverLetterAlternatesBlock | null, addAlternates: CoverLetterAlternatesBlock | null, options: CoverLetterOptionsBlock | null = null) =>
+    buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(amount).toUpperCase(), `$${formatCurrency(amount)}`, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentScheduleFor(amount), orgWording.closing, alternates, bidBasis, materialsByStage, scheduleOfValuesFor(amount), addAlternates, options)
   const addAlternatesBlock = (baseRevenue: number) => buildAddAlternatesBlock(offeredAdd, baseRevenue, altTexts, formatCurrency)
   const baseSectionNames = letter.priced.filter((s) => !s.isAlternate).map((s) => s.name)
   const sectionHeading = (s: LetterSection) =>
@@ -580,8 +580,10 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       ? letterText(
           letter.samePage.headlineRevenue,
           letter.samePage.fixtureRows,
-          buildAlternatesBlock(letter.samePage, altTexts, formatCurrency, false, { gcName: customerName, projectName: projectNameVal }),
+          buildAlternatesBlock(letter.samePage, altTexts, formatCurrency, false, { gcName: customerName, projectName: projectNameVal }, optionsAlternateCount(letter.samePage) + 1),
           addAlternatesBlock(letter.samePage.headlineRevenue),
+          // Options (v2.4723): the PDF's letter page says what the tab's letter says — one line per option.
+          buildOptionsBlock(letter.samePage, altTexts, formatCurrency, numberToWords, false, { gcName: customerName, projectName: projectNameVal }),
         )
       : buildCombinedCoverLetterText(letter.packet.sections.map((s) => ({ label: sectionHeading(s), text: letterText(s.revenueSum, s.fixtureRows, null, null) })))
   const alternatesHeadings = new Set([altTexts.heading?.trim() || COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ADD_ALTS_HEADING_DEFAULT])

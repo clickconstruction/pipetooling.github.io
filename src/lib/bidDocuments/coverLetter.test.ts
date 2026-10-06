@@ -463,3 +463,57 @@ describe('Schedule of values section (v2.4066)', () => {
     expect(buildCoverLetterText(...args, null, null, null, null, null, { ...SOV, amountDollars: 0 })).not.toContain('Schedule of values')
   })
 })
+
+describe('options (v2.4723): one amount line per option, its alternates under it, inclusions per option', () => {
+  const options = {
+    intro: 'in one of the following amounts',
+    sharedFixtures: false,
+    items: [
+      { label: 'Option 1 — To Plans', amountWords: 'NINE HUNDRED 00/100 DOLLARS', amountFormatted: '$900.00', fixtureRows: [{ fixture: 'WC', count: 6 }], alternates: [{ label: 'Alternate 1', deltaText: 'Deduct $100', amountFormatted: '$800.00', note: null }] },
+      { label: 'Option 2 — Value Engineered', amountWords: 'THREE HUNDRED 00/100 DOLLARS', amountFormatted: '$300.00', fixtureRows: [{ fixture: 'WC', count: 5 }], alternates: [{ label: 'Alternate 2', deltaText: 'Deduct $50', amountFormatted: '$250.00', note: 'Med gas by others' }] },
+    ],
+  }
+  const args = ['GC', '1 Main', 'Elm Creek', '2 Job Rd', 'IGNORED WORDS', '$1.00', [{ fixture: 'IGNORED', count: 1 }], 'Permits', '', '', null, 'Plumbing', false, true, null, null, null, null, null, null, null] as const
+
+  it('HTML: the sentence opens the list, each option is bold with words and figure, the alternate deducts against its option, fixtures print per option, the typed inclusion once', () => {
+    const out = buildCoverLetterHtml(...args, options)
+    expect(out).toContain('we propose to do the plumbing in one of the following amounts:')
+    expect(out).not.toContain('in the amount of')
+    expect(out).not.toContain('IGNORED')
+    expect(out).toContain('<strong>Option 1 — To Plans: NINE HUNDRED 00/100 DOLLARS ($900.00)</strong>')
+    expect(out).toContain('• <strong>Alternate 1</strong>: <strong>Deduct $100</strong> ($800.00)')
+    expect(out).toContain('<strong>Option 2 — Value Engineered: THREE HUNDRED 00/100 DOLLARS ($300.00)</strong>')
+    expect(out).toContain('Med gas by others')
+    expect(out).toContain('• Option 1 — To Plans, fixtures provided and installed by us per plan:')
+    expect(out).toContain('• Option 2 — Value Engineered, fixtures provided and installed by us per plan:')
+    expect(out.indexOf('Option 1 — To Plans, fixtures')).toBeLessThan(out.indexOf('Option 2 — Value Engineered, fixtures'))
+    expect((out.match(/• Permits/g) ?? []).length).toBe(1)
+  })
+
+  it('HTML: shared fixture lists print once from the headline rows', () => {
+    const out = buildCoverLetterHtml(...args, { ...options, sharedFixtures: true })
+    expect(out).toContain('• Fixtures provided and installed by us per plan:')
+    expect(out).toContain('[1] IGNORED')
+    expect(out).not.toContain('To Plans, fixtures')
+  })
+
+  it('text: the same shape, line by line', () => {
+    const out = buildCoverLetterText(...args, options)
+    const lines = out.split('\n')
+    const i = lines.indexOf('As per plumbing plans and specifications, we propose to do the plumbing in one of the following amounts:')
+    expect(i).toBeGreaterThan(0)
+    expect(lines.slice(i + 1, i + 7)).toEqual([
+      '',
+      'Option 1 — To Plans: NINE HUNDRED 00/100 DOLLARS ($900.00)',
+      '     • Alternate 1: Deduct $100 ($800.00)',
+      '',
+      'Option 2 — Value Engineered: THREE HUNDRED 00/100 DOLLARS ($300.00)',
+      '     • Alternate 2: Deduct $50 ($250.00)',
+    ])
+    expect(out).toContain('     • Option 2 — Value Engineered, fixtures provided and installed by us per plan:')
+  })
+
+  it('an empty options block changes nothing', () => {
+    expect(buildCoverLetterHtml(...args, { intro: 'x', sharedFixtures: true, items: [] })).toBe(buildCoverLetterHtml(...args, null))
+  })
+})

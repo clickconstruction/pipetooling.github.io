@@ -124,6 +124,33 @@ export type CoverLetterAlternatesBlock = {
   headingEditKey?: string
 }
 
+/**
+ * Options (v2.4723, Wendi: "two versions as base with alternate pricing for each one"): two or
+ * more base bids in one letter are two proposals the GC picks between, never a sum. Each option
+ * carries its amount in words and figures, its own alternates measured against it, and its own
+ * fixture rows; exclusions, terms and the closing print once for all of them.
+ */
+export type CoverLetterOptionItem = {
+  /** "Option 1 — To Plans" (a saved label prints verbatim). */
+  label: string
+  amountWords: string
+  amountFormatted: string
+  /** This option's alternates, numbered across the whole letter (Alternate 1, Alternate 2, …). */
+  alternates: CoverLetterAlternateItem[]
+  fixtureRows: { fixture: string; count: number }[]
+  editKey?: string
+}
+
+export type CoverLetterOptionsBlock = {
+  /** The tail of the proposal sentence: "we propose to do the plumbing <intro>:" */
+  intro: string
+  items: CoverLetterOptionItem[]
+  /** True when every option's fixture rows are the same list — it prints once, under Inclusions. */
+  sharedFixtures: boolean
+}
+
+export const COVER_LETTER_OPTIONS_INTRO_DEFAULT = 'in one of the following amounts'
+
 function editWrap(innerHtml: string, editKey: string | undefined): string {
   return editKey ? `<span data-cl-edit="${escapeHtml(editKey)}">${innerHtml}</span>` : innerHtml
 }
@@ -165,7 +192,9 @@ export function buildCoverLetterHtml(
   materialsByStage: CoverLetterMaterialsByStage | null = null,
   scheduleOfValues: CoverLetterScheduleOfValues | null = null,
   /** v2.4195: the with-and-without alternates, priced in addition to the proposal — after the in-lieu-of block. */
-  addAlternatesBlock: CoverLetterAlternatesBlock | null = null
+  addAlternatesBlock: CoverLetterAlternatesBlock | null = null,
+  /** v2.4723: two or more base bids as options the GC picks between; the amount line becomes one line per option. */
+  optionsBlock: CoverLetterOptionsBlock | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -173,10 +202,15 @@ export function buildCoverLetterHtml(
   const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
   const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const perPlan = bidBasis ? 'our marked-up plans' : 'plan'
+  const fixtureList = (rows: { fixture: string; count: number }[]) => rows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
+  const options = optionsBlock && optionsBlock.items.length > 0 ? optionsBlock : null
   const fixtureBlock =
-    fixtureRows.length > 0 && includeFixturesPerPlan
-      ? '     • Fixtures provided and installed by us per ' + (bidBasis ? 'our marked-up plans' : 'plan') + ':\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
-      : ''
+    options && !options.sharedFixtures && includeFixturesPerPlan
+      ? options.items.filter((o) => o.fixtureRows.length > 0).map((o) => '     • ' + o.label + ', fixtures provided and installed by us per ' + perPlan + ':\n            ' + fixtureList(o.fixtureRows)).join('\n')
+      : fixtureRows.length > 0 && includeFixturesPerPlan
+        ? '     • Fixtures provided and installed by us per ' + perPlan + ':\n            ' + fixtureList(fixtureRows)
+        : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
   const revenueLinePrefix = `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: `
@@ -186,7 +220,20 @@ export function buildCoverLetterHtml(
   const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
   const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
   const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
-  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(`${revenueWords} (${revenueNumber})`) + '</strong>')
+  const itemLineHtml = (item: CoverLetterAlternateItem) =>
+    inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: ' +
+    (item.deltaText ? '<strong>' + escapeHtml(item.deltaText) + '</strong> (' + escapeHtml(item.amountFormatted) + ')' : '<strong>' + escapeHtml(item.amountFormatted) + '</strong>') +
+    (item.note?.trim() ? br + inclusionIndent + '  ' + editWrap(escapeHtml(item.note.trim()), item.editKey) : '')
+  // Options (v2.4723): the sentence opens the list, then one amount line per option with its own
+  // alternates under it. Without options the sentence carries the one amount, as it always has.
+  const amountHtml = options
+    ? escapeHtml(`As per ${stWord} plans and specifications, we propose to do the ${stWord} ${options.intro}:`) +
+      options.items.map((o) =>
+        br2 + '<strong>' + editWrap(escapeHtml(o.label), o.editKey) + ': ' + escapeHtml(`${o.amountWords} (${o.amountFormatted})`) + '</strong>' +
+        o.alternates.map((a) => br + itemLineHtml(a)).join(''),
+      ).join('')
+    : escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(`${revenueWords} (${revenueNumber})`) + '</strong>'
+  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + amountHtml
   const exclusionsContent = exclusions.trim()
     ? exclusionLines.join('\n')
     : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n')
@@ -196,9 +243,7 @@ export function buildCoverLetterHtml(
   const blockHtml = (block: CoverLetterAlternatesBlock) => {
     let out = br2 + '<strong>' + editWrap(escapeHtml(block.heading), block.headingEditKey) + '</strong>'
     for (const item of block.items) {
-      out += br + inclusionIndent + '• <strong>' + editWrap(escapeHtml(item.label), item.editKey) + '</strong>: ' +
-        (item.deltaText ? '<strong>' + escapeHtml(item.deltaText) + '</strong> (' + escapeHtml(item.amountFormatted) + ')' : '<strong>' + escapeHtml(item.amountFormatted) + '</strong>')
-      if (item.note?.trim()) out += br + inclusionIndent + '  ' + editWrap(escapeHtml(item.note.trim()), item.editKey)
+      out += br + itemLineHtml(item)
       for (const op of item.options ?? []) {
         out += br + inclusionIndent + '     — or' + (op.label ? ' <strong>' + editWrap(escapeHtml(op.label), op.editKey) + '</strong>' : '') + ': ' +
           (op.deltaText ? '<strong>' + escapeHtml(op.deltaText) + '</strong> (' + escapeHtml(op.amountFormatted) + ')' : '<strong>' + escapeHtml(op.amountFormatted) + '</strong>')
@@ -275,7 +320,9 @@ export function buildCoverLetterText(
   materialsByStage: CoverLetterMaterialsByStage | null = null,
   scheduleOfValues: CoverLetterScheduleOfValues | null = null,
   /** v2.4195: the with-and-without alternates, priced in addition to the proposal — after the in-lieu-of block. */
-  addAlternatesBlock: CoverLetterAlternatesBlock | null = null
+  addAlternatesBlock: CoverLetterAlternatesBlock | null = null,
+  /** v2.4723: two or more base bids as options the GC picks between; the amount line becomes one line per option. */
+  optionsBlock: CoverLetterOptionsBlock | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -283,19 +330,33 @@ export function buildCoverLetterText(
   const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
   const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
+  const perPlan = bidBasis ? 'our marked-up plans' : 'plan'
+  const fixtureList = (rows: { fixture: string; count: number }[]) => rows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
+  const options = optionsBlock && optionsBlock.items.length > 0 ? optionsBlock : null
   const fixtureBlock =
-    fixtureRows.length > 0 && includeFixturesPerPlan
-      ? '     • Fixtures provided and installed by us per ' + (bidBasis ? 'our marked-up plans' : 'plan') + ':\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
-      : ''
+    options && !options.sharedFixtures && includeFixturesPerPlan
+      ? options.items.filter((o) => o.fixtureRows.length > 0).map((o) => '     • ' + o.label + ', fixtures provided and installed by us per ' + perPlan + ':\n            ' + fixtureList(o.fixtureRows)).join('\n')
+      : fixtureRows.length > 0 && includeFixturesPerPlan
+        ? '     • Fixtures provided and installed by us per ' + perPlan + ':\n            ' + fixtureList(fixtureRows)
+        : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
+  const itemLines = (item: CoverLetterAlternateItem): string[] => [
+    inclusionIndent + '• ' + item.label + ': ' + (item.deltaText ? item.deltaText + ' (' + item.amountFormatted + ')' : item.amountFormatted),
+    ...(item.note?.trim() ? [inclusionIndent + '  ' + item.note.trim()] : []),
+  ]
+  const amountLines: string[] = options
+    ? [
+        `As per ${stWord} plans and specifications, we propose to do the ${stWord} ${options.intro}:`,
+        ...options.items.flatMap((o) => ['', `${o.label}: ${o.amountWords} (${o.amountFormatted})`, ...o.alternates.flatMap(itemLines)]),
+      ]
+    : [`As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`]
   const blockLines = (block: CoverLetterAlternatesBlock | null): string[] =>
     block && block.items.length > 0
       ? [
           block.heading,
           ...block.items.flatMap((item) => [
-            inclusionIndent + '• ' + item.label + ': ' + (item.deltaText ? item.deltaText + ' (' + item.amountFormatted + ')' : item.amountFormatted),
-            ...(item.note?.trim() ? [inclusionIndent + '  ' + item.note.trim()] : []),
+            ...itemLines(item),
             ...(item.options ?? []).flatMap((op) => [
               inclusionIndent + '     — or' + (op.label ? ' ' + op.label : '') + ': ' + (op.deltaText ? op.deltaText + ' (' + op.amountFormatted + ')' : op.amountFormatted),
               ...(op.note?.trim() ? [inclusionIndent + '       ' + op.note.trim()] : []),
@@ -312,7 +373,7 @@ export function buildCoverLetterText(
     projectName,
     ...addressLines(projectAddress),
     '',
-    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`,
+    ...amountLines,
     '',
     ...alternatesLines,
     ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
