@@ -190,6 +190,11 @@ export type LegalThread = {
   /** Oldest first; usually one. */
   answers: LegalEntryRow[]
   state: LegalThreadState
+  /**
+   * An answer with no question to sit under (no `askId` and no earlier unanswered firm question, or an
+   * `askId` that is not on the matter): its own row, `question` is the answer itself, never dropped.
+   */
+  orphan?: boolean
 }
 
 /**
@@ -204,17 +209,19 @@ export function buildLegalConversation(entries: ReadonlyArray<LegalEntryRow>): L
   const byTime = [...entries].sort((a, b) => a.created_at.localeCompare(b.created_at))
   const questions = byTime.filter((e) => e.kind === 'question')
   const answersFor = new Map<string, LegalEntryRow[]>(questions.map((q) => [q.id, []]))
+  const orphans: LegalEntryRow[] = []
   for (const a of byTime.filter((e) => e.kind === 'answer')) {
     const linked = answerMetaOf(a.meta).askId
     if (linked && answersFor.has(linked)) {
       answersFor.get(linked)!.push(a)
       continue
     }
-    if (!isOfficeAnswer(a)) continue
-    const target = [...questions].reverse().find((q) => q.via_portal && q.created_at <= a.created_at && (answersFor.get(q.id)?.length ?? 0) === 0)
+    const target = !linked && isOfficeAnswer(a) ? [...questions].reverse().find((q) => q.via_portal && q.created_at <= a.created_at && (answersFor.get(q.id)?.length ?? 0) === 0) : undefined
     if (target) answersFor.get(target.id)!.push(a)
+    else orphans.push(a)
   }
-  return questions.map((q): LegalThread => {
+  const orphanThreads = orphans.map((a): LegalThread => ({ question: a, askedBy: a.via_portal ? 'firm' : 'office', askerName: '', flavor: 'question', jobLabel: '', answers: [], state: 'answered', orphan: true }))
+  const threads = questions.map((q): LegalThread => {
     const answers = answersFor.get(q.id) ?? []
     if (q.via_portal) {
       return { question: q, askedBy: 'firm', askerName: '', flavor: 'question', jobLabel: '', answers, state: answers.length ? 'answered' : q.acknowledged_at ? 'seen' : 'open' }
@@ -222,13 +229,14 @@ export function buildLegalConversation(entries: ReadonlyArray<LegalEntryRow>): L
     const meta = askMetaOf(q.meta)
     return { question: q, askedBy: 'office', askerName: meta.askedBy, flavor: meta.flavor, jobLabel: meta.jobLabel, answers, state: answers.length ? 'answered' : q.acknowledged_at ? 'withdrawn' : 'open' }
   })
+  return [...threads, ...orphanThreads].sort((x, y) => x.question.created_at.localeCompare(y.question.created_at))
 }
 
 export type LegalConversationRow = { entry: LegalEntryRow; thread: LegalThread; isAnswer: boolean }
 
 /** The conversation flattened for a table: each question, then its answers under it. */
 export function conversationRows(entries: ReadonlyArray<LegalEntryRow>): LegalConversationRow[] {
-  return buildLegalConversation(entries).flatMap((t) => [{ entry: t.question, thread: t, isAnswer: false }, ...t.answers.map((a) => ({ entry: a, thread: t, isAnswer: true }))])
+  return buildLegalConversation(entries).flatMap((t) => (t.orphan ? [{ entry: t.question, thread: t, isAnswer: true }] : [{ entry: t.question, thread: t, isAnswer: false }, ...t.answers.map((a) => ({ entry: a, thread: t, isAnswer: true }))]))
 }
 
 /** Who said it, from the reader's side — the firm reads *You asked*, the office reads *The firm asked*. */

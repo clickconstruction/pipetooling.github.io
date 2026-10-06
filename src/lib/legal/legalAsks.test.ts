@@ -53,6 +53,17 @@ describe('buildLegalConversation (item 17)', () => {
     const threads = buildLegalConversation([fq1, linked, fq2, bare])
     expect(threads.map((t) => [t.question.id, t.answers.map((a) => a.id), t.state])).toEqual([['fq1', ['oa1'], 'answered'], ['fq2', ['oa-old'], 'answered']])
   })
+  it('never drops an answer with no question to sit under: it gets its own row (review)', () => {
+    const lone = entry({ id: 'oa-lone', kind: 'answer', body: 'We filed the affidavit today.', created_at: '2026-09-19T15:00:00Z' })
+    const stray = entry({ id: 'fa-stray', kind: 'answer', body: 'Signed off.', via_portal: true, created_at: '2026-09-25T15:00:00Z', meta: { askId: 'not-on-this-matter', signedOff: true } })
+    const rows = conversationRows([fq1, linked, lone, stray])
+    expect(rows.map((r) => [r.entry.id, r.isAnswer])).toEqual([['oa-lone', true], ['fq1', false], ['oa1', true], ['fa-stray', true]])
+    expect(rows[0]!.thread.orphan).toBe(true)
+    expect(conversationWho(rows[0]!, 'firm')).toBe('The office')
+    expect(conversationStateWords(rows[0]!, 'firm')).toBeNull()
+    expect(conversationWho(rows[3]!, 'office')).toBe('The firm')
+    expect(conversationStateWords(rows[3]!, 'office')).toEqual({ text: 'waiting on you', tone: 'warn' })
+  })
   it('words each state for its reader: answered, seen, waiting, withdrawn, signed off', () => {
     const open = conversationRows([fq1])[0]!
     expect(conversationStateWords(open, 'firm')).toEqual({ text: 'waiting on the office', tone: 'warn' })
