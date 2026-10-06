@@ -183,7 +183,7 @@ export const DEFAULT_JOB_CONTRACT_TERMS_PLAIN = `1. Scope. Contractor agrees to 
 
 2. Changes. Additional or changed work will be priced in writing and approved by the Customer before it proceeds. Approved changes become part of this agreement.
 
-3. Payment. Payment is due as stated above. Balances unpaid 30 days after the due date accrue interest at the lesser of 1.5% per month or the maximum allowed by law, plus reasonable costs of collection.
+3. Payment. Payment is due as stated above. Balances unpaid 45 days from the invoice date accrue interest at the lesser of 1.5% per month or the maximum allowed by law, plus reasonable costs of collection.
 
 4. Materials and site. Customer will provide reasonable access to the property and utilities needed for the work. Materials remain Contractor's property until paid for in full. Concealed conditions (rot, corrosion, code deficiencies, hidden lines) that require additional work are not included and will be handled as a change.
 
