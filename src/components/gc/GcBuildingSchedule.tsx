@@ -286,7 +286,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
 
       {walking && <GcScheduleWalk state={state} project={project} holds={holds} dispatch={dispatch} onClose={() => setWalking(false)} />}
 
-      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
+      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
 
       {/* Trades say they will be late (G-117): take the day as a move, or push back. */}
       {building && <GcLateNotices state={state} project={project} dispatch={dispatch} onTake={(move) => setPending(move)} />}
