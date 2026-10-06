@@ -5,7 +5,7 @@
  * the closed state render nothing surprising.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -15,6 +15,21 @@ vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
 })
+// Issue unconditional (#87 D): the job it loads, and what it hands the Release of Lien window.
+const opened = vi.hoisted(() => ({ props: [] as Array<{ invoice: { id: string } | null; invoiceIds?: readonly string[] | null; initialFormType?: string }> }))
+vi.mock('../../lib/fetchJobWithDetailsById', async () => {
+  const { makeInvoice, makeJob } = await import('../../test/renderSmokeMocks')
+  return {
+    fetchJobWithDetailsById: async (id: string) =>
+      makeJob({ id, invoices: [makeInvoice({ id: 'inv-1', status: 'paid', sequence_order: 0 }), makeInvoice({ id: 'inv-2', status: 'paid', sequence_order: 1 }), makeInvoice({ id: 'inv-3', status: 'billed', sequence_order: 2 })] }),
+  }
+})
+vi.mock('../jobs/LienReleaseModal', () => ({
+  default: (props: { invoice: { id: string } | null; invoiceIds?: readonly string[] | null; initialFormType?: string }) => {
+    opened.props.push(props)
+    return <div data-testid="release-window" />
+  },
+}))
 
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
 import type { JobLienReleaseRow, LienUnconditionalQueueRow } from '../../lib/jobs/lienReleaseTracking'
@@ -100,4 +115,17 @@ describe('DashboardLienReleaseQueueModal', () => {
     expect(screen.getByText(/Nothing waiting/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Issue unconditional' })).toBeNull()
   })
+
+  it('Issue unconditional hands the window every bill its conditional covered, on the unconditional form (#87 D)', async () => {
+    opened.props = []
+    renderWithProviders(<DashboardLienReleaseQueueModal open onClose={noop} rows={[row({ invoiceIds: ['inv-1', 'inv-2'] })]} onChanged={noop} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Issue unconditional' }))
+    await waitFor(() => expect(screen.getByTestId('release-window')).toBeTruthy())
+    const last = opened.props[opened.props.length - 1]!
+    expect(last.invoiceIds).toEqual(['inv-1', 'inv-2'])
+    expect(last.invoice?.id).toBe('inv-1')
+    expect(last.initialFormType).toBe('unconditional_progress')
+  })
 })
+

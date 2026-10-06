@@ -83,3 +83,38 @@ describe('lienReleaseOpening (#87 I)', () => {
     expect(lienReleaseOpening({ selectable, invoiceId: 'draft1', formForBill }).invoiceIds).toEqual(['billed1'])
   })
 })
+
+describe('lienReleaseOpening · Issue unconditional names every covered bill (#87 D)', () => {
+  const picks: Record<string, LienWaiverFormType> = { paid1: 'unconditional_progress', paid2: 'unconditional_progress', billed1: 'conditional_progress' }
+  const formForBill = (id: string) => picks[id] ?? 'conditional_progress'
+
+  it('selects every bill the cleared conditional covered, in bill order, on the form the opener asked for', () => {
+    const selectable = lienReleaseSelectableInvoices([bill('paid2', 'paid', 2), bill('paid1', 'paid', 1), bill('billed3', 'billed', 3)])
+    expect(lienReleaseOpening({ selectable, invoiceId: 'paid2', invoiceIds: ['paid2', 'paid1'], initialFormType: 'unconditional_progress', formForBill })).toEqual({
+      invoiceIds: ['paid1', 'paid2'],
+      formType: 'unconditional_progress',
+      askUnconditional: { preset: true, fallback: 'conditional_progress' },
+    })
+  })
+
+  it('drops a covered bill the window cannot cover and keeps the rest', () => {
+    const selectable = lienReleaseSelectableInvoices([bill('paid1', 'paid', 1), bill('void2', 'voided', 2)])
+    expect(lienReleaseOpening({ selectable, invoiceIds: ['paid1', 'void2'], initialFormType: 'unconditional_progress', formForBill }).invoiceIds).toEqual(['paid1'])
+  })
+
+  it('with none of them coverable, opens as with no bill named', () => {
+    const selectable = lienReleaseSelectableInvoices([bill('billed1', 'billed', 1)])
+    expect(lienReleaseOpening({ selectable, invoiceIds: ['gone'], initialFormType: 'unconditional_progress', formForBill }).invoiceIds).toEqual(['billed1'])
+  })
+
+  it('with no form asked for, the row\u2019s bill picks it, else the first covered bill', () => {
+    const selectable = lienReleaseSelectableInvoices([bill('billed1', 'billed', 1), bill('paid2', 'paid', 2)])
+    expect(lienReleaseOpening({ selectable, invoiceId: 'paid2', invoiceIds: ['billed1', 'paid2'], formForBill })).toMatchObject({ invoiceIds: ['billed1', 'paid2'], formType: 'unconditional_progress' })
+    expect(lienReleaseOpening({ selectable, invoiceIds: ['billed1', 'paid2'], formForBill })).toMatchObject({ invoiceIds: ['billed1', 'paid2'], formType: 'conditional_progress', askUnconditional: null })
+  })
+
+  it('an empty list names nothing: the row\u2019s bill alone, as before', () => {
+    const selectable = lienReleaseSelectableInvoices([bill('paid1', 'paid', 1), bill('billed2', 'billed', 2)])
+    expect(lienReleaseOpening({ selectable, invoiceId: 'paid1', invoiceIds: [], formForBill }).invoiceIds).toEqual(['paid1'])
+  })
+})

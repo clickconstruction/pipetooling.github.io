@@ -19,13 +19,13 @@ last_updated: 2026-10-05
 
 ### Mounts and the parent contract
 
-Props (165–185): `open`, `onClose`, `job: JobWithDetails | null`, `invoice` (the bill to preselect), `signerNameFallback`, `onIssued?`, `initialFormType?`.
+Props (165–185): `open`, `onClose`, `job: JobWithDetails | null`, `invoice` (the bill to preselect), `invoiceIds?` (every bill to preselect, over `invoice`; #87 D), `signerNameFallback`, `onIssued?`, `initialFormType?`.
 
 | Mounted by | Line | Stays mounted | `invoice` | `initialFormType` | `onIssued` |
 |---|---|---|---|---|---|
 | [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx) (Pipeline row; opener `setLienReleaseModal` 914) | 4605 | **yes** — `open={lienReleaseModal != null}` | the row's | — | `loadLienReleaseJobIds` |
-| `DashboardLienReleaseQueueModal` (Needs You → *Issue release*) | 366 | no (`open` literal under `issue ?`) | first invoice the cleared release names | `unconditional_progress` | `onChanged` |
-| `BillCustomerLienReleaseStrip` | 239 | while `canIssue && jobDetails` | first of `releaseModal.invoiceIds` | `releaseModal.formType` | `loadRows` |
+| `DashboardLienReleaseQueueModal` (Needs You → *Issue release*) | 366 | no (`open` literal under `issue ?`) | first invoice the cleared release names; `invoiceIds` all of them (#87 D) | `unconditional_progress` | `onChanged` |
+| `BillCustomerLienReleaseStrip` | 239 | while `canIssue && jobDetails` | first of `releaseModal.invoiceIds`; `invoiceIds` all of them (#87 D) | `releaseModal.formType` | `loadRows` |
 | `BillCustomerWaiverFollowUp` | 29 | no (`open` literal) | passed through | — | — |
 | `BillPaperworkCard` | 197 | while `showWaiver`; `open={windowOpen}` | the bill's | — | `load` |
 | `JobFormInvoiceList` (Edit Job's bill rows) | 1066 | while `editing` | `waiverFor` | — | — |
@@ -91,7 +91,7 @@ Render smokes, all under `src/components/jobs/`: `LienReleaseModal.steps.render.
 
 - **The four states:** `formType` 189, `selectedInvoiceIds` 196, `fields` 197 (`LienWaiverFields`), `releaseRow` 202 (the row this session works on).
 - **Three refs decide who owns `fields`:** `userTouchedRef` 207 (nothing autosaves before a real edit), `signerTouchedRef` 209 (typed signer lines survive a prefill rebuild), `hydratedDraftRef` 211 (a resumed row's saved fields are the document; the prefill effect returns at 477).
-- **Open-reset effect 401–419** (deps `[open, job?.id, invoice?.id, initialFormType]`): row null, the three refs false; the selection and the form come from `lienReleaseOpening` (`src/lib/jobs/lienReleaseOpening.ts`, #87 I). The selection is the row's bill (then `pickLienWaiverForBill` chooses the form unless the opener named one), else the billed bills, else the ready-to-bill ones; a paid bill is selected only as the row's bill.
+- **Open-reset effect 401–419** (deps `[open, job?.id, invoice?.id, invoiceIdsKey, initialFormType]`): row null, the three refs false; the selection and the form come from `lienReleaseOpening` (`src/lib/jobs/lienReleaseOpening.ts`, #87 I). The selection is every bill the opener names in `invoiceIds` that the window can cover, in bill order (Issue unconditional's covered lines, #87 D), else the row's bill (then `pickLienWaiverForBill` chooses the form unless the opener named one), else the billed bills, else the ready-to-bill ones; a paid bill is selected only when the opener names it.
 - **Resume effect 427–450** (deps `[open, historyRows]`, exhaustive-deps disabled): when no row is held, takes the newest live `draft`, else the newest live `awaiting_signature`; signed, sent and issued rows never resume. Copies the snapshot into `fields` (437–447).
 - **Prefill effect 472–500:** `buildLienWaiverPrefill(formType, { job, invoices: selectedInvoices, issuer, ownerName, signerName, signerTitle })`. The signer name is the leader picked, else the company signer, else `signerNameFallback`; the title rides along only when the name is the company signer's.
 - **Edits:** `setField` 504–508; `toggleInvoice` 523–530; `refillFromSelection` 516–521 (a resumed draft only: the amount and the through date follow the bills and the form; every other typed field stays).

@@ -208,6 +208,20 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(screen.getByRole('button', { name: /#2 · / }).getAttribute('aria-pressed')).toBe('false')
   })
 
+  it('Issue unconditional selects every bill its conditional covered, not only the first (#87 D)', async () => {
+    // The conditional covered two bills; both are paid now. Before #87 the window took only the opener's first one.
+    const paidA = makeInvoice({ id: 'inv-a', status: 'paid', amount: 9022.49, sequence_order: 0 })
+    const paidB = makeInvoice({ id: 'inv-b', status: 'paid', amount: 4100, sequence_order: 1 })
+    const later = makeInvoice({ id: 'inv-later', status: 'billed', amount: 15406, sequence_order: 2 })
+    const coveredJob = { ...job, invoices: [paidA, paidB, later] }
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={coveredJob} invoice={paidA} invoiceIds={['inv-b', 'inv-a']} signerNameFallback="Malachi Reyes" initialFormType="unconditional_progress" />)
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(screen.getByRole('button', { name: /#1 · \$9,022\.49/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /#2 · \$4,100/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /#3 · / }).getAttribute('aria-pressed')).toBe('false')
+  })
+
   it('a window that opens conditional asks nothing (v2.4582)', async () => {
     renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
     await screen.findByTestId('lien-waiver-form')

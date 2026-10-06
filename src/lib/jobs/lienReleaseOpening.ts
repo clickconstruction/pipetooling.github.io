@@ -48,14 +48,17 @@ export type LienReleaseOpening = {
 
 /**
  * What a freshly opened window selects and opens on. A named bill the window can cover is selected
- * alone, and picks its own form unless the opener named one. With no bill named, or one the window
- * cannot cover, the window selects the billed lines, else the ready-to-bill ones. A paid line is never
- * selected unasked: it is selectable so an unconditional can name it.
+ * alone, and picks its own form unless the opener named one. Bills named together, the lines a
+ * cleared conditional covered (#87 D), are all selected, in bill order. With no bill named, or none
+ * the window can cover, the window selects the billed lines, else the ready-to-bill ones. A paid line
+ * is never selected unasked: it is selectable so an unconditional can name it.
  */
 export function lienReleaseOpening(input: {
   selectable: readonly LienReleaseBillLine[]
   /** The row's bill: the line the opener was on. */
   invoiceId?: string | null
+  /** Every bill the opener names: Issue unconditional's, the lines its conditional covered. Wins over `invoiceId`. */
+  invoiceIds?: readonly string[] | null
   /** The form the opener asked for (Issue unconditional's follow-up), else the bill picks. */
   initialFormType?: LienWaiverFormType | null
   /** The bill's own pick (`pickLienWaiverForBill(job, bill).formType`). */
@@ -64,14 +67,15 @@ export function lienReleaseOpening(input: {
   const preset = input.initialFormType ?? null
   let formType: LienWaiverFormType = preset ?? 'conditional_progress'
   let askUnconditional: LienReleaseOpening['askUnconditional'] = preset && !isConditionalLienForm(preset) ? { preset: true, fallback: conditionalFormOf(preset) } : null
-  const named = input.invoiceId ?? null
-  if (named && input.selectable.some((i) => i.id === named)) {
+  const named = new Set(input.invoiceIds && input.invoiceIds.length > 0 ? input.invoiceIds : input.invoiceId ? [input.invoiceId] : [])
+  const covered = input.selectable.filter((i) => named.has(i.id))
+  if (covered.length > 0) {
     if (!preset) {
-      const picked = input.formForBill(named)
+      const picked = input.formForBill(covered.some((i) => i.id === input.invoiceId) ? input.invoiceId! : covered[0]!.id)
       formType = picked
       if (!isConditionalLienForm(picked)) askUnconditional = { preset: false, fallback: conditionalFormOf(picked) }
     }
-    return { invoiceIds: [named], formType, askUnconditional }
+    return { invoiceIds: covered.map((i) => i.id), formType, askUnconditional }
   }
   const billed = input.selectable.filter((i) => i.status === 'billed')
   const fallback = billed.length > 0 ? billed : input.selectable.filter((i) => i.status !== 'paid')

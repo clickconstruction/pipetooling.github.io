@@ -163,6 +163,7 @@ export default function LienReleaseModal({
   onClose,
   job,
   invoice,
+  invoiceIds,
   signerNameFallback,
   onIssued,
   initialFormType,
@@ -172,6 +173,8 @@ export default function LienReleaseModal({
   job: JobWithDetails | null
   /** Row-level hint: preselect this bill line when it is selectable. */
   invoice: JobsLedgerInvoice | null
+  /** Every bill line to preselect, over `invoice` (#87 D): Issue unconditional names each line its conditional covered. */
+  invoiceIds?: readonly string[] | null
   /** Job master's People "Full name and title" with session-name fallback (same line the lien prefill uses). */
   signerNameFallback: string
   /** Fired after a release row is recorded (v2.2582) so openers can refresh badges/strips. */
@@ -407,6 +410,7 @@ export default function LienReleaseModal({
   const invoices = useMemo(() => (job ? lienReleaseSelectableInvoices(job.invoices) : []), [job])
 
   // Open-reset: default the selection to the row's invoice, else billed lines, else everything selectable.
+  const invoiceIdsKey = (invoiceIds ?? []).join(',')
   useEffect(() => {
     if (!open || !job) return
     setReleaseRow(null)
@@ -416,10 +420,12 @@ export default function LienReleaseModal({
     signerTouchedRef.current = false
     hydratedDraftRef.current = false
     // The row's bill alone, picking its own form (v2.4274) unless the opener asked for one; else the billed
-    // lines. A paid bill (#87 I) is selected only when it is the row's bill — Add the unconditional's.
+    // lines. A paid bill (#87 I) is selected only when the opener names it — Add the unconditional's, or
+    // every line a cleared conditional covered (Issue unconditional, #87 D).
     const opening = lienReleaseOpening({
       selectable: lienReleaseSelectableInvoices(job.invoices),
       invoiceId: invoice?.id ?? null,
+      invoiceIds: invoiceIdsKey ? invoiceIdsKey.split(',') : null,
       initialFormType: initialFormType ?? null,
       formForBill: (id) => {
         const bill = (job.invoices ?? []).find((i) => i.id === id)
@@ -429,7 +435,7 @@ export default function LienReleaseModal({
     setFormType(opening.formType)
     openUnconditionalAskRef.current = opening.askUnconditional
     setSelectedInvoiceIds(new Set(opening.invoiceIds))
-  }, [open, job?.id, invoice?.id, initialFormType])
+  }, [open, job?.id, invoice?.id, invoiceIdsKey, initialFormType])
 
   // Resume the newest live draft (v2.2619) — and, since v2.2641, a pending
   // awaiting-signature release too: while a request is out, reopening the
