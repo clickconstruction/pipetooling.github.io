@@ -40,6 +40,7 @@ import {
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
 import {
+  lienReleaseCancelTarget,
   lienReleaseChips,
   lienReleaseIsEditable,
   lienReleaseIsMinted,
@@ -765,12 +766,18 @@ export default function LienReleaseModal({
 
   const cancelSignatureRequest = useCallback(async () => {
     if (!releaseRow || lienReleaseStatus(releaseRow) !== 'awaiting_signature') return
+    // #87 C: a waiver minted by its own request goes back to a draft you can change; one printed first stays issued.
+    const target = lienReleaseCancelTarget(releaseRow)
     try {
       const data = await withSupabaseRetry<JobLienReleaseRow>(
         () =>
           supabase
             .from('job_lien_releases')
-            .update({ status: 'issued' })
+            .update(
+              target === 'draft'
+                ? { status: 'draft', minted_at: null, minted_pdf_path: null, signature_requested_at: null, signature_requested_by: null }
+                : { status: 'issued' },
+            )
             .eq('id', releaseRow.id)
             .eq('status', 'awaiting_signature')
             .select('*')
@@ -779,6 +786,7 @@ export default function LienReleaseModal({
       )
       if (data) setReleaseRow(data)
       void loadHistory()
+      if (target === 'draft') showToast('Request taken back. The waiver is a draft again, so you can change it.', 'success')
     } catch {
       showToast('Could not cancel the request.', 'error')
     }
@@ -1028,7 +1036,7 @@ export default function LienReleaseModal({
   const cur = steps.current
   const stepAt = (n: number) => steps.steps[n - 1]!
   // v2.4337 — click to look: a folded step's card and its number open it read-only; an open step's number brings it into view.
-  const lookNote = releaseStepLookNote(rowStatus, Boolean(releaseRow?.sent_to_customer_at))
+  const lookNote = releaseStepLookNote(rowStatus, Boolean(releaseRow?.sent_to_customer_at), releaseRow ? lienReleaseCancelTarget(releaseRow) === 'draft' : true)
   const lookProps = (n: number) => {
     const folded = stepAt(n).folded
     return {
@@ -1428,7 +1436,12 @@ export default function LienReleaseModal({
                           Sign now
                         </button>
                       ) : null}
-                      <button type="button" onClick={() => void cancelSignatureRequest()} style={{ ...linkBtn, fontSize: '0.8125rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => void cancelSignatureRequest()}
+                        title={lienReleaseCancelTarget(releaseRow) === 'draft' ? 'Take the request back. The waiver becomes a draft you can change.' : 'Take the request back. It was printed, so the waiver stays issued.'}
+                        style={{ ...linkBtn, fontSize: '0.8125rem' }}
+                      >
                         Cancel request
                       </button>
                     </div>

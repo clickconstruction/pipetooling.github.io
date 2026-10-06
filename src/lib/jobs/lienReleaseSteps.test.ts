@@ -80,6 +80,9 @@ describe('click to look (v2.4337)', () => {
   })
   it('an opened step says why it is read only and how to change it', () => {
     expect(releaseStepLookNote('awaiting_signature', false)).toContain('click Cancel request in step 5 first')
+    // #87 C: a waiver printed for a paper signature stays issued when the request is cancelled.
+    expect(releaseStepLookNote('awaiting_signature', false, false)).toBe('Read only while it waits for his signature. It was printed for a paper signature, so to change it, click Void this waiver at the bottom and make a new one.')
+    expect(releaseStepLookNote('awaiting_signature', false, false)).not.toContain('Cancel request')
     expect(releaseStepLookNote('signed', false)).toContain('click Void this waiver at the bottom and make a new one. He signs it again.')
     expect(releaseStepLookNote('signed', true)).toContain('signed and sent')
     expect(releaseStepLookNote('draft', false)).toBeNull()
