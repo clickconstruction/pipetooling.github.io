@@ -780,7 +780,8 @@ the Schedule tab.
   draws close. Black and the greys for the page, the chart's status colors for the bars, and patterns
   and words so a black and white printer keeps the meaning.
 - **Our team's copy**: the head (the job, *For our team*, the projected finish as the Projected
-  finish card says it, the work done, what it shows), then columns for the hover card's facts
+  finish card says it, on a late job the lines the measure prints under it from `lateFinish` (G-98:
+  the money at the fee, whose days, the change orders), the work done, what it shows), then columns for the hover card's facts
   (*Activity*, *Dates*, *Done*, *Plan*, *Where it stands*), the dates to meet on every page, what the
   work waits on on page 1, the chart's own notes beside the bars (`barNote`, so G-77's papers and
   G-60's word from the daily log print as the chart says them), a trade's new day from its portal as
