@@ -296,7 +296,9 @@ describe('LienDeskModal', () => {
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.textContent).toContain("Can't go out yet1 blocker · 1 to check")
     expect((gatesBox.querySelector('[data-gate="owner"]') as HTMLElement).getAttribute('data-tone')).toBe('blocker')
-    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1 · Owner of record')
+    // A gate that is not clear opens on its own (v2.4718); the clear ones stay folded until asked.
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1Owner of record')
+    expect(gatesBox.querySelector('[data-gate-detail="gc"]')).toBeNull()
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
@@ -599,20 +601,27 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')
     expect(gatesBox.textContent).toContain('Ready to go out1 to check')
     expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
-    expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3 · Property kind')
-    // Every gate has its section (v2.3670): the clear ones say the fact the notice will use.
-    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1 · Owner of recordElbel Holdings LLC4 Example Way, Schertz, TXCheck on Guadalupe CAD ↗Change ›')
-    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('From the property record')
-    expect((gatesBox.querySelector('[data-gate-detail="gc"]') as HTMLElement).textContent).toContain('2 · Original contractorLoberg Contracting · 2904 Corporate Cr, Flower Mound, TX')
-    expect((gatesBox.querySelector('[data-gate-detail="months"]') as HTMLElement).textContent).toContain('4 · Approved hoursJun 2026 · 82.6 approved hours · on this notice')
+    expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3Property kind')
+    // The sections fold (v2.4718): the clear gates' rows wait behind Details ∨; the one to check is open on its own.
+    expect(gatesBox.querySelector('[data-gate-detail="owner"]')).toBeNull()
+    expect(gatesBox.querySelector('[data-gate-detail="gc"]')).toBeNull()
+    fireEvent.click(gatesBox.querySelector('[data-lien-gates-fold="open"]') as HTMLElement)
+    // Every gate has its section (v2.3670): a row — the number, the label, the fact with its doors first, one muted line under it.
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1Owner of recordElbel Holdings LLCCheck on Guadalupe CAD ↗Change ›4 Example Way, Schertz, TX')
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('From the property record · every job here uses it.')
+    expect((gatesBox.querySelector('[data-gate-detail="gc"]') as HTMLElement).textContent).toContain('2Original contractorLoberg ContractingChange the GC ›2904 Corporate Cr, Flower Mound, TX')
+    expect((gatesBox.querySelector('[data-gate-detail="months"]') as HTMLElement).textContent).toContain('4Approved hoursJun 2026 · 82.6 approved hours · on this notice')
+    expect((gatesBox.querySelector('[data-lien-gates-fold]') as HTMLElement).getAttribute('data-lien-gates-fold')).toBe('close')
     expect(screen.getByRole('button', { name: 'Change the GC ›' })).toBeTruthy()
     // A cell is a button that brings its section up: both wear the ring.
     fireEvent.click(gatesBox.querySelector('[data-gate="gc"]') as HTMLElement)
     expect((gatesBox.querySelector('[data-gate="gc"]') as HTMLElement).getAttribute('data-active')).toBe('yes')
     expect((gatesBox.querySelector('[data-gate-detail="gc"]') as HTMLElement).getAttribute('data-active')).toBe('yes')
     expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).getAttribute('data-active')).toBe('no')
-    // Gate 3 on a linked property is the switch itself (v2.3667's, set in place): a pick writes the property's kind and re-reads.
+    // Gate 3 on a linked property is the switch itself (v2.3667's, set in place); while the kind is blank the chooser is open with its warning (v2.4718): a pick writes the property's kind and re-reads.
     expect(screen.queryByRole('button', { name: /Set property kind/ })).toBeNull()
+    expect((gatesBox.querySelector('[data-lien-gate-kind-fact]') as HTMLElement).getAttribute('data-kind-open')).toBe('yes')
+    expect((gatesBox.querySelector('[data-lien-gate-kind-chooser]') as HTMLElement).textContent).toContain('Every date on the job follows the pick.')
     fireEvent.click(within(gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).getByRole('button', { name: 'Commercial' }))
     await waitFor(() => expect(savePropertyKindMock).toHaveBeenCalledWith('addr1', 'non_residential'))
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
