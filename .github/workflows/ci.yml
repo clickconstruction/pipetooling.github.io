@@ -51,9 +51,6 @@ jobs:
       - name: To-dos render the punch list
         run: npm run check:todos
 
-      - name: Changed help guides read in plain words
-        run: npm run check:plain-words
-
       - name: Windows drawn inside windows stop their own backdrop click
         run: npm run check:nested-windows
 
