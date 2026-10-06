@@ -1314,3 +1314,32 @@ describe('LienDeskModal · an evening stamp keeps its day (v2.4468)', () => {
     expect((document.querySelector('[data-lien-claim-box]') as HTMLElement).textContent).toContain('Taunya · Sep 10 · “GC disputes the 8/14 change order”')
   })
 })
+
+describe('LienDeskModal · the pile titles stack (v2.4651)', () => {
+  it('draws a sticky title per pile with its count and its place, no chip row; a press scrolls the list and lights the title', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    const head = document.querySelector('[data-lien-pile-head="needs_owner"]') as HTMLElement
+    expect(head).toBeTruthy()
+    expect(head.className).toBe('lienPileHead')
+    expect(head.style.top).toBe('0px')
+    expect(head.querySelector('[data-lien-pile-count="needs_owner"]')!.textContent).toBe('1')
+    expect(screen.getAllByRole('button', { name: /Needs the owner/ })).toHaveLength(1)
+    expect(document.querySelector('[data-lien-pile-rows="needs_owner"]')!.textContent).toContain('650 · ATI Schertz')
+    const host = document.querySelector('[data-lien-desk-list]') as HTMLElement & { scrollTo: (o: unknown) => void }
+    const scrollTo = vi.fn()
+    host.scrollTo = scrollTo
+    fireEvent.click(screen.getByRole('button', { name: /Needs the owner/ }))
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+    expect(head.getAttribute('data-on')).toBe('yes')
+    expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
+  })
+  it('a list narrowed to one pile offers show every pile on its title, and widens on it', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialPile="needs_owner" />)
+    await settle()
+    expect(document.querySelectorAll('[data-lien-pile-head]')).toHaveLength(1)
+    fireEvent.click(document.querySelector('[data-lien-pile-all]') as HTMLElement)
+    expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
+    expect(document.querySelector('[data-lien-pile-head="needs_owner"]')).toBeTruthy()
+  })
+})
