@@ -21,6 +21,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '../../types/database'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 
 export type RosterAccountKind = 'person' | 'external' | 'sample' | 'twin'
@@ -56,17 +57,11 @@ export const ROSTER_PEOPLE_COLUMNS =
   'user_id, person_id, row_key, pay_name, account_name, roster_name, role, kind, account_kind, is_digital_twin, is_sample, is_dev, read_only, needs_supervision, user_archived_at, person_archived_at, is_archived, is_pay_roster, is_active_roster, has_login, has_roster_row, start_date, end_date, master_user_id'
 
 /** Every roster row the viewer may see (the view runs with owner rights: everyone sees the same list). */
-export async function fetchRosterPeople(supabase: SupabaseClient): Promise<RosterPerson[]> {
+export async function fetchRosterPeople(supabase: SupabaseClient<Database>): Promise<RosterPerson[]> {
   const data = await withSupabaseRetry(
-    async () =>
-      // The view lands in the generated types after the migration is pushed and `gen-types` runs;
-      // until then the table name is cast (the #3521 pattern).
-      await (supabase.from('roster_people' as never) as unknown as {
-        select: (cols: string) => PromiseLike<{ data: RosterPerson[] | null; error: { message: string } | null }>
-      }).select(ROSTER_PEOPLE_COLUMNS),
+    async () => await supabase.from('roster_people').select(ROSTER_PEOPLE_COLUMNS),
     'roster people',
-    // A missing view (the client deployed before the migration is pushed) is not a blip:
-    // fail once, fast, and let the callers take "no verdict".
+    // A failed read is not retried: fail once, fast, and let the callers take "no verdict".
     { maxRetries: 0 },
   )
   return (data ?? []) as RosterPerson[]
