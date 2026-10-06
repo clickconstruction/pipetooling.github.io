@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 24: the contact log scoped to the matter — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #D1D5DB; padding: 5px 6px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+  .leak { background: #FEF2F2; color: #991B1B; }
+  .gone { color: #9CA3AF; text-decoration: line-through; }
+  .k { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 24 · mockup</p><h1>The contact log, scoped to the matter</h1>
+<p><code>customer_contacts</code> is the payer's general contact log: every call and email about any job, any bid, or the account. For a GC that log is mostly bid follow-ups and other jobs. The table has no job column, and the portal sent the whole log for the payer, filtered only by the held-before-first-bill date rule. Example: Sample Contracting, referred for job 1042, also has job 1057 with Click and two open bids.</p></header>
+
+<h2>Their word, on the firm's portal</h2>
+<div class="two">
+  <div><div class="cap old">Before — every entry after the first bill</div><div class="pane">
+    <table><thead><tr><th>Date</th><th>Kind</th><th>What was said</th></tr></thead><tbody>
+      <tr><td>Jul 5</td><td>contact</td><td>Phone · Pat said the 1042 first draw goes out next week.</td></tr>
+      <tr class="leak"><td>Jul 22</td><td>contact</td><td>Phone · Walked 1057 with their super, punch list to follow.</td></tr>
+      <tr class="leak"><td>Aug 3</td><td>contact</td><td>Email · J1057 change order priced at $2,150, waiting on their PM.</td></tr>
+      <tr><td>Aug 18</td><td>contact</td><td>Email · Statement re-sent with the signed agreement attached. No reply.</td></tr>
+      <tr><td>Sep 1</td><td>contact</td><td>Phone · Bid follow-up on the dental clinic, they chose another plumber.</td></tr>
+      <tr><td>Sep 11</td><td>contact</td><td>Site visit · Suite is open for business. Pat would not give a date.</td></tr>
+    </tbody></table>
+  </div></div>
+  <div><div class="cap new">After — the matter's jobs and the account</div><div class="pane">
+    <table><thead><tr><th>Date</th><th>Kind</th><th>What was said</th></tr></thead><tbody>
+      <tr><td>Jul 5</td><td>contact</td><td>Phone · Pat said the 1042 first draw goes out next week. <span class="k">names 1042</span></td></tr>
+      <tr class="gone"><td>Jul 22</td><td>contact</td><td>Walked 1057 with their super… <span class="k">names only 1057</span></td></tr>
+      <tr class="gone"><td>Aug 3</td><td>contact</td><td>J1057 change order priced… <span class="k">names only 1057</span></td></tr>
+      <tr><td>Aug 18</td><td>contact</td><td>Email · Statement re-sent with the signed agreement attached. No reply. <span class="k">no job: account</span></td></tr>
+      <tr><td>Sep 1</td><td>contact</td><td>Phone · Bid follow-up on the dental clinic, they chose another plumber. <span class="k">no job: account</span></td></tr>
+      <tr><td>Sep 11</td><td>contact</td><td>Site visit · Suite is open for business. Pat would not give a date. <span class="k">no job: account</span></td></tr>
+    </tbody></table>
+  </div></div>
+</div>
+
+<h2>The rule</h2>
+<div class="pane" style="border-top: 1px solid #D1D5DB; border-radius: 8px;">
+<table><thead><tr><th>The entry's text</th><th>Goes to the firm?</th></tr></thead><tbody>
+<tr><td>names one of the matter's jobs by number: <span class="k">1042 · #1042 · J1042 · job 1042</span></td><td>yes</td></tr>
+<tr><td>names one of the matter's jobs and another job</td><td>yes (it is about the matter)</td></tr>
+<tr><td>names only the payer's other jobs</td><td>no, it stays with the office</td></tr>
+<tr><td>names no job</td><td>yes, as account history</td></tr>
+<tr><td>the digits inside money, a decimal, a date, a phone or a longer number: <span class="k">$1042 · 1042.50 · 512-555-1042 · 10425</span></td><td>not a job number</td></tr>
+</tbody></table>
+<p style="margin:10px 0 0;color:#374151">A job's number is its HCP number, else its Click number, as the office writes it. Numbers shorter than three characters never count. After this rule, the held-before-first-bill rule applies as before.</p>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Why not keep only entries that name a matter job?</b> Most real entries name no job ("statement re-sent, no reply"). They are the account's history and the firm needs them. Dropping them would empty Their word.</li>
+  <li><b>The bid follow-up still goes.</b> It names no job, so the rule reads it as account history. Leaving it out would need a job or bid column on the log; the call-mode and bid follow-up writers know the bid, so a later migration could record it. Not tonight.</li>
+  <li><b>A false match?</b> An account entry that happens to carry another job's number standing alone ("273 Main St" when job 273 exists) would stay home. That errs toward saying less about unreferred work, and the office can see every entry on the desk.</li>
+  <li><b>Does the office see the same?</b> Not yet: the desk's own Their word shows the whole log. The office's Preview of the portal shows exactly what the firm gets.</li>
+</ul>
+</div></body></html>
