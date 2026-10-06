@@ -541,6 +541,46 @@ What the second look changed: the List is not only for phones. It is the same ro
 reader gets and the quickest read of "what is this stage doing", so it is a view anyone can
 switch to, and the phone only opens on it.
 
+## Phase 4, a trade not ready to start, as built (2026-10-06)
+
+G-77, by Helper 5 (the mock-up and plan: `mockups/G-77.md`). `gcNotReady.ts` (tested, out of the
+barrel), `GcNotReady.tsx`, and one line in the Schedule tab's holds.
+
+- **A held bar like any other.** On a job being built, a trade's bar that has not started is held
+  when its trade is not ready: the same amber stripes, the *held* pill, and the note after *waits
+  on*: "waits on current insurance, theirs ran out Sep 15", or several papers by name, "waits on a
+  signed master agreement and a signed statement of work". It turns red with ", late" once the bar
+  starts within 3 days or its day passed, the day the trade's last start reminder goes. A bar
+  already held keeps that hold after the papers: "waits on current insurance and submittal
+  28 31 11-01". The Held filter, the group's chip and the walk count it like any hold (its kind is
+  `paperwork`).
+- **Ready is Get started's five steps**: awarded, master agreement, insurance, W-9 and statement of
+  work, a statement signed on older plans counting as not in. Insurance is read on the bar's own
+  start: none on file, run out, or running out before it starts once the renewal ask is due (30
+  days). Further out the usual renewal has time, and a bar striped months early would be noise.
+- **The opened activity says what to do.** First under its name: "Pecan Valley Electric is not
+  ready to start this on Mon Oct 19.", each paper in Get started's words ("Insurance ran out Tue
+  Sep 15."), a day they gave in Follow up's words, and the paper's own next step: *Ask for it*,
+  *Remind them*, *Send to sign*. The button opens the company's window on that paper's send
+  (`send: true` on `openPartner`, as `openCustomer` has), so the ask goes with a day it is due and
+  Follow up chases it. Where nothing can be sent from there, Get started's sentence: an award, a
+  statement on older plans, a drafted statement waiting on the master agreement ("It goes once the
+  papers above are in.").
+- **Where it does not show**: while buying out (the whole job is not ready, and Get started is the
+  place), on running bars (their trade is on site), on our own crew, inspections and added
+  activities, in the customer's and the architect's views (they pass no holds), and on the board
+  row, the ring card, Follow up and Needs you (each would move the golden walk).
+- On Fair Oaks D today: Site lighting and Fire alarm, Pecan Valley's two bars not started, its
+  insurance run out Sep 15. The Held filter reads 6 where it read 5.
+
+What the second look changed:
+
+- **One press to the send, not two.** The button names the paper's own next step and opens its
+  send, rather than the company at the paper.
+- **Two left for the owner**, as G-138 and G-139: a trade on site whose insurance ran out saying so
+  on its running bars, and the trade's start reminder naming every paper its bar waits on. A test
+  holds that the reminder never names a paper the bar does not.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

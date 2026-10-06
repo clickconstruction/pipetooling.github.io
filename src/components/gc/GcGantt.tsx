@@ -49,7 +49,7 @@ const MS_COLORS: Record<MilestoneRow['state'], string> = { hit: C.green, missed:
 const FILTER_WORDS: { key: keyof GanttFilters; label: string; title: string }[] = [
   { key: 'critical', label: `${TIGHT_SPARE_DAYS} or fewer spare days`, title: 'The work that sets the finish: a slip of a week here moves the last day.' },
   { key: 'late', label: 'Late or behind', title: 'Past its finish, behind where the plan has it today, or an inspection that failed.' },
-  { key: 'held', label: 'Held', title: 'Waiting on a submittal, a question about the plans, a delivery, a decision, a permit or the utility.' },
+  { key: 'held', label: 'Held', title: "Waiting on a submittal, a question about the plans, a delivery, a decision, a permit, the utility or the company's papers." },
   { key: 'soon', label: 'Next 3 weeks', title: 'Under way now or starting inside three weeks.' },
   { key: 'moved', label: 'Moved since Start', title: 'Not where the plan at Start had it.' },
 ]
@@ -824,7 +824,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
       {building && key({ ...bar, background: `linear-gradient(90deg, ${C.blue} 55%, var(--bg-blue-200) 55%)`, border: `1.5px solid ${C.blue}` }, 'under way: the dark part is done, and it should reach the today line')}
       {key({ ...bar, background: 'var(--bg-blue-tint)', border: `1.5px solid ${C.blue}` }, 'not started')}
       {key({ ...bar, background: 'var(--bg-blue-tint)', border: `2px solid ${C.red}` }, `${TIGHT_SPARE_DAYS} or fewer spare days: it sets the finish`)}
-      {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-amber-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px solid ${C.amber}` }, 'held by a submittal or a question')}
+      {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-amber-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px solid ${C.amber}` }, "held by a submittal, a question or the company's papers")}
       {key({ ...bar, background: 'var(--bg-violet-100)', border: `1.5px dashed ${C.violet}` }, 'an inspection')}
       {key({ ...bar, background: 'repeating-linear-gradient(135deg, var(--bg-violet-100) 0 4px, var(--surface) 4px 8px)', border: `1.5px dashed ${C.violet}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, 'days a signed change order adds, not on the dates yet')}
       {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}

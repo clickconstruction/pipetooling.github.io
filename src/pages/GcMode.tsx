@@ -184,7 +184,7 @@ export default function GcMode() {
   const [plansForId, setPlansForId] = useState<string | null>(null)
   const [customerId, setCustomerId] = useState<string | null>(null)
   // A trade's company window, at the tab and paper that was clicked (the owner, 2026-10-04).
-  const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string; focus?: string } | null>(null)
+  const [companyAt, setCompanyAt] = useState<{ partnerId: string; tab?: CompanyTab; doc?: string; focus?: string; send?: boolean } | null>(null)
   // A customer's window opened at a paper, its send open (Get started's Send to sign, the owner, 2026-10-04).
   const [customerAt, setCustomerAt] = useState<{ tab?: CompanyTab; doc?: string; send?: boolean } | null>(null)
   const companyOpener = useMemo<CompanyOpener>(
@@ -365,7 +365,7 @@ export default function GcMode() {
 
       {companyPartner && companyAt && (
         <GcCompanyWindow
-          key={`${companyPartner.id}:${companyAt.tab ?? ''}:${companyAt.doc ?? ''}:${companyAt.focus ?? ''}`}
+          key={`${companyPartner.id}:${companyAt.tab ?? ''}:${companyAt.doc ?? ''}:${companyAt.focus ?? ''}${companyAt.send ? ':send' : ''}`}
           state={state}
           partner={companyPartner}
           dispatch={dispatch}

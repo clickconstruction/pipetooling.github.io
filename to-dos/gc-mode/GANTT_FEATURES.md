@@ -91,7 +91,9 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-74 | The customer's own decisions as rows with a needed-by day (a finish to pick, a tenant's equipment) | Tell | Have (built 2026-10-06: the same row, kind decision; the customer reads it under What we need from you with the day the work needs it) | 4 |
 | G-75 | Permits and the utility's work as rows, with who is waiting on whom | See | Have (built 2026-10-06: the same row, kinds permit and utility, who we wait on named, the work waiting on it listed) | 4 |
 | G-76 | A change order's days: signed, it adds its days where the work is and moves the contract's finish | See, Tell | Have (built 2026-10-06: the days land on the trade's bar running the day it was signed, drawn as a tail until Put its days on the schedule makes them a move with the change order as its reason; the customer's schedule says what each signed order did to the contract) | 4 |
-| G-77 | A trade not ready to start: no signed statement of work, insurance run out. The bar says so before its start day | See, Chase | Part (Get started) | 4 |
+| G-77 | A trade not ready to start: no signed statement of work, insurance run out. The bar says so before its start day | See, Chase | Have (built 2026-10-06: a bar not started, on a trade whose papers are not in, is held like any other, its note *waits on current insurance, theirs ran out Sep 15*; ready is Get started's five steps, insurance read on the bar's own start; the opened activity lists each paper with its own next step, which opens the company's send; `gcNotReady.ts`) | 4 |
+| G-138 | A trade on site whose insurance has run out says so on its running bars: a red note, no stripes, since the work goes on uncovered | See | New | Later |
+| G-139 | The trade's start reminder (G-114) names every paper its bar waits on (G-77), the master agreement and the W-9 too | Tell, Chase | New | Later |
 
 ## E. What if
 
