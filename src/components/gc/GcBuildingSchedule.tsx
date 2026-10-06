@@ -43,6 +43,7 @@ import { GcGantt } from './GcGantt'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcLateNotices } from './GcLateNotices'
+import { GcLogVsChart } from './GcLogVsChart'
 import { GcPullBox, GcPullLine, GcPullWindow } from './GcPullEarlier'
 import { planPull, pullGhosts } from '../../lib/gcMode/gcPullEarlier'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
@@ -52,6 +53,7 @@ import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrde
 import { WAIT_KINDS, waitHolds, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
 import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
+import { logChartGaps, logChartNotes } from '../../lib/gcMode/gcLogVsChart'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
@@ -98,6 +100,14 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const lost = useMemo(() => lostDaysByLine(project), [project])
   // A trade's own new day from its portal, not on the dates yet (G-117): a dashed tail on its bar.
   const lateSaid = useMemo(() => lateNoticeTails(state, project), [state, project])
+  // What this week's daily log says against the chart (G-60): read with the chart's holds, so a held bar is explained.
+  const logGaps = useMemo(() => logChartGaps(state, project, holds), [state, project, holds])
+  const logNotes = useMemo(() => logChartNotes(logGaps), [logGaps])
+  // The card under the chart opens a bar in the editor above it, and brings the editor into view.
+  const openFromCard = (lineId: string) => {
+    setPicked(lineId)
+    setTimeout(() => document.querySelector('[data-tour="gc-activity-editor"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+  }
   // Work that finished early, and what can start sooner right behind it (G-37): one offer for the job, on a press.
   const offer = useMemo(() => planPull(state, project), [state, project])
   const earlier = useMemo(() => (offer && offer.show === 'pull' ? pullGhosts(offer) : new Map<string, { start: string; finish: string; words: string }>()), [offer])
@@ -216,6 +226,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           waits={waits}
           lost={lost}
           lateSaid={lateSaid}
+          logNotes={logNotes}
           earlier={earlier}
           items={m.items}
           float={m.float}
@@ -241,6 +252,9 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           }
         />
       </Card>
+
+      {/* What this week's daily log says against the chart (G-60): a trade on site with no bar, a bar with nobody on site. */}
+      {building && <GcLogVsChart project={project} gaps={logGaps} dispatch={dispatch} onOpen={openFromCard} />}
 
       {sheet && (
         // The call list's people (G-115) on the Follow up sheet, with this job's reasons and the schedule's.
@@ -403,7 +417,7 @@ function ActivityEditor({
         ).moved,
       )
   return (
-    <Card style={{ border: '2px solid #2563eb' }}>
+    <Card style={{ border: '2px solid #2563eb' }} dataTour="gc-activity-editor">
       <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.875rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
           <strong>
