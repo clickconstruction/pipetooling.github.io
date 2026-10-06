@@ -38,6 +38,8 @@ import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { Chip } from './gcUi'
 import { GcGanttList } from './GcGanttList'
 import { GcPeopleStrip } from './GcPeopleStrip'
+import { GcCrowdedLane } from './GcPlaces'
+import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gcMode/gcPlaces'
 import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
 import { GcGanttPrint } from './GcGanttPrint'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
@@ -147,6 +149,7 @@ export function GcGantt({
   logNotes,
   uninsured,
   peopleOf,
+  crowded,
   callList,
   print,
   earlier,
@@ -185,6 +188,8 @@ export function GcGantt({
   uninsured?: Map<string, { note: string; words: string }>
   /** People on site per week (G-84), the plan's busiest day against the daily log's, for the weeks between two days. Given only by the office's tab; unset, no toggle and no strip. */
   peopleOf?: (from: string, to: string) => PeopleWeek[]
+  /** Each place and week with too many trades in one place (G-83): a lane under the dates the job must meet. Given only by the office's tab; unset or empty, no lane. */
+  crowded?: CrowdedWeek[]
   /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
   callList?: ReactNode
   /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
@@ -244,13 +249,15 @@ export function GcGantt({
   // The waits (deliveries, decisions, permits, the utility) sit under the milestones, over the groups.
   const waitList = useMemo(() => waits ?? [], [waits])
   const waitsH = waitList.length > 0 ? GROUP_H + waitList.length * ROW_H : 0
+  // Too many in one place (G-83): a row for each place with a flagged week, between the dates the job must meet and the waits.
+  const crowdH = crowded && crowded.length > 0 ? crowdedPlaces(crowded).length * ROW_H : 0
   // Where each row sits, so the links can be drawn over them. A folded group's bars have no row.
   const layout = useMemo(() => {
     const at = new Map<string, number>()
     const waitAt = new Map<string, number>()
     const entries: GanttRowEntry[] = []
-    waitList.forEach((r, i) => waitAt.set(r.wait.id, HEAD_H + MS_H + GROUP_H + i * ROW_H + ROW_H / 2))
-    let y = HEAD_H + MS_H + waitsH
+    waitList.forEach((r, i) => waitAt.set(r.wait.id, HEAD_H + MS_H + crowdH + GROUP_H + i * ROW_H + ROW_H / 2))
+    let y = HEAD_H + MS_H + crowdH + waitsH
     for (const g of groups) {
       entries.push({ kind: 'group', key: `g:${g.key}`, y, height: GROUP_H })
       y += GROUP_H
@@ -262,7 +269,7 @@ export function GcGantt({
       }
     }
     return { at, waitAt, entries, height: y }
-  }, [groups, folded, waitList, waitsH])
+  }, [groups, folded, waitList, waitsH, crowdH])
   const drawn = useMemo(() => rowsInView(layout.entries, win.top, win.height), [layout, win])
   const links = useMemo(() => (showLinks ? ganttLinks(shown).filter((l) => layout.at.has(l.from) && layout.at.has(l.to)) : []), [showLinks, shown, layout])
   const byId = useMemo(() => new Map(all.map((b) => [b.id, b])), [all])
@@ -792,6 +799,9 @@ export function GcGantt({
             </div>
           </div>
 
+          {/* Too many in one place (G-83): an amber band on each week a place has too many trades, the whole job whatever is filtered. */}
+          {crowded && crowded.length > 0 && <GcCrowdedLane weeks={crowded} first={axis.first} px={px} labelW={labelW} width={width} phone={phone} rowH={ROW_H} />}
+
           {/* What the work waits on (G-73 to G-75): a row each, from the day it was asked for to the day it is expected or came, with the day the work needs it. */}
           {waitList.length > 0 && (
             <div>
@@ -942,14 +952,14 @@ export function GcGantt({
 
       )}
 
-      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} />}
+      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} crowded={Boolean(crowded && crowded.length > 0)} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
 }
 
-function GanttLegend({ building, canMove, spare = false, people = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean; /** The people-on-site strip is on (G-84). */ people?: boolean }) {
+function GanttLegend({ building, canMove, spare = false, people = false, crowded = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean; /** The people-on-site strip is on (G-84). */ people?: boolean; /** The lane of too many in one place shows (G-83). */ crowded?: boolean }) {
   const key = (style: CSSProperties, words: string) => (
     <span key={words} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
       <span aria-hidden style={{ display: 'inline-block', boxSizing: 'border-box', flex: 'none', ...style }} />
@@ -971,6 +981,7 @@ function GanttLegend({ building, canMove, spare = false, people = false }: { bui
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {spare && key({ width: 20, height: 3, background: 'var(--bg-blue-200)', borderRight: `1.5px solid ${C.blue}` }, "a bar's spare days: how long it can slip before the job finishes later")}
       {people && key({ width: 20, height: 11, borderRadius: 2, border: '1.5px solid var(--text-muted)', background: `linear-gradient(90deg, var(--surface) 0 50%, ${C.blue} 50% 100%)` }, "people on site: the plan's busiest day each week, from each trade's count, beside the daily log's busiest day")}
+      {crowded && key({ width: 20, height: 10, borderRadius: 5, border: `1.5px solid ${C.amber}`, background: 'var(--bg-amber-100)' }, `too many in one place: ${TRADES_IN_ONE_PLACE} trades or more on the same day, from the places kept on the bars`)}
       {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
@@ -1028,6 +1039,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsu
       </div>
       {row('Planned', `${weekdayDate(a.start)} to ${weekdayDate(a.finish)}`)}
       {row('Takes', `${bar.workDays} ${bar.workDays === 1 ? 'day' : 'days'}${starts > 0 ? `, starts in ${starts}` : ''}`)}
+      {a.place && row('Place', a.place)}
       {bar.holidays.length > 0 && row('Runs over', bar.holidays.join(', '))}
       {building && !a.inspection && row('Done', bar.status === 'done' ? '100%' : `${Math.round(bar.item.actual)}%, and the plan has ${Math.round(bar.item.plannedToday)}% by today`)}
       {bar.status !== 'done' && row('Spare', bar.critical ? 'None. A day lost here is a day lost on the finish.' : `${bar.spare} ${bar.spare === 1 ? 'day' : 'days'} before it moves the finish`, bar.tight ? 'var(--text-red-700)' : undefined)}

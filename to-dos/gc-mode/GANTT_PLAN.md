@@ -1244,6 +1244,50 @@ by the office's Schedule tab.
 Left for later, its own small row: the strip on our team's printed copy while the toggle is on, as
 the spare-day tails print (a change to G-21's `gcGanttPrint.ts`). Asking a trade for its count is G-142's portal line.
 
+## What if, too many trades in one place, as built (2026-10-06)
+
+G-83, by Helper 4, round three (the mock-up and plan: `mockups/G-83.md`). `gcPlaces.ts` (tested,
+out of the barrel), `GcPlaces.tsx`, one optional field and one action. G-84's per-trade number was
+lifted out of `peopleOnSite` into an exported `crewNumbers` first, as its own commit, with no
+change in behavior.
+
+- **A place** is a plain word the office keeps on a bar: `ScheduleActivity.place`, at most 40
+  characters, a trade's bar or our own crew's only. A guess comes from the name (*Rooftop units* is
+  Roof, *Framing, level 2* is Level 2), then the trade (Roofing is Roof), then the stage (rough-in
+  to closeout is Inside). Foundations, the slab and the frame get none. A guess counts for nothing
+  until it is kept, so with no place kept nothing is flagged and no pinned list moved.
+- **Keeping them**: *Where the work is*, a card after *What the work waits on*, with *Look at the
+  places*. Its window lists each bar not done with its place or its guess in a box, and *Keep these
+  places* sends one `setActivityPlaces` with every box that changed. The opened bar has a *Place*
+  line with *Set the place*. The action sets an open what-if copy's bar too, since a place is a fact
+  about the work. The card and the line are hidden in the copy.
+- **The rule**, `TRADES_IN_ONE_PLACE` = 3, said on the surface: *Our rule: 3 trades or more in one
+  place on the same day is too many.* It is counted by the day on the plan's own dates, as G-84
+  counts people, from today on, and flagged by the week. Our own crew counts; inspections, the job's
+  own bars and done bars do not. The people beside it are G-84's numbers, the trade's own count
+  first. When the days named do not all have the most, it says *up to 4 trades*.
+- **Where it shows**:
+  - A lane under *Dates the job must meet*, a row for each crowded place: an amber band over each
+    week's crowded days, the most at once after each run, and a hover card in G-84's look (Where,
+    When, Who one company a line, People, Rule). The legend gains it while it shows. A bar's hover
+    card gains *Place*.
+  - The move window, under the billing line: *Too many in one place: Inside would have 3 trades at
+    once, Mon Nov 30 to Fri Dec 4.* when Fire alarm slips to Nov 30, and *this clears Inside* in green
+    when a move ends a crowd.
+  - The morning list, in amber under its summary, from its own companies not held: *Inside has 3
+    trades at once today. They are Pecan Valley Electric, our own crew and Cool Breeze Mechanical.*
+    Each bar line shows its place.
+  - The call list: a `crowded` line for each hired company in a crowded week of the look-ahead that
+    has not given its count (G-142), amber this week and next. Its Follow up words ask for the
+    count in English and Spanish. It goes once the count is given.
+  - Nothing on the customer's side, the trade's portal or the paper.
+- On Fair Oaks D with the guesses kept: Inside has 3 trades at once from Fri Oct 2 to Fri Oct 9,
+  Pecan Valley Electric 2, our own crew 3 and Cool Breeze Mechanical 3, about 8 people a day. The
+  roof's 2, Oct 12 to Oct 21, is under the rule.
+
+Left for later: a limit for each place, a *By place* grouping of the chart, the trade's portal
+saying who else is in the place, the paper, and the job's own bars taking a place.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

@@ -33,13 +33,14 @@ import { tradePromisesOf, tradePromiseState } from './gcPromises'
 import { customerAsPerson, projectFollowPeople, projectPeople, type PeopleTone, type PersonReason, type ProjectPerson } from './gcProjectPeople'
 import { partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
 import { pWeekday, type PortalLang } from './gcPortalI18n'
+import { crowdedCalls } from './gcPlaces'
 
 /** A company has this many days to answer its new dates before a call is due. The new start this close, it is late. */
 export const CONFIRM_WITHIN_DAYS = 3
 
 /** What a line on the call list is about on the schedule, for the Follow up sheet and the call's answer. */
 export interface CallRef {
-  kind: 'failed' | 'late' | 'due' | 'behind' | 'dates' | 'asked' | 'start' | 'held' | 'notice' | 'bar'
+  kind: 'failed' | 'late' | 'due' | 'behind' | 'dates' | 'asked' | 'start' | 'held' | 'notice' | 'bar' | 'crowded'
   /** A held bar's hold, as the chart has it: 'submittal', 'rfi', 'delivery', … or a kind added later. */
   hold?: string
   lineId?: string
@@ -617,6 +618,20 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
           ask: '¿Podemos hablar del nuevo día?',
         },
       },
+    })
+  }
+
+  // Too many trades in one place (G-83): each hired company in a crowded week of the look-ahead that has not said how many people it will have.
+  for (const c of crowdedCalls(state, project)) {
+    const partner = partnerById(state, c.partnerId)
+    if (!partner) continue
+    rows.trade(partner, c.trade, {
+      text: c.text,
+      tone: c.tone,
+      lineId: c.lineId,
+      code: 'schedule',
+      call: { kind: 'crowded', lineId: c.lineId, packageId: c.packageId, label: `${c.place}, ${shortDate(c.from)} to ${shortDate(c.to)}` },
+      words: c.words,
     })
   }
 

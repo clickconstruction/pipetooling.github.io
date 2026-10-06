@@ -1296,6 +1296,8 @@ export type GcAction =
   | { type: 'keepWhatIf'; projectId: string; by: string; whys: Record<string, { reason: ScheduleMoveReason; note: string }> }
   /** Throw the what-if away (G-81): the copy goes, the real schedule stays as it is. */
   | { type: 'throwAwayWhatIf'; projectId: string; by: string }
+  /** The office says where bars' work is (G-83): each line id to its place, or null to take it off. A trade's bars and our own crew's only. */
+  | { type: 'setActivityPlaces'; projectId: string; places: Record<string, string | null> }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1460,6 +1462,8 @@ export interface ScheduleActivity {
   actualStart?: string
   /** The day it really finished (G-55). Unset: not recorded. */
   actualFinish?: string
+  /** Where on the job its work is, in the office's word: Roof, Inside, Level 2 (G-83). Unset: no place yet. A guess is never kept here until the office keeps it. */
+  place?: string
 }
 
 /**

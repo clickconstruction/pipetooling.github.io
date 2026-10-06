@@ -17,6 +17,7 @@ import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
 import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
 import { crewCountAllowed, crewCountLogWords, crewCountProblem, crewCountsNow } from './gcCrewCounts'
+import { placeChanges, placesLogWords, withPlaces } from './gcPlaces'
 import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { recoveryMove, recoveryOffers } from './gcRecovery'
@@ -2849,6 +2850,25 @@ function reduce(state: GcState, action: GcAction): GcState {
         }),
         'office',
         `${action.by} threw away a what-if on ${project.name}: ${tried} ${tried === 1 ? 'move' : 'moves'} tried.`,
+      )
+    }
+
+    case 'setActivityPlaces': {
+      // Where bars' work is (G-83): the office's word on each bar, and on an open what-if copy's bar
+      // too, since a place is a fact about the work, not a move. Refused whole when any of it is.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule) return state
+      const changes = placeChanges(schedule.activities, action.places)
+      if (!changes || changes.length === 0) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({
+          ...p,
+          schedule: { ...schedule, activities: withPlaces(schedule.activities, changes) },
+          ...(p.whatIf ? { whatIf: { ...p.whatIf, schedule: { ...p.whatIf.schedule, activities: withPlaces(p.whatIf.schedule.activities, changes) } } } : {}),
+        })),
+        'office',
+        placesLogWords(project, changes),
       )
     }
   }

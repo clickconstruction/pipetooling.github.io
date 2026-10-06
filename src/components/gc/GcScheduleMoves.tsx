@@ -12,6 +12,7 @@ import { MOVE_REASONS, moveActivityName, moveRows, moveWhyProblem, planMove, red
 import { companiesToTell, datesMessage, moveAnswerWords, untoldMoves } from '../../lib/gcMode/gcTellTrades'
 import { lateNoticeMoveWords } from '../../lib/gcMode/gcLateNotices'
 import { moveBillingShift, planBillingShift, shiftWords } from '../../lib/gcMode/gcBillingForecast'
+import { crowdingAfterMove } from '../../lib/gcMode/gcPlaces'
 import { Btn, Card, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
@@ -56,6 +57,8 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose, tryI
   const plan = planMove(project, pending.lineId, pending.start, pending.finish, pending.after, pending.limits)
   // What the move does to the bills (G-97): worked out once per move, not on every keystroke.
   const billing = useMemo(() => (state && plan && !plan.problem && !plan.same ? shiftWords(planBillingShift(state, project, plan), 'will') : null), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
+  // What the move does to a place with too many trades (G-83), said before it saves.
+  const crowding = useMemo(() => (state && plan && !plan.problem && !plan.same ? crowdingAfterMove(state, project, plan.activities) : []), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!plan || plan.same) return null
   // In a what-if (G-81) a reason is optional: the move is tried with one when it is given whole, else with none yet.
   const whyGiven = moveWhyProblem(reason, note) === null
@@ -123,6 +126,11 @@ export function GcMoveExplain({ state, project, pending, dispatch, onClose, tryI
             </ul>
           )}
           {billing && <div style={{ color: 'var(--text-600)' }}>Billing: {billing}</div>}
+          {crowding.map((c) => (
+            <div key={c.words} data-move-crowding style={{ color: c.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-green-800)' }}>
+              {c.words}
+            </div>
+          ))}
         </div>
         <div style={{ display: 'grid', gap: '0.35rem' }}>
           <span style={label}>Why it moved</span>
