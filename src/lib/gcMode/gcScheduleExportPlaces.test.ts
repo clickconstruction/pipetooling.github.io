@@ -16,6 +16,7 @@ import { customerDoneWords, customerSchedulePicture, customerStanding } from './
 import type { GanttPrintInput } from './gcGanttPrint'
 import { MSPDI_TEXT1, MSPDI_TEXT2, csvColumns, scheduleCsv, scheduleExport, scheduleMspdi, type ScheduleExport } from './gcScheduleExport'
 import { placeRows } from './gcPlaces'
+import { readScheduleFile } from './gcScheduleImport'
 import type { GcProject, GcState } from './gcTypes'
 
 const ID = 'fairoaksd'
@@ -165,6 +166,19 @@ describe('the lead’s pins, as G-136 has them', () => {
         expect(file).not.toContain('ExtendedAttribute')
         for (const typed of TYPED) expect(file).not.toContain(typed)
       }
+    }
+  })
+})
+
+describe('bringing our own file back in (G-137)', () => {
+  it('reads our team’s spreadsheet and project file with places exactly as it reads them without', () => {
+    const withPlaces = exportOf(placed(), 'team')
+    const without = exportOf(initialGcState(), 'team')
+    expect(scheduleCsv(withPlaces).split('\r\n')[0]).toContain(',Place,')
+    for (const [write, name] of [[scheduleCsv, 'fair-oaks.csv'], [scheduleMspdi, 'fair-oaks.xml']] as const) {
+      const read = readScheduleFile(write(withPlaces), name)
+      expect('problem' in read).toBe(false)
+      expect(read).toEqual(readScheduleFile(write(without), name))
     }
   })
 })

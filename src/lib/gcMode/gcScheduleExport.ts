@@ -457,12 +457,21 @@ export const CSV_COLUMNS: Record<ExportCopy, Column[]> = {
 /** Our team's Place column (G-83), after Company: only when a bar has a place kept, so a job without places writes the file as before. */
 const PLACE_COLUMN: Column = { head: 'Place', cell: (r) => r.place ?? null }
 
-/** A copy's columns: the table's, with our team's Place column when a bar has a place kept (G-83). The customer's never have it. */
-export function csvColumns(x: Pick<ScheduleExport, 'rows' | 'copy'>): Column[] {
-  const columns = CSV_COLUMNS[x.copy]
-  if (x.copy !== 'team' || !x.rows.some((r) => r.place)) return columns
+function columnsOf(copy: ExportCopy, withPlace: boolean): Column[] {
+  const columns = CSV_COLUMNS[copy]
+  if (copy !== 'team' || !withPlace) return columns
   const at = columns.findIndex((c) => c.head === 'Company') + 1
   return [...columns.slice(0, at), PLACE_COLUMN, ...columns.slice(at)]
+}
+
+/** A copy's columns: the table's, with our team's Place column when a bar has a place kept (G-83). The customer's never have it. */
+export function csvColumns(x: Pick<ScheduleExport, 'rows' | 'copy'>): Column[] {
+  return columnsOf(x.copy, x.rows.some((r) => r.place))
+}
+
+/** A copy's header as the spreadsheet writes it, with or without our team's Place column (G-83): the importer knows either as ours (G-137). */
+export function csvHeads(copy: ExportCopy, withPlace: boolean): string[] {
+  return columnsOf(copy, withPlace).map((c) => c.head)
 }
 
 /** One cell, RFC 4180: quoted when it holds a comma, a quote or a line break. Text a spreadsheet would run as a formula starts with a quote mark (OWASP's rule for CSV files). */

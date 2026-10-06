@@ -1493,7 +1493,8 @@ change in behavior.
     spreadsheet and Text2 *Place* beside Text1 *Company* in the project file, only while a bar has a
     place kept, so a job without places writes the files as before. Two pins: both writers carry the
     kernel's places in its order, and the customer's files hold no *Place*, no Text2 and no typed
-    place anywhere.
+    place anywhere. G-137's reader knows our team's header with *Place* as ours, and reads both files
+    back exactly as it reads them without; a test holds the round trip.
   - Nothing on the customer's side, the trade's portal or the paper.
 - On Fair Oaks D with the guesses kept: Inside has 3 trades at once from Fri Oct 2 to Fri Oct 9,
   Pecan Valley Electric 2, our own crew 3 and Cool Breeze Mechanical 3, about 8 people a day. The
@@ -1523,7 +1524,8 @@ two doors.
   - while a what-if copy is open.
   The made-up data has no walk for Fair Oaks D, so Start is what keeps it shut.
 - **What it reads**: Project's XML (MSPDI), which P6 also writes, and our three spreadsheets. The
-  reader uses the namespace and headers `gcScheduleExport.ts` writes with.
+  reader uses the namespace and headers `gcScheduleExport.ts` writes with, our team's with or without
+  its *Place* column (G-83, `csvHeads`).
   - Passed over: task 0, groups, blank rows and inactive tasks. A group's name still helps the guess.
   - Waits: finish-to-start between activities. The gap is read in working days by the file's
     minutes a day, or as elapsed days.
