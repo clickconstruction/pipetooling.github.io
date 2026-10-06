@@ -6,6 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
+import { legalFirmSaveErrorWords } from '../../lib/legal/legalFirmSave'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -108,7 +109,7 @@ export default function LegalFirmSettingsBlock() {
       const payload = { name: form.name.trim(), handling_name: form.handling_name.trim(), email: form.email.trim(), phone: form.phone.trim(), contingency_pct: pct, filing_cost: cost, active: true, updated_at: new Date().toISOString() }
       const res = form.id ? await db.from('legal_firms').update(payload).eq('id', form.id).select('id').single() : await db.from('legal_firms').insert(payload).select('id').single()
       if (res.error) {
-        showToast(`Could not save: ${res.error.message}`, 'error')
+        showToast(legalFirmSaveErrorWords(res.error.message), 'error')
         return
       }
       setForm((f) => ({ ...f, id: (res.data as { id: string }).id }))

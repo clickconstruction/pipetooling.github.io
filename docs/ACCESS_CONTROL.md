@@ -1402,7 +1402,7 @@ The ⚖ Legal desk on the Pipeline's Collections tier is visible to the Collecti
 |---|---|---|
 | Curate: hold or share timeline entries, ask a dev to review, write down | dev · master_technician · assistant · controller | `legal_matter_save_review`, `legal_close_matter`, the agreed write-down |
 | **Mark attorney-ready (= release to the firm)**, pull back | **dev only** | `legal_mark_attorney_ready`, `legal_pull_back` |
-| Add or edit the collections law firm (name, handling person, email, fee model) | dev only | Settings → Jobs & dispatch → Collections law firm (`legal_firms` insert/update policies) |
+| Add or edit the collections law firm (name, handling person, email, fee model) | dev only | Settings → Jobs & dispatch → Collections law firm (`legal_firms` insert/update policies). **One active firm at a time**: the partial unique index `legal_firms_one_active` (v2.4641) refuses a second row with `active = true`; retire the old firm first. |
 | See the "N Collections accounts await your review" Needs You card | dev only | Dashboard |
 
 Owner decision 2026-09-11: only a dev releases; the office asks with a note. A wider pool is one `CREATE OR REPLACE` on `legal_mark_attorney_ready`.
