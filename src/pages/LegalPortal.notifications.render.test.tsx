@@ -23,11 +23,11 @@ async function openNotifications(failingSince: string | null, paused = false) {
   payload.recipients = payload.recipients.map((r, i) => (i === 1 ? { ...r, confirmed: true, paused, failingSince } : r))
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
   render(
-    <MemoryRouter initialEntries={['/legal?t=sample']}>
+    <MemoryRouter initialEntries={['/legal?t=tok_live']}>
       <LegalPortal />
     </MemoryRouter>,
   )
-  await waitFor(() => expect(screen.getAllByText(/Sample Contracting/).length).toBeGreaterThan(0))
+  await waitFor(() => expect(screen.getAllByText(/Brazos Ridge Contracting/).length).toBeGreaterThan(0))
   fireEvent.click(screen.getByRole('button', { name: /^Notifications/ }))
   await waitFor(() => expect(document.body.textContent).toMatch(/Add a person at the firm/))
 }

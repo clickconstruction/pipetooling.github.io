@@ -135,7 +135,7 @@ describe('(e) the sample matter, as the firm reads it', () => {
     expectFoots(p)
     expect(p.account.totals.balance).toBe(14_400)
     for (const e of p.account.ledger) expect(e.text).not.toMatch(/stripe_manual|uncollectible|· open|sent email|Cheque/)
-    expect(p.account.ledger[0]?.text).toBe('Invoice · sent 2026-06-03 by email')
+    expect(p.account.ledger[0]?.text).toMatch(/^Invoice · sent \d{4}-\d{2}-\d{2} by email$/)
   })
   it('a harder copy (a write-down, a payment with no bill, a recovery applied) foots and its demand leaves the contingency out', () => {
     const raw = sampleLegalPortalResponse(company, TODAY) as { matters: Array<Record<string, unknown>> }

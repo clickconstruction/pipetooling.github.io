@@ -4,6 +4,9 @@ import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { LEGAL_SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
+import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED, PORTAL_FONT } from '../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
 import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
@@ -104,6 +107,16 @@ export default function LegalPortal() {
     if (!token && !officeFirm) {
       setState({ kind: 'error', message: 'This link is missing its key. Please use the exact link the office sent you.' })
       return
+    }
+    // The sample (item 9, #85): the page builds the function's own sample answer from the shared fixture, so the
+    // sample matter shows the moment the page ships, without a function deploy, and the demo never waits on the network.
+    if (sample) {
+      const samplePayload = parseLegalPortalPayload(sampleLegalPortalResponse(PORTAL_COMPANY, todayYmdInAppTz()))
+      if (samplePayload) {
+        setState({ kind: 'ready', payload: samplePayload })
+        setSelectedId((prev) => prev ?? samplePayload.matters[0]?.id ?? null)
+        return
+      }
     }
     let cancelled = false
     // The quiet reload (item 22) keeps the page it already shows when it fails, and says so on the notice line.
@@ -225,7 +238,7 @@ export default function LegalPortal() {
           </div>
         ) : null}
         {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /> : null}
-        {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} /> : null}
+        {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /> : null}
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}

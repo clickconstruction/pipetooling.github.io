@@ -6,6 +6,8 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { publicViewDecision, userBearerToken } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
+// Item 9 (#85): a promise is measured against what was billed when it was made, as the desk's RPC does.
+import { billedAtPromise } from '../_shared/legalPromiseBilled.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
@@ -216,7 +218,7 @@ serve(async (req) => {
 
     const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, deskItemRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
       allJobIds.length ? admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, customer_email, customer_phone, gc_customer_id, revenue, payments_made, status, last_bill_date, last_work_date, created_at, lien_contract_ended_on, lien_retainage_held, lien_payment_bond, collections_at, collections_by, collections_note, job_pictures_link, google_drive_link, contract_not_needed_at, contract_not_needed_reason').in('id', allJobIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, external_send_channel, stripe_invoice_status, stripe_invoice_id, sequence_order, agreed_write_down_at, agreed_write_down_note, agreed_write_down_previous_amount').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, external_send_channel, stripe_invoice_status, stripe_invoice_id, sequence_order, agreed_write_down_at, agreed_write_down_note, agreed_write_down_previous_amount, created_at').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('customers').select('id, name, address, contact_info, customer_type, payment_terms, payment_terms_note').in('id', customerIds) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('customer_contact_persons').select('customer_id, name, email, phone, note').in('customer_id', customerIds) : Promise.resolve({ data: [] }),
@@ -338,7 +340,6 @@ serve(async (req) => {
         if (j.collections_note && !goes(`note:${j.id}`, noteYmd)) (j as Row).collections_note = null
       }
       // Promise records: the outcome inputs (billed at the promise, dated payments) — the page classifies.
-      const billedTotal = mInvoices.filter((i) => i.status === 'billed' || i.status === 'paid').reduce((s, i) => s + Number(i.amount ?? 0), 0)
       const promiseRecords = mPromises.map((p) => ({
         id: p.id,
         jobId: p.jobId,
@@ -346,7 +347,7 @@ serve(async (req) => {
         promisedYmd: p.promisedYmd,
         createdAt: p.createdAt,
         source: p.source,
-        billedTotal: mInvoices.filter((i) => i.job_id === p.jobId && (i.status === 'billed' || i.status === 'paid')).reduce((s, i) => s + Number(i.amount ?? 0), 0) || billedTotal,
+        billedTotal: billedAtPromise(mInvoices, p.jobId, p.createdAt),
         payments: mPayments.filter((x) => x.job_id === p.jobId && x.paid_on).map((x) => ({ paidOn: ymd(x.paid_on) as string, amount: Number(x.amount ?? 0) })).sort((a, b) => a.paidOn.localeCompare(b.paidOn)),
       }))
       const customer = customers.find((c) => c.id === customerId) ?? null
