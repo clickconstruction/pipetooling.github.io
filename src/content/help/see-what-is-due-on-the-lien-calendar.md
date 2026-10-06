@@ -58,7 +58,7 @@ The key runs along the bottom of the Calendar. Press a mark to read what it mean
 
 ## On a phone
 
-A phone shows the same pills and months without the time line. Press the magnifier to search. Each job shows its dates under its name.
+A phone shows the same pills with their counts only, and the months without the time line. Press the magnifier to search. Each job shows its dates under its name.
 
 ## Good to know
 
