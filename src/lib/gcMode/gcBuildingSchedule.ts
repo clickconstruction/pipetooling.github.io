@@ -441,9 +441,10 @@ export interface ProjectedFinish {
  * - plan: the current plan, worked through what waits on what, where nothing unfinished finishes
  *   before today. Work whose start has come needs the rest of its days from today.
  * - pace: the baseline's last finish moved by how far the work runs behind it (`workVsPlan`).
- * Null: no schedule drawn.
+ * Null: no schedule drawn. `more`: days added to some activities' work left, by line (G-57's weather
+ * and crews), through the same walk so what waits on them moves too. The measure's own line has none.
  */
-export function projectedFinish(project: GcProject, today: string): ProjectedFinish | null {
+export function projectedFinish(project: GcProject, today: string, more?: Map<string, number>): ProjectedFinish | null {
   const schedule = project.schedule
   if (!schedule || schedule.activities.length === 0) return null
   const t = dayNumber(today)
@@ -475,8 +476,9 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
         setBy.set(a.lineId, id)
       }
     }
-    const left = Math.max(1, Math.ceil((days * (100 - done)) / 100))
-    const end = start >= t ? start + days - 1 : Math.max(start + days - 1, t + left - 1)
+    const extra = more?.get(a.lineId) ?? 0
+    const left = Math.max(1, Math.ceil((days * (100 - done)) / 100)) + extra
+    const end = start >= t ? start + days + extra - 1 : Math.max(start + days - 1, t + left - 1)
     if (end > start + days - 1) lateNow.add(a.lineId)
     finish.set(a.lineId, end)
   }
