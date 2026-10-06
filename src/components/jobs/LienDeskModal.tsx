@@ -1633,11 +1633,30 @@ export default function LienDeskModal({
     const i = paneHeads.findIndex((h) => h.key === key)
     const body = host?.querySelector<HTMLElement>(`[data-lien-pane-body="${key}"]`)
     if (!host || !body || i < 0) return
-    let top = lienPaneSectionScrollTop(body.offsetTop, i, 0)
-    if (top > STRIP_COLLAPSE_PX) top = lienPaneSectionScrollTop(body.offsetTop, i, stripH)
-    if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
-    else host.scrollTop = top
-    setLitSection(key)
+    const scroll = (top: number, smooth: boolean) => {
+      if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' })
+      else host.scrollTop = top
+    }
+    const measured = () => stripRef.current?.getBoundingClientRect().height || stripH
+    const plain = lienPaneSectionScrollTop(body.offsetTop, i, 0)
+    if (plain <= STRIP_COLLAPSE_PX) {
+      scroll(plain, true)
+      setLitSection(key)
+      return
+    }
+    if (paneScrolled) {
+      // The strip is pinned already: its height is on the page to read.
+      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured()), true)
+      setLitSection(key)
+      return
+    }
+    // The strip will pin at the landing but is not on the page yet, so its height is a guess (the first live press
+    // landed 15 px short on a wrapped strip). Step just past the fold so it mounts, read it, then land exactly.
+    scroll(STRIP_COLLAPSE_PX + 1, false)
+    window.setTimeout(() => {
+      scroll(lienPaneSectionScrollTop(body.offsetTop, i, measured()), true)
+      setLitSection(key)
+    }, 80)
   }
   const paneHead = (key: LienPaneSectionKey) => {
     const i = paneHeads.findIndex((h) => h.key === key)
