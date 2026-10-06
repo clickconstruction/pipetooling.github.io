@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 28: the honeypot — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 18px; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #E5E7EB; padding: 6px; }
+  td { padding: 8px 6px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
+  .bad { color: #B42318; font-weight: 600; } .ok { color: #067647; font-weight: 600; } .muted { color: #6B7280; }
+  code { font: 12px ui-monospace, monospace; background: #F3F4F6; padding: 1px 4px; border-radius: 3px; }
+  pre { font: 12px/1.45 ui-monospace, monospace; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 10px; overflow-x: auto; margin: 10px 0 0; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 28 · mockup</p><h1>The honeypot: wired or dropped</h1>
+<p>The portal's forms draw a hidden <code>website</code> box. The page never sends it. The function answers <code>{ ok: true }</code> and writes nothing when it is filled. Who reaches each path, today and after.</p></header>
+
+<div class="two">
+  <div><div class="cap old">Before — the trap guards nothing and can eat a real act</div><div class="pane">
+    <table>
+      <thead><tr><th>Who posts</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>The firm, through the page</td><td>The page builds the body from React state and leaves <code>website</code> out. Saved. <span class="muted">The hidden input is dead markup.</span></td></tr>
+        <tr><td>A bot with the link, posting to the function</td><td>It sends no <code>website</code> (it does not draw the form). Saved. <span class="bad">The trap never fires.</span></td></tr>
+        <tr><td>A page change that wires the input (the obvious "fix")</td><td>A password manager that fills every text box fills <code>website</code>. The function answers <code>{ ok: true }</code>, the page says <i>Saved</i>. <span class="bad">The fee, the step or the payment is gone and nobody knows.</span></td></tr>
+      </tbody>
+    </table>
+<pre>// submit-legal-portal, line 67
+if (str(body.website, 100)) return jsonResponse({ ok: true }) // pretend success, write nothing</pre>
+  </div></div>
+  <div><div class="cap new">After — dropped on both sides; the guards that hold stay</div><div class="pane">
+    <table>
+      <thead><tr><th>Who posts</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td>The firm, through the page</td><td>Saved, as today. <span class="ok">No hidden box to autofill.</span></td></tr>
+        <tr><td>A bot with the link</td><td>Same as today: the link is the key, so a bot needs the firm's link first. <span class="ok">30 matter acts per firm per hour, length caps, the matter must be the firm's, 12 people at most.</span></td></tr>
+        <tr><td>A body that still carries <code>website</code> (an old tab)</td><td>Ignored. <span class="ok">The act is saved like any other.</span></td></tr>
+      </tbody>
+    </table>
+<pre>// submit-legal-portal: the line is gone; the header comment lists the real guards.
+// LegalPortal.tsx: both &lt;input name="website" hidden&gt; are gone.</pre>
+  </div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Wire it instead?</b> No. A honeypot earns its keep on a public form anyone can find. This page is behind a private link. A bot that has the link can skip the box, and a person with an autofilling password manager would lose real acts behind <i>Saved</i>.</li>
+  <li><b>Keep it but answer honestly ("Could not save")?</b> Still no. Then the autofill case shows an error the firm cannot fix, because the box is invisible.</li>
+  <li><b>Is the rate limit enough on its own?</b> For matter acts, yes: 30 an hour per firm. The people acts are capped at twelve people. A confirmation resend has no cap; that is noted for item 18 (acts a firm can trust), not added here.</li>
+</ul>
+</div></body></html>

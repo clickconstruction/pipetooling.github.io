@@ -1672,6 +1672,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### submit-legal-portal
 
+> **v2.4622 — no honeypot**: the `website` check is gone, and the portal's two hidden `website` boxes with it. The page never sent the field, so the trap guarded nothing; wired, a password manager that fills every box would have made a real act answer `{ ok: true }` and save nothing. A body that still carries `website` is saved like any other. **Redeploy required.**
+
 > **v2.4457 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose digest now reads its days in `APP_CALENDAR_TZ` ([legal-notify-dispatch](#legal-notify-dispatch)). This function sends only the confirm email, which carries no date, so nothing it sends changes; redeploy after merge so the bundle matches the repo.
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
@@ -1680,7 +1682,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Recipients** (v2.3325): `recipient_add` (`name`, `email`, `role`, optional `mode` / `scope`; 12 people per firm; one live row per address; sends the confirmation email with a hashed token), `recipient_rules` (`recipientId`, `mode`, `scope`, `digestWeekday` 1–7, `digestTime` HH:MM), `recipient_stop` / `recipient_resume` (`paused_at`), `recipient_resend`. No `matterId` needed for these.
 
-**Guards**: honeypot `website` (pretends success, writes nothing); the matter must belong to the token's firm and be in the with-firm set (403 otherwise); 30 portal acts per firm per hour (429); amounts 0 < n ≤ 1,000,000; bodies capped at 2,000 chars. The firm never marks anything paid, edits a job, or emails a customer through us.
+**Guards**: the link is the key; the matter must belong to the token's firm and be in the with-firm set (403 otherwise); 30 portal acts per firm per hour (429); amounts 0 < n ≤ 1,000,000; bodies capped at 2,000 chars. The firm never marks anything paid, edits a job, or emails a customer through us.
 
 **Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `POST /functions/v1/submit-legal-portal`. **Deploy**: after the v2.3313 migration (entries table) — alongside `legal-portal`.
 
