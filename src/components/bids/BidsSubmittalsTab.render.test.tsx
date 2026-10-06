@@ -1715,4 +1715,36 @@ describe('BidsSubmittalsTab', () => {
       state.noSources = false
     }
   })
+
+  it('v2.4609 · the schedule typed after the takeoff built the rows grades them: the door counts the Proposed rows it names, the window shows each, and Grade writes the plans’ product and the status onto the row and nothing else', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    // Three rows from the takeoff: WC-1 reads the plans' model, DWH-1 another maker's, HB-3 is not on the schedule.
+    state.items = [
+      item({ id: 'g-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT708UVG#01 TORNADO FLUSH', status: 'proposed', source_count_row_id: 'cr-1', lead_time_days: 21, reason_note: 'keep me' }),
+      item({ id: 'g-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed', source_count_row_id: 'cr-2' }),
+      item({ id: 'g-hb', tag: 'HB-3', sequence_order: 3, submitted_label: 'WOODFORD B74C', status: 'proposed', source_count_row_id: 'cr-3' }),
+    ]
+    state.writes = []
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    // Step 2 is folded once a revision exists: its title opens it.
+    fireEvent.click(screen.getByRole('button', { name: /2 · Rev 1/ }))
+    const door = await screen.findByTestId('grade-against-schedule')
+    expect(door.textContent).toBe('Grade 2 rows against the schedule…')
+    fireEvent.click(door)
+    const dialog = await screen.findByRole('dialog', { name: 'Grade the rows against the schedule' })
+    expect(within(dialog).getAllByTestId('grade-to').map((x) => x.textContent)).toEqual(['As specified', 'Alternate'])
+    expect(within(dialog).getByTestId('grade-skipped').textContent).toBe('HB-3 is not on the schedule, so it stays Proposed.')
+    fireEvent.click(within(dialog).getByTestId('grade-confirm'))
+    await waitFor(() => expect(state.writes.filter((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toHaveLength(2))
+    const writes = state.writes.filter((w) => w.op === 'update' && w.table === 'bid_submittal_items')
+    expect(writes[0]!.filters).toContainEqual(['id', 'g-wc'])
+    expect(writes[0]!.payload).toEqual({ specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', specified_description: 'Wall-hung, 1.28 gpf', status: 'as_specified' })
+    expect(writes[1]!.payload).toEqual({ specified_manufacturer: 'Rheem', specified_model: 'RH375', specified_description: '40 gal', status: 'alternate' })
+    // The rows read graded, the lead time and the note stayed, HB-3 is still Proposed, and the door is gone.
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Grade the rows against the schedule' })).toBeNull())
+    expect(state.items.find((r) => r.id === 'g-wc')).toMatchObject({ status: 'as_specified', lead_time_days: 21, reason_note: 'keep me' })
+    expect(state.items.find((r) => r.id === 'g-hb')!.status).toBe('proposed')
+    await waitFor(() => expect(screen.queryByTestId('grade-against-schedule')).toBeNull())
+  })
 })

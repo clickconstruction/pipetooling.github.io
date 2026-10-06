@@ -21,7 +21,7 @@ status: >
   yet) · Assign pages… took a user's machine down on a scanned vendor PDF 2026-09-29 — the walk re-opened the
   file on every tab re-render and the partial re-reads reloaded the tab in a loop; fixed by #4111 (2026-09-29), which also
   ships pdf.js's wasm decoders so scanned pages draw instead of rendering blank · left: 3b (owner-gated), SpaceX Rev 4 through the room, the takeoff-rows-against-a-later-
-  schedule merge (v2.4107's residual) · live gates owed on Wendi's live bid and the SpaceX Rev 3 on B375
+  schedule merge (v2.4107's residual, shipped v2.4609) · live gates owed on Wendi's live bid and the SpaceX Rev 3 on B375
 summary: >
   **Submittals**: the product decision as one row per fixture tag from the plan's schedule to the
   GC's approval — a Specified column and status chips on the quote compare, a Submittals tab after
@@ -33,9 +33,8 @@ summary: >
 next: >
   Build and share SpaceX Rev 4 on B375 from the takeoff (v2.4107 made that the road on a bid with no
   schedule); run the robot half of gate 6b from a twin seat (BP398 has a read_redlines task queued,
-  BP375 a read_schedule one); 3b when the owner says so. One code residual (v2.4107): a schedule typed
-  after a takeoff build re-grades Proposed rows only on *Rebuild rows from picks* — a merge that keeps
-  the takeoff rows and grades them against the schedule is the next piece.
+  BP375 a read_schedule one); 3b when the owner says so. v2.4107's one code residual shipped as v2.4609 (2026-10-05): a schedule typed
+  after a takeoff build grades the Proposed rows in place, from step 2.
   From the 2026-10-03 tab review, findings 10–12 shipped 2026-10-05 as v2.4543, v2.4542 and v2.4537 (the header's repeats, the
   rows table on a takeoff bid, the Edit window's labels); nothing from that review is left.
   Owed live checks: Wendi pastes the schedule on one live bid she is pricing this week (gate 1's
