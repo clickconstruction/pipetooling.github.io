@@ -1138,6 +1138,78 @@ overlapped (Tell the trades reads whose dates moved, a row of its own); the best
 paper (G-21's head prints G-98's lines, which are facts; an offer is a choice, so its line sits just
 outside that block and the paper's test still holds).
 
+## Later, the schedule as a file, as built (2026-10-06)
+
+G-136, Helper 2 on `spike/g136`; the mock-up and plan are `mockups/G-136.md`. `gcScheduleExport.ts`
+(tested, out of the barrel), `GcScheduleExport.tsx`, `gcDownloadFile.ts` (the browser's save, its own
+file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWords` exported from
+`gcGanttPrint.ts`. No action, no reducer case, no fixture change: the golden test did not move.
+
+- **Where**: **Export** sits beside **Print or PDF** on the chart's toolbar and opens its own window,
+  *Export the schedule*: *The whole schedule, by trade: 30 activities, 3 things the work waits on and
+  4 dates to meet. The filters and folds do not change a file.*, the same **Who it is for** switch and
+  line as *Print the chart* (the print's own `forWords`), then **Spreadsheet** and **Project file**, a
+  line each. A press saves the file through the browser and the window stays open for the other;
+  *Saved Fair-Oaks-Shops-Building-D-schedule-2026-10-02.csv.* says which.
+- **Always the whole schedule**: the window is fed what Print or PDF is fed, and the kernel never
+  reads the filters, the folds or the links (a test exports with them on and gets the same file). The
+  grouping is the chart's: by trade, by stage or by company.
+- **Our team's copy**: every bar under its group in the chart's order; then *What the work waits on*,
+  each a day of its own named by its done word (*Rooftop units on site*, *The restroom tile decided*)
+  on the day it is expected or came, which the work it holds waits on; then *Dates the job must
+  meet*. Each with its trade, company, days, percent, spare days (a number, so a sort puts the work
+  that sets the finish on top), the chart's words for where it stands, what it waits on with its gap,
+  Not before, Must finish by, and the days it really ran.
+- **The customer's copies** read `customerSchedulePicture` and nothing else. An owner gets *Stages of
+  the job* (their portal's stages, dates, percent and words) and *Dates to meet*. A GC or an owner's
+  rep gets every bar of their list by stage, in their words (*on plan*, *not started*), in the order
+  built: the list puts today first, a file reads top to bottom. No company, no trade, no spare days,
+  no waits, nothing from outside the trades. Never the rough (a test exports a job with one) and never
+  a what-if copy: a file reads the chart's bars, which read `project.schedule`.
+- **The spreadsheet**: `.csv`, UTF-8 with the byte-order mark Excel looks for, dates as 2026-10-09,
+  RFC 4180 quoting, CRLF, one line for each row under a group, the group in its own column. A cell a
+  spreadsheet would run as a formula starts with a quote mark (OWASP's rule for CSV files). Columns:
+  our team's 16; an owner's *Group, Name, Start, Finish, Done %, Where it stands*; a GC's *Stage,
+  Activity, Start, Finish, Where it stands*.
+- **The project file**: the common part of Microsoft Project's XML (MSPDI), elements in the schema's
+  order. One calendar, *Every day*, seven working days 8:00 to 12:00 and 13:00 to 17:00, so 12 days is
+  `PT96H0M0S` in both programs. Groups are summary tasks (Primavera's WBS) with everything under one;
+  tasks are numbered 1, 2, 3; waits are finish-to-start links between tasks in the file, the gap in
+  tenths of a minute (4800 a day). A date to meet and a wait are milestones at the end of their day,
+  so the work after starts the next morning, as the chart holds it. The status date is today. The
+  company is in Text1, named *Company*, on our team's copy only. Left out: baselines, deadlines,
+  resources and notes.
+- **Each task held to its day** (a change from the plan): both programs place a task as early as its
+  links allow, so a bar with spare days before it would jump left on open, and the customer's copies,
+  which have no links, would all start on the first day. So every task starts no earlier than its day
+  in our plan (`ConstraintType` 4 at its start, or at its Not before when later). In the made-up data
+  no bar starts before the work it waits on ends, so the only work a program would move is Rooftop
+  units, to the morning after the units come: the hold the chart shows. A task holds one constraint,
+  so *Must finish by* rides in the spreadsheet only.
+- **The lead's pins**: one test reads both writers' output against the kernel's rows, for our team's
+  copy (by trade and by company), an owner's and a GC's: the same rows, in the same order, under the
+  same groups, with the same dates. And a search of the whole of the customer's project file finds no
+  Text1, no extended attribute, no word *company* and none of the companies on the job, ours included
+  (the customer's own name is only in the file's name).
+  Both were checked by breaking the code on purpose: each fails.
+- **Opening them for real is the owner's to check**: the prototype could open neither Microsoft
+  Project nor Primavera P6, so the file is held to the schema's names and order by tests. The owner
+  checks the first real import with a scheduler's copy of each program. The window says so under
+  Project file: *Nobody has opened this file in Project or Primavera yet. The owner checks the first
+  import with a scheduler's copy of each program.*
+- **Tests**: `gcScheduleExport.test.ts` (22: the rows, the filters and folds, the waits and gaps, the
+  outside waits, the dates, the rough, both customer copies, the spreadsheet, the project file, the
+  lead's pins, the words), `GcScheduleExport.render.test.tsx` (7, one on the real Schedule tab).
+
+What changed from the mock-up: each task is held to its day (above); the owner's spreadsheet has a
+*Group* and a *Name* column, since *Dry-in* is both a stage and a date to meet; the count names the
+grouping (*by trade*) instead of *in 8 trades*, since Inspections is a group and not a trade; a
+wait is one day in both files, since the pin rules out the mock-up's span from the day it was ordered
+(*Where it stands* keeps that day: *ordered Sep 1, late*).
+
+Left out, as planned: Excel's own `.xlsx`, Primavera's own XER file, and what changed since the last
+file went (it needs a record of each file sent, G-94's ground).
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

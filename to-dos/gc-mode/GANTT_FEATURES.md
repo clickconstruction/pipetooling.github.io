@@ -63,6 +63,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-43 | The history of the schedule: who moved what, when, why, and by how many days | See | Have (built 2026-10-05: Changes to the schedule, under the chart) | 2 |
 | G-44 | Templates: save a job's schedule shape and start the next job like it from it | See | New | Later |
 | G-45 | A schedule while bidding: a rough one from the stages, for our bid's "weeks to build" | Tell | Have (built 2026-10-06: a job still bidding opens its Schedule tab on *A rough schedule for our bid*, drawn by the first draft's own kernel from the trades' scope lines with the job's stage days; Our number's *Weeks to build* and the proposal sentence; locked as it went when the bid goes in; at award kept as the weeks we bid, and the first draft starts from it; `gcRoughSchedule.ts`, `GcRoughSchedule.tsx`) | Later |
+| G-143 | In the first draft, a trade's site-finish lines wait on the dry-in gate and their own earlier site lines, not on the trade's trims (today Site lighting waits on Fire alarm); moves every first draft with site lighting, so it re-pins the golden walk's Helotes draw and G-45's draw pin | See | New | Later |
 
 ## C. Keeping it true
 
@@ -146,5 +147,5 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-133 | Who may move a bar: anyone on our team (the owner, 2026-10-05). The customer and the trades only read | — | Part (anyone may move a bar on the prototype; the real build's RLS is not written) | Real build |
 | G-134 | Two people on one schedule: the second to save sees what the first changed | — | New | Real build |
 | G-135 | A job with 300 activities still scrolls: only the rows in view are drawn | See | Have (built 2026-10-06: the rows outside the scroller's window, with overscan, are one spacer each; `rowsInView`) | 5 |
-| G-136 | Export to a spreadsheet, and to the file Microsoft Project and Primavera read, for a customer who asks | Tell | New | Later |
+| G-136 | Export to a spreadsheet, and to the file Microsoft Project and Primavera read, for a customer who asks | Tell | Have (built 2026-10-06: **Export** beside Print or PDF opens *Export the schedule*; always the whole schedule, whatever the filters and folds; our team's copy with the companies, spare days and waits, the customer's from their portal's picture; a `.csv` and the MSPDI `.xml` both programs read, every day worked and each task held to its day; the first real import is the owner's to check with a scheduler's copy of each program; `gcScheduleExport.ts`, `GcScheduleExport.tsx`) | Later |
 | G-137 | Import a schedule a customer or architect hands us | See | New | Later |
