@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { Fragment, useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
   GC_COMPANY,
   activityName,
@@ -73,6 +73,7 @@ import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { lateFinish, type LateFinish } from '../../lib/gcMode/gcLateFinish'
 import { finishOutlook, type FinishOutlook } from '../../lib/gcMode/gcFinishOutlook'
+import { GcAskForDays } from './GcAskForDays'
 import { recoveryOffers, sideBySideWords, type RecoveryOffer } from '../../lib/gcMode/gcRecovery'
 import { GcDaysBack } from './GcRecovery'
 
@@ -203,7 +204,14 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
       <ScheduleWhy />
 
       {building ? (
-        <Measures m={m} late={late} {...(offers[0] ? { best: offers[0] } : {})} {...(outlook ? { outlook } : {})} />
+        <Measures
+          m={m}
+          late={late}
+          {...(offers[0] ? { best: offers[0] } : {})}
+          {...(outlook ? { outlook } : {})}
+          // Ask for the days (G-141): a change order is real, so never from the what-if copy.
+          {...(!inCopy ? { onAsk: () => realDispatch({ type: 'draftTimeExtension', projectId: realProject.id }) } : {})}
+        />
       ) : (
         <Card>
           <strong>Drawing the schedule.</strong>{' '}
@@ -1205,7 +1213,7 @@ function TradePick({ project, value, onChange }: { project: GcProject; value: st
 // The measures
 // ---------------------------------------------------------------------------------------------
 
-function Measures({ m, late, best, outlook }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook }) {
+function Measures({ m, late, best, outlook, onAsk }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook; onAsk?: () => void }) {
   const behind = m.work.daysBehind
   const nextMilestone = m.milestones.find((r) => r.state === 'due')
   const lateOnes = m.milestones.filter((r) => r.state === 'late' || r.state === 'missed')
@@ -1240,7 +1248,7 @@ function Measures({ m, late, best, outlook }: { m: ReturnType<typeof scheduleMea
       >
         {rel.done} of {rel.of} verified marks were done. {rel.waiting > 0 ? `${rel.waiting} ${rel.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.` : ''}
       </Measure>
-      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} />}
+      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} {...(onAsk ? { onAsk } : {})} />}
     </div>
   )
 }
@@ -1255,7 +1263,21 @@ function finishSentence(finish: ProjectedFinish, contract: ReturnType<typeof sub
   return `${finish.why} ${contract ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.` : 'No substantial completion milestone to measure against.'}`
 }
 
-function FinishMeasure({ finish, contract, late, best, outlook }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook }) {
+function FinishMeasure({
+  finish,
+  contract,
+  late,
+  best,
+  outlook,
+  onAsk,
+}: {
+  finish: ProjectedFinish
+  contract: ReturnType<typeof substantialCompletionOn>
+  late?: LateFinish
+  best?: RecoveryOffer
+  outlook?: FinishOutlook
+  onAsk?: () => void
+}) {
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
   // The days past come from the one call Bill the customer and the customer's words read too (G-98).
   const past = late ? late.risk.past : contract ? daysBetween(contract.on, finish.on) : null
@@ -1277,7 +1299,11 @@ function FinishMeasure({ finish, contract, late, best, outlook }: { finish: Proj
       {late && late.words.length > 0 && (
         <span data-tour="gc-late-finish" style={{ display: 'grid', gap: '0.15rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', color: 'var(--text-base)' }}>
           {late.words.map((w) => (
-            <span key={w}>{w}</span>
+            <Fragment key={w}>
+              <span>{w}</span>
+              {/* Ask for the days (G-141), under the whose-days line. Not a span, so the paper (G-21) prints only the lines. */}
+              {w === late.split && late.ask && onAsk && <GcAskForDays ask={late.ask} where="schedule" onAsk={onAsk} />}
+            </Fragment>
           ))}
         </span>
       )}

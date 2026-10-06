@@ -61,10 +61,13 @@ export function changeOrderMoveOf(project: GcProject, co: ChangeOrder): Schedule
   return (project.schedule?.moves ?? []).find((m) => m.changeOrderId === co.id && !m.undoneOn) ?? null
 }
 
-/** Every signed change order that adds days: where its days land, and whether they are on the schedule yet. */
+/**
+ * Every signed change order that adds days: where its days land, and whether they are on the schedule
+ * yet. Not a time extension (G-141): its days are on the chart already, so it never pushes the bars.
+ */
 export function changeOrdersOnChart(project: GcProject, today: string): ChangeOrderOnChart[] {
   return signedChangeOrders(project)
-    .filter((co) => changeOrderDays(co) > 0)
+    .filter((co) => changeOrderDays(co) > 0 && !co.daysOnChart)
     .map((co) => {
       const days = changeOrderDays(co)
       const landed = changeOrderMoveOf(project, co)
