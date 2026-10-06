@@ -54,6 +54,15 @@ describe('procurementSteps', () => {
     expect(procurementSteps([row('hand:1', 'not_submitted', { isHand: true, tag: null, itemId: null })], 4)[0]).toMatchObject({ label: 'Waiting on the GC', count: 1, note: '' })
   })
 
+  it('v2.4684 · in the GC\'s voice the same facts read Waiting on you · Nothing can be ordered until you answer · You sent · your answer · We order', () => {
+    expect(procurementSteps(today, null, 'gc')[0]).toMatchObject({ label: 'Waiting on you', count: 44, note: '5 sent back' })
+    expect(procurementNextLine(today, '2026-10-05', null, 'gc')).toEqual(['Nothing can be ordered until you answer.', 'You sent 5 parts back.', '39 more wait on your answer.'])
+    expect(procurementNextLine(later, '2026-10-26', null, 'gc')).toEqual(['We order 6 parts by 10/27, tomorrow.', '1 part on order arrives late.', 'You sent 3 parts back.'])
+    expect(procurementNextLine(today.filter((r) => r.status === 'awaiting'), '2026-10-05', null, 'gc')).toEqual(['Nothing can be ordered until you answer.', '38 parts wait on your answer.'])
+    // The office's words are untouched.
+    expect(procurementNextLine(later, '2026-10-26')).toEqual(['Order 6 parts by 10/27, tomorrow.', '1 part on order arrives late.', 'The GC sent 3 parts back.'])
+  })
+
   it('a step shows only its lines, says so, and takes its share of the bar', () => {
     expect(rowsForStep(today, 'on_site').map((r) => r.key)).toEqual(['part:e7', 'part:u3', 'part:w5'])
     expect(rowsForStep(today, null)).toHaveLength(47)
