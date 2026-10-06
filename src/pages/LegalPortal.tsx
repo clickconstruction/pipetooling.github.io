@@ -99,7 +99,7 @@ export default function LegalPortal() {
           return
         }
         setState({ kind: 'ready', payload })
-        // The first matter in the page's order opens by itself (`selected` falls back to it).
+        // The first matter in the page's order opens by itself and stays pinned (the effect below).
       } catch {
         if (!cancelled) setState({ kind: 'error', message: 'We could not open the portal. Please check your connection and try again.' })
       }
@@ -119,6 +119,12 @@ export default function LegalPortal() {
   }, [payload, fee])
   /** Largest balance first, the newest referral breaking a tie; the function's order (oldest referral first) after that (punch list #85, item 11). */
   const matters = useMemo(() => (payload ? orderFirmMatters(payload.matters, (m) => packets.get(m.id)?.account.totals.balance ?? null) : []), [payload, packets])
+  // Pin the first matter in the page's order on first load, so a refetch after an act that changes a
+  // balance (and so the order) cannot swap the matter the firm has open.
+  const firstMatterId = matters[0]?.id ?? null
+  useEffect(() => {
+    if (selectedId == null && firstMatterId != null) setSelectedId(firstMatterId)
+  }, [selectedId, firstMatterId])
   const selected: LegalPortalMatter | null = matters.find((m) => m.id === selectedId) ?? matters[0] ?? null
   const packet = selected ? (packets.get(selected.id) ?? null) : null
 
