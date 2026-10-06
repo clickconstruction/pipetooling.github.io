@@ -1587,6 +1587,8 @@ export interface ScheduleImportRow {
   after: { key: string; gap: number }[]
   notBefore?: string
   mustFinishBy?: string
+  /** Shorter than a working day in their file: it never becomes a part of a split line (G-137 after G-39). */
+  underADay?: boolean
 }
 
 /** A schedule a customer or the architect handed us, as the office kept it (G-137). Never kept on the job: the schedule it makes is. */
