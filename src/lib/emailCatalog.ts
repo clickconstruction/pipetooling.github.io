@@ -156,14 +156,14 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
   // ---- Lien paperwork ----
   {
     id: 'legal_referral',
-    name: 'Legal portal — account referred / office answered / pulled back',
+    name: 'Legal portal — every office event on a matter (referred, answered, asked, note, payment applied, pulled back)',
     group: 'lien',
     audience: 'customer',
     builtWhere: 'server',
     sender: 'legal-notify-dispatch',
     editable: { kind: 'hardcoded' },
     subjectExample: 'New account referred: The Learning Experience',
-    variants: ['office answered your question', 'pulled back'],
+    variants: ['office answered your question (with the question)', 'the office asks / asks your sign-off', 'a note from the office', 'payment applied', 'fee seen (digest only)', 'pulled back (with the reason)'],
   },
   {
     id: 'legal_digest',

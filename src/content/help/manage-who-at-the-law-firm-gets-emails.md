@@ -21,8 +21,12 @@ The firm opens the **Notifications** page on its portal. Each person at the firm
 ## What they hear about
 
 - A new account referred to them. The email goes the moment a dev marks it attorney-ready.
-- The office answering one of their questions.
-- An account pulled back. The firm's email calls it a referral withdrawn.
+- The office answering one of their questions. The email quotes their question too.
+- The office asking them something, or asking for a sign-off on one job.
+- A note from the office on a matter.
+- A payment they received that the office applied to the job.
+- An account pulled back, with the office's reason. The firm's email calls it a referral withdrawn.
+- A fee or cost they added that the office saw. This one goes in the digest only.
 
 People on **Each event** get one email per event within five minutes. When an email does not go, it is tried again every five minutes for an hour. The others are not sent it twice. Digest people get one email on their day: every open matter, then everything since their last digest.
 
@@ -41,4 +45,4 @@ Until the firm adds its people on the portal, nobody is emailed — the matter s
 
 ## Wording
 
-There are four emails: the firm's link, account referred, the weekly digest, and the confirmation. The office sends the firm's link from {{button:outline|🌐 Firm's link}}. The account-referred email also has an office-answered variant and a referral-withdrawn variant. All four are listed in the Outbound email catalog on Settings → Email templates. Their wording is fixed.
+There are four emails: the firm's link, account referred, the weekly digest, and the confirmation. The office sends the firm's link from {{button:outline|🌐 Firm's link}}. The account-referred email has a variant for each event above. All four are listed in the Outbound email catalog on Settings → Email templates. Their wording is fixed.

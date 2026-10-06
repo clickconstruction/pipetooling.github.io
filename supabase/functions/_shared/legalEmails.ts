@@ -62,7 +62,28 @@ export function buildLegalConfirmEmail(i: { companyName: string; email: string; 
   return { subject, text: `${subject}\n\n${i.confirmUrl}`, html }
 }
 
-export type LegalNowTrigger = 'referred' | 'answer' | 'pulled'
+/**
+ * The events that reach the firm (`legal_notification_queue.trigger`). Since #85 item 17 every office event
+ * emails the firm, not three: an ask, a note, a payment applied, and — digest only — a fee or cost the office
+ * saw (a paralegal entering six costs should not get six emails back).
+ */
+export const LEGAL_NOW_TRIGGERS = ['referred', 'answer', 'pulled', 'ask', 'note', 'applied', 'fee_seen'] as const
+export type LegalNowTrigger = (typeof LEGAL_NOW_TRIGGERS)[number]
+
+/** A queue row's trigger, or null for one this build does not know (it is skipped, never mislabeled). */
+export function legalNowTriggerOf(raw: unknown): LegalNowTrigger | null {
+  return typeof raw === 'string' && (LEGAL_NOW_TRIGGERS as readonly string[]).includes(raw) ? (raw as LegalNowTrigger) : null
+}
+
+/** False for the events that ride the digest only (`fee_seen`). */
+export function legalTriggerSendsNow(t: LegalNowTrigger): boolean {
+  return t !== 'fee_seen'
+}
+
+function money(n: unknown): string {
+  const v = typeof n === 'number' ? n : Number(n)
+  return Number.isFinite(v) ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''
+}
 
 /** `legal-notify-dispatch` → one email per event for recipients on "now". */
 export function buildLegalNowEmail(i: {
@@ -72,36 +93,84 @@ export function buildLegalNowEmail(i: {
   payer: string
   handling?: string | null
   note?: string | null
-  /** The office's answer, on an `answer` event. */
+  /** The office's words: its answer, its ask, its note, or the applied payment's line. */
   body?: string | null
+  /** The firm's question an `answer` answers (#85 item 17). */
+  question?: string | null
+  /** An `ask`'s flavor: a sign-off on one job, or a question (#85 item 17). */
+  flavor?: string | null
+  jobLabel?: string | null
+  /** The amount on an `applied` or `fee_seen` event. */
+  amount?: number | null
   /** The office's reason, on a `pulled` event (#85 item 16). */
   reason?: string | null
   portalUrl: string
   unsubscribeUrl: string
 }): LegalEmail {
   const payer = i.payer || 'an account'
-  const subject = i.trigger === 'referred' ? `New account referred: ${payer}` : i.trigger === 'answer' ? `${i.companyName} answered on ${payer}` : `${LEGAL_REFERRAL_WITHDRAWN}: ${payer}`
-  const line =
-    i.trigger === 'referred'
-      ? `${legalEsc(i.companyName)} has referred <b>${legalEsc(payer)}</b> to ${legalEsc(i.firmName)}${i.handling ? ` — handling: ${legalEsc(i.handling)}` : ''}.${i.note ? `<br><i>“${legalEsc(i.note)}”</i>` : ''}`
-      : i.trigger === 'answer'
-        ? `The office answered your question on <b>${legalEsc(payer)}</b>:<br><i>${legalEsc(i.body)}</i>`
-        : `${legalEsc(i.companyName)} has withdrawn the referral of <b>${legalEsc(payer)}</b>.${i.reason ? `<br>Why: <i>${legalEsc(i.reason)}</i>` : ''}<br>Your fees and costs and the conversation stay readable on the portal; the account's records do not.`
+  const p = `<b>${legalEsc(payer)}</b>`
+  const said = i.body ? `<br><i>${legalEsc(i.body)}</i>` : ''
+  let subject: string
+  let line: string
+  switch (i.trigger) {
+    case 'referred':
+      subject = `New account referred: ${payer}`
+      line = `${legalEsc(i.companyName)} has referred ${p} to ${legalEsc(i.firmName)}${i.handling ? ` — handling: ${legalEsc(i.handling)}` : ''}.${i.note ? `<br><i>“${legalEsc(i.note)}”</i>` : ''}`
+      break
+    case 'answer':
+      subject = `${i.companyName} answered on ${payer}`
+      line = i.question ? `The office answered your question on ${p}.<br>You asked: <i>${legalEsc(i.question)}</i><br>The office: <i>${legalEsc(i.body)}</i>` : `The office answered your question on ${p}:${said}`
+      break
+    case 'ask':
+      subject = i.flavor === 'signoff' ? `${i.companyName} asks your sign-off on ${payer}` : `${i.companyName} asks you about ${payer}`
+      line = `The office asks on ${p}${i.flavor === 'signoff' ? ` for your sign-off${i.jobLabel ? ` on job ${legalEsc(i.jobLabel)}` : ''}` : ''}:${said}<br>Answer it on the matter's Fees &amp; steps tab.`
+      break
+    case 'note':
+      subject = `A note from ${i.companyName} on ${payer}`
+      line = `The office added a note on ${p}:${said}`
+      break
+    case 'applied':
+      subject = `Payment applied on ${payer}`
+      line = `The office applied ${i.amount != null ? `<b>${money(i.amount)}</b>` : 'the payment'} you received on ${p} to the job, and recorded your share.`
+      break
+    case 'fee_seen':
+      subject = `${i.companyName} saw your fee on ${payer}`
+      line = `The office saw ${i.amount != null ? `<b>${money(i.amount)}</b>` : 'your fee'} on ${p}.${said}`
+      break
+    default:
+      subject = `${LEGAL_REFERRAL_WITHDRAWN}: ${payer}`
+      line = `${legalEsc(i.companyName)} has withdrawn the referral of ${p}.${i.reason ? `<br>Why: <i>${legalEsc(i.reason)}</i>` : ''}<br>Your fees and costs and the conversation stay readable on the portal; the account's records do not.`
+  }
   const html = legalWrapHtml(i.companyName, `<p>${line}</p>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
   return { subject, text: `${subject}\n\n${i.portalUrl}`, html }
 }
 
 /** `releasedAt` and `createdAt` are instants (`legal_matters.released_at`, `legal_notification_queue.created_at`); the digest prints their day in the company's zone. */
 export type LegalDigestMatter = { payerName: string; stage: string; handlingName?: string | null; releasedAt?: string | null }
-export type LegalDigestEvent = { createdAt: string; trigger: LegalNowTrigger; payer: string; body?: string | null; reason?: string | null }
+export type LegalDigestEvent = { createdAt: string; trigger: LegalNowTrigger; payer: string; body?: string | null; reason?: string | null; amount?: number | null }
+
+const DIGEST_LABEL: Record<LegalNowTrigger, string> = {
+  referred: 'New account referred',
+  answer: 'Office answered',
+  pulled: LEGAL_REFERRAL_WITHDRAWN,
+  ask: 'The office asks',
+  note: 'Note from the office',
+  applied: 'Payment applied',
+  fee_seen: 'Fee seen by the office',
+}
 
 /** `legal-notify-dispatch` → the once-a-day digest for recipients on "digest". */
 export function buildLegalDigestEmail(i: { companyName: string; recipientName: string; matters: LegalDigestMatter[]; events: LegalDigestEvent[]; portalUrl: string; unsubscribeUrl: string }): LegalEmail {
   const matterLines = i.matters.length
     ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(legalFirmStageWords(m.stage))}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(todayYmdInAppTz(new Date(m.releasedAt)))}` : ''}</li>`).join('')
     : '<li>No open matters.</li>'
+  const detail = (e: LegalDigestEvent): string => {
+    if (e.trigger === 'pulled') return e.reason ? ` — ${legalEsc(e.reason)}` : ''
+    const amt = (e.trigger === 'applied' || e.trigger === 'fee_seen') && e.amount != null ? ` ${money(e.amount)}` : ''
+    return `${amt}${e.body && e.trigger !== 'referred' ? ` — ${legalEsc(e.body)}` : ''}`
+  }
   const eventLines = i.events.length
-    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : LEGAL_REFERRAL_WITHDRAWN}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'pulled' && e.reason ? ` — ${legalEsc(e.reason)}` : ''}${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
+    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${DIGEST_LABEL[e.trigger] ?? 'Update'}: <b>${legalEsc(e.payer)}</b>${detail(e)}</li>`).join('')
     : '<li>Nothing new since your last digest.</li>'
   const subject = `Weekly digest — ${i.matters.length} open matter${i.matters.length === 1 ? '' : 's'} at ${i.companyName}`
   const html = legalWrapHtml(i.companyName, `<p>Your weekly digest, ${legalEsc(i.recipientName)}.</p><h3 style="font-size:14px;margin:12px 0 4px">Open matters</h3><ul>${matterLines}</ul><h3 style="font-size:14px;margin:12px 0 4px">Since your last digest</h3><ul>${eventLines}</ul>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)

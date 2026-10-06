@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
-import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
+import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalNowTriggerOf, legalPageHtml, legalTriggerSendsNow, legalWrapHtml } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
@@ -12,6 +12,8 @@ import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
  * The firm's emails (Legal portal train, PR 5). Two doors:
  *
  *   POST (pg_cron every 5 minutes, X-Cron-Secret) —
+ *     Events (#85 item 17): referred · answer (with the firm's question) · pulled (with the reason) · ask ·
+ *     note · applied — each emailed right away and carried by the digest — and fee_seen, digest only.
  *     1. drains legal_notification_queue rows not yet sent: every confirmed, unpaused
  *        recipient at the firm with mode 'now' (and, for scope 'mine', named as the
  *        matter's handling person) gets one email per event. v2.4662: each person is
@@ -198,7 +200,9 @@ serve(async (req) => {
         // v2.4662: the per-person ledger. Before the migration's column exists (`sent_to` absent) the
         // event is stamped after one pass, as before, so a deploy ahead of the push never re-sends.
         const hasLedger = ev.sent_to !== undefined
-        const targetIds = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id)).map((r) => r.id)
+        // #85 item 17: every office event; an unknown trigger is skipped, never mislabeled; a fee the office saw rides the digest only.
+        const trigger = legalNowTriggerOf(ev.trigger)
+        const targetIds = trigger && legalTriggerSendsNow(trigger) ? recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id)).map((r) => r.id) : []
         const plan = legalNotifyDue(hasLedger ? parseSentTo(ev.sent_to) : {}, targetIds)
         let sentTo = plan.sentTo
         for (const r of recipients.filter((x) => plan.due.includes(x.id))) {
@@ -208,11 +212,15 @@ serve(async (req) => {
           const mail = buildLegalNowEmail({
             companyName: PORTAL_COMPANY.name,
             firmName: firm.name,
-            trigger: (ev.trigger === 'referred' || ev.trigger === 'answer' ? ev.trigger : 'pulled') as LegalNowTrigger,
+            trigger: trigger ?? 'note',
             payer: String(ev.payload.payer ?? 'an account'),
             handling: ev.payload.handling ? String(ev.payload.handling) : null,
             note: ev.payload.note ? String(ev.payload.note) : null,
             body: ev.payload.body ? String(ev.payload.body) : null,
+            question: ev.payload.question ? String(ev.payload.question) : null,
+            flavor: ev.payload.flavor ? String(ev.payload.flavor) : null,
+            jobLabel: ev.payload.jobLabel ? String(ev.payload.jobLabel) : null,
+            amount: ev.payload.amount != null && Number.isFinite(Number(ev.payload.amount)) ? Number(ev.payload.amount) : null,
             reason: ev.payload.reason ? String(ev.payload.reason) : null,
             portalUrl: portal,
             unsubscribeUrl: unsub,
@@ -239,7 +247,7 @@ serve(async (req) => {
         if (r.digest_weekday !== weekday || hhmm < r.digest_time) continue
         if (ymdInAppTz(r.last_digest_at) === today) continue
         const { data: sinceRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('digested_at', null).order('created_at').limit(200)
-        const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id))
+        const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id) && legalNowTriggerOf(e.trigger) != null)
         const mine = matters.filter((m) => canSee(r, m.id))
         const unsub = await unsubscribeLink(admin, r)
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
@@ -247,7 +255,7 @@ serve(async (req) => {
           companyName: PORTAL_COMPANY.name,
           recipientName: r.name,
           matters: mine.map((m) => ({ payerName: m.payer_name, stage: m.stage, handlingName: m.handling_name, releasedAt: m.released_at })),
-          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: (e.trigger === 'referred' || e.trigger === 'answer' ? e.trigger : 'pulled') as LegalNowTrigger, payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null, reason: e.payload.reason ? String(e.payload.reason) : null })),
+          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: legalNowTriggerOf(e.trigger) ?? 'note', payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null, reason: e.payload.reason ? String(e.payload.reason) : null, amount: e.payload.amount != null && Number.isFinite(Number(e.payload.amount)) ? Number(e.payload.amount) : null })),
           portalUrl: portal,
           unsubscribeUrl: unsub,
         })
