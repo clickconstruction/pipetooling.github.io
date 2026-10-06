@@ -1045,6 +1045,33 @@ G-139, by Helper 5, round three (the mock-up and plan: `mockups/G-139.md`). `sta
 What the second look changed: a button per line in the reminder was not needed, since every message
 ends with the link to the company's portal home, whose to-dos already open each paper.
 
+## Later, people on site per week, as built (2026-10-06)
+
+G-84, by Helper 5, round three (the mock-up and plan: `mockups/G-84.md`). `gcPeopleOnSite.ts`
+(tested, out of the barrel), `GcPeopleStrip.tsx`, and an optional `peopleOf` on the chart, given only
+by the office's Schedule tab.
+
+- **A strip under the rows**, in Chart view, behind *Show people on site* beside *Show spare days*.
+  Each week, Monday to Sunday as the axis runs, the plan's busiest day as an outlined bar beside the
+  daily log's busiest day as a filled one, their numbers above where the week is wide enough (not at
+  Months zoom), and a card on hover: "15 at the busiest, Mon Sep 21.", who made it up with each
+  trade's count, "19 at the busiest, Tue Sep 22, 5 days logged.", and where the counts came from.
+- **The counts**, per trade and week: its own count for the week (Helper 4's G-142, through a `told`
+  slot left empty until G-142 merges; then one line passes `crewCountsNow(project)`), else the daily
+  log's last count for it, else `ASSUMED_CREW`, 3, named on the strip and the card. One trade counts
+  once a day, as the log does; our own crew counts; inspections and added activities never do.
+- **The plan on its own dates**, not G-60's `runsOn`: a late bar not done would otherwise fill every
+  week ahead. The log is what shows a late bar's crew, so the gap is the news.
+- **A short week** (the log's busiest day 3 or more below the plan's, `SHORT_BY`) reads amber, with a
+  *Short* line on the card.
+- **The whole job**: the strip's totals do not change with a filter or a fold; a test holds it. The
+  customer never sees it: the chart is drawn only on the office's tab, and the print does not carry it.
+- On Fair Oaks D: the week of Sep 21 plans 15 against 19 on the log, Sep 28 plans 15 against 18,
+  then 12, 9, 9 and 2 ahead.
+
+Left for later, its own small row: the strip on our team's printed copy while the toggle is on, as
+the spare-day tails print (a change to G-21's `gcGanttPrint.ts`). The trades' own counts are G-142's.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

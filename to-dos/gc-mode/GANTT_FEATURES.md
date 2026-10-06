@@ -103,7 +103,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-81 | A what-if copy of the whole schedule to try moves on, beside the real one, kept or thrown away | See | New | Later |
 | G-82 | How to get days back: the bars on the red chain that could run together or take a bigger crew | See | New | Later |
 | G-83 | Too many trades in one place in one week, flagged | See | New | Later |
-| G-84 | People on site per week as a strip under the chart, planned against the daily log's count | See | New | Later |
+| G-84 | People on site per week as a strip under the chart, planned against the daily log's count | See | Have (built 2026-10-06: *Show people on site* in Chart view, a strip under the rows with each week's plan at its busiest day beside the daily log's busiest day, the whole job whatever is filtered or folded; each trade's count its own (G-142, once merged), else the log's last, else an assumed 3, named; a week 3 or more short reads amber; `gcPeopleOnSite.ts`, `GcPeopleStrip.tsx`) | Later |
 
 ## F. Telling the customer
 
