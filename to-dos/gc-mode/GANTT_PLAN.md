@@ -1274,7 +1274,8 @@ file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWo
   on the day it is expected or came, which the work it holds waits on; then *Dates the job must
   meet*. Each with its trade, company, days, percent, spare days (a number, so a sort puts the work
   that sets the finish on top), the chart's words for where it stands, what it waits on with its gap,
-  Not before, Must finish by, and the days it really ran.
+  Not before, Must finish by, and the days it really ran. While a bar has a place kept (G-83), a
+  *Place* column after *Company* carries each bar's place.
 - **The customer's copies** read `customerSchedulePicture` and nothing else. An owner gets *Stages of
   the job* (their portal's stages, dates, percent and words) and *Dates to meet*. A GC or an owner's
   rep gets every bar of their list by stage, in their words (*on plan*, *not started*), in the order
@@ -1296,8 +1297,8 @@ file so a test stands in for it), the Export button in `GcGantt.tsx`, and `forWo
   tasks are numbered 1, 2, 3; waits are finish-to-start links between tasks in the file, the gap in
   tenths of a minute (4800 a day). A date to meet and a wait are milestones at the end of their day,
   so the work after starts the next morning, as the chart holds it. The status date is today. The
-  company is in Text1, named *Company*, on our team's copy only. Left out: baselines, deadlines,
-  resources and notes.
+  company is in Text1, named *Company*, on our team's copy only, and a kept place (G-83) in Text2,
+  named *Place*, declared beside it. Left out: baselines, deadlines, resources and notes.
 - **Each task held to its day** (a change from the plan): both programs place a task as early as its
   links allow, so a bar with spare days before it would jump left on open, and the customer's copies,
   which have no links, would all start on the first day. So every task starts no earlier than its day
@@ -1488,6 +1489,12 @@ change in behavior.
   - The call list: a `crowded` line for each hired company in a crowded week of the look-ahead that
     has not given its count (G-142), amber this week and next. Its Follow up words ask for the
     count in English and Spanish. It goes once the count is given.
+  - Our team's exported file (G-136), as a follow-up: a *Place* column after *Company* in the
+    spreadsheet and Text2 *Place* beside Text1 *Company* in the project file, only while a bar has a
+    place kept, so a job without places writes the files as before. Two pins: both writers carry the
+    kernel's places in its order, and the customer's files hold no *Place*, no Text2 and no typed
+    place anywhere. G-137's reader knows our team's header with *Place* as ours, and reads both files
+    back exactly as it reads them without; a test holds the round trip.
   - Nothing on the customer's side, the trade's portal or the paper.
 - On Fair Oaks D with the guesses kept: Inside has 3 trades at once from Fri Oct 2 to Fri Oct 9,
   Pecan Valley Electric 2, our own crew 3 and Cool Breeze Mechanical 3, about 8 people a day. The
@@ -1517,7 +1524,8 @@ two doors.
   - while a what-if copy is open.
   The made-up data has no walk for Fair Oaks D, so Start is what keeps it shut.
 - **What it reads**: Project's XML (MSPDI), which P6 also writes, and our three spreadsheets. The
-  reader uses the namespace and headers `gcScheduleExport.ts` writes with.
+  reader uses the namespace and headers `gcScheduleExport.ts` writes with, our team's with or without
+  its *Place* column (G-83, `csvHeads`).
   - Passed over: task 0, groups, blank rows and inactive tasks. A group's name still helps the guess.
   - Waits: finish-to-start between activities. The gap is read in working days by the file's
     minutes a day, or as elapsed days.

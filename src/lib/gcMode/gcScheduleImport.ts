@@ -20,7 +20,7 @@ import { daysBetween, scheduleLinesOf } from './gcBuildingSchedule'
 import { TRADE_TEMPLATES, lineStage, scheduleDraft } from './gcNewProject'
 import { weekdayDate } from './gcWords'
 import { splitParts } from './gcSplitBars'
-import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, type ExportCopy } from './gcScheduleExport'
+import { CSV_COLUMNS, EXPORT_DATES_CUSTOMER, EXPORT_DATES_TEAM, EXPORT_WAITS_GROUP, MSPDI_NAMESPACE, csvHeads, type ExportCopy } from './gcScheduleExport'
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -275,7 +275,8 @@ const WAIT_KINDS = new Set(['delivery', 'decision', 'permit', 'utility'])
 function readSpreadsheet(text: string): ScheduleFileResult {
   const [head = [], ...lines] = csvTable(text.replace(/^﻿/, ''))
   const heads = head.map((h) => h.trim())
-  const copy = (Object.keys(CSV_COLUMNS) as ExportCopy[]).find((c) => CSV_COLUMNS[c].map((col) => col.head).join('\u0000') === heads.join('\u0000'))
+  // Our team's copy carries a Place column after Company while a bar has a place kept (G-83): either header is ours.
+  const copy = (Object.keys(CSV_COLUMNS) as ExportCopy[]).find((c) => [false, true].some((withPlace) => csvHeads(c, withPlace).join('\u0000') === heads.join('\u0000')))
   if (!copy) return { problem: NOT_OUR_COLUMNS }
   const cellOf = (cells: string[], name: string) => {
     const i = heads.indexOf(name)
