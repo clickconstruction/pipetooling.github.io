@@ -160,7 +160,8 @@ describe('what the copy takes, and what it refuses', () => {
   })
 
   it('takes only a move, a pull, undo and redo, on its own job, with a copy open', () => {
-    expect(WHAT_IF_ACTIONS).toEqual(['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove', 'recoverScheduleDays'])
+    // G-39 adds a part's move: a split line's part tried in the copy.
+    expect(WHAT_IF_ACTIONS).toEqual(['setScheduleActivity', 'pullScheduleEarlier', 'undoScheduleMove', 'redoScheduleMove', 'recoverScheduleDays', 'moveActivityPart'])
     const refused: GcAction[] = [
       { type: 'tellTradesMoves', projectId: ID, moveIds: [], by: 'Robert' },
       { type: 'setActualDates', projectId: ID, lineId: 'froof-1', actualStart: '2026-09-21', by: 'Robert' },

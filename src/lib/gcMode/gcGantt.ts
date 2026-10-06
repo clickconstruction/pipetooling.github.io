@@ -342,8 +342,11 @@ export function ganttListGroups(bars: GanttBar[], today: string): { group: Gantt
     .map(({ group }) => ({ group, now: rank(group) === 0, open: !group.bars.every((b) => b.status === 'done') }))
 }
 
-/** One row of the chart laid out: a group's header or a bar, with where it sits from the top. */
-export type GanttRowEntry = { kind: 'group'; key: string; y: number; height: number } | { kind: 'bar'; key: string; y: number; height: number; groupKey: string }
+/** One row of the chart laid out: a group's header or a bar, with where it sits from the top. A split line's part (G-39) has a row under its line's. */
+export type GanttRowEntry =
+  | { kind: 'group'; key: string; y: number; height: number }
+  | { kind: 'bar'; key: string; y: number; height: number; groupKey: string }
+  | { kind: 'part'; key: string; y: number; height: number; groupKey: string; lineId: string }
 
 /**
  * Which rows to draw when only the rows in view are drawn (G-135): the entries whose span crosses
