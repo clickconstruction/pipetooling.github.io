@@ -1,0 +1,123 @@
+/**
+ * The firm's print of a referral packet (punch list #85, item 1): built from the
+ * sample matter through the real parser and kernel, so the test reads what the
+ * firm would hold — and proves the office's own lines never reach it.
+ */
+import { describe, expect, it } from 'vitest'
+import { sampleLegalPortalResponse } from '../../../supabase/functions/_shared/customerSampleFixtures'
+import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
+import { buildFirmPacketPrintHtml, firmFeeEntries, firmJobRecordWords, firmStageWords } from './legalFirmPacketPrint'
+import { buildLegalPacketPrintHtml } from './legalPacketPrint'
+import { formatLegalMoney } from './legalPacket'
+import type { LegalEntryRow } from './legalMatters'
+
+const company = { name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' }
+
+function sample(todayYmd = '2026-10-05') {
+  const payload = parseLegalPortalPayload(sampleLegalPortalResponse(company as Parameters<typeof sampleLegalPortalResponse>[0], todayYmd))
+  if (!payload) throw new Error('sample did not parse')
+  const m = payload.matters[0]
+  if (!m) throw new Error('sample has no matter')
+  const packet = buildMatterPacket(m, payload.preparedOn, portalFeeModel(payload))
+  if (!packet) throw new Error('sample built no packet')
+  return { payload, m, packet }
+}
+
+function entry(partial: Partial<LegalEntryRow> & Pick<LegalEntryRow, 'kind' | 'body'>): LegalEntryRow {
+  return { id: partial.id ?? partial.body, matter_id: 'm', amount: null, occurred_on: '2026-10-01', meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: '2026-10-01T12:00:00Z', ...partial }
+}
+
+describe('buildFirmPacketPrintHtml — the sample matter', () => {
+  const { payload, m, packet } = sample()
+  const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+
+  it('is addressed to the firm and says the matter, the stage and the demand', () => {
+    expect(html).toContain('Referral packet')
+    expect(html).toContain(`prepared 2026-10-05 for ${payload.firm.name.replace("&", "&amp;")}`)
+    expect(html).toContain(payload.firm.handling_name)
+    expect(html).toContain('Sample Contracting')
+    expect(html).toContain('Balance owed')
+    expect(html).toContain('Fees and costs to date')
+    expect(html).toContain('Demand as of 2026-10-05')
+    // $14,400 balance + the firm's $450 fee
+    expect(html).toContain('$14,850.00')
+  })
+
+  it('carries none of the office packet’s own lines', () => {
+    for (const officeOnly of ['Before release', 'not worth it', 'marginal', 'worth it', 'nothing held back', 'held back by the office', 'a firm has not been assigned', 'Theory']) {
+      expect(html, officeOnly).not.toContain(officeOnly)
+    }
+    // …which the office packet does print for the same matter.
+    const office = buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name })
+    expect(office).toContain('Before release')
+    expect(office).toContain('a firm has not been assigned')
+  })
+
+  it('prints the firm’s own fee with a total, and the office note', () => {
+    expect(html).toContain('Demand letter drafted and sent')
+    expect(html).toContain('$450.00')
+    expect(html).toContain('From the office:')
+    expect(html).toContain(m.noteToFirm.slice(0, 30))
+  })
+
+  it('runs a balance down the statement and signs a payment before the dollar', () => {
+    expect(html).toContain('$18,400.00')
+    expect(html).toContain('−$4,000.00')
+    expect(html).not.toContain('$-4,000.00')
+    expect(html).toContain('Balance owed')
+  })
+
+  it('letters the exhibits with where each one sits', () => {
+    expect(html).toContain('A · Statement of account')
+    expect(html).toContain('B · Agreements')
+    expect(html).toContain('C · Record of contact')
+    expect(html).toContain('D · Field evidence')
+  })
+
+  it('ends with the company’s particulars for filing', () => {
+    expect(html).toContain('Legal entity')
+    expect(html).toContain('Custodian of records')
+    expect(html).toContain('Registered agent')
+    expect(html).toContain("business records as of 2026-10-05")
+  })
+})
+
+describe('firmFeeEntries', () => {
+  it('keeps the firm’s fees and costs and drops the office’s contingency row', () => {
+    const rows = [
+      entry({ kind: 'fee', body: 'Demand letter', amount: 450 }),
+      entry({ kind: 'cost', body: 'Filing', amount: 350 }),
+      entry({ kind: 'cost', body: 'Contingency 33% of $4,000.00', amount: 1320, via_portal: false }),
+      entry({ kind: 'cost', body: 'Tagged', amount: 10, via_portal: false, meta: { contingency: true } }),
+      entry({ kind: 'payment_received', body: 'Check 1001', amount: 4000 }),
+    ]
+    expect(firmFeeEntries(rows).map((e) => e.body)).toEqual(['Demand letter', 'Filing'])
+  })
+})
+
+describe('firmJobRecordWords and firmStageWords', () => {
+  it('says what is on file as facts, never a theory', () => {
+    const { packet } = sample()
+    const job = packet.account.jobs[0]
+    if (!job) throw new Error('sample has no job')
+    expect(firmJobRecordWords(job)).toBe('signed agreement 2026-04-22 by Pat Sample')
+    const sworn = { ...job, contract: { ...job.contract, kind: 'none' as const }, swornMissing: [] } as unknown as typeof job
+    expect(firmJobRecordWords(sworn)).toBe('bill sent, crew on site with GPS, no dispute logged')
+    const missing = { ...sworn, swornMissing: ['field evidence with GPS'] } as unknown as typeof job
+    expect(firmJobRecordWords(missing)).toBe('on file: bill sent, no dispute logged · missing: field evidence with GPS')
+  })
+  it('names the stage in the firm’s words', () => {
+    expect(firmStageWords('referred')).toBe('referred · no step recorded yet')
+    expect(firmStageWords('suit')).toBe('suit filed')
+    expect(firmStageWords('pulled')).toBe('pulled back by the office')
+  })
+})
+
+describe('formatLegalMoney', () => {
+  it('puts the sign before the dollar', () => {
+    expect(formatLegalMoney(-4000)).toBe('−$4,000.00')
+    expect(formatLegalMoney(0)).toBe('$0.00')
+    expect(formatLegalMoney(-0.001)).toBe('$0.00')
+    expect(formatLegalMoney(1234.5)).toBe('$1,234.50')
+  })
+})
