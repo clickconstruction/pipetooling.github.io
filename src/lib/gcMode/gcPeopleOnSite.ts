@@ -38,8 +38,8 @@ export interface PeopleWeek {
   logged: { on: string; count: number; days: number } | null
   /** The log's busiest day had SHORT_BY or more people fewer than the plan's. */
   short: boolean
-  /** The hover card's rows, in plain words: the plan, who, the log, where the counts came from. */
-  rows: { label: string; text: string }[]
+  /** The hover card's rows, in plain words: the plan, who, the log, where the counts came from. Who has a line for each company. */
+  rows: { label: string; lines: string[] }[]
 }
 
 function totalOn(log: DailyLog): number {
@@ -84,16 +84,18 @@ export function peopleOnSite(state: GcState, project: GcProject, from: string, t
     const logged = busiest ? { on: busiest.date, count: totalOn(busiest), days: weekLogs.length } : null
     const short = logged !== null && best.count - logged.count >= SHORT_BY
     const rows: PeopleWeek['rows'] = [
-      { label: 'Plan', text: best.on ? `${best.count} at the busiest, ${weekdayDate(best.on)}.` : 'Nothing on the plan this week.' },
-      ...(by.length > 0 ? [{ label: 'Who', text: by.map((b) => `${b.company} ${b.count}${b.from === 'told' ? ', its own count' : b.from === 'assumed' ? ', assumed' : ''}`).join(', ') }] : []),
-      { label: 'Log', text: logged ? `${logged.count} at the busiest, ${weekdayDate(logged.on)}, ${logged.days} ${logged.days === 1 ? 'day' : 'days'} logged.` : 'No daily log this week.' },
-      ...(short && logged ? [{ label: 'Short', text: `The log had ${best.count - logged.count} fewer people than the plan.` }] : []),
+      { label: 'Plan', lines: [best.on ? `${best.count} at the busiest, ${weekdayDate(best.on)}.` : 'Nothing on the plan this week.'] },
+      ...(by.length > 0 ? [{ label: 'Who', lines: by.map((b) => `${b.company} ${b.count}${b.from === 'told' ? ', its own count' : b.from === 'assumed' ? ', assumed' : ''}`) }] : []),
+      { label: 'Log', lines: [logged ? `${logged.count} at the busiest, ${weekdayDate(logged.on)}, ${logged.days} ${logged.days === 1 ? 'day' : 'days'} logged.` : 'No daily log this week.'] },
+      ...(short && logged ? [{ label: 'Short', lines: [`The log had ${best.count - logged.count} fewer people than the plan.`] }] : []),
       {
         label: 'Counts',
-        text: [
-          by.some((b) => b.from === 'told') ? "A trade's own count for the week comes first, then the daily log's last count." : "Each is the daily log's last count for that trade.",
-          `A trade with no count yet is counted as ${ASSUMED_CREW}.`,
-        ].join(' '),
+        lines: [
+          [
+            by.some((b) => b.from === 'told') ? "A trade's own count for the week comes first, then the daily log's last count." : "Each is the daily log's last count for that trade.",
+            `A trade with no count yet is counted as ${ASSUMED_CREW}.`,
+          ].join(' '),
+        ],
       },
     ]
     out.push({ weekOf: week, planned: { on: best.on, count: best.count, by }, logged, short, rows })
