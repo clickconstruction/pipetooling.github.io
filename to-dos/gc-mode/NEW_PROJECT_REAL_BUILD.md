@@ -327,3 +327,14 @@ Drive link and its check (three columns on a set, `gc-drive-access`, Plans and T
 set kinds (bid, pricing and permit for the first set), *We work for* and the property's owner (two
 columns on `gc_projects`), budgets by size (`sq_ft` stored as typed), and PR 1b for their kernels.
 PR 1b is next, on the owner's word.
+
+Amended 2026-10-06, the day the owner said the shape is settled: PR 1b landed as v2.4696
+(clickconstruction/pipetooling.github.io#4687: sheets, budgets, drive, set kinds, customer role,
+exclusions and the scope book kernels in `src/lib/gc/`). PR 2 landed as v2.4703 (#4699, migration
+`20261006233000_gc_projects_trades_scope`) and PR 3 as v2.4691 (#4701, migration
+`20261006234000_gc_plan_sets_questions`); both are applied to prod with `supabase db push`, the
+types PR is #4713. PR 4 is cut in two on main: 4a, v2.4707 (#4718), is `gc_create_project` and the
+row mapper `src/lib/gc/projectRows.ts`; 4b, v2.4708 (branch `claude/gc-real-build-pr4b-new-project`),
+is the window ported with its first four steps, `src/lib/gc/gcIo.ts`, the dev-only page at `/gc`
+and the guide `start-a-gc-project`. Step 5, Who to ask, stays on this branch until the company
+record exists. The scope book page (4b-second) and the Drive check (PR 5) are next.
