@@ -993,6 +993,31 @@ third optional argument on the chart's `barNote`.
 Left for Helper 1's counts row: an uninsured running trade as a reason on Follow up and Needs you,
 from `uninsuredBars`, so it lands in the one re-pin.
 
+## Later, one readiness list for both sides, as built (2026-10-06)
+
+G-139, by Helper 5, round three (the mock-up and plan: `mockups/G-139.md`). `startNeeds` in
+`gcStartReminders.ts` reads G-77's `startGaps`; six new portal keys; `PORTAL_SPANISH.md` regenerated.
+
+- **One list.** The trade's 14- and 3-day reminder keeps its submittals first, then reads the very
+  list the office's bar reads, on the same first day, in Get started's order, each gap in the trade's
+  words (`GAP_WORDS`, a `Record` over every gap kind: a kind the office adds without a trade sentence
+  fails the typecheck). Kendall Air on Helotes, started anyway, read Oct 6, used to hear only "Your
+  statement of work is not signed yet." while its bar waited on the master agreement too, and the
+  statement was only drafted. Now: "Your master agreement is not signed yet. Sign it in your
+  portal." and "Your statement of work is not sent yet. We will send it to sign."
+- **The new sentences**, English and Spanish: a master agreement sent or not sent, an insurance
+  certificate that already ran out ("ran out Tue Sep 15", where it used to say "runs out … before your
+  work starts" of a date already past), no W-9, a statement of work not sent, and one signed on plans
+  that changed since. The genders are `PORTAL_SPANISH.md`'s: *contrato maestro* masculine, *orden de
+  trabajo* feminine.
+- **The import cycle broken first**, its own commit: `NOT_READY_LATE_DAYS` is its own 3, held equal to
+  the last of `START_REMINDER_DAYS` by a test.
+- G-77's test that the bar never misses a paper the reminder names became equality: on the
+  reminder's days, the papers it names are the office's gaps, in order (eight mixes, both days).
+
+What the second look changed: a button per line in the reminder was not needed, since every message
+ends with the link to the company's portal home, whose to-dos already open each paper.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

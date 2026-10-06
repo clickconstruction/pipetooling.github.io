@@ -7,7 +7,7 @@
  *
  * Its own file, out of the barrel: the portal's messages read it.
  */
-import type { GcProject, GcState, TradePackage } from './gcTypes'
+import type { GcProject, GcState, Partner, TradePackage } from './gcTypes'
 import { addDays } from './gcBuilding'
 import { daysBetween, scheduleLinesOf } from './gcBuildingSchedule'
 import { firstOnSite } from './gcBuildingPromises'
@@ -15,6 +15,7 @@ import { submittalState } from './gcBuildingSubmittals'
 import { partnerById } from './gcLookups'
 import { pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import type { PortalMessage } from './gcPortal'
+import { startGaps, type StartGapKind } from './gcNotReady'
 
 /** Days before the first day the two reminders go: two weeks, then three days. */
 export const START_REMINDER_DAYS = [14, 3] as const
@@ -30,7 +31,25 @@ export function firstStartOf(project: GcProject, pkg: TradePackage): string | nu
   return starts.length === 0 ? null : starts.reduce((m, d) => (d < m ? d : m))
 }
 
-/** What must be in place before a company's first day, in its language. Empty: all set. */
+/**
+ * Each of the office's gaps (G-77's `startGaps`) in the trade's words (G-139). A gap kind with no
+ * sentence here fails the typecheck, so the office's list and the trade's never part. An award never
+ * reaches a trade: a reminder goes only to the company awarded.
+ */
+const GAP_WORDS: Record<StartGapKind, (x: { partner: Partner | undefined; pkg: TradePackage; today: string; lang: PortalLang }) => string | null> = {
+  award: () => null,
+  msa: ({ partner, lang }) => pt(lang, partner?.msa === 'sent' ? 'mStartNeedMsaSign' : 'mStartNeedMsaComing'),
+  insurance: ({ partner, today, lang }) =>
+    !partner?.coiExpires ? pt(lang, 'mStartNeedCoiNone') : pt(lang, partner.coiExpires < today ? 'mStartNeedCoiRanOut' : 'mStartNeedCoi', { date: pWeekday(lang, partner.coiExpires) }),
+  w9: ({ lang }) => pt(lang, 'mStartNeedW9'),
+  sow: ({ pkg, lang }) => pt(lang, pkg.sow?.status === 'sent' ? 'mStartNeedSow' : pkg.sow?.status === 'signed' ? 'mStartNeedSowNew' : 'mStartNeedSowComing'),
+}
+
+/**
+ * What must be in place before a company's first day, in its language. Empty: all set. Its
+ * submittals not yet approved, then the office's own list of papers on that day, in Get started's
+ * order (G-139): the same list the office's bar reads, so one side never has a paper the other lacks.
+ */
 export function startNeeds(state: GcState, partnerId: string, project: GcProject, pkg: TradePackage, firstStart: string, lang: PortalLang): string[] {
   const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
   const partner = partnerById(state, partnerId)
@@ -43,9 +62,10 @@ export function startNeeds(state: GcState, partnerId: string, project: GcProject
     const words = st === 'trade' ? t('mSubNotSent') : st === 'us' ? t('mSubWithUs') : t('mSubWithArchitect')
     needs.push(t('mStartNeedSubmittal', { number: s.number, title: s.title, state: words }))
   }
-  if (!partner?.coiExpires) needs.push(t('mStartNeedCoiNone'))
-  else if (partner.coiExpires < firstStart) needs.push(t('mStartNeedCoi', { date: pWeekday(lang, partner.coiExpires) }))
-  if (pkg.sow?.status !== 'signed') needs.push(t('mStartNeedSow'))
+  for (const gap of startGaps(state, project, pkg, firstStart)) {
+    const words = GAP_WORDS[gap.kind]({ partner, pkg, today: state.today, lang })
+    if (words) needs.push(words)
+  }
   return needs
 }
 
