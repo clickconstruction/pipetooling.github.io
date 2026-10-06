@@ -37,6 +37,8 @@ import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDa
 import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { Chip } from './gcUi'
 import { GcGanttList } from './GcGanttList'
+import { GcPeopleStrip } from './GcPeopleStrip'
+import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
 import { GcGanttPrint } from './GcGanttPrint'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 
@@ -144,9 +146,12 @@ export function GcGantt({
   lateSaid,
   logNotes,
   uninsured,
+  peopleOf,
   callList,
   print,
   earlier,
+  real,
+  toolbarExtra,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -178,12 +183,18 @@ export function GcGantt({
   logNotes?: Map<string, { note: string; words: string }>
   /** A bar under way whose trade's insurance ran out (G-138): a red note beside it and a line on its hover card. No stripes: the work goes on. */
   uninsured?: Map<string, { note: string; words: string }>
+  /** People on site per week (G-84), the plan's busiest day against the daily log's, for the weeks between two days. Given only by the office's tab; unset, no toggle and no strip. */
+  peopleOf?: (from: string, to: string) => PeopleWeek[]
   /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
   callList?: ReactNode
   /** The job's words for Print or PDF (G-21). Unset: the toolbar has no print button. */
   print?: GanttPrintJob
   /** Where each bar could start now that the work before it finished early (G-37): a green ghost behind it, and a line on its hover card. */
   earlier?: Map<string, { start: string; finish: string; words: string }>
+  /** In a what-if copy (G-81): the real schedule's dates under each bar the copy moved, a grey ghost behind it and a line on its hover card. */
+  real?: Map<string, { start: string; finish: string }>
+  /** One more control at the end of the toolbar: the what-if's way in and out (G-81). */
+  toolbarExtra?: ReactNode
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -200,6 +211,8 @@ export function GcGantt({
   const [showLinks, setShowLinks] = useState(true)
   // Spare days as a faint tail after each bar (G-08), on request; held like the links, while the chart is open.
   const [showSpare, setShowSpare] = useState(false)
+  // People on site per week (G-84): a strip under the rows, the whole job whatever is filtered or folded.
+  const [showPeople, setShowPeople] = useState(false)
   // A group whose work is all done opens folded: it is history, and the live work gets the room.
   const [folded, setFolded] = useState<Set<string>>(() => finishedGroups(items, float, holds, today, building, 'trade'))
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -222,6 +235,7 @@ export function GcGantt({
   const shown = useMemo(() => ganttFilter(all, filters), [all, filters])
   const groups = useMemo(() => ganttGroups(shown, by), [shown, by])
   const axis = useMemo(() => ganttAxis(all, milestones, today, zoom), [all, milestones, today, zoom])
+  const people = useMemo(() => (showPeople && peopleOf ? peopleOf(axis.first, addDays(axis.first, axis.days - 1)) : []), [showPeople, peopleOf, axis.first, axis.days])
   const px = ZOOM_PX[zoom]
   const width = axis.days * px
   const x = (on: string) => daysBetween(axis.first, on) * px
@@ -398,6 +412,9 @@ export function GcGantt({
     const ghost = pushedTo.get(b.id)
     // The sooner days a pull would give it (G-37), drawn behind the bar so only the days it gains show.
     const soon = dragging ? undefined : earlier?.get(b.id)
+    // In a what-if (G-81), where the real schedule has this bar: a dashed outline over it, so the difference shows on one
+    // picture even where the copy only made the bar longer.
+    const realSpan = dragging ? undefined : real?.get(b.id)
     const isPicked = picked === b.id
     const rowBg = isPicked ? 'var(--bg-blue-tint)' : 'var(--surface)'
     const said = `${b.item.label}, ${b.item.company}. ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}. ${b.statusWords}.`
@@ -429,6 +446,13 @@ export function GcGantt({
             <span
               title={actualWords(a) ?? ''}
               style={{ position: 'absolute', left: x(a.actualStart), width: Math.max(px, (daysBetween(a.actualStart, a.actualFinish ?? (today > a.actualStart ? today : a.actualStart)) + 1) * px), top: 3, height: 3, borderRadius: 2, background: C.green, opacity: a.actualFinish ? 1 : 0.6 }}
+            />
+          )}
+          {realSpan && (
+            <span
+              aria-hidden
+              title={`Real: ${shortDate(realSpan.start)} to ${shortDate(realSpan.finish)}`}
+              style={{ position: 'absolute', left: x(realSpan.start) - 2, width: Math.max(px, (daysBetween(realSpan.start, realSpan.finish) + 1) * px) + 4, top: (ROW_H - BAR_H) / 2 - 3, height: BAR_H + 6, borderRadius: 6, boxSizing: 'border-box', border: '1.5px dashed var(--text-muted)', background: 'transparent', zIndex: 2, pointerEvents: 'none' }}
             />
           )}
           {soon && (
@@ -597,6 +621,11 @@ export function GcGantt({
           <button type="button" style={quietBtn} aria-pressed={showSpare} onClick={() => setShowSpare((v) => !v)} title="A faint tail after each bar, out to the last day it can finish before the job finishes later. The work that sets the finish has none.">
             {showSpare ? 'Hide spare days' : 'Show spare days'}
           </button>
+          {peopleOf && (
+            <button type="button" style={quietBtn} aria-pressed={showPeople} onClick={() => setShowPeople((v) => !v)} title="A strip under the rows: each week, the plan's busiest day against the daily log's.">
+              {showPeople ? 'Hide people on site' : 'Show people on site'}
+            </button>
+          )}
           <button type="button" style={quietBtn} onClick={() => setFolded(anyFolded ? new Set() : new Set(groups.map((g) => g.key)))}>
             {anyFolded ? 'Open all' : 'Fold all'}
           </button>
@@ -611,6 +640,7 @@ export function GcGantt({
               Print or PDF
             </button>
           )}
+          {toolbarExtra}
         </div>
         {/* The filters carry their counts, so the row is the chart's summary too (GANTT_FEATURES G-13, G-18). */}
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -840,6 +870,8 @@ export function GcGantt({
               Nothing on the schedule passes these filters.
             </div>
           )}
+          {/* People on site per week (G-84), under the rows: the whole job, whatever is filtered or folded. */}
+          {showPeople && people.length > 0 && <GcPeopleStrip weeks={people} first={axis.first} px={px} labelW={labelW} width={width} phone={phone} />}
 
           {/* Over the rows: the links, then today. Neither takes a press. */}
           <svg aria-hidden={!onUnlink} width={labelW + width} height={layout.height} style={{ position: 'absolute', left: 0, top: 0, zIndex: 2, pointerEvents: 'none' }}>
@@ -910,14 +942,14 @@ export function GcGantt({
 
       )}
 
-      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} />}
-      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} />}
+      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} />}
+      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
 }
 
-function GanttLegend({ building, canMove, spare = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean }) {
+function GanttLegend({ building, canMove, spare = false, people = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean; /** The people-on-site strip is on (G-84). */ people?: boolean }) {
   const key = (style: CSSProperties, words: string) => (
     <span key={words} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
       <span aria-hidden style={{ display: 'inline-block', boxSizing: 'border-box', flex: 'none', ...style }} />
@@ -938,6 +970,7 @@ function GanttLegend({ building, canMove, spare = false }: { building: boolean; 
       {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
       {spare && key({ width: 20, height: 3, background: 'var(--bg-blue-200)', borderRight: `1.5px solid ${C.blue}` }, "a bar's spare days: how long it can slip before the job finishes later")}
+      {people && key({ width: 20, height: 11, borderRadius: 2, border: '1.5px solid var(--text-muted)', background: `linear-gradient(90deg, var(--surface) 0 50%, ${C.blue} 50% 100%)` }, "people on site: the plan's busiest day each week, from each trade's count, beside the daily log's busiest day")}
       {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
@@ -951,7 +984,7 @@ function GanttLegend({ building, canMove, spare = false }: { building: boolean; 
 }
 
 /** Everything about one bar, beside the pointer: its days, how far along, what it waits on and holds up. */
-function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsured, soon }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined; log?: { note: string; words: string } | undefined; uninsured?: { note: string; words: string } | undefined; soon: { words: string } | null }) {
+function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsured, soon, realSpan }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; said?: { finish: string; words: string } | undefined; log?: { note: string; words: string } | undefined; uninsured?: { note: string; words: string } | undefined; soon: { words: string } | null; realSpan: { start: string; finish: string } | null }) {
   const a = bar.item.activity
   const n = ganttNeighbors(all, bar.id)
   const note = barNote(bar, log, uninsured)
@@ -1009,6 +1042,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log, uninsu
       {uninsured && row('Insurance', uninsured.words, 'var(--text-red-700)')}
       {log && row('Log', log.words, 'var(--text-amber-800)')}
       {soon && row('Could start', soon.words, 'var(--text-green-800)')}
+      {realSpan && row('Real', `${shortDate(realSpan.start)} to ${shortDate(realSpan.finish)}`)}
       {note && !bar.coTail && note.words !== log?.note && note.words !== uninsured?.note && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}

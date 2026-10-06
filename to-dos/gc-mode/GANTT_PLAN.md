@@ -1162,7 +1162,87 @@ list. The kernel is `gcCrewCounts.ts`, tested, out of the barrel. The portal lin
 
 Left out, by the lead's word: a portal-home to-do asking for next week's count, which would fire
 on the made-up data today and move the pinned portal to-dos; and the office typing a count from a
+
+## Later, the what-if copy, as built (2026-10-06)
+
+G-81, built by Helper 1 from `mockups/G-81.md` with the lead's go. `gcWhatIf.ts` (tested, out of the
+barrel), `GcWhatIf.tsx`, and four actions: `startWhatIf`, `inWhatIf`, `keepWhatIf` and
+`throwAwayWhatIf`.
+
+- **The copy sits beside the schedule, never inside it** (`GcProject.whatIf`). It starts as the real
+  schedule with a history of its own and no walks. Nothing outside the Schedule tab reads it: not
+  the portals, Follow up, Needs you, the call list, the board row, the Friday report, the customer's
+  views or the billing forecast's months. A test holds that with a copy open and two moves tried,
+  every one of them reads as with no copy.
+- **The way in** is **What if…** on the chart's toolbar. With a copy open it reads **What if · 2**,
+  and inside the copy **See the real schedule**. The copy stays open while the real one is shown.
+- **In the copy**, every move, pull (G-37), day got back (G-82) and wait the real schedule allows is
+  tried through the same windows, with Undo and Redo on the copy's own history. Why it moved is optional: *Try it*
+  saves with a reason when one is given whole, else with none yet (`ScheduleMove.noWhy`). One
+  wrapper action, `inWhatIf`, runs the move through the reducer on the copy and keeps only the
+  schedule that comes out. Any other action is refused. The walk, actual dates, inspections, waits,
+  milestones, baselines, sends, late notices and Tell the trades stay on the real schedule, and
+  their cards are hidden in the copy.
+- **The violet line** over the chart says what the copy does against the real one. On Fair Oaks D,
+  after Summit's TPO membrane a week later for the rain and our crew's Top out three days longer
+  with no reason: "2 moves tried. 5 bars differ from the real schedule. The job still finishes Tue
+  Dec 8, as in the real one. The bills: $22,661 of the Oct 25 bill moves to Nov 25. 1 move has no
+  reason yet." Each bar that differs has its real dates as a dashed outline over it, and *Real* on
+  its hover card.
+- **Keep** puts the copy's standing moves on the real schedule, oldest first, as real moves. Each
+  keeps its reason and words; one tried with none asks for them in the Keep window. Each is by the
+  person who kept it, today, marked *Tried in a what-if first* (`fromWhatIf`). The real activities
+  take the copy's planned dates and waits, and their actual dates and reports stay. Tell the trades,
+  the customer's What changed, Days lost and the billing forecast read them as moves. Undo takes
+  them off one at a time, and a test holds that two undos return the real schedule to before Keep.
+  A violet line then names the companies not told, with **Tell the trades**.
+- **Keep is refused once the real schedule moved since the copy was made**. That means a planned
+  date or a wait changed, not a report or an actual date. The window names the bar and says to make
+  a new copy, the way Undo stops when a later move stands.
+- **Throw it away** asks once inline, then drops the copy. The real schedule stays as it was.
+- Tests: `gcWhatIf.test.ts` (15) and `GcWhatIf.render.test.tsx` (6). The golden test did not move:
+  no fixture data and no new step; the four actions are in its list.
+
+What the second look changed:
+
+- **The real dates are an outline over the bar, not a shape behind it.** Drawn behind, a bar the
+  copy only made longer hid its real dates entirely.
+- **The copy's line carries its money** (G-97's forecast on the copy's dates against the real ones),
+  because a slip that holds the finish can still move a bill.
+- **The editor and the move window say *Try it*** in the copy, and the editor hides the real days,
+  so nothing there reads as if it were saved for real.
+
+Not done, on purpose: more than one copy at a time, keeping only some of the moves, a copy shown to
+the customer or a trade, a copy across a reload, and a list inside the copy of who it would need to
 call.
+
+## Later, people on site per week, as built (2026-10-06)
+
+G-84, by Helper 5, round three (the mock-up and plan: `mockups/G-84.md`). `gcPeopleOnSite.ts`
+(tested, out of the barrel), `GcPeopleStrip.tsx`, and an optional `peopleOf` on the chart, given only
+by the office's Schedule tab.
+
+- **A strip under the rows**, in Chart view, behind *Show people on site* beside *Show spare days*.
+  Each week, Monday to Sunday as the axis runs, the plan's busiest day as an outlined bar beside the
+  daily log's busiest day as a filled one, their numbers above where the week is wide enough (not at
+  Months zoom), and a card on hover: "15 at the busiest, Mon Sep 21.", who made it up with each
+  trade's count, "19 at the busiest, Tue Sep 22, 5 days logged.", and where the counts came from.
+- **The counts**, per trade and week: its own count for the week (Helper 4's G-142: the Schedule tab
+  passes `crewCountsNow(project)` as `told`), else the daily log's last count for it, else
+  `ASSUMED_CREW`, 3, named on the strip and the card. Summit saying 6 for the week of Oct 5 turns
+  that week's 12 into 14, and the week after keeps the log's 4. One trade counts
+  once a day, as the log does; our own crew counts; inspections and added activities never do.
+- **The plan on its own dates**, not G-60's `runsOn`: a late bar not done would otherwise fill every
+  week ahead. The log is what shows a late bar's crew, so the gap is the news.
+- **A short week** (the log's busiest day 3 or more below the plan's, `SHORT_BY`) reads amber, with a
+  *Short* line on the card.
+- **The whole job**: the strip's totals do not change with a filter or a fold; a test holds it. The
+  customer never sees it: the chart is drawn only on the office's tab, and the print does not carry it.
+- On Fair Oaks D: the week of Sep 21 plans 15 against 19 on the log, Sep 28 plans 15 against 18,
+  then 12, 9, 9 and 2 ahead.
+
+Left for later, its own small row: the strip on our team's printed copy while the toggle is on, as
+the spare-day tails print (a change to G-21's `gcGanttPrint.ts`). Asking a trade for its count is G-142's portal line.
 
 ## Keeping it true, weather and crews, as built (2026-10-06)
 
