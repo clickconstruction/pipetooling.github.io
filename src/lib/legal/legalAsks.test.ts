@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
-import { askKindWords, askStateWords, buildLegalAsks, defaultSignoffAsk, legalEntryKindWords, newAskMeta, openAsks, signoffStateForJob, signoffWords } from './legalAsks'
+import { askKindWords, askStateWords, buildLegalAsks, buildLegalConversation, conversationRows, conversationStateWords, conversationWho, defaultSignoffAsk, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, openAsks, signoffStateForJob, signoffWords } from './legalAsks'
 
 function entry(over: Partial<LegalEntryRow>): LegalEntryRow {
   return { id: 'e', matter_id: 'm-1', kind: 'note', amount: null, body: '', occurred_on: '2026-10-02', meta: {}, via_portal: false, created_by: null, acknowledged_at: null, created_at: '2026-10-02T15:00:00Z', ...over }
@@ -29,6 +29,61 @@ describe('buildLegalAsks', () => {
     expect(askStateWords(buildLegalAsks([ask, no])[0]!)).toEqual({ text: 'not yet · 2026-10-03', tone: 'stop' })
     expect(buildLegalAsks([{ ...ask, acknowledged_at: '2026-10-04T00:00:00Z' }])[0]!.state).toBe('withdrawn')
     expect(openAsks([ask, yes])).toHaveLength(0)
+  })
+})
+
+describe('buildLegalConversation (item 17)', () => {
+  const fq1 = entry({ id: 'fq1', kind: 'question', body: 'Signed change order?', via_portal: true, occurred_on: '2026-09-20', created_at: '2026-09-20T15:00:00Z' })
+  const linked = entry({ id: 'oa1', kind: 'answer', body: 'Yes, signed 4/2.', occurred_on: '2026-09-21', created_at: '2026-09-21T15:00:00Z', meta: { askId: 'fq1' } })
+  const firmAns = entry({ id: 'fa1', kind: 'answer', body: 'The statutory text.', via_portal: true, occurred_on: '2026-09-24', created_at: '2026-09-24T15:00:00Z', meta: { askId: 'ask-2' } })
+
+  it('threads each answer under its question, whichever side asked, oldest question first', () => {
+    const rows = conversationRows([linked, firmAns, q, fq1])
+    expect(rows.map((r) => [r.entry.id, r.isAnswer])).toEqual([['fq1', false], ['oa1', true], ['ask-2', false], ['fa1', true]])
+    expect(conversationWho(rows[0]!, 'firm')).toBe('You asked')
+    expect(conversationWho(rows[0]!, 'office')).toBe('The firm asked')
+    expect(conversationWho(rows[1]!, 'firm')).toBe('The office')
+    expect(conversationWho(rows[2]!, 'firm')).toBe('Grace asked')
+    expect(conversationWho(rows[3]!, 'office')).toBe('The firm')
+    expect(conversationWho({ ...rows[2]!, thread: { ...rows[2]!.thread, flavor: 'signoff', jobLabel: '273', askerName: '' } }, 'office')).toBe('We asked for a sign-off · 273')
+  })
+  it('an office answer saved before the link threads under the newest unanswered firm question before it', () => {
+    const fq2 = entry({ id: 'fq2', kind: 'question', via_portal: true, created_at: '2026-09-22T15:00:00Z' })
+    const bare = entry({ id: 'oa-old', kind: 'answer', body: 'See the Paper tab.', created_at: '2026-09-23T15:00:00Z' })
+    const threads = buildLegalConversation([fq1, linked, fq2, bare])
+    expect(threads.map((t) => [t.question.id, t.answers.map((a) => a.id), t.state])).toEqual([['fq1', ['oa1'], 'answered'], ['fq2', ['oa-old'], 'answered']])
+  })
+  it('never drops an answer with no question to sit under: it gets its own row (review)', () => {
+    const lone = entry({ id: 'oa-lone', kind: 'answer', body: 'We filed the affidavit today.', created_at: '2026-09-19T15:00:00Z' })
+    const stray = entry({ id: 'fa-stray', kind: 'answer', body: 'Signed off.', via_portal: true, created_at: '2026-09-25T15:00:00Z', meta: { askId: 'not-on-this-matter', signedOff: true } })
+    const rows = conversationRows([fq1, linked, lone, stray])
+    expect(rows.map((r) => [r.entry.id, r.isAnswer])).toEqual([['oa-lone', true], ['fq1', false], ['oa1', true], ['fa-stray', true]])
+    expect(rows[0]!.thread.orphan).toBe(true)
+    expect(conversationWho(rows[0]!, 'firm')).toBe('The office')
+    expect(conversationStateWords(rows[0]!, 'firm')).toBeNull()
+    expect(conversationWho(rows[3]!, 'office')).toBe('The firm')
+    expect(conversationStateWords(rows[3]!, 'office')).toEqual({ text: 'waiting on you', tone: 'warn' })
+  })
+  it('words each state for its reader: answered, seen, waiting, withdrawn, signed off', () => {
+    const open = conversationRows([fq1])[0]!
+    expect(conversationStateWords(open, 'firm')).toEqual({ text: 'waiting on the office', tone: 'warn' })
+    expect(conversationStateWords(open, 'office')).toEqual({ text: 'waiting on you', tone: 'warn' })
+    expect(conversationStateWords(conversationRows([{ ...fq1, acknowledged_at: '2026-09-21T00:00:00Z' }])[0]!, 'firm')).toEqual({ text: 'seen', tone: 'ok' })
+    const answered = conversationRows([fq1, linked])
+    expect(conversationStateWords(answered[0]!, 'firm')).toEqual({ text: 'answered 2026-09-21', tone: 'ok' })
+    expect(conversationStateWords(answered[1]!, 'firm')).toBeNull()
+    const asked = conversationRows([q, firmAns])
+    expect(conversationStateWords(asked[0]!, 'firm')).toEqual({ text: 'you answered 2026-09-24', tone: 'ok' })
+    expect(conversationStateWords(asked[1]!, 'firm')).toEqual({ text: 'waiting on the office', tone: 'warn' })
+    expect(conversationStateWords(conversationRows([q, { ...firmAns, acknowledged_at: '2026-09-25T00:00:00Z' }])[1]!, 'office')).toEqual({ text: 'seen', tone: 'ok' })
+    expect(conversationStateWords(conversationRows([q])[0]!, 'firm')).toEqual({ text: 'asks you', tone: 'warn' })
+    expect(conversationStateWords(conversationRows([{ ...ask, acknowledged_at: '2026-10-03T00:00:00Z' }])[0]!, 'firm')).toEqual({ text: 'withdrawn', tone: 'neutral' })
+    const yes = entry({ id: 'ans-1', kind: 'answer', via_portal: true, occurred_on: '2026-10-03', created_at: '2026-10-03T10:00:00Z', meta: { askId: 'ask-1', signedOff: true } })
+    expect(conversationStateWords(conversationRows([ask, yes])[0]!, 'office')).toEqual({ text: 'signed off 2026-10-03', tone: 'ok' })
+  })
+  it('owns only questions and answers, and links the office answer by id', () => {
+    expect([fq1, linked, entry({ kind: 'step' }), entry({ kind: 'fee' })].map(isConversationEntry)).toEqual([true, true, false, false])
+    expect(officeAnswerMeta('fq1')).toEqual({ askId: 'fq1' })
   })
 })
 

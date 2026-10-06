@@ -56,7 +56,7 @@ On the portal's **Notifications** page, the firm adds its own people and gives e
 
 On the portal's **Fees & steps**, the firm adds fees and costs. The firm records steps: *demand sent · suit filed · judgment entered · settled*. The firm records a payment it received, and asks the office questions. Each item lands on the Dashboard for office roles as **"The law firm has N things for you"**. Its button opens the desk on that account's Fees & steps tab.
 
-- A **question**: you answer it inline. The answer shows on their portal. The answer also emails the people who chose right away.
+- A **question**: you answer it inline, in the desk's conversation table. The answer shows under the question on their portal too. The answer also emails the people who chose right away.
 - A **fee, cost or step**: you press {{button:outline|Acknowledge}}. Steps move the account's stage on the Pipeline row chip.
 - A **payment received**: you apply it on the job with {{button:outline|Mark Paid}}. Then you press {{button:outline|Mark applied}} on the desk. The recovery and the firm's contingency are recorded on the matter.
 
