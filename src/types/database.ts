@@ -2818,6 +2818,7 @@ export type Database = {
           package_path: string | null
           rev_number: number
           reviewer_files: Json
+          sent_outside_at: string | null
           shared_at: string | null
           shared_by: string | null
           source_files: Json
@@ -2838,6 +2839,7 @@ export type Database = {
           package_path?: string | null
           rev_number: number
           reviewer_files?: Json
+          sent_outside_at?: string | null
           shared_at?: string | null
           shared_by?: string | null
           source_files?: Json
@@ -2858,6 +2860,7 @@ export type Database = {
           package_path?: string | null
           rev_number?: number
           reviewer_files?: Json
+          sent_outside_at?: string | null
           shared_at?: string | null
           shared_by?: string | null
           source_files?: Json
