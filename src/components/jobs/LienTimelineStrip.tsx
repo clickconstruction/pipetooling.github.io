@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { windowsAxis } from '../../lib/jobs/lienWindowsAxis'
@@ -227,10 +227,12 @@ export type LienTimelineStripProps = {
   withNext?: boolean
   /** Force a view instead of the remembered one (tests, print); the switch hides when set. */
   view?: LienTimelineView
+  /** The one door to the next step (v2.4693): the Lien window's button, drawn at the verdict band's right so the step is said once. */
+  nextDoor?: ReactNode
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
@@ -287,9 +289,12 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
     </div>
   )
   const nextLine = !withNext ? null : mini ? nextWords : (
-    <div data-lien-timeline-verdict data-tone={next.tone} style={{ display: 'grid', gap: '0.25rem', padding: '0.5rem 0.7rem', marginBottom: '0.55rem', border: '1px solid var(--border)', borderRadius: 8, background: verdictBg(next.tone) }}>
-      {nextWords}
-      {waitLine}
+    <div data-lien-timeline-verdict data-tone={next.tone} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 1rem', flexWrap: 'wrap', padding: '0.5rem 0.7rem', marginBottom: '0.55rem', border: '1px solid var(--border)', borderRadius: 8, background: verdictBg(next.tone) }}>
+      <div style={{ display: 'grid', gap: '0.25rem', flex: '1 1 18rem', minWidth: 0 }}>
+        {nextWords}
+        {waitLine}
+      </div>
+      {nextDoor ? <div data-lien-timeline-verdict-door style={{ flex: 'none', marginLeft: 'auto' }}>{nextDoor}</div> : null}
     </div>
   )
 

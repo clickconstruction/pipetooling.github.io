@@ -48,6 +48,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
+import { lienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
@@ -106,6 +107,9 @@ function demandableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
     // In the order they went out, so the statement and the exhibits read by date; the sequence breaks a tie.
     .sort((a, b) => billDay(a).localeCompare(billDay(b)) || a.sequence_order - b.sequence_order)
 }
+
+/** A chip on the band under the timeline (v2.4693): one fact, one door. */
+const bandChip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
 
 export default function LienInstrumentsModal({
   open,
@@ -612,6 +616,8 @@ export default function LienInstrumentsModal({
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
+  // The band under the timeline, folded (v2.4693): on a computer the waivers and the supply house are chips, and the supply-house card opens under *Details*.
+  const [bandDetailsOpen, setBandDetailsOpen] = useState(false)
   // Supply houses on this job (v2.4404): one folded line in the header, the desk's card when opened.
   const supplierJobIds = useMemo(() => (job ? [job.id] : []), [job])
   const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
@@ -949,11 +955,11 @@ export default function LienInstrumentsModal({
               <LienWindowFoldedSteps timeline={timeline} />
             ) : (
               <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
-                <LienTimelineStrip timeline={timeline} />
+                <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} />
               </div>
             )
           ) : null}
-          {nextStep ? (
+          {nextStep && (isMobile || !timeline) ? (
             <div data-lien-window-next-step data-tone={nextStep.tone} style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: `1px solid ${nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 9, padding: '0.55rem 0.8rem', background: nextStep.tone === 'red' ? 'var(--bg-red-tint)' : nextStep.tone === 'amber' ? 'var(--bg-amber-tint)' : nextStep.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
                 <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -965,7 +971,29 @@ export default function LienInstrumentsModal({
               {nextStepButton}
             </div>
           ) : null}
-          {onOpenRelease ? (
+          {!isMobile && (onOpenRelease || supplierJob) ? (
+            // v2.4693: the two single facts as chips on one line; the supply-house card unfolds under Details.
+            <div data-lien-window-chips style={{ marginTop: '0.45rem', display: 'flex', gap: '0.4rem 0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {onOpenRelease ? (
+                <span data-lien-window-waivers>
+                  <button type="button" onClick={() => onOpenRelease(job)} title="Waivers on the bills are their own paper — the Release of Lien window" style={bandChip}>
+                    Waivers are their own paper ›
+                  </button>
+                </span>
+              ) : null}
+              {supplierJob ? (
+                <button type="button" data-lien-window-supply onClick={() => setBandDetailsOpen((o) => !o)} title={lienSupplierMark(supplierJob)?.title ?? 'Supply houses on this job'} aria-expanded={bandDetailsOpen} style={bandChip}>
+                  <span aria-hidden>🏪</span> {lienSupplierMark(supplierJob)?.words ?? 'Supply houses on this job'} ›
+                </button>
+              ) : null}
+              {supplierJob ? (
+                <button type="button" data-lien-window-details onClick={() => setBandDetailsOpen((o) => !o)} aria-expanded={bandDetailsOpen} style={{ ...bandChip, marginLeft: 'auto', color: 'var(--text-muted)' }}>
+                  Details {bandDetailsOpen ? '∧' : '∨'}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {isMobile && onOpenRelease ? (
             <div data-lien-window-waivers style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
               <span>Waivers on the bills are their own paper.</span>
               <button type="button" onClick={() => onOpenRelease(job)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem' }}>
@@ -973,9 +1001,9 @@ export default function LienInstrumentsModal({
               </button>
             </div>
           ) : null}
-          {supplierJob ? (
+          {supplierJob && (isMobile || bandDetailsOpen) ? (
             // The header does not scroll, so the opened card scrolls inside its own height and the paper keeps the window.
-            <div style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', maxHeight: '42dvh', overflowY: 'auto' }}>
+            <div style={{ marginTop: isMobile ? '0.4rem' : '0.5rem', maxHeight: '42dvh', overflowY: 'auto' }}>
               <LienJobSuppliersCard
                 job={supplierJob}
                 propertyKind={propertyKind}
@@ -984,7 +1012,7 @@ export default function LienInstrumentsModal({
                 payerName={(job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim()}
                 jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`}
                 isMobile={isMobile}
-                startFolded
+                startFolded={isMobile}
               />
             </div>
           ) : null}
