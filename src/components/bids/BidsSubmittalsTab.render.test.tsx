@@ -7,7 +7,7 @@
  * the item row.
  */
 import { SUBMITTAL_STAGE_ABOUT } from '../../lib/submittals/submittalTour'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
@@ -277,6 +277,16 @@ const item = (o: Record<string, unknown>) => ({
 })
 
 describe('BidsSubmittalsTab', () => {
+  // A fixed today (2026-10-03, the day the fixtures were written): the robot's week-old rule and the
+  // dates the rows and seats carry stand where the fixtures put them, whatever day the suite runs.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-03T16:00:00Z'))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('with no revision, names the schedule and the picks and builds Rev 1 from them', async () => {
     state.revisions = []
     state.items = []
