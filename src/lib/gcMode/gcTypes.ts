@@ -572,6 +572,22 @@ export interface PreBidMeeting {
   setOn?: string
 }
 
+/**
+ * A rough schedule drawn while we bid (the Gantt's G-45): the start day and the stage lengths it is
+ * drawn from, by the first draft's own kernel. Never the schedule itself: the trades' and the
+ * customer's views read `GcProject.schedule`, and this stays out of it.
+ */
+export interface RoughSchedule {
+  /** The day work would start, as the office assumes it while bidding. */
+  start: string
+  /** This job's stage lengths in days, by stage key. A stage not named takes its usual days. */
+  days: Record<string, number>
+  by: string
+  on: string
+  /** The weeks to build and the finish as they went with our bid: kept when the bid went in, or at award if it was never marked sent. */
+  kept?: { on: string; weeks: number; finish: string; at: 'bid' | 'award' }
+}
+
 export interface GcProject {
   id: string
   name: string
@@ -580,6 +596,8 @@ export interface GcProject {
   town: string
   /** The day our own bid went to the owner. Bid tabs stay shut until then. Null: not sent yet. */
   ourBidSentOn: string | null
+  /** A rough schedule drawn while we bid, for our bid's weeks to build (G-45). Absent: none drawn. */
+  rough?: RoughSchedule
   /** Going into the job: our contract with the owner, the permit, the day work starts. */
   ownerContractSignedOn: string | null
   /** The day our contract went to the customer to sign in their portal (the owner, 2026-10-04). Unset: not sent from the app. */
@@ -1056,7 +1074,7 @@ export type GcAction =
   | { type: 'selfReportStage'; projectId: string; packageId: string; lineId: string; pct: number }
   /** Our own bid in Trades mode is priced: the trade carries a real number from now on. */
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
-  | { type: 'draftSchedule'; projectId: string; start: string }
+  | { type: 'draftSchedule'; projectId: string; start: string; /** The rough's stage lengths, by stage key (G-45). Absent: the usual ones. */ days?: Record<string, number> }
   /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
   | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string; lateNoticeId?: string }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
@@ -1244,6 +1262,8 @@ export type GcAction =
   | { type: 'tradeKeepDay'; projectId: string; partnerId: string; noticeId: string }
   /** Work finished early (G-37): its plan catches up, and what was right behind it comes in by the days it gave back. On a press, never by itself. `leaveOut`: the activities a trade cannot start sooner. */
   | { type: 'pullScheduleEarlier'; projectId: string; leaveOut: string[]; why: { reason: ScheduleMoveReason; note: string; by: string } }
+  /** Draw or redraw the rough schedule while we bid (G-45): only on a job still bidding, not lost, before our bid goes in. */
+  | { type: 'setRough'; projectId: string; start: string; days: Record<string, number>; by: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

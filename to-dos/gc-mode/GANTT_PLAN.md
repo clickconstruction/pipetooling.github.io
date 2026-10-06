@@ -1044,6 +1044,44 @@ G-139, by Helper 5, round three (the mock-up and plan: `mockups/G-139.md`). `sta
 
 What the second look changed: a button per line in the reminder was not needed, since every message
 ends with the link to the company's portal home, whose to-dos already open each paper.
+## Later, a schedule while bidding, as built (2026-10-06)
+
+G-45, Helper 2 on `spike/g45`; the mock-up and plan are `mockups/G-45.md`. `gcRoughSchedule.ts`
+(tested, out of the barrel), `GcRoughSchedule.tsx`, one optional argument on `scheduleDraft`, the
+`setRough` action, and lines on the Schedule tab and Our number.
+
+- **Where**: a job still bidding opens its Schedule tab on **A rough schedule for our bid**: *If work
+  starts*, **Draw a rough schedule**, then one row per stage the job has, each with its days to change,
+  its dates and its bar on one axis, the inspections, and the dates to meet; **Redraw** after a change.
+  Its words: *Draw it from the stages of the job to know how many weeks it takes to build. Our number
+  shows the weeks beside the price. Nothing here goes to the trades or to Cibolo Creek Partners. When
+  we win, the first draft starts from it.*
+- **What draws it**: the first draft's own kernel, `scheduleDraft`, on the trades' scope lines, with an
+  optional third argument for the job's stage days; with none it draws exactly what it drew before (a
+  snapshot of every fixture job's draw, written before the change, holds it). Boerne Retail Shell from
+  Mon Nov 2: 10 stages, substantial completion Sun Feb 7, 14 weeks; Structure at 25 days makes it 16.
+- **What it feeds**: one count, `roughWeeks`. Our number shows *Weeks to build 14* beside the price,
+  the sentence, and *For the proposal: We will build Boerne Retail Shell in 14 weeks from the day work
+  starts.* with Copy. *We sent our bid*'s log line adds *It takes 14 weeks to build, by the rough
+  schedule.* and is word for word what it was without a rough.
+- **The lock** (the lead's pin): when the bid goes in, the weeks and the finish are kept as they went,
+  `setRough` is refused, the boxes and Redraw go, and the tab and Our number read *Our bid went in Fri
+  Oct 2 with 14 weeks to build. The rough stays as it went.* A later draw cannot move them.
+- **At award**: the rough is kept (its weeks too, if the bid was never marked sent) and never copied
+  into the schedule, since the trades' statements of work bring the lines the bars must be on. The
+  first-draft card says *We bid 14 weeks, from the rough schedule. The first draft starts from its
+  start day and its stage lengths.*, starts on the rough's day, and draws with its stage lengths; the
+  *Drawing the schedule* card then says *The first draft runs the 14 weeks we bid.* or *The first draft
+  runs 15 weeks. We bid 14.*
+- **Nothing reaches the trades or the customer**: the rough lives in `project.rough`, never in
+  `project.schedule`, which their views read; it has no Print or PDF and nothing on it moves.
+- **Tests**: `gcRoughSchedule.test.ts` (8: the draw pin, the weeks and stages, the job's days, the
+  customer's picture empty, the lock and no drift, the refusals, award and the first draft, plain
+  words), `GcRoughSchedule.render.test.tsx` (5). The golden test lists `setRough`; no fixture change,
+  no snapshot moved.
+
+Left out, the owner's calls: general conditions worked out from the weeks (it ties the price to the
+schedule), and jobs like it (the prototype's past jobs carry no durations).
 
 ## Status
 
