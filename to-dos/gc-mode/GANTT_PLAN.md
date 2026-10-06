@@ -541,6 +541,52 @@ What the second look changed: the List is not only for phones. It is the same ro
 reader gets and the quickest read of "what is this stage doing", so it is a view anyone can
 switch to, and the phone only opens on it.
 
+## Phase 3, By company as a call list, as built (2026-10-06)
+
+G-115, Helper 3 (mock-up `mockups/G-115.md`). `gcCallList.ts` (tested, out of the barrel),
+`GcCallList.tsx`, an optional `callList` on `GcGantt.tsx`, and the Follow up sheet's call form.
+
+- **By company opens the call list** under the chart's toolbar, in Chart and List, on a job being
+  built: *5 to call about the schedule · 2 late*, then one row per person, late first, with every
+  reason under the name. The rows are Follow up's own (`PeopleRows`): **Call** dials and opens the
+  Follow up sheet on *What did they say?*, **Follow up** opens it on a draft, **Work the list** walks
+  them all. **Hide** folds it to its first line.
+- **Who is on it.** A hired trade, for an inspection that failed on its work, a bar late, due today
+  or behind, new dates told and not answered or answered with another day, and a first day on site
+  within two weeks nobody confirmed. Whoever owes what holds a bar: the trade for its own submittal or
+  its supplier's delivery, the architect for a submittal or an RFI with them, the customer for a
+  decision. The rule goes by the hold's kind and its owner, and a kind it does not know is the
+  trade's own, worded as the chart words it. So G-77's paperwork hold reaches the trade's row as it
+  is. A hold on us, the city or the utility is a muted aside under the trade, never a row. Then
+  everything else they owe on this job (`projectPeople`) is merged under the name.
+- **A line about a bar opens it** in the editor above the chart, and the page comes to it. The opened
+  bar has its company at its foot: their word on its newest dates, **Call Marcus** and **Follow up**.
+  That is picture 2 of `gantt-mockup.html`.
+- **The call's answer lands where it belongs.** The call form asks *On the new dates*: *No answer
+  yet*, *They work*, *They need another day*. That goes through `tradeAnswerDates`, as the portal
+  answers. A day given on a delivery or a decision is its new expected day, with who said so. A day
+  on their submittal or their start becomes their word (`recordPromise`), which Follow up chases and
+  Building keeps. No new action type: the golden test did not move.
+- **The draft names each bar** with its trade, in English and Spanish: *your roofing TPO membrane on
+  Fair Oaks Shops, Building D. It is 50% done, and our plan had 100% by today. When will it be done?*
+
+What the second look changed:
+
+- **Held work goes to whoever holds it.** A submittal with the architect is a call to the architect.
+  The trade keeps it as an aside, so the caller can answer if asked.
+- **A decision not holding work yet makes no row.** The rule is the chart's: a wait holds only when it
+  comes after the work starts. So the customer is not on the fixture's list, and the count is five.
+- **A company that asked for another day is on the list for it.** Follow up already counts it, and
+  the office owes it an answer.
+- **A line's name reads with its trade inside a message.** Alone, *your Erection* read badly.
+
+Not done, on purpose: these reasons are not counted on the board row, Follow up's badge or Needs you.
+That moves the golden walk's people counts, so it is the owner's call. A day given on late work under
+way is only logged with the call: G-117's late notice should be that record. `callList` takes the
+notices as its last argument, ready for `openLateNotices(project)`. The nudge for several things
+still ends *Could you send them this week?*, which is the sheet's own sentence. *A full note* reads
+right.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

@@ -27,6 +27,10 @@ export interface PersonReason {
    * the architect's `questions`; the customer's `bid`, `contract`, `co:<id>`, `pay:<number>`.
    */
   code?: string
+  /** The bar on the schedule it is about (the Gantt's call list, G-115): pressing the reason opens it. */
+  lineId?: string
+  /** Said so the caller knows, not theirs to do: a hold that waits on us or someone else (G-115). Not counted. */
+  aside?: boolean
 }
 
 export interface ProjectPerson {
