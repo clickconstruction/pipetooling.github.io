@@ -29,7 +29,7 @@ export function PortalTable({ head, rows, empty, numCols = [], subRows = [] }: {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead><tr>{head.map((x, i) => <th key={`${x}-${i}`} style={{ ...portalTh, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{x}</th>)}</tr></thead>
         <tbody>{rows.flatMap((r, ri) => [
-          <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null) }}>{c}</td>)}</tr>,
+          <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null), ...(ci === 0 && head[0] === 'Date' ? { whiteSpace: 'nowrap' } : null) }}>{c}</td>)}</tr>,
           ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...portalTd, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
         ])}</tbody>
       </table>
@@ -75,7 +75,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
   return (
     <div>
       {packet.paper.timelines.map((t) => (
-        <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: `1px dotted ${HAIR}`, alignItems: 'start' }}>
+        <div key={t.jobId} data-legal-job-timeline={t.jobId} className="legalJobTimeline" style={{ padding: '8px 0', borderBottom: `1px dotted ${HAIR}` }}>
           <div style={{ fontSize: 12.5 }}>
             <b style={{ fontSize: 13 }}>{t.jobLabel}</b>
             <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWords} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
@@ -191,15 +191,15 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             </div>
             {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>
-          <div style={{ textAlign: 'right' }}>
+          <div className="legalMatterHeadSums" style={{ textAlign: 'right' }}>
             <div style={{ ...portalNum, fontSize: 20, fontWeight: 700 }}>{formatLegalMoney(totalDemand)}</div>
             <div style={{ fontSize: 12, color: MUTED }}>total demand · balance {formatLegalMoney(packet.account.totals.balance)}</div>
-            <button type="button" style={{ ...portalBtn, marginTop: 6, background: COPPER, color: '#fff' }} onClick={onPrint}>
+            <button type="button" className="legalPortalWide" style={{ ...portalBtn, marginTop: 6, background: COPPER, color: '#fff' }} onClick={onPrint}>
               ⎙ Print packet
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${HAIR}`, margin: '14px 0 12px', fontSize: 13 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, margin: '14px 0 12px', fontSize: 13 }}>
           {FIRM_TABS.map((t) => (
             <button key={t} type="button" onClick={() => onTab(t)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: tab === t ? INK : MUTED, borderBottom: tab === t ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: tab === t ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
               {FIRM_TAB_LABELS[t]}

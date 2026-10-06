@@ -129,7 +129,7 @@ export default function LegalPortal() {
   const packet = selected ? (packets.get(selected.id) ?? null) : null
 
   return (
-    <div data-theme="light" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT, padding: '26px 20px 60px' }}>
+    <div data-theme="light" className="legalPortalPage" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT }}>
       <div style={{ maxWidth: 1040, margin: '0 auto' }}>
         {sample ? <SampleModeBanner text={LEGAL_SAMPLE_BANNER_TEXT} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${COPPER}`, paddingBottom: 10, marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
@@ -138,7 +138,7 @@ export default function LegalPortal() {
             <div style={{ fontSize: 12, color: MUTED }}>Collections referred to counsel{payload ? ` · prepared ${payload.preparedOn}` : ''} · no sign-in, one revocable link</div>
           </div>
           {payload ? (
-            <div style={{ textAlign: 'right', fontSize: 12.5, color: MUTED }}>
+            <div className="legalPortalHeadAside" style={{ textAlign: 'right', fontSize: 12.5, color: MUTED }}>
               For <b style={{ color: INK }}>{payload.firm.name}</b>{payload.firm.handling_name ? ` · ${payload.firm.handling_name}` : ''}<br />
               {payload.matters.length} matter{payload.matters.length === 1 ? '' : 's'} · {formatLegalMoney(payload.matters.reduce((s, m) => s + (packets.get(m.id)?.account.totals.balance ?? 0), 0))} in balance
             </div>
@@ -146,7 +146,7 @@ export default function LegalPortal() {
         </div>
 
         {payload ? (
-          <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
             {(payload.lienBook ? (['matters', 'grid', 'notifications'] as const) : (['matters', 'notifications'] as const)).map((p) => (
               <button key={p} type="button" onClick={() => setPanel(p)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
                 {p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
@@ -164,8 +164,8 @@ export default function LegalPortal() {
         ) : null}
 
         {payload && panel === 'matters' && selected && packet ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
-            <div>
+          <div className="legalPortalSplit">
+            <div className="legalPortalMain">
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
@@ -176,7 +176,7 @@ export default function LegalPortal() {
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries }, particulars: payload.particulars }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
-            <div>
+            <div className="legalPortalList">
               <div style={cap}>Matters{matters.length > 1 ? ' · largest balance first' : ''}</div>
               {matters.map((m) => {
                 const p = packets.get(m.id)
@@ -190,6 +190,8 @@ export default function LegalPortal() {
                   </button>
                 )
               })}
+            </div>
+            <div className="legalPortalAside">
               <div style={{ ...card, marginTop: 14, fontSize: 12.5, color: MUTED }}>
                 <b style={{ color: INK }}>Particulars for filing</b>
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', marginTop: 6 }}>
@@ -271,23 +273,23 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
   return (
     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
       {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}>{notice}</div> : null}
-      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote }, () => { setFeeAmount(''); setFeeNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 8, alignItems: 'end' }}>
-        <label style={lab}>Kind<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
+      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote }, () => { setFeeAmount(''); setFeeNote('') })} className="legalPortalForm legalPortalForm--fee">
+        <label style={lab}>Fee or cost<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
         <label style={lab}>Amount<input type="number" min={1} step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} placeholder="450" required style={input} /></label>
         <label style={lab}>Note<input value={feeNote} onChange={(e) => setFeeNote(e.target.value)} placeholder="Demand letter on firm letterhead" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>+ Add fee or cost</button>
       </form>
-      <form onSubmit={submit({ kind: 'step', stage, note: stepNote }, () => setStepNote(''))} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
+      <form onSubmit={submit({ kind: 'step', stage, note: stepNote }, () => setStepNote(''))} className="legalPortalForm legalPortalForm--note">
         <label style={lab}>Record a step<select value={stage} onChange={(e) => setStage(e.target.value as 'demand' | 'suit' | 'judgment' | 'settled')} style={input}><option value="demand">Demand sent on firm letterhead</option><option value="suit">Suit filed</option><option value="judgment">Judgment entered</option><option value="settled">Settled</option></select></label>
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record step</button>
       </form>
-      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote }, () => { setPayAmount(''); setPayNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
+      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote }, () => { setPayAmount(''); setPayNote('') })} className="legalPortalForm legalPortalForm--note">
         <label style={lab}>Payment received<input type="number" min={1} step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Amount" required style={input} /></label>
         <label style={lab}>Check no., date, from whom<input value={payNote} onChange={(e) => setPayNote(e.target.value)} style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record payment</button>
       </form>
-      <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+      <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} className="legalPortalForm legalPortalForm--ask">
         <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Send</button>
       </form>
@@ -314,7 +316,7 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
     }
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
+    <div className="legalPortalPair">
       <div>
         {payload.firmPaused ? <div style={{ ...card, borderColor: PAPER_RED, color: PAPER_RED, marginBottom: 12, fontSize: 13 }}>{payload.company.name} has paused all emails to the firm. The portal still works; ask the office to resume.</div> : null}
         {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10 }}>{notice}</div> : null}
@@ -338,7 +340,7 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
                   </select>
                 </>
               ) : null}
-              <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+              <span className="legalRecipientScope" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
                 <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'mine' })} style={r.scope === 'mine' ? small : ghost}>Only my matters</button>
                 <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'all' })} style={r.scope === 'all' ? small : ghost}>Every matter</button>
               </span>

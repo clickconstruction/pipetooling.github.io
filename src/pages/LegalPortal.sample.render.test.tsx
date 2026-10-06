@@ -96,6 +96,26 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).toMatch(/total demand · balance \$14,400\.00/)
   })
 
+  it('lays the page out by classes the phone query can fold, matters list before the matter (punch list #85 item 8)', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = sampleLegalPortalResponse({ name: 'Acme Mechanical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=sample']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getAllByText(/Sample Contracting/).length).toBeGreaterThan(0))
+    const split = document.querySelector('.legalPortalSplit') as HTMLElement
+    expect(split).toBeTruthy()
+    expect(split.style.gridTemplateColumns).toBe('')
+    expect([...split.children].map((c) => c.className)).toEqual(['legalPortalMain', 'legalPortalList', 'legalPortalAside'])
+    fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
+    const forms = [...document.querySelectorAll('form.legalPortalForm')] as HTMLElement[]
+    expect(forms).toHaveLength(4)
+    for (const f of forms) expect(f.style.gridTemplateColumns).toBe('')
+  })
+
   it('draws the owner\'s answers under a notice on Paper when the payload carries the desk item that sent it (#41 PR 1b)', async () => {
     const today = new Date().toISOString().slice(0, 10)
     const payload = sampleLegalPortalResponse({ name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today) as { matters: Array<Record<string, unknown> & { jobs: Array<{ id: string }> }> }

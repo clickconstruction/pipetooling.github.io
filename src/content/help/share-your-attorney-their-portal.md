@@ -6,7 +6,7 @@ keywords: legal, attorney, law firm, portal, link, collections, packet, particul
 ---
 The collections law firm gets one private link that needs no sign-in. The link opens every account a dev has marked attorney-ready, and nothing else.
 
-Each account opens as the same five-section packet the Legal desk shows.
+Each account opens as the same five-section packet the Legal desk shows. The portal works on a phone too. On a narrow screen it is one column, with the matters list first.
 
 ## Create and send the link
 
