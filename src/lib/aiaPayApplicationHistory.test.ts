@@ -4,6 +4,7 @@ import {
   changedAfterWords,
   isPayApplicationCopy,
   parsePayApplicationSnapshot,
+  payApplicationDeletedWords,
   payApplicationSnapshot,
   payApplicationFileName,
   payApplicationHistory,
@@ -196,5 +197,21 @@ describe('changed after it went out', () => {
     emptied.lines = [{ id: 'other', label: 'Gas', scheduledValue: 37745, labor: null, stage: null, fromPrevious: 0, thisPeriod: 0, stored: 0 }]
     const changed = changedAfterWentOut(emptied, [copy({ sourceSnapshot: went as unknown as Record<string, unknown> })])
     expect(changed?.differences.map((d) => d.label)).toEqual(['Gas, a new line, this period', 'Plumbing, a line taken off, this period', 'completed and stored', 'retainage held', 'payment due'])
+  })
+})
+
+describe('deleted applications', () => {
+  it('lists them after the live ones, with their workbooks, and keeps them out of the standing', () => {
+    const live = [app(2, 12078.4, 15098, 13588.2)]
+    const gone = [{ ...app(1, 15098, 0, 0), id: 'app-1-old', deletedAt: '2026-09-03T15:00:00Z', deletedByName: 'Robert' }]
+    const h = payApplicationHistory(live, [copy({ sourceId: 'app-1-old' })], gone)
+    expect(h.lines.map((l) => [l.app.applicationNumber, l.deleted, l.wentOut.length])).toEqual([
+      [2, false, 0],
+      [1, true, 1],
+    ])
+    expect(h.summary?.count).toBe(1)
+    expect(payApplicationDeletedWords(gone[0]!, day)).toBe('Deleted 2026-09-03 by Robert')
+    expect(payApplicationDeletedWords({ deletedAt: '2026-09-03T15:00:00Z', deletedByName: '' }, day)).toBe('Deleted 2026-09-03')
+    expect(payApplicationDeletedWords(live[0]!, day)).toBe('')
   })
 })

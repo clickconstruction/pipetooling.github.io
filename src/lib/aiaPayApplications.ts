@@ -45,6 +45,9 @@ export type SavedPayApplication = {
   createdByName: string
   updatedAt: string | null
   updatedByName: string
+  /** When the office took it off the job and who did (v2.4715); null and '' while it is live. */
+  deletedAt: string | null
+  deletedByName: string
 }
 
 /** One kept file beside an application. Today that is a pasted link. */
@@ -76,6 +79,10 @@ export type PayApplicationRow = {
   updated_by?: string | null
   created_by_user?: { name: string | null } | null
   updated_by_user?: { name: string | null } | null
+  /** The soft delete (v2.4715); older reads leave them out. */
+  deleted_at?: string | null
+  deleted_by?: string | null
+  deleted_by_user?: { name: string | null } | null
 }
 
 /** What the window holds for one application: the header boxes, the lines, and how the lines print. */
@@ -151,6 +158,8 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     createdByName: (row.created_by_user?.name ?? '').trim(),
     updatedAt: row.updated_at,
     updatedByName: (row.updated_by_user?.name ?? '').trim(),
+    deletedAt: row.deleted_at ?? null,
+    deletedByName: (row.deleted_by_user?.name ?? '').trim(),
   }
 }
 

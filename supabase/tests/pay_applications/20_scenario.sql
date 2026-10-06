@@ -169,5 +169,31 @@ RESET ROLE;
 DELETE FROM public.jobs_ledger WHERE id = '00000000-0000-0000-0000-00000000c002';
 SELECT bedt.ok('the deleted job took its application', (SELECT count(*) = 1 FROM public.job_pay_applications));
 
+-- 10 · Delete marks the row (v2.4715): the mark is the server's, the saved stamps stay, the number is free again,
+--      and a restore that would collide with a live number is refused.
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+SET LOCAL ROLE authenticated;
+UPDATE public.job_pay_applications SET deleted_at = '2001-01-01', deleted_by = '00000000-0000-0000-0000-0000000000a2'
+  WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1;
+SELECT bedt.ok('deleted_at is now, not what was sent', (SELECT deleted_at > now() - interval '1 hour' FROM public.job_pay_applications WHERE deleted_at IS NOT NULL));
+SELECT bedt.ok('deleted_by is the caller, not what was sent', (SELECT deleted_by = '00000000-0000-0000-0000-0000000000a1' FROM public.job_pay_applications WHERE deleted_at IS NOT NULL));
+SELECT bedt.ok('the saved stamps did not move: updated_by is still the master', (SELECT updated_by = '00000000-0000-0000-0000-0000000000a4' FROM public.job_pay_applications WHERE deleted_at IS NOT NULL));
+INSERT INTO public.job_pay_applications (job_id, application_number) VALUES ('00000000-0000-0000-0000-00000000c001', 1);
+SELECT bedt.ok('a deleted number is free again', (SELECT count(*) = 2 FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1));
+SELECT bedt.ok('the live list reads one application 1', (SELECT count(*) = 1 FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1 AND deleted_at IS NULL));
+SELECT bedt.ok('a new row starts live', (SELECT deleted_at IS NULL AND deleted_by IS NULL FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1 AND created_by = '00000000-0000-0000-0000-0000000000a1' AND updated_by = '00000000-0000-0000-0000-0000000000a1'));
+DO $$
+BEGIN
+  BEGIN
+    UPDATE public.job_pay_applications SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+    RAISE EXCEPTION 'FAILED: a restore landed on a live number';
+  EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'ok: a restore cannot collide with a live number';
+  END;
+END $$;
+DELETE FROM public.job_pay_applications WHERE job_id = '00000000-0000-0000-0000-00000000c001' AND application_number = 1 AND deleted_at IS NULL;
+UPDATE public.job_pay_applications SET deleted_at = NULL WHERE deleted_at IS NOT NULL;
+SELECT bedt.ok('a restore clears the mark and who made it', (SELECT count(*) = 1 AND bool_and(deleted_at IS NULL AND deleted_by IS NULL) FROM public.job_pay_applications));
+RESET ROLE;
+
 SELECT 'pay_applications PASSED' AS result;
 ROLLBACK;
