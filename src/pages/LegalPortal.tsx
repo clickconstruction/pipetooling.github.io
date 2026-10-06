@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
-import { sampleStateFromToken } from '../lib/customerSampleMode'
+import { LEGAL_SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED, PORTAL_FONT } from '../lib/portal/portalTheme'
@@ -122,7 +122,7 @@ export default function LegalPortal() {
   return (
     <div data-theme="light" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT, padding: '26px 20px 60px' }}>
       <div style={{ maxWidth: 1040, margin: '0 auto' }}>
-        {sample ? <SampleModeBanner /> : null}
+        {sample ? <SampleModeBanner text={LEGAL_SAMPLE_BANNER_TEXT} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${COPPER}`, paddingBottom: 10, marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Legal portal'}</div>

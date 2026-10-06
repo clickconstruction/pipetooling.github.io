@@ -18,3 +18,5 @@ export async function publicFunctionHeaders(_sample: SampleState | null): Promis
 }
 
 export const SAMPLE_BANNER_TEXT = 'Sample — this is what a customer sees. Nothing you do here is saved.'
+/** The same strip on the law firm's portal: the firm is not a customer. */
+export const LEGAL_SAMPLE_BANNER_TEXT = 'Sample — this is what the law firm sees. Nothing you do here is saved.'

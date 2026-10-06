@@ -35,7 +35,7 @@ const digest = (releasedAt: string | null, createdAt: string): string =>
   buildLegalDigestEmail({
     companyName: 'Click Plumbing and Electrical',
     recipientName: 'Bo Sample',
-    matters: [{ payerName: 'Pat Payer', stage: 'with_firm', handlingName: 'Ann Sample', releasedAt }],
+    matters: [{ payerName: 'Pat Payer', stage: 'referred', handlingName: 'Ann Sample', releasedAt }],
     events: [{ createdAt, trigger: 'referred', payer: 'Pat Payer' }],
     portalUrl: 'https://x.test/legal',
     unsubscribeUrl: 'https://x.test/legal/stop',

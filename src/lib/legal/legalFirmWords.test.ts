@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firmExhibitTitle, firmEntryKindWords, firmEntryStatusWords, firmFeeKindWords, firmHistoryKindWords, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from './legalFirmWords'
+import { firmExhibitTitle, firmEntryKindWords, firmEntryStatusWords, firmFeeKindWords, firmHistoryKindWords, firmRecipientStatusWords, firmSaidKindWords, firmSaidRecordedBy, firmSavedWords, legalFirmStageWords } from './legalFirmWords'
 import { legalStageLabel } from './legalMatters'
 
 const entry = (kind: string, via_portal: boolean, meta: unknown = {}, acknowledged_at: string | null = null) => ({ kind, via_portal, meta, acknowledged_at })
@@ -8,6 +8,7 @@ describe('legalFirmWords · punch list #85 item 3 · the firm reads its own word
   it('stages read as a firm says them, and the office keeps its own labels', () => {
     expect(['referred', 'demand', 'suit', 'judgment', 'settled', 'pulled'].map(legalFirmStageWords)).toEqual(['referred', 'demand sent', 'suit filed', 'judgment entered', 'settled', 'referral withdrawn'])
     expect(legalFirmStageWords(null)).toBe('under review by the office')
+    expect(['post_judgment', 'payment_plan', 'uncollectible', 'dismissed'].map(legalFirmStageWords)).toEqual(['judgment being collected', 'payment plan', 'written off as uncollectible', 'dismissed'])
     expect(legalStageLabel('referred')).toBe('With the firm · new')
   })
 
@@ -60,5 +61,15 @@ describe('legalFirmWords · punch list #85 item 3 · the firm reads its own word
     for (const kind of ['fee', 'cost', 'step', 'payment_received', 'question', 'answer', 'recipient_add', 'recipient_resend', 'recipient_stop', 'recipient_resume', 'recipient_rules']) {
       expect(firmSavedWords({ kind, stage: 'demand' })).not.toMatch(/Needs You|Click|—/)
     }
+  })
+})
+
+describe('firmSaidRecordedBy · firmSaidKindWords (integration pass)', () => {
+  it('says the customer only for a promise the customer made on their own page', () => {
+    expect(firmSaidRecordedBy({ by: 'Taunya', kind: 'call' })).toBe('Taunya')
+    expect(firmSaidRecordedBy({ by: null, kind: 'promise', fromCustomer: true })).toBe('the customer')
+    expect(firmSaidRecordedBy({ by: null, kind: 'promise', fromCustomer: false })).toBe('—')
+    expect(firmSaidRecordedBy({ by: null, kind: 'note' })).toBe('—')
+    expect((['contact', 'promise', 'call', 'note'] as const).map(firmSaidKindWords)).toEqual(['contact', 'promise to pay', 'collection call', 'collections note'])
   })
 })

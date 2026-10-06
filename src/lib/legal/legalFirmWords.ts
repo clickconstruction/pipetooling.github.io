@@ -7,7 +7,7 @@
 import { legalFirmStageWords } from '../legalEmails'
 import { askMetaOf, answerMetaOf, isFirmAnswer, isOfficeAsk } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
-import type { LegalStep } from './legalPacket'
+import type { LegalSaidEntry, LegalStep } from './legalPacket'
 
 export { legalFirmStageWords }
 
@@ -60,6 +60,22 @@ export function firmHistoryKindWords(kind: LegalStep['kind'] | string): string {
     case 'contract': return 'agreement'
     default: return String(kind).replace(/_/g, ' ')
   }
+}
+
+/** The kind cell on *Record of contact*: the office's collections note reads as a note, the rest as the kind. */
+export function firmSaidKindWords(kind: LegalSaidEntry['kind']): string {
+  switch (kind) {
+    case 'note': return 'collections note'
+    case 'promise': return 'promise to pay'
+    case 'call': return 'collection call'
+    default: return 'contact'
+  }
+}
+
+/** The *Recorded by* cell: the person who wrote it down; *the customer* only for a promise the customer made on their own page; else a dash. */
+export function firmSaidRecordedBy(e: Pick<LegalSaidEntry, 'by' | 'kind' | 'fromCustomer'>): string {
+  if (e.by) return e.by
+  return e.kind === 'promise' && e.fromCustomer ? 'the customer' : '—'
 }
 
 /** An exhibit's title as the firm reads it: the packet's *What was said* is the firm's *Record of contact*. */

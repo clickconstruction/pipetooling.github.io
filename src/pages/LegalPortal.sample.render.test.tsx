@@ -51,6 +51,8 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).toMatch(/Account history, oldest first/)
     expect(document.body.textContent).toMatch(/Attorney fee/)
     expect(document.body.textContent).not.toMatch(/Needs You|Their word|From Click|Click’s|What Click did|chose to share/)
+    expect(document.body.textContent).toMatch(/this is what the law firm sees/)
+    expect(document.body.textContent).not.toMatch(/what a customer sees/)
   })
 
   it('draws the owner\'s answers under a notice on Paper when the payload carries the desk item that sent it (#41 PR 1b)', async () => {

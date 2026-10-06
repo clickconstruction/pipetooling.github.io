@@ -3,7 +3,7 @@ import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } fr
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { firmEntryKindWords, firmEntryStatusWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords } from '../../../lib/legal/legalFirmWords'
+import { firmEntryKindWords, firmEntryStatusWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -72,7 +72,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
             <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
             {t.retainageWords ? <div style={{ color: MUTED, fontSize: 11.5 }}>{t.retainageWords}</div> : null}
           </div>
-          <LienTimelineStrip timeline={t.timeline} />
+          <LienTimelineStrip timeline={t.timeline} voice="firm" />
         </div>
       ))}
     </div>
@@ -126,7 +126,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
     return (
       <div>
         <p style={{ fontSize: 12.5, color: MUTED, margin: '4px 0 8px' }}>{companyName}'s contact record with this customer, oldest first. Calls, emails, visits, promises to pay and the note that sent it to collections.{tw.decided ? ` Promises kept: ${tw.kept} of ${tw.decided}${tw.broken ? `, ${tw.broken} broken` : ''}.` : ''}</p>
-        <PortalTable head={['Date', 'Kind', 'Job', 'What was said', 'Recorded by']} rows={tw.timeline.filter((e) => e.shared).map((e) => [e.ymd, e.kind === 'note' ? 'collections note' : e.kind, e.jobLabel ?? 'account', e.text, e.by ?? 'the customer'])} empty="No contact on record." />
+        <PortalTable head={['Date', 'Kind', 'Job', 'What was said', 'Recorded by']} rows={tw.timeline.filter((e) => e.shared).map((e) => [e.ymd, firmSaidKindWords(e.kind), e.jobLabel ?? 'account', e.text, firmSaidRecordedBy(e)])} empty="No contact on record." />
       </div>
     )
   }
