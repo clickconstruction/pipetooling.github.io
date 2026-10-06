@@ -1,5 +1,5 @@
 /**
- * What hangs on the collections law firm, said before anyone changes it (v2.4707, the firm's
+ * What hangs on the collections law firm, said before anyone changes it (v2.4711, the firm's
  * window on the Legal desk). A rename keeps all of it with the firm; a replace retires it.
  * Pure — the window reads the desk's own matters and recipients, and the link row.
  */

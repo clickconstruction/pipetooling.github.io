@@ -116,7 +116,7 @@ const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacin
 const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'top', fontSize: '0.84rem' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
-/** The firm's name in the header, as the door to its window (v2.4707); amber while no firm is set. */
+/** The firm's name in the header, as the door to its window (v2.4711); amber while no firm is set. */
 const FIRM_CHIP: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, maxWidth: '100%', padding: '0 8px', border: '1px solid var(--border-blue)', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', font: 'inherit', fontSize: '0.76rem', fontWeight: 600, lineHeight: 1.6, cursor: 'pointer', textAlign: 'left', verticalAlign: 'baseline' }
 const FIRM_CHIP_NONE: CSSProperties = { ...FIRM_CHIP, border: '1px solid var(--border-amber-soft)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
 const sheetInput: CSSProperties = { width: '100%', font: 'inherit', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', margin: '4px 0 8px' }
@@ -232,7 +232,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   /** Ask the firm (#41 PR 3): a question, or a sign-off on one job. */
   const [askForm, setAskForm] = useState<{ flavor: LegalAskFlavor; jobId: string; text: string } | null>(null)
   const [emailsOpen, setEmailsOpen] = useState(false)
-  /** The firm's window (v2.4707), opened from the firm's name in the header or the release sheet. */
+  /** The firm's window (v2.4711), opened from the firm's name in the header or the release sheet. */
   const [firmOpen, setFirmOpen] = useState(false)
   /** Hold back… on the Their word tab (#85 item 29): which entry, and the office's reason. */
   const [holdFor, setHoldFor] = useState<{ key: string; reason: string } | null>(null)

@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4707',
+  version: 'v2.4711',
   date: '2026-10-06',
   title: 'Legal desk: open the law firm from its name',
   kind: 'feature',

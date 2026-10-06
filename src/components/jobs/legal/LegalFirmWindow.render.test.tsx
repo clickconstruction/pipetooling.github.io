@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * The firm's window on the Legal desk (v2.4707): a dev edits the Settings block itself and a
+ * The firm's window on the Legal desk (v2.4711): a dev edits the Settings block itself and a
  * save reloads the desk; everyone else reads the firm; what hangs on the firm is said first;
  * Esc and a click outside close the window alone.
  */
