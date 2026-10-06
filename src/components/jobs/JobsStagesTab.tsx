@@ -150,7 +150,7 @@ import PaymentForecastShareModal from './PaymentForecastShareModal'
 import JobBookModal from './JobBookModal'
 import LegalDeskModal from './legal/LegalDeskModal'
 import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
-import { stageIsWithFirm } from '../../lib/legal/legalMatters'
+import { matterIsWithFirm } from '../../lib/legal/legalMatters'
 import { newAskMeta, signoffStateForJob } from '../../lib/legal/legalAsks'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
@@ -4527,12 +4527,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         legalSignoff={legalMatters.available ? {
           stateFor: (jobId) => {
             const m = legalMatters.byJobId.get(jobId)
-            if (!m || !stageIsWithFirm(m.stage)) return null
+            if (!m || !matterIsWithFirm(m)) return null
             return signoffStateForJob(legalMatters.entriesByMatter.get(m.id) ?? [], jobId)
           },
           ask: async (jobId, text) => {
             const m = legalMatters.byJobId.get(jobId)
-            if (!m || !stageIsWithFirm(m.stage)) return 'This job is not with the firm — mark its account attorney-ready on the Legal desk first.'
+            if (!m || !matterIsWithFirm(m)) return 'This job is not with the firm — mark its account attorney-ready on the Legal desk first.'
             const job = jobs.find((j) => j.id === jobId)
             const jobLabel = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''
             const err = await legalRpc('legal_add_entry', { p_matter_id: m.id, p_kind: 'question', p_body: text, p_meta: newAskMeta({ flavor: 'signoff', jobId, jobLabel, askedBy: authProfileName?.trim() ?? '' }) })

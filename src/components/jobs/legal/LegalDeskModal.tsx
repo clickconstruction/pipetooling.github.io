@@ -3,7 +3,7 @@ import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { conversationRows, conversationStateWords, conversationWho, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
+import { conversationRows, conversationStateWords, conversationWho, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import {
   formatLegalMoney,
@@ -22,8 +22,9 @@ import {
   legalStageLabel,
   releaseRecipients,
   WEEKDAY_LABELS,
-  stageIsClosed,
-  stageIsWithFirm,
+  matterAwaitsClose,
+  matterIsClosed,
+  matterIsWithFirm,
   heldReasonsOf,
   withHold,
   type LegalMatterRow,
@@ -189,7 +190,7 @@ const FIX_LABEL: Record<LegalGap['fix'], string> = {
   none: '',
 }
 
-type Sheet = { kind: 'ready'; handling: string; note: string } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | null
+type Sheet = { kind: 'ready'; handling: string; note: string } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | null
 
 function daysAgo(iso: string | null | undefined, todayYmd: string): number | null {
   // An instant's day in APP_CALENDAR_TZ, not its first ten characters (the UTC date).
@@ -242,13 +243,15 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   if (!open) return null
 
   const stage = matter?.stage ?? 'review'
-  const withFirm = stageIsWithFirm(stage)
-  const closed = stageIsClosed(stage)
+  // #85 item 16: a firm end (settled · uncollectible · dismissed) stays with the firm until the office closes it.
+  const withFirm = matterIsWithFirm(matter)
+  const closed = matterIsClosed(matter)
+  const awaitsClose = matterAwaitsClose(matter)
   const stored = Boolean(legal?.available)
   const groups: Array<{ cap: string; list: LegalAccountSummary[] }> = [
-    { cap: 'Needs a dev’s eyes', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!stageIsWithFirm(m.stage) && !stageIsClosed(m.stage)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
-    { cap: 'With the firm', list: accounts.filter((a) => stageIsWithFirm(legal?.byPayerKey.get(a.key)?.stage)) },
-    { cap: 'Closed', list: accounts.filter((a) => stageIsClosed(legal?.byPayerKey.get(a.key)?.stage)) },
+    { cap: 'Needs a dev’s eyes', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
+    { cap: 'With the firm', list: accounts.filter((a) => matterIsWithFirm(legal?.byPayerKey.get(a.key))) },
+    { cap: 'Closed', list: accounts.filter((a) => matterIsClosed(legal?.byPayerKey.get(a.key))) },
   ]
 
   const firstJob = selected?.jobs[0] ?? null
@@ -358,6 +361,15 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       showToast(`${selected?.name} pulled back — the firm no longer sees it.`, 'info')
     }
   }
+  /** #85 item 16: the firm's end moved the stage; the office's close is the end of the matter. */
+  const confirmClose = async () => {
+    if (sheet?.kind !== 'close' || !matter) return
+    const ok = await run('Close', () => legalRpc('legal_close_matter', { p_matter_id: matter.id, p_stage: matter.stage, p_note: sheet.note }))
+    if (ok) {
+      setSheet(null)
+      showToast(`${selected?.name} closed as ${legalStageLabel(matter.stage).toLowerCase()} — it leaves the firm's portal.`, 'success')
+    }
+  }
   const acknowledge = async (entryId: string) => {
     await run('Acknowledge', () => legalRpc('legal_acknowledge_entry', { p_entry_id: entryId }))
   }
@@ -440,7 +452,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     <span style={{ ...MUTED, fontSize: '0.76rem' }}>Read-only until the legal tables are applied.</span>
   ) : withFirm ? (
     <>
-      {pill(`With ${firm?.name ?? 'the firm'} since ${calendarYmdInAppTzFromIso(matter?.released_at ?? '')} · ${legalStageLabel(stage).replace('With the firm · ', '')}`, 'legal')}
+      {awaitsClose
+        ? pill(`${legalStageLabel(stage)} · reported by ${firm?.name ?? 'the firm'} · open until you close it`, 'legal')
+        : pill(`With ${firm?.name ?? 'the firm'} since ${calendarYmdInAppTzFromIso(matter?.released_at ?? '')} · ${legalStageLabel(stage).replace('With the firm · ', '')}`, 'legal')}
+      {awaitsClose && canEditReview ? <button type="button" onClick={() => setSheet({ kind: 'close', note: '' })} disabled={busy} style={btnPrimary}>Close the matter…</button> : null}
       {canMarkReady ? <button type="button" onClick={() => setSheet({ kind: 'pull', note: '' })} style={btn}>Pull back</button> : null}
     </>
   ) : closed ? (
@@ -496,9 +511,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                         <span style={{ fontWeight: 600, fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
                         <span style={{ ...NUM, fontSize: '0.86rem', fontWeight: 600 }}>{formatLegalMoney(a.balance)}</span>
                         <span style={{ ...MUTED, fontSize: '0.74rem' }}>{a.jobs.length} job{a.jobs.length === 1 ? '' : 's'}{a.viaGc ? ' · GC pays' : ''}{a.signedJobs < a.jobs.length ? ` · ${a.jobs.length - a.signedJobs} no contract` : ' · signed'}</span>
-                        <span style={{ ...MUTED, ...NUM, fontSize: '0.74rem' }}>{m && stageIsWithFirm(m.stage) ? legalStageLabel(m.stage).replace('With the firm · ', '') : `keeps ~${formatLegalMoney(Math.max(0, net))}`}</span>
+                        <span style={{ ...MUTED, ...NUM, fontSize: '0.74rem' }}>{m && matterIsWithFirm(m) ? legalStageLabel(m.stage).replace('With the firm · ', '') : `keeps ~${formatLegalMoney(Math.max(0, net))}`}</span>
                         <span style={{ ...MUTED, fontSize: '0.72rem', gridColumn: '1 / -1' }}>
-                          {m?.review_requested_at && !stageIsWithFirm(m.stage) && !stageIsClosed(m.stage) ? <span style={{ color: 'var(--text-blue-700)' }}>asked for a dev · </span> : null}
+                          {m?.review_requested_at && !matterIsWithFirm(m) && !matterIsClosed(m) ? <span style={{ color: 'var(--text-blue-700)' }}>asked for a dev · </span> : null}
                           {a.reviewDays == null ? '' : `${a.reviewDays}d in Collections`}{a.oldestDays != null ? ` · oldest bill ${a.oldestDays}d` : ''}
                         </span>
                       </button>
@@ -589,7 +604,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: Boolean(matter && stageIsWithFirm(matter.stage)) } : null} />
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) } : null} />
                 ) : null}
               </>
             )}
@@ -681,6 +696,19 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setSheet(null)} style={btn}>Cancel</button>
               <button type="button" onClick={() => void confirmPull()} disabled={busy} style={btnPrimary}>Pull back</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {sheet?.kind === 'close' && selected && matter ? (
+        <div role="presentation" onClick={(e) => { e.stopPropagation(); setSheet(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 10, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
+          <div role="dialog" aria-modal="true" aria-label="Close the matter" data-legal-close-sheet onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 520, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Close {selected.name} as {legalStageLabel(matter.stage).toLowerCase()}?</h3>
+            <p style={{ ...MUTED, fontSize: '0.84rem' }}>The firm recorded it. Close it once any payment they hold is applied on the job and their last costs are in. The matter leaves their portal and moves to Closed here.</p>
+            <textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="A note for the record (optional)" style={sheetInput} />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setSheet(null)} style={btn}>Cancel</button>
+              <button type="button" onClick={() => void confirmClose()} disabled={busy} style={btnPrimary}>Close the matter</button>
             </div>
           </div>
         </div>
@@ -949,11 +977,15 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
                     <button type="button" onClick={officeActs.onOpenPipelineRow} style={btn} title="Apply it on the job with Mark Paid, then come back">Mark Paid on the row ↗</button>
                     <button type="button" onClick={() => void officeActs.markApplied(e)} disabled={officeActs.busy} style={btn}>Mark applied</button>
                   </span>
+                ) : stepProposalOf(e) ? (
+                  // #85 item 16: a step that would move the stage back waits on the office; the stage has not moved.
+                  <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn} title="Record it, leave the stage where it is">Keep {legalStageLabel(stepProposalOf(e)?.from).replace('With the firm · ', '')}</button>
                 ) : (
                   <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
                 )
               ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
-              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), e.body, e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
+              const proposal = stepProposalOf(e)
+              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), proposal && waiting ? <span key="b">{e.body}<span style={{ ...MUTED, display: 'block', fontSize: '0.74rem' }}>The stage stays at {legalStageLabel(proposal.from).replace('With the firm · ', '')} until you choose.</span></span> : e.body, e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
             })}
             empty="" />
         </>

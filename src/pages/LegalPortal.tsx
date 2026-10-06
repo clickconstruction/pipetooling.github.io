@@ -91,7 +91,8 @@ export default function LegalPortal() {
         return false
       }
       setReloadTick((t) => t + 1)
-      const line = said ? said(body) : { text: firmSavedWords(payload), warn: false }
+      // #85 item 16: the function says when a step did not move the stage, or kept a settled matter open.
+      const line = said ? said(body) : { text: body.notice ?? firmSavedWords(payload), warn: false }
       setNotice(line.text)
       setNoticeWarn(line.warn)
       return true

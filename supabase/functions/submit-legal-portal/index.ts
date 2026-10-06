@@ -8,13 +8,18 @@ import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
+import { firmStepDecision, LEGAL_FIRM_STEP_WORDS, LEGAL_FIRM_STEPS_BEFORE_16, legalMatterOnPortal, type LegalFirmStep } from '../_shared/legalStages.ts'
 
 /**
  * The firm's acts on its portal (Legal portal train, PR 4): one POST endpoint,
  * token-authenticated like submit-sub-portal, five kinds (six with `answer`, #41 PR 3) —
  *
  *   fee · cost          — an amount and a note; rolls into the matter's total demand
- *   step                — demand · suit · judgment · settled (+ detail); moves the matter's stage
+ *   step                — demand · suit · judgment · settled (+ detail); moves the matter's stage.
+ *                         Since #85 item 16 an end (settled) moves the stage but not closed_at — the
+ *                         matter stays here for the check until the office closes it — and a step that
+ *                         would move the stage backward is recorded with meta.proposed and waits on
+ *                         the office (_shared/legalStages.ts firmStepDecision).
  *   question            — free text for the office
  *   payment_received    — money the firm received; the office applies it to the job
  *
@@ -38,7 +43,6 @@ const corsHeaders = {
 const privateHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
 
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact the office.'
-const WITH_FIRM_STAGES = ['referred', 'demand', 'suit', 'judgment']
 const MAX_PER_HOUR = 30
 const MAX_BODY = 2000
 const MAX_AMOUNT = 1_000_000
@@ -153,9 +157,10 @@ serve(async (req) => {
 
     if (!matterId) return jsonResponse({ error: 'Missing matter' }, 400)
 
-    const { data: matter } = await admin.from('legal_matters').select('id, firm_id, stage, payer_name').eq('id', matterId).maybeSingle()
-    const m = matter as { id: string; firm_id: string | null; stage: string; payer_name: string } | null
-    if (!m || m.firm_id !== link.firm_id || !WITH_FIRM_STAGES.includes(m.stage)) return jsonResponse({ error: 'That matter is not with your firm.' }, 403)
+    const { data: matter } = await admin.from('legal_matters').select('id, firm_id, stage, payer_name, closed_at').eq('id', matterId).maybeSingle()
+    const m = matter as { id: string; firm_id: string | null; stage: string; payer_name: string; closed_at: string | null } | null
+    // #85 item 16: a working stage, or an end (settled …) the office has not closed yet.
+    if (!m || m.firm_id !== link.firm_id || !legalMatterOnPortal(m)) return jsonResponse({ error: 'That matter is not with your firm.' }, 403)
 
     // Rate limit: portal acts across the firm's matters in the last hour.
     const since = new Date(Date.now() - 3_600_000).toISOString()
@@ -170,6 +175,7 @@ serve(async (req) => {
     let amount: number | null = null
     let entryBody = note
     const meta: Record<string, unknown> = {}
+    let notice: string | null = null
 
     if (kind === 'fee' || kind === 'cost') {
       const n = Number(body.amount)
@@ -183,18 +189,24 @@ serve(async (req) => {
       meta.applied = false
       entryBody = note || 'Payment received by counsel'
     } else if (kind === 'step') {
+      // The steps the table takes today; the item 16 migration widens the CHECK and this list with it.
       const stage = str(body.stage, 20)
-      if (!['demand', 'suit', 'judgment', 'settled'].includes(stage)) return jsonResponse({ error: 'Pick a step.' }, 400)
-      const label = { demand: 'Demand sent on firm letterhead', suit: 'Suit filed', judgment: 'Judgment entered', settled: 'Settled' }[stage as 'demand' | 'suit' | 'judgment' | 'settled']
+      if (!(LEGAL_FIRM_STEPS_BEFORE_16 as readonly string[]).includes(stage)) return jsonResponse({ error: 'Pick a step.' }, 400)
+      const step = stage as LegalFirmStep
+      const label = LEGAL_FIRM_STEP_WORDS[step]
       entryBody = note ? `${label} — ${note}` : label
-      meta.stage = stage
-      const patch: Record<string, unknown> = { stage, updated_at: new Date().toISOString() }
-      if (stage === 'settled') {
-        patch.closed_at = new Date().toISOString()
-        patch.closed_reason = 'Settled — reported by the firm'
+      meta.stage = step
+      const decision = firmStepDecision(m.stage, step)
+      if (decision === 'ask') {
+        // Backward (judgment → demand, or anything after an end): recorded, the stage waits for the office.
+        meta.proposed = true
+        meta.from = m.stage
+        notice = 'Recorded. That step would move the stage back, so the stage stays where it is until the office agrees.'
+      } else if (decision === 'move') {
+        const { error: upErr } = await admin.from('legal_matters').update({ stage: step, updated_at: new Date().toISOString() }).eq('id', matterId)
+        if (upErr) return jsonResponse({ error: 'Could not record the step.' }, 500)
+        if (step === 'settled') notice = 'Recorded. The matter stays here until the office closes it, so you can still record the payment and your last costs.'
       }
-      const { error: upErr } = await admin.from('legal_matters').update(patch).eq('id', matterId)
-      if (upErr) return jsonResponse({ error: 'Could not record the step.' }, 500)
     } else if (kind === 'question') {
       if (!note) return jsonResponse({ error: 'Type your question.' }, 400)
     } else if (kind === 'answer') {
@@ -219,7 +231,7 @@ serve(async (req) => {
       .select('id')
       .single()
     if (error) return jsonResponse({ error: 'Could not save that.' }, 500)
-    return jsonResponse({ ok: true, entryId: (inserted as { id: string }).id })
+    return jsonResponse({ ok: true, entryId: (inserted as { id: string }).id, ...(notice ? { notice } : {}) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('submit-legal-portal', e), 500)
   }
