@@ -12,7 +12,7 @@
  * `src/lib/legal/legalPromiseBilled.ts` is the client's door.
  */
 
-type InvoiceLike = { job_id?: unknown; status?: unknown; amount?: unknown; billed_at?: unknown; created_at?: unknown; sent_to_customer_at?: unknown }
+type InvoiceLike = { job_id?: unknown; status?: unknown; amount?: unknown; billed_at?: unknown; created_at?: unknown }
 
 function instantMs(v: unknown): number | null {
   if (typeof v !== 'string' || !v) return null
@@ -22,15 +22,15 @@ function instantMs(v: unknown): number | null {
 
 /**
  * The sum of the job's billed or paid lines dated at or before the promise. A
- * line's date is `billed_at`, else `created_at`, else `sent_to_customer_at`; a
- * line with none of the three counts (it was billed before anyone dated it).
+ * line's date is `COALESCE(billed_at, created_at)`, exactly the RPC's; a line
+ * with neither counts (it was billed before anyone dated it).
  */
 export function billedAtPromise(invoices: ReadonlyArray<InvoiceLike>, jobId: string, promiseCreatedAt: string): number {
   const cutoff = instantMs(promiseCreatedAt)
   let sum = 0
   for (const i of invoices) {
     if (i.job_id !== jobId || (i.status !== 'billed' && i.status !== 'paid')) continue
-    const when = instantMs(i.billed_at) ?? instantMs(i.created_at) ?? instantMs(i.sent_to_customer_at)
+    const when = instantMs(i.billed_at) ?? instantMs(i.created_at)
     if (cutoff != null && when != null && when > cutoff) continue
     sum += Number(i.amount ?? 0)
   }

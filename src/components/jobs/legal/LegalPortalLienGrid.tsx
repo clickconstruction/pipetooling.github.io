@@ -15,9 +15,10 @@ import { portalBtn, portalCap, portalCard, portalTd, portalTh } from './legalFir
  * grid the firm sees is the office's book, live. A `?` is a fact the office
  * has not entered yet.
  */
-export default function LegalPortalLienGrid({ raw, todayYmd, companyName }: { raw: LienBookRaw; todayYmd: string; companyName: string }) {
+/** `initialShow`: the sample opens on All (#85 item 9) so the matter's own job shows beside the due ones. */
+export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initialShow = 'due' }: { raw: LienBookRaw; todayYmd: string; companyName: string; initialShow?: LienBookShow }) {
   const [gcId, setGcId] = useState<string | null>(null)
-  const [show, setShow] = useState<LienBookShow>('due')
+  const [show, setShow] = useState<LienBookShow>(initialShow)
   const book = useMemo(() => buildLienTimelineBook(assembleLienBookInput(raw, todayYmd)), [raw, todayYmd])
   const rows = useMemo(() => filterLienTimelineBook(book, { gcId, show }), [book, gcId, show])
   const grid = useMemo(() => lienGridRows(rows, todayYmd), [rows, todayYmd])

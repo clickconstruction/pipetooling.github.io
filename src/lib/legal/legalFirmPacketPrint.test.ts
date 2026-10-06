@@ -37,7 +37,7 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(html).toContain('Referral packet')
     expect(html).toContain(`prepared 2026-10-05 for ${payload.firm.name.replace("&", "&amp;")}`)
     expect(html).toContain(payload.firm.handling_name)
-    expect(html).toContain('Sample Contracting')
+    expect(html).toContain('Brazos Ridge Contracting')
     expect(html).toContain('Balance owed')
     expect(html).toContain('Fees and costs to date')
     expect(html).toContain('Demand as of 2026-10-05')
@@ -56,14 +56,14 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
   })
 
   it('prints the firm’s own fee with a total, and the office note', () => {
-    expect(html).toContain('Demand letter drafted and sent')
+    expect(html).toContain('Demand letter on firm letterhead')
     expect(html).toContain('$450.00')
     expect(html).toContain('From the office:')
     expect(html).toContain(m.noteToFirm.slice(0, 30))
   })
 
   it('runs a balance down the statement and signs a payment before the dollar', () => {
-    expect(html).toContain('$18,400.00')
+    expect(html).toContain('$14,400.00')
     expect(html).toContain('−$4,000.00')
     expect(html).not.toContain('$-4,000.00')
     expect(html).toContain('Balance owed')

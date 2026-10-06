@@ -406,6 +406,8 @@ export type LegalFilingLine = {
   county: string
   recordingNumber: string
   sends: number
+  /** The day the paper went out (item 9): its first send's `sent_on`, else the day the record was made. A notice is mailed, never filed, so this is its date. */
+  wentOutYmd: string | null
   /** The saved copy's link (v2.3763), '' when none. */
   documentUrl: string
 }
@@ -826,6 +828,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     county: f.county,
     recordingNumber: f.recording_number,
     sends: Array.isArray(f.sends) ? f.sends.length : 0,
+    wentOutYmd: (Array.isArray(f.sends) ? f.sends.map((s) => ymdOfIso((s as { sent_on?: string | null }).sent_on ?? null)).filter((x): x is string => Boolean(x)).sort()[0] : undefined) ?? (calendarYmdInAppTzFromIso(f.created_at ?? '') || null),
     documentUrl: normalizeDocumentUrl((f as unknown as LienFilingDocument).document_url),
   }))
   const filedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'affidavit' && f.filed_at).map((f) => f.job_id))
@@ -980,7 +983,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     })
   }
   for (const f of lienFilings) {
-    const y = f.filedYmd ?? f.servedYmd
+    const y = f.filedYmd ?? f.servedYmd ?? f.wentOutYmd
     steps.push({ ymd: y, sortKey: y ?? '9999', kind: 'filing', text: `${f.kind}${f.filedYmd ? ' filed' : ''}${f.recordingNumber ? ` · ${f.recordingNumber}` : ''}${f.servedYmd ? ` · served ${f.servedYmd}` : ''}`, jobLabel: f.jobLabel })
   }
   steps.sort((a, b) => a.sortKey.localeCompare(b.sortKey))

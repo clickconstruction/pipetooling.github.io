@@ -32,8 +32,8 @@ describe('sampleLegalPortalResponse — one referred matter, one story', () => {
       const p = packet!
 
       // The GC is the payer, so Click is the subcontractor: the note to the firm and the job agree.
-      expect(p.account.payer).toMatchObject({ name: 'Sample Contracting', viaGc: true })
-      expect(m.noteToFirm).toMatch(/demand on Sample Contracting, the GC/)
+      expect(p.account.payer).toMatchObject({ name: 'Brazos Ridge Contracting', viaGc: true })
+      expect(m.noteToFirm).toMatch(/demand on Brazos Ridge Contracting, the GC/)
       expect(p.theory.key).toBe('contract')
 
       // The money: $18,400 billed on two bills, one $4,000 check with its date and number.
@@ -46,9 +46,9 @@ describe('sampleLegalPortalResponse — one referred matter, one story', () => {
       // The property record: county, owner of record, legal description, parcel, ready for a lien.
       expect(p.account.properties).toHaveLength(1)
       expect(p.account.properties[0]).toMatchObject({ county: 'Hays', propertyKind: 'commercial', lienReady: true })
-      expect(p.account.properties[0]!.owner).toMatch(/Sample Holdings LLC/)
+      expect(p.account.properties[0]!.owner).toMatch(/Alvarado Holdings LLC/)
       expect(p.account.properties[0]!.legalDescription).toMatch(/Lot 4, Block B/)
-      expect(p.account.properties[0]!.parcelId).toMatch(/R100000/)
+      expect(p.account.properties[0]!.parcelId).toMatch(/R104417/)
 
       // The § 53.056 notice went out in time for every work month, to the owner and the GC, with the owner's answers.
       expect(p.paper.envelopes).toHaveLength(1)
@@ -65,6 +65,19 @@ describe('sampleLegalPortalResponse — one referred matter, one story', () => {
       expect(p.paper.demandLetters).toHaveLength(1)
       expect(p.paper.demandLetters[0]).toMatchObject({ sentYmd: d(-28), deadlineYmd: d(-18), deadlinePassed: true, exhibits: 3 })
       expect(p.paper.demandLetters[0]!.tracking).toMatch(/9407/)
+      // Its enclosures are the real rows' shape: { label, kind, title, pages }.
+      const enclosures = ((m as unknown as { demandLetters: Array<{ fields: { enclosures: unknown[] } }> }).demandLetters[0]!.fields.enclosures)
+      expect(enclosures.every((e) => typeof e === 'object' && e !== null && 'label' in e && 'kind' in e && 'title' in e && 'pages' in e)).toBe(true)
+
+      // The GC's office is in Hays County, with the property, and no name in the story reads "Sample".
+      expect(p.account.customerAddress).toMatch(/San Marcos, TX/)
+      expect(JSON.stringify(m)).not.toMatch(/Sample (Contracting|Holdings|Pkwy|Commerce|Dental|Builders)|Jordan Sample|SAMPLE 00/)
+
+      // A notice is mailed, never filed: "What the company did" dates it by its first send (item 9 review).
+      expect(p.feesAndSteps.steps.find((s) => s.kind === 'filing')?.ymd).toBe(d(-40))
+      // …and by the day its record was made when no send is recorded.
+      const unsent = { ...m, lienFilings: m.lienFilings.map((f) => ({ ...f, sends: [] })) }
+      expect(buildMatterPacket(unsent, today, portalFeeModel(parsed!))!.feesAndSteps.steps.find((s) => s.kind === 'filing')?.ymd).toBe(d(-40))
 
       // The lien is alive: the affidavit window is still open.
       const clock = p.paper.lienClock[0]!
@@ -99,11 +112,11 @@ describe('sampleLegalPortalResponse — one referred matter, one story', () => {
       expect(book.rows).toHaveLength(3)
       const grid = lienGridRows(book.rows, today)
       const matter = grid.find((g) => g.job.startsWith('1042'))!
-      expect(matter.owner).toMatch(/Sample Holdings LLC/)
+      expect(matter.owner).toMatch(/Alvarado Holdings LLC/)
       expect(matter.notices).not.toMatch(/MISSED/)
       expect(matter.affidavit).not.toMatch(/MISSED|lien gone/)
       expect(grid.find((g) => g.job.startsWith('1063'))!.notices).toBe('none needed (with the owner)')
-      expect(book.gcs.map((g) => g.name)).toEqual(['Sample Builders', 'Sample Contracting'])
+      expect(book.gcs.map((g) => g.name)).toEqual(['Brazos Ridge Contracting', 'Hill Country Builders'])
       // The grid opens on Something due: the repipe's affidavit copy is always due to be served.
       expect(book.counts.due).toBeGreaterThan(0)
       expect(book.rows.find((r) => r.jobId === 'sample-book-job-repipe')?.lens).toBe('due')

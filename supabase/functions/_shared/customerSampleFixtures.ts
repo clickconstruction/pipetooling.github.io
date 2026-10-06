@@ -521,14 +521,24 @@ const SAMPLE_LEGAL = {
   propertyId: 'sample-legal-property',
   noticeFilingId: 'sample-legal-notice',
   noticeItemId: 'sample-legal-notice-item',
-  owner: 'Sample Holdings LLC',
-  ownerMailing: 'PO Box 4100, Austin, TX 78765',
+  owner: 'Alvarado Holdings LLC',
+  ownerMailing: 'PO Box 4100, San Marcos, TX 78667',
 } as const
+
+/**
+ * The sample matter's GC (v2.4638 review): a plausible fictional company, not the other sample
+ * surfaces' "Sample Contracting", so the firm's demo reads like a real file. Its office is in Hays
+ * County, with the property.
+ */
+const LEGAL_GC = { company: 'Brazos Ridge Contracting', contact: 'Pat Holloway', email: 'pat.holloway@brazosridge.example.com', phone: '(512) 555-0142', office: '1150 Hunter Rd, Suite 300, San Marcos, TX 78666' } as const
+
+/** The building's record, the job's own property (#85 item 6 reads it from `jobAddresses`). */
+const LEGAL_PROPERTY_ROW = { id: 'sample-legal-property', customer_id: 'sample-legal-owner', address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Creekside Commerce Park, Section 2, Hays County, Texas', property_kind: 'commercial', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Reyes', owner_company: 'Alvarado Holdings LLC', owner_mailing_address: 'PO Box 4100, San Marcos, TX 78667', parcel_id: 'R104417', is_primary: true, sequence_order: 0 } as const
 
 /**
  * The one sample matter (v2.3639; one coherent story since v2.4638): the shape `parseLegalPortalPayload`
  * reads and `buildMatterPacket` runs through the desk's own kernel. Click is the plumbing sub on a
- * commercial finish-out; Sample Contracting is the GC and the payer; Sample Holdings LLC owns the
+ * commercial finish-out; Brazos Ridge Contracting is the GC and the payer; Alvarado Holdings LLC owns the
  * building. Every row has the columns `legal-portal` selects for a real matter, and every date is
  * relative to today, so the story never ages:
  *
@@ -558,7 +568,7 @@ function sampleLegalMatter(todayYmd: string): Record<string, unknown> {
     hcp_number: '1042',
     click_number: null,
     job_name: 'Tenant finish-out — Suite 200',
-    job_address: '200 Sample Pkwy, Suite 200, Kyle, TX 78640',
+    job_address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640',
     // The building's owner is the job's customer; the GC is who hired Click and who pays.
     customer_id: SAMPLE_LEGAL.ownerCustomerId,
     customer_name: SAMPLE_LEGAL.owner,
@@ -582,48 +592,49 @@ function sampleLegalMatter(todayYmd: string): Record<string, unknown> {
     google_drive_link: null,
     invoices,
     payments,
-    gcCustomer: { id: gcId, name: SAMPLE_GC.company },
+    gcCustomer: { id: gcId, name: LEGAL_GC.company },
     collections_by_name: 'Taunya',
   }
   const noticeSentOn = d(-40)
   return {
     id: matterId,
     stage: 'referred',
-    payer: { key: `c:${gcId}`, name: SAMPLE_GC.company, customerId: gcId },
+    payer: { key: `c:${gcId}`, name: LEGAL_GC.company, customerId: gcId },
     handling: SAMPLE_FIRM.handling,
-    noteToFirm: 'Start with a demand on Sample Contracting, the GC. Our § 53.056 notice reached the owner in time, and the owner says it still holds $12,000 owed to the GC plus the 10% retainage. The affidavit window is still open; the Lien grid has the date.',
+    noteToFirm: 'Start with a demand on Brazos Ridge Contracting, the GC. Our § 53.056 notice reached the owner in time, and the owner says it still holds $12,000 owed to the GC plus the 10% retainage. The affidavit window is still open; the Lien grid has the date.',
     releasedAt: d(-6),
     feesToStatement: true,
     sharedOverrides: {},
     jobs: [job],
-    customer: { id: gcId, name: SAMPLE_GC.company, address: '410 Sample Commerce Dr, Austin, TX 78744', contact_info: { email: SAMPLE_GC.email, phone: '(512) 555-0142' }, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
-    contacts: [{ name: SAMPLE_GC.contact, email: SAMPLE_GC.email, phone: '(512) 555-0142', note: 'Project manager' }],
+    customer: { id: gcId, name: LEGAL_GC.company, address: LEGAL_GC.office, contact_info: { email: LEGAL_GC.email, phone: LEGAL_GC.phone }, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
+    contacts: [{ name: LEGAL_GC.contact, email: LEGAL_GC.email, phone: LEGAL_GC.phone, note: 'Project manager' }],
     contactEntries: [
       { id: 'sample-ce-1', ymd: d(-92), method: 'Phone', by: 'Taunya', text: 'Pat said the first draw check goes out by the end of next week.' },
       { id: 'sample-ce-2', ymd: d(-48), method: 'Email', by: 'Taunya', text: 'Statement re-sent with the signed agreement attached. No reply.' },
       { id: 'sample-ce-3', ymd: d(-24), method: 'Site visit', by: 'Malachi', text: 'Suite is open for business. Pat would not give a date.' },
     ],
     // The property record: county, owner of record, legal description and parcel.
-    addresses: [
-      { id: SAMPLE_LEGAL.propertyId, customer_id: gcId, address: '200 Sample Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Sample Commerce Park, Section 2, Hays County, Texas (sample)', property_kind: 'commercial', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Sample', owner_company: SAMPLE_LEGAL.owner, owner_mailing_address: SAMPLE_LEGAL.ownerMailing, parcel_id: 'R100000 (sample)', is_primary: true, sequence_order: 0 },
-    ],
+    addresses: [{ ...LEGAL_PROPERTY_ROW }],
+    // The record the job names and the jobs' owner overrides (#85 item 6's keys; none overrides here).
+    jobAddresses: [{ ...LEGAL_PROPERTY_ROW }],
+    jobOwners: [],
     contracts: [
-      { id: 'sample-legal-contract', job_id: jobId, status: 'signed', revision: 1, recipient_email: SAMPLE_GC.email, sent_at: at(-124), last_sent_at: at(-124), view_count: 2, signed_at: at(-122), signer_printed_name: SAMPLE_GC.contact, signer_mode: 'type', voided_at: null, signed_document_url: null, recipient_name: SAMPLE_GC.contact, signer_consented_at: at(-122), co_signer_name: null, co_signed_at: null, co_signer_printed_name: null, signedPdfUrl: null },
+      { id: 'sample-legal-contract', job_id: jobId, status: 'signed', revision: 1, recipient_email: LEGAL_GC.email, sent_at: at(-124), last_sent_at: at(-124), view_count: 2, signed_at: at(-122), signer_printed_name: LEGAL_GC.contact, signer_mode: 'type', voided_at: null, signed_document_url: null, recipient_name: LEGAL_GC.contact, signer_consented_at: at(-122), co_signer_name: null, co_signed_at: null, co_signer_printed_name: null, signedPdfUrl: null },
     ],
     signedEstimates: [],
     demandLetters: [
-      { id: 'sample-legal-demand', job_id: jobId, amount: 14_400, sent_at: at(-28), sent_method: 'certified_mail', tracking_number: '9407 SAMPLE 0028', deadline_date: d(-18), recipient_name: SAMPLE_GC.company, fields: { feeClockYmd: d(-28), enclosures: ['Invoice 1042-1', 'Invoice 1042-2', 'Signed agreement'] }, voided_at: null, created_at: at(-29) },
+      { id: 'sample-legal-demand', job_id: jobId, amount: 14_400, sent_at: at(-28), sent_method: 'certified_mail', tracking_number: '9407 1118 9956 2310 0028 41', deadline_date: d(-18), recipient_name: LEGAL_GC.company, fields: { feeClockYmd: d(-28), enclosures: [{ label: 'A', kind: 'invoice', title: `Invoice 1042-1, as sent ${d(-100)}`, pages: 1 }, { label: 'A-2', kind: 'invoice', title: `Invoice 1042-2, as sent ${d(-60)}`, pages: 1 }, { label: 'B', kind: 'agreement', title: `Signed agreement, ${d(-122)}`, pages: 3 }] }, voided_at: null, created_at: at(-29) },
     ],
     lienFilings: [
-      { id: SAMPLE_LEGAL.noticeFilingId, job_id: jobId, kind: 'notice_53_056', amount: 14_400, months_covered: workMonths, filed_at: null, served_at: null, serve_due: null, county: 'Hays', recording_number: '', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 SAMPLE 0040', sent_on: noticeSentOn }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 SAMPLE 0041', sent_on: noticeSentOn }], document_url: null, packet_id: null, printed_claim: null, by_hand: false, voided_at: null, created_at: at(-40, '14:00') },
+      { id: SAMPLE_LEGAL.noticeFilingId, job_id: jobId, kind: 'notice_53_056', amount: 14_400, months_covered: workMonths, filed_at: null, served_at: null, serve_due: null, county: 'Hays', recording_number: '', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118 9956 2310 0040 17', sent_on: noticeSentOn }, { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 1118 9956 2310 0041 24', sent_on: noticeSentOn }], document_url: null, packet_id: null, printed_claim: null, by_hand: false, voided_at: null, created_at: at(-40, '14:00') },
     ],
     // The desk item that sent the notice, shaped as the function shapes it: the owner's answers only.
     lienDeskItems: [
-      { id: SAMPLE_LEGAL.noticeItemId, job_id: jobId, kind: 'notice_53_056', status: 'sent', sent_at: at(-40), sent_filing_id: SAMPLE_LEGAL.noticeFilingId, created_at: at(-44), voided_at: null, fields: { letterTwo: null, gcAuthorizedDirectPay: null, ownerCall: { at: at(-33, '16:30'), name: 'Taunya', owesGc: 'yes', owesAmount: 12_000, reserved: 'held', originalContractCompletedOn: null, note: 'Jordan Sample, the owner’s manager, called after the letter.' } } },
+      { id: SAMPLE_LEGAL.noticeItemId, job_id: jobId, kind: 'notice_53_056', status: 'sent', sent_at: at(-40), sent_filing_id: SAMPLE_LEGAL.noticeFilingId, created_at: at(-44), voided_at: null, fields: { letterTwo: null, gcAuthorizedDirectPay: null, ownerCall: { at: at(-33, '16:30'), name: 'Taunya', owesGc: 'yes', owesAmount: 12_000, reserved: 'held', originalContractCompletedOn: null, note: 'Jordan Reyes, the owner’s manager, called after the letter.' } } },
     ],
     promises: [
-      { id: 'sample-legal-promise-1', jobId, customerId: gcId, promisedYmd: d(-85), saidBy: SAMPLE_GC.contact, heardByName: 'Taunya', channel: 'phone', source: 'office', note: 'the first draw', createdAt: at(-92) },
-      { id: 'sample-legal-promise-2', jobId, customerId: gcId, promisedYmd: d(-42), saidBy: SAMPLE_GC.contact, heardByName: 'Taunya', channel: 'phone', source: 'office', note: 'the final bill', createdAt: at(-50) },
+      { id: 'sample-legal-promise-1', jobId, customerId: gcId, promisedYmd: d(-85), saidBy: LEGAL_GC.contact, heardByName: 'Taunya', channel: 'phone', source: 'office', note: 'the first draw', createdAt: at(-92) },
+      { id: 'sample-legal-promise-2', jobId, customerId: gcId, promisedYmd: d(-42), saidBy: LEGAL_GC.contact, heardByName: 'Taunya', channel: 'phone', source: 'office', note: 'the final bill', createdAt: at(-50) },
     ],
     // What was billed on the job when each promise was made, and the job's dated payments — the office's own rule.
     promiseRecords: [
@@ -681,22 +692,20 @@ function sampleLegalLienBook(todayYmd: string): Record<string, unknown> {
     ],
     items: [{ id: SAMPLE_LEGAL.noticeItemId, job_id: jobId, kind: 'notice_53_056', status: 'sent', months: matterMonths, sent_at: at(-40), sent_filing_id: SAMPLE_LEGAL.noticeFilingId, hold_until: null, created_at: at(-44), voided_at: null }],
     // The repipe's affidavit, filed two days ago: its copy is due to the owner within five days (§ 53.055).
-    filings: [{ id: 'sample-book-affidavit', job_id: repipeJob, kind: 'affidavit', filed_at: d(-2), served_at: null, serve_due: d(3), months_covered: [d(-35).slice(0, 7)], county: 'Hays', amount: 3_850, recording_number: '2026-SAMPLE-0001', created_at: at(-2), voided_at: null }],
+    filings: [{ id: 'sample-book-affidavit', job_id: repipeJob, kind: 'affidavit', filed_at: d(-2), served_at: null, serve_due: d(3), months_covered: [d(-35).slice(0, 7)], county: 'Hays', amount: 3_850, recording_number: '2026-031417', created_at: at(-2), voided_at: null }],
     jobs: [
-      { id: jobId, hcp_number: '1042', click_number: null, job_name: 'Tenant finish-out — Suite 200', job_address: '200 Sample Pkwy, Suite 200, Kyle, TX 78640', gc_customer_id: gcId, customer_address_id: SAMPLE_LEGAL.propertyId, revenue: 18_400, payments_made: 4_000, last_work_date: d(-66), lien_payment_bond: 'no', lien_contract_ended_on: null },
-      { id: dentalJob, hcp_number: '1057', click_number: null, job_name: 'Sample Dental — rough-in', job_address: '18 Sample Ranch Rd, Buda, TX 78610', gc_customer_id: gc2, customer_address_id: null, revenue: 6_200, payments_made: 0, last_work_date: dentalWork, lien_payment_bond: 'unknown', lien_contract_ended_on: null },
-      { id: repipeJob, hcp_number: '1063', click_number: null, job_name: 'Sample residence — repipe', job_address: '7 Sample Ct, San Marcos, TX 78666', gc_customer_id: null, customer_address_id: null, revenue: 3_850, payments_made: 0, last_work_date: d(-35), lien_payment_bond: null, lien_contract_ended_on: null },
+      { id: jobId, hcp_number: '1042', click_number: null, job_name: 'Tenant finish-out — Suite 200', job_address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640', gc_customer_id: gcId, customer_address_id: SAMPLE_LEGAL.propertyId, revenue: 18_400, payments_made: 4_000, last_work_date: d(-66), lien_payment_bond: 'no', lien_contract_ended_on: null },
+      { id: dentalJob, hcp_number: '1057', click_number: null, job_name: 'Plum Creek Dental — rough-in', job_address: '18 Windy Hill Rd, Buda, TX 78610', gc_customer_id: gc2, customer_address_id: null, revenue: 6_200, payments_made: 0, last_work_date: dentalWork, lien_payment_bond: 'unknown', lien_contract_ended_on: null },
+      { id: repipeJob, hcp_number: '1063', click_number: null, job_name: 'Whitfield residence — repipe', job_address: '7 Willow Ct, San Marcos, TX 78666', gc_customer_id: null, customer_address_id: null, revenue: 3_850, payments_made: 0, last_work_date: d(-35), lien_payment_bond: null, lien_contract_ended_on: null },
     ],
     gcs: [
-      { id: gcId, name: SAMPLE_GC.company, lien_notice_policy: 'ask' },
-      { id: gc2, name: 'Sample Builders', lien_notice_policy: 'send' },
+      { id: gcId, name: LEGAL_GC.company, lien_notice_policy: 'ask' },
+      { id: gc2, name: 'Hill Country Builders', lien_notice_policy: 'send' },
     ],
-    addresses: [
-      { id: SAMPLE_LEGAL.propertyId, customer_id: gcId, address: '200 Sample Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Sample Commerce Park, Section 2, Hays County, Texas (sample)', property_kind: 'commercial', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Sample', owner_company: SAMPLE_LEGAL.owner, owner_mailing_address: SAMPLE_LEGAL.ownerMailing, parcel_id: 'R100000 (sample)', is_primary: true, sequence_order: 0 },
-    ],
+    addresses: [{ ...LEGAL_PROPERTY_ROW }],
     owners: [
-      { job_id: dentalJob, owner_mode: 'building_owner', owner_name: null, company_name: 'Sample Dental Properties LLC', mailing_address: '18 Sample Ranch Rd, Buda, TX 78610' },
-      { job_id: repipeJob, owner_mode: 'homeowner', owner_name: 'Sam Sample', company_name: null, mailing_address: '7 Sample Ct, San Marcos, TX 78666' },
+      { job_id: dentalJob, owner_mode: 'building_owner', owner_name: null, company_name: 'Plum Creek Dental Properties LLC', mailing_address: '18 Windy Hill Rd, Buda, TX 78610' },
+      { job_id: repipeJob, owner_mode: 'homeowner', owner_name: 'Sam Whitfield', company_name: null, mailing_address: '7 Willow Ct, San Marcos, TX 78666' },
     ],
   }
 }
@@ -715,10 +724,10 @@ export function sampleLegalPortalResponse(company: SamplePortalCompany, todayYmd
     firm: { id: SAMPLE_FIRM.id, name: SAMPLE_FIRM.name, handling_name: SAMPLE_FIRM.handling, email: SAMPLE_FIRM.email, phone: SAMPLE_FIRM.phone, contingency_pct: 33, filing_cost: 350, active: true },
     particulars: {
       entity: company.name,
-      license: 'Master Plumber M-00000 (sample)',
-      agent: 'Sample Registered Agent, Inc. · 100 Sample St, Austin, TX 78701 (sample)',
-      custodian: 'Robin Sample, office manager (sample)',
-      affiant: 'Casey Sample, owner (sample)',
+      license: 'Master Plumber M-41207 (sample)',
+      agent: 'Lone Star Registered Agents, Inc. · 100 Congress Ave, Austin, TX 78701 (sample)',
+      custodian: 'Robin Ortega, office manager (sample)',
+      affiant: 'Casey Lindell, owner (sample)',
       phone: company.phone,
       email: company.email,
       w9: 'on request from the office',

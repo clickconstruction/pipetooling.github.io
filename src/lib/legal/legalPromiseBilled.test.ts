@@ -17,9 +17,9 @@ describe('billedAtPromise', () => {
     expect(billedAtPromise(invoices, 'j1', '2026-06-01T00:00:00+00:00')).toBe(0)
   })
 
-  it('falls back to created_at, then the send, and counts an undated line', () => {
+  it('dates a line by COALESCE(billed_at, created_at), like the RPC, and counts an undated line', () => {
     expect(billedAtPromise([{ job_id: 'j', status: 'paid', amount: 10, billed_at: null, created_at: '2026-09-02T00:00:00Z' }], 'j', '2026-09-01T00:00:00Z')).toBe(0)
-    expect(billedAtPromise([{ job_id: 'j', status: 'paid', amount: 10, billed_at: null, sent_to_customer_at: '2026-08-02T00:00:00Z' }], 'j', '2026-09-01T00:00:00Z')).toBe(10)
+    expect(billedAtPromise([{ job_id: 'j', status: 'paid', amount: 10, billed_at: null, created_at: '2026-08-02T00:00:00Z' }], 'j', '2026-09-01T00:00:00Z')).toBe(10)
     expect(billedAtPromise([{ job_id: 'j', status: 'billed', amount: 10 }], 'j', '2026-09-01T00:00:00Z')).toBe(10)
   })
 
