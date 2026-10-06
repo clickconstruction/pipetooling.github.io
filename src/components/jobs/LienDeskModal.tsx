@@ -2158,8 +2158,13 @@ export default function LienDeskModal({
               <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
             ) : null}
           </span>
-          {/* The second line (v2.3817): the piles on the left, Put a GC on notice and the run on the right. */}
+          {/* The second line (v2.3817): the run first, at the left under the title on every view (v2.4629, the owner's ask); then the piles; Put a GC on notice at the right. */}
           <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
+          {kind !== 'affidavit' && office && runCount > 0 ? (
+            <button type="button" onClick={() => setRunOpen(true)} style={btn('primary')} data-lien-desk-run title="Every approved notice — monthly and retainage — as one packet and one tracking form">
+              Send the run · {runCount}
+            </button>
+          ) : null}
           {kind === 'retainage'
             ? LIEN_RETAINAGE_PILES.map((p) => {
                 const n = data?.retainage.counts[p.key] ?? 0
@@ -2240,13 +2245,8 @@ export default function LienDeskModal({
               ) : null}
             </div>
           ) : null}
-          {kind !== 'affidavit' && office && runCount > 0 ? (
-            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: kind === 'notice' && onPutGcOnNotice && gcPickerOptions.length > 0 ? 0 : 'auto' }} title="Every approved notice — monthly and retainage — as one packet and one tracking form">
-              Send the run · {runCount}
-            </button>
-          ) : null}
           {leader && wordSent.length > 0 ? (
-            <span style={{ marginLeft: office && runCount > 0 ? 0 : 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
               Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
             </span>
           ) : null}

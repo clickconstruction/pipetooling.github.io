@@ -211,7 +211,7 @@ The desk shows the master only what needs a decision. He sees what is open with 
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} in the desk's title bar opens the run.
+Approved notices go out together. {{button:blue|Send the run · N}} sits at the left under the desk's title, on every view. It opens the run.
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
