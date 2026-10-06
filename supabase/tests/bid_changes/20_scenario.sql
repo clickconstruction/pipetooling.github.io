@@ -343,5 +343,26 @@ SELECT bct.same('every one of the seventeen tables recorded something',
     WHERE NOT EXISTS (SELECT 1 FROM bct.rows_after((SELECT id FROM start)) c WHERE c.table_name = t)),
   '(none missing)');
 
+-- 16 · The request tag (PR 1b): a write tagged x-bid-action records the tag, the app's own actions
+--      read as the app's, an untagged write records neither, and a tag that is not a slug is dropped.
+RESET ROLE;
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.headers', '{"x-bid-action":"counts-import","user-agent":"bed"}', true);
+INSERT INTO public.bids_count_rows (bid_id, bid_version_id, fixture, count, sequence_order)
+VALUES ('00000000-0000-0000-0000-00000000c7d1', '00000000-0000-0000-0000-00000000c7a5', 'Tagged WC', 1, 90);
+SELECT set_config('request.headers', '{"x-bid-action":"labor-sync"}', true);
+UPDATE public.bids_count_rows SET count = 2 WHERE fixture = 'Tagged WC';
+SELECT set_config('request.headers', '{"x-bid-action":"Not A Slug!"}', true);
+UPDATE public.bids_count_rows SET count = 3 WHERE fixture = 'Tagged WC';
+SELECT set_config('request.headers', '', true);
+UPDATE public.bids_count_rows SET count = 4 WHERE fixture = 'Tagged WC';
+SELECT bct.same('the request tag: a press, the app, a bad tag, no tag',
+  (SELECT string_agg(op || ' ' || COALESCE(action, '-') || ' ' || COALESCE(by_app::text, '-'), E'\n' ORDER BY id) FROM bct.rows_after((SELECT id FROM mark)) WHERE label = 'Tagged WC'),
+  E'insert counts-import false\nupdate labor-sync true\nupdate - -\nupdate - -');
+RESET ROLE;
+UPDATE mark SET id = bct.last();
+
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;

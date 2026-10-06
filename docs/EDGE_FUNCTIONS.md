@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-06
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -944,6 +944,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`**, and for the CT bridge reads (`get_work_state.ct_takeoff`, credential mirroring) **`CT_MANAGE_USER_URL`** + **`CT_MANAGE_USER_SECRET`**; for the TakeoffTooling leg the four `TT_TWIN_LOGIN_URL` / `TAKEOFFTOOLING_TWIN_LOGIN_SECRET` / `TT_MANAGE_USER_URL` / `TT_MANAGE_USER_SECRET`; optional `APP_ORIGIN`. Twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential.
 
 ---
+
+`paste_counts` writes through an admin client that carries `x-bid-action: robot-paste` (v2.4736, bid history PR 1b), so `record_bid_change()` files a robot's rows and assignments as the robot's one action.
 
 ### twin-setup
 
