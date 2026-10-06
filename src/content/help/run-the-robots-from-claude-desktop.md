@@ -22,7 +22,7 @@ One command, and you never see the key. The same setup serves the Code tab and c
 
 1. Open **Bids → 🤖 Robots → Console**. In step 1 of the *From Claude Code* column, press {{button:purple|Set up on this Mac}}. The same button is on the robot's row at Settings → Digital twins. Type whose Mac it is. That becomes the key's label, so it can be revoked on its own later. Press {{button:purple|Make my setup command}}.
 2. Press {{button:purple|Copy the command}}. It carries a one-time code that is good for ten minutes and one use.
-3. Open Terminal: press ⌘ Space, type *Terminal*, press Return. Paste and press Return. The command trades the code for a fresh key on the server. It writes the key straight into Claude's connector config. Then it quits Claude and reopens it so the connector loads. It also puts the robot's kickoff on your clipboard. Anything running in Claude stops when it quits, so finish or pause that first. If it says Node is missing, you install Node 18 or newer from nodejs.org and run it again.
+3. Open Terminal: press ⌘ Space, type *Terminal*, press Return. Paste and press Return. The command trades the code for a fresh key on the server. It writes the key straight into Claude's connector config. Then it quits Claude and reopens it so the connector loads. It also puts the robot's kickoff on your clipboard. Anything running in Claude stops when it quits, so finish or pause that first. If it says Node is missing, install Node 18 or newer from nodejs.org and run it again.
 4. In Claude, you open the **Code** tab, start a new session and paste. The robot reads its brief and says the connector answered.
 
 :::example Why a code instead of a key
