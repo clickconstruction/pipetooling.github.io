@@ -45,6 +45,10 @@ exports[`GC mode golden walk > a payment reminder on Cibolo's late pay applicati
 
 exports[`GC mode golden walk > before any step 1`] = `
 {
+  "allPeople": {
+    "count": 9,
+    "late": 5,
+  },
   "assistantRules": [
     {
       "ideal": "Every trade has 3 companies we can count on. A company counts until it has stayed silent on most of our asks.",
@@ -514,8 +518,60 @@ exports[`GC mode golden walk > before any step 1`] = `
     },
   ],
   "lastLog": null,
+  "needsYou": "9 to follow up on in GC mode",
   "projects": {
     "boerne": {
+      "people": {
+        "count": 6,
+        "late": 3,
+        "people": [
+          {
+            "key": "partner:hillside",
+            "reasons": [
+              "ask:red",
+              "plans:amber",
+            ],
+            "tone": "red",
+          },
+          {
+            "key": "partner:bexar",
+            "reasons": [
+              "ask:red",
+            ],
+            "tone": "red",
+          },
+          {
+            "key": "partner:voltage",
+            "reasons": [
+              "insurance:red",
+              "plans:grey",
+            ],
+            "tone": "red",
+          },
+          {
+            "key": "partner:tejas",
+            "reasons": [
+              "ask:amber",
+              "plans:amber",
+            ],
+            "tone": "amber",
+          },
+          {
+            "key": "customer:marshvale",
+            "reasons": [
+              "questions:amber",
+            ],
+            "tone": "amber",
+          },
+          {
+            "key": "partner:coolbreeze",
+            "reasons": [
+              "plans:grey",
+            ],
+            "tone": "grey",
+          },
+        ],
+      },
       "planRecipients": {
         "allTouched": [
           {
@@ -1617,6 +1673,28 @@ exports[`GC mode golden walk > before any step 1`] = `
       },
     },
     "fairoaksd": {
+      "people": {
+        "count": 2,
+        "late": 2,
+        "people": [
+          {
+            "key": "partner:pecanvalley",
+            "reasons": [
+              "insurance:red",
+              "waiver:amber",
+              "notReady:amber",
+            ],
+            "tone": "red",
+          },
+          {
+            "key": "customer:cibolo",
+            "reasons": [
+              "pay:3:red",
+            ],
+            "tone": "red",
+          },
+        ],
+      },
       "planRecipients": {
         "allTouched": [
           {
@@ -2408,6 +2486,19 @@ exports[`GC mode golden walk > before any step 1`] = `
       },
     },
     "helotes": {
+      "people": {
+        "count": 1,
+        "late": 0,
+        "people": [
+          {
+            "key": "partner:brightline",
+            "reasons": [
+              "sow:amber",
+            ],
+            "tone": "amber",
+          },
+        ],
+      },
       "planRecipients": {
         "allTouched": [
           {
@@ -3124,6 +3215,11 @@ exports[`GC mode golden walk > before any step 1`] = `
       },
     },
     "padb": {
+      "people": {
+        "count": 0,
+        "late": 0,
+        "people": [],
+      },
       "planRecipients": {
         "allTouched": [],
         "noneTouched": [],
@@ -3412,6 +3508,11 @@ exports[`GC mode golden walk > before any step 1`] = `
       },
     },
     "stoneoak": {
+      "people": {
+        "count": 0,
+        "late": 0,
+        "people": [],
+      },
       "planRecipients": {
         "allTouched": [
           {
@@ -3874,6 +3975,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner comal»",
       ],
       "short": 2,
+      "toldAhead": {},
       "trade": "Structural steel",
       "urgency": 8,
     },
@@ -3896,6 +3998,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner aquashield»",
       ],
       "short": 2,
+      "toldAhead": {},
       "trade": "Fire sprinkler",
       "urgency": 8,
     },
@@ -3928,6 +4031,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner alamo»",
       ],
       "short": 2,
+      "toldAhead": {},
       "trade": "Concrete",
       "urgency": 4,
     },
@@ -3961,6 +4065,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner hillside»",
       ],
       "short": 2,
+      "toldAhead": {},
       "trade": "Sitework",
       "urgency": 4,
     },
@@ -3983,6 +4088,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner bluebonnet»",
       ],
       "short": 1,
+      "toldAhead": {},
       "trade": "Roofing",
       "urgency": 3,
     },
@@ -3994,6 +4100,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner liveoak»",
       ],
       "short": 0,
+      "toldAhead": {},
       "trade": "Framing and drywall",
       "urgency": 0,
     },
@@ -4016,6 +4123,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner coolbreeze»",
       ],
       "short": 0,
+      "toldAhead": {},
       "trade": "HVAC",
       "urgency": 0,
     },
@@ -4038,6 +4146,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner sawtooth»",
       ],
       "short": 0,
+      "toldAhead": {},
       "trade": "Millwork",
       "urgency": 0,
     },
@@ -4063,6 +4172,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "«partner tejas»",
       ],
       "short": 0,
+      "toldAhead": {},
       "trade": "Electrical",
       "urgency": 0,
     },
@@ -4087,6 +4197,8 @@ exports[`GC mode golden walk > step 01: Concrete: a cost to cover Alamo’s uncl
 exports[`GC mode golden walk > step 02: Structural steel: Bexar cannot do it 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
+    "allPeople.late": 4,
     "assistantRules[2].items": "[]",
     "assistantRules[2].now": "14 of 14 asks are opened or still inside 3 days.",
     "assistantRules[2].ok": true,
@@ -4100,6 +4212,21 @@ exports[`GC mode golden walk > step 02: Structural steel: Bexar cannot do it 1`]
     "lastLog.id": 1,
     "lastLog.text": "Bexar Steel Erectors cannot do Structural steel. Offer it to the next company.",
     "lastLog.who": "office",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.boerne.people.count": 5,
+    "projects.boerne.people.late": 2,
+    "projects.boerne.people.people[1].key": "partner:voltage",
+    "projects.boerne.people.people[1].reasons[0]": "insurance:red",
+    "projects.boerne.people.people[1].reasons[1]": "plans:grey",
+    "projects.boerne.people.people[2].key": "partner:tejas",
+    "projects.boerne.people.people[2].reasons[0]": "ask:amber",
+    "projects.boerne.people.people[2].reasons[1]": "plans:amber",
+    "projects.boerne.people.people[2].tone": "amber",
+    "projects.boerne.people.people[3].key": "customer:marshvale",
+    "projects.boerne.people.people[3].reasons[0]": "questions:amber",
+    "projects.boerne.people.people[4].key": "partner:coolbreeze",
+    "projects.boerne.people.people[4].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[4].tone": "grey",
     "projects.boerne.planRecipients.allTouched[10].invite": "«invite elec-brightline»",
     "projects.boerne.planRecipients.allTouched[10].partner": "«partner brightline»",
     "projects.boerne.planRecipients.allTouched[11].hasBid": false,
@@ -4159,6 +4286,10 @@ exports[`GC mode golden walk > step 02: Structural steel: Bexar cannot do it 1`]
     "projects.boerne.planRecipients.allTouched[12].invite",
     "projects.boerne.planRecipients.allTouched[12].touched",
     "projects.boerne.planRecipients.allTouched[12].hasBid",
+    "projects.boerne.people.people[3].reasons[1]",
+    "projects.boerne.people.people[5].key",
+    "projects.boerne.people.people[5].tone",
+    "projects.boerne.people.people[5].reasons[0]",
     "followUps[3].project",
     "followUps[3].pkg",
     "followUps[3].invite",
@@ -4268,6 +4399,7 @@ exports[`GC mode golden walk > step 04: Structural steel: nudge Iron Horse 1`] =
 exports[`GC mode golden walk > step 05: Sitework: Hillside promises a day on a call 1`] = `
 {
   "changed": {
+    "allPeople.late": 3,
     "assistantRules[5].items": "[]",
     "assistantRules[5].now": "3 of 3 promises on live asks are still good.",
     "assistantRules[5].ok": true,
@@ -4285,9 +4417,20 @@ exports[`GC mode golden walk > step 05: Sitework: Hillside promises a day on a c
     "followUps[1].words": "Promised a quote by Mon Oct 5, in 3 days.",
     "lastLog.id": 4,
     "lastLog.text": "Hillside Excavation promised their Sitework quote by Mon Oct 5.",
+    "projects.boerne.people.late": 1,
+    "projects.boerne.people.people[0].key": "partner:voltage",
+    "projects.boerne.people.people[0].reasons[0]": "insurance:red",
+    "projects.boerne.people.people[0].reasons[1]": "plans:grey",
+    "projects.boerne.people.people[1].key": "partner:tejas",
+    "projects.boerne.people.people[1].reasons[0]": "ask:amber",
+    "projects.boerne.people.people[1].reasons[1]": "plans:amber",
+    "projects.boerne.people.people[1].tone": "amber",
+    "projects.boerne.people.people[2].key": "partner:hillside",
+    "projects.boerne.people.people[2].reasons[0]": "plans:amber",
     "projects.boerne.stageProgress.also[0]": "1 company needs a call. See Follow up.",
   },
   "removed": [
+    "projects.boerne.people.people[2].reasons[1]",
     "assistantRules[5].items[0].id",
     "assistantRules[5].items[0].text",
     "assistantRules[5].items[0].action.kind",
@@ -4323,6 +4466,7 @@ exports[`GC mode golden walk > step 07: Roofing: Bluebonnet promises in the port
 exports[`GC mode golden walk > step 08: Structural steel: Iron Horse opens the plans 1`] = `
 {
   "changed": {
+    "allPeople.count": 9,
     "followUps[1].invite": "«invite steel-ironhorse»",
     "followUps[1].order": 300,
     "followUps[1].partner": "«partner ironhorse»",
@@ -4343,6 +4487,18 @@ exports[`GC mode golden walk > step 08: Structural steel: Iron Horse opens the p
     "followUps[3].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 7,
     "lastLog.text": "Iron Horse Fabrication opened Addendum 1.",
+    "needsYou": "9 to follow up on in GC mode",
+    "projects.boerne.people.count": 6,
+    "projects.boerne.people.people[2].key": "partner:ironhorse",
+    "projects.boerne.people.people[2].reasons[0]": "ask:amber",
+    "projects.boerne.people.people[3].key": "partner:hillside",
+    "projects.boerne.people.people[3].reasons[0]": "plans:amber",
+    "projects.boerne.people.people[4].key": "customer:marshvale",
+    "projects.boerne.people.people[4].reasons[0]": "questions:amber",
+    "projects.boerne.people.people[4].tone": "amber",
+    "projects.boerne.people.people[5].key": "partner:coolbreeze",
+    "projects.boerne.people.people[5].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[5].tone": "grey",
     "projects.boerne.stageProgress.also[0]": "2 companies need a call. See Follow up.",
     "projects.boerne.stageProgress.also[1]": "4 of 13 companies have not opened Addendum 1.",
     "tradeBenches[0].needs[0].looking": 1,
@@ -4355,6 +4511,7 @@ exports[`GC mode golden walk > step 08: Structural steel: Iron Horse opens the p
 exports[`GC mode golden walk > step 09: Structural steel: Iron Horse bids 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
     "assistantRules[1].items[0].action.kind": "ask",
     "assistantRules[1].items[0].action.packageId": "fire",
     "assistantRules[1].items[0].action.partnerIds[0]": "redline",
@@ -4380,6 +4537,15 @@ exports[`GC mode golden walk > step 09: Structural steel: Iron Horse bids 1`] = 
     "followUps[2].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 8,
     "lastLog.text": "Iron Horse Fabrication quoted $158,000 on Structural steel.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.boerne.people.count": 5,
+    "projects.boerne.people.people[2].key": "partner:hillside",
+    "projects.boerne.people.people[2].reasons[0]": "plans:amber",
+    "projects.boerne.people.people[3].key": "customer:marshvale",
+    "projects.boerne.people.people[3].reasons[0]": "questions:amber",
+    "projects.boerne.people.people[4].key": "partner:coolbreeze",
+    "projects.boerne.people.people[4].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[4].tone": "grey",
     "projects.boerne.planRecipients.allTouched[5].hasBid": true,
     "projects.boerne.planRecipients.noneTouched[5].hasBid": true,
     "projects.boerne.stageProgress.also[0]": "1 company needs a call. See Follow up.",
@@ -4463,6 +4629,9 @@ exports[`GC mode golden walk > step 09: Structural steel: Iron Horse bids 1`] = 
   "removed": [
     "projects.boerne.trades.steel.compareBids.lines",
     "projects.boerne.trades.steel.bidTabRows",
+    "projects.boerne.people.people[5].key",
+    "projects.boerne.people.people[5].tone",
+    "projects.boerne.people.people[5].reasons[0]",
     "followUps[3].project",
     "followUps[3].pkg",
     "followUps[3].invite",
@@ -4505,6 +4674,7 @@ exports[`GC mode golden walk > step 10: Structural steel: Iron Horse revises 1`]
 exports[`GC mode golden walk > step 11: Electrical: Tejas passes 1`] = `
 {
   "changed": {
+    "allPeople.count": 7,
     "assistantRules[2].now": "14 of 14 asks are opened or still inside 3 days.",
     "assistantRules[3].now": "9 of 14 companies we are asking have all three.",
     "assistantRules[5].now": "2 of 2 promises on live asks are still good.",
@@ -4521,6 +4691,15 @@ exports[`GC mode golden walk > step 11: Electrical: Tejas passes 1`] = `
     "followUps[1].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 10,
     "lastLog.text": "Tejas Power passed on Electrical.",
+    "needsYou": "7 to follow up on in GC mode",
+    "projects.boerne.people.count": 4,
+    "projects.boerne.people.people[1].key": "partner:hillside",
+    "projects.boerne.people.people[1].reasons[0]": "plans:amber",
+    "projects.boerne.people.people[2].key": "customer:marshvale",
+    "projects.boerne.people.people[2].reasons[0]": "questions:amber",
+    "projects.boerne.people.people[3].key": "partner:coolbreeze",
+    "projects.boerne.people.people[3].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[3].tone": "grey",
     "projects.boerne.stageProgress.also[0]": "3 of 12 companies have not opened Addendum 1.",
     "tradeBenches[8].needs[0].looking": 0,
     "tradeBenches[8].needs[0].passed": 1,
@@ -4537,6 +4716,10 @@ exports[`GC mode golden walk > step 11: Electrical: Tejas passes 1`] = `
     "projects.boerne.planRecipients.allTouched[12].invite",
     "projects.boerne.planRecipients.allTouched[12].touched",
     "projects.boerne.planRecipients.allTouched[12].hasBid",
+    "projects.boerne.people.people[1].reasons[1]",
+    "projects.boerne.people.people[4].key",
+    "projects.boerne.people.people[4].tone",
+    "projects.boerne.people.people[4].reasons[0]",
     "followUps[2].project",
     "followUps[2].pkg",
     "followUps[2].invite",
@@ -4666,10 +4849,45 @@ exports[`GC mode golden walk > step 16: Fire sprinkler: stop carrying 1`] = `
 exports[`GC mode golden walk > step 17: A new set of plans: three sheets 1`] = `
 {
   "changed": {
+    "allPeople.count": 15,
     "customers.marshvale.addenda": 2,
     "customers.marshvale.sets": 5,
     "lastLog.id": 16,
     "lastLog.text": "Issued Addendum 2 on Boerne Retail Shell and emailed 12 companies. 6 were told it changes their trade.",
+    "needsYou": "15 to follow up on in GC mode",
+    "projects.boerne.people.count": 13,
+    "projects.boerne.people.people[10].key": "partner:coolbreeze",
+    "projects.boerne.people.people[10].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[10].tone": "grey",
+    "projects.boerne.people.people[11].key": "partner:kendall",
+    "projects.boerne.people.people[11].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[11].tone": "grey",
+    "projects.boerne.people.people[12].key": "partner:brightline",
+    "projects.boerne.people.people[12].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[12].tone": "grey",
+    "projects.boerne.people.people[2].key": "partner:bluebonnet",
+    "projects.boerne.people.people[2].reasons[0]": "plans:amber",
+    "projects.boerne.people.people[3].key": "customer:marshvale",
+    "projects.boerne.people.people[3].reasons[0]": "questions:amber",
+    "projects.boerne.people.people[3].tone": "amber",
+    "projects.boerne.people.people[4].key": "partner:lonestar",
+    "projects.boerne.people.people[4].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[4].tone": "grey",
+    "projects.boerne.people.people[5].key": "partner:tricounty",
+    "projects.boerne.people.people[5].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[5].tone": "grey",
+    "projects.boerne.people.people[6].key": "partner:alamo",
+    "projects.boerne.people.people[6].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[6].tone": "grey",
+    "projects.boerne.people.people[7].key": "partner:guadalupe",
+    "projects.boerne.people.people[7].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[7].tone": "grey",
+    "projects.boerne.people.people[8].key": "partner:ironhorse",
+    "projects.boerne.people.people[8].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[8].tone": "grey",
+    "projects.boerne.people.people[9].key": "partner:summit",
+    "projects.boerne.people.people[9].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[9].tone": "grey",
     "projects.boerne.stageProgress.also[0]": "12 of 12 companies have not opened Addendum 2.",
     "projects.boerne.stageProgress.center": "13/26",
     "projects.boerne.stageProgress.groups[2].doneWords": "«says» 4 quotes are on Addendum 2.",
@@ -4700,12 +4918,25 @@ exports[`GC mode golden walk > step 17: A new set of plans: three sheets 1`] = `
 exports[`GC mode golden walk > step 18: Concrete: Alamo’s number stands on the new plans 1`] = `
 {
   "changed": {
+    "allPeople.count": 14,
     "lastLog.id": 17,
     "lastLog.text": "Alamo Concrete confirmed their Concrete number of $205,500 stands on Addendum 2.",
     "lastLog.who": "trade",
+    "needsYou": "14 to follow up on in GC mode",
+    "projects.boerne.people.count": 12,
+    "projects.boerne.people.people[10].key": "partner:kendall",
+    "projects.boerne.people.people[11].key": "partner:brightline",
+    "projects.boerne.people.people[6].key": "partner:guadalupe",
+    "projects.boerne.people.people[7].key": "partner:ironhorse",
+    "projects.boerne.people.people[8].key": "partner:summit",
+    "projects.boerne.people.people[9].key": "partner:coolbreeze",
     "projects.boerne.stageProgress.also[0]": "11 of 12 companies have not opened Addendum 2.",
   },
-  "removed": [],
+  "removed": [
+    "projects.boerne.people.people[12].key",
+    "projects.boerne.people.people[12].tone",
+    "projects.boerne.people.people[12].reasons[0]",
+  ],
 }
 `;
 
@@ -4776,6 +5007,10 @@ exports[`GC mode golden walk > step 21: We sent our bid 1`] = `
     "lastLog.id": 18,
     "lastLog.text": "Our bid on Boerne Retail Shell went to Cibolo Creek Partners. Bid tabs can go out now.",
     "lastLog.who": "office",
+    "projects.boerne.people.count": 13,
+    "projects.boerne.people.people[12].key": "customer:cibolo",
+    "projects.boerne.people.people[12].reasons[0]": "bid:grey",
+    "projects.boerne.people.people[12].tone": "grey",
     "projects.boerne.stageProgress.center": "14/26",
     "projects.boerne.stageProgress.groups[3].items[0].detail": "Sent Oct 2",
     "projects.boerne.stageProgress.groups[3].items[0].done": true,
@@ -4850,12 +5085,19 @@ exports[`GC mode golden walk > step 24: Lonestar opens the bid tab 1`] = `
 exports[`GC mode golden walk > step 25: We won Boerne Retail Shell 1`] = `
 {
   "changed": {
+    "allPeople.count": 5,
     "customers.cibolo.inFront": 153090,
     "customers.cibolo.underContract": 2600494.56,
     "customers.cibolo.won": 4,
     "lastLog.id": 22,
     "lastLog.text": "We won Boerne Retail Shell. Buyout starts: award each trade.",
     "lastLog.who": "office",
+    "needsYou": "5 to follow up on in GC mode",
+    "projects.boerne.people.count": 1,
+    "projects.boerne.people.late": 0,
+    "projects.boerne.people.people[0].key": "customer:marshvale",
+    "projects.boerne.people.people[0].reasons[0]": "questions:amber",
+    "projects.boerne.people.people[0].tone": "amber",
     "projects.boerne.planRecipients.allTouched[1].invite": "«invite conc-guadalupe»",
     "projects.boerne.planRecipients.allTouched[1].partner": "«partner guadalupe»",
     "projects.boerne.planRecipients.allTouched[1].pkg": "«package conc»",
@@ -5137,6 +5379,43 @@ exports[`GC mode golden walk > step 25: We won Boerne Retail Shell 1`] = `
     "projects.boerne.planRecipients.allTouched[11].invite",
     "projects.boerne.planRecipients.allTouched[11].touched",
     "projects.boerne.planRecipients.allTouched[11].hasBid",
+    "projects.boerne.people.people[0].reasons[1]",
+    "projects.boerne.people.people[1].key",
+    "projects.boerne.people.people[1].tone",
+    "projects.boerne.people.people[1].reasons[0]",
+    "projects.boerne.people.people[2].key",
+    "projects.boerne.people.people[2].tone",
+    "projects.boerne.people.people[2].reasons[0]",
+    "projects.boerne.people.people[3].key",
+    "projects.boerne.people.people[3].tone",
+    "projects.boerne.people.people[3].reasons[0]",
+    "projects.boerne.people.people[4].key",
+    "projects.boerne.people.people[4].tone",
+    "projects.boerne.people.people[4].reasons[0]",
+    "projects.boerne.people.people[5].key",
+    "projects.boerne.people.people[5].tone",
+    "projects.boerne.people.people[5].reasons[0]",
+    "projects.boerne.people.people[6].key",
+    "projects.boerne.people.people[6].tone",
+    "projects.boerne.people.people[6].reasons[0]",
+    "projects.boerne.people.people[7].key",
+    "projects.boerne.people.people[7].tone",
+    "projects.boerne.people.people[7].reasons[0]",
+    "projects.boerne.people.people[8].key",
+    "projects.boerne.people.people[8].tone",
+    "projects.boerne.people.people[8].reasons[0]",
+    "projects.boerne.people.people[9].key",
+    "projects.boerne.people.people[9].tone",
+    "projects.boerne.people.people[9].reasons[0]",
+    "projects.boerne.people.people[10].key",
+    "projects.boerne.people.people[10].tone",
+    "projects.boerne.people.people[10].reasons[0]",
+    "projects.boerne.people.people[11].key",
+    "projects.boerne.people.people[11].tone",
+    "projects.boerne.people.people[11].reasons[0]",
+    "projects.boerne.people.people[12].key",
+    "projects.boerne.people.people[12].tone",
+    "projects.boerne.people.people[12].reasons[0]",
   ],
 }
 `;
@@ -5144,6 +5423,7 @@ exports[`GC mode golden walk > step 25: We won Boerne Retail Shell 1`] = `
 exports[`GC mode golden walk > step 26: Award Sitework to Lonestar 1`] = `
 {
   "changed": {
+    "allPeople.count": 6,
     "assistantRules[1].now": "4 of 9 open asks have 2 quotes.",
     "assistantRules[2].now": "11 of 11 asks are opened or still inside 3 days.",
     "assistantRules[3].items[0].action": null,
@@ -5169,6 +5449,11 @@ exports[`GC mode golden walk > step 26: Award Sitework to Lonestar 1`] = `
     "followUps[0].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 23,
     "lastLog.text": "Awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their quote.",
+    "needsYou": "6 to follow up on in GC mode",
+    "projects.boerne.people.count": 2,
+    "projects.boerne.people.people[1].key": "partner:lonestar",
+    "projects.boerne.people.people[1].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[1].tone": "grey",
     "projects.boerne.stageProgress.center": "5/40",
     "projects.boerne.stageProgress.groups[2].items[0].detail": "Lonestar Earthworks",
     "projects.boerne.stageProgress.groups[2].items[0].done": true,
@@ -5399,9 +5684,15 @@ exports[`GC mode golden walk > step 32: Kendall signs the master agreement 1`] =
 exports[`GC mode golden walk > step 33: Send the HVAC statement of work 1`] = `
 {
   "changed": {
+    "allPeople.count": 7,
     "lastLog.id": 30,
     "lastLog.text": "Sent the HVAC statement of work to Kendall Air.",
     "lastLog.who": "office",
+    "needsYou": "7 to follow up on in GC mode",
+    "projects.helotes.people.count": 2,
+    "projects.helotes.people.people[1].key": "partner:kendall",
+    "projects.helotes.people.people[1].reasons[0]": "sow:amber",
+    "projects.helotes.people.people[1].tone": "amber",
     "projects.helotes.stageProgress.groups[6].items[2].detail": "sent, not signed",
     "projects.helotes.startChecklist.missing[4]": "HVAC: Kendall Air has the statement of work. Get it signed.",
     "projects.helotes.startChecklist.trades[2].checks[4].detail": "sent, not signed",
@@ -5414,9 +5705,12 @@ exports[`GC mode golden walk > step 33: Send the HVAC statement of work 1`] = `
 exports[`GC mode golden walk > step 34: Kendall signs it 1`] = `
 {
   "changed": {
+    "allPeople.count": 6,
     "lastLog.id": 31,
     "lastLog.text": "Kendall Air signed the HVAC statement of work.",
     "lastLog.who": "trade",
+    "needsYou": "6 to follow up on in GC mode",
+    "projects.helotes.people.count": 1,
     "projects.helotes.stageProgress.center": "16/25",
     "projects.helotes.stageProgress.groups[6].items[2].detail": "signed Oct 2",
     "projects.helotes.stageProgress.groups[6].items[2].done": true,
@@ -5431,6 +5725,9 @@ exports[`GC mode golden walk > step 34: Kendall signs it 1`] = `
   },
   "removed": [
     "projects.helotes.startChecklist.missing[5]",
+    "projects.helotes.people.people[1].key",
+    "projects.helotes.people.people[1].tone",
+    "projects.helotes.people.people[1].reasons[0]",
   ],
 }
 `;
@@ -5438,8 +5735,12 @@ exports[`GC mode golden walk > step 34: Kendall signs it 1`] = `
 exports[`GC mode golden walk > step 35: Brightline signs the Electrical statement of work 1`] = `
 {
   "changed": {
+    "allPeople.count": 5,
     "lastLog.id": 32,
     "lastLog.text": "Brightline Electric signed the Electrical statement of work.",
+    "needsYou": "5 to follow up on in GC mode",
+    "projects.helotes.people.count": 0,
+    "projects.helotes.people.people": "[]",
     "projects.helotes.stageProgress.center": "17/25",
     "projects.helotes.stageProgress.groups[6].items[1].detail": "signed Oct 2",
     "projects.helotes.stageProgress.groups[6].items[1].done": true,
@@ -5454,6 +5755,9 @@ exports[`GC mode golden walk > step 35: Brightline signs the Electrical statemen
   },
   "removed": [
     "projects.helotes.startChecklist.missing[4]",
+    "projects.helotes.people.people[0].key",
+    "projects.helotes.people.people[0].tone",
+    "projects.helotes.people.people[0].reasons[0]",
   ],
 }
 `;
@@ -5555,24 +5859,36 @@ exports[`GC mode golden walk > step 38: Cedar & Pine signs it 1`] = `
 exports[`GC mode golden walk > step 39: Send the Millwork statement of work 1`] = `
 {
   "changed": {
+    "allPeople.count": 6,
     "lastLog.id": 36,
     "lastLog.text": "Sent the Millwork statement of work to Cedar & Pine Millwork.",
     "lastLog.who": "office",
+    "needsYou": "6 to follow up on in GC mode",
+    "projects.helotes.people.count": 1,
+    "projects.helotes.people.people[0].key": "partner:cedar",
+    "projects.helotes.people.people[0].reasons[0]": "sow:amber",
+    "projects.helotes.people.people[0].tone": "amber",
     "projects.helotes.stageProgress.groups[6].items[3].detail": "sent, not signed",
     "projects.helotes.startChecklist.missing[3]": "Millwork: Cedar & Pine Millwork has the statement of work. Get it signed.",
     "projects.helotes.startChecklist.trades[4].checks[4].detail": "sent, not signed",
     "projects.helotes.startChecklist.trades[4].next": "Cedar & Pine Millwork has the statement of work. Get it signed.",
   },
-  "removed": [],
+  "removed": [
+    "projects.helotes.people.people",
+  ],
 }
 `;
 
 exports[`GC mode golden walk > step 40: Cedar & Pine signs it 1`] = `
 {
   "changed": {
+    "allPeople.count": 5,
     "lastLog.id": 37,
     "lastLog.text": "Cedar & Pine Millwork signed the Millwork statement of work.",
     "lastLog.who": "trade",
+    "needsYou": "5 to follow up on in GC mode",
+    "projects.helotes.people.count": 0,
+    "projects.helotes.people.people": "[]",
     "projects.helotes.stageProgress.center": "22/25",
     "projects.helotes.stageProgress.groups[6].items[3].detail": "signed Oct 2",
     "projects.helotes.stageProgress.groups[6].items[3].done": true,
@@ -5586,6 +5902,9 @@ exports[`GC mode golden walk > step 40: Cedar & Pine signs it 1`] = `
   },
   "removed": [
     "projects.helotes.startChecklist.missing[3]",
+    "projects.helotes.people.people[0].key",
+    "projects.helotes.people.people[0].tone",
+    "projects.helotes.people.people[0].reasons[0]",
   ],
 }
 `;
@@ -5887,23 +6206,38 @@ exports[`GC mode golden walk > step 51: Approve draw 2 1`] = `
 exports[`GC mode golden walk > step 52: Pay draw 2 1`] = `
 {
   "changed": {
+    "allPeople.count": 6,
     "lastLog.id": 48,
     "lastLog.text": "Paid draw 2 on Framing and drywall: $31,230.",
+    "needsYou": "6 to follow up on in GC mode",
+    "projects.helotes.people.count": 1,
+    "projects.helotes.people.people[0].key": "partner:hillcountry",
+    "projects.helotes.people.people[0].reasons[0]": "waiver:amber",
+    "projects.helotes.people.people[0].tone": "amber",
     "projects.helotes.stageProgress.also[2]": "Hill Country Interiors owes the unconditional waiver on draw 2.",
   },
-  "removed": [],
+  "removed": [
+    "projects.helotes.people.people",
+  ],
 }
 `;
 
 exports[`GC mode golden walk > step 53: Hill Country signs the unconditional waiver 1`] = `
 {
   "changed": {
+    "allPeople.count": 5,
     "lastLog.id": 49,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 2.",
     "lastLog.who": "trade",
+    "needsYou": "5 to follow up on in GC mode",
+    "projects.helotes.people.count": 0,
+    "projects.helotes.people.people": "[]",
   },
   "removed": [
     "projects.helotes.stageProgress.also[2]",
+    "projects.helotes.people.people[0].key",
+    "projects.helotes.people.people[0].tone",
+    "projects.helotes.people.people[0].reasons[0]",
   ],
 }
 `;
@@ -5911,11 +6245,27 @@ exports[`GC mode golden walk > step 53: Hill Country signs the unconditional wai
 exports[`GC mode golden walk > step 54: A new set of plans after Start 1`] = `
 {
   "changed": {
+    "allPeople.count": 9,
     "customers.ocotillo.addenda": 1,
     "customers.ocotillo.sets": 2,
     "lastLog.id": 50,
     "lastLog.text": "Issued Addendum 1 on Helotes Dental Office and emailed 4 companies. 1 were told it changes their trade.",
     "lastLog.who": "office",
+    "needsYou": "9 to follow up on in GC mode",
+    "projects.helotes.people.count": 4,
+    "projects.helotes.people.people[0].key": "partner:hillcountry",
+    "projects.helotes.people.people[0].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "grey",
+    "projects.helotes.people.people[1].key": "partner:brightline",
+    "projects.helotes.people.people[1].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[1].tone": "grey",
+    "projects.helotes.people.people[2].key": "partner:kendall",
+    "projects.helotes.people.people[2].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[2].tone": "grey",
+    "projects.helotes.people.people[3].key": "partner:cedar",
+    "projects.helotes.people.people[3].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[3].tone": "grey",
+    "projects.helotes.stageProgress.also[2]": "Brightline Electric, Kendall Air and Cedar & Pine Millwork need a new statement of work. The plans changed after they signed. Panels and feeders starts Tue Oct 27.",
     "projects.helotes.startChecklist.done": 21,
     "projects.helotes.startChecklist.missing[0]": "Framing and drywall: The plans changed after they signed. Send a new statement of work.",
     "projects.helotes.startChecklist.missing[1]": "Electrical: The plans changed after they signed. Send a new statement of work.",
@@ -5942,6 +6292,7 @@ exports[`GC mode golden walk > step 54: A new set of plans after Start 1`] = `
   },
   "removed": [
     "projects.helotes.startChecklist.missing",
+    "projects.helotes.people.people",
   ],
 }
 `;
@@ -6096,6 +6447,9 @@ exports[`GC mode golden walk > step 58: A new project: Leon Springs Urgent Care 
     "customers.marshvale.sets": 6,
     "lastLog.id": 54,
     "lastLog.text": "Started Leon Springs Urgent Care. The bid set has 5 sheets, split into 4 trades.",
+    "projects.leon-springs-urgent-care.people.count": 0,
+    "projects.leon-springs-urgent-care.people.late": 0,
+    "projects.leon-springs-urgent-care.people.people": "[]",
     "projects.leon-springs-urgent-care.planRecipients.allTouched": "[]",
     "projects.leon-springs-urgent-care.planRecipients.noneTouched": "[]",
     "projects.leon-springs-urgent-care.proposalTotals.contingency": 0,
@@ -6474,7 +6828,7 @@ exports[`GC mode golden walk > step 59: Hill Country sends pay application 3 (ce
     "lastLog.text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "The schedule: 31 days ahead of the plan, 26% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
-    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors asked for draw 3. Approve it.",
+    "projects.helotes.stageProgress.also[3]": "Hill Country Interiors asked for draw 3. Approve it.",
     "projects.helotes.stageProgress.center": "26%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "100% reported",
     "projects.helotes.stageProgress.groups[0].items[0].done": true,
@@ -6540,6 +6894,10 @@ exports[`GC mode golden walk > step 64: Helotes: Bulletin 1 adds a storefront an
     "lastLog.text": "Issued Bulletin 1 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It puts 2 new activities on the schedule. It adds 10 days to the job. It adds glass and storefront. Nobody is asked yet.",
     "projects.helotes.proposalTotals.holes[0]": "«package helotes-glass-and-storefront»",
     "projects.helotes.stageProgress.also[0]": "The schedule: 28 days ahead of the plan, 24% done where 0% was planned. Next: Dry-in, Oct 26.",
+    "projects.helotes.stageProgress.also[2]": "It finishes Fri Dec 25, 7 days past the contract's Fri Dec 18.",
+    "projects.helotes.stageProgress.also[3]": "Glass and storefront has no company yet. Storefront starts Sat Oct 17.",
+    "projects.helotes.stageProgress.also[4]": "Brightline Electric, Kendall Air and Cedar & Pine Millwork need a new statement of work. The plans changed after they signed. Panels and feeders starts Fri Nov 6.",
+    "projects.helotes.stageProgress.also[5]": "Hill Country Interiors asked for draw 3. Approve it.",
     "projects.helotes.startChecklist.missing[1]": "Glass and storefront: Pick a company and award the trade.",
     "projects.helotes.startChecklist.missing[2]": "Electrical: The plans changed after they signed. Send a new statement of work.",
     "projects.helotes.startChecklist.missing[3]": "HVAC: The plans changed after they signed. Send a new statement of work.",
@@ -6654,8 +7012,8 @@ exports[`GC mode golden walk > step 65: Approve draw 3 1`] = `
   "changed": {
     "lastLog.id": 61,
     "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
-    "projects.helotes.stageProgress.also[2]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
-    "projects.helotes.stageProgress.also[3]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
+    "projects.helotes.stageProgress.also[5]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[6]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
   "removed": [],
 }
@@ -6666,7 +7024,10 @@ exports[`GC mode golden walk > step 66: Pay draw 3 1`] = `
   "changed": {
     "lastLog.id": 62,
     "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
-    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
+    "projects.helotes.people.people[0].reasons[0]": "waiver:amber",
+    "projects.helotes.people.people[0].reasons[1]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "amber",
+    "projects.helotes.stageProgress.also[5]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
   },
   "removed": [],
 }
@@ -6678,10 +7039,13 @@ exports[`GC mode golden walk > step 67: Hill Country signs the unconditional wai
     "lastLog.id": 63,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[2]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
+    "projects.helotes.people.people[0].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "grey",
+    "projects.helotes.stageProgress.also[5]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[3]",
+    "projects.helotes.stageProgress.also[6]",
+    "projects.helotes.people.people[0].reasons[1]",
   ],
 }
 `;
@@ -6694,7 +7058,7 @@ exports[`GC mode golden walk > step 68: Accept the drywall work 1`] = `
     "lastLog.who": "office",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[2]",
+    "projects.helotes.stageProgress.also[5]",
   ],
 }
 `;
@@ -6715,7 +7079,7 @@ exports[`GC mode golden walk > step 70: Hill Country sends the final pay applica
   "changed": {
     "lastLog.id": 66,
     "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
-    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
+    "projects.helotes.stageProgress.also[5]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
   "removed": [],
 }
@@ -6727,7 +7091,7 @@ exports[`GC mode golden walk > step 71: Approve the retainage release 1`] = `
     "lastLog.id": 67,
     "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[2]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[5]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -6738,7 +7102,10 @@ exports[`GC mode golden walk > step 72: Pay the retainage 1`] = `
   "changed": {
     "lastLog.id": 68,
     "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
-    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors owes the unconditional final release of lien.",
+    "projects.helotes.people.people[0].reasons[0]": "waiver:amber",
+    "projects.helotes.people.people[0].reasons[1]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "amber",
+    "projects.helotes.stageProgress.also[5]": "Hill Country Interiors owes the unconditional final release of lien.",
   },
   "removed": [],
 }
@@ -6750,9 +7117,12 @@ exports[`GC mode golden walk > step 73: Hill Country signs the unconditional wai
     "lastLog.id": 69,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 4.",
     "lastLog.who": "trade",
+    "projects.helotes.people.people[0].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "grey",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[2]",
+    "projects.helotes.stageProgress.also[5]",
+    "projects.helotes.people.people[0].reasons[1]",
   ],
 }
 `;
@@ -6780,7 +7150,7 @@ exports[`GC mode golden walk > step 75: Cedar & Pine sends pay application 1 1`]
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "The schedule: 35 days ahead of the plan, 39% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[2]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.also[5]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "42%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "50% reported",
     "projects.helotes.stageProgress.headline": "42% of the work is done, by what the trades and our own crew have reported.",
@@ -6797,7 +7167,7 @@ exports[`GC mode golden walk > step 76: Send it back: we see the cabinets at 30%
     "lastLog.text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "The schedule: 34 days ahead of the plan, 38% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[2]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
+    "projects.helotes.stageProgress.also[5]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
   },
   "removed": [],
 }
@@ -6809,7 +7179,7 @@ exports[`GC mode golden walk > step 77: Cedar & Pine sends pay application 1 aga
     "lastLog.id": 73,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[2]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.also[5]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "41%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "43% reported",
     "projects.helotes.stageProgress.headline": "41% of the work is done, by what the trades and our own crew have reported.",
@@ -6825,7 +7195,7 @@ exports[`GC mode golden walk > step 78: Approve the fixed pay application 1 1`] 
     "lastLog.id": 74,
     "lastLog.text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[2]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[5]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -6874,12 +7244,18 @@ exports[`GC mode golden walk > step 81: Pad B: Lonestar opens the plans 1`] = `
     "followUps[1].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 77,
     "lastLog.text": "Lonestar Earthworks opened Pricing set.",
+    "projects.padb.people.count": 1,
+    "projects.padb.people.people[0].key": "partner:lonestar",
+    "projects.padb.people.people[0].reasons[0]": "ask:amber",
+    "projects.padb.people.people[0].tone": "amber",
     "projects.padb.stageProgress.also[0]": "1 company needs a call. See Follow up.",
     "projects.padb.stageProgress.also[1]": "1 of 2 companies have not opened Pricing set.",
     "tradeBenches[0].needs[1].looking": 1,
     "tradeBenches[0].needs[1].silent": 0,
   },
-  "removed": [],
+  "removed": [
+    "projects.padb.people.people",
+  ],
 }
 `;
 
@@ -6943,6 +7319,8 @@ exports[`GC mode golden walk > step 82: Pad B: Lonestar bids, good for 30 days, 
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[0].travel.miles": 0,
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].partner": "«partner tricounty»",
     "projects.leon-springs-urgent-care.trades.leon-springs-urgent-care-sitework.tradeLineup[1].travel.miles": 35,
+    "projects.padb.people.count": 0,
+    "projects.padb.people.people": "[]",
     "projects.padb.planRecipients.allTouched[0].hasBid": true,
     "projects.padb.planRecipients.noneTouched[0].hasBid": true,
     "projects.padb.stageProgress.also[0]": "1 of 2 companies have not opened Pricing set.",
@@ -7028,6 +7406,9 @@ exports[`GC mode golden walk > step 82: Pad B: Lonestar bids, good for 30 days, 
     "projects.padb.stageProgress.also[1]",
     "projects.padb.trades.bsite.compareBids.lines",
     "projects.padb.trades.bsite.bidTabRows",
+    "projects.padb.people.people[0].key",
+    "projects.padb.people.people[0].tone",
+    "projects.padb.people.people[0].reasons[0]",
     "followUps[1].project",
     "followUps[1].pkg",
     "followUps[1].invite",
@@ -7131,7 +7512,8 @@ exports[`GC mode golden walk > step 89: Cedar & Pine sends pay application 2 1`]
     "lastLog.text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "The schedule: 38 days ahead of the plan, 44% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[3]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
+    "projects.helotes.stageProgress.also[4]": "Brightline Electric and Kendall Air need a new statement of work. The plans changed after they signed. Panels and feeders starts Fri Nov 6.",
+    "projects.helotes.stageProgress.also[6]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
     "projects.helotes.stageProgress.center": "47%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "83% reported",
     "projects.helotes.stageProgress.headline": "47% of the work is done, by what the trades and our own crew have reported.",
@@ -7147,7 +7529,7 @@ exports[`GC mode golden walk > step 90: Approve less: the cabinets at 80% 1`] = 
     "lastLog.id": 86,
     "lastLog.text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[3]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[6]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -7171,11 +7553,25 @@ exports[`GC mode golden walk > step 91: Our crew reports underground done 1`] = 
 exports[`GC mode golden walk > step 92: Close Fair Oaks D with work still open (the screen would not offer it) 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
+    "allPeople.late": 2,
     "lastLog.id": 88,
     "lastLog.text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.fairoaksd.people.count": 0,
+    "projects.fairoaksd.people.late": 0,
+    "projects.fairoaksd.people.people": "[]",
   },
   "removed": [
     "projects.fairoaksd.stageProgress.also[11]",
+    "projects.fairoaksd.people.people[0].key",
+    "projects.fairoaksd.people.people[0].tone",
+    "projects.fairoaksd.people.people[0].reasons[0]",
+    "projects.fairoaksd.people.people[0].reasons[1]",
+    "projects.fairoaksd.people.people[0].reasons[2]",
+    "projects.fairoaksd.people.people[1].key",
+    "projects.fairoaksd.people.people[1].tone",
+    "projects.fairoaksd.people.people[1].reasons[0]",
   ],
 }
 `;
@@ -7214,6 +7610,7 @@ exports[`GC mode golden walk > step 94: Framing waits on electrical: Nov 16 to 2
   "changed": {
     "lastLog.id": 90,
     "lastLog.text": "Framing and drywall · Framing now runs Mon Nov 16 to Wed Nov 25. 7 activities after it move out, the last to finish Sun Dec 13.",
+    "projects.helotes.stageProgress.also[4]": "Brightline Electric and Kendall Air need a new statement of work. The plans changed after they signed. Panels and feeders starts Thu Nov 26.",
   },
   "removed": [],
 }
@@ -7309,8 +7706,20 @@ exports[`GC mode golden walk > step 102: Draft change order 1: sound batts at op
 exports[`GC mode golden walk > step 103: Send change order 1 to Dr. Raman 1`] = `
 {
   "changed": {
+    "allPeople.count": 9,
     "lastLog.id": 99,
     "lastLog.text": "Sent change order 1 to Dr. Priya Raman for signature: $5,280.",
+    "needsYou": "9 to follow up on in GC mode",
+    "projects.helotes.people.count": 5,
+    "projects.helotes.people.people[0].key": "customer:raman",
+    "projects.helotes.people.people[0].reasons[0]": "co:co-1:amber",
+    "projects.helotes.people.people[0].tone": "amber",
+    "projects.helotes.people.people[1].key": "partner:hillcountry",
+    "projects.helotes.people.people[2].key": "partner:brightline",
+    "projects.helotes.people.people[3].key": "partner:kendall",
+    "projects.helotes.people.people[4].key": "partner:cedar",
+    "projects.helotes.people.people[4].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[4].tone": "grey",
   },
   "removed": [],
 }
@@ -7319,11 +7728,24 @@ exports[`GC mode golden walk > step 103: Send change order 1 to Dr. Raman 1`] = 
 exports[`GC mode golden walk > step 104: Dr. Raman signs change order 1 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
     "customers.raman.underContract": 344047,
     "lastLog.id": 100,
     "lastLog.text": "Dr. Priya Raman signed change order 1 in their portal. Their price goes up $5,280.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.helotes.people.count": 4,
+    "projects.helotes.people.people[0].key": "partner:hillcountry",
+    "projects.helotes.people.people[0].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "grey",
+    "projects.helotes.people.people[1].key": "partner:brightline",
+    "projects.helotes.people.people[2].key": "partner:kendall",
+    "projects.helotes.people.people[3].key": "partner:cedar",
   },
-  "removed": [],
+  "removed": [
+    "projects.helotes.people.people[4].key",
+    "projects.helotes.people.people[4].tone",
+    "projects.helotes.people.people[4].reasons[0]",
+  ],
 }
 `;
 
@@ -7350,8 +7772,20 @@ exports[`GC mode golden walk > step 106: Draft change order 2: a credit, the bre
 exports[`GC mode golden walk > step 107: Send change order 2 to Dr. Raman 1`] = `
 {
   "changed": {
+    "allPeople.count": 9,
     "lastLog.id": 103,
     "lastLog.text": "Sent change order 2 to Dr. Priya Raman for signature: $-1,320.",
+    "needsYou": "9 to follow up on in GC mode",
+    "projects.helotes.people.count": 5,
+    "projects.helotes.people.people[0].key": "customer:raman",
+    "projects.helotes.people.people[0].reasons[0]": "co:co-2:amber",
+    "projects.helotes.people.people[0].tone": "amber",
+    "projects.helotes.people.people[1].key": "partner:hillcountry",
+    "projects.helotes.people.people[2].key": "partner:brightline",
+    "projects.helotes.people.people[3].key": "partner:kendall",
+    "projects.helotes.people.people[4].key": "partner:cedar",
+    "projects.helotes.people.people[4].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[4].tone": "grey",
   },
   "removed": [],
 }
@@ -7360,10 +7794,23 @@ exports[`GC mode golden walk > step 107: Send change order 2 to Dr. Raman 1`] = 
 exports[`GC mode golden walk > step 108: Dr. Raman declines change order 2 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
     "lastLog.id": 104,
     "lastLog.text": "Dr. Priya Raman declined change order 2 in their portal.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.helotes.people.count": 4,
+    "projects.helotes.people.people[0].key": "partner:hillcountry",
+    "projects.helotes.people.people[0].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "grey",
+    "projects.helotes.people.people[1].key": "partner:brightline",
+    "projects.helotes.people.people[2].key": "partner:kendall",
+    "projects.helotes.people.people[3].key": "partner:cedar",
   },
-  "removed": [],
+  "removed": [
+    "projects.helotes.people.people[4].key",
+    "projects.helotes.people.people[4].tone",
+    "projects.helotes.people.people[4].reasons[0]",
+  ],
 }
 `;
 
@@ -7374,6 +7821,7 @@ exports[`GC mode golden walk > step 109: Helotes: Bulletin 2 adds data drops, fi
     "customers.ocotillo.sets": 4,
     "lastLog.id": 105,
     "lastLog.text": "Issued Bulletin 2 on Helotes Dental Office and emailed 1 company. 1 was told it changes their trade. It adds 38 days to the job.",
+    "projects.helotes.stageProgress.also[2]": "It finishes Mon Feb 1, 45 days past the contract's Fri Dec 18.",
     "projects.helotes.trades.delec.compareBids.lines[0].text": "Brightline Electric quoted $56,900 and covers everything. They priced an older set of plans, so ask them to confirm.",
     "projects.helotes.trades.delec.compareBids.lines[1].text": "Voltage Brothers quoted $61,400 and covers everything. They priced an older set of plans, so ask them to confirm.",
   },
@@ -7404,8 +7852,20 @@ exports[`GC mode golden walk > step 111: Change order 3: a coffee bar cabinet in
 exports[`GC mode golden walk > step 112: Send change order 3 to Dr. Raman 1`] = `
 {
   "changed": {
+    "allPeople.count": 9,
     "lastLog.id": 108,
     "lastLog.text": "Sent change order 3 to Dr. Priya Raman for signature: $2,640.",
+    "needsYou": "9 to follow up on in GC mode",
+    "projects.helotes.people.count": 5,
+    "projects.helotes.people.people[0].key": "customer:raman",
+    "projects.helotes.people.people[0].reasons[0]": "co:co-3:amber",
+    "projects.helotes.people.people[0].tone": "amber",
+    "projects.helotes.people.people[1].key": "partner:hillcountry",
+    "projects.helotes.people.people[2].key": "partner:brightline",
+    "projects.helotes.people.people[3].key": "partner:kendall",
+    "projects.helotes.people.people[4].key": "partner:cedar",
+    "projects.helotes.people.people[4].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[4].tone": "grey",
   },
   "removed": [],
 }
@@ -7414,11 +7874,24 @@ exports[`GC mode golden walk > step 112: Send change order 3 to Dr. Raman 1`] = 
 exports[`GC mode golden walk > step 113: Dr. Raman signs change order 3 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
     "customers.raman.underContract": 346687,
     "lastLog.id": 109,
     "lastLog.text": "Dr. Priya Raman signed change order 3 in their portal. Their price goes up $2,640.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.helotes.people.count": 4,
+    "projects.helotes.people.people[0].key": "partner:hillcountry",
+    "projects.helotes.people.people[0].reasons[0]": "plans:grey",
+    "projects.helotes.people.people[0].tone": "grey",
+    "projects.helotes.people.people[1].key": "partner:brightline",
+    "projects.helotes.people.people[2].key": "partner:kendall",
+    "projects.helotes.people.people[3].key": "partner:cedar",
   },
-  "removed": [],
+  "removed": [
+    "projects.helotes.people.people[4].key",
+    "projects.helotes.people.people[4].tone",
+    "projects.helotes.people.people[4].reasons[0]",
+  ],
 }
 `;
 
@@ -7550,8 +8023,13 @@ exports[`GC mode golden walk > step 122: Pad B: send the question to the archite
     "lastLog.id": 118,
     "lastLog.text": "Sent Lonestar Earthworks's question to Marsh & Vale Architects.",
     "lastLog.who": "office",
+    "projects.padb.people.count": 1,
+    "projects.padb.people.people[0].key": "customer:marshvale",
+    "projects.padb.people.people[0].reasons[0]": "questions:amber",
+    "projects.padb.people.people[0].tone": "amber",
   },
   "removed": [
+    "projects.padb.people.people",
     "customers.marshvale.notSent[0].project",
     "customers.marshvale.notSent[0].question.id",
     "customers.marshvale.notSent[0].question.packageId",
@@ -7583,8 +8061,13 @@ exports[`GC mode golden walk > step 123: Pad B: the architect answers, sent to t
     "customers.marshvale.answered[1].question.text": "Is the drive-through lane concrete or asphalt?",
     "lastLog.id": 119,
     "lastLog.text": "Answered a sitework question on Boerne Retail Pad B and sent it to 1 company.",
+    "projects.padb.people.count": 0,
+    "projects.padb.people.people": "[]",
   },
   "removed": [
+    "projects.padb.people.people[0].key",
+    "projects.padb.people.people[0].tone",
+    "projects.padb.people.people[0].reasons[0]",
     "customers.marshvale.waiting[2].project",
     "customers.marshvale.waiting[2].question.id",
     "customers.marshvale.waiting[2].question.packageId",
@@ -7608,11 +8091,17 @@ exports[`GC mode golden walk > step 124: Pad B: Addendum 1 carries the answer 1`
     "customers.marshvale.sets": 8,
     "lastLog.id": 120,
     "lastLog.text": "Issued Addendum 1 on Boerne Retail Pad B and emailed 2 companies. 0 were told it changes their trade.",
+    "projects.padb.people.count": 1,
+    "projects.padb.people.people[0].key": "partner:lonestar",
+    "projects.padb.people.people[0].reasons[0]": "plans:grey",
+    "projects.padb.people.people[0].tone": "grey",
     "projects.padb.stageProgress.also[0]": "2 of 2 companies have not opened Addendum 1.",
     "projects.padb.stageProgress.groups[2].doneWords": "«says» 1 quote is on Addendum 1.",
     "projects.padb.stageProgress.groups[2].items[0].detail": "On Addendum 1",
   },
-  "removed": [],
+  "removed": [
+    "projects.padb.people.people",
+  ],
 }
 `;
 
@@ -7631,6 +8120,8 @@ exports[`GC mode golden walk > step 125: Pad B: we lost it, on price, to Hill Co
     "customers.cibolo.inFront": 0,
     "lastLog.id": 121,
     "lastLog.text": "Lost Boerne Retail Pad B: price too high. Hill Country Builders won it.",
+    "projects.padb.people.count": 0,
+    "projects.padb.people.people": "[]",
     "tradeBenches[2].short": 2,
     "tradeBenches[2].urgency": 6,
     "tradeBenches[4].needs[0].bids": 1,
@@ -7655,6 +8146,9 @@ exports[`GC mode golden walk > step 125: Pad B: we lost it, on price, to Hill Co
     "tradeBenches[5].urgency": 0,
   },
   "removed": [
+    "projects.padb.people.people[0].key",
+    "projects.padb.people.people[0].tone",
+    "projects.padb.people.people[0].reasons[0]",
     "tradeBenches[2].needs[1].project",
     "tradeBenches[2].needs[1].pkg",
     "tradeBenches[2].needs[1].bids",
@@ -7726,6 +8220,10 @@ exports[`GC mode golden walk > step 126: Pad B: the owner comes back to us 1`] =
     "customers.cibolo.inFront": 153090,
     "lastLog.id": 122,
     "lastLog.text": "Boerne Retail Pad B is back in the bidding.",
+    "projects.padb.people.count": 1,
+    "projects.padb.people.people[0].key": "partner:lonestar",
+    "projects.padb.people.people[0].reasons[0]": "plans:grey",
+    "projects.padb.people.people[0].tone": "grey",
     "tradeBenches[2].needs[1].bids": 1,
     "tradeBenches[2].needs[1].daysLeft": 20,
     "tradeBenches[2].needs[1].looking": 0,
@@ -7766,6 +8264,7 @@ exports[`GC mode golden walk > step 126: Pad B: the owner comes back to us 1`] =
     "tradeBenches[5].urgency": 3,
   },
   "removed": [
+    "projects.padb.people.people",
     "tradeBenches[4].partners[2]",
     "tradeBenches[4].partners[3]",
   ],
@@ -8046,6 +8545,7 @@ exports[`GC mode golden walk > step 144: Add a glass company we do not know 1`] 
     "tradeBenches[9].partners[0]": "«partner cedar»",
     "tradeBenches[9].partners[1]": "«partner sawtooth»",
     "tradeBenches[9].short": 0,
+    "tradeBenches[9].toldAhead": "{}",
     "tradeBenches[9].trade": "Millwork",
     "tradeBenches[9].urgency": 0,
   },
@@ -8095,9 +8595,12 @@ exports[`GC mode golden walk > step 146: Dana approves Brazos Glass up to $150,0
 exports[`GC mode golden walk > step 147: Voltage Brothers promise the renewed insurance by Tue Oct 6 1`] = `
 {
   "changed": {
+    "allPeople.count": 7,
+    "allPeople.late": 1,
     "insuranceRenewals[0].promise": "tp-1",
     "lastLog.id": 143,
     "lastLog.text": "Voltage Brothers promised the renewed insurance certificate by Tue Oct 6.",
+    "needsYou": "7 to follow up on in GC mode",
     "tradePromises[0].id": "tp-1",
     "tradePromises[0].words": "Promised the renewed insurance certificate by Tue Oct 6, in 4 days.",
   },
@@ -8256,6 +8759,8 @@ exports[`GC mode golden walk > step 159: We won Pad B 1`] = `
     "lastLog.id": 155,
     "lastLog.text": "We won Boerne Retail Pad B. Buyout starts: award each trade.",
     "lastLog.who": "office",
+    "projects.padb.people.count": 0,
+    "projects.padb.people.people": "[]",
     "projects.padb.planRecipients.allTouched": "[]",
     "projects.padb.planRecipients.noneTouched": "[]",
     "projects.padb.stage": "buyout",
@@ -8355,6 +8860,9 @@ exports[`GC mode golden walk > step 159: We won Pad B 1`] = `
     "projects.padb.planRecipients.allTouched[1].invite",
     "projects.padb.planRecipients.allTouched[1].touched",
     "projects.padb.planRecipients.allTouched[1].hasBid",
+    "projects.padb.people.people[0].key",
+    "projects.padb.people.people[0].tone",
+    "projects.padb.people.people[0].reasons[0]",
   ],
 }
 `;
@@ -8368,6 +8876,10 @@ exports[`GC mode golden walk > step 160: Pad B: Rosa awards Sitework to Lonestar
     "customers.cibolo.underContract": 2851675.56,
     "lastLog.id": 156,
     "lastLog.text": "Rosa Treviño awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their quote.",
+    "projects.padb.people.count": 1,
+    "projects.padb.people.people[0].key": "partner:lonestar",
+    "projects.padb.people.people[0].reasons[0]": "plans:grey",
+    "projects.padb.people.people[0].tone": "grey",
     "projects.padb.planRecipients.allTouched[0].hasBid": true,
     "projects.padb.planRecipients.allTouched[0].invite": "«invite bsite-lonestar»",
     "projects.padb.planRecipients.allTouched[0].partner": "«partner lonestar»",
@@ -8417,6 +8929,7 @@ exports[`GC mode golden walk > step 160: Pad B: Rosa awards Sitework to Lonestar
     "projects.padb.proposalTotals.holes[1]",
     "projects.padb.planRecipients.noneTouched",
     "projects.padb.planRecipients.allTouched",
+    "projects.padb.people.people",
     "tradeBenches[2].needs[1].project",
     "tradeBenches[2].needs[1].pkg",
     "tradeBenches[2].needs[1].bids",
@@ -9106,10 +9619,18 @@ exports[`GC mode golden walk > step 194: Stone Oak: a change order for two count
 exports[`GC mode golden walk > step 195: Send Stone Oak change order 1 to Hollis 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
     "lastLog.id": 190,
     "lastLog.text": "Sent change order 1 to Hollis Family Pharmacy for signature: $990.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.stoneoak.people.count": 1,
+    "projects.stoneoak.people.people[0].key": "customer:hollis",
+    "projects.stoneoak.people.people[0].reasons[0]": "co:co-1:amber",
+    "projects.stoneoak.people.people[0].tone": "amber",
   },
-  "removed": [],
+  "removed": [
+    "projects.stoneoak.people.people",
+  ],
 }
 `;
 
@@ -9126,8 +9647,17 @@ exports[`GC mode golden walk > step 196: Remind Hollis to sign change order 1 1`
 exports[`GC mode golden walk > step 197: Send Boerne's contract to Cibolo to sign 1`] = `
 {
   "changed": {
+    "allPeople.count": 9,
     "lastLog.id": 192,
     "lastLog.text": "Sent our contract for Boerne Retail Shell to Cibolo Creek Partners to sign in their portal by Fri Oct 9.",
+    "needsYou": "9 to follow up on in GC mode",
+    "projects.boerne.people.count": 3,
+    "projects.boerne.people.people[1].key": "customer:cibolo",
+    "projects.boerne.people.people[1].reasons[0]": "contract:amber",
+    "projects.boerne.people.people[1].tone": "amber",
+    "projects.boerne.people.people[2].key": "partner:lonestar",
+    "projects.boerne.people.people[2].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[2].tone": "grey",
     "projects.boerne.stageProgress.groups[0].items[0].detail": "sent Oct 2, waiting on their signature",
     "projects.boerne.startChecklist.missing[0]": "Our contract with Cibolo Creek Partners is signed: sent Oct 2, waiting on their signature.",
     "projects.boerne.startChecklist.owner[0].detail": "sent Oct 2, waiting on their signature",
@@ -9139,8 +9669,14 @@ exports[`GC mode golden walk > step 197: Send Boerne's contract to Cibolo to sig
 exports[`GC mode golden walk > step 198: Cibolo signs Boerne's contract in their portal 1`] = `
 {
   "changed": {
+    "allPeople.count": 8,
     "lastLog.id": 193,
     "lastLog.text": "Cibolo Creek Partners signed our contract for Boerne Retail Shell in their portal.",
+    "needsYou": "8 to follow up on in GC mode",
+    "projects.boerne.people.count": 2,
+    "projects.boerne.people.people[1].key": "partner:lonestar",
+    "projects.boerne.people.people[1].reasons[0]": "plans:grey",
+    "projects.boerne.people.people[1].tone": "grey",
     "projects.boerne.stageProgress.center": "6/40",
     "projects.boerne.stageProgress.groups[0].items[0].detail": "signed Oct 2",
     "projects.boerne.stageProgress.groups[0].items[0].done": true,
@@ -9162,6 +9698,9 @@ exports[`GC mode golden walk > step 198: Cibolo signs Boerne's contract in their
   },
   "removed": [
     "projects.boerne.startChecklist.missing[10]",
+    "projects.boerne.people.people[2].key",
+    "projects.boerne.people.people[2].tone",
+    "projects.boerne.people.people[2].reasons[0]",
   ],
 }
 `;

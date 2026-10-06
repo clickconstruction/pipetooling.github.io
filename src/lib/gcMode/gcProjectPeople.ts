@@ -17,6 +17,7 @@ import { sentBackOpen, timesSentBack } from './gcBuilding'
 import { followUpPeople, partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
 import { contractWaitingOn, customerReminderLate, customerSentWords } from './gcCustomerSend'
 import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
+import { scheduleReasons, uninsuredReasons } from './gcCounts'
 
 export type PeopleTone = 'red' | 'amber' | 'grey'
 
@@ -32,6 +33,8 @@ export interface PersonReason {
   lineId?: string
   /** Said so the caller knows, not theirs to do: a hold that waits on us or someone else (G-115). Not counted. */
   aside?: boolean
+  /** The insurance reason of a company at work uncovered (G-138, the counts): Needs you says it as the work, not the paper. */
+  atWork?: boolean
 }
 
 export interface ProjectPerson {
@@ -143,6 +146,8 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
     // After the award: the statement of work waiting on them, a pay application sent back again
     // and again, a waiver owed, and insurance that ran out (it stops their pay).
     if (project.stage !== 'pursuing') {
+      // Companies at work uncovered on this job (G-138, the counts), read once for every trade below.
+      const uncovered = uninsuredReasons(state, project)
       for (const pkg of project.packages) {
         const awarded = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
         const partner = awarded ? partnerById(state, awarded.partnerId) : undefined
@@ -157,11 +162,17 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
         if (back && times >= 2) trade(partner, pkg.trade, { text: `Pay application ${back.draw.number} went back ${times} times.`, tone: 'red', code: 'sentBack' })
         const owed = sow.draws.filter((d) => d.status === 'paid' && d.waiver === 'conditional')
         if (owed.length > 0) trade(partner, pkg.trade, { text: `The unconditional waiver on draw ${owed.map((d) => d.number).join(' and ')} has not come.`, tone: 'amber', code: 'waiver' })
+        // At work uncovered on this job (G-138, the counts): G-138's words with the bars under way, even with a renewal promise not yet due.
+        const atWork = uncovered.get(partner.id)
         const lapsed = insuranceRenewals(state).find((r) => r.partner.id === partner.id && r.days < 0 && !r.promise)
-        if (lapsed) trade(partner, pkg.trade, { text: `Their insurance ran out ${shortDate(lapsed.expires)}.`, tone: 'red', code: 'insurance' })
+        if (atWork) trade(partner, pkg.trade, atWork)
+        else if (lapsed) trade(partner, pkg.trade, { text: `Their insurance ran out ${shortDate(lapsed.expires)}.`, tone: 'red', code: 'insurance' })
         if (!partner.w9) trade(partner, pkg.trade, { text: 'No W-9 on file. We cannot pay them without it.', tone: 'amber', code: 'w9' })
       }
     }
+
+    // The schedule's reasons on a company (the counts): not ready to start, its dates, the log, its crew, a crowded place.
+    for (const r of scheduleReasons(state, project)) trade(r.partner, r.trade, r.reason)
 
     // One call covers every reason: a company we already call on this job hears about its insurance too.
     for (const person of byKey.values()) {

@@ -2,7 +2,7 @@
 name: "The counts: the schedule's reasons on the board row, Follow up and Needs you"
 row: HELPERS.md round three, Helper 1's last row ("the counts on the board row, Follow up and Needs you (re-pins the golden test once)"). It settles what G-115's row left as "the owner's call".
 branch: spike/g-counts (from origin/spike/gc-mode at c044a9106, with G-83, G-137, G-141 and G-44 in)
-status: mockup and plan, waiting on the lead's go (Helper 1, 2026-10-06). The four rows it waited on have landed. It is built after the go, with the golden test moved once.
+status: built 2026-10-06 on spike/g-counts with the lead's go (Helper 1), with the golden test re-pinned once. As built in GANTT_PLAN.md, "Later, the counts".
 ---
 
 # The counts: one count of who to call, with the schedule's reasons in it

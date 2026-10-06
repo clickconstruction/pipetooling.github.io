@@ -2,7 +2,13 @@
  * GC mode design spike: the counts (the lead's go, 2026-10-06; `to-dos/gc-mode/mockups/counts.md`).
  * The schedule's reasons on the board row, Follow up and Needs you, each from its own kernel's read.
  *
- * This first part is lifted out of the call list (G-115) as it was, so the counts and By company say
+ * - A company's move becomes a reason under that company (`scheduleReasons`): the board row's pill,
+ *   Follow up's badge and rows, and Needs you's names count it. One call covers every reason, so a
+ *   company counts once, however many bars.
+ * - Our move becomes a line on the ring's card and one Needs you line for every job
+ *   (`ourScheduleMoves`, `gcScheduleMovesNeedsYou`). It stays out of the people count.
+ *
+ * The first part is lifted out of the call list (G-115) as it was, so the counts and By company say
  * the same words: new dates told and not answered (G-113), a first day nobody confirmed (G-114),
  * and a short crew that alone moves the finish (G-57). The call list calls these.
  *
@@ -19,6 +25,13 @@ import { startsToPromise } from './gcBuildingPromises'
 import { tradePromisesOf } from './gcPromises'
 import { pDate, pWeekday, type PortalLang } from './gcPortalI18n'
 import { finishOutlook, shortCrewDetail, shortCrewReason } from './gcFinishOutlook'
+import { lapsedInsuranceWords, notReadyBars, uninsuredBars, type NotReadyBar, type StartGap } from './gcNotReady'
+import { lateDayChanged, lateNoticeState } from './gcLateNotices'
+import { logChartGaps } from './gcLogVsChart'
+import { chartHolds } from './gcChartHolds'
+import { lateFinish } from './gcLateFinish'
+import { crowdedCalls, crowdedSpells, crowdedWeeks, placeRows, placesSummary } from './gcPlaces'
+import { lineLabel } from './gcSplitBars'
 
 /** A company has this many days to answer its new dates before a call is due. The new start this close, it is late. */
 export const CONFIRM_WITHIN_DAYS = 3
@@ -145,4 +158,313 @@ export function crewCalls(state: GcState, project: GcProject): DatesLine[] {
     }))
   }
   return out
+}
+
+// ---------------------------------------------------------------------------------------------
+// The counts: a company's reasons from the schedule, and our own moves
+// ---------------------------------------------------------------------------------------------
+
+/** The codes the counts add to a company's reasons. */
+export type ScheduleCode = 'notReady' | 'confirm' | 'pushedBack' | 'log' | 'crew' | 'crowded'
+
+/** The codes By company says in its own lines (G-115): its merge of Follow up's reasons skips them, so each is said once. */
+export const CALL_LIST_SAYS: readonly string[] = ['late', 'notReady', 'confirm', 'crew', 'crowded']
+
+/** A reason on a company, from the schedule. */
+export interface ScheduleReason {
+  partner: Partner
+  trade: string
+  reason: PersonReason
+}
+
+/** One of our own moves on a job's schedule: a line on the ring's card, and a sentence on Needs you. */
+export interface OurMove {
+  kind: 'finish' | 'award' | 'newPapers' | 'papers' | 'log' | 'crowd'
+  /** The ring card's line. */
+  words: string
+  /** Needs you's sentence, after the job's name: "finishes 7 days past the contract." for the finish, else a sentence of its own. */
+  short: string
+  tone: 'red' | 'amber'
+  lineId?: string
+}
+
+/**
+ * Kept by the state and the job, both as they are: the reducer makes new ones on every change, so a
+ * kept answer is never stale. The board's rows, Follow up, Needs you and the ring card read the same
+ * job many times for one state, and the crews' projection under it is slow (G-57).
+ */
+function kept<T>(cache: WeakMap<GcState, WeakMap<GcProject, T>>, state: GcState, project: GcProject, make: () => T): T {
+  let byJob = cache.get(state)
+  if (!byJob) {
+    byJob = new WeakMap()
+    cache.set(state, byJob)
+  }
+  const hit = byJob.get(project)
+  if (hit !== undefined) return hit
+  const value = make()
+  byJob.set(project, value)
+  return value
+}
+const REASONS = new WeakMap<GcState, WeakMap<GcProject, ScheduleReason[]>>()
+const MOVES = new WeakMap<GcState, WeakMap<GcProject, OurMove[]>>()
+
+/** A job whose schedule counts: being built, not closed or lost, with bars. A closed job counts nothing, as Follow up has it. */
+function counts(project: GcProject): boolean {
+  return project.stage === 'building' && !project.closedOn && !project.lostOn && (project.schedule?.activities.length ?? 0) > 0
+}
+
+function days(n: number): string {
+  return `${n} ${n === 1 ? 'day' : 'days'}`
+}
+
+/** "a, b and c". A name with its own "and" gets a comma before the last: "Panels and feeders, and Lighting". */
+function listWords(words: string[]): string {
+  if (words.length <= 1) return words[0] ?? ''
+  const glue = words.some((w) => w.includes(' and ')) ? ', and ' : ' and '
+  return `${words.slice(0, -1).join(', ')}${glue}${words[words.length - 1]}`
+}
+
+/** "Kendall Air's", "Cedar & Pine Millworks'". */
+function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`
+}
+
+/** The bar that starts first. */
+function earliest(bars: NotReadyBar[]): NotReadyBar | undefined {
+  return bars.reduce<NotReadyBar | undefined>((a, b) => (!a || b.start < a.start ? b : a), undefined)
+}
+
+/** A start gap (G-77) waits on the company: insurance, a W-9, a paper sent and not signed. Else on us: the award, a paper not sent, or one on older plans. */
+export function gapIsTheirs(gap: StartGap, bar: NotReadyBar): boolean {
+  if (gap.kind === 'insurance' || gap.kind === 'w9') return true
+  if (gap.kind === 'msa') return bar.partner?.msa === 'sent'
+  if (gap.kind === 'sow') return bar.pkg.sow?.status === 'sent'
+  return false
+}
+
+/**
+ * A company's reasons from the schedule, each from its kernel's own read: not ready to start on the
+ * papers that are theirs (G-77), its word on its dates (G-116's early warnings), the log against the
+ * chart with no reason given (G-60), a crew too short to hold the finish (G-57), and a crowded place
+ * it has not given its count for (G-83). At work uninsured (G-138) is the insurance reason's own
+ * words: `uninsuredReason`.
+ */
+export function scheduleReasons(state: GcState, project: GcProject): ScheduleReason[] {
+  return kept(REASONS, state, project, () => readReasons(state, project))
+}
+
+function readReasons(state: GcState, project: GcProject): ScheduleReason[] {
+  if (!counts(project)) return []
+  const today = state.today
+  const out: ScheduleReason[] = []
+  const add = (partner: Partner, trade: string, reason: PersonReason) => out.push({ partner, trade, reason })
+
+  // Not ready to start (G-77), on the papers that are theirs: one reason a company, its bars by name, the first with its start.
+  const waiting = new Map<string, { partner: Partner; trade: string; bars: NotReadyBar[]; nouns: string[] }>()
+  for (const bar of notReadyBars(state, project)) {
+    const theirs = bar.gaps.filter((g) => gapIsTheirs(g, bar))
+    if (!bar.partner || theirs.length === 0) continue
+    const w = waiting.get(bar.partner.id) ?? { partner: bar.partner, trade: bar.pkg.trade, bars: [], nouns: [] }
+    w.bars.push(bar)
+    for (const g of theirs) if (!w.nouns.includes(g.noun)) w.nouns.push(g.noun)
+    waiting.set(bar.partner.id, w)
+  }
+  for (const w of waiting.values()) {
+    // In the order they start, so the first named is the one that starts first.
+    const bars = [...w.bars].sort((a, b) => a.start.localeCompare(b.start))
+    const first = bars[0]
+    if (!first) continue
+    const names = bars.map((b) => lineLabel(project, b.lineId))
+    const said = names.length > 2 ? `${names[0]} and ${names.length - 1} more` : listWords(names)
+    add(w.partner, w.trade, {
+      text: `${said} ${names.length === 1 ? 'waits' : 'wait'} on ${listWords(w.nouns)}. ${lineLabel(project, first.lineId)} starts ${weekdayDate(first.start)}.`,
+      tone: w.bars.some((b) => b.late) ? 'red' : 'amber',
+      code: 'notReady',
+      lineId: first.lineId,
+    })
+  }
+
+  // Their word on their dates (G-116's early warnings, G-113 and G-114): new dates not answered, a first day not confirmed.
+  for (const l of [...unconfirmedDates(state, project), ...unconfirmedStarts(state, project)]) {
+    add(l.partner, l.trade, { text: l.reason.text, tone: l.reason.tone, code: 'confirm', ...(l.reason.lineId ? { lineId: l.reason.lineId } : {}) })
+  }
+  // A push back of ours on their late notice (G-117) that they have not answered.
+  for (const n of project.schedule?.lateNotices ?? []) {
+    if (!n.pushedBack || lateNoticeState(project, n) !== 'pushedBack') continue
+    const partner = partnerById(state, n.partnerId)
+    if (!partner) continue
+    add(partner, tradeOfLine(project, n.lineId), {
+      text: `We pushed back on their new day for ${lineLabel(project, n.lineId)} on ${weekdayDate(n.pushedBack.on)}. They have not answered.`,
+      tone: lateDayChanged(n) < today ? 'red' : 'amber',
+      code: 'pushedBack',
+      lineId: n.lineId,
+    })
+  }
+
+  // The log and the chart (G-60): a company's bars ran with nobody from it on the log, and the log gave no reason.
+  for (const gap of logChartGaps(state, project, chartHolds(state, project))) {
+    if (gap.kind !== 'absent' || !gap.partnerId || (gap.said ?? []).length > 0) continue
+    const partner = partnerById(state, gap.partnerId)
+    const first = gap.running[0]
+    if (partner) add(partner, gap.pkg.trade, { text: gap.words, tone: 'amber', code: 'log', ...(first ? { lineId: first.lineId } : {}) })
+  }
+
+  // A short crew that alone moves the finish (G-57).
+  for (const l of crewCalls(state, project)) add(l.partner, l.trade, { text: l.reason.text, tone: l.reason.tone, code: 'crew', ...(l.reason.lineId ? { lineId: l.reason.lineId } : {}) })
+
+  // Too many trades in one place (G-83): a hired company in a crowded week that has not said how many it will have.
+  for (const c of crowdedCalls(state, project)) {
+    const partner = partnerById(state, c.partnerId)
+    if (partner) add(partner, c.trade, { text: c.text, tone: c.tone, code: 'crowded', lineId: c.lineId })
+  }
+  return out
+}
+
+/**
+ * The companies at work uncovered on this job (G-138), by id: each one's insurance reason in G-138's
+ * words, with the bars under way. Companies, not bars. A renewal promise not yet due does not take
+ * it off: the work going on today is not covered.
+ */
+export function uninsuredReasons(state: GcState, project: GcProject): Map<string, PersonReason> {
+  const out = new Map<string, PersonReason>()
+  if (!counts(project)) return out
+  const bars = uninsuredBars(state, project)
+  for (const partner of new Map(bars.map((b) => [b.partner.id, b.partner])).values()) {
+    const words = lapsedInsuranceWords(partner, state.today)
+    const names = bars.filter((b) => b.partner.id === partner.id).map((b) => lineLabel(project, b.lineId))
+    // Words only, as the insurance reason has always been: the bars are named, and the paper is the company's, not a bar's.
+    if (words) out.set(partner.id, { text: `${words} They are at work on ${listWords(names)}.`, tone: 'red', code: 'insurance', atWork: true })
+  }
+  return out
+}
+
+/**
+ * Our own moves on a job's schedule, in the ring card's order: the finish past the contract (G-98),
+ * then papers that wait on us before a bar can start (G-77), the log against the chart when it is
+ * ours to fix (G-60), and a crowded place (G-83).
+ */
+export function ourScheduleMoves(state: GcState, project: GcProject): OurMove[] {
+  return kept(MOVES, state, project, () => readMoves(state, project))
+}
+
+function readMoves(state: GcState, project: GcProject): OurMove[] {
+  if (!counts(project)) return []
+  const out: OurMove[] = []
+
+  // The finish past the contract (G-98), with whose days they are when some are the customer's.
+  const lf = lateFinish(state, project)
+  if (lf.late && lf.late > 0 && lf.risk.schedule && lf.risk.contract) {
+    const line = `It finishes ${weekdayDate(lf.risk.schedule.on)}, ${days(lf.late)} past the contract's ${weekdayDate(lf.risk.contract.on)}.`
+    out.push({ kind: 'finish', words: lf.split ? `${line} ${lf.split}` : line, short: `finishes ${days(lf.late)} past the contract.`, tone: 'red' })
+  }
+
+  // Not ready to start (G-77), on papers that wait on us: no company yet, papers on older plans, papers not sent.
+  const award = new Map<string, NotReadyBar[]>()
+  const newPapers: NotReadyBar[] = []
+  const papers = new Map<string, { kind: StartGap['kind']; bars: NotReadyBar[] }>()
+  for (const bar of notReadyBars(state, project)) {
+    for (const g of bar.gaps) {
+      if (gapIsTheirs(g, bar)) continue
+      if (g.kind === 'award') award.set(bar.pkg.trade, [...(award.get(bar.pkg.trade) ?? []), bar])
+      else if (g.kind === 'sow' && bar.pkg.sow?.status === 'signed') newPapers.push(bar)
+      else if (bar.partner) {
+        const key = `${bar.partner.id}|${g.kind}`
+        const p = papers.get(key) ?? { kind: g.kind, bars: [] }
+        p.bars.push(bar)
+        papers.set(key, p)
+      }
+    }
+  }
+  const tone = (bars: NotReadyBar[]): 'red' | 'amber' => (bars.some((b) => b.late) ? 'red' : 'amber')
+  const starts = (bar: NotReadyBar) => `${lineLabel(project, bar.lineId)} starts ${weekdayDate(bar.start)}.`
+  for (const [trade, bars] of award) {
+    const first = earliest(bars)
+    if (first) out.push({ kind: 'award', words: `${trade} has no company yet. ${starts(first)}`, short: `${trade} has no company yet.`, tone: tone(bars), lineId: first.lineId })
+  }
+  const firstNew = earliest(newPapers)
+  if (firstNew) {
+    const companies = [...new Set(newPapers.flatMap((b) => (b.partner ? [b.partner.company] : [])))]
+    const one = companies.length === 1
+    out.push({
+      kind: 'newPapers',
+      words: `${listWords(companies)} ${one ? 'needs' : 'need'} a new statement of work. The plans changed after ${one ? 'it' : 'they'} signed. ${starts(firstNew)}`,
+      short: one ? `${companies[0] ?? ''} needs a new statement of work.` : `${companies.length} trades need a new statement of work.`,
+      tone: tone(newPapers),
+      lineId: firstNew.lineId,
+    })
+  }
+  for (const p of papers.values()) {
+    const first = earliest(p.bars)
+    const company = first?.partner?.company
+    if (!first || !company) continue
+    const what = p.kind === 'msa' ? `${possessive(company)} master agreement is not sent yet.` : first.pkg.sow ? `${possessive(company)} statement of work is drafted, not sent.` : `${company} has no statement of work yet.`
+    out.push({ kind: 'papers', words: `${what} ${starts(first)}`, short: what, tone: tone(p.bars), lineId: first.lineId })
+  }
+
+  // The log against the chart (G-60), when it is ours to fix: a company on site with no bar, our own crew away, or the log's own reason.
+  for (const gap of logChartGaps(state, project, chartHolds(state, project))) {
+    if (gap.kind === 'absent' && gap.partnerId && (gap.said ?? []).length === 0) continue
+    const first = gap.running[0] ?? gap.next ?? gap.last
+    out.push({
+      kind: 'log',
+      words: `${gap.words} ${gap.todo}`,
+      short: gap.kind === 'noBar' ? `${gap.company} was on site with nothing on the chart.` : `${gap.company} was not on site.`,
+      tone: 'amber',
+      ...(first ? { lineId: first.lineId } : {}),
+    })
+  }
+
+  // Too many trades in one place (G-83): each run of crowded days, in G-83's own words.
+  const weeks = crowdedWeeks(state, project)
+  if (weeks.length > 0) {
+    const runs = placesSummary(placeRows(state, project), weeks).filter((l) => l.crowded)
+    crowdedSpells(weeks).forEach((spell, i) => {
+      const words = runs[i]?.words
+      if (words) out.push({ kind: 'crowd', words, short: `${spell.place} has too many trades at once.`, tone: 'amber' })
+    })
+  }
+  return out
+}
+
+/** The ring card's lines for our moves, in order. */
+export function ourMoveLines(state: GcState, project: GcProject): string[] {
+  return ourScheduleMoves(state, project).map((m) => m.words)
+}
+
+/** The finish line, for the ring's card and the board row's block: "It finishes Fri Dec 25, 7 days past the contract's Fri Dec 18." Null: on time. */
+export function pastContract(state: GcState, project: GcProject): { days: number; words: string } | null {
+  const finish = ourScheduleMoves(state, project).find((m) => m.kind === 'finish')
+  const late = finish ? (lateFinish(state, project).late ?? 0) : 0
+  return finish && late > 0 ? { days: late, words: finish.words } : null
+}
+
+export interface GcScheduleMovesNeedsYou {
+  count: number
+  late: boolean
+  title: string
+  detail: string
+  /** The first job's, for the press. */
+  projectId: string
+}
+
+/**
+ * Needs you's line for our moves on every job's schedule (the counts): "3 things to do on GC
+ * schedules". Its detail is short sentences, the job named in its first. Our move, so not in the
+ * people count. Null: nothing waits on us.
+ */
+export function gcScheduleMovesNeedsYou(state: GcState): GcScheduleMovesNeedsYou | null {
+  const jobs = state.projects.map((project) => ({ project, moves: ourScheduleMoves(state, project) })).filter((j) => j.moves.length > 0)
+  const first = jobs[0]
+  if (!first) return null
+  const count = jobs.reduce((n, j) => n + j.moves.length, 0)
+  const sentences = jobs.flatMap((j) =>
+    j.moves.map((m, i) => (i > 0 ? m.short : m.kind === 'finish' ? `${j.project.name} ${m.short}` : `${j.project.name}: ${m.short}`)),
+  )
+  return {
+    count,
+    late: jobs.some((j) => j.moves.some((m) => m.tone === 'red')),
+    title: `${count} ${count === 1 ? 'thing' : 'things'} to do on GC schedules`,
+    detail: sentences.join(' '),
+    projectId: first.project.id,
+  }
 }

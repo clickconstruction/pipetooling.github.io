@@ -42,9 +42,31 @@ export interface TradeBench {
   urgency: number
   /** Companies on the bench that would bid if asked: not counting the ones who mostly stay silent. */
   dependable: number
+  /** G-116's credit (the counts): late notices each company sent from its portal before the day they change, by company id. Empty: none sent ahead. */
+  toldAhead: Record<string, number>
 }
 
 // answerRecord moved to gcReliability.ts (question 7: the map's list reads it, and gcMap cannot import this file).
+
+/**
+ * Late notices a company sent from its portal before the day they change (G-117), on every job: a
+ * trade that warns us early earns it on its bench (G-116's credit, the counts). The newest notice
+ * on a bar counts; one it replaced does not. These are `lateNoticeState`'s replaced rule and
+ * `lateDayChanged`, read here without importing gcLateNotices, which reaches this file through
+ * gcNewProject; a test holds the two equal.
+ */
+export function noticesSentAhead(state: GcState, partnerId: string): number {
+  let n = 0
+  for (const project of state.projects) {
+    const notices = project.schedule?.lateNotices ?? []
+    notices.forEach((notice, i) => {
+      if (notice.partnerId !== partnerId) return
+      if (notices.slice(0, i).some((x) => x.partnerId === partnerId && x.lineId === notice.lineId)) return
+      if (notice.on < (notice.started ? notice.was.finish : notice.was.start)) n += 1
+    })
+  }
+  return n
+}
 
 export function partnerAsks(state: GcState, partnerId: string, trade: string): PartnerAsk[] {
   const out: PartnerAsk[] = []
@@ -66,7 +88,7 @@ export function tradeBenches(state: GcState): TradeBench[] {
   const bench = (trade: string): TradeBench => {
     let b = byTrade.get(trade)
     if (!b) {
-      b = { trade, partners: [], needs: [], short: 0, urgency: 0, dependable: 0 }
+      b = { trade, partners: [], needs: [], short: 0, urgency: 0, dependable: 0, toldAhead: {} }
       byTrade.set(trade, b)
     }
     return b
@@ -76,6 +98,8 @@ export function tradeBenches(state: GcState): TradeBench[] {
       const b = bench(trade)
       b.partners.push(partner)
       if (answerRecord(partner) !== 'silent') b.dependable += 1
+      const ahead = noticesSentAhead(state, partner.id)
+      if (ahead > 0) b.toldAhead[partner.id] = ahead
     }
   }
   for (const project of state.projects) {
@@ -107,6 +131,11 @@ export function tradeBenches(state: GcState): TradeBench[] {
     b.partners.sort((x, y) => y.bids / Math.max(1, y.invited) - x.bids / Math.max(1, x.invited))
   }
   return out.sort((x, y) => y.urgency - x.urgency || x.dependable - y.dependable || x.trade.localeCompare(y.trade))
+}
+
+/** The bench's line for G-116's credit: "Told us it would be late before the day, 2 times." */
+export function toldAheadWords(n: number): string {
+  return `Told us it would be late before the day, ${n} ${n === 1 ? 'time' : 'times'}.`
 }
 
 /** A trade's bench is deep enough at this many companies that usually answer. */

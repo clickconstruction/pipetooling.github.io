@@ -21,7 +21,11 @@ import {
   compareBids,
   customerSummary,
   followUps,
+  allPeople,
+  gcNeedsYou,
   gcReducer,
+  projectPeople,
+  type ProjectPeopleSummary,
   initialGcState,
   insuranceRenewals,
   partnersToVet,
@@ -814,6 +818,15 @@ function shrink(value: unknown, depth = 0): unknown {
   return out
 }
 
+/** The people we are waiting on (the counts, 2026-10-06): each person's key with their reasons' codes and tones, so a count never moves unseen. */
+function peopleReading(summary: ProjectPeopleSummary) {
+  return {
+    count: summary.count,
+    late: summary.late,
+    people: summary.people.map((p) => ({ key: p.key, tone: p.tone, reasons: p.reasons.map((r) => `${r.code ?? '-'}:${r.tone}`) })),
+  }
+}
+
 /** What the main calculations say about the state: every project, every trade, the board-wide lists. */
 function readings(state: GcState) {
   const projects: Record<string, unknown> = {}
@@ -837,6 +850,8 @@ function readings(state: GcState) {
         allTouched: planRecipients(state, project, everyTrade),
       },
       trades,
+      // The board row's count and its people (the counts): projectPeople, with the schedule's reasons in it.
+      people: peopleReading(projectPeople(state, project)),
     }
   }
   const customers: Record<string, unknown> = {}
@@ -852,6 +867,9 @@ function readings(state: GcState) {
     projects,
     customers,
     followUps: followUps(state),
+    // Follow up's badge and Needs you's title (the counts): everyone once across every job, so the three counts match.
+    allPeople: (({ count, late }) => ({ count, late }))(allPeople(state)),
+    needsYou: gcNeedsYou(state)?.title ?? null,
     tradeBenches: tradeBenches(state),
     // Each to-do's trade only drives the trade headings (gcBench.test.ts holds it), so it stays out of the walk.
     assistantRules: assistantRules(state).map((r) => ({

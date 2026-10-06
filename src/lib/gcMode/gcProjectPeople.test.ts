@@ -34,7 +34,12 @@ describe('people to call on a job (the owner, 2026-10-04)', () => {
     const fair = of(state, 'fairoaksd')
     // Pecan Valley's insurance and waiver, and Cibolo's pay application 3, two days late.
     expect([fair.count, fair.late]).toEqual([2, 2])
-    expect(fair.people.find((p) => p.company === 'Pecan Valley Electric')?.reasons.map((r) => r.text)).toEqual(['Their insurance ran out Sep 15.', 'The unconditional waiver on draw 1 has not come.'])
+    // The counts (2026-10-06): its insurance in G-138's words, since it is at work uncovered, and its bars not ready to start (G-77).
+    expect(fair.people.find((p) => p.company === 'Pecan Valley Electric')?.reasons.map((r) => r.text)).toEqual([
+      'Their insurance ran out Tue Sep 15. Nothing they do for us is covered. They are at work on Panels and feeders, and Lighting.',
+      'The unconditional waiver on draw 1 has not come.',
+      'Site lighting and Fire alarm wait on current insurance. Site lighting starts Mon Oct 19.',
+    ])
     expect(fair.people.find((p) => p.kind === 'customer')?.reasons.map((r) => r.text)).toEqual(['Pay application 3 is 2 days late, $288,879 open.'])
     expect(of(state, 'stoneoak').count).toBe(0)
     expect(of(state, 'padb').tone).toBeNull()

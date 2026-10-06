@@ -19,6 +19,7 @@ import { punchCounts } from './gcBuildingPunch'
 import { missingLogs, missingLogsWords } from './gcBuildingLog'
 import { submittalRows } from './gcBuildingSubmittals'
 import { changeRequestLinesFor } from './gcChangeRequestsWaiting'
+import { ourMoveLines } from './gcCounts'
 
 /** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
 export const RING_COLORS: Record<GcStage, string> = {
@@ -326,6 +327,10 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   // Not walked lately (the Gantt, G-59; the owner's OK 2026-10-06): right after the schedule's line.
   const walk = walkStanding(project, state.today)
   if (sum && walk.stale) also.splice(1 + failed.length + latePay.length, 0, `${walk.words} Open the Schedule tab and tap Update the week.`)
+  // Our own moves on the schedule (the counts): the finish past the contract, papers that wait on us, the log, a crowded place.
+  // After the schedule's own lines: the schedule, a failed inspection, a late draw (the owner's order, 2026-10-03) and the walk.
+  const ours = ourMoveLines(state, project)
+  if (sum && ours.length > 0) also.splice(1 + failed.length + latePay.length + (walk.stale ? 1 : 0), 0, ...ours)
   // The daily log (owner, 2026-10-04): a working day this week with no log, last in the card.
   // Only while work is still being reported: a job whose work is all in is closing out.
   const noLog = share < 1 ? missingLogsWords(missingLogs(project, state.today)) : null

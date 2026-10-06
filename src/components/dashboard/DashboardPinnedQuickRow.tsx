@@ -37,7 +37,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
-import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds, useGcStaleSchedules } from '../../hooks/useGcFollowUpNeeds'
+import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds, useGcScheduleMoves, useGcStaleSchedules } from '../../hooks/useGcFollowUpNeeds'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
@@ -484,6 +484,8 @@ export function DashboardPinnedQuickRow({
   const gcChangeRequests = useGcChangeRequests(gcFollowUpEnabled)
   const gcBackCharges = useGcBackCharges(gcFollowUpEnabled)
   const gcStaleSchedules = useGcStaleSchedules(gcFollowUpEnabled)
+  // What waits on us on the jobs' schedules (the counts): its own line, out of the people count.
+  const gcScheduleMoves = useGcScheduleMoves(gcFollowUpEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
@@ -565,6 +567,7 @@ export function DashboardPinnedQuickRow({
     gcChangeRequests,
     gcBackCharges,
     gcStaleSchedules,
+    gcScheduleMoves,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,
@@ -744,6 +747,8 @@ export function DashboardPinnedQuickRow({
               navigate(`/bids/gc?project=${encodeURIComponent(gcChangeRequests?.projectId ?? '')}&ptab=owner`)
             } else if (item.key === 'gc-stale-schedules') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcStaleSchedules?.projectId ?? '')}&ptab=schedule`)
+            } else if (item.key === 'gc-schedule-moves') {
+              navigate(`/bids/gc?project=${encodeURIComponent(gcScheduleMoves?.projectId ?? '')}&ptab=schedule`)
             } else if (item.key === 'gc-back-charges') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcBackCharges?.projectId ?? '')}&ptab=draws&charge=${encodeURIComponent(gcBackCharges?.chargeId ?? '')}`)
             } else if (item.key === 'jobs-stale-open') {

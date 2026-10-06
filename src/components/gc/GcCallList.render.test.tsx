@@ -64,7 +64,7 @@ describe('the call list', () => {
     const { state, onReason } = list()
     fireEvent.click(screen.getByText('Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.'))
     expect(onReason).toHaveBeenCalledWith(lineOf(state, 'Lighting'))
-    expect(screen.getByText('Their insurance ran out Sep 15.').closest('button')).toBeNull()
+    expect(screen.getByText('Their insurance ran out Tue Sep 15. Nothing they do for us is covered. They are at work on Panels and feeders, and Lighting.').closest('button')).toBeNull()
   })
 
   it('Hide folds it to its first line, and Show brings it back', () => {

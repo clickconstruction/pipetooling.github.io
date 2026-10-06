@@ -208,6 +208,14 @@ describe('buildNeedsYouItems', () => {
     expect(items.map((i) => [i.key, i.severity, i.figure, i.actionLabel])).toEqual([['gc-stale-schedules', 'red', '1', 'Walk it']])
     expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcStaleSchedules: gc }))).toEqual([])
   })
+  it('GC schedule moves (GC mode spike, the counts, 2026-10-06): their own item, our move, gated with GC follow up', () => {
+    const gc = { count: 1, late: true, title: '1 thing to do on GC schedules', detail: 'Fair Oaks Shops, Building D finishes 4 days past the contract.', projectId: 'fairoaksd' }
+    const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcScheduleMoves: gc }))
+    expect(items.map((i) => [i.key, i.severity, i.kicker, i.title, i.detail, i.figure, i.actionLabel])).toEqual([['gc-schedule-moves', 'red', 'GC mode', '1 thing to do on GC schedules', 'Fair Oaks Shops, Building D finishes 4 days past the contract.', '1', 'Open it']])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcScheduleMoves: { ...gc, late: false } }))[0]?.severity).toBe('amber')
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcScheduleMoves: gc }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcScheduleMoves: null }))).toEqual([])
+  })
   it('GC back-charges (GC mode spike, 2026-10-05): their own item, our move, gated with GC follow up', () => {
     const gc = { count: 2, late: true, title: '2 back-charges to settle in GC mode', detail: 'Iron Horse Fabrication disputed $1,250 on Fair Oaks Shops, Building D.', projectId: 'fairoaksd', chargeId: 'fsteel-bc-1' }
     const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcBackCharges: gc }))

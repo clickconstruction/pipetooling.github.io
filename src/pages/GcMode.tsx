@@ -73,6 +73,7 @@ import {
   type GcAction,
   type GcState,
 } from '../lib/gcMode/gcModel'
+import { pastContract as pastContractOf } from '../lib/gcMode/gcCounts'
 import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 import { GcStageHealth } from '../components/gc/GcStageHealth'
 
@@ -497,6 +498,7 @@ export default function GcMode() {
                               onCustomer={() => setCustomerId(p.customerId)}
                               onArchitect={() => setCustomerId(p.architectId)}
                               people={peopleFor(p)}
+                              pastContract={pastContractOf(state, p)}
                               onChase={() => setBoardTab('followup')}
                             />
                           ))}
@@ -557,6 +559,7 @@ export default function GcMode() {
                         onCustomer={() => setCustomerId(p.customerId)}
                         onArchitect={() => setCustomerId(p.architectId)}
                         people={peopleFor(p)}
+                        pastContract={pastContractOf(state, p)}
                         onChase={() => setBoardTab('followup')}
                       />
                       </div>
@@ -736,7 +739,7 @@ const customerLink = {
  * The days left before our bid is due, in an area of its own at the head of the row: the one
  * number an estimator plans the week around. Red inside a week, amber inside two.
  */
-function DueBlock({ project, today }: { project: GcProject; today: string }) {
+function DueBlock({ project, today, pastContract }: { project: GcProject; today: string; /** The finish past the contract (the counts). */ pastContract?: { days: number; words: string } | null }) {
   const box = {
     display: 'grid',
     justifyItems: 'center',
@@ -764,7 +767,7 @@ function DueBlock({ project, today }: { project: GcProject; today: string }) {
   // A won job's row shows what is next, not when our bid went in (the owner, 2026-10-03).
   if (project.stage === 'buyout') return <StartBlock project={project} today={today} box={box} />
   // Building lane: once a schedule is drawn, its measures (days behind or ahead, milestones, look-ahead).
-  if (project.stage === 'building' && project.schedule) return <GcBuildingScheduleBlock project={project} today={today} box={box} />
+  if (project.stage === 'building' && project.schedule) return <GcBuildingScheduleBlock project={project} today={today} box={box} {...(pastContract ? { pastContract } : {})} />
   if (project.stage === 'building' && project.startedOn) {
     // Until the schedule's measures exist (the Building lane), the day work started.
     return (
@@ -892,6 +895,7 @@ function ProjectRow({
   people,
   onChase,
   priceCard,
+  pastContract,
 }: {
   project: GcProject
   /** The first row of a board section: its ring and its block carry walkthrough anchors (gc-ring-…, gc-due-…). */
@@ -915,6 +919,8 @@ function ProjectRow({
   }
   /** Opens Follow up. */
   onChase: () => void
+  /** The finish past the contract (G-98, the counts): the block goes red with the days. */
+  pastContract?: { days: number; words: string } | null
   /** The card behind the price (the owner's pick B, 2026-10-04, Building lane's GcPriceCard): each trade by what it needs next. */
   priceCard?: { state: GcState; dispatch: Dispatch<GcAction>; onTab: (tab: PriceCardTab) => void }
 }) {
@@ -956,7 +962,7 @@ function ProjectRow({
         <GcProgressRing progress={progress} color={RING_COLORS[project.stage]} stageLabel={project.lostOn ? 'Lost' : project.closedOn ? 'Closed' : (stage?.label ?? '')} />
       </div>
       <div data-tour={tourKey ? `gc-due-${tourKey}` : undefined} style={{ display: 'flex' }}>
-        <DueBlock project={project} today={today} />
+        <DueBlock project={project} today={today} {...(pastContract ? { pastContract } : {})} />
       </div>
       <span>
         <button

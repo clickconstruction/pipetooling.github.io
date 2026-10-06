@@ -34,7 +34,7 @@ import { tradePromisesOf, tradePromiseState } from './gcPromises'
 import { customerAsPerson, projectFollowPeople, projectPeople, type PeopleTone, type PersonReason, type ProjectPerson } from './gcProjectPeople'
 import { partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
 import { pWeekday, type PortalLang } from './gcPortalI18n'
-import { crewCalls, unconfirmedDates, unconfirmedStarts } from './gcCounts'
+import { CALL_LIST_SAYS, crewCalls, unconfirmedDates, unconfirmedStarts } from './gcCounts'
 import { crowdedCalls } from './gcPlaces'
 
 /** A company has this many days to answer its new dates before a call is due (it moved to gcCounts.ts with the loops that read it). */
@@ -179,8 +179,8 @@ class Rows {
       .filter((p) => theirs(p).length > 0)
       .map((p): CallPerson => {
         const merged = [...p.reasons]
-        // Follow up's copy of a late notice (`code: 'late'`) is said once, by the notice's own line here.
-        for (const r of followUp.get(p.key)?.reasons ?? []) if (r.code !== 'late' && !merged.some((x) => x.text === r.text)) merged.push(r)
+        // Follow up's copy of what this list says in its own lines (a late notice, and the counts' codes) is said once, by the line here.
+        for (const r of followUp.get(p.key)?.reasons ?? []) if (!CALL_LIST_SAYS.includes(r.code ?? '') && !merged.some((x) => x.text === r.text)) merged.push(r)
         const mine = merged.filter((r) => !r.aside).sort((a, b) => RANK[a.tone] - RANK[b.tone])
         const asides = merged.filter((r) => r.aside)
         const tone = mine.reduce<PeopleTone>((w, r) => (RANK[r.tone] < RANK[w] ? r.tone : w), 'grey')

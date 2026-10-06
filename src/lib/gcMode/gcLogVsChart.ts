@@ -60,6 +60,8 @@ export interface LogChartGap {
   words: string
   /** What to do, in a sentence or two. */
   todo: string
+  /** absent: the log's own reasons for the days away. Unset: it gave none, so the company is asked (the counts, G-60's reason on Follow up). */
+  said?: string[]
 }
 
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -192,6 +194,7 @@ export function logChartGaps(state: GcState, project: GcProject, holds: Map<stri
           ...gone.said,
         ].join(' '),
         todo: gone.said.length > 0 ? "Move the bar, and give the log's reason." : 'Ask when the crew comes back. If the work slipped, move the bar and say why.',
+        ...(gone.said.length > 0 ? { said: gone.said } : {}),
       })
     }
     const here = onSiteNoBar(pkg, bars, logs)

@@ -14,6 +14,7 @@ import {
   partnerExclusionHabits,
   partnerScheduleRecord,
   partnerScheduleWords,
+  toldAheadWords,
   promiseWords,
   shortDate,
   tradeBenches,
@@ -571,6 +572,12 @@ function PartnerLine({ state, partner, bench, dispatch, onAsk }: { state: GcStat
         {schedule && (
           <div style={{ color: 'var(--text-600)', fontSize: '0.8rem', marginTop: '0.2rem' }} title={PARTNER_SCHEDULE_WHY}>
             On our jobs: {partnerScheduleWords(schedule)}
+          </div>
+        )}
+        {/* G-116's credit (the counts): a company that tells us early, from its portal, before the day passes. */}
+        {(bench.toldAhead[partner.id] ?? 0) > 0 && (
+          <div data-gc-told-ahead={partner.id} style={{ color: 'var(--text-green-800)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+            {toldAheadWords(bench.toldAhead[partner.id] ?? 0)}
           </div>
         )}
         {/* What this company usually leaves out of its quotes (the owner, 2026-10-04: exclusions per company). */}

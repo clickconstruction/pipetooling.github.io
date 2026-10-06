@@ -1705,6 +1705,97 @@ weather's days under the contract's weather clause (another row); editing or thr
 (no change order can be, today); marks in the move history for an asked move (the order's row lists
 them).
 
+## Later, the counts, as built (2026-10-06)
+
+The counts, built by Helper 1 from `mockups/counts.md` with the lead's go. The schedule's reasons now
+reach the three counts the owner asked to match (2026-10-04): the board row's people pill, Follow
+up's badge and rows, and Needs you. `gcCounts.ts` (tested, out of the barrel), with no new action.
+
+**What the golden test pins, corrected here once.** The mockups for G-77, G-98, G-115 and G-138 said
+a count on the board row, Follow up or Needs you moves the golden walk. It did not. A probe put one
+more person with a red reason on every job being built, inside `projectPeople`, and all 211 golden
+tests passed: no golden reading called `projectPeople` or `allPeople`. What the walk pinned was the
+ring card, `stageProgress`. So this row's one re-pin covers the ring card's new lines, and it adds
+the counts to the readings: a `people` reading per job (the count, the late count, each person's key
+with their reasons' codes and tones), `allPeople`'s count and late count, and Needs you's title. From
+here on, no row moves a count unnoticed.
+
+- **A company's move is a reason under it**, each from its kernel's own read, counted once per
+  company, however many bars:
+  - *Not ready to start* (G-77's `notReadyBars`), on the papers that are theirs: insurance, a W-9,
+    a master agreement or a statement of work sent and not signed. *Site lighting and Fire alarm wait
+    on current insurance. Site lighting starts Mon Oct 19.* The bars are named in the order they
+    start. Red when the first starts within 3 days.
+  - *At work uninsured* (G-138's `uninsuredBars`): the company's insurance reason takes G-138's words
+    and the bars under way. *Their insurance ran out Tue Sep 15. Nothing they do for us is covered.
+    They are at work on Panels and feeders, and Lighting.* A renewal promise not yet due does not take
+    it off. This is the one reason whose words changed.
+  - *Their dates*: G-117's open notice, counted as before, and the early warnings G-116 names. Those
+    are new dates told and not answered (G-113), a first day nobody confirmed (G-114), and a push back
+    of ours not answered (`pushedBack`).
+  - *The log against the chart* (G-60): a company's bars ran with nobody from it on the log, and the
+    log gave no reason.
+  - *A short crew* that alone moves the finish (G-57), and *a crowded place* it has not given its
+    count for (G-83's `crowdedCalls`).
+- **Our move is a line on the ring card**, after the schedule's own lines. Those come first: the
+  schedule, a failed inspection, a late draw (the owner's order, 2026-10-03) and the walk. Then:
+  - *the finish past the contract* (G-98): *It finishes Fri Dec 25, 7 days past the contract's Fri Dec
+    18.*, with G-98's whose-days line when there is one
+  - *papers of ours a bar waits on*: no company yet, a statement of work on older plans, a paper not
+    sent
+  - *the log*, when it is ours to fix: a company on site with no bar, our own crew away, or the log's
+    own reason
+  - *the crowd itself* (G-83's `crowdedWeeks`), in G-83's own words
+- **Needs you gets its own line for our moves**, *3 things to do on GC schedules*, beside *schedules
+  not walked*. Its detail is short sentences, the job named in its first. **Open it** goes to the
+  first job's Schedule tab. Our moves stay out of the people count.
+- **The board row's block** goes red on a job past its contract and says *4 days past contract* in
+  place of the milestones. Its hover adds the finish line.
+- **Needs you's phrases** name the new reasons: *Pecan Valley Electric is working without insurance*,
+  *… cannot start Site lighting yet*, *… has not confirmed its dates*, *… has not answered our push
+  back*, *… was not on site*, *… is short a crew*, *… has not said how many it will have*.
+- **The bench credit (G-116)**: a late notice a company sent from its portal before the day it
+  changes counts for it on its bench, the newest one per bar. *Told us it would be late before the
+  day, 1 time.* It is `TradeBench.toldAhead`, read inline in `gcBench.ts`. gcLateNotices reaches the
+  bench through gcNewProject, so importing it there would loop. A test holds the two rules equal.
+- **By company** says these in its own lines already. Its merge of Follow up's reasons skips the
+  codes it says (`CALL_LIST_SAYS`), so each is said once. That condition is the other named change.
+  The call list's dates, start and crew loops moved verbatim into `gcCounts.ts` first, in their own
+  commit, with every test untouched.
+- **On the made-up data nothing visible moves.** Fair Oaks D still says *2 to call*: Pecan Valley is
+  the only company the new reasons name, and it is already on the row. The badge stays 9, Needs you
+  says *9 to follow up on in GC mode*, and no ring card changes.
+- **The re-pin, step by step.** Helotes Dental Office's ring card is the only one that changes:
+  - Step 54: *Brightline Electric, Kendall Air and Cedar & Pine Millwork need a new statement of work.*
+  - Step 64: its finish runs 7 days past the contract, and *Glass and storefront has no company
+    yet.*
+  - Step 89: two companies left on the papers line.
+  - Step 94: the papers line's first start moves to Thu Nov 26.
+  - Step 109: the finish runs 45 days past, to Mon Feb 1.
+  - At its other steps, the card's other lines shift down a place, with their words unchanged.
+  - The people readings are new paths at the start and at each step where a count moves. The
+    benches' `toldAhead` is new and empty all walk, since no step sends a notice.
+- **Kept per state.** The reasons and our moves are kept per state and job, both as they are, since
+  the reducer makes new ones on every change. The board, Follow up, Needs you and the ring card read
+  the same job many times a state, and G-57's crew projection under them is slow. It kept the golden
+  test at 6 seconds, not 22.
+- Tests: `gcCounts.test.ts` (19), `GcCounts.render.test.tsx` (3), the new line in
+  `dashboardNeedsYou.test.ts`, and Pecan Valley's new words in the people and call-list tests.
+
+What the build changed from the mockup:
+
+- **The ring lines go after the schedule's own lines**, not straight after the schedule's line.
+  `gcBuildingPay.test.ts` pins the owner's order, a late draw first after the schedule, and that
+  stands.
+- **A line names its first bar**: *Panels and feeders starts Tue Oct 27*, not *The first starts*.
+- **A push back not answered has its own code**, `pushedBack`, since By company has no line for it
+  and so keeps it from Follow up. The unconfirmed dates are `confirm`.
+- **The insurance reason stays words only**, with no bar to open. The bars are in its words, and the
+  call list's own test holds that a reason with no bar is words only.
+
+Left out, on purpose: the call list's own bar reasons in the count, a bar late, due, behind or held
+and a failed inspection. That is G-146, for the owner: it changes what *to call* means.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

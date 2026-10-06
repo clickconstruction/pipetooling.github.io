@@ -73,7 +73,8 @@ describe('the call list on the fixture (Fair Oaks D, Fri Oct 2)', () => {
     const s = initialGcState()
     expect(texts(person(s, 'Pecan Valley Electric'))).toEqual([
       '● red Electrical service inspection failed Mon Sep 28. The city sees it again today. What failed: “The main bonding jumper is missing at the service panel.”',
-      '● red Their insurance ran out Sep 15.',
+      // The counts (2026-10-06): at work uncovered, in G-138's words.
+      '● red Their insurance ran out Tue Sep 15. Nothing they do for us is covered. They are at work on Panels and feeders, and Lighting.',
       '● amber Panels and feeders is due today and 80% done.',
       '● amber Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.',
       // G-77: a trade whose insurance ran out is not ready to start its next bars.

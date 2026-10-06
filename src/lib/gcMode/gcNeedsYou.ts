@@ -7,6 +7,7 @@
 import type { GcState } from './gcTypes'
 import { followUps, type FollowUpWhy } from './gcFollowUp'
 import { allPeople, type ProjectPerson } from './gcProjectPeople'
+import { lineLabel } from './gcSplitBars'
 
 export interface GcNeedsYou {
   count: number
@@ -29,7 +30,7 @@ function possessive(name: string): string {
 }
 
 /** One short phrase for a person: their worst reason, said the way the dashboard says things. */
-function phraseFor(state: GcState, person: ProjectPerson): string {
+export function phraseFor(state: GcState, person: ProjectPerson): string {
   const top = person.reasons[0]
   const c = person.company
   const code = top?.code ?? ''
@@ -42,11 +43,23 @@ function phraseFor(state: GcState, person: ProjectPerson): string {
   if (code === 'sow' || code === 'contract' || code.startsWith('co:')) return `${c} has a paper to sign`
   if (code.startsWith('pay:')) return `${c} is late paying`
   if (code === 'waiver') return `${c} owes a waiver`
+  // At work uncovered (G-138, the counts): said as the work going on, not the paper.
+  if (code === 'insurance' && top?.atWork) return `${c} is working without insurance`
   if (code === 'insurance') return `${possessive(c)} insurance ran out`
   if (code === 'w9') return `${c} owes a W-9`
   if (code === 'promise') return `${c} is past a day they gave`
   if (code === 'dates') return `${c} asked for another day`
   if (code === 'late') return `${c} says it will be late`
+  // The schedule's reasons (the counts).
+  if (code === 'notReady') {
+    const job = state.projects.find((p) => p.schedule?.activities.some((a) => a.lineId === top?.lineId))
+    return job && top?.lineId ? `${c} cannot start ${lineLabel(job, top.lineId)} yet` : `${c} cannot start yet`
+  }
+  if (code === 'confirm') return `${c} has not confirmed its dates`
+  if (code === 'pushedBack') return `${c} has not answered our push back`
+  if (code === 'log') return `${c} was not on site`
+  if (code === 'crew') return `${c} is short a crew`
+  if (code === 'crowded') return `${c} has not said how many it will have`
   if (code === 'sentBack') return `${possessive(c)} pay application went back`
   if (code === 'bid') return `${c} has our bid`
   return `${c} owes us an answer`
