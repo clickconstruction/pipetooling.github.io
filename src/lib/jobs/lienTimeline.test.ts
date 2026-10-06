@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimeline, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
+import { buildLienTimeline, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput, keepDatesWhole } from './lienTimeline'
 
 const TODAY = '2026-09-23'
 
@@ -430,5 +430,15 @@ describe('the Lien window’s folded strip on a phone (v2.4398)', () => {
     const unknown = buildLienTimeline(base({ propertyKind: '', lastMonth: '2026-09', months: [open('2026-09', '2026-10-15')] }))
     expect(unknown.kindUnknown).toBe(true)
     expect(lienTimelineFoldSummary(unknown).notes).toContain(LIEN_KIND_UNKNOWN_WORDS)
+  })
+})
+
+describe('keepDatesWhole (v2.4633)', () => {
+  it('binds the month to its day, the day to its year, and a month to its year; the words around them still wrap', () => {
+    expect(keepDatesWhole('open since Aug 1')).toBe('open since Aug\u00a01')
+    expect(keepDatesWhole('Jan 17, 2028')).toBe('Jan\u00a017,\u00a02028')
+    expect(keepDatesWhole('Sep 2026 clock hours')).toBe('Sep\u00a02026 clock hours')
+    expect(keepDatesWhole('42 days · on the same notice')).toBe('42 days · on the same notice')
+    expect(keepDatesWhole('sent Oct 1 · noted')).toBe('sent Oct\u00a01 · noted')
   })
 })

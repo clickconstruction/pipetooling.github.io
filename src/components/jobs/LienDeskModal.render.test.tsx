@@ -690,7 +690,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     // Every month is a row; July's window column spells the deadline out.
     const jul = box.querySelector('[data-lien-grid-row="2026-07"]') as HTMLElement
     expect(jul.getAttribute('data-window')).toBe('open')
-    expect(jul.textContent).toContain('mail by Oct 15')
+    expect(jul.textContent).toContain('mail by Oct\u00a015')
     expect(jul.textContent).toContain('31 days left')
     expect((screen.getByRole('checkbox', { name: /^Jul(y)? 2026$/ }) as HTMLInputElement).checked).toBe(true)
     // Several months ticked → the earliest deadline is the date this notice has to beat.
