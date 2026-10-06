@@ -24,6 +24,7 @@ function charge(over: Partial<CardChargeWindowRow> & { amount: number }): CardCh
   return {
     id: `tx-${seq}`,
     postedAt: '2026-09-10T15:00:00Z',
+    purchasedAt: '2026-09-10T03:00:00Z',
     counterpartyName: 'Shell',
     kind: 'debitCardTransaction',
     status: 'sent',

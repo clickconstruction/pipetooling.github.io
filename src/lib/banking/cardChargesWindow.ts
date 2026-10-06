@@ -1,6 +1,7 @@
 // Card charges in a window — the read behind People → Spending (punch list #52) and the Tally
 // team queue's history (#72): `list_card_charges_window`, one row per card charge posted in the
-// company days asked for, with who it belongs to, what it is and where it went. The row's
+// company days asked for, with who it belongs to, what it is, where it went and when the card was
+// used (purchasedAt, v2.4665: Mercury's createdAt; the window itself keys on posted_at). The row's
 // job_splits and invoice_links carry the Sorted RPC's keys (v2.4566), so they parse with
 // `parseSortedJobSplits` / `parseSortedInvoiceLinks`.
 
@@ -19,6 +20,8 @@ export const CARD_CHARGES_WINDOW_MAX_DAYS = 366
 export type CardChargesWindowRpcRow = {
   mercury_transaction_id: string
   posted_at: string
+  /** Mercury's createdAt from `raw` (migration 20261006061356); absent from a server before that push. */
+  purchased_at: string | null
   amount: number | string
   counterparty_name: string | null
   kind: string
@@ -45,6 +48,14 @@ export type CardChargesWindowRpcRow = {
 export type CardChargeWindowRow = {
   id: string
   postedAt: string
+  /**
+   * When the card was used: Mercury's createdAt, often hours before postedAt (when the charge
+   * settled) and on another company day for many charges. Not the row's insert time. null when
+   * Mercury sent none or it is not a valid timestamp. Spending and Review key on postedAt.
+   * Optional so rows built by hand (other PRs' test fixtures) compile in any merge order; the
+   * mapper always sets it, and a reader takes `purchasedAt ?? postedAt`.
+   */
+  purchasedAt?: string | null
   amount: number
   counterpartyName: string | null
   kind: string
@@ -75,6 +86,7 @@ export function cardChargeWindowRowFromRpc(r: CardChargesWindowRpcRow): CardChar
   return {
     id: r.mercury_transaction_id,
     postedAt: r.posted_at,
+    purchasedAt: text(r.purchased_at),
     amount: Number.isFinite(amount) ? amount : 0,
     counterpartyName: text(r.counterparty_name),
     kind: r.kind,
