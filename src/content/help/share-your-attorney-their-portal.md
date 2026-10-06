@@ -48,7 +48,7 @@ On a matter's **Fees & steps** tab the firm can:
 
 - **Add a fee or cost**: an amount and a note. The fee or cost rolls into the matter's total demand, and shows on the desk's Fees & steps.
 - **Record a step**: demand sent on firm letterhead, suit filed, judgment entered, or settled. The step takes the court, cause number or terms. The cause number is the court's number for the case. The step moves the account's stage on your Pipeline row chip. A *settled* step closes the matter.
-- **Record a payment received**: money the firm holds. You apply it on the job with {{button:outline|Mark Paid}} from the Pipeline row. Then press {{button:outline|Mark applied}} on the desk to record the recovery and the firm's contingency. The contingency is the firm's share of what is recovered. The contingency is recorded as a legal cost on the matter.
+- **Record a payment received**: money the firm holds. You apply it on the job with {{button:outline|Mark Paid}} from the Pipeline row. Then press {{button:outline|Mark applied}} on the desk to record the recovery and the firm's contingency. The contingency is the firm's share of what is recovered. The contingency is recorded as a legal cost on the matter. The contingency does not count toward the total demand.
 - **Ask the office**: a question you answer from the desk. The answer shows on their portal.
 - **Answer the office**: your asks sit at the top of their Fees & steps, under *From the office*. A question gets an answer box. A sign-off on one job gets {{button:blue|Signed off}} / {{button:outline|Not yet}} with a note. A sign-off is for a job where the owner wants to pay Click direct while the GC is silent. The firm's answer lands on your Needs You card.
 

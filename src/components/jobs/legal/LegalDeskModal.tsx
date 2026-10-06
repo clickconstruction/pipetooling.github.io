@@ -28,6 +28,7 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
+import { CONTINGENCY_ENTRY_META, contingencyEntryBody, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -388,7 +389,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       const e1 = await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'recovery_applied', p_amount: amt, p_body: `Applied to the job — ${entry.body || 'payment received by counsel'}` })
       if (e1) return e1
       if (cut > 0) {
-        const e2 = await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'cost', p_amount: cut, p_body: `Contingency ${Math.round(fee.contingencyPct * 100)}% of ${formatLegalMoney(amt)}` })
+        // Tagged so the firm's demand leaves it out: it is the firm's share of money collected, not a cost the debtor owes (#85 item 5).
+        const e2 = await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'cost', p_amount: cut, p_body: contingencyEntryBody(fee.contingencyPct, formatLegalMoney(amt)), p_meta: CONTINGENCY_ENTRY_META })
         if (e2) return e2
       }
       return legalRpc('legal_acknowledge_entry', { p_entry_id: entry.id })
@@ -754,7 +756,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             <button key="e" type="button" onClick={() => props.onOpenEditJob(j.jobId)} style={btn}>Edit job</button>,
           ])} empty="No jobs." />
         <SectionTitle doors={<Door label="Accounts Receivable" onClick={props.onOpenAccountsReceivable} />}>Invoices and payments</SectionTitle>
-        <Table head={['Date', 'Entry', 'Amount']} numCols={[2]} rows={a.ledger.map((e) => [e.ymd ?? '—', e.text, <span key="a" style={{ color: e.amount < 0 ? '#1f7a3a' : undefined }}>{formatLegalMoney(e.amount)}</span>])} empty="No billed lines or payments recorded on these jobs." />
+        <Table head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? '#1f7a3a' : undefined }}>{formatLegalMoney(e.amount)}</span>, formatLegalMoney(e.running)])} empty="No billed lines or payments recorded on these jobs." />
         <div style={{ display: 'flex', gap: 18, fontSize: '0.84rem', marginTop: 6, flexWrap: 'wrap' }}>
           <span><span style={MUTED}>Billed</span> <b>{formatLegalMoney(a.totals.billed)}</b></span>
           <span><span style={MUTED}>Paid</span> <b>{formatLegalMoney(a.totals.paid)}</b></span>

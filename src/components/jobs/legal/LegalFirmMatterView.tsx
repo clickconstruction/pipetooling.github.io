@@ -3,6 +3,7 @@ import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } fr
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
+import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -95,8 +96,8 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   if (tab === 'account') {
     return (
       <div>
-        <PortalTable head={['Date', 'Entry', 'Amount']} numCols={[2]} rows={a.ledger.map((e) => [e.ymd ?? '—', e.text, <span key="a" style={{ color: e.amount < 0 ? PAPER_GREEN : undefined }}>{formatLegalMoney(e.amount)}</span>])} empty="No billed lines or payments on record." />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Balance</span><span style={portalNum}>{formatLegalMoney(a.totals.balance)}</span></div>
+        <PortalTable head={['Date', 'Job', 'Entry', 'Amount', 'Balance']} numCols={[3, 4]} rows={legalRunningLedger(a.ledger).map((e) => [e.ymd ?? '—', e.jobLabel, e.text, <span key="a" style={{ color: e.amount < 0 ? PAPER_GREEN : undefined }}>{formatLegalMoney(e.amount)}</span>, formatLegalMoney(e.running)])} empty="No billed lines or payments on record." />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Balance owed</span><span style={portalNum} data-legal-balance>{formatLegalMoney(a.totals.balance)}</span></div>
         <div style={h}>Who owes</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 12px', fontSize: 13.5 }}>
           <span style={{ color: MUTED }}>Payer</span><span>{a.payer.name}{a.payer.viaGc ? ' · general contractor on the job' : ''}{a.customerType ? ` · ${a.customerType}` : ''}</span>
@@ -149,12 +150,16 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
       </div>
     )
   }
-  const fees = matter.entries.filter((e) => e.kind === 'fee' || e.kind === 'cost')
+  const fees = firmFeeEntries(matter.entries)
+  const feesTotal = firmDemand(0, matter.entries).feesTotal
+  const contingency = contingencyEntries(matter.entries)
   const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost')
   return (
     <div>
       <div style={h}>Fees and costs</div>
       <PortalTable head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, firmFeeKindWords(e.kind), e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
+      {fees.length ? <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Fees and costs in the demand</span><span style={portalNum}>{formatLegalMoney(feesTotal)}</span></div> : null}
+      {contingency.length ? <p data-legal-contingency style={{ fontSize: 12.5, color: MUTED, margin: '6px 0 0' }}>Your contingency on recoveries the office applied: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}. It is your share of money collected, so it is not in the demand.</p> : null}
       {acts}
       <div style={h}>On this matter</div>
       <PortalTable head={['Date', 'Kind', 'What happened', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), e.body, firmEntryStatusWords(e)])} empty="No steps recorded." />
@@ -176,7 +181,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   acts?: ReactNode
   onPrint: () => void
 }) {
-  const totalDemand = packet.account.totals.balance + matter.entries.filter((e) => e.kind === 'fee' || e.kind === 'cost').reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
   return (
     <div>
       <div style={portalCard}>
@@ -193,7 +198,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
           </div>
           <div className="legalMatterHeadSums" style={{ textAlign: 'right' }}>
             <div style={{ ...portalNum, fontSize: 20, fontWeight: 700 }}>{formatLegalMoney(totalDemand)}</div>
-            <div style={{ fontSize: 12, color: MUTED }}>total demand · balance {formatLegalMoney(packet.account.totals.balance)}</div>
+            <div style={{ fontSize: 12, color: MUTED }} data-legal-demand>total demand · balance {formatLegalMoney(packet.account.totals.balance)}{feesTotal ? ` + fees and costs ${formatLegalMoney(feesTotal)}` : ''}</div>
             <button type="button" className="legalPortalWide" style={{ ...portalBtn, marginTop: 6, background: COPPER, color: '#fff' }} onClick={onPrint}>
               ⎙ Print packet
             </button>

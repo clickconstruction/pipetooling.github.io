@@ -7,6 +7,7 @@
 import { formatLegalMoney, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
+import { legalRunningLedger } from './legalMoney'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -23,7 +24,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const a = packet.account
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
   const jobsRows = a.jobs.map((j) => row([esc(j.label), esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, j.contract.kind === 'signed' ? 'signed' : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${esc(j.swornMissing.join(', '))}`, formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
-  const ledgerRows = a.ledger.map((e) => row([esc(e.ymd ?? '—'), esc(e.text), formatLegalMoney(e.amount)], [false, false, true]))
+  const ledgerRows = legalRunningLedger(a.ledger).map((e) => row([esc(e.ymd ?? '—'), esc(e.jobLabel), esc(e.text), formatLegalMoney(e.amount), formatLegalMoney(e.running)], [false, false, false, true, true]))
   // Where each job stands (#41 PR 1): the rail cannot print, so each step is a row — the job on its first.
   const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
   const nextRows = packet.paper.timelines.map((t) => row([`<b>${esc(t.jobLabel)}</b>`, esc(t.timeline.next.words), esc(t.timeline.next.aside), esc(t.retainageWords || '—')]))
@@ -93,7 +94,7 @@ ${a.contacts.length ? table(['Contact', 'Email', 'Phone', 'Note'], a.contacts.ma
 <h3>Jobs in this account</h3>
 ${table(['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance'], jobsRows, 'No jobs.')}
 <h3>Invoices and payments</h3>
-${table(['Date', 'Entry', 'Amount'], ledgerRows, 'No billed lines or payments recorded.')}
+${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.')}
 <h3>Property record</h3>
 ${table(['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Status'], propertyRows, 'No property record on the customer.')}
 <h2>Paper</h2>

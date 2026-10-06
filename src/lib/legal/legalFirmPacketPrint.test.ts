@@ -6,13 +6,14 @@
 import { describe, expect, it } from 'vitest'
 import { sampleLegalPortalResponse } from '../../../supabase/functions/_shared/customerSampleFixtures'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { buildFirmPacketPrintHtml, firmFeeEntries } from './legalFirmPacketPrint'
+import { buildFirmPacketPrintHtml } from './legalFirmPacketPrint'
+import { firmFeeEntries } from './legalMoney'
 import { firmJobRecordWords, legalFirmStageWords } from './legalFirmWords'
 import { buildLegalPacketPrintHtml } from './legalPacketPrint'
 import { formatLegalMoney } from './legalPacket'
 import type { LegalEntryRow } from './legalMatters'
 
-const company = { name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' }
+const company = { name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', licenseLine: '', phone: '(512) 555-0100', email: 'office@example.com' }
 
 function sample(todayYmd = '2026-10-05') {
   const payload = parseLegalPortalPayload(sampleLegalPortalResponse(company as Parameters<typeof sampleLegalPortalResponse>[0], todayYmd))
