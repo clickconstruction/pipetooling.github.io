@@ -4,7 +4,6 @@ import {
   addDays,
   daysBetween,
   inspectedTrades,
-  rfiRows,
   LOOKAHEAD_WEEKS,
   markReason,
   MILESTONE_GRACE_DAYS,
@@ -20,8 +19,6 @@ import {
   shortDate,
   startsToPromise,
   substantialCompletionOn,
-  submittalHolding,
-  submittalNeededBy,
   tradePromisesOf,
   verifyList,
   weekdayDate,
@@ -46,9 +43,8 @@ import { GcLateNotices } from './GcLateNotices'
 import { GcLogVsChart } from './GcLogVsChart'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
-import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrderOnChart } from '../../lib/gcMode/gcChangeOrderDays'
-import { WAIT_KINDS, waitHolds, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
+import { WAIT_KINDS, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
 import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
 import { logChartGaps, logChartNotes } from '../../lib/gcMode/gcLogVsChart'
@@ -56,7 +52,7 @@ import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivit
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
 import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../../lib/gcMode/gcCustomerScheduleSend'
-import { withNotReady } from '../../lib/gcMode/gcNotReady'
+import { chartHolds } from '../../lib/gcMode/gcChartHolds'
 import { GcNotReady } from './GcNotReady'
 import { useAuth } from '../../hooks/useAuth'
 import type { WaitKind } from '../../lib/gcMode/gcTypes'
@@ -88,8 +84,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const me = useMeName() ?? 'The office'
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   const [picked, setPicked] = useState<string | null>(null)
-  // A trade not ready to start holds its bars too (G-77): its papers, read on each bar's start day.
-  const holds = useMemo(() => withNotReady(holdsOf(state, project), state, project), [state, project])
+  // What holds each bar (gcChartHolds.ts): RFIs, submittals, waits, and a trade's papers not in (G-77).
+  const holds = useMemo(() => chartHolds(state, project), [state, project])
   // Days a signed change order adds that are not on the dates yet, drawn as tails (G-76).
   const tails = useMemo(() => changeOrderTails(project, state.today), [project, state.today])
   // What the work waits on from outside the trades (G-73 to G-75): rows on the chart, and the card.
@@ -1195,27 +1191,6 @@ function Measure({ label, value, tone, chip, children }: { label: string; value:
 // ---------------------------------------------------------------------------------------------
 // The chart
 // ---------------------------------------------------------------------------------------------
-
-/**
- * What holds a line on the chart: a submittal not yet approved (owner, 2026-10-04), or a question
- * about the plans not yet answered (the Gantt, G-71). A submittal wins when both hold one line.
- */
-function holdsOf(state: GcState, project: GcProject): Map<string, GanttHold> {
-  const holds = new Map<string, GanttHold>()
-  for (const r of rfiRows(state, project)) {
-    if (r.state === 'answered') continue
-    for (const h of r.holds) holds.set(h.lineId, { kind: 'rfi', words: `${r.label}, ${r.stateWords}`, late: r.late })
-  }
-  for (const a of project.schedule?.activities ?? []) {
-    const s = submittalHolding(project, a.lineId)
-    if (!s) continue
-    const needed = submittalNeededBy(project, s)
-    holds.set(a.lineId, { kind: 'submittal', words: `submittal ${s.number}`, late: needed !== null && needed < state.today })
-  }
-  // A delivery, a decision, a permit or the utility (G-73 to G-75), where nothing else holds the line.
-  for (const [lineId, hold] of waitHolds(state, project)) if (!holds.has(lineId)) holds.set(lineId, hold)
-  return holds
-}
 
 // ---------------------------------------------------------------------------------------------
 // The look-ahead
