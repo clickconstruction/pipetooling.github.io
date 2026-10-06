@@ -45,6 +45,9 @@ export type LegalMatterRow = {
   closed_at: string | null
   closed_reason: string
   updated_at: string
+  /** Settlement authority (#85 item 20): one of the two, or neither (no floor). Absent before the migration. */
+  settlement_floor_amount?: number | null
+  settlement_floor_pct?: number | null
 }
 
 export type LegalMatterJobRow = { matter_id: string; job_id: string }
@@ -303,12 +306,14 @@ export type LegalFirmActivity = {
   feeTotal: number
   steps: number
   questions: number
+  /** The firm's settlements under the office's floor, waiting on a sign-off (#85 item 20) — counted apart from questions. */
+  settlements: number
   /** The firm's answers to the office's asks (#41 PR 3), and how many of them are sign-offs granted. */
   answers: number
   signoffs: number
   payments: number
   paymentTotal: number
-  /** The account the card opens on: a payment first, then a question, then an answer, then the newest. */
+  /** The account the card opens on: a settlement to sign off first, then a payment, then a question, then an answer, then the newest. */
   firstKey: string | null
   firstName: string | null
   latestAt: string | null
@@ -317,8 +322,9 @@ export type LegalFirmActivity = {
 export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters: ReadonlyArray<LegalMatterRow>): LegalFirmActivity {
   const byId = new Map(matters.map((m) => [m.id, m] as const))
   const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const kindRank = (k: string) => (k === 'payment_received' ? 0 : k === 'question' ? 1 : k === 'answer' ? 2 : 3)
-  const first = [...open].sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || b.created_at.localeCompare(a.created_at))[0] ?? null
+  const isSettlement = (e: LegalEntryRow) => e.kind === 'question' && e.meta != null && typeof e.meta === 'object' && (e.meta as { flavor?: unknown }).flavor === 'settlement'
+  const kindRank = (e: LegalEntryRow) => (isSettlement(e) ? 0 : e.kind === 'payment_received' ? 1 : e.kind === 'question' ? 2 : e.kind === 'answer' ? 3 : 4)
+  const first = [...open].sort((a, b) => kindRank(a) - kindRank(b) || b.created_at.localeCompare(a.created_at))[0] ?? null
   const fm = first ? byId.get(first.matter_id) ?? null : null
   const sum = (k: string) => open.filter((e) => e.kind === k).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   return {
@@ -326,7 +332,8 @@ export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters
     fees: open.filter((e) => e.kind === 'fee' || e.kind === 'cost').length,
     feeTotal: sum('fee') + sum('cost'),
     steps: open.filter((e) => e.kind === 'step').length,
-    questions: open.filter((e) => e.kind === 'question').length,
+    questions: open.filter((e) => e.kind === 'question' && !isSettlement(e)).length,
+    settlements: open.filter(isSettlement).length,
     answers: open.filter((e) => e.kind === 'answer').length,
     signoffs: open.filter((e) => e.kind === 'answer' && e.meta != null && typeof e.meta === 'object' && (e.meta as { signedOff?: unknown }).signedOff === true).length,
     payments: open.filter((e) => e.kind === 'payment_received').length,

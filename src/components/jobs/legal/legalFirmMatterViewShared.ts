@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { CARD, COPPER, FAINT, HAIR } from '../../../lib/portal/portalTheme'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
+import type { LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 
 /** Constants and styles shared by the firm's matter view (`LegalFirmMatterView.tsx`) and its callers — kept out of the component file so fast refresh stays whole. */
 
@@ -16,6 +17,8 @@ export type FirmMatterLike = {
   entries: ReadonlyArray<LegalEntryRow>
   /** Entries the office held back (#85 item 29): the portal passes the function's count (held entries never arrive); the desk's preview reads its packet. */
   heldCount?: number
+  /** The office's settlement floor (#85 item 20): the portal passes it; the desk's preview reads the matter. Undefined = not shown. */
+  settlementFloor?: LegalSettlementFloor | null
 }
 
 export const portalCard: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }

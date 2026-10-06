@@ -40,7 +40,8 @@ import { printAndFile } from '../../../lib/sent/sentCopiesIo'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
-import { legalRpc, type LegalMattersData } from '../../../hooks/useLegalMatters'
+import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
+import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
@@ -191,7 +192,7 @@ const FIX_LABEL: Record<LegalGap['fix'], string> = {
   none: '',
 }
 
-type Sheet = { kind: 'ready'; handling: string; note: string } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | null
+type Sheet = { kind: 'ready'; handling: string; note: string; /** #85 item 20: an optional settlement floor set with the release. */ floor?: string; floorUnit?: 'pct' | 'usd' } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | null
 
 function daysAgo(iso: string | null | undefined, todayYmd: string): number | null {
   // An instant's day in APP_CALENDAR_TZ, not its first ten characters (the UTC date).
@@ -334,9 +335,17 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   }
   const confirmReady = async () => {
     if (sheet?.kind !== 'ready' || !firm) return
-    const ok = await run('Attorney-ready', () =>
-      legalRpc('legal_mark_attorney_ready', { p_payer_key: selected?.key, p_customer_id: selected?.customerId, p_payer_name: selected?.name, p_job_ids: jobIds, p_firm_id: firm.id, p_handling_name: sheet.handling, p_note: sheet.note }),
-    )
+    const floorN = Number(sheet.floor ?? '')
+    const ok = await run('Attorney-ready', async () => {
+      const r = await legalRpcData('legal_mark_attorney_ready', { p_payer_key: selected?.key, p_customer_id: selected?.customerId, p_payer_name: selected?.name, p_job_ids: jobIds, p_firm_id: firm.id, p_handling_name: sheet.handling, p_note: sheet.note })
+      if (r.error) return r.error
+      // #85 item 20: the settlement floor rides the release when the sheet set one.
+      const matterId = typeof r.data?.matter_id === 'string' ? r.data.matter_id : null
+      if (matterId && Number.isFinite(floorN) && floorN > 0) {
+        return legalRpc('legal_set_settlement_floor', { p_matter_id: matterId, p_amount: sheet.floorUnit === 'usd' ? floorN : null, p_pct: sheet.floorUnit === 'usd' ? null : floorN })
+      }
+      return null
+    })
     if (ok) {
       setSheet(null)
       showToast(`${selected?.name} is attorney-ready — it is with ${firm.name} now.`, 'success')
@@ -394,6 +403,16 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       setAskForm(null)
       showToast(askForm.flavor === 'signoff' ? 'Asked — the firm sees it on their portal; their sign-off lands on your Needs You list.' : 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.', 'success')
     }
+  }
+  /** #85 item 20: sign off a settlement under the floor (moves the stage to settled), or say not yet. */
+  const answerSettlement = async (entryId: string, signedOff: boolean, note: string) => {
+    const ok = await run(signedOff ? 'Sign off' : 'Not yet', () => legalRpc('legal_answer_settlement', { p_entry_id: entryId, p_signed_off: signedOff, p_note: note }))
+    if (ok) showToast(signedOff ? 'Signed off — the matter is settled, and the firm is told.' : 'Sent — the firm sees your answer; the stage stays.', signedOff ? 'success' : 'info')
+  }
+  const setSettlementFloor = async (amount: number | null, pct: number | null) => {
+    if (!matter) return
+    const ok = await run('Settlement floor', () => legalRpc('legal_set_settlement_floor', { p_matter_id: matter.id, p_amount: amount, p_pct: pct }))
+    if (ok) showToast(amount == null && pct == null ? 'No floor — the firm may settle at any amount.' : 'Floor saved — the firm sees it on the matter.', 'success')
   }
   const withdrawFirmAsk = async (entryId: string) => {
     const ok = await run('Withdraw', () => legalRpc('legal_acknowledge_entry', { p_entry_id: entryId }))
@@ -465,7 +484,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     <>
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
       {canMarkReady ? (
-        <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
+        <button type="button" onClick={() => setSheet({ kind: 'ready', handling: firm?.handling_name ?? '', note: '', floor: '', floorUnit: 'pct' })} disabled={busy} style={btnPrimary}>⚖ Mark attorney ready…</button>
       ) : canEditReview ? (
         matter?.review_requested_at ? (
           <button type="button" onClick={() => void withdrawAsk()} disabled={busy} style={btn}>Withdraw the request</button>
@@ -605,7 +624,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) } : null} />
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter) } : null} />
                 ) : null}
               </>
             )}
@@ -637,6 +656,12 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}><span>Who hears about it, by their own rules</span><button type="button" onClick={() => setEmailsOpen(true)} style={{ ...btn, height: 22, fontSize: '0.7rem', textTransform: 'none', letterSpacing: 0 }}>Firm’s emails ↗</button></div>
                 {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border-subtle)' }}>{pill(r.bucket === 'now' ? 'Email now' : r.bucket === 'digest' ? 'In their digest' : r.bucket === 'unconfirmed' ? 'Not confirmed' : 'Not emailed', r.bucket === 'now' ? 'legal' : r.bucket === 'unconfirmed' ? 'warn' : 'neutral')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>Nobody at the firm is on the list — nobody is emailed; the matter still appears on their portal.</p>}
                 {firmPaused ? <p style={{ fontSize: '0.82rem', color: '#b42318', margin: '6px 0 0' }}>All emails to the firm are paused — the matter still appears on their portal; nobody is emailed.</p> : null}
+                <div data-legal-ready-floor style={{ fontSize: '0.84rem', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                  <span>Settlement floor (optional): the firm may settle at</span>
+                  <input type="number" min={0} step="0.01" value={sheet.floor ?? ''} onChange={(e) => setSheet({ ...sheet, floor: e.target.value })} placeholder="none" aria-label="Settlement floor" style={{ ...sheetInput, width: 100, margin: 0 }} />
+                  <select value={sheet.floorUnit ?? 'pct'} onChange={(e) => setSheet({ ...sheet, floorUnit: e.target.value === 'usd' ? 'usd' : 'pct' })} aria-label="Floor in" style={{ ...sheetInput, width: 'auto', margin: 0 }}><option value="pct">% of the balance</option><option value="usd">dollars</option></select>
+                  <span style={MUTED}>or above. Below it, they ask you.</span>
+                </div>
                 <label style={{ fontSize: '0.84rem', display: 'block', marginTop: 8 }}>Note for the firm (optional)<textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="e.g. Pursue the GC first; the owner disputes nothing." style={sheetInput} /></label>
               </>
             )}
@@ -665,7 +690,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [] }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -762,7 +787,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
 type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
 type EntryLike = LegalEntryRow
-type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean } | null
+type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null } | null
 
 function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs }) {
   const a = packet.account
@@ -938,6 +963,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
     )
   return (
     <div>
+      {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
       <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
         <Table head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, entryRecordedByWords(e, 'office', userNameOf), formatLegalMoney(Number(e.amount ?? 0))])} empty="" />
@@ -952,7 +978,9 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             rows={talk.map((r) => {
               const e = r.entry
               const s = conversationStateWords(r, 'office')
-              const acts = !r.isAnswer && r.thread.askedBy === 'firm' && r.thread.state === 'open' && officeActs ? (
+              const acts = !r.isAnswer && r.thread.flavor === 'settlement' && r.thread.state === 'open' && officeActs ? (
+                <SettlementAnswer key="s" busy={officeActs.busy} onAnswer={(yes, note) => officeActs.answerSettlement(e.id, yes, note)} />
+              ) : !r.isAnswer && r.thread.askedBy === 'firm' && r.thread.state === 'open' && officeActs ? (
                 answerBox(e)
               ) : !r.isAnswer && r.thread.askedBy === 'office' && r.thread.state === 'open' && officeActs ? (
                 <span key="q" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -1023,5 +1051,42 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: '0.84rem' }}>{packet.exhibits.map((x) => <li key={x.letter}><b>{x.letter}</b> · {x.title} <span style={MUTED}>({x.count})</span></li>)}</ul>
       )}
     </div>
+  )
+}
+
+/** #85 item 20: the office's floor for this matter — dollars or a percent of the balance, or none. */
+function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
+  const [value, setValue] = useState(floor ? String(floor.amount ?? floor.pct ?? '') : '')
+  const [unit, setUnit] = useState<'pct' | 'usd'>(floor?.amount != null ? 'usd' : 'pct')
+  const n = Number(value)
+  const valid = Number.isFinite(n) && n > 0 && (unit === 'usd' || n <= 100)
+  const preview = valid ? settlementFloorDollars(unit === 'usd' ? { amount: n, pct: null } : { amount: null, pct: n }, balance) : null
+  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
+  return (
+    <div data-legal-settlement-floor-editor>
+      <SectionTitle>Settlement authority</SectionTitle>
+      <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 6px' }}>{settlementFloorWords(floor, balance).replace('You may', 'The firm may').replace('you may', 'the firm may')}</p>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+        <span>The firm may settle at</span>
+        <input type="number" min={0} step="0.01" value={value} onChange={(e) => setValue(e.target.value)} aria-label="Settlement floor" style={{ ...input, width: 100 }} />
+        <select value={unit} onChange={(e) => setUnit(e.target.value === 'usd' ? 'usd' : 'pct')} aria-label="Floor in" style={input}><option value="pct">% of the balance</option><option value="usd">dollars</option></select>
+        <span>or above.</span>
+        <button type="button" disabled={busy || !valid} onClick={() => void onSave(unit === 'usd' ? n : null, unit === 'usd' ? null : n)} style={btnPrimary}>Save floor</button>
+        {floor ? <button type="button" disabled={busy} onClick={() => { setValue(''); void onSave(null, null) }} style={btn}>No floor</button> : null}
+        {preview != null && unit === 'pct' ? <span style={MUTED}>Today that is {formatLegalMoney(preview)}.</span> : null}
+      </div>
+    </div>
+  )
+}
+
+/** #85 item 20: the office's answer to a settlement under its floor — sign off moves the stage to settled. */
+function SettlementAnswer({ busy, onAnswer }: { busy: boolean; onAnswer: (signedOff: boolean, note: string) => Promise<void> }) {
+  const [note, setNote] = useState('')
+  return (
+    <span data-legal-settlement-answer style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <button type="button" disabled={busy} onClick={() => void onAnswer(true, note)} style={btnPrimary}>Sign off</button>
+      <button type="button" disabled={busy} onClick={() => void onAnswer(false, note)} style={btn}>Not yet</button>
+      <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="a note for the firm (optional)" aria-label="A note for the firm" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 180 }} />
+    </span>
   )
 }

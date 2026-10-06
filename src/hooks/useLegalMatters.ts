@@ -97,6 +97,14 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
   }
 }
 
+/** Like `legalRpc`, with the RPC's own answer (e.g. `matter_id` from `legal_mark_attorney_ready`). */
+export async function legalRpcData(fn: string, args: Record<string, unknown>): Promise<{ error: string | null; data: Record<string, unknown> | null }> {
+  const { data, error } = await db.rpc(fn, args)
+  if (error) return { error: error.message, data: null }
+  const rec = (data ?? null) as Record<string, unknown> | null
+  return rec && typeof rec.error === 'string' ? { error: rec.error, data: rec } : { error: null, data: rec }
+}
+
 /** Typed wrappers over the PR 2 RPCs; each resolves to an error message or null. */
 export async function legalRpc(fn: string, args: Record<string, unknown>): Promise<string | null> {
   const { data, error } = await db.rpc(fn, args)

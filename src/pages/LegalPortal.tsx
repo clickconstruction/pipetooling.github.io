@@ -269,7 +269,7 @@ export default function LegalPortal() {
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount }}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, settlementFloor: selected.settlementFloor }}
                 tab={tab}
                 onTab={setTab}
                 acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} todayYmd={payload.preparedOn} /></>}
@@ -387,6 +387,8 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
   const [feeNote, setFeeNote] = useState('')
   const [stage, setStage] = useState<'demand' | 'suit' | 'judgment' | 'settled'>('demand')
   const [stepNote, setStepNote] = useState('')
+  /** #85 item 20: the settlement amount, checked against the office's floor. */
+  const [settleAmount, setSettleAmount] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [question, setQuestion] = useState('')
@@ -420,9 +422,10 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
         <label style={lab}>Note<input value={feeNote} onChange={(e) => setFeeNote(e.target.value)} placeholder="Demand letter on firm letterhead" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>+ Add fee or cost</button>
       </form>
-      <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn }, () => setStepNote(''))} className="legalPortalForm legalPortalForm--note">
+      <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn, ...(stage === 'settled' && settleAmount ? { amount: Number(settleAmount) } : {}) }, () => { setStepNote(''); setSettleAmount('') })} className={`legalPortalForm ${stage === 'settled' ? 'legalPortalForm--fee' : 'legalPortalForm--note'}`}>
         <label style={lab}>Record a step<select value={stage} onChange={(e) => setStage(e.target.value as 'demand' | 'suit' | 'judgment' | 'settled')} style={input}><option value="demand">Demand sent on firm letterhead</option><option value="suit">Suit filed</option><option value="judgment">Judgment entered</option><option value="settled">Settled</option></select></label>
         <label style={lab}>Date<input type="date" value={stepOn} max={todayYmd} onChange={(e) => setStepOn(e.target.value)} required style={input} /></label>
+        {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder={matter.settlementFloor ? 'required' : 'optional'} required={Boolean(matter.settlementFloor)} style={input} /></label> : null}
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record step</button>
       </form>

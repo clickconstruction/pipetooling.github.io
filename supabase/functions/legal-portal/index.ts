@@ -379,6 +379,8 @@ serve(async (req) => {
         releasedAt: m.released_at ? todayYmdInAppTz(new Date(m.released_at as string)) : null,
         feesToStatement: Boolean(m.fees_to_statement),
         heldCount,
+        // #85 item 20: the office's settlement floor (dollars or a percent of the balance); both null = none.
+        settlementFloor: { amount: m.settlement_floor_amount ?? null, pct: m.settlement_floor_pct ?? null },
         sharedOverrides,
         jobs: jobsWithDetails,
         customer,
