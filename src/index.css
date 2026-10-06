@@ -3849,9 +3849,20 @@ body.my-time-boundary-dragging {
 .lienGate[data-tone='blocker'] .lienGateValue > span { color: var(--text-red-700); }
 .lienGate[data-tone='check'] .lienGateValue,
 .lienGate[data-tone='check'] .lienGateValue > span { color: var(--text-amber-800); }
-.lienGateDetail { --lien-gate-ring: #16a34a; grid-column: 1 / -1; display: grid; gap: 0.3rem; padding: 0.1rem 0.5rem 0.1rem 0.7rem; border-left: 3px solid var(--border-green); border-radius: 0 6px 6px 0; font-size: 0.8125rem; outline: 0; }
-.lienGateDetail[data-tone='blocker'] { --lien-gate-ring: #dc2626; border-left-color: #dc2626; }
-.lienGateDetail[data-tone='check'] { --lien-gate-ring: #f59e0b; border-left-color: #f59e0b; }
+/* A section as a row (v2.4718): the number, the label as a column, the fact with its doors at the right on the first line, one muted line under it. */
+.lienGateDetail { --lien-gate-ring: #16a34a; grid-column: 1 / -1; display: grid; grid-template-columns: 22px 150px minmax(0, 1fr); gap: 0.2rem 0.75rem; align-items: start; padding: 0.55rem 0.3rem 0.5rem; border-top: 1px solid var(--border); border-radius: 6px; font-size: 0.8125rem; outline: 0; }
+.lienGateDetail[data-tone='blocker'] { --lien-gate-ring: #dc2626; }
+.lienGateDetail[data-tone='check'] { --lien-gate-ring: #f59e0b; }
+.lienGateRowNum { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; background: var(--bg-green-tint); color: var(--text-green-800); border: 1px solid var(--border-green); margin-top: 1px; }
+.lienGateDetail[data-tone='blocker'] .lienGateRowNum { background: #dc2626; color: #fff; border-color: transparent; }
+.lienGateDetail[data-tone='check'] .lienGateRowNum { background: #b45309; color: #fff; border-color: transparent; }
+.lienGateRowLabel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); padding-top: 4px; min-width: 0; }
+.lienGateRowBody { display: grid; gap: 0.2rem; min-width: 0; }
+.lienGateRowBody .lienGateFactValue { font-size: 0.9rem; font-weight: 700; color: var(--text-strong); min-width: 0; }
+.lienGateRowMeta { font-size: 0.75rem; color: var(--text-muted); }
+.lienGatesFold { display: flex; justify-content: flex-end; }
+.lienGatesFoldBtn { background: none; border: none; padding: 0; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-link); cursor: pointer; }
+.lienGatesFoldBtn:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; border-radius: 3px; }
 .lienGateDetail[data-active='yes'] { animation: lienGateBringUp 4s ease-out both; }
 @keyframes lienGateBringUp {
   0%, 65% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--lien-gate-ring); }
@@ -3866,6 +3877,8 @@ body.my-time-boundary-dragging {
   .lienGatesGrid { grid-template-columns: minmax(0, 1fr); }
   .lienGatesGrid .lienGate[data-n],
   .lienGatesGrid .lienGateDetail { grid-column: 1; grid-row: auto; }
+  .lienGateDetail { grid-template-columns: 22px minmax(0, 1fr); }
+  .lienGateRowBody { grid-column: 2; }
   .lienGate { flex-wrap: nowrap; }
   .lienGateLabel { flex: 0 1 auto; }
   .lienGateValue { flex: 1 1 0; text-align: right; }
