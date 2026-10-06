@@ -1238,6 +1238,21 @@ export default function LienDeskModal({
   }, [open, previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
 
   if (!open) return null
+  // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sits on the title line
+  // left of § Rules, except on All filings, where the second line holds the paper tabs and it stays at that line's right end (v2.4740, the owner's ask).
+  const ownerRecordsDoor = office && onOpenOwnerRecords ? (
+    <button
+      type="button"
+      data-testid="lien-owner-records-door"
+      onClick={onOpenOwnerRecords}
+      title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
+    >
+      An owner asked for records ›
+    </button>
+  ) : null
+  const ownerRecordsUp = !isMobile && !paperShown
+
   const rulesAndCaller = (
     <>
       <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
@@ -2762,19 +2777,17 @@ export default function LienDeskModal({
               )
             })}
           </div>
-          {paperShown ? (
-            <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden' }}>
-              {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
-                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
-                  {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
-                </button>
-              ))}
-            </div>
+          {/* The run sits beside the views on every view (v2.4740, the owner's ask; on the second line's left end since v2.4629). */}
+          {kind !== 'affidavit' && office && runCount > 0 ? (
+            <button type="button" onClick={() => setRunOpen(true)} style={btn('primary')} data-lien-desk-run title="Every approved notice — monthly and retainage — as one packet and one tracking form">
+              Send the run · {runCount}
+            </button>
           ) : null}
           {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
           {isMobile ? rulesAndCaller : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
           <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            {ownerRecordsUp ? ownerRecordsDoor : null}
             {isMobile ? null : rulesAndCaller}
             <button
               type="button"
@@ -2803,12 +2816,18 @@ export default function LienDeskModal({
               <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
             ) : null}
           </span>
-          {/* The second line (v2.3817): the run first, at the left under the title on every view (v2.4629, the owner's ask); then the piles; Put a GC on notice at the right. */}
-          <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
-          {kind !== 'affidavit' && office && runCount > 0 ? (
-            <button type="button" onClick={() => setRunOpen(true)} style={btn('primary')} data-lien-desk-run title="Every approved notice — monthly and retainage — as one packet and one tracking form">
-              Send the run · {runCount}
-            </button>
+          {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice and the owner-records door at the right (v2.4740: the run moved up to the title line). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
+          {paperShown || (leader && wordSent.length > 0) || (isMobile && ownerRecordsDoor) ? (
+            <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
+          ) : null}
+          {paperShown ? (
+            <div role="tablist" aria-label="Kind of paper" data-lien-desk-paper-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden' }}>
+              {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
+                <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: kind === k ? 'var(--bg-blue-tint)' : 'var(--surface)', color: kind === k ? 'var(--text-blue-700)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+                  {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
+                </button>
+              ))}
+            </div>
           ) : null}
           {kind === 'retainage'
             ? LIEN_RETAINAGE_PILES.map((p) => {
@@ -2835,7 +2854,7 @@ export default function LienDeskModal({
               })
             : null}
           {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
-          {/* The right end of the second line (v2.4629): Put a GC on notice, the leader's spoken-word line, and the owner-records door, in one span pushed right. */}
+          {/* The right end of the second line (v2.4629): Put a GC on notice, the leader's spoken-word line, and the owner-records door when it is not on the title line, in one span pushed right. */}
           <span data-lien-desk-right style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
             <div style={{ position: 'relative' }}>
@@ -2888,18 +2907,7 @@ export default function LienDeskModal({
               Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
             </span>
           ) : null}
-          {/* An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. At the right of the second line on every view since v2.4629. */}
-          {office && onOpenOwnerRecords ? (
-            <button
-              type="button"
-              data-testid="lien-owner-records-door"
-              onClick={onOpenOwnerRecords}
-              title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
-            >
-              An owner asked for records ›
-            </button>
-          ) : null}
+          {ownerRecordsUp ? null : ownerRecordsDoor}
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>

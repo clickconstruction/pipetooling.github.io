@@ -183,12 +183,20 @@ describe('LienDeskModal', () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const door = screen.getByTestId('lien-owner-records-door')
-    // v2.4629: at the right end of the title bar's second line, on every view.
+    // On All filings: at the right end of the title bar's second line, after the paper tabs (v2.4629, v2.4740).
     expect(door.closest('[data-lien-desk-right]')).toBeTruthy()
     expect(door.textContent).toBe('An owner asked for records ›')
     fireEvent.click(door)
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
     view.unmount()
+    // v2.4740: on Deadlines it moves up to the title line, just before § Rules, and the title bar is one line.
+    const deadlines = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="calendar" onOpenOwnerRecords={onOpenOwnerRecords} />)
+    await settle()
+    const up = screen.getByTestId('lien-owner-records-door')
+    expect(up.closest('[data-lien-desk-right]')).toBeNull()
+    expect(up.parentElement!.querySelector('[data-lien-desk-share]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-desk-header-break]')).toBeNull()
+    deadlines.unmount()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
@@ -205,8 +213,9 @@ describe('LienDeskModal', () => {
     await settle()
     // Nothing is Ready to send, one is printed: the header still offers the run, counting what the run lists.
     expect(screen.getByRole('button', { name: 'Send the run · 1' })).toBeTruthy()
-    // v2.4629: the run is the first thing on the second line, at the left under the title.
-    expect(document.querySelector('[data-lien-desk-header-break]')!.nextElementSibling!.hasAttribute('data-lien-desk-run')).toBe(true)
+    // v2.4740: the run sits on the title line, right after the views; on All filings the paper tabs lead the second line.
+    expect(document.querySelector('[data-lien-desk-kinds]')!.nextElementSibling!.hasAttribute('data-lien-desk-run')).toBe(true)
+    expect(document.querySelector('[data-lien-desk-header-break]')!.nextElementSibling!.hasAttribute('data-lien-desk-paper-kinds')).toBe(true)
     const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
     expect(footer.textContent).toContain('Printed September 14, 2026 · in the mail.')
     expect(within(footer).getByRole('button', { name: /Record the mailing · 1/ })).toBeTruthy()

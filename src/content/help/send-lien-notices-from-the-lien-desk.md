@@ -56,7 +56,7 @@ The button left of the × makes the desk full screen. The same button sits on Pu
 
 ## Find a job on the list
 
-A find box sits under {{button:blue|Send the run · N}} on every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+A find box sits at the top of every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
 
 ## The piles
 
@@ -255,7 +255,7 @@ A bill paid in full by the day is written down by the percent once the money lan
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} sits at the left under the desk's title, on every view. It opens the run.
+Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the three views. It opens the run.
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
@@ -320,7 +320,7 @@ Once the job's balance is paid, the footer says there is nothing more to send. O
 
 Every owner letter asks the owner to call. The desk turns that call into a guided conversation. The whole call is in [answer an owner who calls about a lien letter](/help/answer-an-owner-who-calls-about-a-lien-letter).
 
-1. **Find them.** Press the {{button:blue|☎}} button in the desk's title bar. Its hint reads *Someone's calling*. Type what the caller gives you, like a job number, a street, the owner's name or the GC's name. A row with a letter sent opens the call sheet on that notice. A row with no letter mailed yet opens the job on the desk. {{button:blue|▶ Practice call}} opens the sheet on a made up letter and saves nothing. On a sent job's footer, {{button:outline|Record the owner’s call…}} opens the same sheet.
+1. **Find them.** Press the {{button:blue|☎}} button in the desk's title bar. Its hint reads *An owner is calling*. It opens counsel's words for the call at once. To find the letter they hold, type what they give you in the list's find box. Letters older than thirty days show under **Also sent**, and each opens the call sheet. **Take a practice call ›** opens the sheet on a made up letter and saves nothing. On a sent job's footer, {{button:outline|Record the owner’s call…}} opens the same sheet.
 2. **Read and tap.** The letter they hold sits at the top. Each card is one line to say, with the owner's likely replies. Tap what they say, and the next card opens.
 3. **Let the facts collect.** The sheet asks whether they still owe the GC, whether the 10% stayed with them and when the GC finished. {{button:blue|Save the call}} writes the answers onto the sent notice.
 
