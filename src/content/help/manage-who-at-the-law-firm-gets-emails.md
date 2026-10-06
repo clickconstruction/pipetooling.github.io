@@ -12,19 +12,19 @@ Two guards nobody can switch off. A new address is inert until its owner clicks 
 
 The firm opens the **Notifications** page on its portal. Each person at the firm has one rule there:
 
-- **Right away** or **Weekly digest**. A digest also picks a weekday and a Central time.
+- **Each event** or **Weekly digest**. Each event sends one email per event. A digest also picks a weekday and a Central time.
 - **Every matter** or **Only my matters**. A matter is one account sent to the firm. My matters are the ones where the person is named as the handling person.
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
-**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. The handling person on a matter always hears about it. They hear under their own rule, right away or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
+**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
 
 ## What they hear about
 
 - A new account referred to them. The email goes the moment a dev marks it attorney-ready.
 - The office answering one of their questions.
-- An account pulled back.
+- An account pulled back. The firm's email calls it a referral withdrawn.
 
-Right-away people get one email per event within five minutes. Digest people get one email on their day: every open matter, then everything since their last digest.
+People on **Each event** get one email per event within five minutes. Digest people get one email on their day: every open matter, then everything since their last digest.
 
 ## What the office sees and controls
 
@@ -41,4 +41,4 @@ Until the firm adds its people on the portal, nobody is emailed — the matter s
 
 ## Wording
 
-There are three emails: account referred, the weekly digest, and the confirmation. The account-referred email also has an office-answered variant and a pulled-back variant. All three are listed in the Outbound email catalog on Settings → Email templates. They show as `legal-notify-dispatch` and `submit-legal-portal` sends. Their wording is fixed in this release.
+There are three emails: account referred, the weekly digest, and the confirmation. The account-referred email also has an office-answered variant and a referral-withdrawn variant. All three are listed in the Outbound email catalog on Settings → Email templates. They show as `legal-notify-dispatch` and `submit-legal-portal` sends. Their wording is fixed in this release.

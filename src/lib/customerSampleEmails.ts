@@ -278,7 +278,7 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
   return buildLegalDigestEmail({
     companyName: PORTAL_COMPANY.name,
     recipientName: SAMPLE_FIRM.recipients[1].name,
-    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'with_firm', handlingName: SAMPLE_FIRM.handling, releasedAt: `${ymdPlusDays(ctx.todayYmd, -3)}T18:00:00Z` }],
+    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'referred', handlingName: SAMPLE_FIRM.handling, releasedAt: `${ymdPlusDays(ctx.todayYmd, -3)}T18:00:00Z` }],
     events: [{ createdAt: `${ymdPlusDays(ctx.todayYmd, -1)}T18:00:00Z`, trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
     portalUrl,
     unsubscribeUrl,

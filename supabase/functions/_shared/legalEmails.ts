@@ -14,9 +14,31 @@ export function legalEsc(s: unknown): string {
 
 export type LegalEmail = { subject: string; text: string; html: string }
 
+/**
+ * A matter's stage in the firm's words (punch list #85, item 3): the portal's chip, the digest
+ * email and the firm's print packet read this one map. The office keeps its own labels
+ * (`legalStageLabel` in `src/lib/legal/legalMatters.ts`, *With the firm · new*) for the desk.
+ */
+export function legalFirmStageWords(stage: string | null | undefined): string {
+  switch (stage) {
+    case 'referred': return 'referred'
+    case 'demand': return 'demand sent'
+    case 'suit': return 'suit filed'
+    case 'judgment': return 'judgment entered'
+    case 'settled': return 'settled'
+    case 'post_judgment': return 'judgment being collected'
+    case 'payment_plan': return 'payment plan'
+    case 'uncollectible': return 'written off as uncollectible'
+    case 'dismissed': return 'dismissed'
+    case 'pulled': return 'referral withdrawn'
+    case 'written_down': return 'written down by the office'
+    default: return 'under review by the office'
+  }
+}
+
 /** The frame every firm email sits in: the company line on top, the stop-these link at the foot. */
 export function legalWrapHtml(companyName: string, bodyHtml: string, unsubscribeUrl: string): string {
-  return `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>${bodyHtml}<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because you are listed at the firm on Click's legal portal. <a href="${unsubscribeUrl}" style="color:#8a97a6">Stop these emails to you</a>.</p></div>`
+  return `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>${bodyHtml}<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because you are on the firm's email list on ${legalEsc(companyName)}'s legal portal. <a href="${unsubscribeUrl}" style="color:#8a97a6">Stop these emails to you</a>.</p></div>`
 }
 
 const PORTAL_BUTTON = (portalUrl: string) => `<p><a href="${portalUrl}" style="display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Open the portal</a></p>`
@@ -44,13 +66,13 @@ export function buildLegalNowEmail(i: {
   unsubscribeUrl: string
 }): LegalEmail {
   const payer = i.payer || 'an account'
-  const subject = i.trigger === 'referred' ? `New account referred: ${payer}` : i.trigger === 'answer' ? `${i.companyName} answered on ${payer}` : `Pulled back: ${payer}`
+  const subject = i.trigger === 'referred' ? `New account referred: ${payer}` : i.trigger === 'answer' ? `${i.companyName} answered on ${payer}` : `Referral withdrawn: ${payer}`
   const line =
     i.trigger === 'referred'
-      ? `${i.companyName} has marked <b>${legalEsc(payer)}</b> attorney-ready and released it to ${legalEsc(i.firmName)}${i.handling ? ` — handling: ${legalEsc(i.handling)}` : ''}.${i.note ? `<br><i>“${legalEsc(i.note)}”</i>` : ''}`
+      ? `${legalEsc(i.companyName)} has referred <b>${legalEsc(payer)}</b> to ${legalEsc(i.firmName)}${i.handling ? ` — handling: ${legalEsc(i.handling)}` : ''}.${i.note ? `<br><i>“${legalEsc(i.note)}”</i>` : ''}`
       : i.trigger === 'answer'
         ? `The office answered your question on <b>${legalEsc(payer)}</b>:<br><i>${legalEsc(i.body)}</i>`
-        : `<b>${legalEsc(payer)}</b> has been pulled back by the office and no longer shows on the portal.`
+        : `${legalEsc(i.companyName)} has withdrawn the referral of <b>${legalEsc(payer)}</b>. It no longer shows on the portal.`
   const html = legalWrapHtml(i.companyName, `<p>${line}</p>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
   return { subject, text: `${subject}\n\n${i.portalUrl}`, html }
 }
@@ -62,10 +84,10 @@ export type LegalDigestEvent = { createdAt: string; trigger: LegalNowTrigger; pa
 /** `legal-notify-dispatch` → the once-a-day digest for recipients on "digest". */
 export function buildLegalDigestEmail(i: { companyName: string; recipientName: string; matters: LegalDigestMatter[]; events: LegalDigestEvent[]; portalUrl: string; unsubscribeUrl: string }): LegalEmail {
   const matterLines = i.matters.length
-    ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(m.stage)}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(todayYmdInAppTz(new Date(m.releasedAt)))}` : ''}</li>`).join('')
+    ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(legalFirmStageWords(m.stage))}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(todayYmdInAppTz(new Date(m.releasedAt)))}` : ''}</li>`).join('')
     : '<li>No open matters.</li>'
   const eventLines = i.events.length
-    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : 'Pulled back'}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
+    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : 'Referral withdrawn'}: <b>${legalEsc(e.payer)}</b>${e.trigger === 'answer' && e.body ? ` — ${legalEsc(e.body)}` : ''}</li>`).join('')
     : '<li>Nothing new since your last digest.</li>'
   const subject = `Weekly digest — ${i.matters.length} open matter${i.matters.length === 1 ? '' : 's'} at ${i.companyName}`
   const html = legalWrapHtml(i.companyName, `<p>Your weekly digest, ${legalEsc(i.recipientName)}.</p><h3 style="font-size:14px;margin:12px 0 4px">Open matters</h3><ul>${matterLines}</ul><h3 style="font-size:14px;margin:12px 0 4px">Since your last digest</h3><ul>${eventLines}</ul>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
@@ -78,7 +100,7 @@ export function legalPageHtml(companyName: string, body: string): string {
 }
 
 export function legalConfirmedPageBody(companyName: string, name: string, email: string): string {
-  return `<h1>You're confirmed, ${legalEsc(name)}.</h1><p>${legalEsc(email)} will now get the firm's emails from ${legalEsc(companyName)} — right away or in a weekly digest, whichever the portal says. Every email carries a link to stop them.</p>`
+  return `<h1>You're confirmed, ${legalEsc(name)}.</h1><p>${legalEsc(email)} will now get the firm's emails from ${legalEsc(companyName)} — one email per event or a weekly digest, whichever the portal says. Every email carries a link to stop them.</p>`
 }
 
 export function legalUnsubscribedPageBody(companyName: string, name: string): string {
