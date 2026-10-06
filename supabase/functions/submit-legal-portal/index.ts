@@ -4,6 +4,8 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
+// Item 7 (#85): a thrown error is logged; the firm reads one plain sentence.
+import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 
@@ -218,7 +220,6 @@ serve(async (req) => {
     if (error) return jsonResponse({ error: 'Could not save that.' }, 500)
     return jsonResponse({ ok: true, entryId: (inserted as { id: string }).id })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    return jsonResponse({ error: message }, 500)
+    return jsonResponse(unexpectedErrorBody('submit-legal-portal', e), 500)
   }
 })

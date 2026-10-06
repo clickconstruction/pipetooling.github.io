@@ -2,6 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+// Item 7 (#85): a thrown error is logged; the firm reads one plain sentence.
+import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
@@ -338,7 +340,6 @@ serve(async (req) => {
 
     return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out, lienBook: await readLienBook(admin) })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    return jsonResponse({ error: message }, 500)
+    return jsonResponse(unexpectedErrorBody('legal-portal', e), 500)
   }
 })

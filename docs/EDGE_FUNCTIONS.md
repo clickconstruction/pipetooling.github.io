@@ -1669,6 +1669,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 ### legal-portal
 
 > **v2.4662 — each person's `failingSince`**: `recipients[]` gains `failingSince`, the company-zone day of `legal_firm_recipients.send_failed_since` (null while emails go through), which the Notifications page shows against the person. The recipients read is `select('*')` so it never fails before migration [`20261006055407`](./migrations/20261006055407_legal_notify_per_recipient.md) is pushed; only the mapped fields leave. **Redeploy required.**
+> **v2.4621 — no raw errors to the firm** (punch list #85, item 7): the top-level `catch` returns `unexpectedErrorBody(fn, e)` from [`_shared/legalPortalErrors.ts`](../supabase/functions/_shared/legalPortalErrors.ts): status 500, `{ error: "The office’s system could not answer. Please try again in a minute, or contact the office.", ref }`, the real error logged as `<fn>: unexpected error (ref XXXXXXXX)`. The deliberate 4xx sentences are unchanged. The page (`LegalPortal.tsx`) prints through `firmFacingErrorLine`, which keeps a 5xx body's words only when they are one of the three the functions write. **Redeploy required.**
 
 > **v2.4616 — the lien book, stripped** (punch list #85, item 2): `readLienBook` selects the columns [`_shared/legalLienBookShape.ts`](../supabase/functions/_shared/legalLienBookShape.ts) names (`LIEN_BOOK_COUNSEL_SELECT`) and `shapeLienBookForCounsel` cuts every desk item, filing, owner and address row again before it is sent — dates, dollars, the property and the owner of record; never a desk item's `fields`, hold reason or word, a filing's note, sends or link, an owner's email or an address note. The grid still covers every billed job with a lien month (the owner's call, re-asked 2026-10-05). The client reads the same list through `src/lib/legal/legalLienBookShape.ts`.
 
@@ -1687,6 +1688,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3512 (What customers see PR 6):** the sample token answers from `sampleLegalPortalResponse` — the sample firm's empty portal (recipients, particulars, no matters) — before the link lookup and the view row; a real matter never reaches it.
 
 ### submit-legal-portal
+
+> **v2.4621 — no raw errors to the firm** (punch list #85, item 7): the top-level `catch` (as in [legal-portal](#legal-portal)) returns `unexpectedErrorBody(fn, e)` from [`_shared/legalPortalErrors.ts`](../supabase/functions/_shared/legalPortalErrors.ts): status 500, `{ error: "The office’s system could not answer. Please try again in a minute, or contact the office.", ref }`, the real error logged as `<fn>: unexpected error (ref XXXXXXXX)`. The deliberate 4xx sentences are unchanged. The page (`LegalPortal.tsx`) prints through `firmFacingErrorLine`, which keeps a 5xx body's words only when they are one of the three the functions write. **Redeploy required.**
 
 > **v2.4625 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose firm emails now speak the firm's words ([legal-notify-dispatch](#legal-notify-dispatch)). The confirm email itself is unchanged; the confirmed page reads *one email per event or a weekly digest*.
 
