@@ -18,7 +18,7 @@
 | `sorted_at`, `sorted_by_name` | the newest split or invoice link and who wrote it, as in the Sorted RPC |
 | `viewer_can_sort` | whether the split write this charge goes through admits the caller (below) |
 
-Card kinds only (`debitCardTransaction`, `creditCardTransaction`): no ACH, no checks. Duplicates out. No `raw` comes back.
+Card kinds only (`debitCardTransaction`, `creditCardTransaction`): no ACH, no checks. Duplicates out. No `raw` comes back. **Since 20261005235207 (v2.4611)** the rows function also keeps any transaction carrying a card — Mercury files a card refund as kind `other` — so refunds come off.
 
 ## The window
 

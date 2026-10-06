@@ -136,6 +136,28 @@ describe('the migration', () => {
   })
 })
 
+// v2.4611 (20261005235207): the rows function again, now also keeping card refunds (kind 'other'
+// with a card id). Its columns must still be the wrapper's, and it must stay sql and closed to the app.
+const REFUNDS_MIGRATION = readFileSync(join(__dirname, '../../../supabase/migrations/20261005235207_card_charges_window_refunds.sql'), 'utf8')
+
+describe('the refunds migration', () => {
+  it('redefines only the rows function, with the wrapper’s columns, as sql, closed to the app', () => {
+    expect(REFUNDS_MIGRATION).not.toContain('FUNCTION public.list_card_charges_window(')
+    expect(returnsTableColumns(REFUNDS_MIGRATION, '_card_charges_window_rows')).toEqual(returnsTableColumns(MIGRATION, 'list_card_charges_window'))
+    expect(REFUNDS_MIGRATION).toMatch(/\nLANGUAGE sql\n/)
+    for (const role of ['PUBLIC', 'anon', 'authenticated']) {
+      expect(REFUNDS_MIGRATION).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\._card_charges_window_rows\\([^)]*\\) FROM ${role};`))
+    }
+    expect(REFUNDS_MIGRATION).not.toMatch(/GRANT [A-Z ,]*ON FUNCTION public\._card_charges_window_rows/)
+    expect(REFUNDS_MIGRATION.trimStart().startsWith("SET lock_timeout = '3s';")).toBe(true)
+  })
+
+  it('keeps a card kind or anything carrying a card, duplicates still out', () => {
+    expect(REFUNDS_MIGRATION).toContain("WHERE w.kind IN ('debitCardTransaction', 'creditCardTransaction')\n       OR w.card_id IS NOT NULL")
+    expect(REFUNDS_MIGRATION).toContain('AND t.duplicate_of_transaction_id IS NULL')
+  })
+})
+
 describe('cardChargeWindowRowFromRpc', () => {
   it('reads the splits and invoice links with the Sorted RPC’s keys', () => {
     const row = cardChargeWindowRowFromRpc(
@@ -158,6 +180,12 @@ describe('cardChargeWindowRowFromRpc', () => {
       { jobId: 'j2', amount: -12.5, hcpNumber: null, clickNumber: 'C-7', jobName: 'Oak Ave', serviceTypeId: null },
     ])
     expect(row.invoiceLinks).toEqual([{ invoiceId: 'inv-1', invoiceNumber: '4471', supplyHouseName: 'Ferguson', amount: 42.5 }])
+  })
+
+  it('a card refund keeps its kind and its sign: Mercury files it as kind other, money in', () => {
+    const row = cardChargeWindowRowFromRpc(rpcRow(3, { kind: 'other', amount: 168.06, debit_card_id: 'card-1', holder_user_id: 'u-1', counterparty_name: 'The Home Depot', job_splits: [{ job_id: 'j-1033', amount: 168.06 }] }))
+    expect(row).toMatchObject({ kind: 'other', amount: 168.06, debitCardId: 'card-1', holderUserId: 'u-1' })
+    expect(row.splits).toEqual([{ jobId: 'j-1033', amount: 168.06, hcpNumber: null, clickNumber: null, jobName: null, serviceTypeId: null }])
   })
 
   it('blank text is null and a bad amount is 0', () => {

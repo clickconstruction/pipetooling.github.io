@@ -61,6 +61,9 @@ Then: "build it" — which takes the recommended answer to the first decision be
 - **Follow-up, naming: the Job window's "Card charges"** counts every Mercury allocation on the job, ACH included (`fetchJobMaterialsCostSnapshot` has no kind filter); People → Spending is card purchases only.
 - **Follow-up: a job whose refunds outweigh its other card charges** — the Job window and Job Summary floor its card line at $0 (`jobCardChargesCountedFromLines`, `Jobs.tsx`), Review's `netCardChargesByJobId` keeps the net credit, and so does Spending (pinned in `spendingRollup.test.ts`).
 - **Follow-up: fuel on a supply-house invoice** — the ⛽ line's slice (`tagSliceForOneJob`) keeps an invoice-linked fuel charge that the card total leaves out (clamped to it); Spending lists it under the invoice.
+- **Card refunds were dropped from the Spending read — fixed v2.4611.** Mercury files a refund to a card as kind `other`, still carrying the card; the first read kept only the card kinds, so refunds did not come off (27 refunds, $1,083.34 over 90 days). Found by the comparison against the Job window: J667 matched to the cent on Spending, the Job window and Job Summary, and J363 (16¢), J1033 ($168.06) and J583 ($1,045.69) differed by exactly their refunds. Migration `20261005235207` keeps a card kind or any transaction carrying a card.
+- **Follow-up: Wheels misses card refunds.** `splitFuelFamily` (`lib/people/wheels.ts`) counts a charge as card fuel only when `kind === 'debitCardTransaction'`, so a fuel refund (kind `other`) lands in the off-card label check and adds to it with `Math.abs`.
+- **Follow-up: Review's vehicle-deal fuel rule misses card refunds.** `loadTeamReviewUnion.ts` takes a vehicle-deal person's fuel off jobs only when `kind === 'debitCardTransaction'`, so their fuel refunds stay on the jobs while the purchases leave — PR 5 replaces the rule, and should use the card rather than the kind.
 
 ## How to verify
 
