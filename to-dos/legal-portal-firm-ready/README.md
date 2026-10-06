@@ -2,7 +2,7 @@
 name: "Legal portal: ready for the firm"
 number: 85
 group: waiting
-status: 24 of 29 built and merged 2026-10-05/06 (v2.4615–v2.4681, v2.4649); item 17 PR 2b (#4690, the migration) queued once the new dispatcher was live at 13:32Z; 12–15 and 19 wait for the firm; 10 is the owner's
+status: 24 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits) and the firm's door (#4708, then #4710 with migration 20261006230500); 12–15 and 19 wait for the firm; 10 is the owner's
 summary: >
   The portal's data model and two-way channel are a real selling point, but the firm-facing
   surface still speaks the office's language, the print packet hands the firm the office's own
@@ -10,7 +10,7 @@ summary: >
   (four readers over the code, one over the sample portal in a browser) agreed on 29 items.
   Items 1–11 would show in a demo; 12–21 are what a firm will ask for in month one; 22–29 are
   structure. Each item gets a mockup, a hard look ("is this the best we can do?"), then the build.
-next: Arm #4690 once `legal-notify-dispatch` is live with #4640, then push its migration. Redeploy `legal-send-firm-link`. After the firm meeting, shape items 12–15 and 19 from what the firm asked for; the owner fills the particulars (item 10).
+next: Land the firm's door, #4708 then #4710, and push #4710's migration. The owner puts the real firm in place of ZZ Test Firm and fills the particulars (item 10, 0 of 8 on 2026-10-06). At the meeting, ask the firm what it needs at intake, and ask it to review and sign off the guide *read the Texas lien rules the app follows*. After it, shape items 12–15 and 19 from the firm's answers.
 size: XL (29 items; 1–11 are S each, 12–21 M, 22–29 S–M)
 blocker: The firm's answers for 12–15 and 19. Decisions taken 2026-10-05 — share everything with counsel by default (29); one firm (27); settlement by threshold (20); the Lien grid keeps the whole book, stripped (2).
 opinion: build in the order below; ship each as its own PR so the firm's demo copy improves tonight and the month-one items can be shaped by what the firm says.
@@ -34,7 +34,7 @@ Each item: a mockup file beside this card (`mockup-<n>-<slug>.html`), then its P
 
 ### Before the meeting (would show in a demo)
 
-1. ~~**A firm print packet.**~~ (v2.4615) Its own builder: no *Before release* gaps, no worth-it verdict, no *a firm has not been assigned*, no *nothing held back* (the function hard-codes the count to zero); the firm's own fees and steps printed. The desk keeps the office packet.
+1. ~~**A firm print packet.**~~ (v2.4615; follow-up v2.4701: each exhibit on the portal says where it really is) Its own builder: no *Before release* gaps, no worth-it verdict, no *a firm has not been assigned*, no *nothing held back* (the function hard-codes the count to zero); the firm's own fees and steps printed. The desk keeps the office packet.
 2. ~~**Scope the Lien grid to referred matters.**~~ (v2.4616 — the owner kept the whole book, stripped) Shape the desk rows so skip reasons, owner-call notes, owner emails and GC policies never leave. No tab while a firm has no matters.
 3. ~~**Firm vocabulary.**~~ (v2.4625) *Needs You list*, *From Click*, *Click's particulars*, *Their word*, *counsel's pile*, *chose to share*, stage chip *new*, *Tell me*, *waiting for their click*, raw kind names (*recovery applied*), the hard-coded *Click's legal portal* email footer.
 4. ~~**Facts, not theories.**~~ (v2.4634) *Sworn account holds* becomes *bill sent, crew on site with GPS, no dispute logged*. *Terms with Click* becomes the invoice's due days, not the credit posture.
@@ -84,10 +84,10 @@ The sample portal: `/legal?t=sample` draws `sampleLegalPortalResponse` with noth
 
 ## Where it stands
 
-Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating session; the rest by five lanes (A copy and phone, B money and property, C functions and the sample, D lifecycle and acts, E emails), each reviewed by an adversarial reader before an integrator fixed, rebased and merged it. Every mockup is beside this card. Every migration on main is applied and every train function is deployed, except:
+Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating session; the rest by five lanes (A copy and phone, B money and property, C functions and the sample, D lifecycle and acts, E emails), each reviewed by an adversarial reader before an integrator fixed, rebased and merged it. Every mockup is beside this card. Every migration on main is applied, and every train function is deployed and current as of 2026-10-06 14:30Z, checked with no grace window (`EDGE_DRIFT_GRACE_HOURS=0`; the default waits 72 hours before calling a function behind). The site deployed at 13:54Z, the first deploy since v2.4655 broke the build.
 
-- **#4690**, the migration that makes the queue carry office events (`20261006170000`). The deployed dispatcher words any event it does not know as *Pulled back*, so it merges only after `legal-notify-dispatch` from #4640 is live; then `supabase db push` and redeploy `submit-legal-portal`.
-- **`legal-send-firm-link`** bundles shared email words committed after its deploy (its own folder did not change, so the drift check calls it current). Redeploy it.
+**The firm's door** (2026-10-06, the owner's ask after the train): the firm's name in the Legal desk's header opens the firm's window over the desk, the Settings block itself for a dev and read only for the office (#4708). *Replace with a new firm…* in that window retires a stand-in and adds the real firm in one call (#4710, `legal_replace_firm`, migration `20261006230500`). Mockup: `mockup-firm-door.html`.
+
 
 Found by the reviews and left for later:
 
@@ -95,7 +95,7 @@ Found by the reviews and left for later:
 - Anyone holding the firm's link can make the company send up to 12 confirmation emails, as often as they like; no rate cap on adding a person or resending.
 - Two overlapping dispatcher runs can send the same email twice (claim rows with `FOR UPDATE SKIP LOCKED`); 50 events stuck retrying can hold back new ones for up to an hour.
 - The contact-scope rule (item 24) reads job numbers out of prose, so a year or a phone fragment that equals a job number matches; `customer_contacts` has no job column.
-- *Recorded by* is the firm's own claim; anyone holding the link can pick any name.
+- *Recorded by* is the firm's own claim, since anyone holding the link can pick any name, and the link never expires. Per-person access, a link for each person on the firm's list or an expiry and a fresh link, is the structural fix if the firm asks who can see the portal.
 - A GC who is not the payer reads *GC* on the portal; the grid's *Paid out to GC* and *10 % reserved* stay *?* after the owner answers.
 - A second agreed write-down overwrites `agreed_write_down_previous_amount`, so the bill prints at the amount before the last write-down.
 - After the hash-only migration the Lien desk share says a link is live but cannot show it; the office sees the link only when it mints or rotates one.
