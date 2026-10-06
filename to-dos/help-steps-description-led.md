@@ -10,9 +10,10 @@ summary: >
   commands and widened rule 2 to every numbered step. Six sentences describe and stay as written.
   Four are borderline: each could be a command or a description, and only a person can say.
 next: >
-  A person says yes or no on each of the four lines below. A yes is one sentence changed by hand
-  in that guide, all four in one small PR. A no on all four deletes this card.
-size: XS (four sentences)
+  A person says yes or no on each of the seven lines below: four borderline, three the sweep's own
+  rescan found. A yes is one sentence changed by hand in that guide, all in one small PR. A no on
+  every line deletes this card.
+size: XS (seven sentences)
 blocker: The four lines want a person's call. A command tells the reader to do something; a description only says where it is or what the tab holds.
 ver: v2.4656 · v2.4699
 opinion: your call — the openings read either way; a no leaves the guides as they are
@@ -45,3 +46,12 @@ them could go either way, and that is a person's call, not a script's.
 - *start-here-as-an-estimator* step 2: "Then you give each fixture its parts." (a map of the tab)
 - *start-here-as-an-estimator* step 4: "You send the link from your own email." (a map of the tab)
 - *track-a-general-contractor-on-a-job* step 3: "You set the phone there once." (a one-time setting)
+
+## Found by the v2.4699 sweep's own rescan, left as written (3)
+
+Three more "you + verb" sentences sit on the same step lines the sweep changed. They were not on
+the list above, so the sweep did not touch them. They want the same yes or no.
+
+- *job-mode-clocking* step 1: "Or you **skip** and sort them later in Job Parts Tally." (a command, optional)
+- *track-rfis-on-a-bid* step 2: "Or you click {{button:gray|Paste RFI flags}}." (a command)
+- *record-sub-labor-on-a-job* step 1: "If it's wrong, you fix it in Edit Job." (a command under a condition)
