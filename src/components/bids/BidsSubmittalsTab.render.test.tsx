@@ -847,6 +847,9 @@ describe('BidsSubmittalsTab', () => {
     // Step 6 says where it stands and who answered, in plain words.
     expect((await screen.findByTestId('decisions-line')).textContent).toContain('1sent back')
     expect(screen.getByTestId('their-call-who').textContent).toBe('Dana Whitfield answered. Wendi typed the answers in on Sep 17.')
+    // v2.4689 · Resubmit is the live step, so step 3 folds; its caret opens the rows (before, 3, 6 and 8 opened at once).
+    expect((await screen.findByTestId('road-3')).getAttribute('data-open')).toBe('false')
+    fireEvent.click(screen.getByTestId('road-3-caret'))
     const rows = await screen.findAllByTestId('submittal-row')
     expect(rows[0]!.textContent).toContain('Dana Whitfield · entered by Wendi')
   })
@@ -919,7 +922,8 @@ describe('BidsSubmittalsTab', () => {
     try {
       mount()
       await screen.findAllByTestId('submittal-row')
-      // Every row has the door, on a draft too; the row editor no longer asks who or what.
+      // Every row has the door behind its ⋯ (v2.4687), on a draft too; the row editor no longer asks who or what.
+      fireEvent.click(await screen.findByRole('button', { name: 'More for WC-1' }))
       fireEvent.click(await screen.findByRole('button', { name: 'Their answer on WC-1' }))
       const dialog = await screen.findByRole('dialog', { name: 'Their answer on WC-1' })
       await waitFor(() => expect(within(dialog).getAllByTestId('answer-line')).toHaveLength(2))
@@ -1180,7 +1184,8 @@ describe('BidsSubmittalsTab', () => {
       // The answered part is released, so its line loses the door; the other part still waits and keeps it.
       await waitFor(() => expect(screen.queryByRole('button', { name: 'Enter their answer on DWH-1 WATTS LFN36M1' })).toBeNull())
       expect(screen.getByRole('button', { name: 'Enter their answer on DWH-1 RHEEM PROPH40-T2-RH400-SO' })).toBeTruthy()
-      // From the row's own button the same window opens with no part ringed.
+      // From the row's own door, behind its ⋯ (v2.4687), the same window opens with no part ringed.
+      fireEvent.click(screen.getByRole('button', { name: 'More for DWH-1' }))
       fireEvent.click(screen.getByRole('button', { name: 'Their answer on DWH-1' }))
       const again = await screen.findByRole('dialog', { name: 'Their answer on DWH-1' })
       expect(within(again).getAllByTestId('answer-line').some((l) => l.getAttribute('data-focused') === 'true')).toBe(false)
@@ -1571,6 +1576,8 @@ describe('BidsSubmittalsTab', () => {
       mount()
       // 2026-10-03 · the answers were typed on a draft: the strip lights Their call and Resubmit, names the rows sent back, and step 7 is open with its button.
       const button = await screen.findByTestId('new-revision')
+      // v2.4689 · step 7 opens step 6 with it (step 3 is open here on its own: a row still owes a reason).
+      expect(screen.getByTestId('road-6').getAttribute('data-open')).toBe('true')
       expect(screen.getByRole('button', { name: '6 Their call · waiting on the reviewer' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '7 Resubmit · you are here' })).toBeTruthy()
       expect(screen.getByTestId('submittal-journey').textContent).toContain('structura approved 1 and sent 1 back. 1 row still has no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')

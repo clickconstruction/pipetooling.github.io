@@ -11,6 +11,17 @@ export const PROCUREMENT_STEP_LABELS: Record<ProcurementStepKey, string> = { gc:
 /** v2.4663 · the first step's name while the revision is a draft nobody has shared: the GC is not waiting, we are. */
 export const NOT_SENT_LABEL = 'Not sent yet'
 
+/**
+ * v2.4684 · whose page the words are on. The office reads *Waiting on the GC · Nothing can be
+ * ordered until the GC answers*; the GC's own page (`SubmittalRoom`) reads the same facts as
+ * *Waiting on you · Nothing can be ordered until you answer*, so both read one sentence.
+ */
+export type ProcurementVoice = 'office' | 'gc'
+const VOICE: Record<ProcurementVoice, { gcLabel: string; TheGc: string; They: string; they: string; answer: string; their: string; order: string }> = {
+  office: { gcLabel: 'Waiting on the GC', TheGc: 'The GC', They: 'They', they: 'the GC', answer: 'answers', their: 'their', order: 'Order' },
+  gc: { gcLabel: 'Waiting on you', TheGc: 'You', They: 'You', they: 'you', answer: 'answer', their: 'your', order: 'We order' },
+}
+
 /** "Share Rev 4 first". */
 const shareFirst = (draftRev: number) => `Share Rev ${draftRev} first`
 /** A line of a draft nobody has shared: the GC has not seen it. A hand line is never sent, so it is not one. */
@@ -39,7 +50,8 @@ const last = (dates: ReadonlyArray<string | null>): string | null => dates.filte
  * name and says *3 not sent yet* under it. `draftRev` is that revision's number, null once it
  * is shared (then nothing is unsent).
  */
-export function procurementSteps(rows: ReadonlyArray<ProcurementRow>, draftRev: number | null = null): ProcurementStep[] {
+export function procurementSteps(rows: ReadonlyArray<ProcurementRow>, draftRev: number | null = null, voice: ProcurementVoice = 'office'): ProcurementStep[] {
+  const v = VOICE[voice]
   const of = (k: ProcurementStepKey) => rows.filter((r) => stepOfRow(r) === k)
   const gc = of('gc')
   const ready = of('to_order')
@@ -54,7 +66,7 @@ export function procurementSteps(rows: ReadonlyArray<ProcurementRow>, draftRev: 
   const lastIn = last(site.map((r) => r.deliveredOn))
   const step = (key: ProcurementStepKey, count: number, note: string, tone: ProcurementStepTone, label = PROCUREMENT_STEP_LABELS[key]): ProcurementStep => ({ key, label, count, note, tone })
   return [
-    step('gc', gc.length, back > 0 ? `${back} sent back` : unsent ? shareFirst(draftRev!) : notSent > 0 ? `${notSent} not sent yet` : '', back > 0 ? 'back' : 'quiet', unsent ? NOT_SENT_LABEL : PROCUREMENT_STEP_LABELS.gc),
+    step('gc', gc.length, back > 0 ? `${back} sent back` : unsent ? shareFirst(draftRev!) : notSent > 0 ? `${notSent} not sent yet` : '', back > 0 ? 'back' : 'quiet', unsent ? NOT_SENT_LABEL : v.gcLabel),
     step('to_order', ready.length, ready.length === 0 ? 'nothing approved yet' : firstBy ? `first by ${shortDate(firstBy)}` : '', ready.length > 0 && firstBy ? 'go' : 'quiet'),
     step('on_order', ordered.length, late > 0 ? `${late} late` : nextIn ? `next arrives ${shortDate(nextIn)}` : '', late > 0 ? 'late' : 'quiet'),
     step('on_site', site.length, lastIn ? `last ${shortDate(lastIn)}` : '', 'quiet'),
@@ -94,8 +106,9 @@ function howSoon(iso: string, asOf: string): string {
  * can be ordered until the GC answers. Share Rev 4 first. 11 parts have not been sent.* An empty
  * log says nothing.
  */
-export function procurementNextLine(rows: ReadonlyArray<ProcurementRow>, asOf: string, draftRev: number | null = null): string[] {
+export function procurementNextLine(rows: ReadonlyArray<ProcurementRow>, asOf: string, draftRev: number | null = null, voice: ProcurementVoice = 'office'): string[] {
   if (rows.length === 0) return []
+  const v = VOICE[voice]
   const ready = rows.filter((r) => r.status === 'released')
   const back = rows.filter((r) => r.status === 'sent_back').length
   const notSent = rows.filter((r) => isUnsent(r, draftRev)).length
@@ -106,16 +119,16 @@ export function procurementNextLine(rows: ReadonlyArray<ProcurementRow>, asOf: s
   const out: string[] = []
   if (ready.length > 0) {
     const firstBy = first(ready.map((r) => r.orderBy))
-    if (firstBy) out.push(`Order ${plural(ready.filter((r) => r.orderBy === firstBy).length, 'part')} by ${shortDate(firstBy)}${howSoon(firstBy, asOf)}.`)
+    if (firstBy) out.push(`${v.order} ${plural(ready.filter((r) => r.orderBy === firstBy).length, 'part')} by ${shortDate(firstBy)}${howSoon(firstBy, asOf)}.`)
     else out.push(`${plural(ready.length, 'part is', 'parts are')} approved and not ordered.`)
     if (late > 0) out.push(`${plural(late, 'part')} on order ${late === 1 ? 'arrives' : 'arrive'} late.`)
-    if (back > 0) out.push(`The GC sent ${plural(back, 'part')} back.`)
+    if (back > 0) out.push(`${v.TheGc} sent ${plural(back, 'part')} back.`)
     return out
   }
   if (back + waiting > 0) {
-    out.push('Nothing can be ordered until the GC answers.')
-    if (back > 0) out.push(`They sent ${plural(back, 'part')} back.`)
-    if (awaiting > 0) out.push(back > 0 ? `${awaiting} more ${awaiting === 1 ? 'waits' : 'wait'} on their answer.` : `${plural(awaiting, 'part waits', 'parts wait')} on their answer.`)
+    out.push(`Nothing can be ordered until ${v.they} ${v.answer}.`)
+    if (back > 0) out.push(`${v.They} sent ${plural(back, 'part')} back.`)
+    if (awaiting > 0) out.push(back > 0 ? `${awaiting} more ${awaiting === 1 ? 'waits' : 'wait'} on ${v.their} answer.` : `${plural(awaiting, 'part waits', 'parts wait')} on ${v.their} answer.`)
     if (notSent > 0) out.push(`${shareFirst(draftRev!)}. ${plural(notSent, 'part has', 'parts have')} not been sent.`)
   } else if (ordered.length > 0) out.push(`Nothing is left to order. ${plural(ordered.length, 'part is', 'parts are')} on order.`)
   else out.push('Every part is on site.')

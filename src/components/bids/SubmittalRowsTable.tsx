@@ -14,7 +14,7 @@
  *   what they said and what you do about it. A long note wraps at 15rem instead of widening it.
  * - **The step's counts are chips that filter** (the chips and which one is on are this
  *   component's own state), and what every row shares — Proposed, one house — is said once.
- * - **Part of… and × sit behind ⋯** on a draft row; Edit, Their answer and Split stay out.
+ * - **Their answer, Part of… and × sit behind ⋯** (v2.4687: the answer door's home is step 6, so the row offers it once, behind the menu; Part of… and × on a draft only); Edit and Split stay out.
  * - **Save PDF** under a row's cut sheet pages saves just those pages (`rowCutSheet`).
  * - On a phone each row is a card (`.sub-rows-table` in `index.css`); nothing scrolls sideways.
  */
@@ -209,32 +209,35 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
                       <button type="button" aria-label={`Edit ${name}`} onClick={() => onEdit(it)} style={rowBtn}>
                         Edit
                       </button>
-                      {isOrderOnlyRow(it) ? null : (
-                        <button type="button" aria-label={`Their answer on ${name}`} disabled={busy} onClick={() => onAnswer(it)} title="Record what the reviewer said about this row, part by part. Nobody is emailed." style={rowBtn} data-testid="their-answer-row">
-                          Their answer
-                        </button>
-                      )}
                       {isDraft && rowSplitTags(it.tag).length > 1 ? (
                         <button type="button" aria-label={`Split ${it.tag.trim()}`} disabled={busy} onClick={() => onSplit(it)} title={`One row per tag: ${rowSplitTags(it.tag).join(', ')}`} style={{ ...rowBtn, borderColor: '#2563eb', color: 'var(--text-blue-700)' }} data-testid="split-row">
                           Split
                         </button>
                       ) : null}
-                      {isDraft ? (
-                        <button type="button" aria-label={`More for ${name}`} aria-expanded={more} onClick={() => toggleMore(it.id)} title={canFold ? 'Make it a part of another row, or take it off the submittal' : 'Take it off the submittal'} style={{ ...rowBtn, color: 'var(--text-muted)', fontWeight: 700 }} data-testid="row-more">
+                      {isDraft || !isOrderOnlyRow(it) ? (
+                        <button type="button" aria-label={`More for ${name}`} aria-expanded={more} onClick={() => toggleMore(it.id)} title={isDraft ? (canFold ? 'Their answer, make it a part of another row, or take it off the submittal' : 'Their answer, or take it off the submittal') : 'Their answer'} style={{ ...rowBtn, color: 'var(--text-muted)', fontWeight: 700 }} data-testid="row-more">
                           ⋯
                         </button>
                       ) : null}
                     </span>
-                      {isDraft && more ? (
+                      {more ? (
                         <span style={{ display: 'inline-flex', gap: '0.3rem', whiteSpace: 'nowrap' }} data-testid="row-more-buttons">
-                          {canFold ? (
+                          {/* v2.4687 · the door's home is step 6; the row keeps one behind ⋯ (punch list #89, item 4). */}
+                          {isOrderOnlyRow(it) ? null : (
+                            <button type="button" aria-label={`Their answer on ${name}`} disabled={busy} onClick={() => onAnswer(it)} title="Record what the reviewer said about this row, part by part. Nobody is emailed." style={rowBtn} data-testid="their-answer-row">
+                              Their answer
+                            </button>
+                          )}
+                          {isDraft && canFold ? (
                             <button type="button" aria-label={`Make ${it.tag.trim() || 'this row'} a part of another row`} disabled={busy} onClick={() => onFold(it.id, foldHints.find((h) => h.fromId === it.id)?.intoId ?? null)} title="Fold this row into another row's fixture, as one of its parts" style={rowBtn} data-testid="fold-row">
                               Part of…
                             </button>
                           ) : null}
-                          <button type="button" aria-label={`Remove ${name}`} disabled={busy} onClick={() => onTakeOff(it)} title="Take it off the submittal: order only, or left out" style={{ ...rowBtn, color: 'var(--text-muted)' }}>
-                            × Take off…
-                          </button>
+                          {isDraft ? (
+                            <button type="button" aria-label={`Remove ${name}`} disabled={busy} onClick={() => onTakeOff(it)} title="Take it off the submittal: order only, or left out" style={{ ...rowBtn, color: 'var(--text-muted)' }}>
+                              × Take off…
+                            </button>
+                          ) : null}
                         </span>
                       ) : null}
                       {/* The row's verdict under the button that records it, where who and when fit on one line. */}

@@ -557,14 +557,6 @@ export function procurementCounts(rows: ReadonlyArray<ProcurementRow>): Procurem
   return c
 }
 
-/** "5 released · 4 ordered · 1 delivered · 2 behind schedule" */
-export function procurementHeadline(rows: ReadonlyArray<ProcurementRow>): string {
-  const c = procurementCounts(rows)
-  const bits = [`${c.released} released`, `${c.ordered} ordered`, `${c.delivered} delivered`]
-  if (c.late > 0) bits.push(`${c.late} behind schedule`)
-  if (c.sentBack > 0) bits.push(`${c.sentBack} sent back`)
-  return bits.join(' · ')
-}
 
 /** "12 d" · "−14 d" · "on site" · "order by 11/03" · "" */
 export function floatText(r: Pick<ProcurementRow, 'floatDays' | 'deliveredOn' | 'orderBy'>): string {

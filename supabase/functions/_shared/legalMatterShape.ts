@@ -66,8 +66,9 @@ export const MATTER_FILING_COLUMNS = ['id', 'job_id', 'kind', 'amount', 'months_
  */
 export const MATTER_ENTRY_COLUMNS = ['id', 'matter_id', 'kind', 'amount', 'body', 'occurred_on', 'meta', 'via_portal', 'acknowledged_at', 'created_at', 'voided_at', 'voided_via_portal', 'void_reason'] as const
 /**
- * The entry columns item 18 PR 2's migration adds. The select leaves them out until that PR lands (selecting a
- * column that does not exist fails the whole read); #4637 empties this list in the same change as its migration.
+ * The entry columns item 18 PR 2's migration adds (`20261006160000`). `legal-portal`'s `readMatterEntries` asks
+ * for them and falls back without them while that migration is unpushed (selecting a missing column fails the
+ * whole read); the shaper carries them either way, so a voided entry never travels as live.
  */
 export const MATTER_ENTRY_PENDING_COLUMNS: ReadonlyArray<string> = ['voided_at', 'voided_via_portal', 'void_reason']
 

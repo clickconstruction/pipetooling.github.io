@@ -1312,7 +1312,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               return (
                 <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', justifyContent: 'flex-end' }}>
                   {g.right && !narrow ? <span style={smallMuted}>{g.right}</span> : null}
-                  {onAnswerItem && g.answerItemId && !first?.isHand && g.rows.some((r) => answerDoor(r) === 'enter') ? <button type="button" disabled={busy} onClick={() => onAnswerItem({ itemId: g.answerItemId!, partKey: null })} title="Record what they said about this fixture. Nobody is emailed." aria-label={`Their answer for the fixture ${g.title}`} style={link} data-testid="procurement-fixture-answer">Their answer…</button> : null}
+                  {/* v2.4687 · no Their answer… here: step 6 is the door's home (punch list #89, item 4). */}
                 </span>
               )
             }
