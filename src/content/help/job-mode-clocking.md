@@ -140,8 +140,8 @@ You may have switched **Write up a change from the field** on in Settings. Then 
 
 You are clocked in on a job that has no signed agreement yet. The customer is standing there. Under the card's buttons there is one more line: {{button:outline|✍ Hand the phone to the customer to sign}}.
 
-1. You tap it. The app opens this job's agreement on your phone. It is the same page the office sends by link. It shows the work, the price and payment line and the terms. It shows a note that says you are present.
-2. You hand the phone over. They read it. They type or draw their name. They tick **I agree to sign electronically** and press **Sign agreement**.
-3. You take the phone back. The job now reads {{chip:green|✍ Signed}} everywhere. Their signed copy goes to the email on the job.
+1. Tap it. The app opens this job's agreement on your phone. It is the same page the office sends by link. It shows the work, the price and payment line and the terms. It shows a note that says you are present.
+2. Hand the phone over. They read it. They type or draw their name. They tick **I agree to sign electronically** and press **Sign agreement**.
+3. Take the phone back. The job now reads {{chip:green|✍ Signed}} everywhere. Their signed copy goes to the email on the job.
 
 Nothing is emailed until they sign. If the office already sent this customer an agreement, the same one opens. If there is none yet, the app makes it from the job's own facts. So there is nothing to type. The line shows for the master, primary, superintendent and estimator roles. It disappears once the job is signed.

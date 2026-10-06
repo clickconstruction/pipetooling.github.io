@@ -11,8 +11,8 @@ Projections used to live only in the panel at the top of the Workflow page. Now 
 
 ## Anchor a projection to a step
 
-1. You open the Workflow page and click {{button:blue|+ Add Projection}}. Or you click **Edit** on an existing one.
-2. You fill the label, memo, and amount as usual.
+1. Open the Workflow page and click {{button:blue|+ Add Projection}}. Or click **Edit** on an existing one.
+2. Fill the label, memo, and amount as usual.
 3. Under **Attach to step**, you pick the step. Then you choose **Before the step** or **After the step**.
 
 You can leave "Not attached" instead. Then the projection behaves exactly as before and lives only in the top panel. The top panel's **Projections / Ledger / Left** totals include anchored and unanchored projections alike.

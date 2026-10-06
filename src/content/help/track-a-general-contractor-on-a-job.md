@@ -11,8 +11,8 @@ You can now link a GC to any job. Then you manage work by GC without touching bi
 
 ## Set a GC on a job
 
-1. You open the job and click {{button:outline|Edit}}.
-2. You expand the **Customer** section.
+1. Open the job and click {{button:outline|Edit}}.
+2. Expand the **Customer** section.
 3. Under ***GC/Builder (customer)***, you search and pick the GC. A GC is just a customer row. The list of GCs is the one Bids uses for GC/Builder.
 4. The GC saves automatically. You use {{button:outline|Clear GC}} to remove it.
 

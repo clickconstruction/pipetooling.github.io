@@ -12,11 +12,11 @@ A credit memo is the house's own numbered paper for money it owes you back. It h
 
 You open **Materials → Supply houses**, open the house and press {{button:blue|Add Invoice}}. The first thing the form asks is what the paper is.
 
-1. You pick {{chip:green|Credit}}. Every label follows. The form asks for a **Credit #** and a **Credit date**. The button at the bottom reads {{button:blue|Save credit}}.
-2. You type the amount **as a positive number**. Picking Credit is what takes it off the balance. You never type a minus sign.
-3. You add the job the parts came back from, under *Which job gets it back*.
+1. Pick {{chip:green|Credit}}. Every label follows. The form asks for a **Credit #** and a **Credit date**. The button at the bottom reads {{button:blue|Save credit}}.
+2. Type the amount **as a positive number**. Picking Credit is what takes it off the balance. You never type a minus sign.
+3. Add the job the parts came back from, under *Which job gets it back*.
 4. Before you save, the form tells you exactly what it will do. For example, it reads *Takes $888.10 off what we owe Reece, and $888.10 off J878's parts cost.* You read that line. It is the quickest way to catch a wrong house or a wrong job.
-5. You paste the credit memo's PDF link under **Paperwork**, the same as an invoice.
+5. Paste the credit memo's PDF link under **Paperwork**, the same as an invoice.
 
 :::example The form, filled in
 **Reece · Credit # S124460299.001 · 09/04/2026 · − $888.10**, purchase order *Return*, job **J878 Take 5 Seguin**, status *Open — still on the account*.

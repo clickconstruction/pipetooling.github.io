@@ -33,8 +33,8 @@ The sheet gives you the three things the counter asks for:
 You tap {{chip:gray|none yet}}:
 
 1. The houses with no account are pick chips. The one you tapped is already on. You add another if you will buy there too.
-2. You leave **I'm at the counter now** checked when you are. The office sees it in amber at the top of their card.
-3. You say what you are buying, and roughly how much. Then you tap {{button:purple|Send to Dispatch}}.
+2. Leave **I'm at the counter now** checked when you are. The office sees it in amber at the top of their card.
+3. Say what you are buying, and roughly how much. Then tap {{button:purple|Send to Dispatch}}.
 
 The chip turns {{chip:purple|requested}}. Dispatch gets the ask with the rep's name and number. Dispatch marks it open in two taps. **You get a push** when it is. It reads *Dispatch answered: … Ferguson job account open · ref JA-4114*. The next time you open the job the chip reads ✓.
 
