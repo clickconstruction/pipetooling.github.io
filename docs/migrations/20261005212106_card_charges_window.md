@@ -160,3 +160,7 @@ Run these first thing after the push, read-only (`BEGIN READ ONLY; … ROLLBACK;
      AND t.posted_at >= TIMESTAMPTZ '2026-07-08 05:00:00+00'
      AND t.posted_at <  TIMESTAMPTZ '2026-10-06 05:00:00+00';
    ```
+
+**Run 2026-10-05, on the dev server, read-only:** step 1 answered (97 rows for 2026-09-01 – 09-07), the rows function refused to `authenticated` (42501), step 4 read the CDT day, step 5 found no credit-card charges at all.
+
+**Run 2026-10-06, on prod (the owner's EXPLAIN, step 2):** an index scan on `mercury_transactions_posted_at_desc_idx` (1,107 rows kept of 1,804 in range), every buffer a shared hit, 93 ms for the whole plan. No sequential scan of `mercury_transactions`; the small ones are on the attribution and label tables (6k and 13k rows). The gate passes.
