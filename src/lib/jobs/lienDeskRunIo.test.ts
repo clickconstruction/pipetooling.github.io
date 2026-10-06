@@ -109,7 +109,7 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
       { recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-06' },
       { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-10-06' },
     ])
-    expect(result).toEqual({ recorded: ['it1'], failed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [] })
+    expect(result).toEqual({ recorded: ['it1'], failed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [], offers: [] })
   })
 
   it('a courtesy email that fails leaves the notice recorded and says why', async () => {
@@ -156,5 +156,14 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
     expect(db.events).toEqual(['insert', 'sent it1', 'sent it2', 'email office@loberg.test'])
     expect(result.recorded).toEqual(['it1', 'it2'])
     expect(result.courtesySent).toEqual([{ itemId: 'it1', label: 'ATI Schertz · 650 + 651', email: 'office@loberg.test' }])
+  })
+
+  it('a notice with a pay offer (v2.4704) asks lien-pay-offer for its filing once it is recorded, and a refusal never un-records it', async () => {
+    const result = await recordLienDeskRun([gcWith(notice({ offer: { pct: 10, by: '2026-11-15' } }), { courtesy: false })], OPTS)
+    expect(db.events).toEqual(['insert', 'sent it1', 'email undefined'])
+    expect(db.invokes[0]).toMatchObject({ name: 'lien-pay-offer', body: { action: 'apply', filing_id: 'f1' } })
+    expect(result.recorded).toEqual(['it1'])
+    expect(result.offers).toHaveLength(1)
+    expect(result.offers[0]).toMatchObject({ jobId: 'j650' })
   })
 })

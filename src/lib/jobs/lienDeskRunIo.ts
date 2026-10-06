@@ -122,8 +122,8 @@ export async function recordLienDeskRun(
           if (filingId) await markLienDeskItemSent(part.itemId, filingId)
           await clearOneShotLienClaimCorrection(part.jobId).catch(() => undefined)
           result.recorded.push(part.itemId)
-          // Each part is its own filing and its own desk item, so each is asked for its own offer (the function answers cheaply when there is none).
-          if (filingId) await applyLienPayOffer(filingId, result, part.jobId)
+          // Each part is its own filing and its own desk item; the lead's offer is the combined notice's (the function reads each item's own).
+          if (filingId && n.offer) await applyLienPayOffer(filingId, result, part.jobId)
         }
         await emailCourtesyCopies(n, opts, result)
         continue
