@@ -19,7 +19,7 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [] }))
+const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
@@ -114,6 +114,56 @@ describe('LienDeskRunModal', () => {
     fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking'), { target: { value: '9407 2' } })
     expect((screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking') as HTMLInputElement).value).toBe('9407 2')
     expect(screen.getAllByLabelText(/— tracking$/)).toHaveLength(2)
+  })
+})
+
+describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch list #87 B)', () => {
+  const ticked = (partial: Partial<RunNotice> = {}) => {
+    const n = notice(partial)
+    return { ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: true } : r)) }
+  }
+  const tickLabel = 'Envelope 2 · Original contractor: Loberg Contracting — courtesy PDF by email'
+
+  it('the GC envelope carries the tick, on, naming the address; the owner envelope never does; unticking reaches the record', async () => {
+    recordMock.mockClear()
+    renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-courtesy-1')).toBeNull()
+    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@loberg.test, emailed when the run is recorded')
+    const tick = screen.getByLabelText(tickLabel) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    fireEvent.click(tick)
+    expect((screen.getByLabelText(tickLabel) as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    const [sent] = recordMock.mock.calls[0] as unknown as [RunNotice[]]
+    expect(sent[0]!.recipients.map((r) => [r.key, r.courtesy])).toEqual([
+      ['owner', undefined],
+      ['original_contractor', false],
+    ])
+  })
+
+  it('one GC envelope with two notices says one email per notice; switched to email, the tick goes because the email is the send', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[ticked(), ticked({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651', months: ['2026-07'] })]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@loberg.test, emailed when the run is recorded, one email per notice')
+    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method'), { target: { value: 'email' } })
+    expect(screen.queryByTestId('run-courtesy-2')).toBeNull()
+    expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
+  })
+
+  it('the record names the courtesy PDF that went, and warns when one did not', async () => {
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [] }))
+    const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    expect(await screen.findByText('1 notice recorded — the desk reads them as sent. Courtesy PDF emailed to office@loberg.test.')).toBeTruthy()
+    view.unmount()
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test', reason: 'Resend 502' }] }))
+    renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    expect(await screen.findByText('Courtesy PDF not emailed: 650 · ATI Schertz to office@loberg.test (Resend 502). That notice is recorded all the same.')).toBeTruthy()
   })
 })
 
