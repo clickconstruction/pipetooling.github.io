@@ -81,6 +81,14 @@ golden snapshots (the counts) goes last, by one helper, with the owner's OK to r
 | Helper 4 | G-140 the cash weeks follow the bars | the trade's own crew count from its portal | G-83 too many trades in one place |
 | Helper 5 | G-138 running bars with lapsed insurance | G-139 one readiness list for both sides | G-84 people on site per week |
 
+## Assignments, round four (the owner's word, 2026-10-06: the three rows raised in round three)
+
+| Helper | Row |
+|---|---|
+| Helper 2 | G-143 the first draft's site-finish lines after the dry-in gate, not the trade's trims (re-pins the Helotes draw and G-45's pin once) |
+| Helper 4 | G-145 their dates to meet only, onto a running job |
+| Helper 1 | G-146 the call list's bar reasons counted on the board row and the badge (re-pins the people readings once) |
+
 ## Status
 
 Round three landed the same day, 2026-10-06, every *Later* row and every finding the helpers raised:
