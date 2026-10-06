@@ -20,6 +20,7 @@ vi.mock('../../lib/jobs/ownerRecordsIo', () => ({
   },
 }))
 // A print and a send each file a copy (v2.4554): the stub keeps what was filed and the page that went.
+vi.mock('../../lib/portal/mintCustomerPortalLink', () => ({ mintCustomerPortalLink: async () => 'tok-owner' }))
 vi.mock('../../lib/jobs/ownerRecordsPdf', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/ownerRecordsPdf')>('../../lib/jobs/ownerRecordsPdf')
   return { ...actual, ownerPacketPdfBlob: async () => new Blob(['%PDF-1.4 fake'], { type: 'application/pdf' }) }
@@ -48,7 +49,7 @@ const properties: OwnerRecordsPropertyRow[] = [
   { key: 'j867', seedJobId: 'j867', owner: 'Terrell Holdings LLC', address: '628 Terrell Rd', gcName: 'RMC- Dudley Mason', jobs: 1, open: 1710 },
 ]
 const seedFor = (jobId: string) => ({ jobId, customerId: 'c1', addressId: 'addr-lenox', gcId: 'gc1' })
-const full: OwnerRecordsFile = { request: { on: '2026-10-03', how: 'email', from: 'Umar Khan', link: 'https://drive.example/r' }, contractChecked: { by: 'Malachi', at: '2026-10-04T16:00:00Z' }, acknowledgment: { signedOn: '2026-10-05', link: '' }, sent: null }
+const full: OwnerRecordsFile = { request: { on: '2026-10-03', how: 'email', from: 'Umar Khan', link: 'https://drive.example/r' }, contractChecked: { by: 'Malachi', at: '2026-10-04T16:00:00Z' }, acknowledgment: { signedOn: '2026-10-05', link: '' }, offer: null, sent: null }
 
 function mount(over: Partial<Parameters<typeof LienOwnerRecordsModal>[0]> = {}) {
   const onClose = vi.fn()
@@ -188,6 +189,33 @@ describe('LienOwnerRecordsModal', () => {
       ['owner_records_packet', 'print', 'Records for 9703 Lenox Hl, San Antonio, TX'],
       ['owner_records_acknowledgment', 'print', 'Acknowledgment for 9703 Lenox Hl, San Antonio, TX'],
     ])
+  })
+
+  it('Offer it on their portal (v2.4650): a second name, the offer on file, the link on the clipboard; the window then reads the offer and the portal signature', async () => {
+    io.jobs = jobs
+    io.file = EMPTY_OWNER_RECORDS
+    io.saved = []
+    const written: string[] = []
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (t: string) => void written.push(t) }, configurable: true })
+    mount()
+    await pick()
+    fireEvent.click(screen.getByTestId('owner-records-offer'))
+    fireEvent.change(screen.getByLabelText('A second name allowed to sign'), { target: { value: 'Bangash Shazmeena' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Offer it and copy the link' }))
+    await waitFor(() => expect(written).toHaveLength(1))
+    expect(written[0]).toContain('/portal?t=tok-owner')
+    const saved = io.saved[io.saved.length - 1] as { file: { offer: { by: string; alsoAllowed: string } } }
+    expect(saved.file.offer).toMatchObject({ by: 'Taunya', alsoAllowed: 'Bangash Shazmeena' })
+    expect(step('request').textContent).toContain('Offered on their portal')
+    expect(screen.getByTestId('owner-records-copy-link')).toBeTruthy()
+    // The owner signed on the portal: check 4 names them and offers no Change.
+    io.file = { ...EMPTY_OWNER_RECORDS, offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: '' }, request: { on: '2026-10-06', how: 'portal', from: 'Umar Khan', link: '' }, acknowledgment: { signedOn: '2026-10-06', link: '', printedName: 'Umar Khan', mode: 'draw' } }
+    cleanup()
+    mount()
+    await pick()
+    expect(step('acknowledgment').textContent).toContain('Signed on their portal')
+    expect(step('acknowledgment').textContent).toContain('by Umar Khan, drawn')
+    expect(within(step('acknowledgment')).queryByRole('button', { name: 'Change' })).toBeNull()
   })
 
   it('Download the packet saves the PDF and files it as a download (v2.4619)', async () => {

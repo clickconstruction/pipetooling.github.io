@@ -40,6 +40,14 @@ The left side is four checks.
 
 Check 3 is a warning. It does not stop you. Read what it says before you send anything.
 
+## Let them sign on their portal
+
+Checks 1 and 4 can be done by the owner, on their portal. Press **Offer it on their portal ›** under check 1. You can add a second name allowed to sign, like a spouse or a property manager. Then press {{button:blue|Offer it and copy the link}}. The link is on your clipboard. Send it to the owner.
+
+On their portal they see a card for the records. They type their name. It must match the name the county lists, letter for letter, or the second name you added. Capitals, spaces and dashes do not matter. Then they sign, by typing or by drawing. The app keeps the signature and the consent.
+
+When they sign, checks 1 and 4 turn green on your window. Check 4 names them and how they signed. The office still does check 2 and presses **Record it as sent**. The owner sees nothing of the packet until then.
+
 ## Send it and record it
 
 1. Press {{button:outline|Print the packet}}. It prints the cover note and the statement. To email it or keep a file, press {{button:outline|Download the packet}} instead. It saves the same pages as one PDF.
