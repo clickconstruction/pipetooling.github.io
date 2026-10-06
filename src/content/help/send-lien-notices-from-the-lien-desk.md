@@ -275,7 +275,7 @@ Once the job's balance is paid, the footer says there is nothing more to send. O
 
 Every owner letter asks the owner to call. The desk turns that call into a guided conversation. The whole call is in [answer an owner who calls about a lien letter](/help/answer-an-owner-who-calls-about-a-lien-letter).
 
-1. **Find them.** Press {{button:blue|☎ Someone’s calling ›}} in the desk's title bar. Type what the caller gives you, like a job number, a street, the owner's name or the GC's name. A row with a letter sent opens the call sheet on that notice. A row with no letter mailed yet opens the job on the desk. {{button:blue|▶ Practice call}} opens the sheet on a made up letter and saves nothing. On a sent job's footer, {{button:outline|Record the owner’s call…}} opens the same sheet.
+1. **Find them.** Press the {{button:blue|☎}} button in the desk's title bar. Its hint reads *Someone's calling*. Type what the caller gives you, like a job number, a street, the owner's name or the GC's name. A row with a letter sent opens the call sheet on that notice. A row with no letter mailed yet opens the job on the desk. {{button:blue|▶ Practice call}} opens the sheet on a made up letter and saves nothing. On a sent job's footer, {{button:outline|Record the owner’s call…}} opens the same sheet.
 2. **Read and tap.** The letter they hold sits at the top. Each card is one line to say, with the owner's likely replies. Tap what they say, and the next card opens.
 3. **Let the facts collect.** The sheet asks whether they still owe the GC, whether the 10% stayed with them and when the GC finished. {{button:blue|Save the call}} writes the answers onto the sent notice.
 
