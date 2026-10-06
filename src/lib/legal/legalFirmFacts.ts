@@ -46,3 +46,34 @@ export function particularsFilled(p: Partial<Record<(typeof LEGAL_PARTICULAR_KEY
   const filled = LEGAL_PARTICULAR_KEYS.filter((k) => (p[k] ?? '').trim().length > 0).length
   return { filled, total: LEGAL_PARTICULAR_KEYS.length }
 }
+
+/** The firm form's own check, shared by Settings and the replace panel (v2.4712). Null when it may be saved. */
+export function legalFirmInputProblem(input: { name: string; contingency_pct: string; filing_cost: string }): string | null {
+  const pct = Number(input.contingency_pct)
+  const cost = Number(input.filing_cost)
+  if (!input.name.trim()) return 'Give the firm a name.'
+  if (!input.contingency_pct.trim() || !Number.isFinite(pct) || pct < 0 || pct > 100 || !input.filing_cost.trim() || !Number.isFinite(cost) || cost < 0) return 'Contingency is a percent (0–100); the filing cost is dollars.'
+  return null
+}
+
+/**
+ * What *Replace the firm* does, said before it is pressed (v2.4712, `legal_replace_firm`):
+ * the old firm is retired with its history kept; the new one starts with nothing.
+ */
+export function legalFirmReplaceWords(oldName: string, facts: Pick<LegalFirmFacts, 'people' | 'linkLive'>): string[] {
+  const people = facts.people
+  return [
+    `${oldName} is retired. Its history stays on its record.`,
+    facts.linkLive === false ? 'It has no live portal link.' : 'Its portal link stops working.',
+    people === 0 ? 'Nobody is on its email list.' : `${people === 1 ? 'The 1 person' : `Its ${people} people`} on its email list stop${people === 1 ? 's' : ''} getting emails.`,
+    'The new firm starts with no link and no people. You create its link and send it from the desk.',
+  ]
+}
+
+/** A failed replace in the office's words: the database update not pushed yet reads as that, not as Postgres. */
+export function legalReplaceErrorWords(message: string | null | undefined): string {
+  const m = message ?? ''
+  if (/legal_replace_firm/.test(m) && /(could not find|does not exist|schema cache)/i.test(m)) return 'Replacing needs a database update that is not live yet. Ask a dev to push it, then try again.'
+  if (/legal_firms_one_active/.test(m)) return 'Another firm became active while you were here. Reload the desk and try again.'
+  return m || 'Could not replace the firm. Try again.'
+}

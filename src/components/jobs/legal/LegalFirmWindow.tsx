@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import LegalFirmSettingsBlock from '../../settings/LegalFirmSettingsBlock'
+import LegalFirmReplacePanel from './LegalFirmReplacePanel'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
@@ -17,14 +18,17 @@ export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-le
  * save reloads the desk's firm (`onSaved`). Everyone else on the desk reads the firm
  * here: the database lets only a dev change it. Above the save, what hangs on the firm
  * now — its open accounts, its email list, its link — because a rename keeps all of it.
+ * Under it, a dev's *Replace with a new firm…* (v2.4712, `LegalFirmReplacePanel`).
  */
-export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, zIndex }: {
+export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex }: {
   firm: LegalFirmRow | null
   matters: ReadonlyArray<LegalMatterRow>
   recipients: ReadonlyArray<LegalRecipientRow>
   canEdit: boolean
   onClose: () => void
   onSaved: () => void
+  /** Close the window and select an account on the desk (the replace panel's way to *Pull back*). */
+  onShowAccount?: (payerKey: string) => void
   zIndex: number
 }) {
   const [linkLive, setLinkLive] = useState<boolean | null>(null)
@@ -82,7 +86,11 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
         </div>
         <div style={{ padding: '14px 16px 16px' }}>
           {canEdit ? (
-            <LegalFirmSettingsBlock inWindow onSaved={onSaved} firmFacts={factsLine} />
+            <>
+              {/* Keyed on the firm, so a replace remounts the block on the new one. */}
+              <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow onSaved={onSaved} firmFacts={factsLine} />
+              {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} /> : null}
+            </>
           ) : (
             <ReadOnlyFirm firm={firm} factsLine={factsLine} />
           )}

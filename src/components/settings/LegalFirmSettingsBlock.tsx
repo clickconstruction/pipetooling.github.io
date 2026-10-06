@@ -7,7 +7,7 @@ import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 import { legalFirmSaveErrorWords } from '../../lib/legal/legalFirmSave'
-import { particularsFilled } from '../../lib/legal/legalFirmFacts'
+import { legalFirmInputProblem, particularsFilled } from '../../lib/legal/legalFirmFacts'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -97,16 +97,13 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   }
 
   const save = async () => {
+    const problem = legalFirmInputProblem(form)
+    if (problem) {
+      showToast(problem, 'error')
+      return
+    }
     const pct = Number(form.contingency_pct)
     const cost = Number(form.filing_cost)
-    if (!form.name.trim()) {
-      showToast('Give the firm a name.', 'error')
-      return
-    }
-    if (!Number.isFinite(pct) || pct < 0 || pct > 100 || !Number.isFinite(cost) || cost < 0) {
-      showToast('Contingency is a percent (0–100); the filing cost is dollars.', 'error')
-      return
-    }
     setSaving(true)
     try {
       const payload = { name: form.name.trim(), handling_name: form.handling_name.trim(), email: form.email.trim(), phone: form.phone.trim(), contingency_pct: pct, filing_cost: cost, active: true, updated_at: new Date().toISOString() }
