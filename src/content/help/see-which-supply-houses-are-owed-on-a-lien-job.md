@@ -90,7 +90,7 @@ Press **Open the desk ›** on that line. The Lien desk opens on that job.
 
 ## In the Lien window
 
-Press a job on the Deadlines tab to open its Lien window. The same card sits near the top as one line. Press **Show** to open it.
+Press a job on the Deadlines tab to open its Lien window. Under the timeline, a chip reads how many houses are owed and how much. Press it, or **Details**, to open the same card.
 
 ## Good to know
 
