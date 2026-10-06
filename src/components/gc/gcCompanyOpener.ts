@@ -8,8 +8,11 @@ export type CompanyTab = 'about' | 'activity' | 'documents' | 'portal'
  * and paper that was clicked. Null outside the page (a portal, a test): chips then stay plain.
  */
 export interface CompanyOpener {
-  /** `focus`: an Activity line to light and scroll to, like a promise (`promise:<id>`, `ask:<invite id>`). */
-  openPartner: (partnerId: string, at?: { tab?: CompanyTab; doc?: string; focus?: string }) => void
+  /**
+   * `focus`: an Activity line to light and scroll to, like a promise (`promise:<id>`, `ask:<invite id>`).
+   * `send`: open on the paper's send, its next step already pressed (a not-ready bar's button, G-77), as `openCustomer` does.
+   */
+  openPartner: (partnerId: string, at?: { tab?: CompanyTab; doc?: string; focus?: string; send?: boolean }) => void
   /** A customer's window, at a tab or a paper, its send open (`send`): Get started's Send to sign. */
   openCustomer: (customerId: string, at?: { tab?: CompanyTab; doc?: string; send?: boolean }) => void
 }

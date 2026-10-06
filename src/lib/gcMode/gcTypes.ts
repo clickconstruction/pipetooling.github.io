@@ -1058,7 +1058,7 @@ export type GcAction =
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
   | { type: 'draftSchedule'; projectId: string; start: string }
   /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
-  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string }
+  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null; changeOrderId?: string; lateNoticeId?: string }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
   | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
@@ -1236,6 +1236,12 @@ export type GcAction =
   | { type: 'sendCustomerSchedule'; projectId: string; by: string }
   /** A company answers a dates message from its portal: the dates work, or it needs another day, with a note. */
   | { type: 'tradeAnswerDates'; projectId: string; partnerId: string; moveId: string; ok: boolean; day?: string; note?: string }
+  /** A company tells us from its portal that it will be late (the Gantt, G-117): a new finish, or a new start for work not started, with why. */
+  | { type: 'tradeSayLate'; projectId: string; partnerId: string; lineId: string; day: string; reason: LookAheadReason; note: string }
+  /** The office needs the day as drawn: its words go back to the company's portal (G-117). */
+  | { type: 'pushBackLateNotice'; projectId: string; noticeId: string; note: string; by: string }
+  /** After a push back, the company says it will make the day (G-117). */
+  | { type: 'tradeKeepDay'; projectId: string; partnerId: string; noticeId: string }
   /** Work finished early (G-37): its plan catches up, and what was right behind it comes in by the days it gave back. On a press, never by itself. `leaveOut`: the activities a trade cannot start sooner. */
   | { type: 'pullScheduleEarlier'; projectId: string; leaveOut: string[]; why: { reason: ScheduleMoveReason; note: string; by: string } }
 
@@ -1463,6 +1469,8 @@ export interface ProjectSchedule {
   moves?: ScheduleMove[]
   /** Every weekly walk of the schedule, newest first (the owner, 2026-10-05: "build the weekly walk"). Unset: never walked. */
   walks?: ScheduleWalk[]
+  /** Every late notice a trade sent from its portal, newest first (the Gantt, G-117). Unset: none yet. */
+  lateNotices?: LateNotice[]
 }
 
 /** A plan the schedule is measured against (G-41): the one locked at Start, or one set after a signed change order, named. */
@@ -1531,12 +1539,43 @@ export interface ScheduleMove {
   answers?: { partnerId: string; on: string; ok: boolean; day?: string; note?: string }[]
   /** The signed change order whose days this move put on the schedule (the Gantt, G-76). Unset: an ordinary move. */
   changeOrderId?: string
+  /** The trade's late notice this move took (the Gantt, G-117). Unset: an ordinary move. */
+  lateNoticeId?: string
   /**
    * A pull (G-37): these lines finished early and their plans caught up (the move's own line is the
    * first); everything else in `pushed` came in after them, not out. Tell the trades skips the
    * finished lines: their work is done. Unset: an ordinary move.
    */
   pull?: { finished: string[] }
+}
+
+/**
+ * A trade's word from its portal that it will be late (the Gantt, G-117): the new day, why, and
+ * the office's answer. Nothing moves until the office takes it as a move (`ScheduleMove.lateNoticeId`)
+ * or pushes back. Where it stands is read each time (`lateNoticeState` in gcLateNotices.ts).
+ */
+export interface LateNotice {
+  /** `late-1`, `late-2`, … kept newest first. */
+  id: string
+  partnerId: string
+  lineId: string
+  /** The day it was sent. */
+  on: string
+  /** Who at the company sent it: its contact. */
+  by: string
+  /** Under way: the day asked for is a new finish. Not started: a new start, the bar moving whole. */
+  started: boolean
+  /** The bar's dates when it was sent. */
+  was: { start: string; finish: string }
+  /** The dates it asks for. */
+  to: { start: string; finish: string }
+  reason: LookAheadReason
+  /** What happened, in their words. Never empty. */
+  note: string
+  /** The office needs the day as drawn, and said why. */
+  pushedBack?: { on: string; by: string; note: string }
+  /** After a push back, the company said it will make the day. */
+  kept?: { on: string }
 }
 
 /** What the work waits on from outside the trades (G-73 to G-75): a long-lead delivery, a decision the customer owes, a permit, the utility's work. */

@@ -10,12 +10,13 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { EMPTY_SCOPE_BOOK, inScopeBook, linesToAdd, scopeBook, scopeWordKey } from './gcScopeBook'
 import { initialGcState } from './gcFixture'
-import { moveActivityName, moveRecord, moveWhyProblem, planMove, redoMove, spanWords, undoMove } from './gcScheduleMoves'
+import { MOVE_NOTE_MIN, moveActivityName, moveRecord, moveWhyProblem, planMove, redoMove, spanWords, undoMove } from './gcScheduleMoves'
 import { companiesToTell } from './gcTellTrades'
 import { nextWaitId, waitKind } from './gcScheduleWaits'
 import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
 import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
+import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
@@ -1144,7 +1145,10 @@ function reduce(state: GcState, action: GcAction): GcState {
       const why = action.why
       if (why && moveWhyProblem(why.reason, why.note)) return state
       const plan = why ? planMove(project, activity.lineId, action.start, action.finish, after) : null
-      const changed = { ...kept, activities: pushed.activities, ...(why && plan ? { moves: [moveRecord(schedule, activity.lineId, plan, why, state.today, action.changeOrderId), ...(schedule.moves ?? [])] } : {}) }
+      // A trade's late notice this move takes (G-117): kept on the move only when it is open on this bar.
+      const notice = action.lateNoticeId ? schedule.lateNotices?.find((n) => n.id === action.lateNoticeId && n.lineId === activity.lineId) : undefined
+      const lateNoticeId = notice && lateNoticeState(project, notice) === 'open' ? notice.id : undefined
+      const changed = { ...kept, activities: pushed.activities, ...(why && plan ? { moves: [moveRecord(schedule, activity.lineId, plan, why, state.today, action.changeOrderId, lateNoticeId), ...(schedule.moves ?? [])] } : {}) }
       const pkg = project.packages.find((k) => k.id === activity.packageId)
       const label = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === activity.lineId)?.label ?? activity.lineId) : activity.lineId
       // An inspection goes by its own name (Building lane, 2026-10-03).
@@ -2655,6 +2659,70 @@ function reduce(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, schedule })),
         'office',
         `${action.by} undid a move: ${move ? moveActivityName(project, move.lineId) : 'an activity'} is back to ${move ? spanWords(move.from) : 'where it was'}.`,
+      )
+    }
+
+    case 'tradeSayLate': {
+      // A trade tells us from its portal that it will be late (the Gantt, G-117). Nothing moves until the office takes it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const partner = partnerById(state, action.partnerId)
+      const door = project && partner ? lateDoor(state, project, partner.id, action.lineId) : null
+      if (!project || !schedule || !partner || !door || !LATE_REASONS.includes(action.reason)) return state
+      if (lateNoticeProblem(door, state.today, action.day, action.reason, action.note)) return state
+      const a = door.row.activity
+      const notice = {
+        id: nextLateNoticeId(project),
+        partnerId: partner.id,
+        lineId: a.lineId,
+        on: state.today,
+        by: partner.contact || partner.company,
+        started: door.started,
+        was: { start: a.start, finish: a.finish },
+        to: lateTarget(a, door.started, action.day),
+        reason: action.reason,
+        note: action.note.trim(),
+      }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, lateNotices: [notice, ...(schedule.lateNotices ?? [])] } })),
+        'trade',
+        lateNoticeLogWords(project, partner, notice),
+      )
+    }
+
+    case 'pushBackLateNotice': {
+      // The office needs the day as drawn (G-117): its words go back to the company's portal.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const notice = schedule?.lateNotices?.find((n) => n.id === action.noticeId)
+      const partner = notice ? partnerById(state, notice.partnerId) : undefined
+      const note = action.note.trim()
+      const by = action.by.trim()
+      if (!project || !schedule || !notice || !partner || lateNoticeState(project, notice) !== 'open' || note.length < MOVE_NOTE_MIN || !by) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({
+          ...p,
+          schedule: { ...schedule, lateNotices: (schedule.lateNotices ?? []).map((n) => (n.id === notice.id ? { ...n, pushedBack: { on: state.today, by, note } } : n)) },
+        })),
+        'office',
+        latePushBackLogWords(project, partner, notice, by, note),
+      )
+    }
+
+    case 'tradeKeepDay': {
+      // After a push back, the company says it will make the day (G-117).
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const notice = schedule?.lateNotices?.find((n) => n.id === action.noticeId && n.partnerId === action.partnerId)
+      const partner = partnerById(state, action.partnerId)
+      if (!project || !schedule || !notice || !partner || lateNoticeState(project, notice) !== 'pushedBack') return state
+      return logged(
+        mapProject(state, project.id, (p) => ({
+          ...p,
+          schedule: { ...schedule, lateNotices: (schedule.lateNotices ?? []).map((n) => (n.id === notice.id ? { ...n, kept: { on: state.today } } : n)) },
+        })),
+        'trade',
+        lateKeepLogWords(project, partner, notice),
       )
     }
 

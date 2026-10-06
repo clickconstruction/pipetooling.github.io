@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { telHref, type PeopleTone, type ProjectPeopleSummary, type ProjectPerson } from '../../lib/gcMode/gcModel'
+import { telHref, type PeopleTone, type PersonReason, type ProjectPeopleSummary, type ProjectPerson } from '../../lib/gcMode/gcModel'
 
 /**
  * GC mode design spike: one count of the people we are waiting on, in place of the board row's
@@ -208,10 +208,13 @@ export function PeopleRows({
   people,
   narrow,
   onFollowUp,
+  onReason,
 }: {
   people: ProjectPerson[]
   narrow: boolean
   onFollowUp: (person: ProjectPerson, calling: boolean) => void
+  /** A reason about a bar on the schedule pressed (the Gantt's call list, G-115): open that bar. Unset: reasons are words only. */
+  onReason?: (person: ProjectPerson, reason: PersonReason) => void
 }) {
   return (
     <>
@@ -242,9 +245,21 @@ export function PeopleRows({
             </span>
           </span>
           {person.reasons.map((r) => (
-            <span key={r.text} style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline' }}>
-              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: TONE[r.tone].dot, flex: 'none', transform: 'translateY(-1px)' }} />
-              {r.text}
+            <span key={r.text} style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', ...(r.aside ? { color: 'var(--text-muted)' } : {}) }}>
+              {/* An aside (G-115) is said so the caller knows, not theirs to do: a hollow dot. */}
+              <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', boxSizing: 'border-box', flex: 'none', transform: 'translateY(-1px)', ...(r.aside ? { border: `1.5px solid ${TONE.grey.dot}` } : { background: TONE[r.tone].dot }) }} />
+              {onReason && r.lineId ? (
+                <button
+                  type="button"
+                  onClick={() => onReason(person, r)}
+                  title="Open this bar on the chart"
+                  style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}
+                >
+                  {r.text}
+                </button>
+              ) : (
+                r.text
+              )}
             </span>
           ))}
           {person.last && <span style={{ color: 'var(--text-muted)', fontSize: '0.76rem' }}>{person.last}</span>}

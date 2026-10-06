@@ -56,6 +56,18 @@ describe('the Gantt', () => {
     expect(bars()).toBe(all)
   })
 
+  it('draws the call list under the toolbar only while grouped by company (G-115)', () => {
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
+    const m = scheduleMeasures(state, project)
+    render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={new Map()} today={state.today} building picked={null} onPick={vi.fn()} callList={<div>The call list</div>} />)
+    expect(screen.queryByText('The call list')).toBeNull()
+    fireEvent.click(screen.getByText('By company'))
+    expect(screen.getByText('The call list')).toBeTruthy()
+    fireEvent.click(screen.getByText('By trade'))
+    expect(screen.queryByText('The call list')).toBeNull()
+  })
+
   it('groups by stage and by company without losing a bar', () => {
     const { bars, m } = chart()
     fireEvent.click(screen.getByText('By stage'))

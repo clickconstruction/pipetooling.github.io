@@ -19,6 +19,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { useAuth } from '../../hooks/useAuth'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { callListCallActions, type DatesAnswer } from '../../lib/gcMode/gcCallList'
 import { Btn, input } from './gcUi'
 
 /**
@@ -267,7 +268,11 @@ function PersonPane({
   const [calling, setCalling] = useState(calling0)
   const [said, setSaid] = useState('')
   const [by, setBy] = useState('')
+  // New dates on the schedule (the Gantt's call list, G-115): the answer heard on the call, recorded as the portal would.
+  const [dates, setDates] = useState<DatesAnswer>('none')
   const picked = items.filter((i) => ticked.includes(i.key))
+  const asksDates = picked.some((i) => i.schedule?.kind === 'dates')
+  const onSchedule = picked.some((i) => i.kind === 'schedule')
   // An email goes to whoever at the company gets the kinds ticked (the owner, 2026-10-05): a waiver
   // to the bookkeeper the company named in its portal. A text and a call stay with the main contact.
   const mailTo = followUpMailTo(state, partner, picked)
@@ -287,7 +292,11 @@ function PersonPane({
     onDone(choice.via === 'text' ? 'texted' : 'emailed')
   }
   const saveCall = () => {
-    for (const a of followUpCallActions(person, picked, said, by || null)) dispatch(a)
+    const answer = asksDates ? dates : 'none'
+    const words = said.trim() || (answer === 'work' ? 'Said the new dates work.' : answer === 'another' ? 'Asked for another day.' : '')
+    for (const a of followUpCallActions(person, picked, words, by || null)) dispatch(a)
+    // What the answer does past the log (G-115): the dates answered, a delivery's new day, a promise.
+    for (const a of callListCallActions(person, picked, { dates: answer, day: by || null, said: words, by: me ?? 'the office' })) dispatch(a)
     setCalling(false)
     onDone('called')
   }
@@ -307,13 +316,26 @@ function PersonPane({
       <div style={{ display: 'grid', gap: '0.45rem', padding: '0.65rem', border: '1px solid var(--border-strong)', borderRadius: 8 }}>
         <strong style={{ fontSize: '0.9rem' }}>What did {reach.first} say?</strong>
         <input autoFocus value={said} onChange={(e) => setSaid(e.target.value)} placeholder={`What ${reach.first} said`} aria-label={`What ${reach.first} said`} style={box} />
+        {asksDates && (
+          <Seg
+            label="On the new dates"
+            value={dates}
+            options={[
+              { v: 'none', words: 'No answer yet' },
+              { v: 'work', words: 'They work' },
+              { v: 'another', words: 'They need another day', title: 'The day they gave below is the day they asked for.' },
+            ]}
+            onChange={setDates}
+          />
+        )}
         <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           They gave a day
           <input type="date" value={by} onChange={(e) => setBy(e.target.value)} style={box} aria-label="The day they gave" />
           <span>Leave it empty if they gave none.</span>
         </label>
+        {onSchedule && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>A day on a delivery, a submittal or a start is kept with it.</span>}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <Btn kind="primary" disabled={said.trim() === '' && by === '' || picked.length === 0} onClick={saveCall}>
+          <Btn kind="primary" disabled={(said.trim() === '' && by === '' && !(asksDates && dates !== 'none')) || picked.length === 0} onClick={saveCall}>
             Save the call
           </Btn>
           <Btn kind="quiet" onClick={() => setCalling(false)}>
