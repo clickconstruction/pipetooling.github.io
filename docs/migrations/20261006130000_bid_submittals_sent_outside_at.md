@@ -1,4 +1,4 @@
-# 20261006130000_bid_submittals_sent_outside_at.sql (2026-10-06, v2.4691)
+# 20261006130000_bid_submittals_sent_outside_at.sql (2026-10-06, v2.4705)
 
 Adds `bid_submittals.sent_outside_at timestamptz` (null by default): when the office sent the revision outside the app — by email or on paper — and typed the GC's answers onto its rows. Punch list #89, item 3: BP375's Rev 1 read *draft · Sep 29* while four of its parts were rejected.
 

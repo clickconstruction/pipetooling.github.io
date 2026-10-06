@@ -13,16 +13,16 @@ import { btn, btnPrimary, btnQuiet, smallMuted } from './submittalTabStyles'
 import { formatShortDate } from '../../lib/submittals/submittalRevision'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
-// v2.4691 · the Sent by email door and its day box.
+// v2.4705 · the Sent by email door and its day box.
 const link: CSSProperties = { ...btnQuiet, color: 'var(--text-blue-700)', fontWeight: 600 }
 const inp: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.15rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)' }
 
 export type SubmittalRoomPanelProps = {
   /** The newest revision has rows: the Share button draws. */
   showShare: boolean
-  /** v2.4691 · `bid_submittals.sent_outside_at`: the revision went by email or on paper. */
+  /** v2.4705 · `bid_submittals.sent_outside_at`: the revision went by email or on paper. */
   sentOutsideAt?: string | null
-  /** v2.4691 · the office says the draft went out by email on a day (YYYY-MM-DD). Not given: no door. */
+  /** v2.4705 · the office says the draft went out by email on a day (YYYY-MM-DD). Not given: no door. */
   onSentOutside?: (ymd: string) => void
   /** That revision is already shared: the button reads "share again". */
   revisionShared: boolean
@@ -44,7 +44,7 @@ export type SubmittalRoomPanelProps = {
 
 export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room, roomLine, people, events, decidedBy, busy, onShare, onCloseRoom, onReopenRoom, onSetMayDecide, onClosePerson, sentOutsideAt = null, onSentOutside }: SubmittalRoomPanelProps) {
   const { showToast } = useToastContext()
-  // v2.4691 · "Sent by email on…": a day box opens in line; Save hands the day back.
+  // v2.4705 · "Sent by email on…": a day box opens in line; Save hands the day back.
   const [sentOn, setSentOn] = useState<string | null>(null)
   return (
     <>

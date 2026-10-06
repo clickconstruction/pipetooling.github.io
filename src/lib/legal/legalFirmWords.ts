@@ -89,6 +89,23 @@ export function firmExhibitTitle(title: string): string {
   return title.toLowerCase().startsWith('what was said') ? 'Record of contact: calls, emails, visits, promises' : title
 }
 
+/**
+ * Where an exhibit really is, for the right-hand cell of the portal's Exhibits list (v2.4701).
+ * The firm's printed packet (`legalFirmPacketPrint.ts`) prints the statement, the property record
+ * and the record of contact in full, but only lists the demand letters, only counts the field
+ * reports, and links a lien paper only where a saved copy exists — so a cell never promises a
+ * document the packet does not carry. Signed agreements with a PDF are links, drawn by the caller.
+ */
+export function firmExhibitWhere(title: string, has: { agreementPdfs: boolean; paperCopies: boolean }): string {
+  const t = title.toLowerCase()
+  if (t.startsWith('invoices') || t.startsWith('property') || t.startsWith('what was said')) return 'in full in the printed packet'
+  if (t.startsWith('signed agreements')) return has.agreementPdfs ? 'PDF links' : 'ask the office for a copy'
+  if (t.startsWith('final demand')) return 'listed in the printed packet · ask the office for the letter'
+  if (t.startsWith('lien notices')) return has.paperCopies ? 'copies on the Paper tab' : 'listed in the printed packet · ask the office for copies'
+  if (t.startsWith('field reports')) return 'counted in the printed packet · ask the office for the reports'
+  return 'ask the office'
+}
+
 /** A person on the firm's email list: `not confirmed yet` until they click the confirmation. */
 export function firmRecipientStatusWords(r: { paused: boolean; confirmed: boolean }): string {
   return r.paused ? 'stopped' : r.confirmed ? 'confirmed' : 'not confirmed yet'

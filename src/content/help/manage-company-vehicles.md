@@ -123,3 +123,5 @@ Every on and off lands in the vehicle's ledger as an {{chip:gray|Insurance}} row
 ## Vehicle details
 
 {{button:outline|Edit}} on an open vehicle changes year, make, model, trim, VIN, and the weekly registration cost. The registration cost prints on pay stubs and feeds the fleet total. The **insurance** cost lives on the vehicle's **Insurance** card instead. See below. {{button:outline|Update value}} records what replacing the vehicle would cost today. The history stays in the ledger. Deleting a vehicle removes its whole history with it. So park old vehicles as **Unassigned** instead unless you really mean delete.
+
+A vehicle someone drives may have no insurance, registration or service on file. Then the office sees it on the Needs you card until all three are entered. The card shows on the Dashboard and on Quickfill. See [work the Needs you list on the dashboard](/help/needs-you-card).

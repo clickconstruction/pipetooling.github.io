@@ -1913,7 +1913,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   /**
-   * v2.4691 · the revision went out by email or on paper: `sent_outside_at` on the draft. Typed
+   * v2.4705 · the revision went out by email or on paper: `sent_outside_at` on the draft. Typed
    * answers set it on their day, once (`is null`); the office sets or changes it from step 5.
    */
   async function markSentOutside(ymd: string | null, opts: { onlyIfUnset?: boolean } = {}) {
@@ -1969,7 +1969,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setItems(fresh)
       setParts(await loadItemParts(db, fresh.map((x) => x.id)))
       if (who) await loadRoom(bidId)
-      // v2.4691 · an answer typed on a draft means the draft went out by email: the header stops saying "draft".
+      // v2.4705 · an answer typed on a draft means the draft went out by email: the header stops saying "draft".
       if (who) await markSentOutside(save.on ?? null, { onlyIfUnset: true })
       const said = [writes.counts.approved ? `${writes.counts.approved} approved` : '', writes.counts.revise ? `${writes.counts.revise} revise` : '', writes.counts.rejected ? `${writes.counts.rejected} rejected` : ''].filter(Boolean).join(' · ')
       const tag = row.tag.trim() || 'the accessory'
@@ -2141,7 +2141,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   const bid = selectedBid
   const isDraft = selectedRev ? asRevisionStatus(selectedRev.status) === 'draft' : false
-  // v2.4691 · step 5's line: a revision that went by email says so (until the room shares one); else the room's own words.
+  // v2.4705 · step 5's line: a revision that went by email says so (until the room shares one); else the room's own words.
   const shareLine = selectedRev?.sent_outside_at && !room?.shared_at ? sentByEmailLine(selectedRev.sent_outside_at, decisions.entered) : room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''
   // 2026-10-01 · what a draft could catch up on: rows the takeoff reads differently, hand rows that read like another row's part.
   const refreshPlan = isDraft && takeoff ? planTakeoffRefresh(items, partsOf, takeoff.candidates) : { rows: [], skipped: [] }

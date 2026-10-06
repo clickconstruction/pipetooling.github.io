@@ -302,7 +302,7 @@ export function asRevisionStatus(v: string | null | undefined): RevisionStatus {
 
 /**
  * "Rev 3 · draft · Sep 15" (shared revisions date their share, drafts their creation). A draft the
- * office sent outside the app (v2.4691, `sent_outside_at`) reads "Rev 1 · sent by email · Sep 29":
+ * office sent outside the app (v2.4705, `sent_outside_at`) reads "Rev 1 · sent by email · Sep 29":
  * *draft* means unsent, and this one went.
  */
 export function describeRevisionChip(rev: Pick<SubmittalRevisionRow, 'rev_number' | 'status' | 'created_at' | 'shared_at'> & Partial<Pick<SubmittalRevisionRow, 'sent_outside_at'>>, /** the newest answer on its rows, when it has one (2026-10-03) */ answeredAt?: string | null): string {
@@ -314,7 +314,7 @@ export function describeRevisionChip(rev: Pick<SubmittalRevisionRow, 'rev_number
   return [`Rev ${rev.rev_number}`, REVISION_STATUS_LABELS[status], when].filter(Boolean).join(' · ')
 }
 
-/** v2.4691 · the words for a revision that went out by email or on paper, not through the room. */
+/** v2.4705 · the words for a revision that went out by email or on paper, not through the room. */
 export const SENT_BY_EMAIL = 'sent by email'
 
 /** Step 5's line for such a revision: "Sent by email · Sep 29 · answers typed in". */

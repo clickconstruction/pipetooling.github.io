@@ -133,7 +133,7 @@ describe('the revision chip', () => {
     expect(revisionAnsweredAt([{ review_decision: 'approved', reviewed_at: '2026-09-17T12:00:00Z' }, { review_decision: null, reviewed_at: null }], [{ review_decision: 'rejected', reviewed_at: '2026-10-02T17:00:00Z' }])).toBe('2026-10-02T17:00:00Z')
     expect(revisionAnsweredAt([{ review_decision: null, reviewed_at: '2026-10-02T17:00:00Z' }])).toBeNull()
   })
-  it('v2.4691 · a draft the office sent by email reads sent by email with that day, not draft; shared from the app it keeps its share; a replaced draft that was answered still reads answered', () => {
+  it('v2.4705 · a draft the office sent by email reads sent by email with that day, not draft; shared from the app it keeps its share; a replaced draft that was answered still reads answered', () => {
     const rev = { rev_number: 1, status: 'draft', created_at: '2026-09-29T20:00:00Z', shared_at: null, sent_outside_at: '2026-09-29T22:00:00Z' }
     expect(describeRevisionChip(rev)).toBe('Rev 1 · sent by email · Sep 29')
     expect(describeRevisionChip(rev, '2026-10-02T17:00:00Z')).toBe('Rev 1 · sent by email · Sep 29')

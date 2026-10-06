@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
-import { lienWindowHref } from '../../lib/jobs/stagesDeepLinks'
+import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../../lib/bankingAccess'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
@@ -42,11 +42,13 @@ import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
+import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
+import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
 import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { useSubmittalsNudge } from '../../hooks/useSubmittalsNudge'
@@ -490,6 +492,9 @@ export function DashboardPinnedQuickRow({
   // Supply-house job accounts (v2.3430): jobs that bought at a house expecting an account with none on record — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
+  // The owner, 2026-10-06 (v2.4700): dev, assistant and controller see active vehicles with no insurance, registration or service on file.
+  const vehicleRecordGapsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
+  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
   const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
@@ -504,6 +509,9 @@ export function DashboardPinnedQuickRow({
   // The firm's portal acts awaiting the office (Legal portal PR 4) — office roles; the desk's Fees & steps clears them.
   const legalFirmActivityEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
+  // Owners who signed for our records on their portal (punch list #86) — the office set that works the Lien desk.
+  const ownerRecordsSignedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
@@ -564,6 +572,8 @@ export function DashboardPinnedQuickRow({
     capacityUnder,
     jobAccountGapsEnabled,
     jobAccountGaps,
+    vehicleRecordGapsEnabled,
+    vehicleRecordGaps,
     priceMatrixEnabled,
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
@@ -589,6 +599,8 @@ export function DashboardPinnedQuickRow({
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
+    ownerRecordsSignedEnabled,
+    ownerRecordsSigned,
     hoursApprovalsEnabled,
     hoursApprovals,
     hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
@@ -739,6 +751,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {
               navigate('/materials?tab=job-accounts&filter=no_account')
+            } else if (item.key === 'vehicle-records-missing') {
+              navigate('/people?tab=vehicles')
             } else if (item.key.startsWith('submittal-')) {
               const n = submittalsNudge.nudge
               const first = item.key === 'submittal-lead-time' ? n?.leadTime.first : item.key === 'submittal-sent-back' ? n?.sentBack.first : item.key === 'submittal-unopened' ? n?.unopened.first : n?.notStarted.first
@@ -823,6 +837,10 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
             } else if (item.key === 'lien-tracking-owed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+            } else if (item.key === 'owner-records-signed') {
+              // Records for an owner on the request that has waited longest (punch list #86); the desk's own door without a job.
+              const jobId = ownerRecordsSigned?.first.jobId
+              navigate(jobId ? ownerRecordsHref(jobId) : '/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-serve-copy') {
               // The lien whose serve-by day comes first, on its Mechanic's lien tab where service is recorded.
               const first = [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]

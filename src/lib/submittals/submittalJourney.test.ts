@@ -124,7 +124,7 @@ describe('submittalJourney', () => {
     expect(submittalJourney(all).next).toEqual({ kind: 'done', text: 'structura approved every row. Next is the order log, Step 8.', action: null, actionLabel: null })
   })
 
-  it('v2.4691 · a draft sent by email lights Share as done, and a replaced one says it was sent outside the app', () => {
+  it('v2.4705 · a draft sent by email lights Share as done, and a replaced one says it was sent outside the app', () => {
     const sent = { ...base, rev: draft({ number: 1, rows: 14, packageBuilt: true, sentOutside: true }), decisions: { decided: 0, approved: 0, open: 14, noAnswer: 14, sentBack: 0, byName: [] } }
     expect(statuses(sent)).toBe('done,done,done,done,done,waiting,later,later')
     expect(submittalJourney(sent).next).toEqual({ kind: 'waiting', text: 'Rev 1 went out by email. Type in their answers on step 6 as they come.', action: null, actionLabel: null })

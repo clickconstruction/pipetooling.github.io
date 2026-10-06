@@ -52,7 +52,7 @@ export type SubmittalJourneyInput = {
     owesReason: number
     sheetsNeeded: number
     packageBuilt: boolean
-    /** v2.4691 · the office sent it outside the app (by email, on paper): Share is done, though not from here. */
+    /** v2.4705 · the office sent it outside the app (by email, on paper): Share is done, though not from here. */
     sentOutside?: boolean
   } | null
   /** The bid's review room once minted. */
@@ -145,7 +145,7 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   if (rev.status === 'draft') {
     // A built package is done whatever the rows still owe (v2.4169): the pill says so, and step 7's door reads it.
     if (rev.packageBuilt) status.package = 'done'
-    // v2.4691 · sent by email or on paper: Share is done, though nothing went through the room.
+    // v2.4705 · sent by email or on paper: Share is done, though nothing went through the room.
     if (rev.sentOutside) status.share = 'done'
     // 2026-10-03 · answers typed on a draft. The estimator emails the package and records what came back, so the
     // revision never reads shared. The strip read answers only on a shared revision: on BP375 it pointed at six
@@ -191,7 +191,7 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     }
     status.package = 'done'
     if (rev.sentOutside) {
-      // v2.4691 · it went by email: Share is done, and the next thing is whatever the GC writes back.
+      // v2.4705 · it went by email: Share is done, and the next thing is whatever the GC writes back.
       status.share = 'done'
       status.review = 'waiting'
       return finish({ kind: 'waiting', text: `Rev ${rev.number} went out by email. Type in their answers on step 6 as they come.`, action: null, actionLabel: null })
