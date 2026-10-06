@@ -40,6 +40,7 @@ import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
+import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -94,6 +95,7 @@ export type NeedsYouItem = {
     | 'lien-notice-approve'
     | 'lien-notice-batch'
     | 'lien-file-window'
+    | 'owner-records-signed'
     | 'd22-uncoded'
     | 'hours-approvals'
     | 'typed-hours'
@@ -106,6 +108,7 @@ export type NeedsYouItem = {
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
     | 'job-account-missing'
+    | 'vehicle-records-missing'
     | 'customer-waiting'
     | 'price-matrix-ready'
     | 'price-requests-late'
@@ -176,6 +179,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lien-notice-approve': 40,
   'lien-notice-batch': 40,
   'lien-file-window': 40,
+  // An owner signed for our records on their portal and is waiting on us for the packet (punch list #86).
+  'owner-records-signed': 20,
   'team-reviews': 50,
   'statement-round': 30,
   'roadmap-needs-person': 50,
@@ -195,6 +200,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lost-bids': 60,
   'd22-uncoded': 60,
   'job-account-missing': 60,
+  // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4700).
+  'vehicle-records-missing': 60,
   'price-matrix-ready': 40,
   // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
   'price-requests-late': 40,
@@ -422,6 +429,12 @@ export type NeedsYouInputs = {
   lienDesk?: LienDeskNeedsYou | null
   /** The viewer approves (master / dev) — shows the approvals card. */
   lienDeskLeader?: boolean
+  /**
+   * Owners who signed for our records on their portal and wait for the packet (punch list #86,
+   * `ownerRecordsSignedWaiting`). The office set; null while loading or when none wait.
+   */
+  ownerRecordsSignedEnabled?: boolean
+  ownerRecordsSigned?: import('./jobs/ownerRecords').OwnerRecordsSigned | null
   lienWatchEnabled: boolean
   lienWatch: {
     noticeDue: { deadline: string; openBalance: number }[]
@@ -493,6 +506,10 @@ export type NeedsYouInputs = {
   jobAccountGapsEnabled?: boolean
   /** v2.3430 — the evidence rule: jobs that bought at a house expecting a job account with none on record. */
   jobAccountGaps?: { jobs: number; pairs: number; allocatedTotal: number; houseNames: string } | null
+  /** v2.4700 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
+  vehicleRecordGapsEnabled?: boolean
+  /** `useVehicleRecordGapsNudge`: most missing first; null while loading or when none is missing. */
+  vehicleRecordGaps?: VehicleRecordGap[] | null
   /**
    * Customer Waiting (v2.3248): open high-priority portal requests in the
    * inboxes this viewer belongs to, from `CustomerWaitingContext` — null when
@@ -602,6 +619,25 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${sends} certified ${sends === 1 ? 'send has' : 'sends have'} no number on record. The number is what the affidavit leans on to swear the notice went out — type it on the notice's Sent row on the Lien desk, or in the job's Lien window (“add the number”).`,
       figure: String(n),
       actionLabel: 'Open the Lien desk',
+    })
+  }
+
+  // Records for an owner (punch list #86): the owner did their part on the portal; the packet is ours to send.
+  if (inputs.ownerRecordsSignedEnabled && inputs.ownerRecordsSigned && inputs.ownerRecordsSigned.count > 0) {
+    const { count, first } = inputs.ownerRecordsSigned
+    const where = first.address || 'their property'
+    const waited = -(daysUntilYmd(first.signedOn) ?? 0)
+    const since = waited >= 1 ? ` They have waited ${waited} day${waited === 1 ? '' : 's'}.` : ''
+    items.push({
+      key: 'owner-records-signed',
+      severity: 'amber',
+      kicker: 'Records for an owner',
+      title: count === 1 ? `${first.name} signed for the records on ${where}` : `${count} owners signed for their records on their portal`,
+      detail:
+        `${count === 1 ? '' : `The first is ${first.name}, on ${where}. `}Signed on their portal ${monthDayLabel(first.signedOn)}.${since} ` +
+        'Finish the checks in the window, then press Record it as sent and pick On their portal. Their Download opens when you do.',
+      figure: String(count),
+      actionLabel: count === 1 ? 'Open their request' : 'Open the first',
     })
   }
 
@@ -1358,6 +1394,32 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'The house bills the property owner either way; the account is what puts the job on its own statement. Mark each one opened, or not needed.',
       figure: String(n),
       actionLabel: 'Review them',
+    })
+  }
+
+  if (inputs.vehicleRecordGapsEnabled && (inputs.vehicleRecordGaps?.length ?? 0) > 0) {
+    const gaps = inputs.vehicleRecordGaps!
+    const n = gaps.length
+    const first = gaps[0]!
+    const held = (g: VehicleRecordGap) => (g.holderName ? ` (${g.holderName})` : '')
+    const why = 'Review prices a company truck from these, so until they are entered they count as $0 there.'
+    items.push({
+      key: 'vehicle-records-missing',
+      severity: 'gray',
+      kicker: 'Vehicles',
+      title:
+        n === 1
+          ? `The ${first.name} has no ${vehicleRecordGapWords(first, 'or')} on file`
+          : `${n} vehicles are missing insurance, registration or service`,
+      detail:
+        n === 1
+          ? `${first.holderName ? `${first.holderName} drives it. ` : ''}Add them on People → Vehicles. ${why}`
+          : `${gaps
+              .slice(0, 3)
+              .map((g) => `${g.name}${held(g)}: ${vehicleRecordGapWords(g)}`)
+              .join('. ')}${n > 3 ? `. And ${n - 3} more` : ''}. Add them on People → Vehicles. ${why}`,
+      figure: String(n),
+      actionLabel: 'Open Vehicles',
     })
   }
 

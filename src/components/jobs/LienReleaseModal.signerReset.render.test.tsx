@@ -220,12 +220,26 @@ describe('LienReleaseModal — who signs resets with the job (v2.4567)', () => {
     expect(db.updates.find((u) => 'signer_user_id' in u)?.signer_user_id).toBe('master-1')
   })
 
-  it('#87 M · only a waiting request seeds the pick: a draft keeps the default, and a fresh waiver invents no signer', async () => {
-    // a draft a request went back to keeps the job's default (#87 N)
-    db.releases = [{ ...askedOfMaster2, status: 'draft', minted_at: null, signature_requested_at: null }]
-    const view = renderWithProviders(<LienReleaseModal signerNameFallback="Malachi Reyes" open onClose={() => undefined} job={a.job} invoice={a.inv} />)
+  it('#87 N · a draft reopens on the leader it saved, the pick autosaves, one off the list gives way, and a fresh waiver invents no signer', async () => {
+    // a draft a request went back to keeps the leader it asked: the page prints Robert, and so does the pick
+    const draftOfMaster2 = { ...askedOfMaster2, status: 'draft', minted_at: null, signature_requested_at: null }
+    db.releases = [draftOfMaster2]
+    let view = renderWithProviders(<LienReleaseModal signerNameFallback="Malachi Reyes" open onClose={() => undefined} job={a.job} invoice={a.inv} />)
+    await opened('master-2')
+    expect(whoSigns().disabled).toBe(false)
+    // picking another leader is an edit the draft saves, so the next opening finds him
+    fireEvent.change(whoSigns(), { target: { value: 'master-3' } })
+    await waitFor(() => expect(db.updates.some((u) => u.signer_user_id === 'master-3' && !('status' in u))).toBe(true), { timeout: 4000 })
+    view.unmount()
+
+    // the leader a draft saved has since been archived: the pick falls back to the job's default
+    db.updates = []
+    db.master2Archived = true
+    db.releases = [draftOfMaster2]
+    view = renderWithProviders(<LienReleaseModal signerNameFallback="Malachi Reyes" open onClose={() => undefined} job={a.job} invoice={a.inv} />)
     await opened('master-1')
     view.unmount()
+    db.master2Archived = false
 
     // a fresh waiver on a job whose own leader is off the list: the pad is never put in another person's name
     db.releases = []

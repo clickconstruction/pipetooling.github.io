@@ -80,7 +80,7 @@ export type LienStepFacts = {
   /** Notices approved and waiting for the run. */
   readyToSend?: number
   viewerIsLeader?: boolean
-  /** The pay offer on an approved notice (v2.4700); null or absent = none. */
+  /** The pay offer on an approved notice (v2.4708); null or absent = none. */
   offer?: LienPayOffer | null
 }
 

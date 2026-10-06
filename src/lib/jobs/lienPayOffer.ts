@@ -1,5 +1,5 @@
 /**
- * The pay offer (v2.4700, the partner's idea by way of the owner, 2026-10-06): when the
+ * The pay offer (v2.4708, the partner's idea by way of the owner, 2026-10-06): when the
  * § 53.056 notice goes out, the owner's pay page may offer a discount on each enclosed bill if
  * it is paid in full by a day. The notice form never changes and the claim stays the full
  * amount; the offer is our own sentence on our own page. The leader turns it on where the
