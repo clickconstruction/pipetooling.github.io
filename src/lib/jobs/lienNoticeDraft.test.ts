@@ -77,5 +77,7 @@ describe('retainage inside the claim (v2.3753)', () => {
     const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
     expect(buildLienAffidavitFieldsForJob({ ...aff, serviceTypeName: 'HVAC' }).workDescription).toBe('HVAC labor and materials')
     expect(buildLienAffidavitFieldsForJob(aff).workDescription).toBe('Plumbing labor and materials')
+    // v2.4719: a job named for its customer never becomes the kind of work.
+    expect(buildLienAffidavitFieldsForJob({ ...aff, jobName: 'Bruce Hall' }).workDescription).toBe('Plumbing labor and materials')
   })
 })
