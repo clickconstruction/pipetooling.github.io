@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4699',
+  version: 'v2.4706',
   date: '2026-10-06',
   title: 'Help: every numbered step gives its instructions as commands',
   kind: 'feature',

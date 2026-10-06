@@ -2,11 +2,11 @@
 name: "Help guides: four steps that open with a description, then say \"you + verb\""
 number: 90
 group: gated
-status: the 63 command sentences shipped v2.4699 (the sweep, from fresh main) · four borderline lines wait for a person's yes or no · nothing else left
+status: the 63 command sentences shipped v2.4706 (the sweep, from fresh main) · four borderline lines wait for a person's yes or no · nothing else left
 summary: >
   v2.4656 made every numbered step that opened with "You + verb" read as commands. Its rescan
   found 50 more numbered steps in 30 guides that open by saying what the screen shows, then give
-  a "you + verb" sentence. v2.4699 turned the 63 of those sentences that are commands into
+  a "you + verb" sentence. v2.4706 turned the 63 of those sentences that are commands into
   commands and widened rule 2 to every numbered step. Six sentences describe and stay as written.
   Four are borderline: each could be a command or a description, and only a person can say.
 next: >
@@ -15,7 +15,7 @@ next: >
   every line deletes this card.
 size: XS (seven sentences)
 blocker: The four lines want a person's call. A command tells the reader to do something; a description only says where it is or what the tab holds.
-ver: v2.4656 · v2.4699
+ver: v2.4656 · v2.4706
 opinion: your call — the openings read either way; a no leaves the guides as they are
 mockup: not required — words only; each guide renders as it does today
 ---
@@ -25,7 +25,7 @@ mockup: not required — words only; each guide renders as it does today
 ## Why
 
 The owner chose plain commands for numbered steps (#75's third question). v2.4656 converted the
-83 steps that opened with "You + verb". v2.4699 converted the 63 later sentences that are commands
+83 steps that opened with "You + verb". v2.4706 converted the 63 later sentences that are commands
 in steps that open with a description, and rule 2 in `src/lib/plainWords.ts` now holds every
 numbered step. A sentence that describes keeps *you* + a verb, because turning it into a command
 tells the reader to do something the guide only described. The six below describe. The four under
@@ -47,7 +47,7 @@ them could go either way, and that is a person's call, not a script's.
 - *start-here-as-an-estimator* step 4: "You send the link from your own email." (a map of the tab)
 - *track-a-general-contractor-on-a-job* step 3: "You set the phone there once." (a one-time setting)
 
-## Found by the v2.4699 sweep's own rescan, left as written (3)
+## Found by the v2.4706 sweep's own rescan, left as written (3)
 
 Three more "you + verb" sentences sit on the same step lines the sweep changed. They were not on
 the list above, so the sweep did not touch them. They want the same yes or no.
