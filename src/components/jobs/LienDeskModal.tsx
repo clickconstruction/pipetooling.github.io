@@ -363,7 +363,7 @@ export default function LienDeskModal({
       setMobileListShown(false)
     }
   }, [open, initialJobId, initialKind, aimKey])
-  // All paper (punch list #82, PR 5): the four lists share one view; it reopens on the list last looked at.
+  // All filings (punch list #82, PR 5; All paper until v2.4630): the four lists share one view; it reopens on the list last looked at.
   const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
   const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
   useEffect(() => {
@@ -483,7 +483,7 @@ export default function LienDeskModal({
       setSelectedJobId(hit.jobId)
     }
   }
-  // Next up (punch list #82): the queues this desk already holds, folded into one ordered list. No read of its own.
+  // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   const nextUpRows = useMemo(() => {
     if (!data) return []
     const serveDue = Object.values(data.filingsByJob)
@@ -502,7 +502,7 @@ export default function LienDeskModal({
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
     })
   }, [data, authRole, todayYmd])
-  /** A Next up row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
+  /** A Do now row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
     setMobileListShown(false)
@@ -2094,13 +2094,13 @@ export default function LienDeskModal({
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
-          {/* Three views (punch list #82, PR 5): Next up, Calendar, All paper. All paper holds the four lists that were tabs of their own, as a second row. */}
+          {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
             {(['next', 'calendar', 'paper'] as const).map((v) => {
               const on = v === 'paper' ? paperShown : kind === v
               return (
                 <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
-                  {v === 'next' ? `Next up${data ? ` · ${nextUpRows.length}` : ''}` : v === 'calendar' ? 'Calendar' : `All paper${data ? ` · ${entries.filter((e) => e.pile !== 'sent').length + affCount + retCount}` : ''}`}
+                  {v === 'next' ? `Do now${data ? ` · ${nextUpRows.length}` : ''}` : v === 'calendar' ? 'Deadlines' : 'All filings'}
                 </button>
               )
             })}

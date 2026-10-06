@@ -8,7 +8,7 @@ The Lien desk shows which jobs still owe a supply house. A supply house can send
 
 ## Find the jobs
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1&kind=notice) on its Notices tab, under All paper. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
+Open the [Lien desk](/jobs?tab=stages&liendesk=1&kind=notice) on its Notices tab, under All filings. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
 
 :::example the mark on a row
 3 houses owed $13,058
@@ -16,13 +16,13 @@ Open the [Lien desk](/jobs?tab=stages&liendesk=1&kind=notice) on its Notices tab
 
 A teal storefront means a house has a job account open for that job. A job with every house paid shows no mark.
 
-The mark shows on the Calendar. It also shows on the Notices, Affidavits and Retainage lists.
+The mark shows on the Deadlines tab. It also shows on the Notices, Affidavits and Retainage lists.
 
 ## See only those jobs
 
-On the Calendar, press the storefront button. On a computer it sits beside the search box. On a phone it sits before the pills. It shows a count of the jobs that still owe a house.
+On the Deadlines tab, press the storefront button. On a computer it sits beside the search box. On a phone it sits before the pills. It shows a count of the jobs that still owe a house.
 
-The Calendar then shows only those jobs, still sorted by month. Press it again to see every job.
+The Deadlines tab then shows only those jobs, still sorted by month. Press it again to see every job.
 
 ## Read the card
 
@@ -90,7 +90,7 @@ Press **Open the desk ›** on that line. The Lien desk opens on that job.
 
 ## In the Lien window
 
-Press a job on the Calendar to open its Lien window. The same card sits near the top as one line. Press **Show** to open it.
+Press a job on the Deadlines tab to open its Lien window. The same card sits near the top as one line. Press **Show** to open it.
 
 ## Good to know
 

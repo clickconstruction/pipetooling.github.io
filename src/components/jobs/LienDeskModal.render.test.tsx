@@ -152,7 +152,7 @@ describe('LienDeskModal', () => {
     const share = document.querySelector('[data-lien-desk-share]') as HTMLButtonElement
     expect(share.textContent).toContain('Share')
     expect(share.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
     await settle()
     expect(document.querySelector('[data-lien-desk-share]')).toBe(share)
     fireEvent.click(share)
@@ -202,12 +202,12 @@ describe('LienDeskModal', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('Next up is the first tab (punch list #82): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
+  it('Do now is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
     const tabs = screen.getAllByRole('tab').map((t) => t.textContent)
-    expect(tabs[0]).toBe('Next up · 1')
-    expect(screen.getByRole('tab', { name: 'Next up · 1' }).getAttribute('aria-selected')).toBe('true')
+    expect(tabs[0]).toBe('Do now · 1')
+    expect(screen.getByRole('tab', { name: 'Do now · 1' }).getAttribute('aria-selected')).toBe('true')
     // J650 has no owner on file: its one move is Find the owner.
     const row = document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement
     expect(row.textContent).toContain('650 · ATI Schertz')
@@ -220,50 +220,50 @@ describe('LienDeskModal', () => {
   it('a door re-aims an open desk at the same job when its aim key changes (v2.4612)', async () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={1} />)
     await settle()
-    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
     await settle()
-    expect(screen.getByRole('tab', { name: 'Calendar' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true')
     // The same job, pressed again from its Lien window: the tab is applied again.
     view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={2} />)
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
     // A re-render with the same aim changes nothing.
-    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
     await settle()
     view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={2} />)
     await settle()
-    expect(screen.getByRole('tab', { name: 'Calendar' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Deadlines' }).getAttribute('aria-selected')).toBe('true')
   })
 
-  it('three views (punch list #82, PR 5): Next up, Calendar, All paper; All paper holds Notices, Affidavits, Retainage and Timeline and reopens on the last one', async () => {
+  it('three views (punch list #82, PR 5; renamed v2.4630): Do now, Deadlines, All filings; All filings holds Notices, Affidavits, Retainage and Timeline and reopens on the last one', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
     const views = () => within(screen.getByRole('tablist', { name: 'View' })).getAllByRole('tab').map((t) => t.textContent)
-    expect(views()).toEqual(['Next up · 1', 'Calendar', 'All paper · 1'])
-    // On Next up and on Calendar the four lists are not drawn.
+    expect(views()).toEqual(['Do now · 1', 'Deadlines', 'All filings'])
+    // On Do now and on Deadlines the four lists are not drawn.
     expect(screen.queryByRole('tablist', { name: 'Kind of paper' })).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'All paper · 1' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
     await settle()
     const paper = within(screen.getByRole('tablist', { name: 'Kind of paper' }))
     expect(paper.getAllByRole('tab').map((t) => t.textContent?.replace(/ · \d+$/, ''))).toEqual(['Notices', 'Affidavits', 'Retainage', 'Timeline'])
     expect(paper.getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: 'All paper · 1' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'All filings' }).getAttribute('aria-selected')).toBe('true')
     // Retainage keeps its named place; leaving and coming back lands on it again.
     fireEvent.click(paper.getByRole('tab', { name: /^Retainage/ }))
     await settle()
-    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Deadlines' }))
     await settle()
     expect(screen.queryByRole('tablist', { name: 'Kind of paper' })).toBeNull()
-    fireEvent.click(screen.getByRole('tab', { name: 'All paper · 1' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'All filings' }))
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Retainage/ }).getAttribute('aria-selected')).toBe('true')
   })
 
-  it('a door that names a kind still lands on its list, inside All paper (punch list #82, PR 5)', async () => {
+  it('a door that names a kind still lands on its list, inside All filings (punch list #82, PR 5)', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="affidavit" />)
     await settle()
     expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Affidavits/ }).getAttribute('aria-selected')).toBe('true')
-    expect(screen.getByRole('tab', { name: /^All paper/ }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: /^All filings/ }).getAttribute('aria-selected')).toBe('true')
   })
 
   it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {
