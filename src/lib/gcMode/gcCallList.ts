@@ -53,7 +53,8 @@ export interface CallRef {
   label?: string
 }
 
-type Words = Record<PortalLang, { about: string; detail: string; ask: string }>
+/** A message's words for one reason, in each language the portal speaks. */
+export type Words = Record<PortalLang, { about: string; detail: string; ask: string }>
 
 /** A reason on the call list: Follow up's reason, plus the bar it is about and the words a message uses. */
 export interface CallReason extends PersonReason {
@@ -169,6 +170,11 @@ class Rows {
       return
     }
     this.byKey.set(base.key, { ...base, reasons: [reason], tone: reason.tone, last: null })
+  }
+
+  /** The lines as said, by person, Follow up's merge left out (G-146): what the counts read. */
+  own(): CallPerson[] {
+    return [...this.byKey.values()].map((p) => ({ ...p, reasons: [...p.reasons] }))
   }
 
   /** Everyone with a reason that is theirs, Follow up's reasons on this job merged under the name, worst first. */
@@ -424,7 +430,21 @@ function holdsOnBars(state: GcState, project: GcProject, holds: Map<string, Gant
  * the list with it.
  */
 export function callList(state: GcState, project: GcProject, holds: Map<string, GanttHold>, lateNotices: OpenLateNotice[] = openLateNotices(project)): CallList {
-  if (project.stage !== 'building' || project.closedOn || project.lostOn || !project.schedule || project.schedule.activities.length === 0) return NO_CALLS
+  return callLines(state, project, holds, lateNotices)?.done() ?? NO_CALLS
+}
+
+/**
+ * The call list's own people and lines, before Follow up's reasons on the job are merged in (G-146):
+ * the counts read these, so the people kernel never calls itself. Asides included, as the list keeps
+ * them. Empty: not a job being built.
+ */
+export function callRows(state: GcState, project: GcProject, holds: Map<string, GanttHold>, lateNotices: OpenLateNotice[] = openLateNotices(project)): CallPerson[] {
+  return callLines(state, project, holds, lateNotices)?.own() ?? []
+}
+
+/** Every line the call list says of its own, by person. Null: not a job being built. */
+function callLines(state: GcState, project: GcProject, holds: Map<string, GanttHold>, lateNotices: OpenLateNotice[]): Rows | null {
+  if (project.stage !== 'building' || project.closedOn || project.lostOn || !project.schedule || project.schedule.activities.length === 0) return null
   const today = state.today
   const m = scheduleMeasures(state, project)
   // Where each bar stands without its holds: a held bar can be behind too, and the hold has its own line.
@@ -596,7 +616,7 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
     })
   }
 
-  return rows.done()
+  return rows
 }
 
 function tradeOfLine(project: GcProject, lineId: string | undefined): string {
@@ -640,7 +660,8 @@ export function callListFollowPeople(state: GcState, project: GcProject, holds: 
   return out
 }
 
-function scheduleItem(project: GcProject, labels: Map<string, string>, call: CallRef, words: Words, why: string, tone: PeopleTone): FollowItem {
+/** A call list reason as an item on the Follow up sheet, in its own words. The board row's sheet reads it too (G-146). */
+export function scheduleItem(project: GcProject, labels: Map<string, string>, call: CallRef, words: Words, why: string, tone: PeopleTone): FollowItem {
   const label = call.label ?? (call.kind === 'dates' ? 'New dates' : call.kind === 'start' ? 'Start on site' : (call.lineId ? labels.get(call.lineId) : undefined) ?? 'The schedule')
   return {
     key: `schedule-${call.kind}-${call.hold ?? ''}-${call.lineId ?? ''}-${call.moveId ?? call.waitId ?? ''}`,
