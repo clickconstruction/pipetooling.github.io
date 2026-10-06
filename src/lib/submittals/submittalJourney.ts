@@ -274,6 +274,15 @@ export function groupJourneyStages(stages: JourneyStage[]): JourneyGroup[] {
  */
 export type StageGate = { on: boolean; why: string | null }
 
+/**
+ * The dashed loop from step 7 back to step 2, marked "Next revision" (punch list #84). It shows
+ * only while Resubmit is the live step on the newest revision: that is when the button there is
+ * the next thing to do, and a press starts the next revision at step 2.
+ */
+export function showNextRevisionLoop(stages: ReadonlyArray<Pick<JourneyStage, 'key' | 'status'>>, isNewest: boolean): boolean {
+  return isNewest && stages.some((s) => s.key === 'resubmit' && s.status === 'current')
+}
+
 /** What the newest draft holds, for the two buttons whose step the strip may leave unlit (a draft answered by email lights Their call and Resubmit instead). */
 export type DraftFacts = { rows: number; owesReason: number; packageBuilt: boolean }
 

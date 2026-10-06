@@ -9,6 +9,9 @@ export type RoadStatus = 'done' | 'current' | 'waiting' | 'later'
  * open it); the current stage is ringed; a later stage is dashed so a first-timer sees
  * the whole road. `anchor` is the `data-tour` the strip's pills and the walkthrough jump to.
  *
+ * The road is a grid (`.submittal-road` in index.css): each stage is one row, `n`, with its rail
+ * cell and its section in their own columns, so the Next revision loop can lie over rows 2 to 7.
+ *
  * Each fact has one home (2026-10-05): a folded stage is its title and summary and nothing else;
  * an open stage adds its explanation and its own ?, and drops the summary when its contents
  * already say it (`summaryWhenOpen={false}`).
@@ -22,11 +25,11 @@ export function RoadSection({ n, title, status, open, onToggle, onJump, anchor, 
   }
   return (
     <>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} aria-hidden>
+      <div className="submittal-road-rail" style={{ gridRow: n, display: 'flex', flexDirection: 'column', alignItems: 'center' }} aria-hidden>
         <div style={dot}>{status === 'done' ? '✓' : n}</div>
         {!last ? <div style={{ flex: 1, width: 2, minHeight: 14, background: status === 'done' ? '#16a34a' : 'var(--border)' }} /> : null}
       </div>
-      <section data-tour={anchor} data-testid={`road-${n}`} data-status={status} data-open={open} style={{ padding: '0.15rem 0 1rem', minWidth: 0 }}>
+      <section className="submittal-road-step" data-tour={anchor} data-testid={`road-${n}`} data-status={status} data-open={open} style={{ gridRow: n, padding: '0.15rem 0 1rem', minWidth: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.45rem', minWidth: 0 }}>
             <button type="button" onClick={onJump} style={{ ...btnQuiet, fontSize: '0.95rem', fontWeight: 700, color: status === 'later' && !always ? 'var(--text-muted)' : 'var(--text-strong)', textAlign: 'left' }} data-testid={`road-${n}-title`}>

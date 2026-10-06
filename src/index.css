@@ -4713,6 +4713,25 @@ button.gcStep:hover > em { text-decoration: underline; }
   .sub-edit-two { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Submittals: the steps. A grid of one row per step: a gutter, the rail's dot, the step. The gutter holds the
+   Next revision loop, a dashed line from step 7's dot up to step 2's with its label written bottom to top. It lies
+   over rows 2 to 6 and runs 16px on, to the middle of step 7's dot, so it stretches as steps fold and unfold.
+   The label sits at the loop's middle and is sticky both ways: with a long step open the loop is taller than the
+   screen, and the label stays in view beside whatever part of it is. A phone has no margin for any of it: there
+   the gutter and the loop go, and the steps keep their two columns. */
+.submittal-road { display: grid; grid-template-columns: 22px 34px 1fr; column-gap: 0.6rem; }
+.submittal-road-rail { grid-column: 2; }
+.submittal-road-step { grid-column: 3; }
+.submittal-road-loop { grid-column: 1; grid-row: 2 / 7; margin: 14px -0.6rem -16px 18px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border: 2px dashed #2563eb; border-right: 0; border-radius: 10px 0 0 10px; pointer-events: none; }
+.submittal-road-loop__head { position: absolute; top: -6px; right: -1px; width: 8px; height: 8px; border-top: 2px solid #2563eb; border-right: 2px solid #2563eb; transform: rotate(45deg); }
+.submittal-road-loop__label { position: sticky; top: calc(var(--app-top-chrome, 0px) + 7rem); bottom: 6rem; margin-left: -20px; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: 0.72rem; line-height: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--text-blue-700); }
+@media (max-width: 720px) {
+  .submittal-road { grid-template-columns: 34px 1fr; }
+  .submittal-road-rail { grid-column: 1; }
+  .submittal-road-step { grid-column: 2; }
+  .submittal-road-loop { display: none; }
+}
+
 /* Submittals rows table: a part and the reviewer's answer on it are two cells of one grid row, the
    answer under the Their answer heading (a 13rem header cell less its 1rem of padding). On a phone each row is a
    card, each cell a block under a small label, and the answer sits under its part. */
