@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-06
 ---
 
 ## Overview
@@ -455,6 +455,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | 1286–1324 | `dispatch-requests-aged`, `hr-reports-pending` | each `…Enabled` | red at `…RedDays`, else amber |
 | 1326–1341 | `claim-dev` | `claimDevRefusedCount` | red; snooze / dismiss secondaries |
 | 1343–1362 | `job-account-missing` | `jobAccountGapsEnabled` | gray |
+| v2.4692 (after `mapped_at`) | `vehicle-records-missing` | `vehicleRecordGapsEnabled` (dev, assistant, controller; `useVehicleRecordGapsNudge` over `lib/vehicleRecordGaps.ts`) | gray |
 | 1364–1419 | `submittal-lead-time`, `-sent-back`, `-unopened`, `-not-started` | `submittalsEnabled`, `submittalNudge` | red, red, blue, amber |
 | 1421–1456 | `price-matrix-ready`, `price-requests-late` | each `…Enabled` | amber when a pick waits to settle, else blue; amber |
 | 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |

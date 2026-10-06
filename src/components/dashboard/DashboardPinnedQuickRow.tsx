@@ -42,6 +42,7 @@ import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
+import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
@@ -490,6 +491,9 @@ export function DashboardPinnedQuickRow({
   // Supply-house job accounts (v2.3430): jobs that bought at a house expecting an account with none on record — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
+  // The owner, 2026-10-06 (v2.4692): dev, assistant and controller see active vehicles with no insurance, registration or service on file.
+  const vehicleRecordGapsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
+  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
   const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
@@ -564,6 +568,8 @@ export function DashboardPinnedQuickRow({
     capacityUnder,
     jobAccountGapsEnabled,
     jobAccountGaps,
+    vehicleRecordGapsEnabled,
+    vehicleRecordGaps,
     priceMatrixEnabled,
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
@@ -739,6 +745,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {
               navigate('/materials?tab=job-accounts&filter=no_account')
+            } else if (item.key === 'vehicle-records-missing') {
+              navigate('/people?tab=vehicles')
             } else if (item.key.startsWith('submittal-')) {
               const n = submittalsNudge.nudge
               const first = item.key === 'submittal-lead-time' ? n?.leadTime.first : item.key === 'submittal-sent-back' ? n?.sentBack.first : item.key === 'submittal-unopened' ? n?.unopened.first : n?.notStarted.first

@@ -1227,3 +1227,45 @@ describe('lien-waivers-to-sign (v2.4276)', () => {
     expect(buildNeedsYouItems(inputs({ lienWaiversToSign: null }))).toEqual([])
   })
 })
+
+describe('vehicle-records-missing (v2.4692)', () => {
+  const ram = { vehicleId: 'v-ram', name: '2016 Ford F-250', holderUserId: 'u-1', holderName: 'Sam P.', missing: ['insurance', 'registration', 'service'] as const, insuranceOnPlan: false }
+  const gap = (id: string, name: string, missing: Array<'insurance' | 'registration' | 'service'>, holderName: string | null = 'Lee', insuranceOnPlan = false) => ({ vehicleId: id, name, holderUserId: `u-${id}`, holderName, missing, insuranceOnPlan })
+
+  it('one vehicle reads as its own sentence: what is missing, who drives it, where to add it', () => {
+    const items = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [{ ...ram, missing: [...ram.missing] }] }))
+    const item = items.find((i) => i.key === 'vehicle-records-missing')!
+    expect(item.title).toBe('The 2016 Ford F-250 has no insurance, registration or service on file')
+    expect(item.detail).toBe('Sam P. drives it. Add them on People → Vehicles. Review prices a company truck from these, so until they are entered they count as $0 there.')
+    expect(item).toMatchObject({ kicker: 'Vehicles', figure: '1', severity: 'gray', actionLabel: 'Open Vehicles' })
+  })
+
+  it('several vehicles list the first three with what each is missing, then how many more', () => {
+    const gaps = [
+      { ...ram, missing: [...ram.missing] },
+      gap('a', '2019 Ford F-150', ['insurance', 'service']),
+      gap('b', '2021 Ford Transit', ['registration'], null),
+      gap('c', '2018 Chevy Express', ['service']),
+    ]
+    const item = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: gaps })).find((i) => i.key === 'vehicle-records-missing')!
+    expect(item.title).toBe('4 vehicles are missing insurance, registration or service')
+    expect(item.detail).toBe(
+      '2016 Ford F-250 (Sam P.): insurance, registration and service. 2019 Ford F-150 (Lee): insurance and service. 2021 Ford Transit: registration. And 1 more. Add them on People → Vehicles. Review prices a company truck from these, so until they are entered they count as $0 there.',
+    )
+    expect(item.figure).toBe('4')
+  })
+
+  it('a vehicle on an insurance plan at $0 is insured: the words name the missing cost, not the coverage', () => {
+    const one = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [{ ...ram, missing: [...ram.missing], insuranceOnPlan: true }] }))
+    expect(one.find((i) => i.key === 'vehicle-records-missing')!.title).toBe('The 2016 Ford F-250 has no insurance cost, registration or service on file')
+    const two = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [{ ...ram, missing: [...ram.missing], insuranceOnPlan: true }, gap('a', '2019 Ford F-150', ['insurance'], 'Lee', false)] }))
+    expect(two.find((i) => i.key === 'vehicle-records-missing')!.detail).toContain('2016 Ford F-250 (Sam P.): insurance cost, registration and service. 2019 Ford F-150 (Lee): insurance. ')
+  })
+
+  it('shows only when enabled and something is missing', () => {
+    const gaps = [{ ...ram, missing: [...ram.missing] }]
+    expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: false, vehicleRecordGaps: gaps })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: null })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [] })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
+  })
+})
