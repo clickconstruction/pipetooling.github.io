@@ -15,6 +15,7 @@ import {
 import { Btn, input } from './gcUi'
 import { PortalBlock, PortalTag } from './GcPortalUi'
 import { usePortalLang } from './gcPortalLang'
+import { GcPortalCrewCount } from './GcPortalCrewCount'
 
 /**
  * GC mode design spike: the weekly look-ahead in a trade's portal (owner, 2026-10-02). Three weeks
@@ -80,6 +81,8 @@ export function GcPortalLookAhead({
                 }
               />
             ))}
+            {/* How many a day it will have on site (G-142): each coming week with its work, not last week's. */}
+            {w.when !== 'last' && <GcPortalCrewCount state={state} project={project} partner={partner} weekOf={w.weekOf} dispatch={dispatch} />}
           </div>
         ))}
       </div>

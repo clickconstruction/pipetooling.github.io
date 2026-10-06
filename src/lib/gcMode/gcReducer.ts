@@ -16,6 +16,7 @@ import { nextWaitId, waitKind } from './gcScheduleWaits'
 import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
 import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
+import { crewCountAllowed, crewCountLogWords, crewCountProblem, crewCountsNow } from './gcCrewCounts'
 import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
@@ -2740,6 +2741,21 @@ function reduce(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, schedule: { ...kept, activities: offer.activities, moves: [move, ...(schedule.moves ?? [])] } })),
         'office',
         `${action.why.by} pulled ${pullCountWords(offer)} earlier on ${project.name}. ${offer.note}`,
+      )
+    }
+
+    case 'tradeSetCrewCount': {
+      // A trade's own word on how many a day it will have on site (G-142): kept newest first, the newest counts.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const partner = partnerById(state, action.partnerId)
+      if (!project || !partner || !crewCountAllowed(state, project, partner.id, action.packageId, action.weekOf) || crewCountProblem(action.count)) return state
+      const now = crewCountsNow(project).find((c) => c.packageId === action.packageId && c.weekOf === action.weekOf)
+      if (now && now.count === action.count) return state
+      const count = { packageId: action.packageId, partnerId: partner.id, weekOf: action.weekOf, count: action.count, on: state.today }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, crewCounts: [count, ...(p.crewCounts ?? [])] })),
+        'trade',
+        crewCountLogWords(project, partner, count),
       )
     }
   }

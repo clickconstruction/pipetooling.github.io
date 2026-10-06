@@ -1020,6 +1020,32 @@ G-140, built by Helper 4 from `to-dos/gc-mode/mockups/G-140.md`, on the owner's 
 Left out, as planned: pay-when-paid, a statement-of-work term the data does not carry. Retainage
 growth on both sides stays *no day yet* at today's amounts. Our own crew's cost is payroll's.
 
+## Later, a trade's own crew count, as built (2026-10-06)
+
+G-142, built by Helper 4 from `to-dos/gc-mode/mockups/G-142.md`, the *C* set aside on G-118's
+list. The kernel is `gcCrewCounts.ts`, tested, out of the barrel. The portal line is
+`GcPortalCrewCount.tsx`.
+
+- **The trade's side.** Under each coming week of *Your next three weeks* with its work, a line per
+  trade: *People a day on site* with *Tell Click*. That covers this week and the next two. Last
+  week's block takes none, because the log has that week. After sending it reads *You said 4 a
+  day.* or *You said nobody.*, with *Change it*. The count is a whole number from 0 to 50, one per
+  trade the way the daily log counts people. A company with two trades on a job names each. In
+  Spanish too.
+- **One record and one action.** `GcProject.crewCounts`, newest first: the newest for a trade and
+  week counts, and the ones before say when it was cut. The action is `tradeSetCrewCount`.
+  `crewCountsNow(project)` is the stable read for G-84's people-per-week strip.
+- **The morning list (G-118)** reads the trade's word beside the log's:
+  - before the log, *They said 4 a day this week. Last on the log Thu Oct 1 with 4.*
+  - a short crew, *On today's log with 2 of the 4 they said.*, in amber;
+  - missing, *Not on today's log. They said 4 a day this week.*, in red and first, as before;
+  - a cut, *They said 3 a day this week, down from 4 on Fri Oct 2.*
+  With no count, every line is G-118's own, so nothing it pins moved.
+
+Left out, by the lead's word: a portal-home to-do asking for next week's count, which would fire
+on the made-up data today and move the pinned portal to-dos; and the office typing a count from a
+call.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)
