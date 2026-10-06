@@ -708,6 +708,38 @@ What the second look changed:
 - **Left out on purpose**: a Follow up call from a row (the sheet belongs to the page; G-115's call
   list is its home) and a one-press move with the log's reason (the log gives a reason, not a day).
 
+## Phase 4, the superintendent's morning list, as built (2026-10-06)
+
+G-118, by Helper 5 (the mock-up and plan: `mockups/G-118.md`). `gcMorningList.ts` (tested, out of
+the barrel), `GcMorningList.tsx` on the Daily log tab, and the chart's holds moved unchanged into
+`gcChartHolds.ts` (its own commit first, a test pinning Fair Oaks D's holds and the Held count of 6).
+
+- **The chart read for one day**, above the log on the Daily log tab: *Who should be on site · Fri
+  Oct 2*, "5 companies on 6 activities, and an inspection." Each company with work running that
+  day (G-60's `runsOn`) in the job's trade order: its name, which opens its window, its contact's
+  first name and phone as a call link, and the log's line, "Last on the log Thu Oct 1 with 3."
+  Under it each bar: the activity, where the day sits in it (*day 12 of 19*, *last day*, *6 days
+  past its finish*), its percent, and the chart's pill on today's list, then its hold ("waits on
+  …", G-77's papers too) and an open G-117 notice ("says it will finish Wed Oct 28").
+- **The count is the log's.** No trade reports a crew count, so it is the log's last count before
+  the day, said as the log's. The day's own log answers "On the log for Thu Oct 1 with 3" in green,
+  or "Not on the log for Thu Oct 1. Last on it Tue Sep 29 with 5." in red, and that company goes
+  first: the call to make.
+- **Also on it**: the day's inspections, with an earlier failure ("It is seen again today. It failed
+  Mon Sep 28: … That was Pecan Valley Electric's work."); deliveries, the utility and permits
+  expected that day ("The transformer, from CPS Energy."); and a company whose every bar that day is
+  held, under *Held, not expected*, with why.
+- **The day is the tab's.** The This week cards and the caught-up days pick it, and the header's
+  *‹ Thu* and *Sat ›* step it, no earlier than work started and no later than today. A day's list
+  sits over that day's log.
+
+What the second look changed:
+
+- **The chart's pill only on today's list.** It is the chart's standing now; on yesterday's list
+  "due today" would mean today, so a past day shows the log's answer instead.
+- **Left out on purpose**: *Here* ticks that write today's log as crews arrive (a new habit for the
+  log, the owner's call) and the trade's own crew count from its portal (a new bilingual answer).
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

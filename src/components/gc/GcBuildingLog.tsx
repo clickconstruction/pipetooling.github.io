@@ -18,6 +18,7 @@ import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input } from './gcUi'
 import { GcWeeklyReportCard } from './GcBuildingWeekly'
 import { GcLogVsChart } from './GcLogVsChart'
+import { GcMorningList } from './GcMorningList'
 import { logChartGaps } from '../../lib/gcMode/gcLogVsChart'
 
 /**
@@ -90,6 +91,17 @@ export function GcBuildingLogTab({ state, project, dispatch }: GcPaneProps) {
               </div>
             </Card>
           )}
+
+          {/* The superintendent's morning list (G-118): the chart read for the tab's day, over that day's log. */}
+          <GcMorningList
+            state={state}
+            project={project}
+            day={day}
+            onDay={(d) => {
+              setDay(d)
+              setEditing(false)
+            }}
+          />
 
           {log && !editing ? (
             <LogCard state={state} project={project} log={log} title={day === today ? "Today's log" : `The log for ${weekdayDate(day)}`} onChange={() => setEditing(true)} />
