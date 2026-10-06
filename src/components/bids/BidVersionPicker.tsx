@@ -35,7 +35,7 @@ type BidVersionPickerProps = {
   /** Per-bid pricing resolve (v2.2367): 'skeleton' shimmers placeholder chips while versions
       load, 'error' says the load failed — both instead of asserting "one packet" too early. */
   resolvePanel?: 'skeleton' | 'error' | 'content'
-  /** Package map (v2.2374): renders the 🗺 Map button at the strip's end when provided. */
+  /** Package map (v2.2374): renders the Versions button (v2.4692, was 🗺 Map) at the strip's end when provided. */
   onOpenMap?: () => void
 }
 
@@ -584,10 +584,10 @@ export function BidVersionPicker({
           <button
             type="button"
             onClick={onOpenMap}
-            title="Map — every GC, version, and price on this bid, with values, in one tree"
+            title="Versions — every GC, version, and price on this bid, with values, in one tree"
             style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', padding: '0.28rem 0.75rem', background: 'var(--surface)', color: 'var(--text-blue-500)', border: '1px solid #3b82f6', borderRadius: 999, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap' }}
           >
-            <span aria-hidden>🗺</span> Map
+            Versions
           </button>
         ) : null}
       </div>

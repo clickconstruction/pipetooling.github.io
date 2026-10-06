@@ -49,6 +49,7 @@ describe('staleAsk (2026-10-03): a queued ask that nobody is coming for', () => 
   it('no robot on shift: the line says the day it was asked, that nobody is coming, and what to do by hand', () => {
     // BP375: asked four days ago, no seat used in twelve.
     expect(staleAsk('read_schedule', ago(4 * 86_400_000), gone, now, day)).toEqual({
+      daysWaited: 4,
       head: 'You asked the robot on Sep 25. No robot has run in 12 days.',
       detail: 'Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.',
       suffix: 'asked Sep 25 · no robot has run in 12 days',
@@ -59,6 +60,12 @@ describe('staleAsk (2026-10-03): a queued ask that nobody is coming for', () => 
 
   it('a robot is awake but has not taken it in a day: it says that, not how lately one ran', () => {
     expect(staleAsk('read_schedule', ago(2 * 86_400_000), live, now, day)).toMatchObject({ head: 'You asked the robot on Sep 27. A robot was working 12 min ago. It has not picked this up.', suffix: 'asked Sep 27 · not picked up yet' })
+  })
+
+  it('v2.4690 · a week on, the ask is old: the line counts the days and says nobody came, whether or not a robot is awake', () => {
+    expect(staleAsk('read_schedule', ago(8 * 86_400_000), live, now, day)).toEqual({ daysWaited: 8, head: 'You asked the robot 8 days ago. Nobody has picked it up.', detail: 'Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.', suffix: 'asked 8 days ago · nobody picked it up' })
+    expect(staleAsk('file_cut_sheets', ago(7 * 86_400_000), gone, now, day)?.suffix).toBe('asked 7 days ago · nobody picked it up')
+    expect(staleAsk('read_schedule', ago(6 * 86_400_000), live, now, day)?.daysWaited).toBe(6)
   })
 
   it('reads in plain words', () => {

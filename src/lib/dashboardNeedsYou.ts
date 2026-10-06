@@ -94,6 +94,7 @@ export type NeedsYouItem = {
     | 'lien-notice-approve'
     | 'lien-notice-batch'
     | 'lien-file-window'
+    | 'owner-records-signed'
     | 'd22-uncoded'
     | 'hours-approvals'
     | 'typed-hours'
@@ -176,6 +177,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lien-notice-approve': 40,
   'lien-notice-batch': 40,
   'lien-file-window': 40,
+  // An owner signed for our records on their portal and is waiting on us for the packet (punch list #86).
+  'owner-records-signed': 20,
   'team-reviews': 50,
   'statement-round': 30,
   'roadmap-needs-person': 50,
@@ -422,6 +425,12 @@ export type NeedsYouInputs = {
   lienDesk?: LienDeskNeedsYou | null
   /** The viewer approves (master / dev) — shows the approvals card. */
   lienDeskLeader?: boolean
+  /**
+   * Owners who signed for our records on their portal and wait for the packet (punch list #86,
+   * `ownerRecordsSignedWaiting`). The office set; null while loading or when none wait.
+   */
+  ownerRecordsSignedEnabled?: boolean
+  ownerRecordsSigned?: import('./jobs/ownerRecords').OwnerRecordsSigned | null
   lienWatchEnabled: boolean
   lienWatch: {
     noticeDue: { deadline: string; openBalance: number }[]
@@ -602,6 +611,25 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${sends} certified ${sends === 1 ? 'send has' : 'sends have'} no number on record. The number is what the affidavit leans on to swear the notice went out — type it on the notice's Sent row on the Lien desk, or in the job's Lien window (“add the number”).`,
       figure: String(n),
       actionLabel: 'Open the Lien desk',
+    })
+  }
+
+  // Records for an owner (punch list #86): the owner did their part on the portal; the packet is ours to send.
+  if (inputs.ownerRecordsSignedEnabled && inputs.ownerRecordsSigned && inputs.ownerRecordsSigned.count > 0) {
+    const { count, first } = inputs.ownerRecordsSigned
+    const where = first.address || 'their property'
+    const waited = -(daysUntilYmd(first.signedOn) ?? 0)
+    const since = waited >= 1 ? ` They have waited ${waited} day${waited === 1 ? '' : 's'}.` : ''
+    items.push({
+      key: 'owner-records-signed',
+      severity: 'amber',
+      kicker: 'Records for an owner',
+      title: count === 1 ? `${first.name} signed for the records on ${where}` : `${count} owners signed for their records on their portal`,
+      detail:
+        `${count === 1 ? '' : `The first is ${first.name}, on ${where}. `}Signed on their portal ${monthDayLabel(first.signedOn)}.${since} ` +
+        'Finish the checks in the window, then press Record it as sent and pick On their portal. Their Download opens when you do.',
+      figure: String(count),
+      actionLabel: count === 1 ? 'Open their request' : 'Open the first',
     })
   }
 

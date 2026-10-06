@@ -22,6 +22,8 @@ export type StagesDeepLinkDoors = {
   lienDesk: (link: StagesLienDeskLink) => void
   /** `?lienwindow=<job id>`: that job's Lien window on a tab. */
   lienWindow: (link: StagesLienWindowLink) => void
+  /** `?ownerrecords=<job id>` (punch list #86): the Lien desk with Records for an owner on that job's property. */
+  ownerRecords: (jobId: string) => void
   /** `?round=1` (v2.2771): GC Review straight into the round overlay. */
   round: (gcId: string | null) => void
   /** `?chase=1` (v2.2025): payment follow-up call mode. */
@@ -33,7 +35,7 @@ export type StagesDeepLinkDoors = {
 type ModalDoorKey = Exclude<StagesDeepLinkKey, 'rtb'>
 
 /** The order the tab's seven effects ran in — kept, since each strips its own params from the same pre-strip URL. */
-const MODAL_DOORS: readonly ModalDoorKey[] = ['followups', 'gcReview', 'gcNotice', 'lienDesk', 'lienWindow', 'round', 'chase', 'forecast']
+const MODAL_DOORS: readonly ModalDoorKey[] = ['followups', 'gcReview', 'gcNotice', 'lienDesk', 'lienWindow', 'ownerRecords', 'round', 'chase', 'forecast']
 
 /** Opens the door when its link is present; false when it is not. */
 function openDoor(key: ModalDoorKey, links: StagesDeepLinks, doors: StagesDeepLinkDoors): boolean {
@@ -57,6 +59,10 @@ function openDoor(key: ModalDoorKey, links: StagesDeepLinks, doors: StagesDeepLi
     case 'lienWindow':
       if (!links.lienWindow) return false
       doors.lienWindow(links.lienWindow)
+      return true
+    case 'ownerRecords':
+      if (!links.ownerRecordsJobId) return false
+      doors.ownerRecords(links.ownerRecordsJobId)
       return true
     case 'round':
       if (!links.round) return false

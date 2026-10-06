@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { describeLeadTime } from '../../lib/submittals/leadTime'
 
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -44,6 +45,7 @@ export function useSupplyHouseEditor({
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [monthlyPaymentDay, setMonthlyPaymentDay] = useState('')
+  const [defaultLeadTime, setDefaultLeadTime] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -60,6 +62,7 @@ export function useSupplyHouseEditor({
     setWebsiteUrl(house?.website_url ?? '')
     setNotes(house?.notes ?? '')
     setMonthlyPaymentDay(house?.monthly_payment_day != null ? String(house.monthly_payment_day) : '')
+    setDefaultLeadTime(house?.default_lead_time_days != null ? describeLeadTime(house.default_lead_time_days) ?? '' : '')
     setError(null)
     setOpen(true)
   }
@@ -72,6 +75,7 @@ export function useSupplyHouseEditor({
       case 'website_url': setWebsiteUrl(value); break
       case 'notes': setNotes(value); break
       case 'monthly_payment_day': setMonthlyPaymentDay(value); break
+      case 'default_lead_time_days': setDefaultLeadTime(value); break
     }
   }
 
@@ -90,6 +94,8 @@ export function useSupplyHouseEditor({
       notes: data.notes.trim() || null,
       monthly_payment_day: data.monthly_payment_day,
       vendor_kind: data.vendor_kind,
+      // v2.4685: sent only when it changed, so an untouched save keeps working before the column is pushed.
+      ...(data.default_lead_time_days !== (editing?.default_lead_time_days ?? null) ? { default_lead_time_days: data.default_lead_time_days } : {}),
       // v2.3423: sent only when it changed, so an untouched save keeps working before the column is pushed.
       ...(data.job_accounts !== jobAccountPolicyOf(editing ?? {}) ? { job_accounts: data.job_accounts } : {}),
     }
@@ -168,6 +174,7 @@ export function useSupplyHouseEditor({
       websiteUrl={websiteUrl}
       notes={notes}
       monthlyPaymentDay={monthlyPaymentDay}
+      defaultLeadTime={defaultLeadTime}
       onChange={handleChange}
       onSubmit={handleSubmit}
       onClose={close}
