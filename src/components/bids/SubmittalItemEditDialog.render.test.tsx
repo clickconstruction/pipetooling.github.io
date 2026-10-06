@@ -119,6 +119,22 @@ describe('SubmittalItemEditDialog · parts, each bought on its own (2026-10-01)'
   const parts = [part('tsl', 'TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES', 1), part('faucet', 'TOTO T25S51E#CP', 2), part('stop', 'BRASSCRA PLB113XP ANG', 3, { on_submittal: false })]
   const houses = [{ id: 'h-moore', name: 'Moore Supply' }, { id: 'h-nws', name: 'National Wholesale' }]
 
+  it('v2.4685 · a part with no lead time on a house with a usual one shows the usual as its placeholder and is not owed; a house with none still asks; a typed number wins', () => {
+    const usual = [{ id: 'h-moore', name: 'Moore Supply', default_lead_time_days: null }, { id: 'h-nws', name: 'National Wholesale', default_lead_time_days: 21 }]
+    renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={[part('tsl', 'TSL.MON.B.38.2.PS1.BK', 1, { supply_house_id: 'h-nws' }), part('faucet', 'TOTO T25S51E#CP', 2, { supply_house_id: 'h-moore' })]} houses={usual} sourceFiles={[]} canEditProduct onSave={() => {}} onClose={() => {}} />)
+    const box1 = screen.getByLabelText('Lead time for part 1') as HTMLInputElement
+    const box2 = screen.getByLabelText('Lead time for part 2') as HTMLInputElement
+    expect(box1.placeholder).toBe("3 wk · National Wholesale's usual")
+    expect(box1.getAttribute('data-owed')).toBeNull()
+    expect(box2.placeholder).toBe('add')
+    expect(box2.getAttribute('data-owed')).toBe('true')
+    // Moving part 2 to the house with a usual covers it too; typing a number on part 1 keeps the number.
+    fireEvent.change(screen.getByLabelText('House for part 2'), { target: { value: 'h-nws' } })
+    expect((screen.getByLabelText('Lead time for part 2') as HTMLInputElement).getAttribute('data-owed')).toBeNull()
+    fireEvent.change(box1, { target: { value: '6 wk' } })
+    expect((screen.getByLabelText('Lead time for part 1') as HTMLInputElement).value).toBe('6 wk')
+  })
+
   it('on a draft: every part is listed, a house, a lead time and a stage go on a part, one is switched to order only, one is typed in; Save hands back the parts', () => {
     const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
     renderWithProviders(<SubmittalItemEditDialog item={item({ tag: 'LAV-1', status: 'proposed' })} parts={parts} houses={houses} sourceFiles={[]} canEditProduct onSave={onSave} onClose={() => {}} />)

@@ -20403,6 +20403,7 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string | null
+          default_lead_time_days: number | null
           id: string
           job_accounts: string
           monthly_payment_day: number | null
@@ -20416,6 +20417,7 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string | null
+          default_lead_time_days?: number | null
           id?: string
           job_accounts?: string
           monthly_payment_day?: number | null
@@ -20429,6 +20431,7 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string | null
+          default_lead_time_days?: number | null
           id?: string
           job_accounts?: string
           monthly_payment_day?: number | null

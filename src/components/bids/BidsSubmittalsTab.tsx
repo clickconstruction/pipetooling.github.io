@@ -250,13 +250,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [tourStage, setTourStage] = useState<number | null>(null)
   const [statusLegendOpen, setStatusLegendOpen] = useState(false)
   // v2.4248 · the supply houses: the row editor's picker, and the name under each row's product. One read; a failed read hides both.
-  const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
+  const [houses, setHouses] = useState<Array<{ id: string; name: string; default_lead_time_days: number | null }>>([])
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses')
-        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string }>).filter((h) => h.name?.trim()))
+        // v2.4685 · with the house's usual lead time; until the column is pushed, the names alone.
+        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name, default_lead_time_days').order('name'), 'load supply houses').catch(() => withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses'))
+        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>).filter((h) => h.name?.trim()).map((h) => ({ id: h.id, name: h.name, default_lead_time_days: h.default_lead_time_days ?? null })))
       } catch {
         if (!cancelled) setHouses([])
       }

@@ -44,7 +44,7 @@ export function SubmittalPartsEditor({
   onChange: (next: PartDraft[]) => void
   leadTexts: PartLeadTexts
   onLeadTexts: (next: PartLeadTexts) => void
-  houses: ReadonlyArray<{ id: string; name: string }>
+  houses: ReadonlyArray<{ id: string; name: string; /** v2.4685 · the house's usual lead time, the empty box's placeholder */ default_lead_time_days?: number | null }>
   /** A draft: parts can be renamed, switched, moved, taken off and added. */
   canEditProduct: boolean
   /** The part a Procure line opened the editor on (2026-10-02): ringed, scrolled to, its house box focused. */
@@ -115,7 +115,10 @@ export function SubmittalPartsEditor({
             const n = i + 1
             const leadText = leadTexts[i] ?? (d.lead_time_days != null ? describeLeadTime(d.lead_time_days) ?? '' : '')
             const leadBad = leadText.trim() !== '' && parseLeadTime(leadText) == null
-            const leadOwed = leadText.trim() === ''
+            // v2.4685 · a house's usual lead time covers an empty box: the log reads it, so nothing is owed.
+            const usualHouse = d.supply_house_id ? houses.find((h) => h.id === d.supply_house_id) : undefined
+            const usual = usualHouse?.default_lead_time_days != null ? describeLeadTime(usualHouse.default_lead_time_days) : null
+            const leadOwed = leadText.trim() === '' && !usual
             const focused = focusId != null && d.id === focusId
             const pick = partPickOf(d)
             const shown: PartPick = fixtureOrderOnly && pick === 'gc' ? 'order' : pick
@@ -181,8 +184,8 @@ export function SubmittalPartsEditor({
                     <input
                       type="text"
                       aria-label={`Lead time for part ${n}`}
-                      title="How long the house takes, like 3 wk or 10 days"
-                      placeholder="add"
+                      title={usual ? `${usual} is ${usualHouse!.name}'s usual. Type a number to use another.` : 'How long the house takes, like 3 wk or 10 days'}
+                      placeholder={usual ? `${usual} · ${usualHouse!.name}'s usual` : 'add'}
                       data-owed={leadOwed ? 'true' : undefined}
                       value={leadText}
                       onChange={(e) => {
