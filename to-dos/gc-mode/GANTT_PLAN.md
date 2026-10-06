@@ -686,9 +686,11 @@ owner's call: on a press, never by itself, so no report or finish ever pulls any
   (`RIGHT_BEHIND_DAYS`) plus any gap on the wait. Each comes in by the days given back and never
   more, then what is right behind those. Never before tomorrow (`PULL_SOONEST_DAYS`), its *Not
   before* day, or the day after an open delivery, decision, permit or utility on it is expected.
-- **What keeps its dates, and says why**: work started or done; work held by a submittal, an RFI or
-  a late wait; an inspection the city sees again; work drawn with more room; work still waiting on
-  something else; and anything the office unticks.
+- **What keeps its dates, and says why**: work started or done; work held by a submittal, an RFI, a
+  late wait or its trade's papers (G-77, "It waits on current insurance and submittal 28 31 11-01");
+  a trade's own word that it starts later, its late notice (G-117) or another day it asked for
+  (G-113), until the office answers it; an inspection the city sees again; work drawn with more
+  room; work still waiting on something else; and anything the office unticks.
 - **One offer per job.** On Fair Oaks D neither Ductwork nor Top out alone moves the rough-in
   inspection, which waits on both. Finished early together, they bring it in 7 days.
 - **The press**, *Pull the work earlier*: what finished early, each activity that comes in with a
@@ -706,7 +708,7 @@ owner's call: on a press, never by itself, so no report or finish ever pulls any
   inspection was pulled earlier with them." The customer reads "Rough-in is 7 days sooner than
   planned. The finish holds." Days lost has its own line, *Finished early*, with days back, never
   netted against a trade's door (the lead's call).
-- Tests: `gcPullEarlier.test.ts` (28) and `GcPullEarlier.render.test.tsx` (7). The golden test did
+- Tests: `gcPullEarlier.test.ts` (30) and `GcPullEarlier.render.test.tsx` (7). The golden test did
   not move: no fixture change and no new step.
 
 What the second look changed:

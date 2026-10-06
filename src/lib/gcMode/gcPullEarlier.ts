@@ -16,6 +16,9 @@ import { daysBetween, lagOf, scheduleItems, type ScheduleItem } from './gcBuildi
 import { rfiRows } from './gcBuildingRfis'
 import { submittalHolding, submittalState } from './gcBuildingSubmittals'
 import { moveActivityName, scheduleFinish } from './gcScheduleMoves'
+import { notReadyBars, notReadyWords } from './gcNotReady'
+import { openLateNotices } from './gcLateNotices'
+import { datesAsksOpen } from './gcTellTrades'
 import { waitRows } from './gcScheduleWaits'
 import { weekdayDate } from './gcWords'
 
@@ -149,10 +152,16 @@ export function finishedOn(a: ScheduleActivity, actual: number, today: string): 
 
 const SUBMITTAL_WITH: Record<ReturnType<typeof submittalState>, string> = { trade: 'with the trade', us: 'with us', architect: 'with the architect', approved: 'approved' }
 
+/** "a, b and c" */
+function andList(words: string[]): string {
+  return words.length <= 1 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
 /**
  * What holds each line, in words for a sentence: an open RFI, a submittal not approved, a delivery,
- * a decision, a permit or the utility that is late. The same three the Schedule tab's chart reads,
- * worked out here so the reducer reads them too.
+ * a decision, a permit or the utility that is late, and a trade not ready to start (G-77). The same
+ * holds the Schedule tab's chart reads (`holdsOf`, then `withNotReady`), worked out here so the
+ * reducer reads them too.
  */
 export function pullHolds(state: GcState, project: GcProject): Map<string, string> {
   const holds = new Map<string, string>()
@@ -168,6 +177,11 @@ export function pullHolds(state: GcState, project: GcProject): Map<string, strin
   for (const r of waitRows(state, project)) {
     if (r.state === 'done' || !r.late) continue
     for (const h of r.holds) if (!holds.has(h.lineId)) holds.set(h.lineId, `${r.wait.title}, expected ${weekdayDate(r.wait.expectedOn)}`)
+  }
+  // A trade not ready to start (G-77): its papers first, then anything else that holds the line, the way the chart says it.
+  for (const bar of notReadyBars(state, project)) {
+    const had = holds.get(bar.lineId)
+    holds.set(bar.lineId, had ? andList([...bar.gaps.map((g) => g.noun), had]) : notReadyWords(bar.gaps))
   }
   return holds
 }
@@ -209,6 +223,10 @@ export function planPull(state: GcState, project: GcProject, leaveOut: string[] 
   const span = new Map<string, PullSpan>(finished.map((f) => [f.lineId, f.to]))
   const finishOf = (id: string) => span.get(id)?.finish ?? byId.get(id)?.finish ?? today
   const holds = pullHolds(state, project)
+  // A trade's own word that it starts later stands until the office answers it: a late notice from its portal (G-117), or another day asked for (G-113).
+  const said = new Map<string, string>()
+  for (const n of openLateNotices(project)) if (!n.started) said.set(n.lineId, n.day)
+  for (const ask of datesAsksOpen(state, project)) if (ask.day && !said.has(ask.move.lineId)) said.set(ask.move.lineId, ask.day)
   const soonest = addDays(today, PULL_SOONEST_DAYS)
   const pulls: PullLine[] = []
   const stays: PullStay[] = []
@@ -258,6 +276,12 @@ export function planPull(state: GcState, project: GcProject, leaveOut: string[] 
     const hold = holds.get(a.lineId)
     if (hold) {
       say((s) => `${s} waits on ${hold}.`, true)
+      continue
+    }
+    const word = said.get(a.lineId)
+    if (word) {
+      const company = item?.company ?? 'Its trade'
+      say((s) => `${company} said ${s === 'It' ? 'it' : s} can start ${weekdayDate(word)}.`, true)
       continue
     }
     const fails = a.inspection && !a.inspection.passedOn ? (a.inspection.failed ?? []) : []

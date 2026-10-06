@@ -197,6 +197,30 @@ describe('Fair Oaks D', () => {
     expect(datesMessage(job(after), told0.partner, told0, 'en').lines).toContain('Why: finished early: TPO membrane finished Fri Oct 2, 7 days early.')
   })
 
+  it('a trade not ready to start stays, and the line names its papers (G-77)', () => {
+    // Fire alarm drawn right behind Lighting, which Pecan Valley finished today, 21 days early. Pecan Valley's insurance ran out Sep 15.
+    const s = play(
+      initialGcState(),
+      { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId: 'felec-4', start: '2026-10-24', finish: '2026-11-11', after: ['felec-3', INSP], why: { reason: 'us', note: 'Fire alarm goes right after the lighting.', by: 'Robert' } },
+      { type: 'setActualDates', projectId: 'fairoaksd', lineId: 'felec-3', actualStart: '2026-09-14', by: 'Robert' },
+      { type: 'setActualDates', projectId: 'fairoaksd', lineId: 'felec-3', actualFinish: '2026-10-02', by: 'Robert' },
+    )
+    const o = offerOf(s)!
+    expect(o.finished.map((f) => [f.lineId, f.early])).toEqual([['felec-3', 21]])
+    const fire = o.stays.find((x) => x.lineId === 'felec-4')!
+    expect(fire.held).toBe(true)
+    expect(fire.why).toMatch(/^It waits on current insurance and submittal 28 31 11-01, which is with /)
+    expect(o.show).toBe('chase')
+  })
+
+  it("a trade's own word that it starts later stands: a late notice from its portal (G-117)", () => {
+    const s = play(initialGcState(), ...FLASHING_APPROVED, { type: 'tradeSayLate', projectId: 'fairoaksd', partnerId: 'summit', lineId: 'froof-3', day: '2026-10-14', reason: 'materials', note: 'The coping metal ships late.' }, TPO_DONE)
+    const o = offerOf(s)!
+    expect(o.pulls).toEqual([])
+    expect(o.stays.find((x) => x.lineId === 'froof-3')).toMatchObject({ why: 'Summit Roofing said it can start Wed Oct 14.', said: 'Summit Roofing said Sheet metal and flashing can start Wed Oct 14.', held: true })
+    expect(o.show).toBe('chase')
+  })
+
   it('a pulled inspection or our own crew is nobody to tell', () => {
     const after = pull(play(initialGcState(), DUCTWORK_DONE, TOP_OUT_DONE), 'Both rough-ins finished today.')
     expect(companiesToTell(after, job(after), [job(after).schedule!.moves![0]!])).toEqual([])
@@ -353,6 +377,7 @@ describe('plain words', () => {
       offerOf(play(initialGcState(), DUCTWORK_DONE, TOP_OUT_DONE)),
       offerOf(play(initialGcState(), TPO_DONE, ...FLASHING_APPROVED)),
       offerOf(play(initialGcState(), TPO_DONE, ...FLASHING_APPROVED), ['froof-3']),
+      offerOf(play(initialGcState(), ...FLASHING_APPROVED, { type: 'tradeSayLate', projectId: 'fairoaksd', partnerId: 'summit', lineId: 'froof-3', day: '2026-10-14', reason: 'materials', note: 'The coping metal ships late.' }, TPO_DONE)),
       offerOf(small([own('a', '2026-09-20', '2026-10-09', [], { added: { label: 'A', who: 'Our own crew', doneOn: '2026-09-28' } }), own('b', '2026-10-10', '2026-10-12', ['a'])])),
     ]
     const failures = offers.flatMap((o) => (o ? sentences(o) : ['no offer'])).flatMap((t) => plainWordsFailures(t))
