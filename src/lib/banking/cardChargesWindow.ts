@@ -52,8 +52,10 @@ export type CardChargeWindowRow = {
    * When the card was used: Mercury's createdAt, often hours before postedAt (when the charge
    * settled) and on another company day for many charges. Not the row's insert time. null when
    * Mercury sent none or it is not a valid timestamp. Spending and Review key on postedAt.
+   * Optional so rows built by hand (other PRs' test fixtures) compile in any merge order; the
+   * mapper always sets it, and a reader takes `purchasedAt ?? postedAt`.
    */
-  purchasedAt: string | null
+  purchasedAt?: string | null
   amount: number
   counterpartyName: string | null
   kind: string
