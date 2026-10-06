@@ -689,6 +689,30 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
   }
 }
 
+/**
+ * The path as the law firm reads it (punch list #85, item 3). The desk's words name the office's
+ * own screens (*Collections*, *the Legal desk*) and call the office *us*; the firm's page says
+ * *the office*, calls counsel *you*, and names no screen. Keyed off the same `kind`, so the
+ * desk's sentences stay as they are.
+ */
+export function lienFirmMoveWords(move: LienTimelineMove): string {
+  if (move === 'ours') return 'the office'
+  if (move === 'counsel') return 'you'
+  return lienMoveWords(move)
+}
+
+/** Next on the path in the firm's words: a lien that is gone reads as the fact, with no office chore beside it. */
+export function lienFirmNext(next: Pick<LienTimelineNext, 'kind' | 'words' | 'aside'>): { words: string; aside: string } {
+  if (next.kind === 'lien_gone') return { words: 'The lien window closed with nothing filed. The lien is gone; the money is still owed.', aside: 'The office referred the account to you.' }
+  return { words: next.words, aside: next.aside }
+}
+
+/** The *Waiting on* line in the firm's words; null when there is none, or when the lien is gone (the Next line already says the money is still owed). */
+export function lienFirmWaitingOn(t: Pick<LienTimeline, 'waitingOn' | 'next'>): { who: string; words: string } | null {
+  if (!t.waitingOn || t.next.kind === 'lien_gone') return null
+  return { who: lienFirmMoveWords(t.waitingOn.who), words: t.waitingOn.words }
+}
+
 /** The one-line form for a sticky strip or a list row: `Next on the path · Approve the Aug notice — 22 days`. */
 export function lienTimelineNextLine(t: LienTimeline): string {
   return t.next.words

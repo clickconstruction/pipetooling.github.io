@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, keepDatesWhole } from '../../lib/jobs/lienTimeline'
+import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
 
@@ -173,10 +173,10 @@ function FoldTray({ s, todayYmd }: { s: LienTimelineStep; todayYmd: string }) {
 }
 
 /** The pill's word and tint per move: ours reads in the link blue, the GC in violet, the owner in amber, the county and counsel in quiet grey. */
-function moveLook(move: LienTimelineMove): { word: string; color: string; background: string; border: string } {
+function moveLook(move: LienTimelineMove, voice: LienTimelineVoice = 'office'): { word: string; color: string; background: string; border: string } {
   switch (move) {
     case 'ours':
-      return { word: 'ours', color: 'var(--text-link)', background: 'var(--bg-blue-tint)', border: 'transparent' }
+      return { word: voice === 'firm' ? 'the office' : 'ours', color: 'var(--text-link)', background: 'var(--bg-blue-tint)', border: 'transparent' }
     case 'gc':
       return { word: 'the GC', color: 'var(--text-violet-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
     case 'owner':
@@ -184,12 +184,12 @@ function moveLook(move: LienTimelineMove): { word: string; color: string; backgr
     case 'county':
       return { word: 'county', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
     default:
-      return { word: 'counsel', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
+      return { word: voice === 'firm' ? 'you' : 'counsel', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
   }
 }
 
-function MovePill({ move, style }: { move: LienTimelineMove; style?: CSSProperties }) {
-  const l = moveLook(move)
+function MovePill({ move, voice, style }: { move: LienTimelineMove; voice?: LienTimelineVoice; style?: CSSProperties }) {
+  const l = moveLook(move, voice)
   return (
     <span data-lien-timeline-move={move} style={{ display: 'inline-block', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 5px', borderRadius: 999, lineHeight: '14px', whiteSpace: 'nowrap', color: l.color, background: l.background, border: `1px solid ${l.border}`, ...style }}>
       {l.word}
@@ -197,8 +197,13 @@ function MovePill({ move, style }: { move: LienTimelineMove; style?: CSSProperti
   )
 }
 
+/** Whose words the strip speaks (punch list #85, item 3): the office's own, or the law firm's on its portal (`lienFirmNext`). */
+export type LienTimelineVoice = 'office' | 'firm'
+
 export type LienTimelineStripProps = {
   timeline: LienTimeline
+  /** `firm` on the law firm's page: *the office* for *us*, *you* for counsel, no office screen named. */
+  voice?: LienTimelineVoice
   layout?: LienTimelineLayout
   /** A dashed step's door — `contract_end` opens Edit Job on the contract row; the desk passes it only once the job carries that field (v2.3753). */
   onDoor?: (door: NonNullable<LienTimelineStep['door']>) => void
@@ -209,8 +214,10 @@ export type LienTimelineStripProps = {
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, style }: LienTimelineStripProps) {
-  const { steps, next, todayIndex, kindUnknown } = timeline
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, style }: LienTimelineStripProps) {
+  const { steps, todayIndex, kindUnknown } = timeline
+  const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
+  const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
   const rememberedView = useLienTimelineView()
   const n = Math.max(1, steps.length)
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -244,11 +251,11 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
   const layout: Exclude<LienTimelineLayout, 'auto'> = layoutProp === 'auto' ? (narrow ? 'list' : 'row') : layoutProp
   const view: LienTimelineView = layout === 'mini' ? 'steps' : viewProp ?? rememberedView
   const switchRow = layout === 'mini' || viewProp ? null : <ViewSwitch view={view} />
-  const waitLine = withNext && layout !== 'mini' && timeline.waitingOn ? (
+  const waitLine = withNext && layout !== 'mini' && waiting ? (
     <div data-lien-timeline-waiting style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: '0.1rem' }}>
       <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Waiting on</span>
-      <strong style={{ color: 'var(--text-strong)' }}>{lienMoveWords(timeline.waitingOn.who)}</strong>
-      <span style={{ color: 'var(--text-muted)' }}>— {timeline.waitingOn.words}</span>
+      <strong style={{ color: 'var(--text-strong)' }}>{waiting.who}</strong>
+      <span style={{ color: 'var(--text-muted)' }}>— {waiting.words}</span>
     </div>
   ) : null
   const nextLine = withNext ? (
@@ -283,7 +290,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
               {i === todayIndex && i > 0 ? <span style={{ position: 'absolute', right: 0, top: -9, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', background: 'var(--surface)', padding: '0 4px' }}>today</span> : null}
               <Node s={s} size={16} />
               <div style={{ minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.3 }}>
-                {s.move ? <MovePill move={s.move} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
+                {s.move ? <MovePill move={s.move} voice={voice} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{s.label}</span>
                 <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
                 {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{keepDatesWhole(s.opensWords)} ·</span> : null}
@@ -344,7 +351,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
                   ) : null}
                 </span>
               )}
-              {!mini && s.move ? <MovePill move={s.move} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
+              {!mini && s.move ? <MovePill move={s.move} voice={voice} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
             </div>
           ))}
         </div>

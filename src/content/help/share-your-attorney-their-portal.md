@@ -16,15 +16,15 @@ Each account opens as the same five-section packet the Legal desk shows.
 
 ## What the firm sees
 
-- Every matter marked attorney-ready, largest first. A matter is one account in the firm's hands. Each matter shows its stage: new, demand sent, suit filed or judgment.
-- The same five tabs as the desk: ***Account · Paper · Their word · Evidence · Fees & steps***. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
+- Every matter marked attorney-ready, largest first. A matter is one account in the firm's hands. Each matter shows its stage in the firm's words: referred, demand sent, suit filed or judgment entered.
+- The same five tabs as the desk: ***Account · Paper · Record of contact · Evidence · Fees & steps***. The desk's **Their word** tab is **Record of contact** on the portal. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
 - On **Paper**:
   - *Where each job stands* is the job's lien timeline. The timeline is the same rail the Lien desk draws. Every Chapter 53 step is dated from the job's hours and filings. Today is marked. One *Next on the path* line says what comes next.
   - *The paper that went out* lists each envelope once. Each envelope shows the day it went, and whether it went by the run or by hand. Each envelope also shows the method and tracking, and the claim as printed. When one paper covered several jobs, every job's share shows. The months show as printed. A month whose window had already closed shows *as information*. The saved copy is there too.
   - Under each § 53.056 notice, a band carries what the Lien desk recorded since it went out. The band holds the owner's answers to the letter's three questions and the pile counsel named. Counsel means the firm's lawyers. The band says whether the second owner letter is due, sent or turned off. The band also shows any written okay from the GC for the owner to pay Click directly. A second letter lists as its own envelope, named *letter two*.
 - Only the entries you marked **to counsel**. Held entries never leave the office. The portal function applies your decisions before anything is sent.
 - Signed agreements as PDF links. Each link is good for an hour, and a fresh one is made on every open. The exhibits list is there too. Exhibits are the documents attached to the packet. {{button:outline|⎙ Print packet}} prints it. The browser's print-to-PDF is the packet.
-- **Click's particulars for filing**: the facts about us a filing needs. The list covers our legal entity, license, registered agent, custodian of records and affiant. The list also covers the office phone and email, and the W-9 note. A registered agent takes legal papers served on us. The custodian of records keeps our records. The affiant is the person who swears to the facts. Set them once on Settings → Jobs & billing, under the firm.
+- **Particulars for filing**: the facts about us a filing needs. The list covers our legal entity, license, registered agent, custodian of records and affiant. The list also covers the office phone and email, and the W-9 note. A registered agent takes legal papers served on us. The custodian of records keeps our records. The affiant is the person who swears to the facts. Set them once on Settings → Jobs & billing, under the firm.
 
 :::example Pull back and the link
 Pulling an account back on the desk removes it from the portal on the firm's next open. Turning the link off hides everything at once; the matters and their record stay exactly as they were.
@@ -49,4 +49,4 @@ On a matter's **Fees & steps** tab the firm can:
 - **Ask the office**: a question you answer from the desk. The answer shows on their portal.
 - **Answer the office**: your asks sit at the top of their Fees & steps, under *From the office*. A question gets an answer box. A sign-off on one job gets {{button:blue|Signed off}} / {{button:outline|Not yet}} with a note. A sign-off is for a job where the owner wants to pay Click direct while the GC is silent. The firm's answer lands on your Needs You card.
 
-Each act lands on the Dashboard as **"The law firm has N things for you"**, for office roles. The act clears from the desk's Fees & steps tab when you answer, apply or acknowledge it. The firm never marks anything paid, edits a job, or emails the customer through Click.
+After each act, the portal tells the firm what happens next. A step names the matter's new stage. Each act lands on the Dashboard as **"The law firm has N things for you"**, for office roles. The act clears from the desk's Fees & steps tab when you answer, apply or acknowledge it. The firm never marks anything paid, edits a job, or emails the customer through Click.
