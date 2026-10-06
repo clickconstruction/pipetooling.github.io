@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GC mode: ask companies to quote (mock-up)</title>
+<style>
+  :root { --bg:#eef0f3; --surface:#fff; --text:#16181d; --muted:#6b7280; --border:#dfe3e8; --blue:#2f5bea; --blue50:#e8eefc; --blue800:#1e3a8a; --green50:#e3f6e8; --green800:#17603a; --amber50:#fdf1d8; --amber800:#8a5a00; --red50:#fde4e4; --red800:#9b1c1c; --soft:#f7f8fa; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --surface:#1b1e24; --text:#eceef2; --muted:#9aa2af; --border:#30353f; --blue:#5b82ff; --blue50:#1d2a4d; --blue800:#c5d4ff; --green50:#173324; --green800:#9be0b5; --amber50:#3a2d10; --amber800:#f3cf7a; --red50:#3d1a1a; --red800:#f6b1b1; --soft:#20242b; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system, "Inter", "Segoe UI", sans-serif; padding:24px 16px 48px; }
+  h1 { font-size:1.15rem; margin:0 0 4px; } h2 { font-size:0.95rem; margin:28px 0 8px; }
+  p.lead { color:var(--muted); margin:0 0 20px; max-width:62ch; }
+  .frame { max-width:920px; margin:0 auto; }
+  .win { background:var(--surface); border-radius:12px; box-shadow:0 24px 48px rgba(0,0,0,.18); overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .left { padding:18px 18px 0; border-right:1px solid var(--border); display:flex; flex-direction:column; min-width:0; }
+  .right { padding:18px; background:var(--soft); min-width:0; }
+  .title { font-weight:700; font-size:1.05rem; } .sub { color:var(--muted); font-size:.87rem; margin-top:2px; }
+  .facts { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0 14px; }
+  .chip { display:inline-block; padding:2px 9px; border-radius:999px; font-size:.78rem; font-weight:600; background:var(--soft); color:var(--muted); border:1px solid var(--border); }
+  .chip.green { background:var(--green50); color:var(--green800); border-color:transparent; }
+  .chip.amber { background:var(--amber50); color:var(--amber800); border-color:transparent; }
+  .chip.red { background:var(--red50); color:var(--red800); border-color:transparent; }
+  .label { font-size:.72rem; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; margin:6px 0; }
+  .co { display:grid; grid-template-columns:auto minmax(0,1fr); gap:10px; padding:10px; border:1px solid var(--border); border-radius:8px; margin-bottom:8px; cursor:pointer; }
+  .co.on { border-color:var(--blue); background:var(--blue50); }
+  .co b { font-size:.95rem; } .co .who { color:var(--muted); font-size:.83rem; overflow-wrap:anywhere; }
+  .co .row { display:flex; flex-wrap:wrap; gap:5px; margin-top:5px; }
+  .co.off { opacity:.75; }
+  .foot { margin-top:auto; padding:12px 0 16px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .foot .say { color:var(--muted); font-size:.83rem; flex:1 1 12rem; }
+  .btn { border:none; border-radius:8px; padding:8px 14px; font:inherit; font-weight:700; background:var(--blue); color:#fff; }
+  .link { color:var(--blue); font-weight:600; }
+  .mail { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 14px; font-size:.88rem; }
+  .mail .hd { color:var(--muted); font-size:.8rem; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:8px; }
+  .mail .hd b { color:var(--text); font-weight:600; }
+  .mail p { margin:0 0 8px; } .mail ul { margin:0 0 8px; padding-left:18px; }
+  .tabs { display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .tab { padding:3px 10px; border-radius:999px; font-size:.8rem; border:1px solid var(--border); color:var(--muted); background:var(--surface); }
+  .tab.on { background:var(--blue50); color:var(--blue800); border-color:transparent; font-weight:600; }
+  ol.notes { color:var(--muted); max-width:70ch; padding-left:20px; } ol.notes b { color:var(--text); }
+  @media (max-width:700px) { .win { grid-template-columns:1fr; } .left { border-right:none; border-bottom:1px solid var(--border); } }
+</style>
+</head>
+<body>
+<div class="frame">
+  <h1>Ask companies to quote: the window before anything goes out</h1>
+  <p class="lead">Trade partners, <b>Ask the 2 we have not asked</b>. Today one press invites them with no preview. In the real build that press sends email, so it opens this first. Made-up data: Concrete on Boerne Retail Pad B.</p>
+
+  <div class="win" role="img" aria-label="Mock-up of the Ask companies window">
+    <div class="left">
+      <div class="title">Ask for Concrete quotes</div>
+      <div class="sub">Boerne Retail Pad B · 4,200 sq ft drive-through pad building</div>
+      <div class="facts">
+        <span class="chip red">0 of 2 quotes</span>
+        <span class="chip">Quotes wanted Mon Oct 19 · 17 days</span>
+        <span class="chip">Plans: Bid set</span>
+        <span class="chip">5 scope lines</span>
+      </div>
+      <div class="label">Who to ask</div>
+      <div class="co on"><input type="checkbox" checked aria-label="Ask Alamo Concrete" />
+        <div><b>Alamo Concrete</b><div class="who">Hector Luna · hector@alamoconcrete.example</div>
+          <div class="row"><span class="chip green">answers · 6 of 7</span><span class="chip">35 mi</span></div></div></div>
+      <div class="co"><input type="checkbox" checked aria-label="Ask Guadalupe Flatwork" />
+        <div><b>Guadalupe Flatwork</b><div class="who">Ines Barrera · ines@guadalupeflatwork.example</div>
+          <div class="row"><span class="chip green">answers · 3 of 3</span><span class="chip">58 mi</span><span class="chip">Español</span></div></div></div>
+      <div class="label" style="margin-top:8px">Not ticked</div>
+      <div class="co off"><input type="checkbox" aria-label="Ask Hill Country Concrete" />
+        <div><b>Hill Country Concrete</b><div class="who">Luis Ortega · luis@hillcountryconcrete.example</div>
+          <div class="row"><span class="chip amber">82 mi, past their 60</span><span class="chip">not judged yet</span></div></div></div>
+      <div class="foot">
+        <span class="say">2 emails go out, each with the company's own portal link. With both, Concrete has the 2 quotes we want if they answer.</span>
+        <span class="link">Cancel</span>
+        <button class="btn" type="button">Ask 2 companies</button>
+      </div>
+    </div>
+    <div class="right">
+      <div class="label" style="margin-top:0">The email each one gets</div>
+      <div class="tabs"><span class="tab on">Alamo Concrete</span><span class="tab">Guadalupe Flatwork · Español</span></div>
+      <div class="mail">
+        <div class="hd"><div>From <b>Click Construction</b></div><div>To <b>Hector Luna</b> &lt;hector@alamoconcrete.example&gt;</div><div>Subject <b>Click Construction would like your concrete quote for Boerne Retail Pad B</b></div></div>
+        <p>Hello Hector,</p>
+        <p>We would like your concrete quote for Boerne Retail Pad B.</p>
+        <p>118 Commerce Loop, Boerne. 4,200 sq ft drive-through pad building.</p>
+        <p>We want your quote by Monday, Oct 19.</p>
+        <p>The plans are the Bid set, issued Sep 24.</p>
+        <p><b>Your number should cover</b></p>
+        <ul><li>Slab on grade</li><li>Footings and grade beams</li><li>Drive-through lane paving</li><li>Curbs and sidewalks</li><li>Dumpster pad</li></ul>
+        <p><b>It leaves out</b></p>
+        <ul><li>Rebar supply, by the steel supplier</li></ul>
+        <p>Everything is in your portal: clicktooling.com/t/…</p>
+      </div>
+    </div>
+  </div>
+
+  <h2>Is this the best we can do? What the second look changed</h2>
+  <ol class="notes">
+    <li><b>The preview is the real email, not a summary.</b> The first sketch listed "the terms" in a box of its own. The invitation already says the day, the plans and the scope, so the right side shows that email and the box went away.</li>
+    <li><b>One preview, a tab per company.</b> Two full emails stacked would bury the button. A Spanish company's tab shows it in Spanish, as it will go.</li>
+    <li><b>What helps you choose sits on each company</b>: how they answer when asked, the drive, their language. A company not vetted yet says so.</li>
+    <li><b>Too-far companies are offered, not ticked.</b> That folds "Ask anyway" into the same window.</li>
+    <li><b>The foot says what the press does</b>: how many emails, and whether the trade reaches the two quotes we want.</li>
+    <li><b>One way to ask.</b> The "+ Ask on …" chips and the assistants' Ask action open this window too, with that company ticked.</li>
+    <li><b>Left out on purpose</b>: a typed note added to the invitation. It needs a new field on the invitation, which moves the shared model. Worth a yes from the owner first.</li>
+  </ol>
+</div>
+</body>
+</html>

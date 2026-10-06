@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GC mode: a company's address editor (mock-up)</title>
+<style>
+  :root { --bg:#eef0f3; --surface:#fff; --text:#16181d; --muted:#6b7280; --border:#dfe3e8; --strong:#b6bdc8; --blue:#2563eb; --pick:#e8eefc; --green50:#e3f6e8; --green800:#17603a; --amber50:#fdf1d8; --amber800:#8a5a00; --soft:#f7f8fa; --band:#dbeafe; --bandtext:#1e40af; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --surface:#1b1e24; --text:#eceef2; --muted:#9aa2af; --border:#343a45; --strong:#4b5361; --blue:#6f93ff; --pick:#1d2a4d; --green50:#173324; --green800:#9be0b5; --amber50:#3a2d10; --amber800:#f3cf7a; --soft:#20242b; --band:#24407a; --bandtext:#c5d4ff; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 -apple-system,"Inter","Segoe UI",sans-serif; padding:24px 16px 56px; }
+  .frame { max-width:900px; margin:0 auto; }
+  h1 { font-size:1.15rem; margin:0 0 4px; } h2 { font-size:.98rem; margin:0; }
+  .lead { color:var(--muted); max-width:66ch; margin:0 0 18px; }
+  .opt { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .opt.pick { border-color:var(--blue); box-shadow:0 0 0 3px var(--pick); }
+  .head { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; margin-bottom:4px; }
+  .tag { font-size:.72rem; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--pick); color:var(--blue); }
+  .why { color:var(--muted); font-size:.87rem; max-width:74ch; margin:0 0 12px; }
+  .tbl { border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative; }
+  .tr { display:grid; grid-template-columns:230px 190px minmax(0,1fr); gap:12px; padding:10px 12px; border-top:1px solid var(--border); align-items:start; }
+  .tr:first-child { border-top:none; }
+  .th { font-size:.7rem; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; padding-top:7px; padding-bottom:7px; background:var(--soft); }
+  .co b { text-decoration:underline; text-underline-offset:3px; } .co small { display:block; color:var(--muted); }
+  .line { color:var(--muted); font-size:.8rem; text-decoration:underline dotted; text-underline-offset:3px; }
+  .chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.75rem; font-weight:600; background:var(--green50); color:var(--green800); white-space:nowrap; }
+  .chip.amber { background:var(--amber50); color:var(--amber800); } .chip.ask { background:transparent; color:var(--blue); border:1px dashed var(--blue); }
+  .in { border:1px solid var(--strong); border-radius:6px; padding:4px 8px; background:var(--surface); color:var(--text); font:inherit; font-size:.85rem; height:30px; display:inline-flex; align-items:center; white-space:nowrap; overflow:hidden; }
+  .in.focus { border-color:var(--blue); box-shadow:0 0 0 2px var(--pick); }
+  .btn { border-radius:6px; padding:4px 11px; font-weight:700; font-size:.82rem; background:var(--blue); color:#fff; display:inline-block; }
+  .link { color:var(--blue); font-size:.82rem; }
+  .hint { color:var(--muted); font-size:.8rem; }
+  .strip { grid-column:1 / -1; display:flex; gap:8px; align-items:center; flex-wrap:wrap; background:var(--soft); margin:6px -12px -10px; padding:8px 12px; border-top:1px dashed var(--border); }
+  .pop { position:absolute; left:14px; top:118px; width:330px; background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 28px rgba(0,0,0,.22); padding:12px; display:grid; gap:8px; z-index:2; }
+  .pop .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  ul.notes { margin:10px 0 0; padding-left:18px; color:var(--muted); font-size:.87rem; max-width:74ch; } ul.notes b { color:var(--text); }
+  table { border-collapse:collapse; font-size:.86rem; width:100%; margin-top:6px; } th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; } th { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
+  @media (max-width:640px) { .tr { grid-template-columns:1fr; } .pop { position:static; width:auto; margin-top:8px; } }
+</style>
+</head>
+<body>
+<div class="frame">
+  <h1>A company's address editor: taking less room</h1>
+  <p class="lead">Trade partners, pressing a company's address line. Today the editor is squeezed into the 230 px company column, so it stacks into six lines and pushes every row below it down. Made-up data: Alamo Concrete.</p>
+
+  <div class="opt">
+    <div class="head"><h2>Today</h2></div>
+    <p class="why">Six lines in a narrow cell: the box, a three-line sentence, the limit, its words, then the buttons. The row grows by about 190 px.</p>
+    <div class="tbl">
+      <div class="tr th"><span>Company</span><span>When we ask</span><span>Asked right now</span></div>
+      <div class="tr"><div class="co"><b>Alamo Concrete</b><small>Hector Luna</small>
+        <div style="display:grid;gap:5px;margin-top:5px"><span class="in" style="width:100%">210 Main St, Kerrville</span><span class="hint">We read this as Kerrville. The drive to each job is worked out from there.</span><span>goes up to <span class="in" style="width:60px">100</span></span><span>miles, if they have a limit</span><span><span class="btn">Save</span> <span class="link">Cancel</span></span></div></div>
+        <div><span class="chip">answers</span> quoted 6 of 7</div><div><span class="chip">Boerne Retail Shell · quote in · 35 mi</span> <span class="chip ask">+ Ask on Boerne Retail Pad B · 35 mi</span></div></div>
+    </div>
+  </div>
+
+  <div class="opt pick">
+    <div class="head"><h2>1. One line across the row</h2><span class="tag">Recommended, after the second look</span></div>
+    <p class="why">The editor leaves the narrow cell and runs under the company across the whole row. Everything fits on one line, so the row grows by about 46 px, a quarter of today.</p>
+    <div class="tbl">
+      <div class="tr th"><span>Company</span><span>When we ask</span><span>Asked right now</span></div>
+      <div class="tr"><div class="co"><b>Alamo Concrete</b><small>Hector Luna</small></div>
+        <div><span class="chip">answers</span> quoted 6 of 7</div><div><span class="chip">Boerne Retail Shell · quote in · 35 mi</span> <span class="chip ask">+ Ask on Boerne Retail Pad B · 35 mi</span></div>
+        <div class="strip"><span class="hint">Address</span><span class="in focus" style="flex:1 1 220px">210 Main St, Kerrville</span><span class="chip">in Kerrville</span><span class="hint">goes up to</span><span class="in" style="width:64px">100</span><span class="hint">mi</span><span class="btn">Save</span><span class="link">Cancel</span></div></div>
+      <div class="tr"><div class="co"><b>Guadalupe Flatwork</b><small>Ines Barrera</small><span class="line">from Seguin · goes up to 75 mi</span></div><div><span class="chip">answers</span> quoted 3 of 3</div><div><span class="chip">Boerne Retail Shell · quote in · 58 mi</span></div></div>
+    </div>
+    <ul class="notes">
+      <li><b>Revised:</b> the three-line sentence became one chip beside the box: "in Kerrville", or an amber "cannot place this" when the town is not known. The full sentence is on its hover.</li>
+      <li><b>Revised:</b> "if they have a limit" became the box's own placeholder, "no limit", when it is empty.</li>
+      <li><b>Revised:</b> Enter saves and Escape cancels, so the buttons can be skipped.</li>
+      <li><b>On a phone</b> the line wraps to two, still half of today.</li>
+    </ul>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>2. A small card that floats over the table</h2></div>
+    <p class="why">Pressing the address line opens a card anchored to it. Nothing in the table moves at all. It can keep the full sentence, since it has its own room. It covers the row below while open, and it is one more floating thing on a page that already has several.</p>
+    <div class="tbl" style="min-height:250px;overflow:visible">
+      <div class="tr th"><span>Company</span><span>When we ask</span><span>Asked right now</span></div>
+      <div class="tr"><div class="co"><b>Alamo Concrete</b><small>Hector Luna</small><span class="line">from San Antonio · goes up to 100 mi</span></div><div><span class="chip">answers</span> quoted 6 of 7</div><div><span class="chip">Boerne Retail Shell · quote in · 35 mi</span></div></div>
+      <div class="tr"><div class="co"><b>Guadalupe Flatwork</b><small>Ines Barrera</small><span class="line">from Seguin · goes up to 75 mi</span></div><div><span class="chip">answers</span> quoted 3 of 3</div><div><span class="chip">Boerne Retail Shell · quote in · 58 mi</span></div></div>
+      <div class="pop"><b>Where Alamo Concrete is</b><span class="in focus" style="width:100%">210 Main St, Kerrville</span><span class="hint">We read this as Kerrville. The drive to each job is worked out from there.</span><div class="row"><span class="hint">Goes up to</span><span class="in" style="width:64px">100</span><span class="hint">mi</span><span style="flex:1"></span><span class="link">Cancel</span><span class="btn">Save</span></div></div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>3. Edit it in the company window</h2></div>
+    <p class="why">The table only shows the line. Pressing it opens the company window on About, where the address sits with the company's other facts. The table never grows, and there is one place to change a company. It is two more presses for a quick fix, and you lose sight of the row while you type.</p>
+    <div class="tbl">
+      <div class="tr th"><span>Company</span><span>When we ask</span><span>Asked right now</span></div>
+      <div class="tr"><div class="co"><b>Alamo Concrete</b><small>Hector Luna</small><span class="line">210 Main St, Kerrville · up to 100 mi</span> <span class="link">Change</span></div><div><span class="chip">answers</span> quoted 6 of 7</div><div><span class="chip">Boerne Retail Shell · quote in · 35 mi</span></div></div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>4. Stay in the cell, two lines</h2></div>
+    <p class="why">Keep it where it is and tighten it: the box with a tick inside when the town is known, then the limit and Save on the next line. No table change to build. The box is still only 230 px wide, so a full street address gets cut off as you type.</p>
+    <div class="tbl">
+      <div class="tr th"><span>Company</span><span>When we ask</span><span>Asked right now</span></div>
+      <div class="tr"><div class="co"><b>Alamo Concrete</b><small>Hector Luna</small>
+        <div style="display:grid;gap:5px;margin-top:5px"><span class="in focus" style="width:100%">210 Main St, Kerrvi… <span style="margin-left:auto;color:var(--green800)">✓</span></span><span style="display:flex;gap:6px;align-items:center"><span class="hint">up to</span><span class="in" style="width:56px">100</span><span class="hint">mi</span><span class="btn">Save</span></span></div></div>
+        <div><span class="chip">answers</span> quoted 6 of 7</div><div><span class="chip">Boerne Retail Shell · quote in · 35 mi</span></div></div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>Side by side</h2></div>
+    <table>
+      <tr><th></th><th>Row grows by</th><th>Room for a full address</th><th>Presses to fix one</th><th>Cost</th></tr>
+      <tr><td><b>1</b> one line across the row</td><td>About 46 px</td><td>Yes</td><td>1, then Enter</td><td>The row gains a second line while open</td></tr>
+      <tr><td><b>2</b> floating card</td><td>Nothing</td><td>Yes</td><td>1, then Save</td><td>Covers the row below</td></tr>
+      <tr><td><b>3</b> company window</td><td>Nothing</td><td>Yes</td><td>3</td><td>Leaves the table to edit</td></tr>
+      <tr><td><b>4</b> two lines in the cell</td><td>About 70 px</td><td>No</td><td>1, then Save</td><td>Address cut off while typing</td></tr>
+    </table>
+    <ul class="notes"><li><b>Add a company</b> uses the same fields. It is already a full-width strip, so option 1's chip and placeholder carry over to it with no layout change.</li></ul>
+  </div>
+</div>
+</body>
+</html>

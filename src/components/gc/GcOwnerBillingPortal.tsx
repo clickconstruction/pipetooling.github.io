@@ -2,6 +2,7 @@ import { useState, type Dispatch } from 'react'
 import { Btn, Chip, input } from './gcUi'
 import { OwnerPayAppWindow } from './GcOwnerBillingPayApp'
 import { PortalBlock, PortalNote } from './GcPortalUi'
+import { GcCustomerSchedule } from './GcCustomerSchedule'
 import { GcCustomerContractSign } from './GcCustomerContractSign'
 import { GcOwnerBillingMessages } from './GcOwnerBillingMessages'
 import {
@@ -122,6 +123,9 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
 
         {/* The contract to sign, once the office sends it (Board, 2026-10-04: they sign it in their portal). */}
         <GcCustomerContractSign state={state} project={project} dispatch={dispatch} />
+
+        {/* Their schedule (the Gantt, Phase 3): the stages of the job, what changed, what we need from them. */}
+        <GcCustomerSchedule state={state} project={project} />
 
         <PortalBlock title="Your contract">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.2rem 0.75rem', fontSize: '0.875rem' }}>

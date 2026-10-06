@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GC mode: the schedule as a Gantt (mock-up)</title>
+<style>
+  :root { --bg:#eef0f3; --surface:#fff; --text:#16181d; --muted:#6b7280; --border:#e1e5ea; --strong:#b6bdc8; --soft:#f7f8fa; --blue:#2563eb; --pick:#e8eefc; --plan:#dbe6fd; --planb:#7c9cf0; --done:#5b8def; --ok:#86cf8f; --okb:#3f9d4d; --crit:#dc2626; --crit50:#fde4e4; --amber:#b45309; --amber50:#fdf1d8; --wk:#f1f3f6; --ghost:#b6bdc8; --today:#2563eb; --green800:#17603a; --green50:#e3f6e8; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --surface:#1b1e24; --text:#eceef2; --muted:#9aa2af; --border:#2c313a; --strong:#4b5361; --soft:#20242b; --blue:#6f93ff; --pick:#1d2a4d; --plan:#23355f; --planb:#5f7fd6; --done:#5b8def; --ok:#2f6b3a; --okb:#57b866; --crit:#f87171; --crit50:#3d1a1a; --amber:#f3cf7a; --amber50:#3a2d10; --wk:#171a1f; --ghost:#5b6370; --today:#6f93ff; --green800:#9be0b5; --green50:#173324; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.45 -apple-system,"Inter","Segoe UI",sans-serif; padding:24px 16px 64px; }
+  .frame { max-width:1080px; margin:0 auto; }
+  h1 { font-size:1.2rem; margin:0 0 4px; } h2 { font-size:1rem; margin:0; } h3 { font-size:.9rem; margin:0 0 6px; }
+  .lead { color:var(--muted); max-width:72ch; margin:0 0 18px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  .head { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; margin-bottom:4px; }
+  .num { font-size:.72rem; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--pick); color:var(--blue); }
+  .why { color:var(--muted); font-size:.87rem; max-width:80ch; margin:0 0 12px; }
+  .bar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; font-size:.78rem; }
+  .seg span { padding:3px 10px; color:var(--muted); } .seg span.on { background:var(--pick); color:var(--blue); font-weight:600; }
+  .tog { font-size:.78rem; padding:3px 9px; border-radius:999px; border:1px solid var(--border); color:var(--muted); } .tog.on { border-color:transparent; background:var(--pick); color:var(--blue); font-weight:600; }
+  .btn { border-radius:6px; padding:5px 11px; font-weight:700; font-size:.8rem; background:var(--blue); color:#fff; white-space:nowrap; } .btn.plain { background:var(--surface); color:var(--text); border:1px solid var(--strong); font-weight:600; }
+  .stats { display:flex; gap:22px; flex-wrap:wrap; margin-bottom:12px; } .stat small { display:block; font-size:.68rem; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; } .stat b { font-size:1.05rem; } .stat i { font-style:normal; color:var(--muted); font-size:.78rem; display:block; }
+  .red { color:var(--crit); } .amber { color:var(--amber); } .green { color:var(--green800); }
+  .gwrap { border:1px solid var(--border); border-radius:8px; overflow-x:auto; }
+  .gantt { position:relative; min-width:max-content; }
+  .grow { display:flex; border-top:1px solid var(--border); height:30px; align-items:stretch; } .grow.grp { background:var(--soft); height:26px; } .grow.hd { height:38px; border-top:none; background:var(--soft); }
+  .gl { flex:0 0 var(--left); display:flex; align-items:center; gap:6px; padding:0 10px; font-size:.8rem; white-space:nowrap; overflow:hidden; border-right:1px solid var(--border); position:sticky; left:0; background:inherit; z-index:3; }
+  .grow:not(.grp):not(.hd) .gl { background:var(--surface); }
+  .gl .nm { flex:1; overflow:hidden; text-overflow:ellipsis; color:var(--blue); } .gl .pc { color:var(--muted); font-variant-numeric:tabular-nums; font-size:.74rem; } .gl .pc.late { color:var(--amber); font-weight:600; }
+  .gl .fl { font-size:.68rem; padding:0 6px; border-radius:999px; background:var(--soft); color:var(--muted); } .gl .fl.c { background:var(--crit50); color:var(--crit); font-weight:700; }
+  .gt { position:relative; flex:1; }
+  .we { position:absolute; top:0; bottom:0; background:var(--wk); }
+  .mo { position:absolute; top:3px; font-size:.68rem; font-weight:700; color:var(--muted); letter-spacing:.05em; text-transform:uppercase; }
+  .wkl { position:absolute; top:20px; font-size:.64rem; color:var(--muted); }
+  .b { position:absolute; top:7px; height:16px; border-radius:4px; background:var(--plan); border:1.5px solid var(--planb); overflow:hidden; }
+  .b i { position:absolute; left:0; top:0; bottom:0; background:var(--done); } .b.ok { background:var(--ok); border-color:var(--okb); } .b.c { border-color:var(--crit); border-width:2px; }
+  .b.hold { background:repeating-linear-gradient(135deg, var(--amber50) 0 5px, transparent 5px 10px); border-color:var(--amber); }
+  .ghost { position:absolute; top:25px; height:3px; border-radius:2px; background:var(--ghost); }
+  .ms { position:absolute; top:8px; width:12px; height:12px; transform:rotate(45deg); background:var(--muted); margin-left:-6px; } .ms.late { background:var(--crit); } .ms.c { background:var(--crit); } .ms.met { background:var(--okb); }
+  .msl { position:absolute; top:6px; font-size:.7rem; white-space:nowrap; color:var(--muted); } .msl.late { color:var(--crit); font-weight:600; }
+  .note { position:absolute; top:7px; font-size:.68rem; color:var(--amber); white-space:nowrap; }
+  .today { position:absolute; top:0; bottom:0; width:2px; background:var(--today); z-index:2; } .todayl { position:absolute; top:20px; font-size:.66rem; font-weight:700; color:var(--today); transform:translateX(-50%); z-index:2; background:var(--soft); padding:0 3px; }
+  svg.links { position:absolute; left:0; top:0; pointer-events:none; z-index:1; } svg.links path { fill:none; stroke:var(--strong); stroke-width:1.3; } svg.links path.c { stroke:var(--crit); stroke-width:1.6; }
+  .legend { display:flex; gap:6px 16px; flex-wrap:wrap; font-size:.74rem; color:var(--muted); margin-top:8px; } .legend span { display:inline-flex; gap:5px; align-items:center; } .legend i { display:inline-block; }
+  .two { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; } @media (max-width:760px) { .two { grid-template-columns:1fr; } }
+  .panel { border:1px solid var(--border); border-radius:8px; padding:12px; display:grid; gap:8px; font-size:.86rem; }
+  .kv { display:grid; grid-template-columns:8.5rem minmax(0,1fr); gap:3px 10px; } .kv span:nth-child(odd) { color:var(--muted); }
+  .chip { display:inline-block; padding:1px 8px; border-radius:999px; font-size:.74rem; font-weight:600; background:var(--soft); color:var(--muted); white-space:nowrap; } .chip.red { background:var(--crit50); color:var(--crit); } .chip.amber { background:var(--amber50); color:var(--amber); } .chip.green { background:var(--green50); color:var(--green800); }
+  .list { display:grid; gap:6px; font-size:.86rem; } .list div { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; padding:6px 8px; border:1px solid var(--border); border-radius:6px; }
+  .paper { background:#f6f1e7; color:#1c1a16; border-radius:8px; padding:16px; --border:#ddd3c0; --soft:#efe8d9; --surface:#fbf8f1; --muted:#6b6455; --wk:#efe8d9; --text:#1c1a16; --plan:#dbe6fd; --planb:#7c9cf0; --done:#5b8def; --ok:#86cf8f; --okb:#3f9d4d; --amber:#b45309; --amber50:#fdf1d8; --ghost:#b6bdc8; --blue:#2563eb; --strong:#9aa2af; --crit:#dc2626; --today:#2563eb; --pick:#e8eefc; }
+  ul.notes { margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:.86rem; max-width:80ch; } ul.notes b { color:var(--text); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <h1>The schedule as a Gantt</h1>
+  <p class="lead">Five pictures of one schedule: the office's chart, one activity opened, the weekly update, what the customer gets, and what one trade gets. All five are drawn from the same dates. Made-up data: Fair Oaks Shops, Building D, today Fri Oct 2. The plan is in <b>GANTT_PLAN.md</b> and every feature is numbered in <b>GANTT_FEATURES.md</b>.</p>
+
+  <div class="card">
+    <div class="head"><span class="num">1</span><h2>The office's chart</h2></div>
+    <p class="why">One screen answers: where are we, what is late, what moves the finish, and who do I call. The red outline is the chain of work with no spare days. The thin grey line under a bar is where it sat in the plan at Start. Striped bars are held by a submittal or a question. Weekends are shaded so a date reads at a glance. Every day is a working day.</p>
+    <div class="stats">
+      <div class="stat"><small>Finish</small><b class="amber">Fri Dec 11</b><i>contract Dec 11 · no days to spare</i></div>
+      <div class="stat"><small>Work done</small><b>72%</b><i>plan 76% · 3 days behind</i></div>
+      <div class="stat"><small>No spare days</small><b class="red">5 activities</b><i>the red chain</i></div>
+      <div class="stat"><small>Held</small><b class="amber">3</b><i>2 submittals, 1 inspection</i></div>
+      <div class="stat"><small>Moved this week</small><b>2</b><i>roofing, 7 days later</i></div>
+    </div>
+    <div class="bar">
+      <span class="seg"><span>Days</span><span class="on">Weeks</span><span>Months</span></span>
+      <span class="seg"><span class="on">By trade</span><span>By stage</span><span>By company</span></span>
+      <span class="tog on">No spare days</span><span class="tog on">Plan at Start</span><span class="tog on">Links</span><span class="tog">Only late</span><span class="tog">Next 3 weeks</span>
+      <span style="flex:1"></span>
+      <span class="btn plain">What if…</span><span class="btn plain">Update the week</span><span class="btn plain">Tell the trades</span><span class="btn">Send to the customer</span>
+    </div>
+    <div class="gwrap"><div class="gantt" id="g-office"></div></div>
+    <div class="legend">
+      <span><i style="width:18px;height:10px;border-radius:3px;background:var(--ok);border:1.5px solid var(--okb)"></i>done</span>
+      <span><i style="width:18px;height:10px;border-radius:3px;background:linear-gradient(90deg,var(--done) 55%,var(--plan) 55%);border:1.5px solid var(--planb)"></i>under way, the dark part is done</span>
+      <span><i style="width:18px;height:10px;border-radius:3px;border:2px solid var(--crit)"></i>no spare days</span>
+      <span><i style="width:18px;height:10px;border-radius:3px;border:1.5px solid var(--amber);background:repeating-linear-gradient(135deg,var(--amber50) 0 4px,transparent 4px 8px)"></i>held: a submittal, a question, an inspection</span>
+      <span><i style="width:18px;height:3px;background:var(--ghost)"></i>where it sat in the plan at Start</span>
+      <span><i style="width:9px;height:9px;transform:rotate(45deg);background:var(--muted)"></i>a milestone</span>
+      <span><i style="width:10px;height:10px;background:var(--wk);border:1px solid var(--border)"></i>weekend</span>
+    </div>
+    <ul class="notes">
+      <li><b>Drag a bar</b> to move it, drag its end to change its length. What waits on it moves with it, and the chart says what will move before you let go.</li>
+      <li><b>Press a bar</b> to open it (picture 2). <b>Press a trade's name</b> to fold its rows into one bar.</li>
+      <li><b>By stage</b> regroups the same rows as site, structure, dry-in, rough-in, finishes, closeout. <b>By company</b> is the list to work the phone from.</li>
+    </ul>
+  </div>
+
+  <div class="two">
+    <div class="card">
+      <div class="head"><span class="num">2</span><h2>One activity, opened</h2></div>
+      <p class="why">Everything about one bar, and the three things you do from it: move it, test a slip, chase the company.</p>
+      <div class="panel">
+        <div class="head" style="margin:0"><b>Sheet metal and flashing</b><span class="chip amber">held by a submittal</span><span class="chip">46 spare days</span></div>
+        <div class="kv">
+          <span>Company</span><span>Summit Roofing · Carla Nguyen</span>
+          <span>Planned</span><span>Tue Oct 13 to Thu Oct 22 · 8 working days</span>
+          <span>At Start it was</span><span>Tue Oct 6 to Thu Oct 15 · 7 days earlier</span>
+          <span>Waits on</span><span>TPO membrane (50%, plan 100%)</span>
+          <span>Held by</span><span>Submittal 07 62 00-01, with us, needed today</span>
+          <span>Holds up</span><span>Rooftop units · Cool Breeze Mechanical</span>
+          <span>Crew planned</span><span>3 people</span>
+          <span>Their word</span><span>Confirmed Oct 13 on Sep 30, in the portal</span>
+        </div>
+        <div style="background:var(--soft);border-radius:6px;padding:8px 10px"><b>What if it slips?</b> 5 days later: nothing else moves, 41 spare days left. 50 days later: the finish moves to Dec 17.</div>
+        <div class="bar" style="margin:0"><span class="btn plain">Change the dates</span><span class="btn plain">Why it moved</span><span class="btn plain">Call Carla</span><span class="btn">Follow up</span></div>
+      </div>
+      <ul class="notes"><li>Every move asks <b>why</b>: weather, the trade before, materials, crew, the customer, the plans, us. The reasons add up to who cost the job its days.</li></ul>
+    </div>
+    <div class="card">
+      <div class="head"><span class="num">3</span><h2>Update the week</h2></div>
+      <p class="why">The chart is only accurate if someone walks it once a week. This is that walk: every bar that should have moved, one at a time, with what the trade and the daily log already said.</p>
+      <div class="list">
+        <div><b>Erection</b><span class="chip amber">should be done</span><span style="flex:1">Iron Horse reported 80%. The log has them on site 3 of 5 days.</span><span class="btn plain">Done</span><span class="btn plain">New finish day</span></div>
+        <div><b>TPO membrane</b><span class="chip amber">50%, plan 100%</span><span style="flex:1">Summit says Fri Oct 9. Rain stopped work Sep 29.</span><span class="btn plain">Take Oct 9</span></div>
+        <div><b>Ductwork</b><span class="chip green">80%, plan 73%</span><span style="flex:1">Ahead. Nothing to do.</span><span class="btn plain">Right</span></div>
+        <div><b>Rough-in inspection</b><span class="chip">in 7 working days</span><span style="flex:1">Top out is 40%. It needs 100% by Oct 12.</span><span class="btn plain">Keep</span><span class="btn plain">Move</span></div>
+      </div>
+      <ul class="notes"><li>It ends with <b>what changed</b>: the list that goes to the trades and into the customer's weekly report. Walk 4 of 14 done.</li></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="num">4</span><h2>What the customer gets</h2></div>
+    <p class="why">The same dates, rolled up to the stages of the job. No company names, no dollars, no spare days. It is a page in their portal, a PDF, and the top of the Friday report.</p>
+    <div class="paper">
+      <div class="stats" style="margin-bottom:10px">
+        <div class="stat"><small>We finish</small><b>Fri Dec 11</b><i>your contract says Dec 11</i></div>
+        <div class="stat"><small>Work done</small><b>72%</b><i>we planned 76% by today</i></div>
+        <div class="stat"><small>Next for you</small><b>Rough-in inspection</b><i>Tue Oct 13</i></div>
+      </div>
+      <div class="gwrap"><div class="gantt" id="g-customer"></div></div>
+      <ul class="notes" style="color:#6b6455"><li><b style="color:#1c1a16">What changed since last Friday:</b> the roof is 7 days later than planned after rain on Sep 29. The finish date holds.</li><li><b style="color:#1c1a16">What we need from you:</b> your pick on the storefront finish by Oct 9. After that it costs a day for a day.</li></ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="head"><span class="num">5</span><h2>What one trade gets</h2></div>
+    <p class="why">Summit Roofing sees its own bars, the work it waits on, and the work waiting on it. When we move a date it is told, and it says yes or gives another day. A date nobody confirmed shows on Follow up.</p>
+    <div class="paper">
+      <div class="list" style="margin-bottom:10px"><div style="background:#fff8e6;border-color:#e6c97a"><b>Your dates moved.</b><span style="flex:1">Sheet metal and flashing now starts Tue Oct 13, not Oct 6.</span><span class="btn">These dates work</span><span class="btn plain">I need another day</span></div></div>
+      <div class="gwrap"><div class="gantt" id="g-trade"></div></div>
+      <ul class="notes" style="color:#6b6455"><li>Grey rows are other companies' work: the name of the work, never their price.</li><li>The same page is where they mark each week done or not done.</li></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var DAY = 5, LEFT = 262, T0 = 0, T1 = 98, TODAY = 25
+  // day 0 is Mon Sep 7 2026
+  var MONTHS = [[0, 'Sep'], [24, 'Oct'], [55, 'Nov'], [85, 'Dec']]
+  function dateOf(d) { var m = [[85, 'Dec', 1], [55, 'Nov', 1], [24, 'Oct', 1], [0, 'Sep', 7]]; for (var i = 0; i < m.length; i++) if (d >= m[i][0]) return m[i][1] + ' ' + (d - m[i][0] + m[i][2]); return '' }
+  var ROWS = [
+    { g: 'Milestones' },
+    { ms: [[25, 'Dry-in, 7 days late', 'late'], [36, 'Rough-in inspection', ''], [95, 'Finish', 'c']] },
+    { g: 'Plumbing · Our own crew' },
+    { id: 'top', n: 'Top out', s: 22, e: 33, p: 40, plan: 42, f: 37 },
+    { id: 'trim', n: 'Trim', s: 78, e: 82, p: 0, plan: 0, f: 2 },
+    { g: 'Structural steel · Iron Horse Fabrication' },
+    { id: 'erect', n: 'Erection', s: 1, e: 26, p: 80, plan: 100, f: 65, late: 1 },
+    { g: 'Roofing · Summit Roofing', co: 'summit' },
+    { id: 'tpo', n: 'TPO membrane', s: 15, e: 33, p: 50, plan: 100, f: 29, late: 1, base: [8, 26], co: 'summit', after: ['erect'] },
+    { id: 'sheet', n: 'Sheet metal and flashing', s: 36, e: 45, p: 0, plan: 0, f: 46, hold: 'submittal 07 62 00-01', base: [29, 38], co: 'summit', after: ['tpo'] },
+    { id: 'curbs', n: 'Roof curbs', s: 29, e: 33, p: 0, plan: 0, f: 58, co: 'summit', after: ['tpo'] },
+    { g: 'Electrical · Pecan Valley Electric' },
+    { id: 'panels', n: 'Panels and feeders', s: 8, e: 26, p: 80, plan: 100, f: 44, late: 1 },
+    { id: 'light', n: 'Lighting', s: 8, e: 47, p: 40, plan: 48, f: 25 },
+    { id: 'fire', n: 'Fire alarm', s: 57, e: 75, p: 0, plan: 0, f: 16, hold: 'submittal 28 31 11-01', after: ['light'] },
+    { g: 'HVAC · Cool Breeze Mechanical' },
+    { id: 'duct', n: 'Ductwork', s: 8, e: 33, p: 80, plan: 73, f: 0, c: 1 },
+    { id: 'rtu', n: 'Rooftop units', s: 36, e: 47, p: 0, plan: 0, f: 0, c: 1, after: ['duct', 'curbs'], waitsTrade: 'summit' },
+    { id: 'ctrl', n: 'Controls', s: 57, e: 68, p: 0, plan: 0, f: 0, c: 1, after: ['rtu'] },
+    { id: 'tab', n: 'Test and balance', s: 78, e: 82, p: 0, plan: 0, f: 0, c: 1, after: ['ctrl'] },
+    { g: 'Inspections · The city' },
+    { id: 'rough', n: 'Rough-in inspection', s: 36, e: 36, p: 0, plan: 0, f: 35, insp: 1, after: ['top'] },
+    { id: 'final', n: 'Final inspection', s: 88, e: 89, p: 0, plan: 0, f: 0, c: 1, insp: 1, after: ['tab', 'trim', 'fire'] },
+  ]
+  var CUSTOMER = [
+    { g: 'The stages of your job' },
+    { n: 'Site and foundations', s: -6, e: 6, p: 100, plan: 100 },
+    { n: 'Structure', s: 1, e: 26, p: 90, plan: 100, late: 1 },
+    { n: 'Roof and dry-in', s: 15, e: 45, p: 45, plan: 70, late: 1, base: [8, 38] },
+    { n: 'Rough-in: plumbing, power, air', s: 8, e: 47, p: 58, plan: 60 },
+    { n: 'Equipment and finishes', s: 36, e: 75, p: 0, plan: 0 },
+    { n: 'Testing and closeout', s: 78, e: 89, p: 0, plan: 0 },
+    { ms: [[25, 'Dry-in', 'late'], [36, 'Rough-in inspection', ''], [95, 'We finish', '']] },
+  ]
+  function el(tag, cls, style, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (style) e.style.cssText = style; if (text != null) e.textContent = text; return e }
+  function x(d) { return (d - T0) * DAY }
+  function draw(hostId, rows, opt) {
+    var host = document.getElementById(hostId); if (!host) return
+    var left = opt.left || LEFT, width = (T1 - T0) * DAY
+    host.style.setProperty('--left', left + 'px'); host.style.width = left + width + 'px'
+    var pos = {}, y = 0
+    function track(row) {
+      var t = el('div', 'gt')
+      for (var d = T0; d < T1; d++) if (d % 7 === 5) t.appendChild(el('div', 'we', 'left:' + x(d) + 'px;width:' + DAY * 2 + 'px'))
+      row.appendChild(t); return t
+    }
+    var hd = el('div', 'grow hd'); hd.appendChild(el('div', 'gl', 'font-weight:700', opt.title || 'Activity')); var ht = track(hd)
+    MONTHS.forEach(function (m) { ht.appendChild(el('div', 'mo', 'left:' + (x(m[0]) + 4) + 'px', m[1])) })
+    for (var w = T0; w < T1; w += 7) ht.appendChild(el('div', 'wkl', 'left:' + (x(w) + 2) + 'px', dateOf(w).split(' ')[1]))
+    host.appendChild(hd); y += 38
+    rows.forEach(function (r) {
+      if (r.g) { var gr = el('div', 'grow grp'); gr.appendChild(el('div', 'gl', 'font-weight:700', r.g)); track(gr); host.appendChild(gr); y += 27; return }
+      var row = el('div', 'grow'), gl = el('div', 'gl'), t
+      if (r.ms) {
+        gl.appendChild(el('span', '', 'color:var(--muted)', 'Dates the job must meet')); row.appendChild(gl); t = track(row)
+        r.ms.forEach(function (m) { t.appendChild(el('div', 'ms ' + m[2], 'left:' + (x(m[0]) + DAY / 2) + 'px')); var lab = el('div', 'msl ' + (m[2] === 'late' ? 'late' : ''), m[0] > 80 || m[2] === 'late' ? 'right:' + (width - x(m[0]) + 10) + 'px' : 'left:' + (x(m[0]) + 14) + 'px', m[1] + ' · ' + dateOf(m[0])); t.appendChild(lab) })
+        host.appendChild(row); y += 31; return
+      }
+      var dim = opt.mine && r.co !== opt.mine
+      gl.appendChild(el('span', 'nm', dim ? 'color:var(--muted)' : '', r.n))
+      if (!opt.simple) {
+        gl.appendChild(el('span', 'pc' + (r.late ? ' late' : ''), '', r.p === 100 ? '100%' : r.p + '% · plan ' + r.plan + '%'))
+        if (!opt.mine) gl.appendChild(el('span', 'fl' + (r.c ? ' c' : ''), '', r.c ? 'none spare' : r.f + ' spare'))
+      } else gl.appendChild(el('span', 'pc' + (r.late ? ' late' : ''), '', r.p + '%'))
+      row.appendChild(gl); t = track(row)
+      var bx = x(r.s), bw = Math.max(DAY, x(r.e + 1) - x(r.s))
+      if (r.insp && r.s === r.e) t.appendChild(el('div', 'ms' + (r.c ? ' c' : ''), 'left:' + (bx + DAY / 2) + 'px'))
+      else {
+        var b = el('div', 'b' + (r.p === 100 ? ' ok' : '') + (r.c && !opt.simple && !opt.mine ? ' c' : '') + (r.hold ? ' hold' : ''), 'left:' + bx + 'px;width:' + bw + 'px' + (dim ? ';opacity:.45;filter:grayscale(1)' : ''))
+        if (r.p > 0 && r.p < 100) b.appendChild(el('i', '', 'width:' + r.p + '%'))
+        t.appendChild(b)
+      }
+      if (r.base && !opt.mine) t.appendChild(el('div', 'ghost', 'left:' + x(r.base[0]) + 'px;width:' + (x(r.base[1] + 1) - x(r.base[0])) + 'px'))
+      if (r.hold && !opt.simple) t.appendChild(el('div', 'note', 'left:' + (bx + bw + 6) + 'px', 'waits on ' + r.hold))
+      pos[r.id] = { x1: left + bx, x2: left + bx + bw, y: y + 15, c: r.c }
+      host.appendChild(row); y += 31
+    })
+    var tl = el('div', 'today', 'left:' + (left + x(TODAY) + DAY / 2) + 'px'); host.appendChild(tl)
+    host.appendChild(el('div', 'todayl', 'left:' + (left + x(TODAY) + DAY / 2) + 'px', 'today'))
+    if (opt.links) {
+      var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'links'); svg.setAttribute('width', left + width); svg.setAttribute('height', y)
+      rows.forEach(function (r) { (r.after || []).forEach(function (a) { var p = pos[a], q = pos[r.id]; if (!p || !q) return
+        var mx = Math.max(p.x2 + 6, Math.min(q.x1 - 6, p.x2 + 10)), path = document.createElementNS(ns, 'path')
+        path.setAttribute('d', 'M' + p.x2 + ' ' + p.y + ' H' + mx + ' V' + q.y + ' H' + (q.x1 - 1) + ' m-4 -3 l4 3 l-4 3')
+        if (p.c && q.c) path.setAttribute('class', 'c'); svg.appendChild(path) }) })
+      host.appendChild(svg)
+    }
+  }
+  draw('g-office', ROWS, { links: true })
+  draw('g-customer', CUSTOMER, { simple: true, left: 230, title: 'Stage' })
+  var ids = { erect: 1, tpo: 1, sheet: 1, curbs: 1, rtu: 1 }
+  var TRADE = [{ g: 'Before you' }].concat(ROWS.filter(function (r) { return r.id === 'erect' }), [{ g: 'Your work · Summit Roofing' }], ROWS.filter(function (r) { return r.co === 'summit' && r.id }), [{ g: 'Waiting on you' }], ROWS.filter(function (r) { return r.id === 'rtu' }))
+  draw('g-trade', TRADE.filter(function (r) { return r.g || ids[r.id] }), { links: true, mine: 'summit', left: 230, title: 'Work' })
+})()
+</script>
+</body>
+</html>

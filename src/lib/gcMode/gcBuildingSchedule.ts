@@ -273,18 +273,40 @@ export function scheduleFloat(activities: ScheduleActivity[]): Map<string, numbe
   const order = waitOrder(activities)
   const earlyFinish = new Map<string, number>()
   for (const a of order) {
-    const waits = a.after.map((id) => earlyFinish.get(id)).filter((n): n is number => n !== undefined)
-    const start = Math.max(dayNumber(a.start), ...waits.map((n) => n + 1))
+    const waits = a.after.flatMap((id) => {
+      const n = earlyFinish.get(id)
+      return n === undefined ? [] : [n + 1 + lagOf(a, id)]
+    })
+    const start = Math.max(dayNumber(a.start), ...waits)
     earlyFinish.set(a.lineId, start + duration(a) - 1)
   }
   const end = Math.max(...earlyFinish.values())
   const lateFinish = new Map<string, number>()
   for (const a of [...order].reverse()) {
     const next = activities.filter((x) => x.after.includes(a.lineId))
-    const lateStarts = next.map((x) => (lateFinish.get(x.lineId) ?? end) - duration(x) + 1)
+    const lateStarts = next.map((x) => (lateFinish.get(x.lineId) ?? end) - duration(x) + 1 - lagOf(x, a.lineId))
     lateFinish.set(a.lineId, lateStarts.length > 0 ? Math.min(...lateStarts) - 1 : end)
   }
   return new Map(activities.map((a) => [a.lineId, Math.round((lateFinish.get(a.lineId) ?? end) - (earlyFinish.get(a.lineId) ?? end))]))
+}
+
+/** The gap in days an activity keeps after one it waits on finishes (G-35). Zero when none. */
+export function lagOf(a: ScheduleActivity, afterId: string): number {
+  return Math.max(0, a.lag?.[afterId] ?? 0)
+}
+
+/** True when making `lineId` wait on `afterId` would make a loop: `afterId` already waits on `lineId`, directly or down the line. */
+export function wouldLoop(activities: ScheduleActivity[], lineId: string, afterId: string): boolean {
+  if (lineId === afterId) return true
+  const byId = new Map(activities.map((a) => [a.lineId, a]))
+  const seen = new Set<string>()
+  const reaches = (from: string): boolean => {
+    if (from === lineId) return true
+    if (seen.has(from)) return false
+    seen.add(from)
+    return (byId.get(from)?.after ?? []).some(reaches)
+  }
+  return reaches(afterId)
 }
 
 /** The activities in an order where each comes after what it waits on. A loop falls back to the drawn order. */
@@ -352,7 +374,8 @@ export function pushAfter(project: GcProject, activities: ScheduleActivity[], li
   const now = new Map(activities.map((a) => [a.lineId, a]))
   for (const a of waitOrder(activities)) {
     if (!downstream.has(a.lineId) || activityDone(project, a)) continue
-    const latest = Math.max(...a.after.map((id) => dayNumber(now.get(id)?.finish ?? a.start)))
+    // The day after the last of what it waits on finishes, plus any gap it keeps (G-35).
+    const latest = Math.max(...a.after.map((id) => dayNumber(now.get(id)?.finish ?? a.start) + lagOf(a, id)))
     if (latest < dayNumber(a.start)) continue
     const shift = latest + 1 - dayNumber(a.start)
     now.set(a.lineId, { ...a, start: addDays(a.start, shift), finish: addDays(a.finish, shift) })
@@ -419,8 +442,8 @@ export function projectedFinish(project: GcProject, today: string): ProjectedFin
     let start = dayNumber(a.start)
     for (const id of a.after) {
       const f = finish.get(id)
-      if (f !== undefined && f + 1 > start) {
-        start = f + 1
+      if (f !== undefined && f + 1 + lagOf(a, id) > start) {
+        start = f + 1 + lagOf(a, id)
         setBy.set(a.lineId, id)
       }
     }

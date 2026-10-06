@@ -5,6 +5,7 @@
  *
  * The words follow the plain-words rules at the top of `gcTour.ts`.
  */
+import { companiesToTell, datesMessage, datesNotices } from './gcTellTrades'
 import type { BackCharge, PartnerPerson, PortalMailGroup, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, LookAheadMark, Partner, PlanQuestion, PlanSet, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './gcTypes'
 import { daysUntil, money } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
@@ -618,6 +619,10 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     })
   }
   if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
+  // Your dates moved, not answered yet (the Gantt, Phase 3).
+  for (const n of datesNotices(state, partner.id, lang)) {
+    todos.push({ key: `dates:${n.move.id}`, projectId: n.project.id, text: pt(lang, 'todoDates', { project: n.project.name }), tone: 'amber', by: null, anchor: 'dates' })
+  }
   // A date the company gave us that came due or passed with nothing yet (question 8).
   for (const row of portalPromises(state, partnerId, lang)) {
     if (row.tone === 'plain') continue
@@ -853,7 +858,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge' | 'dates'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -869,7 +874,7 @@ export interface PortalMessage {
   to?: string[]
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, dates: 3.8, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact
@@ -1152,6 +1157,14 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
         ],
       })
     }
+    // Your dates moved (the Gantt, Phase 3): each move the office told this company of, as it was sent.
+    for (const move of project.schedule?.moves ?? []) {
+      if (!move.toldOn || move.undoneOn || !move.toldTo?.includes(partnerId)) continue
+      const company = companiesToTell(state, project, [move]).find((c) => c.partner.id === partnerId)
+      if (!company) continue
+      const msg = datesMessage(project, partner, company, lang)
+      out.push({ key: `${move.id}:dates`, on: move.toldOn, kind: 'dates', projectId: project.id, subject: msg.subject, lines: msg.lines })
+    }
     for (const { pkg, invite } of mine) {
       const set = setOn(project, invite.invitedOn)
       // The day quotes are wanted by; a company asked after that day is given our bid day.
@@ -1258,6 +1271,7 @@ export function mailRecipients(partner: Partner, group: PortalMailGroup): { name
 }
 
 const KIND_GROUP: Record<PortalMessage['kind'], PortalMailGroup> = {
+  dates: 'job',
   invite: 'quotes',
   nudge: 'quotes',
   bidTab: 'quotes',

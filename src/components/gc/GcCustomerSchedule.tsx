@@ -1,0 +1,91 @@
+/**
+ * GC mode design spike: the customer's schedule in their portal, the Gantt's Phase 3 (G-90 to
+ * G-93; mock-up `gantt-mockup.html`, picture 4). The same dates as the office's chart, as the
+ * stages of their job: no company names, no dollars, no spare days. Then what changed this week
+ * and what we need from them. Drawn on the portal's paper, in the light theme.
+ */
+import type { GcProject, GcState } from '../../lib/gcMode/gcModel'
+import { daysBetween, shortDate, weekdayDate } from '../../lib/gcMode/gcModel'
+import { customerAsks, customerChanges, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
+import { PortalBlock } from './GcPortalUi'
+
+/** Saturated on purpose: the same status colors as the office's chart. */
+const C = { blue: '#3b82f6', green: '#16a34a', red: '#dc2626', amber: '#d97706' }
+
+export function GcCustomerSchedule({ state, project }: { state: GcState; project: GcProject }) {
+  const stages = customerStages(state, project)
+  if (stages.length === 0) return null
+  const standing = customerStanding(state, project)
+  const milestones = customerMilestones(state, project)
+  const changes = customerChanges(project, state.today)
+  const asks = customerAsks(project)
+  const first = stages.reduce((a, s) => (s.start < a ? s.start : a), stages[0]?.start ?? state.today)
+  const last = [standing.finish ?? '', ...stages.map((s) => s.finish), ...milestones.map((m) => m.due)].reduce((a, b) => (b > a ? b : a), '')
+  const days = Math.max(1, daysBetween(first, last) + 1)
+  const x = (on: string) => `${(daysBetween(first, on) / days) * 100}%`
+  const w = (start: string, finish: string) => `${((daysBetween(start, finish) + 1) / days) * 100}%`
+  const stat = (label: string, value: string, sub: string, tone?: string) => (
+    <div>
+      <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: tone }}>{value}</div>
+      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{sub}</div>
+    </div>
+  )
+  return (
+    <PortalBlock title="Your schedule">
+      <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.875rem' }}>
+        <div style={{ display: 'flex', gap: '1.4rem', flexWrap: 'wrap' }}>
+          {stat('We finish', standing.finish ? weekdayDate(standing.finish) : 'Not drawn yet', standing.contract ? `your contract says ${shortDate(standing.contract)}` : '', standing.late > 0 ? 'var(--text-red-700)' : undefined)}
+          {stat('Work done', `${standing.donePct}%`, `we planned ${standing.plannedPct}% by today`)}
+          {standing.next && stat('Next for you', standing.next.milestone.label, standing.next.state === 'late' ? `${weekdayDate(standing.next.due)}, ${standing.next.daysLate} days late` : weekdayDate(standing.next.due), standing.next.state === 'late' ? 'var(--text-red-700)' : undefined)}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 12rem) minmax(0, 1fr)', gap: '0.3rem 0.6rem', alignItems: 'center' }}>
+          {stages.map((s) => {
+            const color = s.state === 'done' ? C.green : s.state === 'behind' ? C.amber : C.blue
+            return (
+              <div key={s.key} style={{ display: 'contents' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', minWidth: 0 }}>
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
+                  <span style={{ color: s.state === 'behind' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(s.pct)}%</span>
+                </div>
+                <div style={{ position: 'relative', height: 16 }} title={`${s.label}: ${shortDate(s.start)} to ${shortDate(s.finish)}, ${Math.round(s.pct)}% done`}>
+                  <span style={{ position: 'absolute', left: x(s.start), width: w(s.start, s.finish), top: 1, height: 14, borderRadius: 4, boxSizing: 'border-box', border: `1.5px solid ${color}`, background: s.state === 'done' ? 'var(--bg-green-200)' : 'var(--bg-blue-tint)', overflow: 'hidden' }}>
+                    {s.pct > 0 && s.state !== 'done' && <span style={{ display: 'block', height: '100%', width: `${Math.min(100, s.pct)}%`, background: color, opacity: 0.7 }} />}
+                  </span>
+                </div>
+              </div>
+            )
+          })}
+          <div style={{ color: 'var(--text-muted)' }}>Dates to meet</div>
+          <div style={{ position: 'relative', height: 30 }}>
+            {milestones.map((m, i) => {
+              const late = m.state === 'late' || m.state === 'missed'
+              return (
+                <span key={m.milestone.id} style={{ position: 'absolute', left: x(m.due), top: i % 2 === 0 ? 0 : 15, transform: 'translateX(-6px)', display: 'flex', gap: 4, alignItems: 'center', whiteSpace: 'nowrap', fontSize: '0.72rem', color: late ? 'var(--text-red-700)' : m.state === 'hit' ? 'var(--text-green-800)' : 'var(--text-600)' }}>
+                  <span aria-hidden style={{ width: 9, height: 9, transform: 'rotate(45deg)', background: late ? C.red : m.state === 'hit' ? C.green : 'var(--text-muted)', flex: 'none' }} />
+                  {m.milestone.label} · {shortDate(m.due)}
+                  {m.state === 'hit' ? ', met' : late ? `, ${m.daysLate} days late` : ''}
+                </span>
+              )
+            })}
+            {/* Today, on the same line. */}
+            <span aria-hidden style={{ position: 'absolute', left: x(state.today), top: -2, bottom: 0, width: 2, background: C.blue, opacity: 0.6 }} />
+          </div>
+        </div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{standing.finishWords}</div>
+        <div>
+          <strong>What changed this week</strong>
+          {changes.length === 0 ? <div style={{ color: 'var(--text-muted)' }}>Nothing moved. The schedule stands as planned.</div> : changes.map((c) => <div key={c}>{c}</div>)}
+        </div>
+        {asks.length > 0 && (
+          <div>
+            <strong>What we need from you</strong>
+            {asks.map((a) => (
+              <div key={a.words}>{a.words}</div>
+            ))}
+          </div>
+        )}
+      </div>
+    </PortalBlock>
+  )
+}

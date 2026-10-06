@@ -94,7 +94,7 @@ export function GcCompanyWindow({
   const word = tradePromiseRecord(state, partner)
   const made = partner.promisesMade + word.made
   const kept = partner.promisesKept + word.kept
-  const coverage = partner.base ? `from ${partner.base}${partner.maxMiles === null ? '' : `, goes ${partner.maxMiles} mi`}` : 'coverage not set'
+  const coverage = partner.base || partner.address ? `${partner.address || `from ${partner.base}`}${partner.maxMiles === null ? '' : `, goes up to ${partner.maxMiles} mi`}` : 'coverage not set'
 
   /** The row's next step, when the paper is missing or waiting: it opens the send beside the list. */
   const ask = (d: CompanyDoc) => {

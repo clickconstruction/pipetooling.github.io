@@ -23,7 +23,7 @@ import {
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
 import { LinkNeverOpenedChip } from './GcPortalLinkChip'
-import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
+import { Btn, Card, Chip, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
 import { GcDeclineForm } from './GcDeclineForm'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
@@ -195,6 +195,8 @@ export function GcFollowUpTab({
   // Everyone we are waiting on, each once across every job: the board rows' sum and the dashboard's count ("make them match").
   const everyone = allPeople(state)
   const listCount = everyone.count
+  // By urgency | By people (the owner, 2026-10-05): the cards by why we wait, or each person once with everything they owe.
+  const [view, setView] = useState<'urgency' | 'people'>('urgency')
   const open = (partnerId?: string, calling = false) => setSheet({ ...(partnerId ? { partnerId } : {}), calling })
   // Who the cards and the papers below do not show: the architect, a customer, the newest plans not opened, a waiver, a late bill.
   const SHOWN_ABOVE = new Set(['ask', 'promise', 'insurance', 'sow', 'w9'])
@@ -215,19 +217,52 @@ export function GcFollowUpTab({
           list={(s) => allFollowPeople(s, sheet.partnerId)}
         />
       )}
-      {listCount > 0 && (
-        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span role="group" aria-label="Order Follow up" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+          {(
+            [
+              { key: 'urgency', label: 'By urgency' },
+              { key: 'people', label: `By people · ${listCount}` },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              aria-pressed={view === o.key}
+              onClick={() => setView(o.key)}
+              style={{
+                border: 'none',
+                padding: '0.25rem 0.8rem',
+                fontSize: '0.8rem',
+                fontWeight: view === o.key ? 600 : 400,
+                cursor: 'pointer',
+                background: view === o.key ? 'var(--bg-blue-50)' : 'transparent',
+                color: view === o.key ? 'var(--text-blue-800)' : 'var(--text-muted)',
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </span>
+        {view === 'people' && listCount > 0 && (
           <Btn kind="primary" onClick={() => open()}>
-            Work the list · {listCount}
+            Work the list · {listCount} {listCount === 1 ? 'person' : 'people'}
           </Btn>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>One person at a time: a draft from you to send, or a call to log.</span>
-        </div>
-      )}
-      <Why>
-        Every company we are waiting on, across every project, the ones to call first. A day they give for their quote
-        is written down: if it passes with no quote, they come back to the top.
-      </Why>
-      {WHY_ORDER.map((why) => {
+        )}
+      </div>
+      {view === 'people' &&
+        (listCount > 0 ? (
+          <Card style={{ padding: '0.2rem 0.9rem' }}>
+            <PeopleRows
+              people={everyone.people}
+              narrow={phone}
+              onFollowUp={(person, calling) => open(person.partnerId ?? `customer:${person.customerId ?? ''}`, calling)}
+            />
+          </Card>
+        ) : (
+          <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone.</Card>
+        ))}
+      {view === 'urgency' && WHY_ORDER.map((why) => {
         const rows = all.filter((f) => f.why === why)
         if (rows.length === 0) return null
         const words = WHY_WORDS[why]
@@ -246,8 +281,8 @@ export function GcFollowUpTab({
         )
       })}
       {/* Insurance, papers and every other promise (question 8). */}
-      <GcFollowUpPromises state={state} dispatch={dispatch} onFollowUp={(partnerId) => open(partnerId)} />
-      {more.length > 0 && (
+      {view === 'urgency' && <GcFollowUpPromises state={state} dispatch={dispatch} onFollowUp={(partnerId) => open(partnerId)} />}
+      {view === 'urgency' && more.length > 0 && (
         <section>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
             <h3 style={{ margin: 0, fontSize: '1rem' }}>More to follow up on ({more.length})</h3>
@@ -262,7 +297,7 @@ export function GcFollowUpTab({
           </Card>
         </section>
       )}
-      {all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
+      {view === 'urgency' && all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
     </div>
   )
 }

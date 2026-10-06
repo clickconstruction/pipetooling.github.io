@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react'
 import {
   shortDate,
   stageHealth,
@@ -328,7 +328,38 @@ const LABEL_AIR = 8
 
 /** How wide the day calendar draws at a size: busy weeks as days, quiet weeks as one rectangle. */
 function calendarWidth(weeks: CalendarDay[][], sz: CalendarSizes): number {
-  return weeks.reduce((w, week) => w + (weekIsQuiet(week) ? sz.quiet : 5 * sz.day + 2 * sz.weekend + 6 * sz.gap), 0) + sz.week * Math.max(0, weeks.length - 1)
+  return weeks.reduce((w, week) => w + (weekIsQuiet(week) ? quietWeekWidth(sz) : 5 * sz.day + 2 * sz.weekend + 6 * sz.gap), 0) + sz.week * Math.max(0, weeks.length - 1)
+}
+
+/** A quiet week: its working-week rectangle, then Saturday and Sunday as the narrow squares a busy week has. */
+function quietWeekWidth(sz: CalendarSizes): number {
+  return sz.quiet + 2 * (sz.weekend + sz.gap)
+}
+
+/** Monday to Friday of a week: "Sep 14 – 18". The rectangle of a quiet week says these, its weekend stands beside it (the owner, 2026-10-05). */
+function workWeekRange(week: CalendarDay[]): string {
+  return weekRange(week.filter((d) => !d.weekend))
+}
+
+/**
+ * Saturday or Sunday beside a quiet week's rectangle: the busy week's narrow square with no number
+ * (the rectangle gives the dates; the hover names the day). Ahead of today it is dashed grey, never
+ * red: the red stays on the working days that are running out.
+ */
+function QuietWeekend({ d, sz, full }: { d: CalendarDay; sz: CalendarSizes; full: boolean }) {
+  const ahead = d.inStage && !d.past && !d.today
+  return (
+    <div
+      title={weekdayDate(d.on)}
+      aria-label={weekdayDate(d.on)}
+      data-weekend="yes"
+      style={{
+        ...daySquareStyle(d, false, full, sz),
+        height: 34,
+        ...(ahead ? { borderStyle: 'dashed', borderColor: 'var(--border-strong)', background: 'transparent' } : {}),
+      }}
+    />
+  )
 }
 
 /** A week's two ends: "Sep 28 – Oct 4", or "Oct 5 – 11" inside one month. */
@@ -531,9 +562,14 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
           ))}
           {calendar.weeks.map((week) =>
             weekIsQuiet(week) ? (
-              <div key={week[0]?.on} style={{ gridColumn: '1 / -1', ...quietBox(week, true) }} title={`${weekRange(week)}: ${quietWords(week).words}`}>
-                {weekRange(week)} · {quietWords(week).words}
-              </div>
+              <Fragment key={week[0]?.on}>
+                <div style={{ gridColumn: '1 / 6', ...quietBox(week, true) }} title={`${workWeekRange(week)}: ${quietWords(week).words}`}>
+                  {workWeekRange(week)} · {quietWords(week).words}
+                </div>
+                {week.filter((d) => d.weekend).map((d) => (
+                  <QuietWeekend key={d.on} d={d} sz={sz} full />
+                ))}
+              </Fragment>
             ) : (
               week.map((d) => <DaySquare key={d.on} d={d} openEnd={Boolean(openEnd) && d.inStage && !d.past && !d.today} narrow />)
             ),
@@ -566,11 +602,17 @@ function Calendar({ calendar, width, stage }: { calendar: StageCalendar; width: 
             if (weekIsQuiet(week)) {
               const q = quietWords(week)
               return (
-                <div key={week[0]?.on} style={{ display: 'grid', gap: 3, width: sz.quiet }}>
+                <div key={week[0]?.on} style={{ display: 'grid', gap: 3, width: quietWeekWidth(sz) }}>
                   {head}
                   <span style={{ height: 12 }} />
-                  <div style={quietBox(week, false)} title={`${weekRange(week)}: ${q.words}`} aria-label={`${weekRange(week)}: ${q.words}`}>
-                    {weekRange(week)}
+                  {/* The rectangle is Monday to Friday; the weekend stands beside it as it does in a busy week (the owner, 2026-10-05). */}
+                  <div style={{ display: 'flex', gap: sz.gap }}>
+                    <div style={quietBox(week, false)} title={`${workWeekRange(week)}: ${q.words}`} aria-label={`${workWeekRange(week)}: ${q.words}`}>
+                      {workWeekRange(week)}
+                    </div>
+                    {week.filter((d) => d.weekend).map((d) => (
+                      <QuietWeekend key={d.on} d={d} sz={sz} full={false} />
+                    ))}
                   </div>
                   <span style={{ height: LANE_HEIGHT, fontSize: '0.66rem', textAlign: 'center', fontWeight: q.isOpen ? 700 : 500, color: q.isOpen ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{q.words}</span>
                 </div>

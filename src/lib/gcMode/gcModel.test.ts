@@ -913,6 +913,10 @@ describe('GC mode golden walk', () => {
     const used = new Set(STEPS.map((s) => s.action.type))
     used.add('reset') // played in its own test below
     used.add('remindCustomerToPay') // played in its own test below: the walk's late bill gets a promise first
+    used.add('undoScheduleMove') // played in gcScheduleMoves.test.ts: it needs a move saved with its explanation first
+    used.add('recordScheduleWalk') // played in gcScheduleWalk.test.ts: the weekly walk, which ends a sitting of moves
+    used.add('tellTradesMoves') // played in gcTellTrades.test.ts: it needs a move saved with its explanation first
+    used.add('tradeAnswerDates') // played in gcTellTrades.test.ts: it needs a move the company was told of
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -958,6 +962,7 @@ describe('GC mode golden walk', () => {
       'tradeSendSov',
       'setQuoteExclusion', 'setExclusionCover', 'logPartnerContact', 'setCustomerPortal', 'sendPaper', 'remindCustomer', 'sendOwnerContract', 'ownerSignContract',
       'remindCustomerToPay',
+      'undoScheduleMove', 'recordScheduleWalk', 'tellTradesMoves', 'tradeAnswerDates',
       'addRfi', 'tradeAskRfi', 'sendRfiToArchitect', 'answerRfi', 'draftChangeOrderFromRfi',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])

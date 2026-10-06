@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
 import {
   activityName,
   addDays,
   daysBetween,
   inspectedTrades,
+  rfiRows,
   LOOKAHEAD_WEEKS,
   markReason,
   MILESTONE_GRACE_DAYS,
@@ -29,7 +30,6 @@ import {
   type GcState,
   type LookAheadReason,
   type LookAheadState,
-  type MilestoneRow,
   type ProjectedFinish,
   type ScheduleActivity,
   type ScheduleItem,
@@ -38,8 +38,12 @@ import {
 } from '../../lib/gcMode/gcModel'
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, type Tone } from './gcUi'
-import { BUILDING_CSS } from './gcBuildingCss'
 import { GcBuildingPromise } from './GcBuildingPromise'
+import { GcGantt } from './GcGantt'
+import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
+import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
+import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
+import type { GanttHold } from '../../lib/gcMode/gcGantt'
 
 /**
  * GC mode design spike: the schedule (Building lane, owner's shape 2026-10-02). Each activity is a
@@ -49,13 +53,24 @@ import { GcBuildingPromise } from './GcBuildingPromise'
  * inspection is an activity of its own (owner, 2026-10-03): the city's, with no dollars.
  */
 
-const DAY_PX = 6
 /** A box at the height of the button beside it (the owner, 2026-10-04): a date input runs taller on its own. */
 const rowBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
 export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps) {
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   const [picked, setPicked] = useState<string | null>(null)
+  const holds = useMemo(() => holdsOf(state, project), [state, project])
+  // Every move goes through the explanation window first (the owner, 2026-10-05; the Gantt, Phase 2).
+  const [pending, setPending] = useState<PendingMove | null>(null)
+  // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
+  const [walking, setWalking] = useState(false)
+  const planOf = useCallback(
+    (lineId: string, start: string, finish: string) => {
+      const plan = planMove(project, lineId, start, finish)
+      return plan && !plan.problem ? { pushed: plan.pushed.map((p) => ({ lineId: p.lineId, start: p.to.start, finish: p.to.finish })), words: plan.words } : null
+    },
+    [project],
+  )
   const schedule = project.schedule
   const building = project.stage === 'building'
 
@@ -94,7 +109,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           row={pickedRow}
           rows={m.items}
           started={Boolean(project.startedOn)}
-          onSave={(start, finish, after) => dispatch({ type: 'setScheduleActivity', projectId: project.id, lineId: pickedRow.activity.lineId, start, finish, after })}
+          onSave={(start, finish, after, limits) => setPending({ lineId: pickedRow.activity.lineId, start, finish, after, limits })}
           check={
             building && pickedInspection && !pickedInspection.passedOn ? (
               <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
@@ -105,8 +120,34 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
       )}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
-        <ScheduleChart holds={holdsOf(project, state.today)} rows={m.items} float={m.float} milestones={m.milestones} today={state.today} building={building} picked={picked} onPick={setPicked} />
+        {building && <GcWalkLine state={state} project={project} holds={holds} onWalk={() => setWalking(true)} />}
+        <GcGantt
+          holds={holds}
+          items={m.items}
+          float={m.float}
+          milestones={m.milestones}
+          today={state.today}
+          building={building}
+          picked={picked}
+          onPick={setPicked}
+          onMove={(lineId, start, finish) => setPending({ lineId, start, finish, after: schedule.activities.find((a) => a.lineId === lineId)?.after ?? [] })}
+          planOf={planOf}
+          onLink={(from, to) => {
+            const a = schedule.activities.find((x) => x.lineId === to)
+            if (a && !a.after.includes(from)) setPending({ lineId: to, start: a.start, finish: a.finish, after: [...a.after, from] })
+          }}
+          onUnlink={(from, to) => {
+            const a = schedule.activities.find((x) => x.lineId === to)
+            if (a) setPending({ lineId: to, start: a.start, finish: a.finish, after: a.after.filter((id) => id !== from) })
+          }}
+        />
       </Card>
+
+      {walking && <GcScheduleWalk state={state} project={project} holds={holds} dispatch={dispatch} onClose={() => setWalking(false)} />}
+
+      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} />}
+
+      <GcMoveHistory state={state} project={project} dispatch={dispatch} />
 
       <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
 
@@ -175,7 +216,7 @@ function ActivityEditor({
   row: ScheduleItem
   rows: ScheduleItem[]
   started: boolean
-  onSave: (start: string, finish: string, after: string[]) => void
+  onSave: (start: string, finish: string, after: string[], limits: MoveLimits) => void
   /** An inspection not passed yet, on a job being built: passed or failed, today. */
   check?: ReactNode
   onClose: () => void
@@ -184,8 +225,14 @@ function ActivityEditor({
   const [start, setStart] = useState(a.start)
   const [finish, setFinish] = useState(a.finish)
   const [after, setAfter] = useState<string[]>(a.after)
-  const bad = !start || !finish || finish < start
-  const changed = start !== a.start || finish !== a.finish || after.join() !== a.after.join()
+  // The gap after each wait, and the two day limits (G-35, G-36).
+  const [lag, setLag] = useState<Record<string, number>>(a.lag ?? {})
+  const [notBefore, setNotBefore] = useState(a.notBefore ?? '')
+  const [mustFinishBy, setMustFinishBy] = useState(a.mustFinishBy ?? '')
+  const limits: MoveLimits = { lag, notBefore: notBefore || null, mustFinishBy: mustFinishBy || null }
+  const limitsChanged = JSON.stringify(Object.fromEntries(Object.entries(lag).filter(([id, d]) => after.includes(id) && d > 0))) !== JSON.stringify(a.lag ?? {}) || (notBefore || undefined) !== a.notBefore || (mustFinishBy || undefined) !== a.mustFinishBy
+  const bad = !start || !finish || finish < start || (notBefore !== '' && start < notBefore)
+  const changed = start !== a.start || finish !== a.finish || after.join() !== a.after.join() || limitsChanged
   const others = rows.filter((r) => r.activity.lineId !== a.lineId)
   const trades = [...new Set(others.map((r) => r.pkg?.id ?? ''))]
   // What it waits on, finishing after it starts: it cannot start on the day drawn.
@@ -221,7 +268,19 @@ function ActivityEditor({
             <input type="date" value={finish} min={start} onChange={(e) => setFinish(e.target.value)} style={input} />
           </label>
           {!bad && <span style={{ color: 'var(--text-muted)' }}>{daysBetween(start, finish) + 1} days</span>}
-          {bad && <span style={{ color: 'var(--text-red-700)' }}>It has to finish on or after it starts.</span>}
+          {bad && <span style={{ color: 'var(--text-red-700)' }}>{notBefore !== '' && start < notBefore ? `It cannot start before ${weekdayDate(notBefore)}.` : 'It has to finish on or after it starts.'}</span>}
+        </div>
+        {/* The day it cannot start before (a delivery, a permit) and the day it must finish by (G-36). */}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Not before</span>
+            <input type="date" value={notBefore} onChange={(e) => setNotBefore(e.target.value)} aria-label="The day it cannot start before" style={input} />
+          </label>
+          <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Must finish by</span>
+            <input type="date" value={mustFinishBy} onChange={(e) => setMustFinishBy(e.target.value)} aria-label="The day it must finish by" style={input} />
+          </label>
+          {mustFinishBy && finish > mustFinishBy && <span style={{ color: 'var(--text-amber-800)' }}>It finishes {daysBetween(mustFinishBy, finish)} days past that.</span>}
         </div>
         <div>
           <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>It waits on</div>
@@ -239,6 +298,14 @@ function ActivityEditor({
                     <span>
                       {activityName(r)} <span style={{ color: 'var(--text-muted)' }}>· ends {shortDate(r.activity.finish)}</span>
                     </span>
+                    {/* A gap after it finishes: cure time, a lead time (G-35). */}
+                    {after.includes(r.activity.lineId) && (
+                      <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                        +
+                        <input type="number" min={0} value={lag[r.activity.lineId] ?? 0} onChange={(e) => setLag((was) => ({ ...was, [r.activity.lineId]: Math.max(0, Number(e.target.value) || 0) }))} aria-label={`Days of gap after ${activityName(r)}`} style={{ ...input, width: '3.4rem', height: 24, padding: '0 0.3rem' }} />
+                        days
+                      </span>
+                    )}
                   </label>
                 )),
             )}
@@ -251,9 +318,18 @@ function ActivityEditor({
           </div>
         )}
         {changed && moves && <div style={{ color: 'var(--text-amber-800)' }}>On Save: {moves}</div>}
+        {/* What a slip would cost, before anyone asks (the Gantt, G-80). */}
+        {!changed && row.actual < 100 && (
+          <div style={{ display: 'grid', gap: '0.1rem', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+            {[5, 10].map((days) => {
+              const words = whatIfSlips(project, a.lineId, days)
+              return words ? <span key={days}>{words}</span> : null
+            })}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Btn kind="primary" disabled={bad || !changed} onClick={() => onSave(start, finish, after)}>
-            Save
+          <Btn kind="primary" disabled={bad || !changed} onClick={() => onSave(start, finish, after, limits)}>
+            Save, and say why
           </Btn>
           {started && <span style={{ color: 'var(--text-muted)' }}>The plan at Start stays as the baseline this is measured against.</span>}
         </div>
@@ -449,255 +525,23 @@ function Measure({ label, value, tone, chip, children }: { label: string; value:
 // The chart
 // ---------------------------------------------------------------------------------------------
 
-const MS_COLORS: Record<MilestoneRow['state'], string> = { hit: '#16a34a', missed: '#dc2626', late: '#dc2626', due: 'var(--text-muted)' }
-
-/** The lines a submittal not yet approved holds (owner, 2026-10-04): its number, and whether it is late. */
-function holdsOf(project: GcProject, today: string): Map<string, { number: string; late: boolean }> {
-  const holds = new Map<string, { number: string; late: boolean }>()
+/**
+ * What holds a line on the chart: a submittal not yet approved (owner, 2026-10-04), or a question
+ * about the plans not yet answered (the Gantt, G-71). A submittal wins when both hold one line.
+ */
+function holdsOf(state: GcState, project: GcProject): Map<string, GanttHold> {
+  const holds = new Map<string, GanttHold>()
+  for (const r of rfiRows(state, project)) {
+    if (r.state === 'answered') continue
+    for (const h of r.holds) holds.set(h.lineId, { kind: 'rfi', words: `${r.label}, ${r.stateWords}`, late: r.late })
+  }
   for (const a of project.schedule?.activities ?? []) {
     const s = submittalHolding(project, a.lineId)
     if (!s) continue
     const needed = submittalNeededBy(project, s)
-    holds.set(a.lineId, { number: s.number, late: needed !== null && needed < today })
+    holds.set(a.lineId, { kind: 'submittal', words: `submittal ${s.number}`, late: needed !== null && needed < state.today })
   }
   return holds
-}
-
-function ScheduleChart({
-  holds,
-  rows,
-  float,
-  milestones,
-  today,
-  building,
-  picked,
-  onPick,
-}: {
-  /** Lines a submittal not yet approved holds. */
-  holds: Map<string, { number: string; late: boolean }>
-  rows: ScheduleItem[]
-  float: Map<string, number>
-  milestones: MilestoneRow[]
-  today: string
-  building: boolean
-  picked: string | null
-  onPick: (lineId: string) => void
-}) {
-  const dates = rows.flatMap((r) => [r.activity.start, r.activity.finish, r.baseline.start, r.baseline.finish]).concat(milestones.map((x) => x.due), [today])
-  const first = addDays(dates.reduce((a, b) => (a < b ? a : b)), -3)
-  const last = addDays(dates.reduce((a, b) => (a > b ? a : b)), 7)
-  const days = daysBetween(first, last) + 1
-  const x = (iso: string) => daysBetween(first, iso) * DAY_PX
-  const width = days * DAY_PX
-  const months: { label: string; at: number }[] = []
-  for (let d = first; d <= last; d = addDays(d, 1)) {
-    // A month's name, unless it would sit under the "today" mark.
-    if ((d.endsWith('-01') || d === first) && Math.abs(x(d) - x(today)) > 44) months.push({ label: shortDate(d).split(' ')[0] ?? d, at: x(d) })
-  }
-  // One group per trade, in the order drawn; the inspections are one group of their own.
-  const trades = [...new Set(rows.map((r) => r.pkg?.id ?? ''))]
-  const rowStyle: CSSProperties = { display: 'flex', borderTop: '1px solid var(--border)', minHeight: 30 }
-  const labelStyle: CSSProperties = {
-    position: 'sticky',
-    left: 0,
-    zIndex: 1,
-    background: 'var(--surface)',
-    borderRight: '1px solid var(--border)',
-    padding: '0.3rem 0.6rem',
-    fontSize: '0.8rem',
-    boxSizing: 'border-box',
-  }
-  const todayLine = <span aria-hidden style={{ position: 'absolute', top: 0, bottom: 0, left: x(today), width: 2, background: '#2563eb', opacity: 0.55 }} />
-  // Open on today, not on the first day drawn: on a phone only a few weeks fit beside the names.
-  const scroller = useRef<HTMLDivElement>(null)
-  const todayAt = x(today)
-  useEffect(() => {
-    const el = scroller.current
-    if (!el) return
-    const names = el.querySelector<HTMLElement>('.gcSched-label')?.offsetWidth ?? 0
-    el.scrollLeft = Math.max(0, todayAt - (el.clientWidth - names) / 3)
-  }, [todayAt])
-
-  return (
-    <div ref={scroller} style={{ overflowX: 'auto' }}>
-      <style>{BUILDING_CSS}</style>
-      <div style={{ width: 'max-content', minWidth: '100%' }}>
-        <div style={{ ...rowStyle, borderTop: 'none', background: 'var(--bg-subtle)' }}>
-          <div className="gcSched-label" style={{ ...labelStyle, background: 'var(--bg-subtle)', fontWeight: 600 }}>Activity</div>
-          <div style={{ position: 'relative', width, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            {months.map((mo) => (
-              <span key={mo.at} style={{ position: 'absolute', left: mo.at + 3, top: 8, borderLeft: '1px solid var(--border-strong)', paddingLeft: 3 }}>
-                {mo.label}
-              </span>
-            ))}
-            <span style={{ position: 'absolute', left: x(today) - 16, top: 8, color: 'var(--text-link)', fontWeight: 700 }}>today</span>
-          </div>
-        </div>
-        <div style={rowStyle}>
-          <div className="gcSched-label" style={{ ...labelStyle, fontWeight: 600 }}>Milestones</div>
-          <div style={{ position: 'relative', width, height: 42 }}>
-            {todayLine}
-            {[...milestones]
-              .sort((p, q) => (p.due < q.due ? -1 : 1))
-              .map((r, i) => (
-                <span
-                  key={r.milestone.id}
-                  title={`${r.milestone.label}: planned ${shortDate(r.milestone.planned)}${r.addedDays > 0 ? `, ${shortDate(r.due)} with ${r.addedDays} days by change order` : ''}${r.milestone.metOn ? `, met ${shortDate(r.milestone.metOn)}` : ''}`}
-                  // Every other one a line lower, so labels near each other do not run together.
-                  style={{ position: 'absolute', left: x(r.due) - 6, top: i % 2 === 0 ? 4 : 22, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}
-                >
-                  <span aria-hidden style={{ width: 11, height: 11, transform: 'rotate(45deg)', background: MS_COLORS[r.state], display: 'inline-block' }} />
-                  <span style={{ fontSize: '0.7rem', color: r.state === 'late' || r.state === 'missed' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-                    {r.milestone.label}
-                    {r.state === 'late' || r.state === 'missed' ? `, ${r.daysLate} days late` : ''}
-                  </span>
-                </span>
-              ))}
-          </div>
-        </div>
-        {trades.map((pkgId) => {
-          const list = rows.filter((r) => (r.pkg?.id ?? '') === pkgId)
-          const head = list[0]
-          if (!head) return null
-          return (
-            <div key={pkgId}>
-              <div style={{ ...rowStyle, background: 'var(--bg-subtle)', minHeight: 24 }}>
-                <div className="gcSched-label" style={{ ...labelStyle, background: 'var(--bg-subtle)', fontWeight: 700 }}>
-                  {head.trade} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {head.company}</span>
-                </div>
-                <div style={{ position: 'relative', width }}>{todayLine}</div>
-              </div>
-              {list.map((r) => (
-                <ChartRow
-                  key={r.activity.lineId}
-                  row={r}
-                  hold={holds.get(r.activity.lineId) ?? null}
-                  spare={float.get(r.activity.lineId) ?? 0}
-                  x={x}
-                  width={width}
-                  rowStyle={rowStyle}
-                  labelStyle={labelStyle}
-                  todayLine={todayLine}
-                  building={building}
-                  picked={picked === r.activity.lineId}
-                  onPick={() => onPick(r.activity.lineId)}
-                />
-              ))}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function ChartRow({
-  row,
-  hold,
-  spare,
-  x,
-  width,
-  rowStyle,
-  labelStyle,
-  todayLine,
-  building,
-  picked,
-  onPick,
-}: {
-  row: ScheduleItem
-  /** A submittal not yet approved holds this line. */
-  hold: { number: string; late: boolean } | null
-  spare: number
-  x: (iso: string) => number
-  width: number
-  rowStyle: CSSProperties
-  labelStyle: CSSProperties
-  todayLine: ReactNode
-  building: boolean
-  picked: boolean
-  onPick: () => void
-}) {
-  const a = row.activity
-  const passedOn = a.inspection?.passedOn
-  const fails = a.inspection?.failed ?? []
-  const lastFail = passedOn ? undefined : fails[fails.length - 1]
-  const inspectionWords = passedOn ? `passed ${shortDate(passedOn)}` : lastFail ? `failed ${shortDate(lastFail.on)} · again ${shortDate(lastFail.reinspectOn)}` : 'not passed yet'
-  const done = row.actual >= 100
-  const critical = spare === 0 && !done
-  const behind = building && !done && row.actual + 0.5 < row.plannedToday
-  const planLeft = x(a.start)
-  const planW = (daysBetween(a.start, a.finish) + 1) * DAY_PX
-  const baseLeft = x(row.baseline.start)
-  const baseW = (daysBetween(row.baseline.start, row.baseline.finish) + 1) * DAY_PX
-  const moved = row.baseline.start !== a.start || row.baseline.finish !== a.finish
-  return (
-    <div style={{ ...rowStyle, background: picked ? 'var(--bg-blue-tint)' : undefined }}>
-      <div className="gcSched-label" style={{ ...labelStyle, background: picked ? 'var(--bg-blue-tint)' : labelStyle.background }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem' }}>
-          <button
-            type="button"
-            onClick={onPick}
-            title="Change its dates and what it waits on"
-            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}
-          >
-            {row.label}
-          </button>
-          {building && a.inspection ? (
-            <span style={{ color: passedOn ? 'var(--text-green-800)' : lastFail ? 'var(--text-red-700)' : behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-              {inspectionWords}
-            </span>
-          ) : building ? (
-            <span style={{ fontVariantNumeric: 'tabular-nums', color: behind ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-              {Math.round(row.actual)}%{done ? '' : ` · plan ${Math.round(row.plannedToday)}%`}
-            </span>
-          ) : (
-            <span style={{ color: 'var(--text-muted)' }}>
-              {shortDate(a.start)} to {shortDate(a.finish)}
-            </span>
-          )}
-        </div>
-        {!done && (
-          <div style={{ fontSize: '0.7rem', color: critical ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
-            {critical ? 'critical · no spare days' : `${spare} spare ${spare === 1 ? 'day' : 'days'}`}
-            {building && row.slipDays > 0 ? ` · ${row.slipDays} days later than planned at Start` : ''}
-            {!building && a.after.length > 0 ? ` · waits on ${a.after.length}` : ''}
-          </div>
-        )}
-        {hold && !done && (
-          <div style={{ fontSize: '0.7rem', color: hold.late ? 'var(--text-red-700)' : 'var(--text-amber-800)' }}>
-            waits on submittal {hold.number}
-            {hold.late ? ', late' : ''}
-          </div>
-        )}
-      </div>
-      <div style={{ position: 'relative', width }}>
-        {todayLine}
-        {moved && (
-          <span
-            title={`Planned at Start: ${shortDate(row.baseline.start)} to ${shortDate(row.baseline.finish)}`}
-            style={{ position: 'absolute', left: baseLeft, width: baseW, bottom: 4, height: 4, borderRadius: 2, background: 'var(--border-strong)' }}
-          />
-        )}
-        <span
-          title={`${shortDate(a.start)} to ${shortDate(a.finish)} · ${a.inspection ? inspectionWords : `${Math.round(row.actual)}% done`}`}
-          style={{
-            position: 'absolute',
-            left: planLeft,
-            width: planW,
-            top: 7,
-            height: 14,
-            borderRadius: 4,
-            background: done ? 'var(--bg-green-200)' : a.inspection ? 'var(--bg-violet-100)' : 'var(--bg-blue-200)',
-            border: `1.5px ${a.inspection ? 'dashed' : 'solid'} ${critical ? '#dc2626' : done ? '#16a34a' : a.inspection ? '#7c3aed' : '#3b82f6'}`,
-            boxSizing: 'border-box',
-            overflow: 'hidden',
-          }}
-        >
-          <span style={{ display: 'block', height: '100%', width: `${Math.min(100, row.actual)}%`, background: done ? '#22c55e' : '#3b82f6', opacity: 0.75 }} />
-        </span>
-      </div>
-    </div>
-  )
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -925,8 +925,9 @@ export type GcAction =
   /** Send a paper from the company window: to sign, or to send us, due on a day (the owner, 2026-10-04). */
   | { type: 'sendPaper'; partnerId: string; paper: PaperKind; projectId?: string; packageId?: string; by: string; note: string }
   /** `known: false`: a company new to us, not vetted yet (question 3). Unset: one we know. */
-  | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null; known?: boolean }
-  | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null }
+  | { type: 'addPartner'; company: string; contact: string; trade: string; base: string | null; maxMiles: number | null; known?: boolean; address?: string }
+  /** `address` (the owner, 2026-10-05): the office types where they are and the drive is worked out from it; `base` is then the town read from it. */
+  | { type: 'setCoverage'; partnerId: string; base: string | null; maxMiles: number | null; address?: string }
   | { type: 'reset' }
   | { type: 'createProject'; draft: NewProjectDraft }
   | {
@@ -1040,7 +1041,8 @@ export type GcAction =
   /** Our own bid in Trades mode is priced: the trade carries a real number from now on. */
   | { type: 'priceOwnBid'; projectId: string; packageId: string; value: number }
   | { type: 'draftSchedule'; projectId: string; start: string }
-  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[] }
+  /** `why` (the Gantt, Phase 2): the explanation a move is saved with. The screens always send it; it is kept in `schedule.moves`. */
+  | { type: 'setScheduleActivity'; projectId: string; lineId: string; start: string; finish: string; after: string[]; why?: { reason: ScheduleMoveReason; note: string; by: string }; lag?: Record<string, number>; notBefore?: string | null; mustFinishBy?: string | null }
   | { type: 'setScheduleMilestone'; projectId: string; milestone: ScheduleMilestone }
   | { type: 'removeScheduleMilestone'; projectId: string; milestoneId: string }
   | { type: 'verifyLookAhead'; projectId: string; weekOf: string; lineId: string; done: boolean; reason?: LookAheadReason }
@@ -1191,6 +1193,14 @@ export type GcAction =
   | { type: 'answerRfi'; projectId: string; rfiId: string; text: string; by: 'architect' | 'us'; impact: RfiImpact; cost: number; days: number }
   /** An answer that costs money or days starts a draft change order on Bill the customer, filled in from it. */
   | { type: 'draftChangeOrderFromRfi'; projectId: string; rfiId: string }
+  /** Put the last move on the schedule back (the Gantt, Phase 2). The move stays on the record, marked undone. */
+  | { type: 'undoScheduleMove'; projectId: string; moveId: string; by: string }
+  /** A weekly walk finished: what was kept as drawn and what was moved. The moves themselves were saved as they were made. */
+  | { type: 'recordScheduleWalk'; projectId: string; by: string; kept: string[]; moveIds: string[]; skipped: number }
+  /** Tell the trades (the Gantt, Phase 3): the companies whose dates these moves changed get one message each. In the prototype it is written, never sent. */
+  | { type: 'tellTradesMoves'; projectId: string; moveIds: string[]; by: string }
+  /** A company answers a dates message from its portal: the dates work, or it needs another day, with a note. */
+  | { type: 'tradeAnswerDates'; projectId: string; partnerId: string; moveId: string; ok: boolean; day?: string; note?: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1333,6 +1343,12 @@ export interface ScheduleActivity {
   finish: string
   /** The activities (line ids) it waits on: it starts after each one finishes. */
   after: string[]
+  /** Days of gap after one it waits on finishes before it may start (the Gantt, G-35: cure time, a lead time), by that line's id. Unset: none. */
+  lag?: Record<string, number>
+  /** A day it cannot start before: a delivery, a permit (G-36). Unset: none. */
+  notBefore?: string
+  /** A day it must finish by: a date in the contract, an inspection booked (G-36). Unset: none. */
+  mustFinishBy?: string
   /**
    * An inspection (owner, 2026-10-03): the job's own activity, not a trade's line, with no dollars.
    * Its packageId is '' and its lineId its own (`${projectId}-insp-roughin`). It counts on the
@@ -1394,6 +1410,64 @@ export interface ProjectSchedule {
   /** Locked at Start: each activity's planned start and finish then, by line id. Null: not locked yet. */
   baseline: { lockedOn: string; activities: Record<string, { start: string; finish: string }> } | null
   lookAhead: LookAheadMark[]
+  /** Every move made with an explanation, newest first (the owner, 2026-10-05; the Gantt, Phase 2). Unset: none yet. */
+  moves?: ScheduleMove[]
+  /** Every weekly walk of the schedule, newest first (the owner, 2026-10-05: "build the weekly walk"). Unset: never walked. */
+  walks?: ScheduleWalk[]
+}
+
+/**
+ * One weekly walk of the schedule (the Gantt, G-52): someone went through every bar that should
+ * have moved, kept it as drawn or moved it with an explanation. It is what makes the chart true on
+ * a given day, so the day and the person are kept, with what was kept and what was moved.
+ */
+export interface ScheduleWalk {
+  id: string
+  on: string
+  by: string
+  /** The activities looked at and left as drawn. */
+  kept: string[]
+  /** The moves made during the walk, by id (`schedule.moves`). */
+  moveIds: string[]
+  /** How many bars the walk listed and nobody looked at. */
+  skipped: number
+}
+
+/** Why a bar moved: the look-ahead's reasons, and the ones a move adds. */
+export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'other'
+
+/**
+ * One move on the schedule (the owner, 2026-10-05: "anyone on our team may move a bar, when a bar
+ * is moved an explanation should be given and recorded"). Who, when, which activity, its dates
+ * before and after, the reason picked and their own words, and what it pushed. Kept for good: an
+ * undone move stays on the record with the day it was undone.
+ */
+export interface ScheduleMove {
+  id: string
+  /** The day it was made. */
+  on: string
+  by: string
+  lineId: string
+  from: { start: string; finish: string }
+  to: { start: string; finish: string }
+  reason: ScheduleMoveReason
+  /** The explanation, in their own words. Never empty. */
+  note: string
+  /** What it waits on changed with it. */
+  linksChanged?: boolean
+  /** What comes after it that moved out with it, each with its dates before and after. */
+  pushed: { lineId: string; from: { start: string; finish: string }; to: { start: string; finish: string } }[]
+  /** The job's last finish before and after: how many days the move cost or gave back. */
+  finishFrom: string
+  finishTo: string
+  /** The day it was undone, and who undid it. Unset: it stands. */
+  undoneOn?: string
+  undoneBy?: string
+  /** The day the companies whose dates it changed were told, and which (the Gantt, Phase 3: Tell the trades). Unset: not told yet. */
+  toldOn?: string
+  toldTo?: string[]
+  /** Each company's answer from its portal: the dates work, or it needs another day. */
+  answers?: { partnerId: string; on: string; ok: boolean; day?: string; note?: string }[]
 }
 
 /** Why the work changed, in the words the app's change orders already use. */

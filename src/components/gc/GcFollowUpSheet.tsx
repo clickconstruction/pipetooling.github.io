@@ -15,6 +15,7 @@ import {
   type FollowPerson,
   type GcAction,
   type GcState,
+  GC_COMPANY,
 } from '../../lib/gcMode/gcModel'
 import { useAuth } from '../../hooks/useAuth'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -38,6 +39,9 @@ function useMeName(): string | null {
     return null
   }
 }
+
+/** Where an email from the company comes from. Made up; the real build sends through Resend. */
+const COMPANY_FROM_EMAIL = 'bids@clickconstruction.example'
 
 const box: CSSProperties = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' }
 
@@ -289,7 +293,8 @@ function PersonPane({
   }
   const fromMe = choice.from === 'me'
   const sendHref = fromMe ? (choice.via === 'text' ? smsHref(reach.phone, body) : mailHref(mailTo.map((t) => t.email).join(','), subject, body)) : null
-  const sendWords = choice.via === 'text' ? 'Send text' : 'Send email'
+  // From me it opens my own Messages or mail with the draft, so the button says Draft (the owner, 2026-10-05).
+  const sendWords = fromMe ? (choice.via === 'text' ? 'Draft text' : 'Draft email') : choice.via === 'text' ? 'Send text' : 'Send email'
   const how = fromMe
     ? choice.via === 'text'
       ? 'Opens Messages with this filled in, from your phone. It is logged on the ask.'
@@ -440,6 +445,11 @@ function PersonPane({
           <div style={{ display: 'grid', gap: '0.35rem' }}>
             {choice.via === 'email' && (
               <div data-tour="gc-follow-mail-to" style={{ fontSize: '0.85rem', display: 'grid', gap: '0.1rem' }}>
+                {/* From above To (the owner, 2026-10-05). The company's address is made up, like every address here. */}
+                <span>
+                  <span style={{ color: 'var(--text-muted)' }}>From </span>
+                  {fromMe ? `${me ?? 'Me'}, your own email` : `${GC_COMPANY.name} <${COMPANY_FROM_EMAIL}>`}
+                </span>
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>To </span>
                   {mailTo.map((t) => `${t.name} <${t.email}>`).join(', ')}

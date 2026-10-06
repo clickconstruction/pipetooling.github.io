@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GC mode: weekends on a job's weeks (mock-up)</title>
+<style>
+  :root { --bg:#eef0f3; --surface:#fff; --text:#16181d; --muted:#6b7280; --border:#d5dae1; --strong:#b6bdc8; --tint:#eff6ff; --blue:#2f5bea; --red:#dc2626; --green:#16a34a; --wk:#f3f4f6; --pick:#e8eefc; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#111317; --surface:#1b1e24; --text:#eceef2; --muted:#9aa2af; --border:#343a45; --strong:#4b5361; --tint:#1e3358; --blue:#6f93ff; --red:#f87171; --green:#4ade80; --wk:#262b33; --pick:#1d2a4d; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system,"Inter","Segoe UI",sans-serif; padding:24px 16px 56px; }
+  .frame { max-width:900px; margin:0 auto; }
+  h1 { font-size:1.15rem; margin:0 0 4px; } h2 { font-size:.98rem; margin:0; }
+  p { margin:0; } .lead { color:var(--muted); max-width:66ch; margin-bottom:18px; }
+  .opt { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .opt.pick { border-color:var(--blue); box-shadow:0 0 0 3px var(--pick); }
+  .head { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; margin-bottom:4px; }
+  .tag { font-size:.72rem; font-weight:700; padding:1px 8px; border-radius:999px; background:var(--pick); color:var(--blue); }
+  .why { color:var(--muted); font-size:.87rem; max-width:74ch; }
+  .scroll { overflow-x:auto; margin:14px 0 10px; padding-bottom:4px; }
+  .cal { display:flex; gap:14px; align-items:flex-end; min-width:max-content; }
+  .week { display:grid; gap:4px; justify-items:center; }
+  .cap { font-size:.72rem; color:var(--muted); } .cap.red { color:var(--red); font-weight:700; } .cap.blue { color:var(--blue); font-weight:700; }
+  .row { display:flex; gap:4px; align-items:center; }
+  .box { height:34px; border-radius:6px; border:1.5px solid var(--border); background:var(--tint); display:grid; place-items:center; font-size:.78rem; padding:0 10px; white-space:nowrap; }
+  .box.ahead { background:transparent; border:1.5px dashed var(--red); color:var(--red); }
+  .d { width:34px; height:34px; border-radius:6px; border:1.5px solid var(--border); background:var(--tint); display:grid; place-items:center; font-size:.78rem; position:relative; }
+  .d.today { border:2.5px solid var(--blue); background:var(--surface); color:var(--blue); font-weight:700; }
+  .we { width:18px; height:34px; border-radius:6px; border:1.5px solid var(--border); background:var(--wk); display:grid; place-items:center; font-size:.68rem; color:var(--muted); position:relative; }
+  .we.ahead { border:1.5px dashed var(--strong); background:transparent; }
+  .we.bare { font-size:0; }
+  .dot { position:absolute; bottom:3px; left:50%; width:5px; height:5px; margin-left:-2.5px; border-radius:50%; background:var(--green); }
+  .letters { display:flex; gap:4px; font-size:.62rem; font-weight:700; color:var(--muted); }
+  .letters span { width:34px; text-align:center; } .letters span.s { width:18px; } .letters span.t { color:var(--blue); }
+  /* A: a hatched end on the one box */
+  .boxA { position:relative; padding-right:44px; }
+  .boxA::after { content:""; position:absolute; right:0; top:0; bottom:0; width:34px; border-left:1.5px solid var(--border); border-radius:0 5px 5px 0; background:repeating-linear-gradient(135deg, var(--wk) 0 4px, transparent 4px 8px); }
+  .box.ahead.boxA::after { border-left:1.5px dashed var(--red); }
+  /* C: a ruler under the box */
+  .ruler { display:flex; gap:3px; width:100%; padding:0 3px; }
+  .ruler i { flex:1; height:4px; border-radius:2px; background:var(--strong); } .ruler i.s { background:transparent; border:1px solid var(--strong); }
+  ul.notes { margin:8px 0 0; padding-left:18px; color:var(--muted); font-size:.87rem; max-width:74ch; } ul.notes b { color:var(--text); }
+  table { border-collapse:collapse; font-size:.86rem; width:100%; margin-top:6px; } th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top; } th { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <h1>Weekends on a job's weeks</h1>
+  <p class="lead">Under a project's title, the week we are in shows Saturday and Sunday as two narrow squares. A week with nothing in it folds into one box, "Sep 14 – 20", and its weekend disappears. Made-up data: Helotes Dental Office, buying out, today Fri Oct 2.</p>
+
+  <div class="opt">
+    <div class="head"><h2>Today</h2></div>
+    <p class="why">A folded week is one box for seven days. Nothing says where its weekend falls, and a paper that came in on a Saturday has no place to show.</p>
+    <div class="scroll"><div class="cal">
+      <div class="week"><div class="box">Sep 14 – 20</div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="box">Sep 21 – 27</div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="letters"><span>M</span><span>T</span><span>W</span><span>T</span><span class="t">F</span><span class="s">S</span><span class="s">S</span></div><div class="row"><div class="d">28</div><div class="d">29</div><div class="d">30</div><div class="d">1</div><div class="d today">2</div><div class="we ahead">3</div><div class="we ahead">4</div></div><div class="cap blue">Today</div></div>
+      <div class="week"><div class="box ahead">Oct 5 – 11</div><div class="cap red">5 working days</div></div>
+      <div class="week"><div class="box ahead">Oct 12 – 18</div><div class="cap red">No start date</div></div>
+    </div></div>
+  </div>
+
+  <div class="opt pick">
+    <div class="head"><h2>B. The box is the working week, the weekend stands beside it</h2><span class="tag">Recommended, after the second look</span></div>
+    <p class="why">A folded week becomes "Sep 14 – 18" for Monday to Friday, then the same two narrow squares the open week already uses. One picture of a weekend everywhere on the strip. The box now matches its own caption: "5 working days" sits under five days.</p>
+    <div class="scroll"><div class="cal">
+      <div class="week"><div class="row"><div class="box">Sep 14 – 18</div><div class="we bare">19</div><div class="we bare">20</div></div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="row"><div class="box">Sep 21 – 25</div><div class="we">26<span class="dot"></span></div><div class="we bare">27</div></div><div class="cap">a W-9 came in Saturday</div></div>
+      <div class="week"><div class="letters"><span>M</span><span>T</span><span>W</span><span>T</span><span class="t">F</span><span class="s">S</span><span class="s">S</span></div><div class="row"><div class="d">28</div><div class="d">29</div><div class="d">30</div><div class="d">1</div><div class="d today">2</div><div class="we ahead">3</div><div class="we ahead">4</div></div><div class="cap blue">Today</div></div>
+      <div class="week"><div class="row"><div class="box ahead">Oct 5 – 9</div><div class="we ahead bare">10</div><div class="we ahead bare">11</div></div><div class="cap red">5 working days</div></div>
+      <div class="week"><div class="row"><div class="box ahead">Oct 12 – 16</div><div class="we ahead bare">17</div><div class="we ahead bare">18</div></div><div class="cap red">No start date</div></div>
+    </div></div>
+    <ul class="notes">
+      <li><b>Revised:</b> the weekend squares in a folded week carry no number. Two more dates per week made the strip busy, and the box beside them already gives the dates. The hover still names the day.</li>
+      <li><b>Revised:</b> a weekend square shows its number and a dot only when something happened on it (second week above). That is the one case the old box could not show.</li>
+      <li><b>Revised:</b> a week ahead keeps the dashed outline on its weekend, grey not red, so the red stays on the working days that are running out.</li>
+      <li><b>Cost:</b> each folded week grows by about 44 px. Five weeks still fit a laptop; a phone already stacks the weeks, so nothing changes there.</li>
+    </ul>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>A. One box, a hatched end</h2></div>
+    <p class="why">The box keeps "Sep 14 – 20" and its last stretch is hatched for the weekend. The smallest change and no wider. But it is a second way to draw a weekend on the same strip, and a Saturday paper still has nowhere to sit.</p>
+    <div class="scroll"><div class="cal">
+      <div class="week"><div class="box boxA">Sep 14 – 20</div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="box boxA">Sep 21 – 27</div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="letters"><span>M</span><span>T</span><span>W</span><span>T</span><span class="t">F</span><span class="s">S</span><span class="s">S</span></div><div class="row"><div class="d">28</div><div class="d">29</div><div class="d">30</div><div class="d">1</div><div class="d today">2</div><div class="we ahead">3</div><div class="we ahead">4</div></div><div class="cap blue">Today</div></div>
+      <div class="week"><div class="box ahead boxA">Oct 5 – 11</div><div class="cap red">5 working days</div></div>
+      <div class="week"><div class="box ahead boxA">Oct 12 – 18</div><div class="cap red">No start date</div></div>
+    </div></div>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>C. A ruler under the box</h2></div>
+    <p class="why">Seven small marks under each folded week: five solid, two hollow. Quiet, and it lines up with nothing above it. It reads as decoration until someone explains it, so the legend needs another entry.</p>
+    <div class="scroll"><div class="cal">
+      <div class="week"><div class="box">Sep 14 – 20</div><div class="ruler"><i></i><i></i><i></i><i></i><i></i><i class="s"></i><i class="s"></i></div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="box">Sep 21 – 27</div><div class="ruler"><i></i><i></i><i></i><i></i><i></i><i class="s"></i><i class="s"></i></div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="letters"><span>M</span><span>T</span><span>W</span><span>T</span><span class="t">F</span><span class="s">S</span><span class="s">S</span></div><div class="row"><div class="d">28</div><div class="d">29</div><div class="d">30</div><div class="d">1</div><div class="d today">2</div><div class="we ahead">3</div><div class="we ahead">4</div></div><div class="cap blue">Today</div></div>
+      <div class="week"><div class="box ahead">Oct 5 – 11</div><div class="ruler"><i></i><i></i><i></i><i></i><i></i><i class="s"></i><i class="s"></i></div><div class="cap red">5 working days</div></div>
+      <div class="week"><div class="box ahead">Oct 12 – 18</div><div class="ruler"><i></i><i></i><i></i><i></i><i></i><i class="s"></i><i class="s"></i></div><div class="cap red">No start date</div></div>
+    </div></div>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>D. Never fold: every week as days</h2></div>
+    <p class="why">Every week drawn like the open one. The most honest and the most uniform. It undoes the quiet-weeks fold you took on 2026-10-04: five weeks run about 1,150 px and scroll sideways on most screens, mostly to show empty squares.</p>
+    <div class="scroll"><div class="cal">
+      <div class="week"><div class="row"><div class="d">14</div><div class="d">15</div><div class="d">16</div><div class="d">17</div><div class="d">18</div><div class="we">19</div><div class="we">20</div></div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="row"><div class="d">21</div><div class="d">22</div><div class="d">23</div><div class="d">24</div><div class="d">25</div><div class="we">26</div><div class="we">27</div></div><div class="cap">nothing came in</div></div>
+      <div class="week"><div class="row"><div class="d">28</div><div class="d">29</div><div class="d">30</div><div class="d">1</div><div class="d today">2</div><div class="we ahead">3</div><div class="we ahead">4</div></div><div class="cap blue">Today</div></div>
+      <div class="week"><div class="row"><div class="d" style="background:transparent;border:1.5px dashed var(--red);color:var(--red)">5</div><div class="d" style="background:transparent;border:1.5px dashed var(--red);color:var(--red)">6</div><div class="d" style="background:transparent;border:1.5px dashed var(--red);color:var(--red)">7</div><div class="d" style="background:transparent;border:1.5px dashed var(--red);color:var(--red)">8</div><div class="d" style="background:transparent;border:1.5px dashed var(--red);color:var(--red)">9</div><div class="we ahead">10</div><div class="we ahead">11</div></div><div class="cap red">5 working days</div></div>
+    </div></div>
+  </div>
+
+  <div class="opt">
+    <div class="head"><h2>Side by side</h2></div>
+    <table>
+      <tr><th></th><th>Same weekend shape as the open week</th><th>A Saturday paper can show</th><th>Wider</th><th>New thing to learn</th></tr>
+      <tr><td><b>B</b> working-week box + weekend</td><td>Yes</td><td>Yes</td><td>About 44 px a week</td><td>None</td></tr>
+      <tr><td><b>A</b> hatched end</td><td>No</td><td>No</td><td>No</td><td>The hatch</td></tr>
+      <tr><td><b>C</b> ruler</td><td>No</td><td>No</td><td>No</td><td>The ruler</td></tr>
+      <tr><td><b>D</b> never fold</td><td>Yes</td><td>Yes</td><td>About 2.5 times</td><td>None</td></tr>
+    </table>
+    <ul class="notes">
+      <li><b>Not covered by any of these:</b> Building draws a square for a whole week across months. A weekend inside a 34 px week square would be noise, so it stays as it is unless you want it.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

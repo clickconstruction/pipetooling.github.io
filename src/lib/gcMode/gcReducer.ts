@@ -2,7 +2,7 @@
  * GC mode — design spike. The reducer: every action, applied to the state.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
-import type { AskContact, BackCharge, Rfi, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
+import type { AskContact, BackCharge, Rfi, ScheduleMove, CustomerSend, Draw, PartnerPerson, PortalMailGroup, DrawSentBack, GcAction, GcState, SovLine, Invite, LookAheadMark, PaperSend, Partner, PlanQuestion, PlanSet, SubBid, TradeChangeRequest } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { planRecipients, questionRecipients, questionsOpen, timeWords } from './gcPlans'
@@ -10,6 +10,8 @@ import { bidsIn } from './gcBids'
 import { awardedPartner, find, logged, mapInvite, mapPackage, mapProject, mapSow, sowFromBid } from './gcReducerHelpers'
 import { EMPTY_SCOPE_BOOK, inScopeBook, linesToAdd, scopeBook, scopeWordKey } from './gcScopeBook'
 import { initialGcState } from './gcFixture'
+import { moveActivityName, moveRecord, moveWhyProblem, planMove, spanWords, undoMove } from './gcScheduleMoves'
+import { companiesToTell } from './gcTellTrades'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
 import { buildNewProject, dryInMilestoneFor, packagesFromDrafts, pushSchedule, scheduleSetLines, withNewLines, withRetiedLines, withTradesInOrder } from './gcNewProject'
@@ -635,6 +637,7 @@ function reduce(state: GcState, action: GcAction): GcState {
         won: 0,
         promisesMade: 0,
         promisesKept: 0,
+        ...(action.address ? { address: action.address } : {}),
         // A company new to us quotes, and waits for the office's approval before any award (question 3).
         ...(action.known === false ? { vetting: { status: 'new' as const } } : {}),
       }
@@ -648,9 +651,15 @@ function reduce(state: GcState, action: GcAction): GcState {
     case 'setCoverage': {
       const partner = partnerById(state, action.partnerId)
       if (!partner) return state
-      const words = action.base ? `from ${action.base}${action.maxMiles === null ? '' : `, goes ${action.maxMiles} miles`}` : 'not set'
+      const from = action.address ?? action.base
+      const words = from ? `from ${from}${action.maxMiles === null ? '' : `, goes ${action.maxMiles} miles`}` : 'not set'
       return logged(
-        { ...state, partners: state.partners.map((p) => (p.id === partner.id ? { ...p, base: action.base, maxMiles: action.maxMiles } : p)) },
+        {
+          ...state,
+          partners: state.partners.map((p) =>
+            p.id === partner.id ? { ...p, base: action.base, maxMiles: action.maxMiles, ...(action.address !== undefined ? { address: action.address } : {}) } : p,
+          ),
+        },
         'office',
         `${partner.company} coverage: ${words}.`,
       )
@@ -1104,15 +1113,29 @@ function reduce(state: GcState, action: GcAction): GcState {
       if (!project || !schedule || !activity || !action.start || !action.finish || action.finish < action.start) return state
       const ids = new Set(schedule.activities.map((a) => a.lineId))
       const after = [...new Set(action.after)].filter((id) => id !== activity.lineId && ids.has(id))
-      if (activity.start === action.start && activity.finish === action.finish && after.join() === activity.after.join()) return state
+      // The gap after each wait, the day it cannot start before, the day it must finish by (G-35, G-36): kept as sent, dropped when null.
+      const lag = action.lag === undefined ? activity.lag : Object.fromEntries(Object.entries(action.lag).filter(([id, days]) => after.includes(id) && days > 0))
+      const notBefore = action.notBefore === undefined ? activity.notBefore : (action.notBefore ?? undefined)
+      const mustFinishBy = action.mustFinishBy === undefined ? activity.mustFinishBy : (action.mustFinishBy ?? undefined)
+      const sameLimits = JSON.stringify(lag ?? {}) === JSON.stringify(activity.lag ?? {}) && notBefore === activity.notBefore && mustFinishBy === activity.mustFinishBy
+      if (activity.start === action.start && activity.finish === action.finish && after.join() === activity.after.join() && sameLimits) return state
       const kept = withBaselineKept(project, schedule)
       // What comes after it moves out with it (owner, 2026-10-04).
       const pushed = pushAfter(
         project,
-        kept.activities.map((a) => (a.lineId === activity.lineId ? { ...a, start: action.start, finish: action.finish, after } : a)),
+        kept.activities.map((a) => {
+          if (a.lineId !== activity.lineId) return a
+          // The limits are set or dropped, never left as undefined keys (exactOptionalPropertyTypes).
+          const { lag: _lag, notBefore: _nb, mustFinishBy: _mf, ...rest } = a
+          return { ...rest, start: action.start, finish: action.finish, after, ...(lag && Object.keys(lag).length > 0 ? { lag } : {}), ...(notBefore ? { notBefore } : {}), ...(mustFinishBy ? { mustFinishBy } : {}) }
+        }),
         activity.lineId,
       )
-      const changed = { ...kept, activities: pushed.activities }
+      // A move saved with its explanation is kept on the schedule (the owner, 2026-10-05; the Gantt, Phase 2).
+      const why = action.why
+      if (why && moveWhyProblem(why.reason, why.note)) return state
+      const plan = why ? planMove(project, activity.lineId, action.start, action.finish, after) : null
+      const changed = { ...kept, activities: pushed.activities, ...(why && plan ? { moves: [moveRecord(schedule, activity.lineId, plan, why, state.today), ...(schedule.moves ?? [])] } : {}) }
       const pkg = project.packages.find((k) => k.id === activity.packageId)
       const label = pkg ? (scheduleLinesOf(pkg).find((l) => l.lineId === activity.lineId)?.label ?? activity.lineId) : activity.lineId
       // An inspection goes by its own name (Building lane, 2026-10-03).
@@ -1120,7 +1143,7 @@ function reduce(state: GcState, action: GcAction): GcState {
       return logged(
         mapProject(state, project.id, (p) => ({ ...p, schedule: changed })),
         'office',
-        `${name} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.${pushed.moved.length > 0 ? ` ${pushedAfterWords(pushed.moved)}` : ''}`,
+        `${name} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.${pushed.moved.length > 0 ? ` ${pushedAfterWords(pushed.moved)}` : ''}${why ? ` ${why.by}: ${why.note.trim()}` : ''}`,
       )
     }
 
@@ -2387,6 +2410,65 @@ function reduce(state: GcState, action: GcAction): GcState {
       const co = drafted.projects.find((p) => p.id === project.id)?.changeOrders?.find((c) => !before.has(c.id))
       if (!co) return state
       return mapProject(drafted, project.id, (p) => ({ ...p, rfis: (p.rfis ?? []).map((r) => (r.id === rfi.id ? { ...r, changeOrderId: co.id } : r)) }))
+    }
+
+    case 'recordScheduleWalk': {
+      // The weekly walk is on the record: the chart was true on this day, as far as this person looked.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule || action.kept.length + action.moveIds.length === 0) return state
+      const walk = { id: `walk-${(schedule.walks ?? []).length + 1}`, on: state.today, by: action.by, kept: action.kept, moveIds: action.moveIds, skipped: action.skipped }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, walks: [walk, ...(schedule.walks ?? [])] } })),
+        'office',
+        `${action.by} walked the schedule on ${project.name}: ${action.kept.length} kept as drawn, ${action.moveIds.length} moved${action.skipped > 0 ? `, ${action.skipped} not looked at` : ''}.`,
+      )
+    }
+
+    case 'tellTradesMoves': {
+      // Tell the trades (the Gantt, Phase 3): each company whose days changed is marked told, today. The message is read from the move.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule) return state
+      const moves = (schedule.moves ?? []).filter((m) => action.moveIds.includes(m.id) && !m.undoneOn && !m.toldOn)
+      const companies = companiesToTell(state, project, moves)
+      if (moves.length === 0 || companies.length === 0) return state
+      const toldTo = (m: ScheduleMove) => companies.filter((c) => c.moves.includes(m)).map((c) => c.partner.id)
+      return logged(
+        mapProject(state, project.id, (p) => ({
+          ...p,
+          schedule: { ...schedule, moves: (schedule.moves ?? []).map((m) => (moves.includes(m) ? { ...m, toldOn: state.today, toldTo: toldTo(m) } : m)) },
+        })),
+        'office',
+        `${action.by} told ${companies.length === 1 ? companies[0]?.partner.company : `${companies.length} companies`} their dates moved on ${project.name}.`,
+      )
+    }
+
+    case 'tradeAnswerDates': {
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const move = schedule?.moves?.find((m) => m.id === action.moveId)
+      const partner = partnerById(state, action.partnerId)
+      if (!project || !schedule || !move || !partner || !move.toldTo?.includes(partner.id) || move.answers?.some((a) => a.partnerId === partner.id)) return state
+      const answer = { partnerId: partner.id, on: state.today, ok: action.ok, ...(action.day ? { day: action.day } : {}), ...(action.note?.trim() ? { note: action.note.trim() } : {}) }
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, moves: (schedule.moves ?? []).map((m) => (m.id === move.id ? { ...m, answers: [...(m.answers ?? []), answer] } : m)) } })),
+        'trade',
+        action.ok ? `${partner.company}: the new dates on ${project.name} work.` : `${partner.company} asked for ${action.day ? weekdayDate(action.day) : 'another day'} on ${project.name}.`,
+      )
+    }
+
+    case 'undoScheduleMove': {
+      // The last move put back, while nothing it touched has moved since (the Gantt, Phase 2).
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project ? undoMove(project, action.moveId, action.by, state.today) : null
+      if (!project || !schedule) return state
+      const move = schedule.moves?.find((m) => m.id === action.moveId)
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule })),
+        'office',
+        `${action.by} undid a move: ${move ? moveActivityName(project, move.lineId) : 'an activity'} is back to ${move ? spanWords(move.from) : 'where it was'}.`,
+      )
     }
   }
 }

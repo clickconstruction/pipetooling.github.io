@@ -37,8 +37,11 @@ describe('the stage-health strip', () => {
 
   it('bidding with quiet weeks: each is one rectangle with its dates and its working days', () => {
     render(<GcStageHealth state={state} project={project('padb')} dispatch={() => undefined} onTab={() => undefined} />)
-    expect(screen.getByLabelText('Oct 5 – 11: 5 working days')).toBeTruthy()
-    expect(screen.getByLabelText('Oct 12 – 18: 5 working days')).toBeTruthy()
+    expect(screen.getByLabelText('Oct 5 – 9: 5 working days')).toBeTruthy()
+    expect(screen.getByLabelText('Oct 12 – 16: 5 working days')).toBeTruthy()
+    // Its weekend stands beside the rectangle, as in a busy week (the owner, 2026-10-05).
+    expect(screen.getByLabelText('Sat Oct 10')).toBeTruthy()
+    expect(screen.getByLabelText('Sun Oct 18')).toBeTruthy()
     // The busy weeks say both ends, and their labels never share a line.
     expect(screen.getByText('Sep 28 – Oct 4')).toBeTruthy()
     expect(screen.getByText('Pricing set')).toBeTruthy()

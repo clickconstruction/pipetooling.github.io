@@ -56,6 +56,8 @@ import { GcPortalPay } from './GcPortalPay'
 import { GcPortalPapers } from './GcPortalPapers'
 import { GcPortalPreBid } from './GcPortalPreBid'
 import { GcPortalLookAhead } from './GcPortalLookAhead'
+import { GcPortalDatesMoved } from './GcPortalDatesMoved'
+import { GcPortalSchedule } from './GcPortalSchedule'
 import { GcPortalWeeks } from './GcPortalWeeks'
 import { AlternatesEditor, AnswerLines, ExclusionsEditor, GoodForPicker, LeavesOut, QuoteFilePicker, SovEditor, TheirSovOnSow, type ExclusionDraft, type SovDraft } from './GcPortalBidExtras'
 import { ChangedLines, LineSheets, LineSpecs, SheetChip, TakenOut } from './GcPortalLineSheets'
@@ -293,7 +295,13 @@ function ProjectPage({
 
       <GcPortalPreBid state={state} project={project} partner={partner} />
 
+      {/* Your dates moved (the Gantt, Phase 3): the office told them, they answer here. */}
+      <GcPortalDatesMoved state={state} project={project} partner={partner} dispatch={dispatch} />
+
       <GcPortalLookAhead state={state} project={project} partner={partner} dispatch={dispatch} />
+
+      {/* Their own chart on the job (the Gantt, Phase 3, G-110). */}
+      <GcPortalSchedule state={state} project={project} partner={partner} />
 
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (

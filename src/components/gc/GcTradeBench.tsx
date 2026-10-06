@@ -1,7 +1,7 @@
-import { useState, type Dispatch } from 'react'
+import { useState, type Dispatch, type KeyboardEvent } from 'react'
 import {
   BIDS_WANTED,
-  TOWNS,
+  townFromAddress,
   PARTNER_SCHEDULE_WHY,
   answerRecord,
   askPromise,
@@ -31,6 +31,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
+import { GcAskCompanies } from './GcAskCompanies'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { GcVetQueue, VettingChip } from './GcVetting'
 import { GcBoardStrip, type BoardStripItem } from './GcBoardStages'
@@ -109,12 +110,18 @@ export function GcPartnersBoard(props: Props) {
   )
 }
 
+/** Open the Ask window (the owner, 2026-10-05): a job's trade, with these companies ticked. Unset: everyone in range. */
+type AskFor = (projectId: string, packageId: string, tick?: string[]) => void
+
 function benchAnchor(trade: string): string {
   return `gc-bench-${trade.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
 
 function GcTradeBenchView({ state, dispatch, onOpenProject, onFollowUp }: Props) {
   const [addingTrade, setAddingTrade] = useState<string | null>(null)
+  // Asking opens a window first (the owner, 2026-10-05): who, what they get, then one press.
+  const [asking, setAsking] = useState<{ projectId: string; packageId: string; tick?: string[] } | null>(null)
+  const askFor: AskFor = (projectId, packageId, tick) => setAsking({ projectId, packageId, ...(tick ? { tick } : {}) })
   const benches = tradeBenches(state)
 
   const run = (action: AssistantDo) => {
@@ -126,7 +133,7 @@ function GcTradeBenchView({ state, dispatch, onOpenProject, onFollowUp }: Props)
       setAddingTrade(action.trade)
       document.getElementById(benchAnchor(action.trade))?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     } else if (action.kind === 'ask') {
-      for (const partnerId of action.partnerIds) dispatch({ type: 'invite', projectId: action.projectId, packageId: action.packageId, partnerId })
+      askFor(action.projectId, action.packageId, action.partnerIds)
     } else if (action.kind === 'nudge') {
       dispatch({ type: 'nudge', projectId: action.projectId, packageId: action.packageId, inviteId: action.inviteId, about: action.about })
     } else {
@@ -150,6 +157,17 @@ function GcTradeBenchView({ state, dispatch, onOpenProject, onFollowUp }: Props)
 
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
+      {asking && (
+        <GcAskCompanies
+          key={`${asking.packageId}:${(asking.tick ?? []).join(',')}`}
+          state={state}
+          dispatch={dispatch}
+          projectId={asking.projectId}
+          packageId={asking.packageId}
+          {...(asking.tick ? { tick: asking.tick } : {})}
+          onClose={() => setAsking(null)}
+        />
+      )}
       <GcBoardStrip items={tradeItems} active={active} onJump={jumpTo} label="Jump to a trade" />
       <AssistantActions rules={rules} onRun={run} />
       {benches.map((bench) => (
@@ -160,6 +178,7 @@ function GcTradeBenchView({ state, dispatch, onOpenProject, onFollowUp }: Props)
           dispatch={dispatch}
           onOpenProject={onOpenProject}
           onFollowUp={onFollowUp}
+          onAsk={askFor}
           adding={addingTrade === bench.trade}
           onAdding={(on) => setAddingTrade(on ? bench.trade : null)}
         />
@@ -248,7 +267,8 @@ function BenchCard({
   onOpenProject,
   adding,
   onAdding,
-}: Props & { bench: TradeBench; adding: boolean; onAdding: (on: boolean) => void }) {
+  onAsk,
+}: Props & { bench: TradeBench; adding: boolean; onAdding: (on: boolean) => void; onAsk: AskFor }) {
   const [company, setCompany] = useState('')
   const [contact, setContact] = useState('')
   const [base, setBase] = useState('')
@@ -260,9 +280,10 @@ function BenchCard({
   return (
     <Card style={{ padding: 0, overflow: 'hidden', borderColor: bench.short > 0 ? 'var(--border-red)' : 'var(--border)' }}>
       <span id={benchAnchor(bench.trade)} style={{ display: 'block', scrollMarginTop: '3.5rem' }} />
-      <div style={{ padding: '0.7rem 1rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
-        <strong style={{ fontSize: '1.05rem' }}>{bench.trade}</strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+      {/* The trade's name sits on a band of its own color (the owner, 2026-10-05), so each group reads as a group. */}
+      <div style={{ padding: '0.7rem 1rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--bg-blue-200)', borderLeft: '5px solid var(--text-blue-500)', borderBottom: '1px solid var(--border)' }}>
+        <strong style={{ fontSize: '1.1rem', color: 'var(--text-blue-800)' }}>{bench.trade}</strong>
+        <span style={{ color: 'var(--text-700)', fontSize: '0.875rem' }}>
           {bench.partners.length} {bench.partners.length === 1 ? 'company' : 'companies'}
         </span>
         {bench.short > 0 ? (
@@ -294,9 +315,10 @@ function BenchCard({
                 company: company.trim(),
                 contact: contact.trim(),
                 trade: bench.trade,
-                base: base || null,
+                base: townFromAddress(base),
                 maxMiles: Number(maxMiles) > 0 ? Number(maxMiles) : null,
                 known: knownToUs,
+                ...(base.trim() ? { address: base.trim() } : {}),
               })
               setKnownToUs(false)
               setCompany('')
@@ -314,7 +336,7 @@ function BenchCard({
       {bench.needs.length > 0 && (
         <div style={{ padding: '0.6rem 1rem', display: 'grid', gap: '0.45rem', borderBottom: '1px solid var(--border)', background: bench.short > 0 ? 'var(--bg-red-tint)' : undefined }}>
           {bench.needs.map((need) => (
-            <NeedLine key={need.pkg.id} state={state} need={need} bench={bench} dispatch={dispatch} onOpenProject={onOpenProject} />
+            <NeedLine key={need.pkg.id} state={state} need={need} bench={bench} onAsk={onAsk} onOpenProject={onOpenProject} />
           ))}
         </div>
       )}
@@ -331,7 +353,7 @@ function BenchCard({
           </thead>
           <tbody>
             {bench.partners.map((partner) => (
-              <PartnerLine key={partner.id} state={state} partner={partner} bench={bench} dispatch={dispatch} />
+              <PartnerLine key={partner.id} state={state} partner={partner} bench={bench} dispatch={dispatch} onAsk={onAsk} />
             ))}
             {bench.partners.length === 0 && (
               <tr>
@@ -352,34 +374,63 @@ function CoverageFields({
   maxMiles,
   onBase,
   onMaxMiles,
+  onEnter,
+  onEscape,
+  autoFocus = false,
 }: {
   base: string
   maxMiles: string
   onBase: (v: string) => void
   onMaxMiles: (v: string) => void
+  /** Enter in either box saves; Escape cancels (the owner's pick, 2026-10-05: one line across the row). */
+  onEnter?: () => void
+  onEscape?: () => void
+  autoFocus?: boolean
 }) {
+  const placed = townFromAddress(base)
+  const keys = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && onEnter) onEnter()
+    if (e.key === 'Escape' && onEscape) onEscape()
+  }
   return (
-    <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-      drives from
-      <select value={base} onChange={(e) => onBase(e.target.value)} style={input} aria-label="Where they drive from">
-        <option value="">not set</option>
-        {TOWNS.map((t) => (
-          <option key={t.name} value={t.name}>{t.name}</option>
-        ))}
-      </select>
-      and goes
+    <>
+      {/* Their address, and the app works out the drive (the owner, 2026-10-05). The prototype reads the town in it; the real build maps the address. */}
       <input
-        type="number"
-        min={0}
-        step={5}
-        value={maxMiles}
-        onChange={(e) => onMaxMiles(e.target.value)}
-        placeholder="any"
-        aria-label="How far they will go, in miles"
-        style={{ ...input, width: '4.5rem' }}
+        autoFocus={autoFocus}
+        value={base}
+        onChange={(e) => onBase(e.target.value)}
+        onKeyDown={keys}
+        placeholder="Their address: street, town"
+        aria-label="Their address"
+        style={{ ...input, flex: '1 1 10rem', minWidth: 0 }}
       />
-      miles
-    </span>
+      {/* What the app made of it, as one chip; the whole sentence is on its hover. */}
+      {base.trim() !== '' &&
+        (placed ? (
+          <Chip tone="green" title={`We read this as ${placed}. The drive to each job is worked out from there.`}>
+            in {placed}
+          </Chip>
+        ) : (
+          <Chip tone="amber" title="We cannot place this address yet, so no drive shows. Check the town.">
+            cannot place this
+          </Chip>
+        ))}
+      <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
+        goes up to
+        <input
+          type="number"
+          min={0}
+          step={5}
+          value={maxMiles}
+          onChange={(e) => onMaxMiles(e.target.value)}
+          onKeyDown={keys}
+          placeholder="no limit"
+          aria-label="How far they will go, in miles. Leave it empty for no limit."
+          style={{ ...input, width: '5.5rem' }}
+        />
+        mi
+      </span>
+    </>
   )
 }
 
@@ -387,13 +438,13 @@ function NeedLine({
   state,
   need,
   bench,
-  dispatch,
+  onAsk,
   onOpenProject,
 }: {
   state: GcState
   need: TradeNeed
   bench: TradeBench
-  dispatch: Dispatch<GcAction>
+  onAsk: AskFor
   onOpenProject: (projectId: string) => void
 }) {
   const asked = new Set(need.pkg.invites.map((i) => i.partnerId))
@@ -426,9 +477,7 @@ function NeedLine({
       {need.short > 0 && notAsked.length > 0 && (
         <Btn
           kind="primary"
-          onClick={() => {
-            for (const p of notAsked) dispatch({ type: 'invite', projectId: need.project.id, packageId: need.pkg.id, partnerId: p.id })
-          }}
+          onClick={() => onAsk(need.project.id, need.pkg.id)}
         >
           Ask the {notAsked.length} we have not asked
         </Btn>
@@ -458,9 +507,10 @@ const askPill = {
   cursor: 'pointer',
 } as const
 
-function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; partner: Partner; bench: TradeBench; dispatch: Dispatch<GcAction> }) {
+function PartnerLine({ state, partner, bench, dispatch, onAsk }: { state: GcState; partner: Partner; bench: TradeBench; dispatch: Dispatch<GcAction>; onAsk: AskFor }) {
   const [editing, setEditing] = useState(false)
-  const [base, setBase] = useState(partner.base ?? '')
+  // The address typed for the drive; a company with only a town on file starts from the town.
+  const [base, setBase] = useState(partner.address || partner.base || '')
   const [maxMiles, setMaxMiles] = useState(partner.maxMiles === null ? '' : String(partner.maxMiles))
   const record = RECORD_WORDS[answerRecord(partner)]
   // The schedule plan (owner, 2026-10-02): how they keep our dates, beside how they answer.
@@ -469,10 +519,20 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
   const asks = partnerAsks(state, partner.id, bench.trade)
   const askedOn = new Set(asks.map((a) => a.pkg.id))
   const open = bench.needs.filter((n) => n.short > 0 && !askedOn.has(n.pkg.id))
-  const coverage = partner.base
-    ? `from ${partner.base}${partner.maxMiles === null ? '' : ` · goes ${partner.maxMiles} mi`}`
-    : 'coverage not set'
+  const coverage = partner.base || partner.address
+    ? `${partner.address || `from ${partner.base}`}${partner.maxMiles === null ? '' : ` · goes up to ${partner.maxMiles} mi`}`
+    : 'address not set'
+  const save = () => {
+    dispatch({ type: 'setCoverage', partnerId: partner.id, base: townFromAddress(base), maxMiles: Number(maxMiles) > 0 ? Number(maxMiles) : null, address: base.trim() })
+    setEditing(false)
+  }
+  const cancel = () => {
+    setBase(partner.address || partner.base || '')
+    setMaxMiles(partner.maxMiles === null ? '' : String(partner.maxMiles))
+    setEditing(false)
+  }
   return (
+    <>
     <tr>
       <td style={{ ...td, minWidth: '14rem' }}>
         <PartnerName partnerId={partner.id} company={partner.company} /> <VettingChip partner={partner} />
@@ -481,27 +541,11 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
         <div>
           <CompanyLanguagePick partner={partner} dispatch={dispatch} />
         </div>
-        {editing ? (
-          <div style={{ marginTop: '0.3rem', display: 'grid', gap: '0.3rem' }}>
-            <CoverageFields base={base} maxMiles={maxMiles} onBase={setBase} onMaxMiles={setMaxMiles} />
-            <span>
-              <Btn
-                kind="primary"
-                onClick={() => {
-                  dispatch({ type: 'setCoverage', partnerId: partner.id, base: base || null, maxMiles: Number(maxMiles) > 0 ? Number(maxMiles) : null })
-                  setEditing(false)
-                }}
-              >
-                Save
-              </Btn>{' '}
-              <Btn kind="quiet" onClick={() => setEditing(false)}>Cancel</Btn>
-            </span>
-          </div>
-        ) : (
+        {editing ? null : (
           <button
             type="button"
             onClick={() => setEditing(true)}
-            title="Where they drive from and how far they will go. Press to change."
+            title="Their address and how far they will go. The drive to each job is worked out from the address. Press to change."
             style={{
               background: 'none',
               border: 'none',
@@ -562,7 +606,7 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
           {open.map((n) => {
             const travel = travelFor(state, partner, n.project)
             const far = travelWords(travel, partner)
-            const ask = () => dispatch({ type: 'invite', projectId: n.project.id, packageId: n.pkg.id, partnerId: partner.id })
+            const ask = () => onAsk(n.project.id, n.pkg.id, [partner.id])
             return travel.inZone ? (
               <button key={n.pkg.id} type="button" onClick={ask} style={askPill} title={`Ask ${partner.company} to quote ${bench.trade.toLowerCase()} on ${n.project.name}.`}>
                 + Ask on {n.project.name}
@@ -581,5 +625,20 @@ function PartnerLine({ state, partner, bench, dispatch }: { state: GcState; part
       </td>
       <td style={td}><PaperworkChips partner={partner} today={state.today} /></td>
     </tr>
+    {/* The address editor runs across the whole row on one line, not stacked in the company cell (the owner's pick, 2026-10-05; `company-address-editor-mockup.html`). */}
+    {editing && (
+      <tr>
+        <td colSpan={4} style={{ ...td, background: 'var(--bg-subtle)' }}>
+          {/* The table can be wider than its card and scroll sideways: the editor stays in sight, no wider than the screen. */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', position: 'sticky', left: '0.6rem', maxWidth: 'min(100%, 42rem, calc(100vw - 4rem))' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Address</span>
+            <CoverageFields base={base} maxMiles={maxMiles} onBase={setBase} onMaxMiles={setMaxMiles} onEnter={save} onEscape={cancel} autoFocus />
+            <Btn kind="primary" onClick={save}>Save</Btn>
+            <Btn kind="quiet" onClick={cancel}>Cancel</Btn>
+          </div>
+        </td>
+      </tr>
+    )}
+    </>
   )
 }
