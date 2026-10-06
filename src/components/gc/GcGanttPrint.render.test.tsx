@@ -19,13 +19,15 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function chart({ print = true, hold }: { print?: boolean; hold?: string } = {}) {
+function chart({ print = true, hold, logNote }: { print?: boolean; hold?: string; logNote?: { label: string; note: string } } = {}) {
   const state = initialGcState()
   const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
   const m = scheduleMeasures(state, project)
   const holds = new Map<string, GanttHold>()
   const held = hold ? m.items.find((i) => i.label === hold) : undefined
   if (held) holds.set(held.activity.lineId, { kind: 'submittal', words: 'submittal 23 09 23-01', late: false })
+  const logged = logNote ? m.items.find((i) => i.label === logNote.label) : undefined
+  const logNotes = logged && logNote ? new Map([[logged.activity.lineId, { note: logNote.note, words: logNote.note }]]) : undefined
   const job: GanttPrintJob = {
     name: project.name,
     place: project.address,
@@ -35,7 +37,7 @@ function chart({ print = true, hold }: { print?: boolean; hold?: string } = {}) 
     doneWords: customerDoneWords(customerStanding(state, project)),
     customer: customerSchedulePicture(state, project),
   }
-  return render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={holds} today={state.today} building picked={null} onPick={vi.fn()} {...(print ? { print: job } : {})} />)
+  return render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={holds} today={state.today} building picked={null} onPick={vi.fn()} {...(print ? { print: job } : {})} {...(logNotes ? { logNotes } : {})} />)
 }
 
 const printButton = () => screen.getByRole('button', { name: 'Print or PDF' })
@@ -98,6 +100,12 @@ describe('Print or PDF on the chart (G-21)', () => {
     expect(String(doc.write.mock.calls[0]?.[0])).toContain('@page { size: letter landscape; margin: 0.4in; }')
     expect(win.print).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('dialog', { name: 'Print the chart' })).toBeNull()
+  })
+
+  it('prints the chart’s own note beside a bar, what the daily log says included (G-60)', () => {
+    chart({ logNote: { label: 'Top out', note: 'nobody on the daily log since Mon Sep 28' } })
+    fireEvent.click(printButton())
+    expect(framed()).toContain('nobody on the daily log since Mon Sep 28')
   })
 
   it('is off when nothing passes the filters', () => {

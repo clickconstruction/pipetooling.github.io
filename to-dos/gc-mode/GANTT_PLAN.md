@@ -674,6 +674,40 @@ late work under way is only logged: whether the office's call writes G-117's lat
 trade's behalf is the lead's next call. The nudge for several things still ends *Could you send them
 this week?*, which is the sheet's own sentence. *A full note* reads right.
 
+## Phase 4, the daily log and the chart, as built (2026-10-06)
+
+G-60, by Helper 5 (the mock-up and plan: `mockups/G-60.md`). `gcLogVsChart.ts` (tested, out of the
+barrel), `GcLogVsChart.tsx`, a note and a hover line on the chart.
+
+- **Two stories, one week.** The daily log says who was on site, by trade; the chart says whose work
+  runs. This week, Monday to today, on the days with a log, a bar runs inside its planned dates,
+  past its finish while not done, or inside its real dates. **On site, no bar**: a crew on site on a
+  day none of its bars runs, one day being enough. **Not on site**: a trade's bars not done run on 2
+  or more logged weekdays and its crew is on none of them. A day the log says the weather stopped
+  the site, the job or that trade does not count (G-58's weather, read for a crew that never came
+  too); a held bar is explained by its hold. Our own crew counts like any trade.
+- **The chart keeps one look.** The note beside the bar, in the held note's place in the order:
+  "not on site this week" on each of an absent trade's running bars, "on site this week, before
+  this starts" on a trade's next bar. The hover card's *Log* line says it in full: "Nobody from
+  Summit Roofing on the daily log Mon, Tue and Thu."
+- **A card under the chart**, only when something disagrees: one row per trade, the sentence, what
+  to do, and its buttons. *Open TPO membrane* opens the bar's editor and brings it into view; *It
+  started Fri Oct 2* keeps the real start (`setActualDates`, the walk's own press) and the row goes.
+  A trade back after its work finished, Guadalupe on a folded Concrete, has no bar to write on, so
+  the card says it: "If it is punch work, nothing changes."
+- **The Daily log tab** has the card's on-site rows under *This week*, where the person who wrote the
+  log knows why, with *It started* there too.
+- **It never contradicts the walk.** It reads the week the walk reads (`onSiteWords`): a test pins
+  that a bar on this week's walk and its row name the same days, with the weather's days in both.
+- On the made-up data the log and the chart agree, so nothing shows; the browser recipe in the
+  mock-up writes the logs that disagree.
+
+What the second look changed:
+
+- **A name with its own "and" gets a comma**: "Panels and feeders, and Lighting".
+- **Left out on purpose**: a Follow up call from a row (the sheet belongs to the page; G-115's call
+  list is its home) and a one-press move with the log's reason (the log gives a reason, not a day).
+
 ## Phase 3, print and PDF, as built (2026-10-06)
 
 G-21, Helper 2 on `spike/g21`; the mock-up and plan are `mockups/G-21.md`. `gcGanttPrint.ts` (tested,
@@ -697,8 +731,10 @@ the Schedule tab.
 - **Our team's copy**: the head (the job, *For our team*, the projected finish as the Projected
   finish card says it, the work done, what it shows), then columns for the hover card's facts
   (*Activity*, *Dates*, *Done*, *Plan*, *Where it stands*), the dates to meet on every page, what the
-  work waits on on page 1, the chart's own notes beside the bars (`barNote`), the lines, today, and a
-  key of only the marks on that page, with *Page n of N*.
+  work waits on on page 1, the chart's own notes beside the bars (`barNote`, so G-77's papers and
+  G-60's word from the daily log print as the chart says them), a trade's new day from its portal as
+  the chart's amber dashed tail (G-117), the lines, today, and a key of only the marks on that page,
+  with *Page n of N*.
 - **The customer's copy** reads what the customer's own views read, from one call,
   `customerSchedulePicture` in `gcCustomerSchedule.ts`: the stages for an owner, every bar by stage
   for a GC or an owner's rep (`customerFullChart`, call 5), then *What changed this week* and *What
@@ -713,10 +749,11 @@ the Schedule tab.
   are on the page; the customer's lists go under the last rows, or on a page of their own. Fair Oaks
   D as the chart opens is 2 pages, with Late or behind 1, with Next 3 weeks 1, the customer's
   stages 1.
-- **Tests**: `gcGanttPrint.test.ts` (18: the rows under each filter, the folds, the span and the
+- **Tests**: `gcGanttPrint.test.ts` (19: the rows under each filter, the folds, the span and the
   scale, paging, the lines, the dates to meet, both customer copies with no company and no spare
-  days, the look-ahead, the document, and plain words for every sentence),
-  `GcGanttPrint.render.test.tsx` (6), and the customer's words in `gcCustomerSchedule.test.ts` (2).
+  days, the look-ahead, G-117's tail, the document, and plain words for every sentence),
+  `GcGanttPrint.render.test.tsx` (7, G-60's note on paper among them), and the customer's words in
+  `gcCustomerSchedule.test.ts` (2).
   No action and no fixture change: the golden test did not move.
 
 What the second look changed:
