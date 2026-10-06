@@ -39,6 +39,7 @@ import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
+import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -422,6 +423,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const requesterName = matter?.review_requested_by ? (users.find((u) => u.id === matter.review_requested_by)?.name ?? 'the office') : null
   const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', legal?.recipients ?? [])
   const firmPaused = Boolean(legal?.firmPaused)
+  // v2.4662 (punch list #85 item 26): people whose emails have stopped going through.
+  const notReaching = (legal?.recipients ?? []).filter((r) => r.send_failed_since && !r.paused_at).length
   const setFirmPaused = async (paused: boolean) => { await run(paused ? 'Pause' : 'Resume', () => legalRpc('legal_firm_set_paused', { p_firm_id: firm?.id, p_paused: paused })) }
   const removeRecipient = async (id: string, name: string) => { await run('Remove', () => legalRpc('legal_firm_recipient_remove', { p_recipient_id: id })); showToast(`${name} removed from the firm's list.`, 'info') }
 
@@ -460,7 +463,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
             <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & billing.' : ''}</div>
           </div>
-          {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}</button> : null}
+          {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}{notReaching ? ` · ${notReaching} not reaching` : ''}</button> : null}
           {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, height: 30, width: 30, justifyContent: 'center', padding: 0 }}>✕</button>
         </div>
@@ -686,10 +689,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 <tbody>
                   {(legal?.recipients ?? []).map((r) => (
                     <tr key={r.id}>
-                      <td style={TD}><b>{r.name}</b><div style={{ ...MUTED, fontSize: '0.76rem' }}>{r.email}{r.role ? ` · ${r.role}` : ''}</div></td>
+                      <td style={TD}><b>{r.name}</b><div style={{ ...MUTED, fontSize: '0.76rem' }}>{r.email}{r.role ? ` · ${r.role}` : ''}</div>{r.send_failed_since && !r.paused_at ? <div data-legal-not-reaching style={{ color: '#b42318', fontSize: '0.76rem', marginTop: 2 }}>{legalNotReachingLine({ email: r.email, sinceYmd: calendarYmdInAppTzFromIso(r.send_failed_since), error: r.send_error, confirmed: Boolean(r.confirmed_at), mode: r.mode }, 'office')}</div> : null}</td>
                       <td style={TD}>{r.mode === 'digest' ? `${WEEKDAY_LABELS[r.digest_weekday] ?? 'Mon'} ${r.digest_time} digest` : 'right away'}</td>
                       <td style={TD}>{r.scope === 'mine' ? 'only their matters' : 'every matter'}</td>
-                      <td style={TD}>{r.paused_at ? pill('stopped', 'neutral') : r.confirmed_at ? pill('confirmed', 'ok') : pill('not confirmed', 'warn')}</td>
+                      <td style={TD}>{r.paused_at ? pill('stopped', 'neutral') : r.send_failed_since ? pill('not reaching', 'warn') : r.confirmed_at ? pill('confirmed', 'ok') : pill('not confirmed', 'warn')}</td>
                       <td style={TD}><button type="button" onClick={() => void removeRecipient(r.id, r.name)} disabled={busy} style={btn}>Remove</button></td>
                     </tr>
                   ))}

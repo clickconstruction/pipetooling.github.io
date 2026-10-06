@@ -203,6 +203,9 @@ export type LegalRecipientRow = {
   paused_at: string | null
   added_via_portal?: boolean
   removed_at?: string | null
+  /** v2.4662: when emails to this person began failing, and the mail service's last refusal; null while they go through. */
+  send_failed_since?: string | null
+  send_error?: string | null
 }
 
 export type ReleaseRecipientLine = { name: string; email: string; bucket: 'now' | 'digest' | 'unconfirmed' | 'stopped'; why: string }
