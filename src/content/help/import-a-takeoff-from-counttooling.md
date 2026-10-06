@@ -2,7 +2,7 @@
 title: import a takeoff from CountTooling
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link, undo import, set scale, group, alternate, with and without
+keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link, undo import, set scale, group, alternate, with and without, import again, review, update, missing, rename
 order: 96
 ---
 CountTooling counts the drawings and ClickTooling prices them. The bridge is one clipboard copy with no retyping.
@@ -27,6 +27,25 @@ CountTooling's **groups** come along. A row copied as `[Restroom A] WC` lands as
 
 :::example Reading the result
 The Count Sheet strip shows **Counts** and **Line feet** as separate totals, and each feet row carries a small **ft** tag. A red **Unscaled** tile means some runs came in as pixels: set the scale in CountTooling, copy again, and delete the `px of` rows.
+:::
+
+## Import again after a change
+
+Say the drawings change after you counted. Fix the count in CountTooling and copy again. Then click {{button:outline|Import from /Tooling}} on the same bid. Nothing is added twice. A review opens instead. It sorts the copy against the sheet into four piles.
+
+- **Changed** is a row with the same name and group but a new count or page. It starts on {{button:blue|Update all}}. Update keeps every part and price on the row. Each line says so, like *6 parts · priced · stays*.
+- **New** is a row in the copy that is not on the bid. It starts on {{button:blue|Add all}}.
+- **Missing** is a row on the bid that is not in the copy. A copy of every sheet starts on {{button:outline|Remove all}}. A This Canvas Only copy starts on {{button:outline|Keep all}}. A line with parts says *lost on remove* in red.
+- **Same** rows match exactly. They fold to one line.
+
+Every row has its own tick. Untick a row to leave it alone. Only the field that moved is drawn, old to new. A count going up is green. A count going down is red.
+
+A row that left and a row that arrived with the same count may be one row renamed. The review says *Looks like a rename*. Click {{button:outline|Same row, renamed}} to keep its parts and prices under the new name. The same offer appears for a row that moved to another group.
+
+Click {{button:green|Apply 9 changes}} when the piles read right. The toast says what happened and carries {{button:outline|Undo}} for ten seconds. Undo puts the old values back. It removes what was added and restores what was removed. A restored row comes back without its parts.
+
+:::example Copying again with nothing changed
+The toast reads *All 31 rows match this bid exactly. Nothing to import.* and the sheet is untouched.
 :::
 
 ## Then price the materials
