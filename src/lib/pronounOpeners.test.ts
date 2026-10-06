@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { helpGuidePronounOpeners, opensOnBarePronoun, opensOnSo } from './pronounOpeners'
+import { changedLinesFromDiff, helpGuidePronounOpeners, openersOnChangedLines, opensOnBarePronoun, opensOnSo } from './pronounOpeners'
 
 describe('pronoun openers: what counts as a bare pronoun', () => {
   it('flags a personal or possessive pronoun at the start, always', () => {
@@ -85,5 +85,41 @@ describe('pronoun openers: a whole guide', () => {
 
   it('a guide with no frontmatter counts from its first line', () => {
     expect(helpGuidePronounOpeners('First line.\nThe second. It points back.')).toEqual([{ line: 2, sentence: 'It points back.', rule: 'pronoun' }])
+  })
+})
+
+describe('pronoun openers: only the lines a change wrote', () => {
+  it('reads the new side of each hunk in a zero-context diff', () => {
+    const diff = [
+      'diff --git a/x.md b/x.md',
+      '--- a/x.md',
+      '+++ b/x.md',
+      '@@ -12 +12 @@ heading',
+      '-old sentence.',
+      '+new sentence.',
+      '@@ -30,0 +31,3 @@',
+      '+a',
+      '+b',
+      '+c',
+      '@@ -40,2 +43,0 @@',
+      '-gone',
+      '-gone',
+    ].join('\n')
+    expect([...changedLinesFromDiff(diff)].sort((a, b) => a - b)).toEqual([12, 31, 32, 33])
+  })
+
+  it('a new guide is every line', () => {
+    expect(changedLinesFromDiff('@@ -0,0 +1,4 @@\n+a\n+b\n+c\n+d').size).toBe(4)
+  })
+
+  it('splits the findings: the changed lines are listed, the rest only counted', () => {
+    const found = [
+      { line: 5, sentence: 'It shows the date.', rule: 'pronoun' as const },
+      { line: 9, sentence: 'That is all.', rule: 'pronoun' as const },
+      { line: 9, sentence: 'So it lands.', rule: 'so' as const },
+      { line: 20, sentence: 'They wait.', rule: 'pronoun' as const },
+    ]
+    expect(openersOnChangedLines(found, new Set([9]))).toEqual({ onChanged: [found[1], found[2]], elsewhere: 2 })
+    expect(openersOnChangedLines(found, new Set())).toEqual({ onChanged: [], elsewhere: 4 })
   })
 })

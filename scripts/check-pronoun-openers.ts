@@ -1,11 +1,13 @@
 #!/usr/bin/env vite-node
 /**
  * `npm run check:pronouns` — a WARNING, never a failure (the owner's call, 2026-10-06). For each
- * help guide this change touches, it prints the sentences that open on a bare pronoun pointing
- * back across a full stop ("It shows…", "That means…"), and the paragraphs that open a second
- * sentence on "So", the rule that can fail later. The finder and its reasons are in
- * `src/lib/pronounOpeners.ts`. Repeat the noun where the pronoun could mean more than one thing;
- * leave it where it cannot.
+ * help guide this change touches, it prints the sentences on the lines the change wrote that open on
+ * a bare pronoun pointing back across a full stop ("It shows…", "That means…"), and the paragraphs
+ * that open a second sentence on "So", the rule that can fail later. Findings on lines the change
+ * left alone are only counted, one line per guide ("N more on unchanged lines"), so a writer who
+ * fixes one sentence is not shown forty they did not write; `-- --all` lists them too. The finder
+ * and its reasons are in `src/lib/pronounOpeners.ts`. Repeat the noun where the pronoun could mean
+ * more than one thing; leave it where it cannot.
  *
  * In GitHub Actions each finding is also a `::warning` on its line, so it shows on the pull
  * request's Files tab. GitHub draws ten per step; the log keeps every one. Always exits 0, even
@@ -20,7 +22,7 @@ import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { helpGuidePronounOpeners, type PronounOpener } from '../src/lib/pronounOpeners'
+import { changedLinesFromDiff, helpGuidePronounOpeners, openersOnChangedLines, type PronounOpener } from '../src/lib/pronounOpeners'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const GUIDES = 'src/content/help'
@@ -83,12 +85,18 @@ function main(): void {
     return
   }
   const inActions = process.env.GITHUB_ACTIONS === 'true'
+  const all = process.argv.includes('--all')
   let total = 0
+  let elsewhereTotal = 0
   let annotated = 0
   for (const file of changed) {
-    const found = helpGuidePronounOpeners(readFileSync(resolve(ROOT, file), 'utf8'))
-    if (found.length === 0) continue
-    console.log(`\n${file}: ${found.length}`)
+    const everything = helpGuidePronounOpeners(readFileSync(resolve(ROOT, file), 'utf8'))
+    const split = openersOnChangedLines(everything, changedLinesFromDiff(tryGit(`diff -U0 ${base.ref} HEAD -- ${file}`) ?? ''))
+    const found = all ? everything : split.onChanged
+    const elsewhere = all ? 0 : split.elsewhere
+    elsewhereTotal += elsewhere
+    if (found.length === 0 && elsewhere === 0) continue
+    console.log(`\n${file}: ${found.length}${elsewhere > 0 ? ` on the lines this change wrote · ${elsewhere} more on unchanged lines` : ''}`)
     for (const f of found) {
       total++
       console.log(`  line ${String(f.line).padStart(3)}  ${RULE_LABEL[f.rule]}: ${f.sentence}`)
@@ -98,12 +106,13 @@ function main(): void {
       }
     }
   }
+  const untouched = elsewhereTotal > 0 ? ` ${elsewhereTotal} more sit on lines this change left alone; \`npm run check:pronouns -- --all\` lists them.` : ''
   if (total === 0) {
-    console.log(`check-pronouns: ${changed.length} changed guide(s), no sentence opens on a bare pronoun (against ${base.how}).`)
+    console.log(`\ncheck-pronouns: ${changed.length} changed guide(s), no sentence this change wrote opens on a bare pronoun (against ${base.how}).${untouched}`)
     return
   }
   const more = inActions && total > annotated ? ` The Files tab shows the first ${annotated}; every one is above.` : ''
-  console.log(`\ncheck-pronouns: ${total} finding(s) in ${changed.length} changed guide(s), against ${base.how}. A warning, not a failure: repeat the noun where the pronoun could mean more than one thing.${more} The rule: src/lib/pronounOpeners.ts.`)
+  console.log(`\ncheck-pronouns: ${total} finding(s) on the lines this change wrote, in ${changed.length} changed guide(s), against ${base.how}. A warning, not a failure: repeat the noun where the pronoun could mean more than one thing.${more}${untouched} The rule: src/lib/pronounOpeners.ts.`)
 }
 
 try {
