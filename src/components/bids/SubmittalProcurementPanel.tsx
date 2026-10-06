@@ -1104,7 +1104,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           </div>
           {rows.length > 0 ? (
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">
-              <b>Next:</b> {procurementNextLine(rows, today, draftRev).join(' ')}
+              {/* v2.4688 · no bold Next: here — the strip above already has one, and a page with two Nexts has none (punch list #89, item 5). */}
+              {procurementNextLine(rows, today, draftRev).join(' ')}
               {onEnterApproval ? (
                 <>
                   {' '}<span style={smallMuted}>Approved outside the app?</span>{' '}
