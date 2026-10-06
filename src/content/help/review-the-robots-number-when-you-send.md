@@ -22,7 +22,7 @@ After pricing you have just touched every row. That is when the robot's question
 
 ## When it opens at send
 
-1. With no best effort on record, you confirm the send the way you always do. You tap **Mark sent today** on the Cover Letter. Or you set the sent date on the Edit tab with the three acknowledgments. There is nothing new to click.
+1. With no best effort on record, you confirm the send the way you always do. Tap **Mark sent today** on the Cover Letter. Or set the sent date on the Edit tab with the three acknowledgments. There is nothing new to click.
 2. If a robot sealed a number on this bid, **The robot's envelope** opens on top. It shows {{chip:blue|Robot locked}} beside {{chip:blue|Ours · just now}} and the delta, the gap between the two. The delta is green when the robot landed within 8%.
 3. It opens for the bid's estimator, because the number it scored against is yours. Someone else marking the bid sent gets the {{chip:blue|Robot bid}} line on their Dashboard instead.
 

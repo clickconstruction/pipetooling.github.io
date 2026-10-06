@@ -34,7 +34,7 @@ Opening the link and looking at an option both count. Mail-server prefetches —
 The customer called or told you in person. You open the sent estimate. Under the customer-link buttons, you press {{button:outline|Record a decline (phone / in person)}}.
 
 1. **How did you hear?** Pick Phone call, In person, Email, Text message or Other.
-2. **Note** is optional. You write what they said, in a sentence. *"Going with their brother-in-law; call back in the spring."*
+2. **Note** is optional. Write what they said, in a sentence. *"Going with their brother-in-law; call back in the spring."*
 3. Press {{button:red|Mark declined}}.
 
 The row moves to **Declined** wearing {{chip:gray|Declined — office heard it by phone · just now}}. The note sits in Customer activity for whoever picks the file up next.
