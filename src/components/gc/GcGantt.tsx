@@ -22,6 +22,8 @@ import {
   ganttNeighbors,
   linkPath,
   rowsInView,
+  lastFinishDay,
+  spareTail,
   type GanttRowEntry,
   type GanttBar,
   type GanttFilters,
@@ -189,6 +191,8 @@ export function GcGantt({
   }, [])
   const [filters, setFilters] = useState<GanttFilters>(NO_FILTERS)
   const [showLinks, setShowLinks] = useState(true)
+  // Spare days as a faint tail after each bar (G-08), on request; held like the links, while the chart is open.
+  const [showSpare, setShowSpare] = useState(false)
   // A group whose work is all done opens folded: it is history, and the live work gets the room.
   const [folded, setFolded] = useState<Set<string>>(() => finishedGroups(items, float, holds, today, building, 'trade'))
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -294,6 +298,7 @@ export function GcGantt({
             by,
             folded,
             links: showLinks,
+            spare: showSpare,
             milestones,
             waits: waitList,
             lost: lost ?? new Map<string, LostDay[]>(),
@@ -305,7 +310,7 @@ export function GcGantt({
             ...(lateSaid ? { lateSaid } : {}),
           }
         : null,
-    [print, all, filters, by, folded, showLinks, milestones, waitList, lost, today, building, lateSaid, logNotes],
+    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes],
   )
   const anyFilter = Object.values(filters).some(Boolean)
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
@@ -352,6 +357,20 @@ export function GcGantt({
           </span>
         </div>
       </div>
+    )
+  }
+
+  /** The spare-day tail (G-08): from the bar's end to its last day, at its foot, under the other tails. */
+  const spareTailOf = (b: GanttBar) => {
+    const t = spareTail(b)
+    if (!t) return null
+    return (
+      <span
+        aria-hidden
+        data-gantt-spare={b.id}
+        data-gantt-spare-to={t.to}
+        style={{ position: 'absolute', left: x(t.from), width: t.days * px, top: (ROW_H + BAR_H) / 2, height: 3, boxSizing: 'border-box', background: 'var(--bg-blue-200)', borderRight: `1.5px solid ${C.blue}`, opacity: 0.8, pointerEvents: 'none' }}
+      />
     )
   }
 
@@ -482,6 +501,8 @@ export function GcGantt({
             {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
             {canDrag && w >= 22 && <span aria-hidden style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 6, cursor: 'ew-resize' }} />}
           </button>
+          {/* Its spare days (G-08): a faint tail at the bar's foot, out to the last day it can finish. Not while it is dragged. */}
+          {showSpare && !dragging && spareTailOf(b)}
           {b.coTail && !dragging && (
             <span
               aria-hidden
@@ -555,6 +576,9 @@ export function GcGantt({
           </button>
           <button type="button" style={quietBtn} aria-pressed={showLinks} onClick={() => setShowLinks((v) => !v)} title="The lines from each activity to the ones that wait on it">
             {showLinks ? 'Hide the links' : 'Show the links'}
+          </button>
+          <button type="button" style={quietBtn} aria-pressed={showSpare} onClick={() => setShowSpare((v) => !v)} title="A faint tail after each bar, out to the last day it can finish before the job finishes later. The work that sets the finish has none.">
+            {showSpare ? 'Hide spare days' : 'Show spare days'}
           </button>
           <button type="button" style={quietBtn} onClick={() => setFolded(anyFolded ? new Set() : new Set(groups.map((g) => g.key)))}>
             {anyFolded ? 'Open all' : 'Fold all'}
@@ -868,14 +892,14 @@ export function GcGantt({
 
       )}
 
-      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} />}
+      {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
     </div>
   )
 }
 
-function GanttLegend({ building, canMove }: { building: boolean; canMove: boolean }) {
+function GanttLegend({ building, canMove, spare = false }: { building: boolean; canMove: boolean; /** The spare-day tails are on (G-08). */ spare?: boolean }) {
   const key = (style: CSSProperties, words: string) => (
     <span key={words} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
       <span aria-hidden style={{ display: 'inline-block', boxSizing: 'border-box', flex: 'none', ...style }} />
@@ -895,6 +919,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
       {building && key({ ...bar, background: 'var(--surface)', border: `1.5px dashed ${C.amber}`, borderLeft: 'none', borderRadius: '0 3px 3px 0' }, "a trade's new day from its portal, not on the dates yet")}
       {key({ width: 20, height: 8, borderRadius: 4, background: 'var(--bg-violet-100)', border: `1.5px solid ${C.violet}` }, 'what the work waits on: a delivery, a decision, a permit, the utility, from the day it was asked for to the day it is expected')}
       {key({ width: 20, height: 3, borderRadius: 2, background: 'var(--border-strong)' }, 'where it sat in the plan at Start')}
+      {spare && key({ width: 20, height: 3, background: 'var(--bg-blue-200)', borderRight: `1.5px solid ${C.blue}` }, "a bar's spare days: how long it can slip before the job finishes later")}
       {building && key({ width: 20, height: 3, borderRadius: 2, background: C.green }, 'the days it really ran, as recorded')}
       {key({ width: 20, height: 7, borderRadius: 3, background: 'var(--border-strong)' }, 'a whole group, as one bar')}
       {key({ width: 10, height: 10, transform: 'rotate(45deg)', background: 'var(--text-muted)' }, 'a date the job must meet')}
@@ -955,6 +980,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost, said, log }: { ba
       {bar.holidays.length > 0 && row('Runs over', bar.holidays.join(', '))}
       {building && !a.inspection && row('Done', bar.status === 'done' ? '100%' : `${Math.round(bar.item.actual)}%, and the plan has ${Math.round(bar.item.plannedToday)}% by today`)}
       {bar.status !== 'done' && row('Spare', bar.critical ? 'None. A day lost here is a day lost on the finish.' : `${bar.spare} ${bar.spare === 1 ? 'day' : 'days'} before it moves the finish`, bar.tight ? 'var(--text-red-700)' : undefined)}
+      {lastFinishDay(bar) && row('Can finish by', weekdayDate(lastFinishDay(bar)), bar.tight ? 'var(--text-red-700)' : undefined)}
       {bar.moved && row('At Start', `${shortDate(bar.item.baseline.start)} to ${shortDate(bar.item.baseline.finish)}`)}
       {a.actualStart && row('Really', actualWords(a) ?? '', 'var(--text-green-800)')}
       {a.notBefore && row('Not before', weekdayDate(a.notBefore))}

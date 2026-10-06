@@ -109,6 +109,16 @@ describe('Print or PDF on the chart (G-21)', () => {
     expect(framed()).toContain('nobody on the daily log since Mon Sep 28')
   })
 
+  it('prints the spare-day tails while Show spare days is on, and says so (G-08)', () => {
+    chart()
+    fireEvent.click(screen.getByRole('button', { name: 'Show spare days' }))
+    fireEvent.click(printButton())
+    expect(within(dialog()).getByText("Each bar's spare days show as a faint tail.")).toBeTruthy()
+    expect(framed()).toContain('data-spare=')
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'The customer' }))
+    expect(framed()).not.toContain('data-spare=')
+  })
+
   it('is off when nothing passes the filters', () => {
     chart({ hold: 'Controls' })
     fireEvent.click(screen.getByRole('button', { name: /^Late or behind/ }))

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GC_COMPANY, initialGcState } from './gcFixture'
 import { scheduleMeasures } from './gcBuildingSchedule'
-import { NO_FILTERS, ganttBars, ganttFilter, ganttGroups, ganttLinks, type GanttBar, type GanttFilters, type GanttHold } from './gcGantt'
+import { NO_FILTERS, ganttBars, ganttFilter, ganttGroups, ganttLinks, spareTail, type GanttBar, type GanttFilters, type GanttHold } from './gcGantt'
 import { waitRows } from './gcScheduleWaits'
 import { lostDaysByLine } from './gcDaysLost'
 import { changeOrderTails } from './gcChangeOrderDays'
@@ -153,6 +153,30 @@ describe('a trade’s own new day from its portal (G-117)', () => {
   })
 })
 
+describe('spare days on the paper (G-08)', () => {
+  it('prints our team a faint tail for each bar with room while Show spare days is on, keyed and said; never the customer', () => {
+    const { input } = fairOaks()
+    const off = ganttPrint({ ...input, folded: new Set() })
+    expect(off.key.flat()).not.toContain('spare')
+    expect(ganttPrintHtml(off)).not.toContain('data-spare=')
+    const on = ganttPrint({ ...input, folded: new Set(), spare: true })
+    const withRoom = input.bars.filter((b) => spareTail(b)).map((b) => b.id)
+    expect(withRoom).toHaveLength(14)
+    const html = ganttPrintHtml(on)
+    expect([...html.matchAll(/data-spare="([^"]+)"/g)].map((m) => m[1]).sort()).toEqual([...withRoom].sort())
+    expect(on.key.flat()).toContain('spare')
+    expect(html).toContain('its spare days, how long it can slip before the job finishes later')
+    expect(on.shows).toContain("Each bar's spare days show as a faint tail.")
+    expect(on.head.lines.some((l) => l.includes("Each bar's spare days show as a faint tail."))).toBe(true)
+    expect(on.pages).toHaveLength(off.pages.length)
+    for (const customer of [ganttPrint({ ...input, spare: true, for: 'customer' })]) {
+      expect(customer.spare).toBe(false)
+      expect(customer.key.flat()).not.toContain('spare')
+      expect(ganttPrintHtml(customer)).not.toContain('data-spare=')
+    }
+  })
+})
+
 describe('the scale and the dates to meet', () => {
   it('picks the scale from the page: every day for five weeks, Mondays for six months, the 1st and 15th for two years', () => {
     expect(printAxis('2026-09-21', 35, 300, 434, true)).toMatchObject({ scale: 'days', tint: true })
@@ -300,6 +324,7 @@ describe('the document', () => {
       ganttPrint({ ...input, folded: new Set(['sitework', 'concrete', 'plumbing', 'roofing', 'electrical'].flatMap((t) => ganttGroups(input.bars, 'trade').filter((g) => g.title.toLowerCase() === t).map((g) => g.key))), links: false }),
       ganttPrint({ ...input, filters: { ...NO_FILTERS, late: true, held: true } }),
       ganttPrint({ ...input, filters: { ...NO_FILTERS, soon: true } }),
+      ganttPrint({ ...input, spare: true }),
       ganttPrint({ ...input, filters: { critical: true, late: true, held: true, soon: true, moved: true } }),
       ganttPrint({ ...input, for: 'customer' }),
       ganttPrint({ ...input, for: 'customer', job: { ...input.job, customer: gc } }),

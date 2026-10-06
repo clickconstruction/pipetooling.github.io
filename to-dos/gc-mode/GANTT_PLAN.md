@@ -809,6 +809,38 @@ cash weeks following the bars is G-140, the owner's call: the trades' draws woul
 in the same change. The bars' pace instead of their drawn days was not taken, because two dates
 would argue. The walk moves the bar, and the forecast follows.
 
+## Phase 1, spare days as a tail, as built (2026-10-06)
+
+G-08, Helper 2 on `spike/g08`; the mock-up and plan are `mockups/G-08.md`. `spareTail` and
+`lastFinishDay` in `gcGantt.ts` (additions), the chart's toggle, tail, legend entry and hover row in
+`GcGantt.tsx` (additions), and the tail on the paper in `gcGanttPrint.ts`.
+
+- **Show spare days** beside Hide the links, *Hide spare days* while on, off when the chart opens and
+  held the way Hide the links is held, while the chart is open. Its title: *A faint tail after each
+  bar, out to the last day it can finish before the job finishes later. The work that sets the finish
+  has none.*
+- **The tail**: a faint pale-blue line at the bar's foot from the day after its finish to the last
+  day it can finish (its finish plus `GanttBar.spare`, the read the chart already made), with an end
+  mark. It sits under the notes and below the change order's and the trade's full-height tails, and
+  takes no press. Never on the red chain (5 or fewer spare days) or a done bar. On Fair Oaks D: 14
+  tails, six ending Sun Dec 6, the day before the final inspection, on the work only it waits on.
+- **The hover card** has *Can finish by Sun Nov 15* under *Spare*, on every bar with spare days, the
+  red chain included (Trim: *Can finish by Sun Dec 6*). The row and the tail read one function,
+  `lastFinishDay`, so they always name the same day.
+- **The legend** gains *a bar's spare days: how long it can slip before the job finishes later*
+  while it is on.
+- **On the paper**, our team's copy prints the tails while it is on, with the key entry and the
+  sentence *Each bar's spare days show as a faint tail.*; the customer's copies never do, since a
+  customer never sees spare days. Page counts do not move.
+- **Tests**: `gcGantt.test.ts` (2: the tail's days, none on the red chain or a done bar, and the six
+  Dec 6 tails being the work only the final inspection waits on), `GcGantt.render.test.tsx` (1: off
+  at first, 14 tails, none on the red chain, every tail drawn to the day its hover card names),
+  `gcGanttPrint.test.ts` (1, and the plain-words walk), `GcGanttPrint.render.test.tsx` (1). No
+  action, no fixture change: the golden test did not move.
+
+Left out, the owner's calls: the room each bar had at Start (it needs the float over the baseline's
+dates), and spare days counted to the contract's day (it changes what spare days mean everywhere).
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

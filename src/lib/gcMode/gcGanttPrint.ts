@@ -23,7 +23,7 @@
 import { addDays } from './gcBuilding'
 import { daysBetween, type MilestoneRow } from './gcBuildingSchedule'
 import { shortDate, weekdayDate } from './gcWords'
-import { ganttAxis, ganttFilter, ganttGroups, ganttLinks, holidayOn, isWeekend, linkPath, type GanttBar, type GanttFilters, type GanttGroup, type GanttGroupBy } from './gcGantt'
+import { ganttAxis, ganttFilter, ganttGroups, ganttLinks, holidayOn, isWeekend, linkPath, spareTail, type GanttBar, type GanttFilters, type GanttGroup, type GanttGroupBy } from './gcGantt'
 import { CUSTOMER_NOTHING_MOVED, CUSTOMER_STAGE_WORDS, customerBarWords, type CustomerSchedulePicture, type CustomerStage } from './gcCustomerSchedule'
 import type { WaitRow } from './gcScheduleWaits'
 import type { LostDay } from './gcDaysLost'
@@ -74,6 +74,8 @@ export interface GanttPrintInput {
   noteOf?: (bar: GanttBar) => { words: string; color: string } | null
   /** A trade's own new finish from its portal, not on the dates yet (G-117): the chart's amber dashed tail. */
   lateSaid?: ReadonlyMap<string, { finish: string; words: string }>
+  /** Show spare days is on (G-08): each bar's spare days as the chart's faint tail, on our team's copy. */
+  spare?: boolean
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -119,7 +121,7 @@ export interface GanttPrintAxis {
 }
 
 /** The marks the key explains, in the key's order. */
-export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
+export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'spare' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
 
 /** A date the job must meet, placed on its line so no two labels run together. */
 export interface GanttPrintMilestone {
@@ -168,6 +170,8 @@ export interface GanttPrint {
   lost: ReadonlyMap<string, LostDay[]>
   /** A trade's own new finish from its portal (G-117), on our team's copy only. */
   lateSaid: ReadonlyMap<string, { finish: string; words: string }>
+  /** Each bar's spare days as a faint tail (G-08), on our team's copy only, when Show spare days is on. */
+  spare: boolean
   /** The marks each page uses. */
   key: GanttPrintMark[][]
   /** "Every day is a working day, weekends and holidays too." Our team's copy only. */
@@ -485,6 +489,7 @@ function showsWords(input: GanttPrintInput, shown: GanttBar[], groups: GanttGrou
   else if (folded.length > 1 && folded.length <= 4) words.push(`${andList(folded)} are folded into one bar each.`)
   else if (folded.length > 4) words.push(`${folded.length} groups are folded into one bar each.`)
   words.push(input.links ? 'Lines show what waits on what.' : 'The lines between bars are hidden.')
+  if (input.spare && shown.some((b) => spareTail(b))) words.push("Each bar's spare days show as a faint tail.")
   if (window) words.push(`The page runs from ${weekdayDate(window.first)} to ${weekdayDate(window.last)}, a day at a time.`)
   return words
 }
@@ -522,7 +527,7 @@ function listsHeight(lists: { title: string; lines: string[] }[]): number {
   return lists.reduce((h, l) => h + LIST_TITLE_H + l.lines.reduce((s, line) => s + LIST_LINE_H * Math.max(1, Math.ceil((line.length * LIST_CHAR_PT) / PRINT_PAGE.width)), 0), 0)
 }
 
-function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' | 'lost' | 'lateSaid' | 'links' | 'waitLinks'> & { milestones: readonly unknown[] }, page: number): GanttPrintMark[] {
+function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' | 'lost' | 'lateSaid' | 'spare' | 'links' | 'waitLinks'> & { milestones: readonly unknown[] }, page: number): GanttPrintMark[] {
   const used = new Set<GanttPrintMark>()
   for (const r of rows) {
     if (r.kind === 'group') used.add('group')
@@ -543,6 +548,7 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
     if (!r.plain && b.coTail) used.add('coTail')
     const said = r.plain ? undefined : print.lateSaid.get(b.id)
     if (said && said.finish > a.finish) used.add('said')
+    if (!r.plain && print.spare && spareTail(b)) used.add('spare')
     if (!r.plain && (print.lost.get(b.id) ?? []).length > 0) used.add('lost')
     if (print.axis.window && (a.start < print.axis.first || a.finish > addDays(print.axis.first, print.axis.days - 1))) used.add('cut')
   }
@@ -551,7 +557,7 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
   if (print.axis.tint && print.axis.marked.some((d) => d.weekend)) used.add('weekend')
   if (print.axis.marked.some((d) => d.holiday)) used.add('holiday')
   used.add('today')
-  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
+  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'spare', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
   return order.filter((m) => used.has(m))
 }
 
@@ -605,7 +611,9 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
 
   // The key's height: every page keeps room for the key the whole print would need.
   const lateSaid: ReadonlyMap<string, { finish: string; words: string }> = copy === 'team' ? (input.lateSaid ?? new Map()) : new Map()
-  const keyMarks = marksOf(rows, { copy, axis, milestones, lost: input.lost, lateSaid, links: input.links && copy === 'team' ? [{ from: '', to: '', critical: false, gap: 0, page: 0 }] : [], waitLinks: [] }, 0)
+  // Spare days are our team's: a customer never sees them.
+  const spare = copy === 'team' && Boolean(input.spare)
+  const keyMarks = marksOf(rows, { copy, axis, milestones, lost: input.lost, lateSaid, spare, links: input.links && copy === 'team' ? [{ from: '', to: '', critical: false, gap: 0, page: 0 }] : [], waitLinks: [] }, 0)
   const keyLines = Math.max(1, Math.ceil(keyMarks.reduce((w, m) => w + KEY_ENTRY_PT + keyWords(m, today).length * KEY_CHAR_PT, 0) / PRINT_PAGE.width))
   const keyH = keyLines * KEY_LINE_H + (copy === 'team' ? KEY_LINE_H : 0) + FOOT_H
   const ms = placeMilestones(axis.window ? milestones.filter((m) => inWindow(m.due)) : milestones, axis, PRINT_PAGE.width)
@@ -677,6 +685,7 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
     waitLinks,
     lost: copy === 'team' ? input.lost : new Map(),
     lateSaid,
+    spare,
     key: [],
     everyDay: copy === 'team' ? 'Every day is a working day, weekends and holidays too.' : null,
     lists,
@@ -788,6 +797,7 @@ const KEY_WORDS: Record<GanttPrintMark, string> = {
   inspection: 'an inspection',
   coTail: 'days a signed change order adds, not on the dates yet',
   said: "a trade's new day from its portal, not on the dates yet",
+  spare: 'its spare days, how long it can slip before the job finishes later',
   wait: 'what the work waits on, from the day asked for to the day expected',
   baseline: 'where it sat in the plan at Start',
   actual: 'the days it really ran',
@@ -828,6 +838,8 @@ function keySwatch(mark: GanttPrintMark): string {
         return box('url(#gp-tail)', P.violet, 0.9, '2 1.2')
       case 'said':
         return box(P.white, P.amber, 0.9, '2 1.2')
+      case 'spare':
+        return `${rect(0.5, 6, 14, 1.6, P.blue, 'opacity="0.35"')}${vline(14.5, 4.5, 8, P.blue, 0.9, 'opacity="0.75"')}`
       case 'wait':
         return `<rect x="0.5" y="2.5" width="15" height="4" rx="2" fill="${P.violetFill}" stroke="${P.violet}" stroke-width="0.9"/>`
       case 'baseline':
@@ -1017,6 +1029,13 @@ function chartSvg(p: GanttPrint, rows: GanttPrintRow[], page: number): string {
       lane.push(`<rect x="${n2(bx)}" y="${n2(by)}" width="${n2(bw)}" height="${n2(bh)}" rx="1.5" fill="${look.fill}" stroke="${look.stroke}" stroke-width="${look.width}"${look.dash ? ` stroke-dasharray="${look.dash}"` : ''}/>`)
       if (b.item.actual > 0 && b.status !== 'done') lane.push(rect(bx, by, (bw * Math.min(100, b.item.actual)) / 100, bh, P.blue, 'opacity="0.85" rx="1.5"'))
       for (const d of r.plain ? [] : (p.lost.get(b.id) ?? [])) lane.push(rect(x(d.date), by, Math.max(1.2, dayW), bh, 'url(#gp-lost)'))
+      // Its spare days (G-08): a faint line at the bar's foot to the last day it can finish, under the other tails.
+      const st = p.spare && !r.plain ? spareTail(b) : null
+      if (st) {
+        const sx = x(st.from)
+        lane.push(`<rect data-spare="${esc(b.id)}" x="${n2(sx)}" y="${n2(by + bh)}" width="${n2(st.days * dayW)}" height="1.6" fill="${P.blue}" opacity="0.35"/>`)
+        lane.push(vline(sx + st.days * dayW, by + bh - 1.5, by + bh + 2, P.blue, 0.9, 'opacity="0.75"'))
+      }
       const tailW = !r.plain && b.coTail ? b.coTail.days * dayW : 0
       if (tailW > 0) lane.push(`<rect x="${n2(bx + bw)}" y="${n2(by)}" width="${n2(tailW)}" height="${n2(bh)}" fill="url(#gp-tail)" stroke="${P.violet}" stroke-width="0.8" stroke-dasharray="2 1.2"/>`)
       // A trade's own new finish from its portal (G-117): an amber dashed tail out to it, as on the chart.

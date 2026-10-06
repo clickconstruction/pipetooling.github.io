@@ -28,7 +28,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-05 | Holidays marked on the chart like weekends, and named on the hover card of a bar that runs over one. They are worked like any other day | See | Have (built 2026-10-05: six holidays, my list) | 1 |
 | G-06 | Links drawn as lines from the work before to the work after | See | Have (built 2026-10-05) | 1 |
 | G-07 | The chain with no spare days outlined in red, bars and links both | See | Have (built 2026-10-05: 5 or fewer spare days, `TIGHT_SPARE_DAYS`) | 1 |
-| G-08 | Spare days shown per activity, and as a faint tail after the bar on request | See | Part (the number, in the pill and the hover; no tail) | 1 |
+| G-08 | Spare days shown per activity, and as a faint tail after the bar on request | See | Have (built 2026-10-06: **Show spare days** beside Hide the links draws a faint tail at each bar's foot out to the last day it can finish, never on the red chain or a done bar; the hover card's *Can finish by*; on our team's paper when on; `spareTail` / `lastFinishDay` in `gcGantt.ts`) | 1 |
 | G-09 | The plan at Start as a thin line under each bar that moved | See | Have | — |
 | G-10 | Milestones as diamonds on a row of their own, red when late, green when met | See | Have | — |
 | G-11 | Group by trade, by stage of the job, or by company | See, Chase | Have (built 2026-10-05) | 1 |

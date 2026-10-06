@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcGantt } from './GcGantt'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
+import { daysBetween, weekdayDate } from '../../lib/gcMode/gcModel'
 
 afterEach(cleanup)
 
@@ -136,5 +137,39 @@ describe('waits drawn by hand (G-34)', () => {
     fireEvent(scroller, new MouseEvent('pointerup', { bubbles: true }))
     document.elementFromPoint = was
     expect(onLink).toHaveBeenCalledWith(tpo, rtu)
+  })
+})
+
+describe('spare days as a faint tail, on request (G-08)', () => {
+  it('draws a tail for every bar with room when asked, none on the red chain, and the hover card names the day each tail ends', () => {
+    const { container, m } = chart()
+    fireEvent.click(screen.getByText('Open all'))
+    expect(container.querySelectorAll('[data-gantt-spare]')).toHaveLength(0)
+    const toggle = screen.getByRole('button', { name: 'Show spare days' })
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(toggle)
+    expect(screen.getByRole('button', { name: 'Hide spare days' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText("a bar's spare days: how long it can slip before the job finishes later")).toBeTruthy()
+    const tails = [...container.querySelectorAll<HTMLElement>('[data-gantt-spare]')]
+    expect(tails).toHaveLength(14)
+    const label = (id: string) => m.items.find((i) => i.activity.lineId === id)?.label
+    const tailed = tails.map((t) => label(t.getAttribute('data-gantt-spare') ?? ''))
+    for (const red of ['Trim', 'Test and balance', 'Final inspection']) expect(tailed).not.toContain(red)
+    // Every tail ends on the day the hover card says it can finish by, and is drawn out to that day (9 px a day, weeks).
+    for (const tail of tails) {
+      const id = tail.getAttribute('data-gantt-spare') ?? ''
+      const to = tail.getAttribute('data-gantt-spare-to') ?? ''
+      const bar = container.querySelector<HTMLElement>(`[data-gantt-bar="${id}"]`)
+      const a = m.items.find((i) => i.activity.lineId === id)?.activity
+      if (!bar || !a) throw new Error(`no bar for ${id}`)
+      const end = parseFloat(tail.style.left) + parseFloat(tail.style.width)
+      expect(Math.round((end - parseFloat(bar.style.left)) / 9) - 1).toBe(daysBetween(a.start, to))
+      fireEvent.mouseEnter(bar)
+      const row = [...screen.getByRole('tooltip').querySelectorAll('div')].find((d) => d.firstElementChild?.textContent === 'Can finish by')
+      expect(row?.lastElementChild?.textContent).toBe(weekdayDate(to))
+      fireEvent.mouseLeave(bar)
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Hide spare days' }))
+    expect(container.querySelectorAll('[data-gantt-spare]')).toHaveLength(0)
   })
 })

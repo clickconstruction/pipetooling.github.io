@@ -184,6 +184,25 @@ export function ganttBars(items: ScheduleItem[], float: Map<string, number>, hol
   })
 }
 
+/**
+ * The last day a bar can finish before the job finishes later (G-08): its finish plus its spare
+ * days, the read `ganttBars` already made. Null when it is done or has no spare days. The hover
+ * card's Can finish by and the spare-day tail both read it, so the two always name the same day.
+ */
+export function lastFinishDay(b: GanttBar): string | null {
+  return b.status === 'done' || b.spare <= 0 ? null : addDays(b.item.activity.finish, b.spare)
+}
+
+/**
+ * A bar's spare days as a faint tail after it (G-08): from the day after its finish to
+ * `lastFinishDay`. None on the red chain (TIGHT_SPARE_DAYS or fewer, the red edge), so the red
+ * stays the one thing that says "this sets the finish", and none on a done bar.
+ */
+export function spareTail(b: GanttBar): { from: string; to: string; days: number } | null {
+  const to = lastFinishDay(b)
+  return to && !b.tight ? { from: addDays(b.item.activity.finish, 1), to, days: b.spare } : null
+}
+
 // ---------------------------------------------------------------------------------------------
 // Filters
 // ---------------------------------------------------------------------------------------------

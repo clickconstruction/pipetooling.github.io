@@ -20,6 +20,8 @@ import {
   workingDays,
   type GanttHold,
 } from './gcGantt'
+import { lastFinishDay, spareTail } from './gcGantt'
+import { addDays } from './gcBuilding'
 
 /** Fair Oaks Shops, Building D: the made-up job being built, today Fri Oct 2 2026. */
 function fairOaks(holds = new Map<string, GanttHold>()) {
@@ -239,5 +241,39 @@ describe('only the rows in view are drawn (G-135)', () => {
     expect(shown.has('b124')).toBe(true) // 3998: inside the overscan below
     expect(shown.has('b126')).toBe(false)
     expect(rowsInView(entries, 0, 700).size).toBeLessThan(entries.length)
+  })
+})
+
+describe('spare days as a tail (G-08)', () => {
+  const of = (bars: ReturnType<typeof fairOaks>['bars'], label: string) => {
+    const b = bars.find((x) => x.item.label === label)
+    if (!b) throw new Error(`no ${label} on Fair Oaks D`)
+    return b
+  }
+
+  it('runs from the day after the finish to the last day it can finish, never on the red chain or a done bar', () => {
+    const { bars } = fairOaks()
+    expect(spareTail(of(bars, 'Top out'))).toEqual({ from: '2026-10-10', to: '2026-11-15', days: 37 })
+    for (const label of ['Trim', 'Test and balance', 'Final inspection']) expect(spareTail(of(bars, label))).toBeNull()
+    expect(spareTail(of(bars, 'Underground'))).toBeNull()
+    // The day itself is there for the red chain too: Trim can finish by Sun Dec 6. The final inspection has none.
+    expect(lastFinishDay(of(bars, 'Trim'))).toBe('2026-12-06')
+    expect(lastFinishDay(of(bars, 'Final inspection'))).toBeNull()
+    expect(lastFinishDay(of(bars, 'Underground'))).toBeNull()
+  })
+
+  it('ends six of the fourteen tails on Sun Dec 6, the day before the final inspection: the work only it waits on', () => {
+    const { bars } = fairOaks()
+    const final = of(bars, 'Final inspection')
+    const tails = bars.flatMap((b) => {
+      const t = spareTail(b)
+      return t ? [{ b, t }] : []
+    })
+    expect(tails).toHaveLength(14)
+    for (const { b, t } of tails) expect(t.to).toBe(lastFinishDay(b))
+    expect(final.item.activity.start).toBe('2026-12-07')
+    const dec6 = tails.filter(({ t }) => t.to === addDays(final.item.activity.start, -1))
+    expect(dec6.map(({ b }) => b.item.label)).toEqual(['Erection', 'Sheet metal and flashing', 'Roof curbs', 'Site lighting', 'Fire alarm', 'Electrical service inspection'])
+    for (const { b } of dec6) expect(bars.filter((x) => x.item.activity.after.includes(b.id)).map((x) => x.id)).toEqual([final.id])
   })
 })
