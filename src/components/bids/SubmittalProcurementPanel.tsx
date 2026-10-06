@@ -74,7 +74,7 @@ type Props = {
   roomUrl?: string | null
   busy?: boolean
   /** The strip's Procure pill reads these. */
-  onCounts?: (c: { released: number; ordered: number; delivered: number; late: number; /** v2.4581 · each line once, by its step. */ steps: Record<ProcurementStepKey, number> }) => void
+  onCounts?: (c: { released: number; ordered: number; delivered: number; late: number; /** v2.4581 · each line once, by its step. */ steps: Record<ProcurementStepKey, number>; /** v2.4663 · the first step's name: *Waiting on the GC*, or *Not sent yet* on an unshared draft. */ gcLabel: string }) => void
   /** A tap on a line's item opens its row's Edit window, on that part (2026-10-02, Grace: no scrolling back and forth). */
   onOpenItem?: (line: { itemId: string; partKey: string | null; /** the house cell was what was tapped */ house?: boolean }) => void
   /** A line the GC still holds opens its row's Their answer window, on that part (2026-10-02). Not given: no door. */
@@ -85,6 +85,8 @@ type Props = {
   onLinesChanged?: () => void
   /** v2.4581 · the Next line's *Enter their approval…* door (the approve-all window). Not given: no door. */
   onEnterApproval?: () => void
+  /** v2.4663 · the newest revision's number while it is a draft nobody has shared (its lines read *Not sent yet*); null once shared. */
+  draftRev?: number | null
 }
 
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
@@ -222,7 +224,7 @@ type Draft = Partial<Record<'po' | 'note' | 'label' | 'lead' | DateField, string
  * the delivered date and a note. Send update records a dated snapshot with what
  * changed, opens the sheet to print, and copies the text for the email.
  */
-export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged, onEnterApproval }: Props) {
+export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items, reviewerNames, currentUser, letterhead = null, projectAddress = null, gcName = null, roomUrl = null, busy = false, onCounts, onOpenItem, onAnswerItem, houses = [], onLinesChanged, onEnterApproval, draftRev = null }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [records, setRecords] = useState<ProcurementRecord[]>([])
@@ -348,7 +350,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const blockers = useMemo(() => orderBlockers(rows), [rows])
   // The lines on screen: every line, or the ones a picked blocker names. Counts, the update and the print read every line.
   const shown = useMemo(() => (stepPicked ? { rows: rowsForStep(rows, stepPicked), only: null as BlockerKind | null } : rowsForBlocker(rows, blockers, onlyPicked)), [rows, blockers, onlyPicked, stepPicked])
-  const steps = useMemo(() => procurementSteps(rows), [rows])
+  const steps = useMemo(() => procurementSteps(rows, draftRev), [rows, draftRev])
   const only = shown.only
   // To order draws orders (`orderSections`); the other two lenses group lines.
   const sections = useMemo(() => (lens === 'to_order' ? [] : procurementSections(shown.rows, lens)), [shown, lens])
@@ -358,7 +360,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   // Today, for the soft line under each date ("2 days ago").
   const today = toIsoDate(new Date())
   // v2.4587 · To order as orders; a group is new only against an update that has gone.
-  const orders = useMemo(() => orderSections(shown.rows, today, new Set(lastUpdate ? changes.map((c) => c.key) : [])), [shown, today, lastUpdate, changes])
+  const orders = useMemo(() => orderSections(shown.rows, today, new Set(lastUpdate ? changes.map((c) => c.key) : []), draftRev), [shown, today, lastUpdate, changes, draftRev])
   // v2.4592 · the line of weeks, from every line (a step or a missing fact picked does not move it); null with nothing to place.
   const axis = useMemo(() => calendarAxis(rows, stageDates, today), [rows, stageDates, today])
   // The orders, and so the calendar, draw on a wide screen's To order lens.
@@ -368,7 +370,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   useEffect(() => {
     if (!loaded || !onCounts) return
     const c = procurementCounts(rows)
-    onCounts({ released: c.released, ordered: c.ordered, delivered: c.delivered, late: c.late, steps: Object.fromEntries(steps.map((s) => [s.key, s.count])) as Record<ProcurementStepKey, number> })
+    onCounts({ released: c.released, ordered: c.ordered, delivered: c.delivered, late: c.late, steps: Object.fromEntries(steps.map((s) => [s.key, s.count])) as Record<ProcurementStepKey, number>, gcLabel: steps[0]!.label })
   }, [loaded, rows, steps, onCounts])
 
   function draftOf(key: string, field: keyof Draft, stored: string): string {
@@ -1102,7 +1104,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           </div>
           {rows.length > 0 ? (
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">
-              <b>Next:</b> {procurementNextLine(rows, today).join(' ')}
+              <b>Next:</b> {procurementNextLine(rows, today, draftRev).join(' ')}
               {onEnterApproval ? (
                 <>
                   {' '}<span style={smallMuted}>Approved outside the app?</span>{' '}
@@ -1251,7 +1253,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       {stepPicked ? (
         // v2.4581 · the log is showing one step's lines only.
         <div role="status" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', padding: '0.4rem 0.7rem', border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-only">
-          <span><b>{stepOnlyWords(stepPicked, shown.rows.length).lead}</b> {stepOnlyWords(stepPicked, shown.rows.length).rest}</span>
+          <span><b>{stepOnlyWords(stepPicked, shown.rows.length, steps.find((s) => s.key === stepPicked)?.label).lead}</b> {stepOnlyWords(stepPicked, shown.rows.length).rest}</span>
           <button type="button" onClick={() => setStepPicked(null)} style={{ ...btn, flexShrink: 0 }}>Show every line</button>
         </div>
       ) : only ? (

@@ -34,6 +34,26 @@ describe('procurementSteps', () => {
     expect(procurementSteps([row('a', 'released')])[1]).toMatchObject({ count: 1, note: '', tone: 'quiet' })
   })
 
+  it('v2.4663 · a draft nobody has shared: the first step reads Not sent yet · Share Rev 4 first, the pill the same; a line sent back takes the note; one line the GC holds makes it Waiting on the GC again; a hand line is never "unsent"', () => {
+    const draft = today.filter((r) => r.status !== 'sent_back').map((r) => (r.status === 'awaiting' ? { ...r, status: 'not_submitted' as const, submittal: 'none' as const } : r))
+    const steps = procurementSteps(draft, 4)
+    expect(steps[0]).toMatchObject({ key: 'gc', label: 'Not sent yet', count: 39, note: 'Share Rev 4 first', tone: 'quiet' })
+    expect(stepOnlyWords('gc', 39, steps[0]!.label)).toEqual({ lead: 'Not sent yet: 39 parts.', rest: 'The other lines are hidden.' })
+    expect(procurementNextLine(draft, '2026-10-05', 4)).toEqual(['Nothing can be ordered until the GC answers.', 'Share Rev 4 first. 39 parts have not been sent.'])
+    // Two lines carried sent back onto the draft: the note is theirs, the Next line says both.
+    const withBack = [...draft, ...today.filter((r) => r.status === 'sent_back').slice(0, 2)]
+    expect(procurementSteps(withBack, 4)[0]).toMatchObject({ label: 'Not sent yet', count: 41, note: '2 sent back', tone: 'back' })
+    expect(procurementNextLine(withBack, '2026-10-05', 4)).toEqual(['Nothing can be ordered until the GC answers.', 'They sent 2 parts back.', 'Share Rev 4 first. 39 parts have not been sent.'])
+    // The same lines once the revision is shared (no draft number): the GC is waiting, as before.
+    expect(procurementSteps(draft, null)[0]).toMatchObject({ label: 'Waiting on the GC', count: 39, note: '' })
+    expect(procurementNextLine(draft, '2026-10-05', null)).toEqual(['Nothing can be ordered until the GC answers.', '39 parts wait on their answer.'])
+    // One line the GC holds among the unsent (BP398: Rev 3 lines beside new Rev 4 ones): they are waiting, so the step keeps its name and counts the unsent under it.
+    expect(procurementSteps([...draft, row('z', 'awaiting')], 4)[0]).toMatchObject({ label: 'Waiting on the GC', count: 40, note: '39 not sent yet', tone: 'quiet' })
+    expect(procurementNextLine([...draft, row('z', 'awaiting')], '2026-10-05', 4)).toEqual(['Nothing can be ordered until the GC answers.', '1 part waits on their answer.', 'Share Rev 4 first. 39 parts have not been sent.'])
+    // A hand line is never sent to the GC, so a draft of one hand line is not "unsent".
+    expect(procurementSteps([row('hand:1', 'not_submitted', { isHand: true, tag: null, itemId: null })], 4)[0]).toMatchObject({ label: 'Waiting on the GC', count: 1, note: '' })
+  })
+
   it('a step shows only its lines, says so, and takes its share of the bar', () => {
     expect(rowsForStep(today, 'on_site').map((r) => r.key)).toEqual(['part:e7', 'part:u3', 'part:w5'])
     expect(rowsForStep(today, null)).toHaveLength(47)
