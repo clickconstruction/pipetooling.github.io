@@ -63,3 +63,13 @@ describe('LienPaperGcWindow', () => {
     expect(onClose).toHaveBeenCalledWith(false)
   })
 })
+
+describe('LienPaperPropertyWindow given only an id (v2.4724, Edit Job)', () => {
+  it('reads the whole row before it draws, and closes unsaved when the row cannot be read', async () => {
+    const onClose = vi.fn()
+    await renderSettled(<LienPaperPropertyWindow job={job} address={null} loadAddressId="addr-site" ownerOnJob={false} focus="legal" onClose={onClose} />, { loaded: () => screen.getByTestId('lien-paper-property-window') })
+    expect(screen.queryByTestId('lien-paper-property-new')).toBeNull()
+    expect(onClose).toHaveBeenCalledWith(false)
+  })
+})
+

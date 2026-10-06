@@ -510,8 +510,11 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
     expect(timeline.textContent).toContain('Commercial dates shown — a residential property is a month earlier.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Property record ›' })[0]!)
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650')
+    // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
+    fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+    expect(onOpenEditJob).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByTestId('lien-paper-property-discard'))
     expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
   })
 
