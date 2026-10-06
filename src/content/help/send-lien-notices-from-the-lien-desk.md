@@ -18,6 +18,7 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Next
 - The button opens the tab that does that work, on that job. Nothing is sent from the list itself.
 - A GC with two or more notices ready is one row. Its button reads {{button:blue|Send the run}}.
 - A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
+- The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 
 When nothing needs anyone, the tab says so and points you at the Calendar.
 

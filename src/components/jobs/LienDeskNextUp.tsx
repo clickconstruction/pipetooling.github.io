@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
 
 /**
  * The Lien desk's Next up tab (punch list #82, PR 2): every lien paper that asks for an act,
@@ -36,7 +37,20 @@ function dueColor(r: LienNextUpRow): string {
   return r.severity === 'red' ? 'var(--text-red-600)' : r.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)'
 }
 
-export default function LienDeskNextUp({ rows, loading, isMobile, onAct }: { rows: ReadonlyArray<LienNextUpRow>; loading: boolean; isMobile: boolean; onAct: (row: LienNextUpRow) => void }) {
+export default function LienDeskNextUp({
+  rows,
+  loading,
+  isMobile,
+  onAct,
+  onOpenJob,
+}: {
+  rows: ReadonlyArray<LienNextUpRow>
+  loading: boolean
+  isMobile: boolean
+  onAct: (row: LienNextUpRow) => void
+  /** The job's number and name as a door to the Job window (v2.4628); a GC's run row has no job and stays plain. */
+  onOpenJob?: (jobId: string) => void
+}) {
   if (loading) return <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
   const groups = groupLienNextUp(rows)
   if (groups.length === 0) {
@@ -44,6 +58,26 @@ export default function LienDeskNextUp({ rows, loading, isMobile, onAct }: { row
       <div data-lien-next-up="empty" style={{ padding: '2rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
         Nothing needs you right now. Every lien paper is sent, filed or waiting on its day. The Calendar tab shows what is coming.
       </div>
+    )
+  }
+  // The title: a text door to the job when there is one, underlined on hover (`.lienJobDoor`); the click stops here, so the row keeps its own.
+  const title = (r: LienNextUpRow, style: CSSProperties) => {
+    const jobId = r.jobId
+    if (!jobId || !onOpenJob) return <span style={style} title={r.title}>{r.title}</span>
+    return (
+      <button
+        type="button"
+        className="lienJobDoor"
+        data-testid={`lien-next-up-job-${jobId}`}
+        title={LIEN_JOB_DOOR_TITLE}
+        onClick={(ev) => {
+          ev.stopPropagation()
+          onOpenJob(jobId)
+        }}
+        style={{ ...style, border: 'none', background: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textAlign: 'left', borderRadius: 3, minWidth: 0, maxWidth: '100%', ...(isMobile ? { minHeight: 28 } : null) }}
+      >
+        {r.title}
+      </button>
     )
   }
   const button = (r: LienNextUpRow) => (
@@ -75,7 +109,7 @@ export default function LienDeskNextUp({ rows, loading, isMobile, onAct }: { row
                     <span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span>
                     {due ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: dueColor(r) }}>{due}</span> : null}
                   </div>
-                  <div style={{ fontWeight: 700, fontSize: '0.92rem', overflowWrap: 'anywhere' }}>{r.title}</div>
+                  <div>{title(r, { fontWeight: 700, fontSize: '0.92rem', overflowWrap: 'anywhere', whiteSpace: 'normal' })}</div>
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.sub}</div>
                   {button(r)}
                 </div>
@@ -87,7 +121,7 @@ export default function LienDeskNextUp({ rows, loading, isMobile, onAct }: { row
                   style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1.2fr) minmax(0, 1.4fr) 170px auto', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.8125rem' }}
                 >
                   <span><span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span></span>
-                  <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.title}>{r.title}</span>
+                  <span style={{ minWidth: 0, overflow: 'hidden' }}>{title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}</span>
                   <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.sub}>{r.sub}</span>
                   <span style={{ fontWeight: 600, color: dueColor(r), whiteSpace: 'nowrap' }}>{due}</span>
                   <span style={{ justifySelf: 'end' }}>{button(r)}</span>
