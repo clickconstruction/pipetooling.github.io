@@ -4028,6 +4028,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienEnvelope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 0.8125rem; color: var(--text-muted); }
 .lienEnvelope strong { color: var(--text-strong); }
 .lienEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); white-space: nowrap; }
+/* A second tick (the supply houses, v2.4725) sits beside the first, not across the line from it. */
+.lienEnvelope label + label { margin-left: 0; }
 .lienFootMuted { color: var(--text-muted); }
 
 /* Send the run — the envelope table (v2.3720 / v2.3734): a header row per envelope with its method and tracking box, a row per notice inside it. At phone width each envelope stacks as a card, its Method and Tracking # labelled, so the tracking box never sits off-screen. */

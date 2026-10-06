@@ -9,6 +9,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { useGcOnNoticeData, type GcOnNoticeData } from '../../hooks/useGcOnNoticeData'
+import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
+import { lienSupplierLetterParagraphFor } from '../../lib/jobs/lienJobSuppliers'
 import { legalRpc } from '../../hooks/useLegalMatters'
 import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry, DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
 import {
@@ -198,6 +200,9 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   // What this does: its words open under the title line (they were a <details> on a line of their own until v2.4539).
   const [whatOpen, setWhatOpen] = useState(false)
   const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
+  // The supply houses on the run's jobs (v2.4725): the letter's last paragraph names the ones still owed.
+  const supplierJobIds = useMemo(() => data?.jobs.map((j) => j.jobId) ?? [], [data])
+  const suppliers = useLienJobSuppliers(supplierJobIds, open)
   // The Job window saves on its own clock; its owner says when (the run's data is this window's, not the desk's).
   useEffect(() => {
     if (rereadKey > 0) refetch()
@@ -667,6 +672,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
             todayYmd,
+            supplyHouses: lienSupplierLetterParagraphFor(suppliers.byJob.get(j.jobId), { propertyKind: propertyFactsFor(job, data.desk.addressesById)?.propertyKind ?? '', todayYmd, payerName: gcName, claim: j.claimAmount }),
           },
         }
       })
@@ -1223,7 +1229,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       ) : null}
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor)}
+          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob })}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

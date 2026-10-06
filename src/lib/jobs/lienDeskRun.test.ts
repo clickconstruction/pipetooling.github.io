@@ -5,6 +5,7 @@ import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM,
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
+import { buildLienSupplierJobs } from './lienJobSuppliers'
 
 const TODAY = '2026-09-14'
 
@@ -440,5 +441,37 @@ describe('the courtesy PDF to the original contractor (punch list #87 B)', () =>
     expect(runCourtesyResultWords([sent], []).sent).toBe('Courtesy PDF emailed to office@loberg.test.')
     expect(runCourtesyResultWords([sent, { ...sent, itemId: 'it2', label: '651 · Annex' }], []).sent).toBe('2 courtesy PDFs emailed to office@loberg.test.')
     expect(runCourtesyResultWords([], [{ ...sent, reason: 'Resend 502' }]).failed).toBe('Courtesy PDF not emailed: 650 · ATI Schertz to office@loberg.test (Resend 502). That notice is recorded all the same.')
+  })
+})
+
+describe('the supply houses in the owner’s letter (v2.4725)', () => {
+  const suppliers = () =>
+    buildLienSupplierJobs({
+      invoices: [{ id: 'r2', supply_house_id: 'reece', amount: 9612.4, is_paid: false, invoice_date: '2026-07-18', paidYmd: null, on_job_account: false }],
+      allocations: [{ invoice_id: 'r2', job_id: 'j650', pct: 100 }],
+      houses: [{ id: 'reece', name: 'Reece' }],
+    })
+  const PARA = 'You should also know that Reece sold materials for this job and is still owed $9,612.40. We expect Reece’s own notice by October 15. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $33,500.00. Paying us the $33,500.00 is what lets us clear that account.'
+
+  it('the run’s letter ends with the paragraph when the desk hands over the houses, in the letter’s own claim figure', () => {
+    const d = data([approved])
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas', TODAY, undefined, { suppliers: suppliers() })[0]!
+    const paragraphs = n.coverLetter!.split('\n\n')
+    expect(paragraphs[paragraphs.length - 1]).toBe(PARA)
+    expect(n.coverLetter).not.toContain('{{')
+    // The cover page prints it before the enclosure line.
+    const texts = runCoverNoteBlocks(n).map((b) => (b.kind === 'paragraph' ? b.text : ''))
+    expect(texts.indexOf(PARA)).toBe(texts.findIndex((t) => t.startsWith('Enclosed:')) - 1)
+  })
+
+  it('no houses handed over, or a draft that left them out, and the letter ends as counsel wrote it', () => {
+    const d = data([approved])
+    const plain = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas', TODAY)[0]!
+    expect(plain.coverLetter).not.toContain('You should also know')
+    expect(plain.coverLetter).not.toContain('{{')
+    const leftOut = data([{ ...approved, fields: { notice: { noticeDate: '', projectDescription: '', claimantName: 'Click', laborMaterialsType: '', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '' }, gcEmail: '', housesInLetter: false } }])
+    expect(parseLienDeskDraftFields(leftOut.items[0]!.fields)?.housesInLetter).toBe(false)
+    const n = buildLienDeskRun(leftOut.queue.piles.ready, leftOut, null, () => 'Robert Douglas', TODAY, undefined, { suppliers: suppliers() })[0]!
+    expect(n.coverLetter).not.toContain('You should also know')
   })
 })

@@ -1241,6 +1241,14 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(text).toContain('Supply houses on 650 · ATI Schertz')
     expect(text).toContain('Reece is owed $9,612.40. Its oldest unpaid materials are from July. We expect its own notice by October 15.')
     expect(within(card).getByRole('link', { name: 'Open in Held for suppliers ›' }).getAttribute('href')).toBe('/materials?tab=job-accounts&job=j650')
+    // The owner's letter names the house (v2.4725): the tick starts on, the paragraph is the letter's last, the amber line waits for counsel; unticked, the paragraph leaves.
+    const tick = screen.getByLabelText(/Name the supply house owed · \$9,612/) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    expect(document.querySelector('[data-lien-desk-cover]')?.textContent).toContain('You should also know that Reece sold materials for this job and is still owed $9,612.40. We expect Reece’s own notice by October 15. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $33,500.00. Paying us the $33,500.00 is what lets us clear that account.')
+    expect(document.querySelector('[data-lien-desk-houses-counsel]')?.textContent).toBe('Counsel has not read the supply house paragraph yet.')
+    fireEvent.click(tick)
+    expect(document.querySelector('[data-lien-desk-cover]')?.textContent).not.toContain('You should also know')
+    expect(document.querySelector('[data-lien-desk-houses-counsel]')).toBeNull()
   })
 
   it('draws no card and no mark on a job that bought nothing (v2.4404)', async () => {
