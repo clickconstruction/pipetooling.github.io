@@ -1,8 +1,8 @@
 ---
 name: "See what they see: a live view of the GC's room (and the portal) while you work"
 number: 62
-group: close
-status: DONE 2026-10-05 — the five pieces shipped: v2.4593 (the line and the window say what the link shows), v2.4595 (the sample through the room's kernel, deployed), v2.4599 (the room refuses the office's session and the preview, deployed), v2.4606 (the page's own header and chips in the window), v2.4608 (the door to the real page in preview; the "What customers see" rule in GLOSSARY) · Layers 3 and 4 dropped by the owner 2026-10-06 · the emailed-revision question went to its own build (Helper 8, 2026-10-06)
+group: gated
+status: DONE 2026-10-05 — the five pieces shipped: v2.4593 (the line and the window say what the link shows), v2.4595 (the sample through the room's kernel, deployed), v2.4599 (the room refuses the office's session and the preview, deployed), v2.4606 (the page's own header and chips in the window), v2.4608 (the door to the real page in preview; the "What customers see" rule in GLOSSARY) · Layers 3 and 4 dropped by the owner 2026-10-06 · v2.4667 (2026-10-06, its three functions deployed): a revision answered by email joins the GC's page as the record once it has a built package · open: BP398's Rev 3 has none and the office cannot build one, so the owner picks how it joins (below)
 summary: >
   On Bids → Submittals the office edits rows and never sees what the GC or the architect will
   see until after sharing. The owner's ask (2026-09-29): "an active view of what they change and
@@ -12,13 +12,16 @@ summary: >
   and the sample views in What customers see — all rendered from the same kernels the real pages
   use, so a preview can never lie.
 next: >
-  Nothing to build here. Two follow-ons live elsewhere: a revision answered by email landing in
-  the GC's room (its own PR, from the dated findings below), and the other hand-built samples in
-  What customers see (the bid room, the customer portal) built through their kernels, a new row.
-  Delete this folder once the emailed-revision PR has merged.
+  The owner picks how a revision answered by email but never built joins the GC's page (BP398's
+  Rev 3; the section "BP398's Rev 3" below): (a) drop the package guard, (b) a built package or a
+  reviewer file dropped on the revision, recommended, or (c) let Build package run on an older
+  revision that holds answers. Then one small PR (for (b), one line in `recordStanding` and the
+  loader reading `reviewer_files`) and the same three function deploys, and delete this folder.
+  The other hand-built samples in What customers see (the bid room, the customer portal) built
+  through their kernels is a new row still to write.
 size: M (Layer 1 S; Layer 2 M; Layers 3–5 S each)
-blocker: None.
-ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608
+blocker: The owner's pick on Rev 3: (a), (b) or (c).
+ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608 · 4667
 opinion: soon — Wendi and Stephen are on the tab this week and first shares are coming; the pane is what teaches "why the reason matters" without a tour.
 ---
 
@@ -72,3 +75,23 @@ The guard refuses a write from a verified office session or the office's preview
 - **An unverifiable token fails open.** A token the auth server cannot resolve reads as no session. That protects real reviewers, who never send one, and it means a staff browser whose session cannot be checked is treated as an outsider.
 - **The case to watch:** a company person reviewing for a building the company itself owns or builds. They enter the answer from the Submittals tab under their own name, or open the link in a private window as any reviewer would. On 2026-10-05 none of the four people named on review rooms was a company account.
 
+## 2026-10-06 · BP398's Rev 3: the owner's pick
+
+v2.4667 puts a revision answered by email on the GC's record when it holds a reviewer's answer
+and has a built package. The package is the guard: without it, an answer typed by mistake on a
+never-sent draft would publish that draft. Read live after the deploy, on BP398: Rev 3, answered
+by email on Oct 2, has no built package, so it stays off the GC's page, and the Their call step
+says *Rev 3 goes on the GC's page as the record once it has a package.* The office cannot build
+one: Build package turns on only for the newest draft (`gates.package`, from `stageGate` with
+`draftFacts`, in `BidsSubmittalsTab.tsx`), and Rev 3 is superseded. Step 6's *Drop a reviewer's
+file* is offered on any revision past draft.
+
+- **(a) Drop the guard.** Any reviewer answer on an unshared revision puts it on the GC's page.
+  Simplest, and BP398 lands on deploy. An answer typed by mistake on a never-sent draft would
+  publish that draft; the heads-up line still warns before typing.
+- **(b) A built package or a reviewer file.** The rule becomes: shared, or a reviewer's answer and
+  either a built package or a file dropped in step 6 (`bid_submittals.reviewer_files`), the
+  office's own evidence that the revision went out and came back. For BP398 the office drops the
+  GC's Oct 2 email on Rev 3. Recommended.
+- **(c) Build package on an older revision.** A gate change in `stageGate` and `draftFacts`. The
+  PDF would be built today from Rev 3's rows: a reconstruction, not the file that went out.

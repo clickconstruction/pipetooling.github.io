@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: planned 2026-09-30 — the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up · nothing built · PR 1 (capture) is safe to ship on its own and should go first, because history starts the day it deploys; PR 0 waits a day for Wendi's answer
+status: PR 1 (capture) built 2026-10-05 as #4583, open, CI green and not armed; it merges only after its full-schema bed runs green (blocker) · planned 2026-09-30 (the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up) · PR 0 waits for Wendi's answer
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -13,12 +13,17 @@ summary: >
   from CountTooling"); and Put back, per value and per removed row, so an estimator recovers her
   own work without a dev. Three small fixes stop the losses at the source and can ship first.
 next: >
-  The owner's four calls (who sees whose edits; how long to keep; may a non-dev put a row back;
-  which bid columns count), then PR 1 the capture migration — it is safe without any call and
-  every day it waits is a day with no history. PR 0's three loss fixes are independent and can go
-  in any order, before or after.
+  Run PR 1's bed (`npm run test:pg:bid-changes`, Postgres 17.6 in Docker) on #4583's branch, then
+  review, merge and push it: two migrations, `20261006190000_bid_changes` then
+  `20261006191000_bid_changes_triggers`. Renumber both after main's newest if a later migration
+  lands first, since `supabase db push` refuses an older stamp, and list the pending migrations
+  before the push, since a push applies every pending file. The deploy note is in its triggers
+  migration's doc. Then PR 1b, the request tag (the labor minted on send and the copy RPCs need a
+  transaction-local mark), then PRs 2 to 5. The owner's four calls (who sees whose edits; how long
+  to keep; may a non-dev put a row back; which bid columns are shown) come before PRs 2 to 4. PR
+  0's three loss fixes are independent.
 size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
-blocker: none for PR 0 and PR 1; the owner's calls before PR 2–4 are shown to anyone.
+blocker: PR 1's bed needs Docker, and Docker Desktop on the owner's Mac runs under a different macOS account than the one the Claude sessions use. Run the bed from that account, start Docker under the sessions' account, or (the owner's yes) add a manual GitHub Actions job that runs the test:pg beds on a chosen branch. When #4583 is rebased onto this edit, keep its own status, next and Where it stands, and keep this blocker until the bed runs.
 ---
 
 # Bid history: every value anyone entered on a bid, and a way to put one back
