@@ -1083,6 +1083,61 @@ G-45, Helper 2 on `spike/g45`; the mock-up and plan are `mockups/G-45.md`. `gcRo
 Left out, the owner's calls: general conditions worked out from the weeks (it ties the price to the
 schedule), and jobs like it (the prototype's past jobs carry no durations).
 
+## What if, getting days back, as built (2026-10-06)
+
+G-82, Helper 3 (mock-up `mockups/G-82.md`). `gcRecovery.ts` (tested, out of the barrel),
+`GcRecovery.tsx`, the action `recoverScheduleDays`, and three small changes to the model, each the
+lead's call.
+
+- **Days back**, a card under the measures, only on a job past its contract (G-98's `late`): each way
+  to bring the finish in, the most days back first, with *Look at it*. The best one's worth joins
+  G-98's lines in the Projected finish measure: *Getting 1 day back brings the finish to Mon Dec 14,
+  still 3 days past the contract.* With nothing to offer it says why: the work's pace sets the
+  finish, or the work on the red chain is held, started, or one trade's own.
+- **Side by side**: *Controls starts 3 days before Sheet metal and flashing finishes.* The kernel
+  reads one wait, B on A. Both are on the red chain, A not done, B not started. They are two trades,
+  neither an inspection nor the job's own bar. The wait has no gap now, since cure or lead time is
+  kept. Nothing holds B, and its trade has not said it starts later. The overlap is `OVERLAP_DAYS` = 3
+  or fewer, never before tomorrow, B's Not before day or what else it waits on.
+- **A second crew**: *A second crew on Test and balance. It would finish Sat Dec 12, not Sun Dec 13.
+  Our rule: a second crew does the days left in two thirds the time.* A bar has dates and a percent,
+  no crew, so the rule is named (`SECOND_CREW_SHARE`) and said on every crew offer. It applies to a
+  trade's line or our own crew's stage with 3 days left or more, nothing holding it.
+- **Each offer is the schedule as it would stand**: the work right behind comes in by G-37's rules
+  (`pullBehind`, lifted out of `planPull` as its own commit). It is read on the projected finish, so
+  an offer that only moves the plan while the work's pace sets the finish is not offered.
+- **Who has to agree** is on every offer: *Cool Breeze Mechanical and Summit Roofing have to agree:
+  Andre Wallace and Carla Nguyen.* Each person has *Call* and *Follow up*, which open G-115's sheet
+  on one item, the days back, in the company's language. Our own crew is *our call*.
+- **The press**: *Look at it* opens a window like G-37's. It shows the dates, what comes in, what
+  keeps its dates and why, the finish, the worth, the billing (G-97), and *Ask them before you save
+  it.* Then *Getting days back*, a new reason, and the sentence filled in. *Save the move* sends
+  `recoverScheduleDays` with the offer's key, and the reducer re-plans it from the state, so a
+  stale press does nothing. The move keeps `recovery` (the gap it changed). Undo and Redo put the gap
+  back and forward with the dates. Tell the trades tells each company whose dates moved.
+- **The history** reads *HVAC · Controls now starts 3 days before Sheet metal and flashing finishes,
+  Dec 4 to Dec 10.* Days lost has its own line, *3 days back from work we sped up*. The customer
+  reads *… because of a faster plan for the work.*
+- **The gap below zero** (the lead's condition): `lagOf`, the reducer, `planMove` and the editor's box
+  take it. The editor says it in the offer's words, *starts 3 days before Sheet metal and flashing
+  finishes*, and the chart's label reads *−3*. A test holds every gap in the made-up data at zero or
+  more, and the golden test did not move.
+
+What the second look changed:
+
+- **The cascade reads the dates as drawn.** Seeding it with the compressed bar's new dates already
+  in place hid the days it gave back, so nothing behind it came in.
+- **Our own crew is our call.** A second crew of ours needs nobody's yes, so it gets no Call.
+- **A second crew is offered once.** Saved on the live job, the list offered a second crew on the
+  same bar again, a third crew by the same rule. A bar with a standing second-crew move gets no more.
+
+Not done, on purpose: what a second crew costs (the conversation with the trade is where the money
+is); two offers at once (each stands alone, save one and the list reads again); offering it before
+the contract is missed (one condition to widen, the owner's call); telling the trade being
+overlapped (Tell the trades reads whose dates moved, a row of its own); the best offer's worth on the
+paper (G-21's head prints G-98's lines, which are facts; an offer is a choice, so its line sits just
+outside that block and the paper's test still holds).
+
 ## Later, people on site per week, as built (2026-10-06)
 
 G-84, by Helper 5, round three (the mock-up and plan: `mockups/G-84.md`). `gcPeopleOnSite.ts`

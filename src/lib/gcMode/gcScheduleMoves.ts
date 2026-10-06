@@ -25,6 +25,8 @@ export const MOVE_REASONS: { key: ScheduleMoveReason; label: string }[] = [
   { key: 'change order', label: 'A change order' },
   // A pull's own reason (G-37): the work before finished early.
   { key: 'early', label: 'Finished early' },
+  // Days got back on a late job (G-82): side by side, or a second crew.
+  { key: 'recovery', label: 'Getting days back' },
   { key: 'other', label: 'Something else' },
 ]
 
@@ -101,7 +103,7 @@ export function planMove(project: GcProject, lineId: string, start: string, fini
   const to = { start, finish }
   const ids = new Set(schedule.activities.map((a) => a.lineId))
   const waits = after ? [...new Set(after)].filter((id) => id !== lineId && ids.has(id)) : activity.after
-  const lag = limits?.lag === undefined ? activity.lag : Object.fromEntries(Object.entries(limits.lag).filter(([id, days]) => waits.includes(id) && days > 0))
+  const lag = limits?.lag === undefined ? activity.lag : Object.fromEntries(Object.entries(limits.lag).filter(([id, days]) => waits.includes(id) && Number.isFinite(days) && days !== 0))
   const notBefore = limits?.notBefore === undefined ? activity.notBefore : (limits.notBefore ?? undefined)
   const mustFinishBy = limits?.mustFinishBy === undefined ? activity.mustFinishBy : (limits.mustFinishBy ?? undefined)
   const limitsChanged = JSON.stringify(lag ?? {}) !== JSON.stringify(activity.lag ?? {}) || notBefore !== activity.notBefore || mustFinishBy !== activity.mustFinishBy
@@ -179,6 +181,7 @@ export function moveRows(project: GcProject): MoveRow[] {
     const moved = move.from.start !== move.to.start || move.from.finish !== move.to.finish
     const name = moveActivityName(project, move.lineId)
     if (move.pull) return pullRow(project, move, name, days)
+    if (move.recovery) return recoveryRow(project, move, name, days)
     const what = moved
       ? `${name} moved from ${spanWords(move.from)}, to ${spanWords(move.to)}.${move.linksChanged ? ' What it waits on changed too.' : ''}`
       : `${name}: what it waits on changed.`
@@ -193,6 +196,26 @@ export function moveRows(project: GcProject): MoveRow[] {
       undone: move.undoneOn ? `Undone ${shortDate(move.undoneOn)}${move.undoneBy ? ` by ${move.undoneBy}` : ''}.` : null,
     }
   })
+}
+
+/** Days got back (G-82): side by side, or a second crew, then what came in behind it. */
+function recoveryRow(project: GcProject, move: ScheduleMove, name: string, days: number): MoveRow {
+  const r = move.recovery
+  const n = -(r?.gap ?? 0)
+  const what =
+    r?.how === 'side' && r.after
+      ? `${name} now starts ${n} ${n === 1 ? 'day' : 'days'} before ${moveActivityName(project, r.after).replace(/^.* · /, '')} finishes, ${spanWords(move.to)}.`
+      : `A second crew on ${name}: it finishes ${weekdayDate(move.to.finish)}, not ${weekdayDate(move.from.finish)}.`
+  const pullWords = move.pushed.length === 0 ? '' : move.pushed.length === 1 ? `${moveActivityName(project, move.pushed[0]?.lineId ?? '')} came in behind it.` : `${move.pushed.length} after it came in.`
+  const finishWords = days === 0 ? '' : `The finish moved ${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'} ${days > 0 ? 'later' : 'sooner'}, to ${shortDate(move.finishTo)}.`
+  return {
+    move,
+    who: `${weekdayDate(move.on)} · ${move.by}`,
+    what,
+    effect: [pullWords, finishWords].filter(Boolean).join(' '),
+    reason: moveReasonLabel(move.reason),
+    undone: move.undoneOn ? `Undone ${shortDate(move.undoneOn)}${move.undoneBy ? ` by ${move.undoneBy}` : ''}.` : null,
+  }
 }
 
 /** A pull's row (G-37): what finished early, then what came in after it, not out. */
@@ -236,9 +259,22 @@ export function undoMove(project: GcProject, moveId: string, by: string, today: 
   const back = new Map<string, { start: string; finish: string }>([[move.lineId, move.from], ...move.pushed.map((p) => [p.lineId, p.from] as [string, { start: string; finish: string }])])
   return {
     ...schedule,
-    activities: schedule.activities.map((a) => (back.has(a.lineId) ? { ...a, ...(back.get(a.lineId) as { start: string; finish: string }) } : a)),
+    // A side-by-side move (G-82) also puts back the gap it changed on its wait.
+    activities: schedule.activities.map((a) => withRecoveryGap(back.has(a.lineId) ? { ...a, ...(back.get(a.lineId) as { start: string; finish: string }) } : a, move, 'gapWas')),
     moves: (schedule.moves ?? []).map((m) => (m.id === move.id ? { ...m, undoneOn: today, undoneBy: by } : m)),
   }
+}
+
+/** A side-by-side move's line (G-82) with its gap on the wait set to the move's `gapWas` (undo) or `gap` (redo). Any other activity as it is. */
+function withRecoveryGap(a: ScheduleActivity, move: ScheduleMove, which: 'gapWas' | 'gap'): ScheduleActivity {
+  const r = move.recovery
+  if (!r?.after || a.lineId !== move.lineId) return a
+  const days = r[which] ?? 0
+  const lag = { ...(a.lag ?? {}) }
+  if (days === 0) delete lag[r.after]
+  else lag[r.after] = days
+  const { lag: _was, ...rest } = a
+  return Object.keys(lag).length > 0 ? { ...rest, lag } : rest
 }
 
 /**
@@ -266,7 +302,7 @@ export function redoMove(project: GcProject, moveId: string): ProjectSchedule | 
   const forward = new Map<string, { start: string; finish: string }>([[move.lineId, move.to], ...move.pushed.map((p) => [p.lineId, p.to] as [string, { start: string; finish: string }])])
   return {
     ...schedule,
-    activities: schedule.activities.map((a) => (forward.has(a.lineId) ? { ...a, ...(forward.get(a.lineId) as { start: string; finish: string }) } : a)),
+    activities: schedule.activities.map((a) => withRecoveryGap(forward.has(a.lineId) ? { ...a, ...(forward.get(a.lineId) as { start: string; finish: string }) } : a, move, 'gap')),
     moves: (schedule.moves ?? []).map((m) => {
       if (m.id !== move.id) return m
       const { undoneOn: _on, undoneBy: _by, ...stands } = m

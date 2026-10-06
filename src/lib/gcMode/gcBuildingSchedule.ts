@@ -312,9 +312,12 @@ export function scheduleFloat(activities: ScheduleActivity[]): Map<string, numbe
   return new Map(activities.map((a) => [a.lineId, Math.round((lateFinish.get(a.lineId) ?? end) - (earlyFinish.get(a.lineId) ?? end))]))
 }
 
-/** The gap in days an activity keeps after one it waits on finishes (G-35). Zero when none. */
+/**
+ * The gap in days an activity keeps after one it waits on finishes (G-35). Zero when none. Below
+ * zero, it starts that many days before that work finishes, the two side by side (G-82).
+ */
 export function lagOf(a: ScheduleActivity, afterId: string): number {
-  return Math.max(0, a.lag?.[afterId] ?? 0)
+  return a.lag?.[afterId] ?? 0
 }
 
 /** True when making `lineId` wait on `afterId` would make a loop: `afterId` already waits on `lineId`, directly or down the line. */
