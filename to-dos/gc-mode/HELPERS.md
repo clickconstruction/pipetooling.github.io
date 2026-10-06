@@ -68,6 +68,19 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
 
 Round two, in order: G-60, G-97, G-98, G-118, G-08.
 
+## Assignments, round three (the owner's word, 2026-10-06: every *Later* row and every finding)
+
+Each helper takes its rows in order, one at a time, the same five steps. The one that moves the
+golden snapshots (the counts) goes last, by one helper, with the owner's OK to re-pin once.
+
+| Helper | First | Then | Then |
+|---|---|---|---|
+| Helper 1 | G-81 what-if copy | G-39 split bars | the counts on the board row, Follow up and Needs you (re-pins the golden test once) |
+| Helper 2 | G-45 a schedule while bidding | G-136 export | G-137 import, then G-44 templates |
+| Helper 3 | G-82 how to get days back | G-57 weather and crew projection | G-141 Ask for the days |
+| Helper 4 | G-140 the cash weeks follow the bars | the trade's own crew count from its portal | G-83 too many trades in one place |
+| Helper 5 | G-138 running bars with lapsed insurance | G-139 one readiness list for both sides | G-84 people on site per week |
+
 ## Status
 
 Rounds one and two landed on `spike/gc-mode` the same day, 2026-10-06, each row reviewed and merged by
