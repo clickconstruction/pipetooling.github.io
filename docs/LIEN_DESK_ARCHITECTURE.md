@@ -215,7 +215,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 | `lienNoticePayPage.ts` | 127 | 8 | pay page blocks/summary |
 | `lienPayOffer.ts` | 150 | 9 | the pay offer (v2.4713): the day rules, the cents, every sentence; `LienOfferBox` above the footer |
 | `lienNoticeRelease.ts` / `lienNoticeReleaseIo.ts` | 150 / 100 | 6 / 0 (mocked) | the conditional release enclosed with a notice (v2.4729): the form, the fields, the paragraph, the page / the draft, the refresh, the void, the issue |
-| `lienLastWorkDay.ts` / `lienLastWorkDayPreview.ts` | 78 / 156 | 4 / 8 | the last day of work set by hand (v2.4676): where the day comes from, the floor, the patch / what moves before it is saved (v2.4717) |
+| `lienLastWorkDay.ts` / `lienLastWorkDayPreview.ts` | 78 / 156 | 4 / 8 | the last day of work set by hand (v2.4676): where the day comes from, the floor, the patch / what moves before it is saved (v2.4717); v2.4735: the Lien window's timeline reads `lien_last_work_on`, its LAST WORK stop carries *change ›* (`LienTimelineStrip` `onChangeLastWork`) opening `LienLastWorkDayLine` `startEditing`, the Deadlines work label opens it (`onOpenLastWork` → `openLastWork`), and every last-day save bumps the Pipeline's lien clocks |
 | `lienDeskRun.ts` | 444 | 20 | run notices, `runCoverNoteBlocks` |
 | `gcOnNotice.ts` | 571 | 14 | `fillCoverLetter`, `letterTwoTemplate`, affidavit month word |
 | `lienLetterTwo.ts` | 119 | 8 | kinds, `letterTwoIsDue` |

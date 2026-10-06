@@ -5135,3 +5135,5 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .legalRecipientScope { margin-left: 0 !important; }
 }
+/* The Deadlines grid's last-day label as a door (v2.4735): it reads as the label until pointed at. */
+.lienCalWorkDoor:hover, .lienCalWorkDoor:focus-visible { color: var(--text-link) !important; text-decoration: underline; outline: none; }

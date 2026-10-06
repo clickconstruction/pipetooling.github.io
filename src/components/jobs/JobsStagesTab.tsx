@@ -833,6 +833,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
     /** The Lien desk's months for the notice (v2.3405). */
     noticeMonths?: string[] | null
+    /** Open with the last day of work's line editing (v2.4735). */
+    openLastWork?: boolean
   } | null>(null)
   // Jobs with a live SENT demand letter — the lien icon wears an amber box.
   const { demandOutJobIds, loadDemandOutJobIds } = useDemandOutJobIds()
@@ -4517,6 +4519,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           } else setLienClocksRefresh((k) => k + 1)
           refetchLienDesk()
         }}
+        onOpenCalendarLastWork={(jobId) => {
+          const job = jobs.find((x) => x.id === jobId)
+          if (job) setLienInstrumentsModal({ job, invoice: null, openLastWork: true })
+        }}
         // v2.4523: the desk stays open under a window one of its rows opens (the lien window, the GC
         // notice), so closing that window lands back on the desk where it was, not on the board.
         onOpenCalendarJob={(jobId) => {
@@ -4620,6 +4626,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
+        openLastWork={lienInstrumentsModal?.openLastWork ?? false}
+        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
+        onLastWorkSaved={() => {
+          setLienClocksRefresh((k) => k + 1)
+          refetchLienDesk()
+        }}
         signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
         // The next step's door (punch list #82): the desk sits under this window, so this one closes and the desk opens on the job.
