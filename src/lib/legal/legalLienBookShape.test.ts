@@ -42,11 +42,11 @@ describe('shapeLienBookForCounsel', () => {
   })
 
   it('names the same columns in the selects the function runs', () => {
-    expect(LIEN_BOOK_COUNSEL_SELECT.deskItems).toBe(Object.keys(shaped.items[0]).join(', '))
-    expect(LIEN_BOOK_COUNSEL_SELECT.filings).toBe(Object.keys(shaped.filings[0]).join(', '))
-    expect(LIEN_BOOK_COUNSEL_SELECT.owners).toBe(Object.keys(shaped.owners[0]).join(', '))
-    expect(LIEN_BOOK_COUNSEL_SELECT.addresses).toBe(Object.keys(shaped.addresses[0]).join(', '))
-    expect(LIEN_BOOK_COUNSEL_SELECT.gcs).toBe(Object.keys(shaped.gcs[0]).join(', '))
+    expect(LIEN_BOOK_COUNSEL_SELECT.deskItems).toBe(Object.keys(shaped. ?? {}).join(', '))
+    expect(LIEN_BOOK_COUNSEL_SELECT.filings).toBe(Object.keys(shaped. ?? {}).join(', '))
+    expect(LIEN_BOOK_COUNSEL_SELECT.owners).toBe(Object.keys(shaped. ?? {}).join(', '))
+    expect(LIEN_BOOK_COUNSEL_SELECT.addresses).toBe(Object.keys(shaped. ?? {}).join(', '))
+    expect(LIEN_BOOK_COUNSEL_SELECT.gcs).toBe(Object.keys(shaped. ?? {}).join(', '))
   })
 
   it('still assembles into the grid’s book on the client', () => {
