@@ -5,6 +5,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatDenverCalendarDayWithYear, formatDenverTimeOnly, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { formatCurrency, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { fileSentCopy, printAndFile } from '../../lib/sent/sentCopiesIo'
+import { saveBlobAs } from '../../lib/storageSave'
+import { ownerPacketPdfBlob, ownerPacketPdfFilename } from '../../lib/jobs/ownerRecordsPdf'
 import type { SentFiling, SentHow } from '../../lib/sent/sentCopies'
 import {
   EMPTY_OWNER_RECORDS,
@@ -101,6 +103,8 @@ export default function LienOwnerRecordsModal({
 }) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  /** The packet PDF is being drawn (v2.4619). */
+  const [pdfBusy, setPdfBusy] = useState(false)
   const [query, setQuery] = useState('')
   const [picked, setPicked] = useState<OwnerRecordsPropertyRow | null>(null)
   const [jobs, setJobs] = useState<OwnerPacketJobInput[] | null>(null)
@@ -211,6 +215,32 @@ export default function LienOwnerRecordsModal({
     const html = what === 'packet' ? ownerPacketHtml(packet, facts, fmt) : ownerAcknowledgmentHtml(facts, fmt)
     // A print counts as a send: the page is filed as it was printed (v2.4554).
     if (!printAndFile(html, filing(what))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
+  }
+
+  /** The packet as a PDF to keep or attach (v2.4619): the same pages the print makes; a download counts as a send, as a print does. */
+  async function download() {
+    if (!facts || !packet || pdfBusy) return
+    if (!OWNER_RECORDS_WORDING_APPROVED) {
+      const yes = await confirmDialog({
+        title: 'Save the draft wording?',
+        message: 'Your attorney has not approved the cover note yet. Save the PDF anyway?',
+        confirmLabel: 'Save it',
+        cancelLabel: 'Not yet',
+        cancelIsSafe: true,
+      })
+      if (!yes) return
+    }
+    setPdfBusy(true)
+    try {
+      const blob = await ownerPacketPdfBlob(packet, facts, fmt)
+      const fileName = ownerPacketPdfFilename(facts.address, facts.asOfYmd)
+      saveBlobAs(blob, fileName)
+      void fileSentCopy({ ...filing('packet'), how: 'download' }, { blob, fileName, contentType: 'application/pdf' })
+    } catch {
+      showToast('Could not build the PDF.', 'error')
+    } finally {
+      setPdfBusy(false)
+    }
   }
 
   /** What a copy of this property's packet, or of its acknowledgment, says about itself in Documents. */
@@ -479,6 +509,9 @@ export default function LienOwnerRecordsModal({
             </button>
             <button type="button" disabled={!packet || packet.jobs.length === 0} onClick={() => void print('packet')} style={btn('plain', !packet || packet.jobs.length === 0)}>
               Print the packet
+            </button>
+            <button type="button" disabled={!packet || packet.jobs.length === 0 || pdfBusy} onClick={() => void download()} style={btn('plain', !packet || packet.jobs.length === 0 || pdfBusy)} title="The cover note and the statement as one PDF, to attach or keep">
+              {pdfBusy ? 'Building…' : 'Download the packet'}
             </button>
             {!file.sent ? (
               <>

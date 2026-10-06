@@ -42,7 +42,7 @@ Check 3 is a warning. It does not stop you. Read what it says before you send an
 
 ## Send it and record it
 
-1. Press {{button:outline|Print the packet}}. It prints the cover note and the statement.
+1. Press {{button:outline|Print the packet}}. It prints the cover note and the statement. To email it or keep a file, press {{button:outline|Download the packet}} instead. It saves the same pages as one PDF.
 2. Give it to the owner.
 3. Pick how it went to them, then press {{button:blue|Record it as sent}}.
 
@@ -50,7 +50,7 @@ Check 3 is a warning. It does not stop you. Read what it says before you send an
 
 You can close the window and come back. The checks you put on file are kept.
 
-A copy of each page is kept when you print it. The packet is kept again when you record it as sent. See [find a copy of what we sent](/help/find-a-copy-of-what-we-sent).
+A copy of each page is kept when you print it or download it. The packet is kept again when you record it as sent. See [find a copy of what we sent](/help/find-a-copy-of-what-we-sent).
 
 ## The wording is a draft
 
