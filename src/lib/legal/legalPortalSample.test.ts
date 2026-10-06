@@ -40,7 +40,7 @@ describe('sampleLegalPortalResponse — one referred matter, one story', () => {
       expect(p.account.totals).toMatchObject({ billed: 18_400, paid: 4_000, balance: 14_400 })
       const pay = p.account.ledger.find((e) => e.kind === 'payment')!
       expect(pay.ymd).toBe(d(-84))
-      expect(pay.text).toMatch(/check · ref 2291/)
+      expect(pay.text).toMatch(/check no\. 2291/)
       expect(p.account.ledger.filter((e) => e.kind === 'invoice').map((e) => e.amount)).toEqual([4_000, 14_400])
 
       // The property record: county, owner of record, legal description, parcel, ready for a lien.
