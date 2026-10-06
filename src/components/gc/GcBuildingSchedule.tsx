@@ -43,6 +43,7 @@ import { GcGantt } from './GcGantt'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcLateNotices } from './GcLateNotices'
+import { GcLogVsChart } from './GcLogVsChart'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
@@ -50,6 +51,7 @@ import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrde
 import { WAIT_KINDS, waitHolds, waitKind, waitRows, waitWhoDefault, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
 import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
+import { logChartGaps, logChartNotes } from '../../lib/gcMode/gcLogVsChart'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
@@ -93,6 +95,14 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const lost = useMemo(() => lostDaysByLine(project), [project])
   // A trade's own new day from its portal, not on the dates yet (G-117): a dashed tail on its bar.
   const lateSaid = useMemo(() => lateNoticeTails(state, project), [state, project])
+  // What this week's daily log says against the chart (G-60): read with the chart's holds, so a held bar is explained.
+  const logGaps = useMemo(() => logChartGaps(state, project, holds), [state, project, holds])
+  const logNotes = useMemo(() => logChartNotes(logGaps), [logGaps])
+  // The card under the chart opens a bar in the editor above it, and brings the editor into view.
+  const openFromCard = (lineId: string) => {
+    setPicked(lineId)
+    setTimeout(() => document.querySelector('[data-tour="gc-activity-editor"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+  }
   // Every move goes through the explanation window first (the owner, 2026-10-05; the Gantt, Phase 2).
   const [pending, setPending] = useState<PendingMove | null>(null)
   // The weekly walk (the owner, 2026-10-05): every bar that should have moved, one at a time.
@@ -188,6 +198,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           waits={waits}
           lost={lost}
           lateSaid={lateSaid}
+          logNotes={logNotes}
           items={m.items}
           float={m.float}
           milestones={m.milestones}
@@ -207,6 +218,9 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
           }}
         />
       </Card>
+
+      {/* What this week's daily log says against the chart (G-60): a trade on site with no bar, a bar with nobody on site. */}
+      {building && <GcLogVsChart project={project} gaps={logGaps} dispatch={dispatch} onOpen={openFromCard} />}
 
       {walking && <GcScheduleWalk state={state} project={project} holds={holds} dispatch={dispatch} onClose={() => setWalking(false)} />}
 
@@ -351,7 +365,7 @@ function ActivityEditor({
         ).moved,
       )
   return (
-    <Card style={{ border: '2px solid #2563eb' }}>
+    <Card style={{ border: '2px solid #2563eb' }} dataTour="gc-activity-editor">
       <div style={{ display: 'grid', gap: '0.6rem', fontSize: '0.875rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
           <strong>
