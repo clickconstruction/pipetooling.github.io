@@ -36,6 +36,9 @@ export function legalFirmStageWords(stage: string | null | undefined): string {
   }
 }
 
+/** The two choices of a person's email rule, as the portal's Notifications control reads them; the welcome email names them in the same words. */
+export const FIRM_EMAIL_MODE_WORDS = { now: 'Each event', digest: 'Weekly digest' } as const
+
 /** The frame every firm email sits in: the company line on top, the stop-these link at the foot. */
 export function legalWrapHtml(companyName: string, bodyHtml: string, unsubscribeUrl: string): string {
   return `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>${bodyHtml}<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because you are on the firm's email list on ${legalEsc(companyName)}'s legal portal. <a href="${unsubscribeUrl}" style="color:#8a97a6">Stop these emails to you</a>.</p></div>`
@@ -146,7 +149,7 @@ export function buildLegalWelcomeEmail(i: {
   const steps = [
     'Open the portal and choose Notifications.',
     'Add each person at the firm who should hear from us. Each gets one email to confirm their address.',
-    'Each person picks right away or a weekly digest, and every account or only their own.',
+    `Each person sets Emails to ${FIRM_EMAIL_MODE_WORDS.now} or ${FIRM_EMAIL_MODE_WORDS.digest}, and picks every account or only their own.`,
   ]
   const finds = [
     'Every account we refer to you, as one packet: the account, the paper, the record of contact, the field evidence, and the fees and steps.',

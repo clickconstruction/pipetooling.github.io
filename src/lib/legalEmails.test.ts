@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, buildLegalWelcomeEmail } from './legalEmails'
+import { FIRM_EMAIL_MODE_WORDS, LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, buildLegalWelcomeEmail } from './legalEmails'
 
 describe('the firm’s emails · punch list #85 item 3 · the firm’s words and the payload’s company name', () => {
   const now = (trigger: 'referred' | 'answer' | 'pulled') =>
@@ -84,6 +84,14 @@ describe('buildLegalWelcomeEmail · v2.4624 · the firm’s link, sent from the 
     expect(t).toContain('Good talking today.')
     expect(t).toContain('call us at (512) 360-0599')
     expect(t.split('\n').length).toBeGreaterThan(15)
+    // The HTML's footer line rides the plain part too.
+    expect(t.trimEnd().endsWith('Nothing else is emailed to this address unless someone at the firm adds it on the portal.')).toBe(true)
+  })
+
+  it('names the email rule in the Notifications control’s own words', () => {
+    const t = buildLegalWelcomeEmail(base).text
+    expect(t).toContain(`3. Each person sets Emails to ${FIRM_EMAIL_MODE_WORDS.now} or ${FIRM_EMAIL_MODE_WORDS.digest}`)
+    expect(t).not.toMatch(/right away/)
   })
 
   it('greets the firm with no handling person, signs as the office with no sender, and escapes the office’s line', () => {
