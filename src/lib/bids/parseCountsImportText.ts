@@ -41,16 +41,25 @@ export const COUNT_ALTERNATE_SCHEDULE_SUFFIX_RE = /\s*·\s*(Duct|Water sizing)$/
 // column stayed empty on every import since the classic table (v2.4188).
 export const COUNT_GROUP_PREFIX_RE = /^\[([^\]]*)\]\s*/
 
+// v2.4686: the scope heading says what the copy covers — `every sheet` is the whole takeoff
+// (Copy to /Tooling → All Canvases), anything else is a part of it (This Canvas Only, …). The
+// import review reads it to decide whether a row missing from the copy was deleted on purpose.
+export const COUNT_SCOPE_HEADING_RE = /^---\s*Counts,/i
+export type CountsImportScope = 'all' | 'partial' | 'unknown'
+
 export function parseCountsImportText(text: string): {
   rows: ParsedCountImportRow[]
   skippedCount: number
   sourceLink: string | null
   /** The alternate groups the text names, first spelling kept, in the order they appear. */
   alternateGroups: string[]
+  /** v2.4686: what the scope heading said the copy covers; 'unknown' without one (a hand-typed paste). */
+  scope: CountsImportScope
 } {
   const rows: ParsedCountImportRow[] = []
   const alternateGroups: string[] = []
   let skippedCount = 0
+  let scope: CountsImportScope = 'unknown'
   // First match anywhere in the blob → the source view link (stored opaque, as-is).
   const sourceLink = text.match(COUNT_SOURCE_LINK_RE)?.[0] ?? null
   const lines = text.split(/\r?\n/)
@@ -84,6 +93,7 @@ export function parseCountsImportText(text: string): {
     }
     // Framed headings are structure, not counts — and not "skipped" either.
     if (COUNT_HEADING_LINE_RE.test(trimmed)) {
+      if (COUNT_SCOPE_HEADING_RE.test(trimmed)) scope = /every sheet/i.test(trimmed) ? 'all' : 'partial'
       inAlternate = null
       inSchedule = false
       continue
@@ -110,5 +120,5 @@ export function parseCountsImportText(text: string): {
     }
     rows.push({ fixture, count, group_tag: groupTag, page, unit: classifyCountRowUnit(fixture) })
   }
-  return { rows, skippedCount, sourceLink, alternateGroups }
+  return { rows, skippedCount, sourceLink, alternateGroups, scope }
 }
