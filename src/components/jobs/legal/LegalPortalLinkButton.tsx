@@ -27,14 +27,14 @@ type LinkState = { kind: 'loading' } | { kind: 'none' } | { kind: 'active'; id: 
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const field: CSSProperties = { font: 'inherit', fontSize: '0.82rem', padding: '5px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }
 
-export default function LegalPortalLinkButton({ firmId, firmName, firmEmail }: { firmId: string; firmName: string; firmEmail?: string | null }) {
+export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: string; firmName: string }) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<LinkState>({ kind: 'loading' })
   const [busy, setBusy] = useState(false)
-  const onFile = (firmEmail ?? '').trim()
-  const [useOnFile, setUseOnFile] = useState(Boolean(onFile))
+  const [onFile, setOnFile] = useState('')
+  const [useOnFile, setUseOnFile] = useState(true)
   const [typed, setTyped] = useState('')
   const [note, setNote] = useState('')
   const [sentLine, setSentLine] = useState<string | null>(null)
@@ -42,6 +42,8 @@ export default function LegalPortalLinkButton({ firmId, firmName, firmEmail }: {
 
   const load = useCallback(async () => {
     setState({ kind: 'loading' })
+    // The firm's address on file (Settings → Collections law firm), offered as a ticked box.
+    void db.from('legal_firms').select('email').eq('id', firmId).maybeSingle().then(({ data: f }) => setOnFile(String((f as { email?: string | null } | null)?.email ?? '').trim()))
     const { data, error } = await db.from('legal_portal_links').select('id, token, created_at, revoked_at').eq('firm_id', firmId).order('created_at', { ascending: false })
     if (error) {
       setState({ kind: 'none' })

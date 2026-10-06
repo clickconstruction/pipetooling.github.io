@@ -12,6 +12,7 @@ vi.mock('../../../lib/supabase', () => {
   const builder = (table: string): Record<string, unknown> => {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'is', 'order', 'in', 'limit']) b[m] = () => b
+    b.maybeSingle = () => Promise.resolve({ data: (tables[table] ?? [])[0] ?? null, error: null })
     b.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(ok)
     return b
   }
@@ -28,11 +29,12 @@ describe('LegalPortalLinkButton — Send the firm their link', () => {
   it('shows the last send of this link, and sends to the address on file plus a typed one', async () => {
     tables.legal_portal_links = [{ id: 'link-1', token: 'tok_0123456789abcdef', created_at: '2026-10-01T15:00:00Z', revoked_at: null }]
     tables.sent_documents = [{ recipient_emails: ['ann@firm.example.com'], sent_at: '2026-10-02T15:00:00Z', sent_by_name: 'Will' }]
+    tables.legal_firms = [{ email: 'ann@firm.example.com' }]
     invoke.mockResolvedValue({ data: { ok: true, sentTo: ['ann@firm.example.com', 'bo@firm.example.com'] }, error: null })
-    renderWithProviders(<LegalPortalLinkButton firmId="firm-1" firmName="Sample & Partner" firmEmail="ann@firm.example.com" />)
+    renderWithProviders(<LegalPortalLinkButton firmId="firm-1" firmName="Sample & Partner" />)
     fireEvent.click(screen.getByRole('button', { name: /Firm’s link/ }))
     await waitFor(() => expect(document.querySelector('[data-legal-link-sent]')?.textContent).toMatch(/Sent to ann@firm\.example\.com on 2026-10-02 by Will/))
-    expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(true)
+    expect(((await screen.findByRole('checkbox')) as HTMLInputElement).checked).toBe(true)
     fireEvent.change(screen.getByLabelText('Another address'), { target: { value: 'bo@firm.example.com' } })
     fireEvent.click(screen.getByRole('button', { name: 'Send it again' }))
     await waitFor(() => expect(invoke).toHaveBeenCalled())
@@ -43,7 +45,8 @@ describe('LegalPortalLinkButton — Send the firm their link', () => {
 
   it('holds the button and says why when an address is not an email', async () => {
     tables.legal_portal_links = [{ id: 'link-1', token: 'tok_0123456789abcdef', created_at: '2026-10-01T15:00:00Z', revoked_at: null }]
-    renderWithProviders(<LegalPortalLinkButton firmId="firm-1" firmName="Sample & Partner" firmEmail="" />)
+    tables.legal_firms = [{ email: '' }]
+    renderWithProviders(<LegalPortalLinkButton firmId="firm-1" firmName="Sample & Partner" />)
     fireEvent.click(screen.getByRole('button', { name: /Firm’s link/ }))
     await waitFor(() => expect(document.querySelector('[data-legal-send-link]')).not.toBeNull())
     expect(screen.queryByRole('checkbox')).toBeNull()
