@@ -17,6 +17,7 @@ import { submittalRowsOn } from './gcBuildingSubmittals'
 import { partnerById } from './gcLookups'
 import { GC_COMPANY } from './gcFixture'
 import { shortDate, weekdayDate } from './gcWords'
+import { lateFinish } from './gcLateFinish'
 
 /** The draft is ready from Friday (the owner's pick, 2026-10-05): 5 is Friday, Monday being 1. */
 export const WEEKLY_REPORT_DAY = 5
@@ -132,6 +133,8 @@ export function weeklyReport(state: GcState, project: GcProject, weekOf = monday
             ? `Finish: about ${weekdayDate(finish.on)}. Your contract says ${shortDate(contract?.on ?? null)}, so there are no days to spare.`
             : `Finish: about ${weekdayDate(finish.on)}, ${days(-past)} ahead of the ${shortDate(contract?.on ?? null)} in your contract.`,
     )
+    // Whose the late days are, in the customer's words (G-98). Only when the finish runs past the contract.
+    glance.push(...lateFinish(state, project).customerWords)
   }
   if (sum) {
     const pace = sum.daysBehind > 0 ? `so we are ${days(sum.daysBehind)} behind` : sum.daysBehind < 0 ? `so we are ${days(-sum.daysBehind)} ahead` : 'right on plan'

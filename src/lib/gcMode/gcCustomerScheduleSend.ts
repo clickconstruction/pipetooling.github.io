@@ -9,6 +9,7 @@
 import type { GcProject, GcState, ScheduleSend } from './gcTypes'
 import { customerAsks, customerChanges, customerMilestones, customerStages, customerStanding } from './gcCustomerSchedule'
 import { customerContractDays } from './gcChangeOrderDays'
+import { lateFinish } from './gcLateFinish'
 import { shortDate, weekdayDate } from './gcWords'
 import { GC_COMPANY } from './gcFixture'
 
@@ -28,7 +29,7 @@ export function customerScheduleLetter(state: GcState, project: GcProject, by: s
   const standing = customerStanding(state, project)
   const stages = customerStages(state, project)
   const milestones = customerMilestones(state, project)
-  const lines: string[] = [`Hello ${first},`, `Here is where ${project.name} stands as of ${weekdayDate(state.today)}.`, standing.finishWords, ...customerContractDays(project)]
+  const lines: string[] = [`Hello ${first},`, `Here is where ${project.name} stands as of ${weekdayDate(state.today)}.`, standing.finishWords, ...customerContractDays(project), ...lateFinish(state, project).customerWords]
   if (standing.finish) lines.push(`${standing.donePct}% of the work is done. We planned ${standing.plannedPct}% by today.`)
   for (const s of stages) {
     const stand = s.state === 'done' ? 'done' : s.state === 'notStarted' ? `starts ${weekdayDate(s.start)}` : `${STATE_WORDS[s.state]}, ${Math.round(s.pct)}% done`

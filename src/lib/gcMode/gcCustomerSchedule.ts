@@ -87,7 +87,7 @@ export function customerStanding(state: GcState, project: GcProject): CustomerSt
 }
 
 /** Why a bar moved, in words for the customer: no company names, no blame by name. */
-const CUSTOMER_WHY: Record<ScheduleMoveReason, string> = {
+export const CUSTOMER_WHY: Record<ScheduleMoveReason, string> = {
   weather: 'the weather',
   'trade before': 'the work before it ran long',
   materials: 'materials',
