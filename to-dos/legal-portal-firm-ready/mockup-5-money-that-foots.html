@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 5: money that foots — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 12px; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .paper { background: #FBF8F2; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; color: #16283c; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 5px 8px; }
+  td { padding: 6px 8px; border-bottom: 1px solid #ece6da; vertical-align: top; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .credit { color: #1f7a3a; }
+  .bal { display: flex; justify-content: flex-end; gap: 18px; font-weight: 700; padding: 8px 8px 0; }
+  .bal span:first-child { color: #8a97a6; font-weight: 400; }
+  .bad { background: #FEE2E2; }
+  .flag { color: #b42318; font-size: 12px; }
+  .card { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .card .big { font-size: 20px; font-weight: 700; text-align: right; }
+  .card .muted { color: #8a97a6; font-size: 12px; text-align: right; }
+  ul.notes { margin: 12px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 5 · mockup</p><h1>Money that foots</h1>
+<p>The Account tab's statement and the matter card's demand, as the firm reads them. The first pair is a harder copy of the sample matter: job 1042 carries an agreed write-down from $18,400 to $15,900 and a linked check; job 1189 has a $6,000 Stripe bill and a $1,500 ACH payment recorded on the job with no bill attached. The firm has entered a $450 fee and a $350 filing cost. The office applied a $3,000 recovery, and its Mark applied wrote the firm's 33% as a $990 cost. Numbers before are the current kernel on 2026-10-05.</p></header>
+
+<h2>1 · The statement of account</h2>
+<div class="two">
+  <div><div class="cap old">Before: the rows do not add to the Balance</div><div class="paper">
+    <table><thead><tr><th>Date</th><th>Entry</th><th class="num">Amount</th></tr></thead><tbody>
+      <tr class="bad"><td>2026-06-03</td><td>Invoice · 1042 · sent stripe 2026-06-03 · uncollectible</td><td class="num">$15,900.00</td></tr>
+      <tr><td>2026-07-02</td><td>Payment · 1042 · Cheque · ref 2291</td><td class="num credit">−$4,000.00</td></tr>
+      <tr><td>2026-07-10</td><td>Invoice · 1189 · sent stripe 2026-07-10 · open</td><td class="num">$6,000.00</td></tr>
+      <tr class="bad"><td>2026-08-01</td><td>Agreed write-down · 1042 · Agreed with Pat for the punch delay</td><td class="num credit">−$2,500.00</td></tr>
+      <tr class="bad"><td>2026-08-20</td><td>Payment · 1189 · ACH</td><td class="num credit">−$1,500.00</td></tr>
+    </tbody></table>
+    <div class="bal"><span>Balance</span><span>$17,900.00</span></div>
+    <p class="flag">The rows add to $13,900.00. The invoice is already reduced, then the write-down takes $2,500 off again. The $1,500 ACH sits on no bill, so the Balance never counted it. "stripe", "uncollectible" and "Cheque" are the systems' words. A firm that adds the column finds two different numbers on one page.</p>
+  </div></div>
+  <div><div class="cap new">After: a running balance, and the last line is the Balance</div><div class="paper">
+    <table><thead><tr><th>Date</th><th>Job</th><th>Entry</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead><tbody>
+      <tr><td>2026-06-03</td><td>1042</td><td>Invoice · sent 2026-06-03 through Stripe</td><td class="num">$18,400.00</td><td class="num">$18,400.00</td></tr>
+      <tr><td>2026-07-02</td><td>1042</td><td>Payment · check no. 2291</td><td class="num credit">−$4,000.00</td><td class="num">$14,400.00</td></tr>
+      <tr><td>2026-07-10</td><td>1189</td><td>Invoice · sent 2026-07-10 through Stripe</td><td class="num">$6,000.00</td><td class="num">$20,400.00</td></tr>
+      <tr><td>2026-08-01</td><td>1042</td><td>Agreed write-down · Agreed with Pat for the punch delay</td><td class="num credit">−$2,500.00</td><td class="num">$17,900.00</td></tr>
+      <tr><td>2026-08-20</td><td>1189</td><td>Payment · ACH</td><td class="num credit">−$1,500.00</td><td class="num">$16,400.00</td></tr>
+    </tbody></table>
+    <div class="bal"><span>Balance owed</span><span>$16,400.00</span></div>
+    <ul class="notes">
+      <li>The invoice prints at what was billed, $18,400. The write-down beneath it takes the agreed $2,500 off once.</li>
+      <li>The ACH payment on job 1189 pays that job's open bill, by the app's one rule for payments with no bill: work on no bill first, then the oldest bill. The Balance drops to $16,400, the number the column reaches.</li>
+      <li>Plain words: "through Stripe", "check no. 2291". The Stripe status is gone; the running balance already says what is open.</li>
+    </ul>
+  </div></div>
+</div>
+
+<h2>2 · The matter card's demand</h2>
+<div class="two">
+  <div><div class="cap old">Before: applying a recovery raises the demand</div><div class="paper"><div class="card">
+    <div><div style="font-size:11px;color:#8a97a6;text-transform:uppercase;letter-spacing:.07em">Matter</div><div style="font-size:18px;font-weight:700">Sample Contracting</div></div>
+    <div><div class="big">$19,690.00</div><div class="muted">total demand · balance $17,900.00</div></div>
+  </div><p class="flag">$17,900 + $450 fee + $350 filing + <b>$990 contingency</b>. The contingency is the firm's share of the money it collected. It is not a cost the debtor owes, yet every recovery the office applies adds a third of it back onto the demand.</p></div></div>
+  <div><div class="cap new">After: the firm's fees and costs, nothing else</div><div class="paper"><div class="card">
+    <div><div style="font-size:11px;color:#8a97a6;text-transform:uppercase;letter-spacing:.07em">Matter</div><div style="font-size:18px;font-weight:700">Sample Contracting</div></div>
+    <div><div class="big">$17,200.00</div><div class="muted">total demand · balance $16,400.00 + fees and costs $800.00</div></div>
+  </div><ul class="notes">
+    <li>Mark applied now tags its row as the contingency. The firm's page, the firm's print and the matter card read one list of fees and costs, so the three cannot disagree.</li>
+    <li>Rows the office wrote before this change are still caught by their wording, "Contingency 33% of $3,000.00".</li>
+    <li>The Fees and costs table lists the contingency on its own line under the total, so the firm still sees what it earned.</li>
+  </ul></div></div>
+</div>
+
+<h2>3 · The sample matter, as it ships</h2>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="paper">
+    <table><thead><tr><th>Date</th><th>Entry</th><th class="num">Amount</th></tr></thead><tbody>
+      <tr><td>2026-06-03</td><td>Invoice · 1042 · sent email 2026-06-03</td><td class="num">$18,400.00</td></tr>
+      <tr><td>—</td><td>Payment · 1042 · check</td><td class="num credit">−$4,000.00</td></tr>
+    </tbody></table><div class="bal"><span>Balance</span><span>$14,400.00</span></div>
+  </div></div>
+  <div><div class="cap new">After</div><div class="paper">
+    <table><thead><tr><th>Date</th><th>Job</th><th>Entry</th><th class="num">Amount</th><th class="num">Balance</th></tr></thead><tbody>
+      <tr><td>2026-06-03</td><td>1042</td><td>Invoice · sent 2026-06-03 by email</td><td class="num">$18,400.00</td><td class="num">$18,400.00</td></tr>
+      <tr><td>—</td><td>1042</td><td>Payment · check</td><td class="num credit">−$4,000.00</td><td class="num">$14,400.00</td></tr>
+    </tbody></table><div class="bal"><span>Balance owed</span><span>$14,400.00</span></div>
+    <p class="flag">The sample's payment has no date because the fixture spells the column <code>payment_date</code>. That is item 9's (the consistent sample matter); this item leaves the fixture alone.</p>
+  </div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Should an unlinked payment just say "unapplied" instead?</b> No. The app already has the owner's rule for money on no bill (work on no bill first, then the oldest bill, v2.3592 and v2.4534). The customer portal and the bill tab use it. A legal statement that ignores a payment the debtor can show a receipt for overstates the claim. The packet now uses the same rule, so the office desk, the firm and the customer's own page agree.</li>
+  <li><b>What if the rows still cannot meet the balance?</b> The kernel names the known causes as rows of their own: work on no bill that a payment covered, and a bill marked paid with no payment recorded. Anything else becomes one row per job that says the records do not explain the difference. The office sees it on the desk before the firm does. So the column always reaches the Balance, by construction, and nothing is hidden.</li>
+  <li><b>Should the write-down sit directly under its invoice, out of date order?</b> No. A statement of account runs by date and a running balance only reads in date order. The write-down carries the job number, so the pair is easy to match.</li>
+  <li><b>Drop the contingency row from the matter entirely?</b> No. The office books it as a cost on its own side. The firm should still see what it earned, on its own line, outside the demand.</li>
+  <li><b>One more thing found while drawing it:</b> the write-down used to make the shared payment rule think the written-down part was work on no bill, so a payment with no bill would have paid that phantom first. The packet hands the rule the job total less the write-downs.</li>
+</ul>
+</div></body></html>

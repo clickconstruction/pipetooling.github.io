@@ -15,6 +15,7 @@ import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmJobReco
 import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
+import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
@@ -35,31 +36,19 @@ function table(head: string[], rows: string[], empty: string, foot?: string): st
   return `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>${foot ? `<tfoot>${foot}</tfoot>` : ''}</table>`
 }
 
-/** The firm's fees and costs, less the contingency the office books when it applies a recovery (that is the firm's share, not a cost the debtor owes). */
-export function firmFeeEntries(entries: ReadonlyArray<LegalEntryRow>): LegalEntryRow[] {
-  return entries.filter((e) => (e.kind === 'fee' || e.kind === 'cost') && !isContingencyRow(e))
-}
-function isContingencyRow(e: LegalEntryRow): boolean {
-  const m = e.meta && typeof e.meta === 'object' ? (e.meta as Record<string, unknown>) : {}
-  return m.contingency === true || (e.kind === 'cost' && !e.via_portal && /^Contingency \d+% of /.test(e.body))
-}
-
 export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPrintOptions): string {
   const a = packet.account
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
+  // The firm's fees and costs, less the contingency the office books when it applies a recovery (item 5: one rule with the matter card).
   const fees = firmFeeEntries(opts.matter.entries)
-  const feesTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const demand = a.totals.balance + feesTotal
+  const contingency = contingencyEntries(opts.matter.entries)
+  const { feesTotal, demand } = firmDemand(a.totals.balance, opts.matter.entries)
   const stage = legalFirmStageWords(opts.matter.stage)
   const firstBilled = a.ledger.find((e) => e.kind === 'invoice' && e.ymd)?.ymd ?? null
 
   // A. Account
   const jobsRows = a.jobs.map((j) => row([`<b>${esc(j.label)}</b>`, esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, esc(firmJobRecordWords(j)), formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
-  let running = 0
-  const ledgerRows = a.ledger.map((e) => {
-    running += e.amount
-    return row([`<span class="date">${esc(e.ymd ?? '—')}</span>`, esc(e.jobLabel), esc(e.text), formatLegalMoney(e.amount), formatLegalMoney(running)], [false, false, false, true, true])
-  })
+  const ledgerRows = legalRunningLedger(a.ledger).map((e) => row([`<span class="date">${esc(e.ymd ?? '—')}</span>`, esc(e.jobLabel), esc(e.text), formatLegalMoney(e.amount), formatLegalMoney(e.running)], [false, false, false, true, true]))
   const ledgerFoot = `<tr><td colspan="3"><b>Balance owed</b></td><td></td><td class="num"><b>${formatLegalMoney(a.totals.balance)}</b></td></tr>`
   const propertyRows = a.properties.map((p) => row([esc(p.address), esc(p.county || '—'), esc(p.owner || '—'), esc(p.legalDescription || '—'), esc(p.parcelId || '—'), p.propertyKind === 'residential' ? 'residential' : p.propertyKind ? 'non-residential' : '—']))
 
@@ -179,6 +168,7 @@ ${table(['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes
 <h2><span class="sec">E</span> Fees, costs and steps</h2>
 <h3>${esc(opts.firm.name)}'s fees and costs</h3>
 ${table(['Date', 'Kind', 'Note', 'Amount'], feeRows, 'None recorded yet.', feeFoot)}
+${contingency.length ? `<p class="muted">${esc(opts.firm.name)}'s contingency on recoveries the office applied: ${contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${esc(e.occurred_on)}`).join(', ')}. It is the firm's share of money collected, so it is not in the demand.</p>` : ''}
 <h3>On this matter</h3>
 ${table(['Date', 'Entry', 'What happened', 'Amount', 'By'], matterRows, 'Nothing recorded on the matter yet.')}
 <h3>What ${esc(opts.companyName)} did before referral</h3>

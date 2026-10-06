@@ -49,6 +49,8 @@ import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
+import { invoiceSentWords, paymentHowWords } from './legalMoney'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -85,17 +87,83 @@ export function payerForJob(
   return { key: `n:${name.toLowerCase()}`, customerId: null, name, viaGc: false }
 }
 
-/** Money still open on a billed invoice: amount − payments applied to it, never below 0. */
+/** Money still open on a billed invoice counting only the payments linked to it, never below 0. The packet reads `legalJobMoney`, which also counts payments with no bill. */
 export function invoiceOpenAmount(inv: Pick<JobsLedgerInvoice, 'id' | 'amount'>, payments: JobWithDetails['payments']): number {
   const applied = (payments ?? []).filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)
   return Math.max(0, Number(inv.amount ?? 0) - applied)
 }
 
-/** What the account still owes on one job: open billed lines when any exist, else the job-level remainder (the "No line" shell). */
+const round2 = (n: number): number => Math.round(n * 100) / 100
+
+/** What an agreed write-down took off a bill (its previous amount less what it bills now); 0 when none. */
+export function invoiceWrittenDown(inv: Pick<JobsLedgerInvoice, 'amount' | 'agreed_write_down_at' | 'agreed_write_down_previous_amount'>): number {
+  const prev = inv.agreed_write_down_previous_amount
+  const amt = Number(inv.amount ?? 0)
+  return inv.agreed_write_down_at && typeof prev === 'number' && prev > amt ? round2(prev - amt) : 0
+}
+
+/**
+ * One job's money under the app's one rule for payments (punch list #85 item 5, on
+ * `attributeJobPayments`, v2.3592 + v2.4534): a payment linked to a bill is that bill's;
+ * a payment with no bill pays the work on no sent bill first, then the sent bills oldest
+ * first. The balance is what the open billed lines still need, less any credit (money
+ * beyond every sent bill). A job with no billed line owes its job-level remainder (the
+ * "No line" shell), as before.
+ */
+export type LegalJobMoney = {
+  balance: number
+  /** What each open billed line still needs after its own money and its share of unlinked money. */
+  openByInvoice: Map<string, number>
+  /** Money that paid work on no sent bill: unlinked money the rule spent there, and money linked to a line never sent. */
+  offBill: number
+  /** Bills marked paid whose recorded money falls short of them: what no payment covers. */
+  settledShort: Array<{ invoiceId: string; amount: number }>
+  /** True when the job has no billed line and owes its job-level remainder. */
+  shell: boolean
+  /** Money paid beyond everything owed on the job: a credit to the customer, never a negative demand. 0 when none. */
+  credit: number
+}
+
+export function legalJobMoney(job: JobWithDetails): LegalJobMoney {
+  const invoices = job.invoices ?? []
+  const payments = job.payments ?? []
+  const billed = invoices.filter((i) => i.status === 'billed')
+  const sent = invoices.filter((i) => isSentBill(i.status))
+  const sentIds = new Set(sent.map((i) => i.id))
+  // The written-down part of a bill is no longer owed; it is not work on no bill, so the rule gets the job total less it.
+  const writtenDown = sent.reduce((s, i) => s + invoiceWrittenDown(i), 0)
+  const jobTotal = job.revenue == null ? null : Number(job.revenue) - writtenDown
+  const att = attributeJobPayments(invoices, payments, jobTotal)
+  const appliedOf = (id: string) => att.byBill.get(id)?.applied ?? 0
+  // A refund (a negative payment on no bill) is money handed back: the rule skips it, so it is added back here.
+  const refunds = round2(payments.filter((p) => !p.invoice_id && Number(p.amount ?? 0) < 0).reduce((s, p) => s - Number(p.amount ?? 0), 0))
+  // A bill marked paid whose recorded money falls short: no payment covers that part, and nobody owes it.
+  const settledShort = sent
+    .filter((i) => i.status === 'paid')
+    .map((i) => ({ invoiceId: i.id, amount: round2(Number(i.amount ?? 0) - appliedOf(i.id)) }))
+    .filter((x) => x.amount > 0.004)
+  const shortTotal = settledShort.reduce((s, x) => s + x.amount, 0)
+  if (billed.length === 0) {
+    // No open billed line: the job owes its total less what was written down, paid, or marked paid without money.
+    const raw = round2(Number(job.revenue ?? 0) - writtenDown - Number(job.payments_made ?? 0) - shortTotal)
+    return { balance: Math.max(0, raw), openByInvoice: new Map(), offBill: 0, settledShort, shell: true, credit: Math.max(0, round2(-raw)) }
+  }
+  const openByInvoice = new Map<string, number>()
+  let open = 0
+  for (const i of billed) {
+    const o = Math.max(0, round2(Number(i.amount ?? 0) - appliedOf(i.id)))
+    openByInvoice.set(i.id, o)
+    open += o
+  }
+  const overpaid = sent.reduce((s, i) => s + Math.max(0, round2(appliedOf(i.id) - Number(i.amount ?? 0))), 0)
+  const linkedElsewhere = payments.filter((p) => p.invoice_id && !sentIds.has(p.invoice_id)).reduce((s, p) => s + Number(p.amount ?? 0), 0)
+  const raw = round2(open - att.surplus - overpaid + refunds)
+  return { balance: raw, openByInvoice, offBill: round2(att.offBill + linkedElsewhere), settledShort, shell: false, credit: Math.max(0, round2(-raw)) }
+}
+
+/** What the account still owes on one job — `legalJobMoney(job).balance`, the one number the desk, the firm and the prints share. */
 export function jobOpenBalance(job: JobWithDetails): number {
-  const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
-  if (billed.length > 0) return billed.reduce((s, i) => s + invoiceOpenAmount(i, job.payments), 0)
-  return Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  return legalJobMoney(job).balance
 }
 
 export type LegalAccountSummary = LegalPayer & {
@@ -230,7 +298,15 @@ export type LegalLedgerEntry = {
   ymd: string | null
   jobId: string
   jobLabel: string
-  kind: 'invoice' | 'payment' | 'write_down'
+  /**
+   * `invoice` at what was billed (before any write-down) · `write_down` the agreed reduction ·
+   * `payment` (a refund is a payment with a positive amount) · `off_bill` work on no bill that
+   * the job's payments covered, or a no-line job's total · `settled` the part of a bill marked
+   * paid that no payment covers · `unexplained` what is left between the rows and the job's
+   * balance (item 5: the rows always reach the Balance, and a gap says so out loud).
+   */
+  kind: 'invoice' | 'payment' | 'write_down' | 'off_bill' | 'settled' | 'unexplained' | 'credit'
+  /** The line's words, without the job number (the views print it in its own column). */
   text: string
   /** Positive for invoices, negative for payments / write-downs. */
   amount: number
@@ -658,19 +734,18 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     return missing
   }
 
+  const moneyByJob = new Map(jobs.map((j) => [j.id, legalJobMoney(j)] as const))
   const jobLines: LegalJobLine[] = jobs.map((j) => {
     const aging = jobAgingYmd(j)
     const record = recordFor(j)
-    const openBilled = (j.invoices ?? [])
-      .filter((i) => i.status === 'billed')
-      .map((i) => ({ id: i.id, open: invoiceOpenAmount(i, j.payments) }))
-      .sort((a, b) => b.open - a.open)
+    const money = moneyByJob.get(j.id) as LegalJobMoney
+    const openBilled = [...money.openByInvoice.entries()].map(([id, open]) => ({ id, open })).sort((a, b) => b.open - a.open)
     return {
       jobId: j.id,
       label: labelByJob.get(j.id) ?? '—',
       name: j.job_name,
       address: j.job_address,
-      balance: jobOpenBalance(j),
+      balance: money.balance,
       agingDays: aging ? daysBetweenYmd(aging, todayYmd) : null,
       collectionsNote: (j.collections_note ?? '').trim() || null,
       collectionsBy: userName(j.collections_by),
@@ -683,53 +758,55 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     }
   })
 
+  // The statement of account (item 5): bills at what was billed, the write-down beneath, every payment,
+  // then the rows that explain the rest of the job's balance, so the column always reaches the Balance.
   const ledger: LegalLedgerEntry[] = []
   let billedTotal = 0
   let paidTotal = 0
   let writtenDown = 0
   for (const j of jobs) {
     const label = labelByJob.get(j.id) ?? '—'
+    const money = moneyByJob.get(j.id) as LegalJobMoney
+    const rows: LegalLedgerEntry[] = []
+    const push = (ymd: string | null, kind: LegalLedgerEntry['kind'], text: string, amount: number) => {
+      rows.push({ ymd, jobId: j.id, jobLabel: label, kind, text, amount: round2(amount) })
+    }
+    const billYmd = new Map<string, string | null>()
     for (const inv of j.invoices ?? []) {
-      if (inv.status !== 'billed' && inv.status !== 'paid') continue
+      if (!isSentBill(inv.status)) continue
       const amt = Number(inv.amount ?? 0)
-      billedTotal += amt
-      const channel = (inv.external_send_channel ?? '').trim()
+      const wd = invoiceWrittenDown(inv)
       const sentYmd = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || null
-      ledger.push({
-        ymd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || sentYmd,
-        jobId: j.id,
-        jobLabel: label,
-        kind: 'invoice',
-        text: `Invoice · ${label}${channel ? ` · sent ${channel === 'stripe_manual' ? 'stripe' : channel}` : ''}${sentYmd ? ` ${sentYmd}` : ''}${
-          inv.stripe_invoice_status ? ` · ${inv.stripe_invoice_status}` : ''
-        }${invoiceReachedCustomer(inv) ? '' : ' · never sent'}`,
-        amount: amt,
-      })
-      const wd = inv.agreed_write_down_previous_amount
-      if (inv.agreed_write_down_at && typeof wd === 'number' && wd > amt) {
-        writtenDown += wd - amt
-        ledger.push({
-          ymd: calendarYmdInAppTzFromIso(inv.agreed_write_down_at ?? '') || null,
-          jobId: j.id,
-          jobLabel: label,
-          kind: 'write_down',
-          text: `Agreed write-down · ${label}${inv.agreed_write_down_note ? ` · ${inv.agreed_write_down_note}` : ''}`,
-          amount: -(wd - amt),
-        })
+      const ymd = calendarYmdInAppTzFromIso(inv.billed_at ?? '') || sentYmd
+      billYmd.set(inv.id, ymd)
+      billedTotal += amt + wd
+      push(ymd, 'invoice', `Invoice · ${invoiceSentWords(inv.external_send_channel, sentYmd, invoiceReachedCustomer(inv))}`, amt + wd)
+      if (wd > 0) {
+        writtenDown += wd
+        const note = (inv.agreed_write_down_note ?? '').trim()
+        push(calendarYmdInAppTzFromIso(inv.agreed_write_down_at ?? '') || null, 'write_down', `Agreed write-down${note ? ` · ${note}` : ''}`, -wd)
       }
     }
+    let offBillYmd: string | null = null
     for (const p of j.payments ?? []) {
       const amt = Number(p.amount ?? 0)
       paidTotal += amt
-      ledger.push({
-        ymd: ymdOfIso(p.paid_on) ?? ymdOfIso(p.sent_on),
-        jobId: j.id,
-        jobLabel: label,
-        kind: 'payment',
-        text: `Payment · ${label}${p.payment_type ? ` · ${p.payment_type}` : ''}${p.reference_number ? ` · ref ${p.reference_number}` : ''}`,
-        amount: -amt,
-      })
+      const ymd = ymdOfIso(p.paid_on) ?? ymdOfIso(p.sent_on)
+      if ((!p.invoice_id || !billYmd.has(p.invoice_id)) && ymd && (offBillYmd == null || ymd < offBillYmd)) offBillYmd = ymd
+      const how = paymentHowWords(p.payment_type, p.reference_number)
+      push(ymd, 'payment', `${amt < 0 ? 'Refund' : 'Payment'}${how ? ` · ${how}` : ''}`, -amt)
     }
+    if (!money.shell && money.offBill > 0) push(offBillYmd, 'off_bill', 'Work on no bill, covered by the payments on this job', money.offBill)
+    for (const s of money.settledShort) push(billYmd.get(s.invoiceId) ?? null, 'settled', 'Marked paid, no payment recorded for this part', -s.amount)
+    // A shell job's balance is its total less money; a credit is clamped out of it, so the rows foot to 0 there.
+    const target = money.shell ? money.balance - money.credit : money.balance
+    const gap = round2(target - rows.reduce((s, e) => s + e.amount, 0))
+    if (Math.abs(gap) >= 0.005) {
+      if (money.shell) push(ymdOfIso(j.last_bill_date), 'off_bill', 'Job total not yet split into bills (difference)', gap)
+      else push(null, 'unexplained', 'Difference the records do not explain', gap)
+    }
+    if (money.credit > 0) push(null, 'credit', `Credit to the customer of ${formatLegalMoney(money.credit)}: paid beyond every bill on this job, not in the demand`, money.shell ? money.credit : 0)
+    ledger.push(...rows)
   }
   ledger.sort((a, b) => (a.ymd ?? '9999').localeCompare(b.ymd ?? '9999'))
   const firstBillYmd = ledger.filter((e) => e.kind === 'invoice' && e.ymd).map((e) => e.ymd as string).sort()[0] ?? null
@@ -863,7 +940,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
         : { key: 'none', label: theoryLabel('none'), basis: 'nothing an attorney can plead yet' }
 
   // --- Worth ----------------------------------------------------------------
-  const balance = jobLines.reduce((s, l) => s + l.balance, 0)
+  const balance = round2(jobLines.reduce((s, l) => s + l.balance, 0))
   const flags: string[] = []
   const noteText = jobLines.map((l) => l.collectionsNote ?? '').join(' ')
   const noMoney = NO_MONEY_RE.test(noteText)
@@ -880,7 +957,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const steps: LegalStep[] = []
   for (const e of ledger) {
     if (e.kind === 'invoice') steps.push({ ymd: e.ymd, sortKey: e.ymd ?? '9999', kind: 'billed', text: e.text, jobLabel: e.jobLabel })
-    if (e.kind === 'payment') steps.push({ ymd: e.ymd, sortKey: e.ymd ?? '9999', kind: 'payment', text: `${e.text} · $${(-e.amount).toFixed(2)}`, jobLabel: e.jobLabel })
+    if (e.kind === 'payment') steps.push({ ymd: e.ymd, sortKey: e.ymd ?? '9999', kind: 'payment', text: `${e.text} · ${formatLegalMoney(-e.amount)}`, jobLabel: e.jobLabel })
   }
   for (const a of agreements) {
     if (a.coverage.kind === 'signed') {
