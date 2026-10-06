@@ -107,9 +107,9 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
   const usual = new Map<string, number>()
   if (houseIds.length > 0) {
     // Until the column is pushed the select with it fails: read the names alone then, as the Materials tab does.
-    let res = await supabase.from('supply_houses').select('id, name, default_lead_time_days').in('id', houseIds)
+    let res: { data: unknown; error: unknown } = await supabase.from('supply_houses').select('id, name, default_lead_time_days').in('id', houseIds)
     if (res.error) res = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
-    for (const h of (res.data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>) {
+    for (const h of ((res.data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>)) {
       names.set(h.id, h.name)
       if (h.default_lead_time_days != null) usual.set(h.id, h.default_lead_time_days)
     }
