@@ -2404,7 +2404,7 @@ export default function LienDeskModal({
             ? 'Pick at least one month'
             : 'This cannot go yet'
         : leader
-          ? 'Approving puts it in the run'
+          ? 'Add to run'
           : claimGate
             ? 'Goes to the leader'
             : ruleLive && !promise
