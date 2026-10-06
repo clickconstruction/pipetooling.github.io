@@ -2,11 +2,9 @@ import { useId, useMemo, type CSSProperties } from 'react'
 import { demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
-  LIEN_OFFER_COUNSEL_NOTE,
   LIEN_OFFER_DEFAULT_DAYS,
   LIEN_OFFER_DEFAULT_PCT,
   LIEN_OFFER_PCTS,
-  LIEN_OFFER_WORDING_READ_BY_COUNSEL,
   lienOfferCost,
   lienOfferDayProblem,
   lienOfferDefaultDay,
@@ -138,11 +136,6 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
             <span style={{ ...small, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.68rem' }}>Prints on the pay page as</span>
             <div>{lienOfferSentence({ pct, by })}</div>
           </div>
-          {!LIEN_OFFER_WORDING_READ_BY_COUNSEL ? (
-            <span data-testid="lien-offer-counsel" style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem' }}>
-              {LIEN_OFFER_COUNSEL_NOTE} It is a settlement offer, not a waiver of the claim; the notice form is untouched.
-            </span>
-          ) : null}
           {onSave ? (
             <div>
               <button type="button" onClick={onSave} disabled={disabled || saving || Boolean(problem)} data-testid="lien-offer-save" style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>

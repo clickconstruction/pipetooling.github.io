@@ -17,7 +17,8 @@ describe('LienOfferBox — the leader’s pay offer (v2.4713)', () => {
     expect(screen.getByTestId('lien-offer-box').getAttribute('data-on')).toBe('yes')
     expect(screen.getByTestId('lien-offer-cost').textContent).toBe('Up to $1,758.50 if all 3 are paid in time')
     expect(screen.getByTestId('lien-offer-prints').textContent).toContain('Pay any of these bills in full by November 15, 2026 and it is 10% less.')
-    expect(screen.getByTestId('lien-offer-counsel').textContent).toContain('Counsel has not read these words yet.')
+    // The counsel line is gone (v2.4739): the owner cleared the words.
+    expect(screen.queryByTestId('lien-offer-counsel')).toBeNull()
     expect((screen.getByTestId('lien-offer-day-default') as HTMLInputElement).checked).toBe(true)
     expect(screen.getByTestId('lien-offer-day-latest').parentElement?.textContent).toContain('Dec 8')
   })

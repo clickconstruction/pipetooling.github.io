@@ -27,13 +27,6 @@ export const LIEN_OFFER_MAX_PCT = 50
 export const LIEN_OFFER_DEFAULT_DAYS = 14
 /** The offer never runs later than this many days before the affidavit must be filed, so the affidavit can still go out on time. */
 export const LIEN_OFFER_AFFIDAVIT_MARGIN_DAYS = 7
-/**
- * Counsel has not yet read the offer's words. While false, the leader's box says so in amber
- * and the offer still works; flip it to true once they have, or turn the whole offer off by
- * making the box refuse (one line in `LienOfferBox`).
- */
-export const LIEN_OFFER_WORDING_READ_BY_COUNSEL = false
-export const LIEN_OFFER_COUNSEL_NOTE = 'Counsel has not read these words yet.'
 
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
