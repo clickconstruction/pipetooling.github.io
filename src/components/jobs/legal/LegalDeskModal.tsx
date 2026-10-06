@@ -29,7 +29,7 @@ import {
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
 import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
-import { propertyKindWords } from '../../../lib/legal/legalProperty'
+import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -766,7 +766,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
         </div>
         <SectionTitle doors={customerDoor('Property record')}>Property record</SectionTitle>
         <Table head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Lien-ready']}
-          rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, p.address || '—', p.county || '—', p.owner ? `${p.owner}${p.ownerSource === 'job_override' ? ' (job override)' : ''}` : '—', p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
+          rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ ...MUTED }}>· {propertySourceNote(p.source)}</span></span> : (p.address || '—'), p.county || '—', p.owner ? `${p.owner}${p.ownerSource === 'job_override' ? ' (job override)' : ''}` : '—', p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
           empty="No jobs on this account." />
       </div>
     )
@@ -774,7 +774,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
 
   if (tab === 'paper') {
     // Each job's own property kind (#85 item 6), the same as the firm's view.
-    const kindWordsOf = (jobId: string) => propertyKindWords(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind) || 'property kind unknown'
+    const kindWordsOf = (jobId: string) => propertyKindCell(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind)
     const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
     return (
       <div>

@@ -10,7 +10,7 @@ import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalAccountSummary, type LegalPacketInput } from './legalPacket'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel } from './legalPortalPayload'
-import { NO_PROPERTY_RECORD_GAP, propertyKindWords, resolveLegalJobProperties } from './legalProperty'
+import { NO_PROPERTY_RECORD_GAP, propertyKindCell, propertyKindWords, propertySourceNote, resolveLegalJobProperties } from './legalProperty'
 
 const TODAY = '2026-10-05'
 
@@ -104,5 +104,16 @@ describe('the firm\'s payload', () => {
     expect(payload.matters[0]?.jobOwners).toHaveLength(1)
     const p = buildMatterPacket(payload.matters[0]!, TODAY, portalFeeModel(payload))!
     expect(p.account.jobs[0]?.property).toEqual(expect.objectContaining({ county: 'Hays', owner: 'Sample Holdings LLC', source: 'linked' }))
+  })
+})
+
+describe('the source and the kind, said (integration pass)', () => {
+  it('a matched record says it is not linked; an unknown kind says which calendar runs', () => {
+    expect(propertySourceNote('matched')).toBe('matched by address, not linked')
+    expect(propertySourceNote('job_address')).toBe('no property record linked')
+    expect(propertySourceNote('linked')).toBe('')
+    expect(propertyKindCell('')).toMatch(/^kind unknown · commercial dates shown/)
+    expect(propertyKindCell('residential')).toBe('residential')
+    expect(propertyKindCell('commercial')).toBe('non-residential')
   })
 })

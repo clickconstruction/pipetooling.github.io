@@ -107,3 +107,19 @@ export function resolveLegalJobProperties(
 export function propertyKindWords(kind: string | null | undefined): string {
   return kind === 'residential' ? 'residential' : kind ? 'non-residential' : ''
 }
+
+/**
+ * An unknown kind runs the later (commercial) calendar, as the lien timeline does; every reader says
+ * so beside the kind, so nobody takes the dates for a residential job's (a month earlier).
+ */
+export const PROPERTY_KIND_UNKNOWN_WORDS = 'kind unknown · commercial dates shown (a residential property is a month earlier)'
+
+/** The kind cell: `residential`, `non-residential`, or the unknown words. */
+export function propertyKindCell(kind: string | null | undefined): string {
+  return propertyKindWords(kind) || PROPERTY_KIND_UNKNOWN_WORDS
+}
+
+/** Where the record came from, said beside the address: '' for a linked record. */
+export function propertySourceNote(source: LegalPropertySource): string {
+  return source === 'job_address' ? 'no property record linked' : source === 'matched' ? 'matched by address, not linked' : ''
+}

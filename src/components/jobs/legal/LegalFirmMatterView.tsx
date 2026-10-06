@@ -5,7 +5,7 @@ import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeS
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, isConversationEntry } from '../../../lib/legal/legalAsks'
-import { propertyKindWords } from '../../../lib/legal/legalProperty'
+import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -73,7 +73,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
   const a = packet.account
   if (packet.paper.timelines.length === 0) return <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>No jobs.</p>
   // Each job's own property kind (#85 item 6): two jobs of one matter can stand on a house and a store.
-  const kindWordsOf = (jobId: string) => propertyKindWords(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind) || 'property kind unknown'
+  const kindWordsOf = (jobId: string) => propertyKindCell(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind)
   const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
   return (
     <div>
@@ -111,7 +111,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
         <div style={h}>Jobs</div>
         <PortalTable head={['Job', 'Name', 'Address', 'Age', 'On file', 'Balance']} numCols={[3, 5]} rows={a.jobs.map((j) => [<b key="l">{j.label}</b>, j.name, j.address, j.agingDays == null ? '—' : `${j.agingDays}d`, <JobRecordCell key="r" job={j} />, formatLegalMoney(j.balance)])} empty="No jobs." />
         <div style={h}>Property record</div>
-        <PortalTable head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, p.source === 'job_address' ? <span key="a">{p.address || '—'} <span style={{ color: MUTED }}>· no property record linked</span></span> : p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', propertyKindWords(p.propertyKind) || '—'])} empty="No property record on file." />
+        <PortalTable head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ color: MUTED }}>· {propertySourceNote(p.source)}</span></span> : p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', propertyKindCell(p.propertyKind)])} empty="No property record on file." />
       </div>
     )
   }
