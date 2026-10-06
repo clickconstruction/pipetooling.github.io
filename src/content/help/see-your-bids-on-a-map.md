@@ -67,7 +67,7 @@ Under the map, ***N bids have no map location yet · add their addresses*** is a
 
 1. Type the site address: street, city and state. Then tap {{button:blue|Save}} or press Enter. The row reads *Placed ✓ · 38 mi from the office* as soon as the map finds it. If the map still can't find it, it says so and asks you to check the address.
 2. Not sure of the spelling? {{button:outline-blue|Check on Google Maps ↗}} opens what's in the box, not what's saved.
-3. When the customer has an address on file, it's shown under the row with {{button:outline-blue|Use it}}. One tap fills the box. You tap Use it for a residential bid at the customer's own address. Nothing is saved until you tap Save.
+3. When the customer has an address on file, it's shown under the row with {{button:outline-blue|Use it}}. One tap fills the box. Tap Use it for a residential bid at the customer's own address. Nothing is saved until you tap Save.
 4. Anything else on the bid: {{button:outline-blue|Edit bid}} opens the full form.
 
 Saving an address on a bid whose **Distance to Office** is blank fills the distance too. The distance is measured in road miles, the same way the bid form does it. Fixed bids stay in the sheet until you close it, so you can watch the pins land.

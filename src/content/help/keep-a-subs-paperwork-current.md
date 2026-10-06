@@ -19,9 +19,9 @@ All three doors open the same short form. Nothing is saved until you click {{but
 
 ## Filling it in
 
-1. **What is it**. You pick COI, W-9, License, an Agreement signed on paper, or Other.
+1. **What is it**. Pick COI, W-9, License, an Agreement signed on paper, or Other.
 2. **Expires**. You must fill it for a COI. It is optional otherwise. Everything the app knows about lapses flows from this one date.
-3. **Link to the file**. This is optional. You paste an `https://` link, and Drive works well. The scan is then one click away from the row.
+3. **Link to the file**. This is optional. Paste an `https://` link, and Drive works well. The scan is then one click away from the row.
 4. **Name**. It is pre-filled from the type, as *COI (filed)*. You may rename it if you like, as *COI 2026 – Hartford*.
 
 :::example Getting a red badge green

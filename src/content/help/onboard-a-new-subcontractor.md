@@ -34,7 +34,7 @@ A sub added from the hiring board or from **Add to roster** is a roster row with
 You go to **People → Contracts** and expand the sub's row.
 
 1. Click {{button:blue|Assign packets}} and tick **Subs**. It bundles the **Master Subcontract Agreement** and the **Subcontractor Handbook**. The note tells you exactly what lands. It reads *Will add for Darren: Master Subcontract Agreement, Subcontractor Handbook — 2 documents, created as unsent.* Someone who already has one of them only gets the missing one. Then click {{button:blue|Save}}.
-2. Both documents appear on their row as {{chip:red|unsent}}. You click {{button:blue|Send}} on each. The email opens with their roster address filled in.
+2. Both documents appear on their row as {{chip:red|unsent}}. Click {{button:blue|Send}} on each. The email opens with their roster address filled in.
 3. Tick ***Remind on Dashboard after clock-in (until signed)*** if they already have a login. The app then shows a *Required Signatures* prompt every time they clock in. It stops once everything is signed.
 
 {{gif:onboard-a-new-subcontractor.gif|People → Contracts: expand the sub, Assign packets, tick Subs. The note spells out the two documents that will be created.}}
