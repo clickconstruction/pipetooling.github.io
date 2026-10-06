@@ -62,7 +62,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-42 | Every move asks for an explanation, which is kept with the move (the owner, 2026-10-05: "an explanation should be given and recorded"): a reason picked (weather, the trade before, materials, crew, the customer, the plans, an inspection, us) and their own words | See, Tell | Have (built 2026-10-05: no move saves without a reason and a sentence) | 2 |
 | G-43 | The history of the schedule: who moved what, when, why, and by how many days | See | Have (built 2026-10-05: Changes to the schedule, under the chart) | 2 |
 | G-44 | Templates: save a job's schedule shape and start the next job like it from it | See | New | Later |
-| G-45 | A schedule while bidding: a rough one from the stages, for our bid's "weeks to build" | Tell | New | Later |
+| G-45 | A schedule while bidding: a rough one from the stages, for our bid's "weeks to build" | Tell | Have (built 2026-10-06: a job still bidding opens its Schedule tab on *A rough schedule for our bid*, drawn by the first draft's own kernel from the trades' scope lines with the job's stage days; Our number's *Weeks to build* and the proposal sentence; locked as it went when the bid goes in; at award kept as the weeks we bid, and the first draft starts from it; `gcRoughSchedule.ts`, `GcRoughSchedule.tsx`) | Later |
 
 ## C. Keeping it true
 
