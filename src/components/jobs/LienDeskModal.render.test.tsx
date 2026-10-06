@@ -213,6 +213,24 @@ describe('LienDeskModal', () => {
     expect(document.querySelector('[data-lien-next-up="list"]')).toBeNull()
   })
 
+  it('a door re-aims an open desk at the same job when its aim key changes (v2.4612)', async () => {
+    const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={1} />)
+    await settle()
+    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    await settle()
+    expect(screen.getByRole('tab', { name: 'Calendar' }).getAttribute('aria-selected')).toBe('true')
+    // The same job, pressed again from its Lien window: the tab is applied again.
+    view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={2} />)
+    await settle()
+    expect(within(screen.getByRole('tablist', { name: 'Kind of paper' })).getByRole('tab', { name: /^Notices/ }).getAttribute('aria-selected')).toBe('true')
+    // A re-render with the same aim changes nothing.
+    fireEvent.click(screen.getByRole('tab', { name: 'Calendar' }))
+    await settle()
+    view.rerender(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" aimKey={2} />)
+    await settle()
+    expect(screen.getByRole('tab', { name: 'Calendar' }).getAttribute('aria-selected')).toBe('true')
+  })
+
   it('three views (punch list #82, PR 5): Next up, Calendar, All paper; All paper holds Notices, Affidavits, Retainage and Timeline and reopens on the last one', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
