@@ -232,6 +232,8 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
 })
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+/** A page's label (v2.4726): sticks to the top of the pane, under the strip, while its page scrolls, so the reader always knows which page they are on. */
+const pageLabelStyle = (stripH: number): React.CSSProperties => ({ ...boxHead, position: 'sticky', top: stripH, zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0.35rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)' })
 /** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
 const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
@@ -318,6 +320,12 @@ export default function LienDeskModal({
   const [ringField, setRingField] = useState<LienNoticeFieldKey | null>(null)
   const [claimOpenSignal, setClaimOpenSignal] = useState(0)
   const [paneScrolled, setPaneScrolled] = useState(false)
+  // The page labels stick under the strip while their page scrolls (v2.4726): the strip's height is measured, since its chips can wrap.
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  const [stripH, setStripH] = useState(0)
+  useEffect(() => {
+    setStripH(paneScrolled ? stripRef.current?.offsetHeight ?? 0 : 0)
+  }, [paneScrolled, selectedJobId])
   const paneRef = useRef<HTMLDivElement | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
   const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
@@ -1314,6 +1322,7 @@ export default function LienDeskModal({
     >
       {paneScrolled ? (
         <div
+          ref={stripRef}
           data-lien-desk-strip
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
@@ -1660,13 +1669,13 @@ export default function LienDeskModal({
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
       {coverHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of {pageTotal} · cover letter</div>
+          <div style={pageLabelStyle(stripH)} data-lien-desk-page-label>Page 1 of {pageTotal} · cover letter</div>
           <div data-theme="light" data-lien-desk-cover style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
           </div>
         </>
       ) : null}
-      <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
+      <div style={pageLabelStyle(stripH)} data-lien-desk-page-label>
         {`Page ${coverHtml ? 2 : 1} of ${pageTotal} · the notice`}{' '}
         <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
           · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}
@@ -1700,7 +1709,7 @@ export default function LienDeskModal({
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
+          <div style={pageLabelStyle(stripH)} data-lien-desk-page-label>
             {`Page ${pageTotal} of ${pageTotal} · pay codes`}{' '}
             <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {payPageSummary(payPage.rows)} · filled from the bills, nothing to type</span>
           </div>

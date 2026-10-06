@@ -1360,3 +1360,17 @@ describe('LienDeskModal · the pile titles stack (v2.4672)', () => {
     expect(document.querySelector('[data-lien-pile-head="needs_owner"]')).toBeTruthy()
   })
 })
+
+describe('LienDeskModal — the page labels stick (v2.4726)', () => {
+  it('every page label is a sticky bar under the strip, so the page you are on stays named while it scrolls', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const labels = Array.from(document.querySelectorAll('[data-lien-desk-page-label]')) as HTMLElement[]
+    expect(labels.length).toBeGreaterThanOrEqual(2)
+    for (const l of labels) {
+      expect(l.style.position).toBe('sticky')
+      expect(l.style.top).toBe('0px')
+    }
+    expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
+  })
+})
