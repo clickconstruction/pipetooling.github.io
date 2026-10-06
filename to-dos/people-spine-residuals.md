@@ -3,7 +3,7 @@ name: People spine — residuals
 number: 29
 group: residual
 status: >
-  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; items 3–4 open
+  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); 3b, 3c and item 4 open
 summary: >
   **People spine residuals**: after the roster view, Leave, Hire, the Users lenses and the pointers
   landed, small things stayed open. Done in v2.4658: the edge functions' hand-written sample
