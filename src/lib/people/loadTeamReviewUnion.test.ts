@@ -60,10 +60,8 @@ const cardExclusions = vi.fn()
 vi.mock('../jobs/loadCardChargeExclusions', () => ({ loadCardChargeExclusions: (ids: unknown) => cardExclusions(ids) }))
 const labelIdByTxId = vi.fn()
 vi.mock('../banking/categoryTagsData', () => ({ fetchLabelIdByTxId: (ids: unknown) => labelIdByTxId(ids) }))
-const attributions = vi.fn()
-vi.mock('../fetchMercuryRelationsByTxIds', () => ({
-  fetchAttributionsByMercuryTxIds: (ids: unknown, label: unknown) => attributions(ids, label),
-}))
+const fuelOffJobs = vi.fn()
+vi.mock('./reviewVehicleFuel', () => ({ loadFuelOffJobsByUserId: (args: unknown) => fuelOffJobs(args) }))
 
 import { loadTeamReviewUnion } from './loadTeamReviewUnion'
 
@@ -100,7 +98,7 @@ beforeEach(() => {
   wheelsSnapshot.mockReset().mockResolvedValue(null)
   cardExclusions.mockReset().mockResolvedValue(EMPTY_CARD_CHARGE_EXCLUSIONS)
   labelIdByTxId.mockReset().mockResolvedValue(new Map())
-  attributions.mockReset().mockResolvedValue([])
+  fuelOffJobs.mockReset().mockResolvedValue(new Map())
 })
 
 afterEach(() => {
@@ -288,7 +286,7 @@ describe('loadTeamReviewUnion — what the union carries', () => {
   })
 })
 
-describe('loadTeamReviewUnion — Wheels and the users it is handed', () => {
+describe('loadTeamReviewUnion — Wheels: fuel stays on the job (v2.4653)', () => {
   const fuelTag: CategoryTagRow = { id: 'tag-fuel', name: 'Fuel & gas', icon: '⛽', color: 'amber' as CategoryTagRow['color'], sort_order: 1, default_key: 'fuel', show_as_cost_line: true, hide_from_picker: false }
   const tags = buildCategoryTagLookups([fuelTag], [{ tag_id: 'tag-fuel', bank_category: 'Fuel', label_id: null }])
   const rows = {
@@ -299,38 +297,55 @@ describe('loadTeamReviewUnion — Wheels and the users it is handed', () => {
       { job_id: 'job-1', amount: -40, mercury_transaction_id: 'tx-parts' },
     ],
     mercury_transactions: [
-      { id: 'tx-fuel', mercury_category: 'Fuel', kind: 'debitCardTransaction' },
-      { id: 'tx-parts', mercury_category: 'Hardware', kind: 'debitCardTransaction' },
+      { id: 'tx-fuel', mercury_category: 'Fuel' },
+      { id: 'tx-parts', mercury_category: 'Hardware' },
     ],
   }
-  const deal = { name: 'Al', arrangement: 'own_fuel_paid', effectiveRate: 3, truck: null, note: 'his own truck' }
+  const own = { name: 'Al', userId: 'u-al', arrangement: 'own_fuel_paid', fixedRate: 0, truck: null, note: 'fuel stays on the jobs; Review charges their fuel on no job' }
+  const none = { name: 'Bo', userId: 'u-bo', arrangement: 'none', fixedRate: null, truck: null, note: '' }
 
   beforeEach(() => {
     serve(rows)
-    wheelsSnapshot.mockResolvedValue({ rows: [deal, { name: 'Bo', arrangement: 'none', effectiveRate: null, truck: null, note: '' }], fuelTag })
-    attributions.mockResolvedValue([{ mercury_transaction_id: 'tx-fuel', user_id: 'u-al' }])
+    officeJobId.mockResolvedValue('job-office')
+    wheelsSnapshot.mockResolvedValue({ rows: [own, none], fuelTag })
+    fuelOffJobs.mockResolvedValue(new Map([['u-al', 12.5]]))
   })
 
-  it('takes the fuel a person with a vehicle deal bought off the job', async () => {
-    const users = [{ id: 'u-al', name: 'Al' }]
-    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, users)
-    expect(wheelsSnapshot).toHaveBeenCalledWith({ todayYmd: '2026-09-10', users })
-    expect(u.vehicleByPersonName).toEqual({ Al: { arrangement: 'own_fuel_paid', rate: 3, truckName: null, note: 'his own truck' } })
-    expect(u.cardChargesByJobId.get('job-1')).toBe(40)
-    expect(u.tagChargesByJobId.get('job-1')).toBeUndefined()
+  it('keeps a vehicle deal’s fuel on the job, as every job screen does', async () => {
+    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [{ id: 'u-al', name: 'Al' }])
+    expect(u.cardChargesByJobId.get('job-1')).toBe(100)
+    expect([...u.tagChargesByJobId.get('job-1')!]).toEqual([['tag-fuel', 60]])
     expect(u.costLineTags).toEqual([fuelTag])
   })
 
-  it('leaves the fuel on the job when the buyer is not among the users', async () => {
-    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [])
-    expect(u.cardChargesByJobId.get('job-1')).toBe(100)
-    expect([...u.tagChargesByJobId.get('job-1')!]).toEqual([['tag-fuel', 60]])
+  it('carries each deal’s fixed rate and the person’s fuel on no job in the period', async () => {
+    const users = [{ id: 'u-al', name: 'Al' }]
+    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, users)
+    expect(wheelsSnapshot).toHaveBeenCalledWith({ todayYmd: '2026-09-10', users })
+    expect(fuelOffJobs).toHaveBeenCalledWith({ startYmd: START, endYmd: END, lookups: tags, fuelTagId: 'tag-fuel', officeJobId: 'job-office' })
+    expect(u.vehicleByPersonName).toEqual({
+      Al: { arrangement: 'own_fuel_paid', fixedRate: 0, fuelOffJobsUsd: 12.5, truckName: null, note: 'fuel stays on the jobs; Review charges their fuel on no job' },
+    })
   })
 
-  it('leaves a fuel charge that was not a card purchase on the job', async () => {
-    serve({ ...rows, mercury_transactions: [{ id: 'tx-fuel', mercury_category: 'Fuel', kind: 'outgoingPayment' }] })
-    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [{ id: 'u-al', name: 'Al' }])
-    expect(u.cardChargesByJobId.get('job-1')).toBe(100)
+  it('a company truck carries its fixed rate and its name', async () => {
+    const truck = { name: 'Al', userId: 'u-al', arrangement: 'company', fixedRate: 2.24, truck: { name: '2019 Ford F-150' }, note: 'fixed' }
+    wheelsSnapshot.mockResolvedValue({ rows: [truck], fuelTag })
+    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [])
+    expect(u.vehicleByPersonName.Al).toEqual({ arrangement: 'company', fixedRate: 2.24, fuelOffJobsUsd: 12.5, truckName: '2019 Ford F-150', note: 'fixed' })
+  })
+
+  it('reads no card charges for fuel on no job when nobody has a deal', async () => {
+    wheelsSnapshot.mockResolvedValue({ rows: [none], fuelTag })
+    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [])
+    expect(fuelOffJobs).not.toHaveBeenCalled()
+    expect(u.vehicleByPersonName).toEqual({})
+  })
+
+  it('a failed card read leaves fuel on no job at $0 and says so in the note', async () => {
+    fuelOffJobs.mockRejectedValue(new Error('not live'))
+    const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [])
+    expect(u.vehicleByPersonName.Al).toMatchObject({ fuelOffJobsUsd: 0, note: 'fuel stays on the jobs; Review charges their fuel on no job; the card charges could not be read, so fuel on no job reads $0' })
   })
 
   it('carries on without vehicle deals when Wheels cannot be read', async () => {
@@ -338,14 +353,14 @@ describe('loadTeamReviewUnion — Wheels and the users it is handed', () => {
     const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [{ id: 'u-al', name: 'Al' }])
     expect(u.vehicleByPersonName).toEqual({})
     expect(u.cardChargesByJobId.get('job-1')).toBe(100)
-    expect(attributions).not.toHaveBeenCalled()
+    expect(fuelOffJobs).not.toHaveBeenCalled()
   })
 
   it('drops an Internal Transfer by the one card rule', async () => {
     cardExclusions.mockResolvedValue({ bucketByTxId: new Map([['tx-parts', 'internal_transfer']]), invoiceLinkedTxIds: new Set() })
     const u = await loadTeamReviewUnion(START, END, false, payConfig, tags, [{ id: 'u-al', name: 'Al' }])
     expect(cardExclusions).toHaveBeenCalledWith(['tx-fuel', 'tx-parts'])
-    expect(u.cardChargesByJobId.get('job-1')).toBeUndefined()
+    expect(u.cardChargesByJobId.get('job-1')).toBe(60)
   })
 })
 

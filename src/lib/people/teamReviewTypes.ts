@@ -15,8 +15,20 @@ import type {
 import type { CategoryTagRow } from '../banking/categoryTags'
 import type { VehicleArrangement } from './wheels'
 
-/** Wheels on Labor (v2.2735): a person's vehicle deal and the $/field-hour it implies (90-day, override wins). */
-export type TeamReviewVehicle = { arrangement: VehicleArrangement; rate: number | null; truckName: string | null; note: string }
+/**
+ * Wheels on Labor (v2.2735): a person's vehicle deal on Review. Since v2.4653 (punch list #52 PR 5)
+ * fuel stays on the jobs it was put on, so the vehicle line charges only what is not on a job:
+ * the fixed costs per field hour and the person's fuel on no job in the period.
+ */
+export type TeamReviewVehicle = {
+  arrangement: VehicleArrangement
+  /** Fixed $/field h (company: insurance + registration + service ÷ the holder's field h, 90-day; own: $0); the override wins. null when unknown. */
+  fixedRate: number | null
+  /** The person's fuel on no job in the period: card charges in the fuel tag not on a job, the Office job, a supply invoice or payroll. */
+  fuelOffJobsUsd: number
+  truckName: string | null
+  note: string
+}
 
 export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null; /** jobs_ledger.status (v2.3360) — finished jobs earn 100% under the Bridge's rule. */ status?: string | null }
 /**

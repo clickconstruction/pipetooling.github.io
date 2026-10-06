@@ -376,14 +376,18 @@ export function derivePersonTeamSummary(
   // as a cost (red `negStyle`, `-$X` via `fmtMoney`) and flows naturally
   // into the footer total + per-bucket drilldown rows.
   const overheadLaborCost = -(overheadHours * overheadWage)
-  // Wheels on Labor (v2.2735): the vehicle deal priced per field hour. Own
-  // vehicle → fuel ÷ field h (their fuel is no longer shared to their jobs);
-  // company truck → the truck's all-in rate. 0 with no deal or no rate.
+  // Wheels on Labor (v2.2735). Since v2.4653 (punch list #52 PR 5) the deal's fuel stays on the
+  // jobs it was put on — in the parts above, shared by labor like every job cost — so the vehicle
+  // line charges only what is not on a job: the fixed $/field h (company truck: insurance +
+  // registration + service; the override wins) and the person's fuel on no job in the period.
+  // 0 with no deal.
   const vehicle = union.vehicleByPersonName[personName] ?? union.vehicleByPersonName[personName.trim()]
   const vehicleArrangement = vehicle?.arrangement ?? 'none'
-  const vehicleRate = vehicleArrangement === 'none' ? null : (vehicle?.rate ?? null)
+  const vehicleRate = vehicleArrangement === 'none' ? null : (vehicle?.fixedRate ?? null)
   const vehicleTruckName = vehicle?.truckName ?? null
-  const vehicleCost = vehicleRate != null ? -(fieldHours * vehicleRate) : 0
+  const vehicleFixedCost = vehicleRate != null && vehicleRate !== 0 ? -(fieldHours * vehicleRate) : 0
+  const vehicleFuelOffJobs = vehicleArrangement === 'none' ? 0 : -(vehicle?.fuelOffJobsUsd ?? 0)
+  const vehicleCost = vehicleFixedCost + vehicleFuelOffJobs
 
   // Build the per-session display list for the Overhead-hours-breakdown
   // modal. Times are formatted in the company TZ; bid metadata is
@@ -454,6 +458,8 @@ export function derivePersonTeamSummary(
     overheadLaborCost,
     vehicleArrangement,
     vehicleRate,
+    vehicleFixedCost,
+    vehicleFuelOffJobs,
     vehicleTruckName,
     vehicleCost,
     hoursBreakdown,

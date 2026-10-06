@@ -22,7 +22,7 @@ There is one row per person, every pay-config person included. People without a 
 - **Hourly $** and **Office $** are the wages. The office rate is optional and greyed out for salaried people. Blank means the same as the hourly wage.
 - **Salary** is the flat 8-hour weekday day, priced at the hourly wage. A ⏱ beside an unticked box means a workday template still exists for that login. Unticking Salary clears it.
 - **Rec. hrs** records real hours alongside the salaried credit.
-- **Vehicle** is the deal that decides where fuel and truck cost land on Review.
+- **Vehicle** is the deal behind the vehicle line on Review. Fuel stays on the jobs either way.
 - {{button:outline|Workday…}} is for a salaried person with a login. It sets the day's start time, split, weekends and today's override.
 
 Edits save on their own after a moment, exactly as the pop-up did.
