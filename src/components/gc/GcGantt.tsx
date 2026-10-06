@@ -897,9 +897,10 @@ export function GcGantt({
               return (
                 <g key={`${l.from}>${l.to}`}>
                   <path d={d} fill="none" stroke={l.critical ? C.red : lit ? C.blue : 'var(--text-muted)'} strokeWidth={l.critical || lit ? 1.7 : 1.1} opacity={hover ? (lit ? 1 : 0.25) : l.critical ? 0.9 : 0.6} strokeLinejoin="round" />
-                  {gap > 0 && (
+                  {gap !== 0 && (
                     <text x={x2 + 8} y={y1 - 4} fontSize={10} fill="var(--text-muted)">
-                      +{gap}
+                      {/* Below zero: it starts that many days before this finishes, side by side (G-82). */}
+                      {gap > 0 ? `+${gap}` : `−${-gap}`}
                     </text>
                   )}
                   {/* The press target (G-34): a wide, unseen stroke over the line. */}
