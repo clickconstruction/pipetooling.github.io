@@ -552,7 +552,8 @@ export function BidsCountsTab({
         if (error) throw error
       }
       if (plan.reinsertRows.length > 0) {
-        const { error } = await supabase.from('bids_count_rows').insert(plan.reinsertRows)
+        // A removed row may carry no sequence_order; the insert type takes a number or nothing, never null.
+        const { error } = await supabase.from('bids_count_rows').insert(plan.reinsertRows.map(({ sequence_order, ...r }) => (sequence_order == null ? r : { ...r, sequence_order })))
         if (error) throw error
       }
       if (plan.restoreSourceLink) {
