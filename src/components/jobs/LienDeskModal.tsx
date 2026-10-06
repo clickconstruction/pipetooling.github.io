@@ -76,7 +76,9 @@ import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaper
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
-import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
+import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
+import LienCallScriptModal from './LienCallScriptModal'
+import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskShare from './LienDeskShare'
@@ -441,6 +443,8 @@ export default function LienDeskModal({
   const [callerJobId, setCallerJobId] = useState<string | null>(null)
   // The door's practice call (v2.4249): the same sheet on a made-up letter — no job, no item, no save.
   const [practiceCallOpen, setPracticeCallOpen] = useState(false)
+  // An owner is calling (v2.4731): the ☎ button opens the words, filled with the job under the reader.
+  const [callScriptOpen, setCallScriptOpen] = useState(false)
   /** A job the door's search just opened: the list's selection effect leaves it alone once. */
   const doorPickedJobId = useRef<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
@@ -552,25 +556,13 @@ export default function LienDeskModal({
     return { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, deskJobs, us: callerUs }
   }, [data, callerUs])
   /** The door's "Open the job ›" (v2.4249): the job's own tab, with any pile or calendar narrowing lifted so its row is in the list. */
-  const openDeskJob = (hit: CallerJobHit) => {
-    setMobileListShown(false)
-    if (hit.tab === 'affidavit') {
-      setKind('affidavit')
-      setAffPile(null)
-      setAffSelectedJobId(hit.jobId)
-    } else if (hit.tab === 'retainage') {
-      setKind('retainage')
-      setRetPile(null)
-      setRetSelectedJobId(hit.jobId)
-    } else {
-      // Lifting a filter changes the list, which re-runs the selection effect — it keeps this pick.
-      if (pile != null || calendarJobFilter != null) doorPickedJobId.current = hit.jobId
-      setKind('notice')
-      setPile(null)
-      setCalendarJobFilter(null)
-      setSelectedJobId(hit.jobId)
-    }
-  }
+  // The find box reaches every notice the desk ever sent (v2.4731): the ☎ index, under the piles, less the jobs the list already shows.
+  const sentIndex = useMemo(() => (callerInput ? callerIndex(callerInput, { day: formatYmdMonthDay, money: formatUsdNoCents }) : null), [callerInput])
+  const alsoSent = useMemo<CallerOwnerHit[]>(() => {
+    if (!finding || !sentIndex) return []
+    const shown = new Set(visible.map((e) => e.jobId))
+    return findOnDesk(find, sentIndex).sent.filter((h) => !shown.has(h.jobId))
+  }, [finding, find, sentIndex, visible])
   // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   const nextUpRows = useMemo(() => {
     if (!data) return []
@@ -1244,7 +1236,7 @@ export default function LienDeskModal({
   const rulesAndCaller = (
     <>
       <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} />
-      {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} onOpenJob={openDeskJob} onPractice={() => setPracticeCallOpen(true)} /> : null}
+      {office ? <LienCallerDoor open={callScriptOpen} onOpen={() => setCallScriptOpen(true)} /> : null}
     </>
   )
 
@@ -1306,7 +1298,7 @@ export default function LienDeskModal({
   }
   const list = (
     <div ref={listRef} onScroll={relightPiles} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
-      {visible.length === 0 && finding && visibleAll.length > 0 ? (
+      {visible.length === 0 && finding && visibleAll.length > 0 && alsoSent.length === 0 ? (
         <div data-testid="lien-desk-find-nothing" style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4 }}>
           <strong style={{ color: 'var(--text-strong)' }}>{lienFindNothingWords(find).head}</strong>
           <span>{lienFindNothingWords(find).tryWords}</span>
@@ -1420,6 +1412,36 @@ export default function LienDeskModal({
           </Fragment>
         )
       })}
+      {alsoSent.length ? (
+        <>
+          <div className="lienPileHead" data-lien-pile-head="also_sent" data-on="no" style={{ position: 'static', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)' }}>
+            <span className="lienPileHeadBtn" style={{ cursor: 'default' }}>
+              Also sent · every notice out
+              <span className="n" data-lien-pile-count="also_sent">{alsoSent.length}</span>
+            </span>
+          </div>
+          <div data-lien-pile-rows="also_sent">
+            {alsoSent.map((h) => (
+              <button
+                key={h.itemId}
+                type="button"
+                onClick={() => setCallerJobId(h.jobId)}
+                data-lien-also-sent={h.jobId}
+                title="Open the owner’s call on this notice"
+                style={{ display: 'grid', gap: '0.2rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+              >
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                  <strong><LienFindMarked text={h.who} words={findWords} /></strong>
+                  <span style={{ color: 'var(--text-link)', fontWeight: 600, whiteSpace: 'nowrap' }}>Open the call ›</span>
+                </span>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  <span style={{ padding: '0 7px', borderRadius: 999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontWeight: 700 }}>Sent {formatYmdMonthDay(h.facts.mailedOn)}</span> · <LienFindMarked text={h.what} words={findWords} />
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   )
 
@@ -1461,6 +1483,28 @@ export default function LienDeskModal({
       </div>
     )
   }
+  // The letter in the caller's hand (v2.4731): the selected job's last notice, as the call sheet reads it.
+  const callFactsFor = (jobId: string) => {
+    if (!data) return null
+    const lt = data.letterTwoByJob[jobId]
+    const first =
+      (lt?.firstItemId ? data.items.find((i) => i.id === lt.firstItemId) : null) ??
+      data.items.filter((i) => i.job_id === jobId && i.status === 'sent' && !i.voided_at).sort((a, b) => (b.sent_at ?? '').localeCompare(a.sent_at ?? ''))[0] ??
+      (selected?.jobId === jobId ? selected.item : null) ??
+      null
+    const cJob = data.jobsById[jobId]
+    const cGc = cJob?.gc_customer_id ? data.gcsById[cJob.gc_customer_id] : undefined
+    const cAddress = cJob?.customer_address_id ? data.addressesById[cJob.customer_address_id] ?? null : null
+    if (!first) {
+      // Nothing drafted or mailed yet: the words still read with the job's own facts, and the window says nothing has gone out.
+      if (!cJob) return null
+      const owner = lienPropertyOwnerDisplayName(resolveLienProperty(cAddress, data.ownerByJob[jobId] ?? null).owner).trim()
+      const open = Number(cJob.revenue ?? 0) - Number(cJob.payments_made ?? 0)
+      return { hasLetter: false, facts: { ...genericCallFacts(callerUs), jobLabel: jobLabel(cJob, jobId), property: (cJob.job_address ?? '').trim() || 'your property', ownerName: owner, gcName: cGc?.name ?? 'your builder', amount: open > 0 ? formatUsdNoCents(open) : '' } }
+    }
+    return { hasLetter: first.status === 'sent', facts: callLetterFactsFor({ item: first, job: cJob, gc: cGc, address: cAddress, owner: data.ownerByJob[jobId] ?? null, us: callerUs, phone: signerPhoneFor ? signerPhoneFor(cJob?.master_user_id ?? null) : (issuer?.phone ?? '').trim() }) }
+  }
+
   // The find box above a list (v2.4721): one column, the box then the scrolling list.
   const withFind = (node: ReactNode, matched: number) => (
     <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }} data-lien-desk-find-column>
@@ -2928,6 +2972,30 @@ export default function LienDeskModal({
           />
         )
       })()}
+      {callScriptOpen ? (() => {
+        const sel = selected ? callFactsFor(selected.jobId) : null
+        return (
+          <LienCallScriptModal
+            facts={sel?.facts ?? null}
+            jobLabel={selected ? jobLabel(job, selected.jobId) : null}
+            hasLetter={Boolean(sel?.hasLetter)}
+            us={callerUs}
+            onRecord={() => {
+              setCallScriptOpen(false)
+              if (selected) setCallerJobId(selected.jobId)
+            }}
+            onFindJob={() => {
+              setCallScriptOpen(false)
+              window.setTimeout(() => document.querySelector<HTMLInputElement>('[data-testid="lien-desk-find-input"]')?.focus(), 0)
+            }}
+            onPractice={() => {
+              setCallScriptOpen(false)
+              setPracticeCallOpen(true)
+            }}
+            onClose={() => setCallScriptOpen(false)}
+          />
+        )
+      })() : null}
       {practiceCallOpen ? (
         <LienOwnerCallDialog
           practice

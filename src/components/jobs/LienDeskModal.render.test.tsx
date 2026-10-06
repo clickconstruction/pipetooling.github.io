@@ -1131,74 +1131,58 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     expect(ownerCallMock.mock.calls[0]![1]).toMatchObject({ name: 'Taunya', owesGc: 'yes', owesAmount: 14_000, reserved: 'held', originalContractCompletedOn: null, wantsToPayUs: false, told: ['open', 'sued', 'owes', 'next', 'wrap'] })
   })
 
-  it('☎ Someone’s calling finds the owner of record by the street and opens the call sheet on that notice (v2.3854)', () => {
+  it('☎ An owner is calling opens the words on the selected job, and Record the call opens the sheet on its notice (v2.4731)', async () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
     d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
-    // before a word is typed: the letter that is out, newest first (v2.4249)
-    expect((document.querySelector('[data-lien-caller-out]') as HTMLElement).querySelector('[data-lien-caller-hit="j650"]')).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'elbel' } })
-    const hit = document.querySelector('[data-lien-caller-hit="j650"]') as HTMLElement
-    expect(hit).toBeTruthy()
-    expect(document.querySelector('[data-lien-caller-job]')).toBeNull() // the letter wins: one row per job
-    expect(hit.textContent).toContain('Elbel Holdings LLC · owner of 1204 Elbel Rd, Schertz, TX')
-    expect(hit.textContent).toContain('§ 53.056 notice · commercial letter')
-    fireEvent.click(hit)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'An owner is calling' }))
+    const script = screen.getByTestId('lien-call-script')
+    expect(script.getAttribute('data-has-job')).toBe('yes')
+    expect(screen.getByTestId('lien-call-script-sub').textContent).toContain('650 · ATI Schertz · GC Loberg Contracting · § 53.056 notice mailed')
+    expect(screen.getByTestId('lien-call-script-open').textContent).toContain('you did nothing wrong by paying Loberg Contracting')
+    // nothing to type: the search that lived here is gone
+    expect(screen.queryByLabelText('Find a job on the Lien desk')).toBeNull()
+    fireEvent.click(document.querySelector('[data-lien-call-script-opening="sued"]') as HTMLElement)
+    expect(screen.getByTestId('lien-call-script-next').textContent).toContain('this isn’t a lawsuit')
+    fireEvent.click(screen.getByTestId('lien-call-script-record'))
     const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
     expect(dialog).toBeTruthy()
     expect(dialog.getAttribute('data-lien-owner-call-step')).toBe('open')
     expect(dialog.querySelector('[data-lien-owner-call-holding]')!.textContent).toContain('Elbel Holdings LLC is holding')
-    // a GC's name is a signpost, not a sheet
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
-    fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'loberg' } })
-    const gcHead = document.querySelector('[data-lien-caller-gc="loberg"]') as HTMLElement
-    expect(gcHead.textContent).toContain('Loberg Contracting · 1 job on the desk')
-    expect(gcHead.textContent).toContain('A GC’s own call goes to the master')
+    expect(screen.queryByTestId('lien-call-script')).toBeNull()
   })
 
-  it('the box finds a job with nothing mailed, forgives a slip, and opens the job on the desk past a pile filter (v2.4249)', async () => {
-    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialPile="to_draft" />)
+  it('the find box reaches every notice the desk ever sent (v2.4731): a letter not on the piles shows under Also sent and opens the call sheet', async () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialPile="to_draft" />)
     await settle()
-    // the To draft pile is empty, so no job is on the pane
-    expect(document.querySelector('[data-lien-desk-timeline]')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
-    // nothing typed: words to try cut from the desk, no letters out, the practice call
-    expect((document.querySelector('[data-lien-caller-try]') as HTMLElement).textContent).toContain('650')
-    expect((document.querySelector('[data-lien-caller-out]') as HTMLElement).textContent).toContain('No letters are out right now')
-    expect(document.querySelector('[data-lien-caller-practice]')).toBeTruthy()
-    fireEvent.click(document.querySelector('[data-lien-caller-try-word="street"]') as HTMLElement)
-    expect((screen.getByLabelText('Find a job on the Lien desk') as HTMLInputElement).value).toBe('Elbel')
-    fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'elbell' } })
-    expect((document.querySelector('[data-lien-caller-trimmed]') as HTMLElement).textContent).toBe('Nothing has “elbell” in it. Showing “elbel”.')
-    const jobHit = document.querySelector('[data-lien-caller-job="j650"]') as HTMLElement
-    expect(jobHit.textContent).toContain('650 · ATI Schertz')
-    expect(jobHit.textContent).toContain('Needs the owner')
-    expect(jobHit.textContent).toContain('GC Loberg Contracting · $33,500 · notice by Sep 15')
-    expect(jobHit.textContent).toContain('Open the job ›')
-    expect((document.querySelector('[data-lien-caller-unsent-note]') as HTMLElement).textContent).toBe('Nothing has been mailed on this job, so the caller is not holding a notice from us about it.')
-    expect(document.querySelector('[data-lien-caller-hit]')).toBeNull()
-    fireEvent.click(jobHit)
-    await settle()
-    // the box closed, the pile filter lifted, and the job is on the pane
-    expect(document.querySelector('[role="dialog"][aria-label="Find the caller"]')).toBeNull()
-    expect(document.querySelector('[data-lien-desk-timeline]')).toBeTruthy()
-    expect(document.querySelector('[data-lien-owner-call-dialog]')).toBeNull()
-    // a word that is nowhere on the desk says so, and still offers the practice call
-    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
-    expect((screen.getByLabelText('Find a job on the Lien desk') as HTMLInputElement).value).toBe('') // a pick clears the words for the next caller
-    fireEvent.change(screen.getByLabelText('Find a job on the Lien desk'), { target: { value: 'oak hollow' } })
-    expect((document.querySelector('[data-lien-caller-none]') as HTMLElement).textContent).toContain('No job on the Lien desk matches “oak hollow”')
-    expect(document.querySelector('[data-lien-caller-practice]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-also-sent]')).toBeNull()
+    fireEvent.change(screen.getByTestId('lien-desk-find-input'), { target: { value: 'elbel' } })
+    const head = document.querySelector('[data-lien-pile-head="also_sent"]') as HTMLElement
+    expect(head.textContent).toContain('Also sent · every notice out')
+    const row = document.querySelector('[data-lien-also-sent="j650"]') as HTMLElement
+    expect(row.textContent).toContain('Elbel Holdings LLC')
+    expect(row.textContent).toContain('Sent ')
+    expect(row.textContent).toContain('Open the call ›')
+    expect(screen.queryByTestId('lien-desk-find-nothing')).toBeNull()
+    fireEvent.click(row)
+    const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
+    expect(dialog).toBeTruthy()
+    expect(dialog.getAttribute('data-lien-owner-call-step')).toBe('open')
   })
 
   it('the practice call is the whole sheet on a made-up letter, with no Save — nothing is written (v2.4249)', async () => {
     ownerCallMock.mockClear()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
-    fireEvent.click(screen.getByRole('button', { name: 'Someone’s calling' }))
-    fireEvent.click(screen.getByRole('button', { name: '▶ Practice call' }))
+    fireEvent.click(screen.getByRole('button', { name: 'An owner is calling' }))
+    // The job under the reader has nothing drafted: the words still read with its facts, and nothing can be recorded (v2.4731).
+    expect(screen.getByTestId('lien-call-script').getAttribute('data-has-job')).toBe('yes')
+    expect(screen.getByTestId('lien-call-script-letter').textContent).toContain('not mailed yet')
+    expect(screen.queryByTestId('lien-call-script-record')).toBeNull()
+    fireEvent.click(screen.getByTestId('lien-call-script-practice'))
     const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
     expect(dialog.getAttribute('data-lien-owner-call-practice')).toBe('yes')
     expect(dialog.getAttribute('aria-label')).toBe('Practice call · 000 · Practice job')
