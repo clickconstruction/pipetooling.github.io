@@ -62,7 +62,7 @@ export function GcPeopleStrip({ weeks, first, px, labelW, width, phone }: { week
   )
 }
 
-/** One week, beside the pointer: the plan's busiest day and who made it up, the log's, and where the counts came from. */
+/** One week, beside the pointer: the plan's busiest day and who made it up, a company a line, the log's, and where the counts came from. */
 function PeopleCard({ week, at }: { week: PeopleWeek; at: { x: number; y: number } }) {
   const W = 320
   const vw = typeof window !== 'undefined' ? window.innerWidth : 1200
@@ -92,7 +92,11 @@ function PeopleCard({ week, at }: { week: PeopleWeek; at: { x: number; y: number
       {week.rows.map((r) => (
         <div key={r.label} style={{ display: 'grid', gridTemplateColumns: '4.2rem minmax(0, 1fr)', gap: '0.5rem' }}>
           <span style={{ color: 'var(--text-muted)' }}>{r.label}</span>
-          <span style={r.label === 'Short' ? { color: 'var(--text-amber-800)' } : undefined}>{r.text}</span>
+          <div style={r.label === 'Short' ? { color: 'var(--text-amber-800)' } : undefined}>
+            {r.lines.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+          </div>
         </div>
       ))}
     </div>

@@ -12,6 +12,8 @@
  *   added later) from the chart's own map. The rule is keyed by the hold's kind and who owes it; a
  *   kind it does not know is the trade's own, worded as the chart words it. A hold that waits on
  *   us, the city or the utility is an aside under the trade, never a row: nobody to call.
+ * - A trade whose crew now is short enough that it alone moves the finish (G-57's pick 2), in the
+ *   days the Projected finish's second line says.
  * - Then everything else they owe on this job (`projectPeople`'s reasons): one call covers it all.
  *
  * Its own file, out of the barrel: it reads the schedule, the chart's holds and Follow up.
@@ -19,7 +21,7 @@
 import type { GcAction, GcCustomer, GcProject, GcState, Partner, ScheduleMove, Submittal, TradePackage } from './gcTypes'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
-import { daysBetween, scheduleMeasures, type ScheduleItem } from './gcBuildingSchedule'
+import { daysBetween, mondayOf, scheduleMeasures, type ScheduleItem } from './gcBuildingSchedule'
 import { ganttBars, type GanttBar, type GanttHold } from './gcGantt'
 import { submittalHolding, submittalNeededBy, submittalState } from './gcBuildingSubmittals'
 import { notReadyBars, type NotReadyBar } from './gcNotReady'
@@ -32,14 +34,15 @@ import { startsToPromise } from './gcBuildingPromises'
 import { tradePromisesOf, tradePromiseState } from './gcPromises'
 import { customerAsPerson, projectFollowPeople, projectPeople, type PeopleTone, type PersonReason, type ProjectPerson } from './gcProjectPeople'
 import { partnerReach, type FollowItem, type FollowPerson } from './gcFollowUpSheet'
-import { pWeekday, type PortalLang } from './gcPortalI18n'
+import { pDate, pWeekday, type PortalLang } from './gcPortalI18n'
+import { finishOutlook, shortCrewDetail, shortCrewReason } from './gcFinishOutlook'
 
 /** A company has this many days to answer its new dates before a call is due. The new start this close, it is late. */
 export const CONFIRM_WITHIN_DAYS = 3
 
 /** What a line on the call list is about on the schedule, for the Follow up sheet and the call's answer. */
 export interface CallRef {
-  kind: 'failed' | 'late' | 'due' | 'behind' | 'dates' | 'asked' | 'start' | 'held' | 'notice' | 'bar'
+  kind: 'failed' | 'late' | 'due' | 'behind' | 'dates' | 'asked' | 'start' | 'held' | 'notice' | 'bar' | 'crew'
   /** A held bar's hold, as the chart has it: 'submittal', 'rfi', 'delivery', … or a kind added later. */
   hold?: string
   lineId?: string
@@ -616,6 +619,25 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
           detail: n.started ? `Nos dijo que termina el ${pWeekday('es', n.day)} y no el ${pWeekday('es', was)}` : `Nos dijo que puede empezar el ${pWeekday('es', n.day)} y no el ${pWeekday('es', was)}`,
           ask: '¿Podemos hablar del nuevo día?',
         },
+      },
+    })
+  }
+
+  // A short crew that alone moves the finish (G-57's pick 2): the one thing on that line a call can change.
+  for (const c of finishOutlook(state, project)?.crews.short ?? []) {
+    const pkg = project.packages.find((k) => k.id === c.packageId)
+    const partner = hiredPartner(state, pkg)
+    if (c.days <= 0 || !partner || !pkg) continue
+    const ahora = c.said === null ? `Tiene ${c.now} en la obra esta semana` : `Nos dijo ${c.now} al día ${c.said === mondayOf(today) ? 'esta semana' : `la semana del ${pDate('es', c.said)}`}`
+    rows.trade(partner, pkg.trade, {
+      text: shortCrewReason(c, today),
+      tone: 'amber',
+      lineId: c.lineId,
+      code: 'schedule',
+      call: { kind: 'crew', lineId: c.lineId, packageId: c.packageId, label: 'Crew on site' },
+      words: {
+        en: { about: `your crew on ${name}`, detail: shortCrewDetail(c, today), ask: 'Can you bring it back up to size?' },
+        es: { about: `su cuadrilla en ${name}`, detail: `${ahora}, frente a ${c.soFar} al día hasta ahora`, ask: '¿Puede volver a completarla?' },
       },
     })
   }
