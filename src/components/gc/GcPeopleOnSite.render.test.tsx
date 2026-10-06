@@ -3,7 +3,8 @@
  * Render smoke for people on site per week (G-84): the toggle only on the office's chart, the strip
  * with Fair Oaks D's weeks, its hover card, the same totals whatever the chart filters or folds, no
  * strip when it is off or in List view, the office's Schedule tab passing a trade's own count
- * (G-142) to it, and a what-if copy's dates read while the copy is shown (G-81).
+ * (G-142) to it, a what-if copy's dates read while the copy is shown (G-81), and the strip on our
+ * team's printed copy while it is on (G-144).
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -154,5 +155,28 @@ describe('people on site per week, on the office’s chart', () => {
     // Back on the real schedule, the real weeks.
     fireEvent.click(screen.getAllByRole('button', { name: 'See the real schedule' })[0]!)
     expect(weeks.map((w) => week(container, w))).toEqual(real)
+  })
+
+  it('prints on our team’s copy while it is on, under the last page’s rows, and never on the customer’s (G-144)', () => {
+    const framed = () => screen.getByRole('dialog', { name: 'Print the chart' }).querySelector('iframe')?.getAttribute('srcdoc') ?? ''
+    // The chart toolbar's own: the tab has another for the customer's schedule.
+    const print = () => fireEvent.click(within(document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement).getByRole('button', { name: 'Print or PDF' }))
+    // Off: the paper has no strip.
+    tab(state)
+    print()
+    expect(framed()).toContain('<section class="page">')
+    expect(framed()).not.toContain('data-people=')
+    cleanup()
+    // On: Fair Oaks D's weeks on our team's copy, and said in the window.
+    tab(state)
+    fireEvent.click(screen.getByRole('button', { name: 'Show people on site' }))
+    print()
+    expect(framed()).toContain('data-people="2026-09-21" data-planned="15" data-logged="19"')
+    expect(framed()).toContain('data-people="2026-10-05" data-planned="12" data-logged=""')
+    expect(within(screen.getByRole('dialog', { name: 'Print the chart' })).getByText("People on site print under the last page's rows, the plan beside the daily log.")).toBeTruthy()
+    // The customer's copy, never.
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Print the chart' })).getByRole('button', { name: 'The customer' }))
+    expect(framed()).toContain('<section class="page">')
+    expect(framed()).not.toContain('data-people=')
   })
 })

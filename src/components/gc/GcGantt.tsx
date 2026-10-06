@@ -330,9 +330,11 @@ export function GcGantt({
             noteOf: (bar: GanttBar) => barNote(bar, logNotes?.get(bar.id), uninsured?.get(bar.id)),
             ...(lateSaid ? { lateSaid } : {}),
             ...(earlier ? { earlier } : {}),
+            // People on site per week under the last page's rows while the strip is on (G-144): our team's copy draws it.
+            ...(showPeople && peopleOf ? { peopleOf } : {}),
           }
         : null,
-    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier],
+    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier, showPeople, peopleOf],
   )
   const anyFilter = Object.values(filters).some(Boolean)
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.

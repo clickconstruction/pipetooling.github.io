@@ -10,6 +10,7 @@
  *
  * - **Our team's**: the chart as the person has it, with the companies and the spare days. With
  *   Next 3 weeks on, it is the look-ahead sheet: last week through three weeks out, a day at a time.
+ *   With Show people on site on, the strip of people per week prints under the last page's rows (G-144).
  * - **The customer's, as stages** (an owner): their portal's stages, what changed and what we need
  *   from them (call 3).
  * - **The customer's, every bar** (a GC or an owner's rep): every bar by stage, today first, as
@@ -27,6 +28,7 @@ import { ganttAxis, ganttFilter, ganttGroups, ganttLinks, holidayOn, isWeekend, 
 import { CUSTOMER_NOTHING_MOVED, CUSTOMER_STAGE_WORDS, customerBarWords, type CustomerSchedulePicture, type CustomerStage } from './gcCustomerSchedule'
 import type { WaitRow } from './gcScheduleWaits'
 import type { LostDay } from './gcDaysLost'
+import { SHORT_BY, type PeopleWeek } from './gcPeopleOnSite'
 
 // ---------------------------------------------------------------------------------------------
 // What goes in
@@ -80,6 +82,8 @@ export interface GanttPrintInput {
   spare?: boolean
   /** Where each bar could start now that the work before it finished early (G-37): the chart's green ghost behind it. */
   earlier?: ReadonlyMap<string, { start: string; finish: string; words: string }>
+  /** Show people on site is on (G-84): each week's people between two days, for the strip under the last page's rows on our team's copy (G-144). */
+  peopleOf?: (from: string, to: string) => PeopleWeek[]
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -88,13 +92,14 @@ export interface GanttPrintInput {
 
 type Tone = GanttBar['tone']
 
-/** One row on paper: a group's heading, a bar, what the work waits on, or one of the customer's stages. */
+/** One row on paper: a group's heading, a bar, what the work waits on, one of the customer's stages, or the people on site per week. */
 export type GanttPrintRow =
   | { kind: 'group'; key: string; title: string; sub: string; start: string; finish: string; pct: number | null; stands: string; tone: Tone; folded: boolean; now: boolean; continued: boolean }
   | { kind: 'bar'; bar: GanttBar; stands: string; tone: Tone; note: { words: string; ink: string } | null; done: string; plan: string; plain: boolean }
   | { kind: 'waits'; continued: boolean }
   | { kind: 'wait'; row: WaitRow; who: string }
   | { kind: 'stage'; stage: CustomerStage; stands: string }
+  | { kind: 'people'; weeks: PeopleWeek[] }
 
 type Heading = Extract<GanttPrintRow, { kind: 'group' | 'waits' }>
 
@@ -125,7 +130,7 @@ export interface GanttPrintAxis {
 }
 
 /** The marks the key explains, in the key's order. */
-export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'spare' | 'earlier' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'today'
+export type GanttPrintMark = 'done' | 'underway' | 'notStarted' | 'tight' | 'late' | 'held' | 'inspection' | 'coTail' | 'said' | 'spare' | 'earlier' | 'wait' | 'baseline' | 'actual' | 'group' | 'stage' | 'milestone' | 'link' | 'weekend' | 'holiday' | 'lost' | 'cut' | 'people' | 'peopleShort' | 'today'
 
 /** A date the job must meet, placed on its line so no two labels run together. */
 export interface GanttPrintMilestone {
@@ -200,6 +205,10 @@ export const PRINT_PAGE = { width: 734, height: 550 } as const
 /** A bar's row, and a group's heading, in points. */
 export const PRINT_ROW = 13
 export const PRINT_GROUP = 15
+/** The people on site per week (G-144): the numbers over the bars, in points. */
+export const PRINT_PEOPLE = 28
+/** The tallest of its bars, the week with the most people, in points. */
+const PEOPLE_BAR_H = 15
 
 const TITLE_H = 20
 const LINE_H = 11
@@ -432,6 +441,7 @@ function stageRows(picture: CustomerSchedulePicture): GanttPrintRow[] {
 }
 
 function rowHeight(r: GanttPrintRow): number {
+  if (r.kind === 'people') return PRINT_PEOPLE
   return r.kind === 'group' || r.kind === 'waits' ? PRINT_GROUP : PRINT_ROW
 }
 
@@ -496,6 +506,7 @@ function showsWords(input: GanttPrintInput, shown: GanttBar[], groups: GanttGrou
   else if (folded.length > 4) words.push(`${folded.length} groups are folded into one bar each.`)
   words.push(input.links ? 'Lines show what waits on what.' : 'The lines between bars are hidden.')
   if (input.spare && shown.some((b) => spareTail(b))) words.push("Each bar's spare days show as a faint tail.")
+  if (input.peopleOf && shown.length > 0) words.push("People on site print under the last page's rows, the plan beside the daily log.")
   if (window) words.push(`The page runs from ${weekdayDate(window.first)} to ${weekdayDate(window.last)}, a day at a time.`)
   return words
 }
@@ -539,6 +550,8 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
     if (r.kind === 'group') used.add('group')
     if (r.kind === 'stage') used.add('stage')
     if (r.kind === 'wait') used.add('wait')
+    if (r.kind === 'people') used.add('people')
+    if (r.kind === 'people' && r.weeks.some((w) => w.short)) used.add('peopleShort')
     if (r.kind !== 'bar') continue
     const b = r.bar
     const a = b.item.activity
@@ -564,7 +577,7 @@ function marksOf(rows: GanttPrintRow[], print: Pick<GanttPrint, 'copy' | 'axis' 
   if (print.axis.tint && print.axis.marked.some((d) => d.weekend)) used.add('weekend')
   if (print.axis.marked.some((d) => d.holiday)) used.add('holiday')
   used.add('today')
-  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'spare', 'earlier', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'today']
+  const order: GanttPrintMark[] = ['done', 'underway', 'notStarted', 'tight', 'late', 'held', 'inspection', 'coTail', 'said', 'spare', 'earlier', 'wait', 'baseline', 'actual', 'group', 'stage', 'milestone', 'link', 'weekend', 'holiday', 'lost', 'cut', 'people', 'peopleShort', 'today']
   return order.filter((m) => used.has(m))
 }
 
@@ -601,6 +614,11 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
   const inWindow = (on: string) => on >= axis.first && on <= last
 
   const rows = copy === 'team' ? teamRows(input, shown) : copy === 'everyBar' ? everyBarRows(picture, input.building) : stageRows(picture)
+  // People on site per week (G-84) under the last page's rows: our team's copy, while Show people on site is on (G-144).
+  if (copy === 'team' && input.peopleOf && shown.length > 0) {
+    const weeks = input.peopleOf(axis.first, last)
+    if (weeks.length > 0) rows.push({ kind: 'people', weeks })
+  }
 
   const titleWords = copy === 'team' ? (lookAhead ? 'the next 3 weeks' : 'the schedule') : 'your schedule'
   const asOf = `As of ${dayWords(today)}.`
@@ -821,6 +839,8 @@ const KEY_WORDS: Record<GanttPrintMark, string> = {
   holiday: 'a holiday',
   lost: 'a day lost to the weather',
   cut: 'it runs on past the edge of the page',
+  people: "people on site, the plan's busiest day each week beside the daily log's",
+  peopleShort: `a week the daily log fell ${SHORT_BY} or more people short of the plan`,
   today: 'today',
 }
 
@@ -876,6 +896,10 @@ function keySwatch(mark: GanttPrintMark): string {
         return `${box(P.blueFill, P.blue)}<rect x="6" y="1.5" width="3" height="6" fill="url(#gp-lost)"/>`
       case 'cut':
         return `<path d="M2 4.5 L6 1.5 L6 7.5 Z M14 4.5 L10 1.5 L10 7.5 Z" fill="${P.soft}"/>`
+      case 'people':
+        return `<rect x="2" y="3" width="5" height="5.5" rx="0.8" fill="${P.white}" stroke="${P.muted}" stroke-width="0.7"/>${rect(9, 1, 5, 7.5, P.blue, 'rx="0.8" opacity="0.85"')}`
+      case 'peopleShort':
+        return `<rect x="2" y="1" width="5" height="7.5" rx="0.8" fill="${P.white}" stroke="${P.muted}" stroke-width="0.7"/>${rect(9, 4, 5, 4.5, P.amber, 'rx="0.8" opacity="0.85"')}`
       case 'today':
         return vline(8, 0.5, 8.5, P.blue, 1.2)
     }
@@ -1020,6 +1044,38 @@ function chartSvg(p: GanttPrint, rows: GanttPrintRow[], page: number): string {
       const sw = (daysBetween(s.start, s.finish) + 1) * dayW
       lane.push(`<rect x="${n2(sx)}" y="${n2(y + 3)}" width="${n2(sw)}" height="${n2(h - 6)}" rx="1.5" fill="${s.state === 'done' ? P.greenFill : P.blueTint}" stroke="${color}" stroke-width="0.9"/>`)
       if (s.pct > 0 && s.state !== 'done') lane.push(rect(sx, y + 3, (sw * Math.min(100, s.pct)) / 100, h - 6, color, 'opacity="0.7" rx="1.5"'))
+    } else if (r.kind === 'people') {
+      // People on site per week (G-144), as the strip under the chart: the plan's busiest day outlined,
+      // the daily log's filled beside it, amber when short, the numbers over them where a week has room.
+      cells.push(hline(0, W, y, P.strong, 0.6))
+      const c = colX('activity')
+      if (c) {
+        cells.push(text(c.x + 2, y + 11, 'People on site', { size: 7, bold: true }))
+        cells.push(text(c.x + 2, y + 20, 'the plan, then the daily log', { size: 6, fill: P.muted }))
+      }
+      const most = Math.max(1, ...r.weeks.map((w) => Math.max(w.planned.count, w.logged?.count ?? 0)))
+      const weekW = 7 * dayW
+      const barW = Math.max(1.2, Math.min(8, weekW * 0.28))
+      const foot = y + h - 3
+      const tall = (n: number) => (n > 0 ? Math.max(1, (n / most) * PEOPLE_BAR_H) : 0)
+      // The numbers print when the widest fits in half a week, so two never run together.
+      const numbers = weekW / 2 >= textWidth(String(most), 5.5, true) + 1
+      for (const w of r.weeks) {
+        // The plan on the week's first half, the log on its second, each number over its bar.
+        const planMid = x(w.weekOf) + weekW * 0.25
+        const logMid = x(w.weekOf) + weekW * 0.75
+        // A faint line at each Monday, as the screen's strip, so a week's two numbers read as a pair.
+        const parts: string[] = [vline(x(w.weekOf), y + 1, y + h - 1, P.rule, 0.5)]
+        const ph = tall(w.planned.count)
+        const lh = w.logged ? tall(w.logged.count) : 0
+        if (ph > 0) parts.push(`<rect x="${n2(planMid - barW / 2)}" y="${n2(foot - ph)}" width="${n2(barW)}" height="${n2(ph)}" rx="0.8" fill="${P.white}" stroke="${P.muted}" stroke-width="0.7"/>`)
+        if (lh > 0) parts.push(rect(logMid - barW / 2, foot - lh, barW, lh, w.short ? P.amber : P.blue, 'rx="0.8" opacity="0.85"'))
+        if (numbers) {
+          parts.push(text(planMid, y + 7.5, String(w.planned.count), { size: 5.5, fill: P.soft, anchor: 'middle' }))
+          if (w.logged) parts.push(text(logMid, y + 7.5, String(w.logged.count), { size: 5.5, bold: true, fill: w.short ? P.amberInk : P.blueInk, anchor: 'middle' }))
+        }
+        lane.push(`<g data-people="${w.weekOf}" data-planned="${w.planned.count}" data-logged="${w.logged?.count ?? ''}">${parts.join('')}</g>`)
+      }
     } else {
       const b = r.bar
       const a = b.item.activity
