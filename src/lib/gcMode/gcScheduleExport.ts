@@ -72,6 +72,8 @@ export interface ExportRow {
   /** The days it really started and finished, where known: our team's copy, and a date met. */
   actualStart: string | null
   actualFinish: string | null
+  /** Where its work is, the place the office kept on the bar (G-83). Our team's copy only. Unset: none kept. */
+  place?: string
 }
 
 export interface ScheduleExport {
@@ -202,6 +204,7 @@ function teamGroups(input: GanttExportInput): GroupDraft[] {
         mustFinishBy: a.mustFinishBy ?? null,
         actualStart: a.actualStart ?? null,
         actualFinish: a.actualFinish ?? null,
+        ...(a.place ? { place: a.place } : {}),
       }
     }),
   }))
@@ -451,6 +454,17 @@ export const CSV_COLUMNS: Record<ExportCopy, Column[]> = {
   ],
 }
 
+/** Our team's Place column (G-83), after Company: only when a bar has a place kept, so a job without places writes the file as before. */
+const PLACE_COLUMN: Column = { head: 'Place', cell: (r) => r.place ?? null }
+
+/** A copy's columns: the table's, with our team's Place column when a bar has a place kept (G-83). The customer's never have it. */
+export function csvColumns(x: Pick<ScheduleExport, 'rows' | 'copy'>): Column[] {
+  const columns = CSV_COLUMNS[x.copy]
+  if (x.copy !== 'team' || !x.rows.some((r) => r.place)) return columns
+  const at = columns.findIndex((c) => c.head === 'Company') + 1
+  return [...columns.slice(0, at), PLACE_COLUMN, ...columns.slice(at)]
+}
+
 /** One cell, RFC 4180: quoted when it holds a comma, a quote or a line break. Text a spreadsheet would run as a formula starts with a quote mark (OWASP's rule for CSV files). */
 function csvCell(v: string | number | null): string {
   if (v === null) return ''
@@ -465,7 +479,7 @@ function csvCell(v: string | number | null): string {
  * 2026-10-09, which every spreadsheet reads as a date; lines end CRLF.
  */
 export function scheduleCsv(x: Pick<ScheduleExport, 'rows' | 'copy'>): string {
-  const columns = CSV_COLUMNS[x.copy]
+  const columns = csvColumns(x)
   const lines = [columns.map((c) => csvCell(c.head)).join(','), ...x.rows.filter((r) => r.level === 2).map((r) => columns.map((c) => csvCell(c.cell(r))).join(','))]
   return `﻿${lines.join('\r\n')}\r\n`
 }
@@ -477,6 +491,8 @@ export function scheduleCsv(x: Pick<ScheduleExport, 'rows' | 'copy'>): string {
 export const MSPDI_NAMESPACE = 'http://schemas.microsoft.com/project'
 /** Project's first text field on a task, which the file names Company. Our team's copy only. */
 export const MSPDI_TEXT1 = 188743731
+/** Project's second text field on a task, which the file names Place (G-83). Our team's copy only, when a bar has a place kept. */
+export const MSPDI_TEXT2 = 188743734
 /** A working day: 8:00 to 12:00 and 13:00 to 17:00, 480 minutes, in tenths of a minute for a link's gap. */
 const DAY_START = '08:00:00'
 const DAY_FINISH = '17:00:00'
@@ -544,6 +560,7 @@ function taskXml(r: ExportRow, outline: string, withCompany: boolean): string {
     r.level === 2 ? `${el('ConstraintType', START_NO_EARLIER_THAN)}${el('ConstraintDate', `${pin}T${startAt}`)}` : '',
     ...r.waitsOn.map((w) => `<PredecessorLink>${el('PredecessorUID', w.uid)}${el('Type', FINISH_TO_START)}${el('CrossProject', 0)}${el('LinkLag', w.gap * LAG_PER_DAY)}${el('LagFormat', FORMAT_DAYS)}</PredecessorLink>`),
     withCompany && r.company && r.level === 2 ? `<ExtendedAttribute>${el('FieldID', MSPDI_TEXT1)}${el('Value', r.company)}</ExtendedAttribute>` : '',
+    withCompany && r.place && r.level === 2 ? `<ExtendedAttribute>${el('FieldID', MSPDI_TEXT2)}${el('Value', r.place)}</ExtendedAttribute>` : '',
     '</Task>',
   ].join('')
 }
@@ -557,6 +574,8 @@ function taskXml(r: ExportRow, outline: string, withCompany: boolean): string {
  */
 export function scheduleMspdi(x: ScheduleExport): string {
   const withCompany = x.copy === 'team'
+  // The place rides in the second text field (G-83), declared beside Company, while a bar has one kept.
+  const withPlace = withCompany && x.rows.some((r) => r.place)
   const first = x.rows.reduce((m, r) => (r.start < m ? r.start : m), x.rows[0]?.start ?? x.today)
   const last = x.rows.reduce((m, r) => (r.finish > m ? r.finish : m), x.rows[0]?.finish ?? x.today)
   let group = 0
@@ -587,7 +606,11 @@ export function scheduleMspdi(x: ScheduleExport): string {
     el('DaysPerMonth', 30),
     el('DurationFormat', FORMAT_DAYS),
     el('StatusDate', `${x.today}T${DAY_FINISH}`),
-    ...(withCompany ? [`<ExtendedAttributes><ExtendedAttribute>${el('FieldID', MSPDI_TEXT1)}${el('FieldName', 'Text1')}${el('Alias', 'Company')}</ExtendedAttribute></ExtendedAttributes>`] : []),
+    ...(withCompany
+      ? [
+          `<ExtendedAttributes><ExtendedAttribute>${el('FieldID', MSPDI_TEXT1)}${el('FieldName', 'Text1')}${el('Alias', 'Company')}</ExtendedAttribute>${withPlace ? `<ExtendedAttribute>${el('FieldID', MSPDI_TEXT2)}${el('FieldName', 'Text2')}${el('Alias', 'Place')}</ExtendedAttribute>` : ''}</ExtendedAttributes>`,
+        ]
+      : []),
     `<Calendars>${calendarXml()}</Calendars>`,
     '<Tasks>',
     ...tasks,
