@@ -21,6 +21,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
+import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import {
   DISPATCH_REQUEST_AGE,
   DISPATCH_REQUESTS_MIN_AGE_DAYS,
@@ -103,6 +104,9 @@ export function QuickfillNeedsYouSection({
   const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
   const hrReportsEnabled = Boolean(authUser?.id) && role === 'dev'
   const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
+  // The owner, 2026-10-06 (v2.4692): the Dashboard's vehicle-records card here too, for dev, assistant and controller.
+  const vehicleRecordGapsEnabled = Boolean(authUser?.id) && (role === 'dev' || isAssistantLike(role))
+  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
 
   const items = buildNeedsYouItems({
     role,
@@ -169,6 +173,8 @@ export function QuickfillNeedsYouSection({
     hrReportsAged,
     hrReportsMinAgeDays: HR_REPORTS_MIN_AGE_DAYS,
     hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
+    vehicleRecordGapsEnabled,
+    vehicleRecordGaps,
   })
 
   useEffect(() => {
@@ -239,6 +245,8 @@ export function QuickfillNeedsYouSection({
             else navigate(customerWaitingCtx?.inboxHref ?? '/dispatch-mode/inbox')
           } else if (item.key === 'hr-reports-pending') {
             navigate('/people?tab=hr')
+          } else if (item.key === 'vehicle-records-missing') {
+            navigate('/people?tab=vehicles')
           }
         }}
         onSecondary={(item, key) => {
