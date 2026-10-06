@@ -127,8 +127,8 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 | `takeoffs` | Takeoffs | 2060–2110 | `BidsTakeoffTab` (2,094) | extracted | selection, shared tax %, `bidTabRowJump` | high | Yes | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) |
 | `labor` | Labor | 2113–2188 | `BidsLaborTab` (1,234) | extracted | selection, tax %, distance, cost-estimate loader, `laborPanel`, `bidTabRowJump` | high | Yes | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) |
 | `pricing` | Pricing | 2191–2275 | `BidsPricingTab` (3,730) + `BidsPricingCalculator` (685) | extracted | selection, tax %, `useBidPricingRows`, `useBidCustomCosts` | high | Yes | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) |
-| `cover-letter` | Cover Letter | 2278–2328 | `BidsCoverLetterTab` (2,268) | extracted, regrew | 8 `*ByBid` maps, robot envelope callbacks | high | Yes (rows prop) | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) |
-| `submittals` | Submittals | 2331–2344 | `BidsSubmittalsTab` (2,687) | extracted from birth | reuses `selectedBidForPricing` | low | No | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) |
+| `cover-letter` | Cover Letter | 2278–2328 | `BidsCoverLetterTab` (2,273) | extracted, regrew | 8 `*ByBid` maps, robot envelope callbacks | high | Yes (rows prop) | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) |
+| `submittals` | Submittals | 2331–2344 | `BidsSubmittalsTab` (2,695) | extracted from birth | reuses `selectedBidForPricing` | low | No | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) |
 | `rfi` | RFI | 2377–2389 | `BidRfiTab` (345) | extracted | selection | low | No | Done |
 | `change-order` | Change Order | 2391–2403 | `BidChangeOrderTab` (461) | extracted | selection | low | No | Done |
 | `lien-release` | Lien Release | 2406–2417 | `BidLienReleaseTab` (310) | extracted | selection | low | No | Done (Edit door fixed v2.3833) |
@@ -233,12 +233,12 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 - **Render location:** 2278–2328 — `renderBidVersionPicker` (2280, with the resolve panel) + `BidsCoverLetterTab`.
 - **Parent-owned:** the 8 `coverLetter*ByBid` maps + setters (574–581) — they stay because `downloadApprovalPdf` (844–863, Submission tab) reads them; `saveBidSubmissionQuickAdd` (1121–1144, refreshes 5 of the 8 selections).
 - **Props:** `coverLetterPricingRows`, `pricingCountRows`, `serviceTypes`, `activePricingName`, `versionGcFingerprint`, bid pricings/versions + reloaders, and three robot callbacks (2299–2301) — `onBidSentRecorded` (`noteBestEffortGap` → `offerRobotEnvelope`), `onBestEffortRecorded`, `onOpenRobotEnvelope` (force).
-- **Status:** extracted; the child regrew to 2,268 lines → **[`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md)**.
+- **Status:** extracted; the child regrew to 2,273 lines → **[`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md)**.
 
 ### `submittals` — Submittals (stage 2b)
 
 - **Render location:** 2331–2344. Reuses `selectedBidForPricing` as `selectedBid`; `onOpenPricing` jumps back to Pricing. It is one of `BID_WORKFLOW_TABS` (`bidsTabAccess`), so `?tab=submittals&bidId=` restores the pointer.
-- **Status:** extracted from birth (2,687 lines) → **[`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md)**.
+- **Status:** extracted from birth (2,695 lines) → **[`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md)**.
 
 ### `submission-followup` — Submission & Followup
 
