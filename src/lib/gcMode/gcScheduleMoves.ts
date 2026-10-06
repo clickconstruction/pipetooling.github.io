@@ -23,6 +23,8 @@ export const MOVE_REASONS: { key: ScheduleMoveReason; label: string }[] = [
   { key: 'inspection', label: 'An inspection' },
   { key: 'us', label: 'Us' },
   { key: 'change order', label: 'A change order' },
+  // A pull's own reason (G-37): the work before finished early.
+  { key: 'early', label: 'Finished early' },
   { key: 'other', label: 'Something else' },
 ]
 
@@ -176,6 +178,7 @@ export function moveRows(project: GcProject): MoveRow[] {
     const days = daysBetween(move.finishFrom, move.finishTo)
     const moved = move.from.start !== move.to.start || move.from.finish !== move.to.finish
     const name = moveActivityName(project, move.lineId)
+    if (move.pull) return pullRow(project, move, name, days)
     const what = moved
       ? `${name} moved from ${spanWords(move.from)}, to ${spanWords(move.to)}.${move.linksChanged ? ' What it waits on changed too.' : ''}`
       : `${name}: what it waits on changed.`
@@ -190,6 +193,25 @@ export function moveRows(project: GcProject): MoveRow[] {
       undone: move.undoneOn ? `Undone ${shortDate(move.undoneOn)}${move.undoneBy ? ` by ${move.undoneBy}` : ''}.` : null,
     }
   })
+}
+
+/** A pull's row (G-37): what finished early, then what came in after it, not out. */
+function pullRow(project: GcProject, move: ScheduleMove, name: string, days: number): MoveRow {
+  const finished = move.pull?.finished ?? [move.lineId]
+  const early = daysBetween(move.to.finish, move.from.finish)
+  const others = finished.length - 1
+  const pulled = move.pushed.filter((p) => !finished.includes(p.lineId))
+  const them = others > 0 ? 'them' : 'it'
+  const pullWords = pulled.length === 0 ? '' : pulled.length === 1 ? `${moveActivityName(project, pulled[0]?.lineId ?? '')} was pulled earlier with ${them}.` : `${pulled.length} after ${them} were pulled earlier.`
+  const finishWords = days === 0 ? '' : `The finish moved ${Math.abs(days)} ${Math.abs(days) === 1 ? 'day' : 'days'} ${days > 0 ? 'later' : 'sooner'}, to ${shortDate(move.finishTo)}.`
+  return {
+    move,
+    who: `${weekdayDate(move.on)} · ${move.by}`,
+    what: others > 0 ? `${name} and ${others} more finished early.` : `${name} finished ${weekdayDate(move.to.finish)}, ${early} ${early === 1 ? 'day' : 'days'} early.`,
+    effect: [pullWords, finishWords].filter(Boolean).join(' '),
+    reason: moveReasonLabel(move.reason),
+    undone: move.undoneOn ? `Undone ${shortDate(move.undoneOn)}${move.undoneBy ? ` by ${move.undoneBy}` : ''}.` : null,
+  }
 }
 
 /**

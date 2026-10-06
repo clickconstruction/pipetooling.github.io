@@ -1212,7 +1212,7 @@ export type GcAction =
   /** Put the last move on the schedule back (the Gantt, Phase 2). The move stays on the record, marked undone. */
   | { type: 'undoScheduleMove'; projectId: string; moveId: string; by: string }
   /** A weekly walk finished: what was kept as drawn and what was moved. The moves themselves were saved as they were made. */
-  | { type: 'recordScheduleWalk'; projectId: string; by: string; kept: string[]; moveIds: string[]; skipped: number }
+  | { type: 'recordScheduleWalk'; projectId: string; by: string; kept: string[]; moveIds: string[]; skipped: number; keptEarly?: string[] }
   /** Tell the trades (the Gantt, Phase 3): the companies whose dates these moves changed get one message each. In the prototype it is written, never sent. */
   | { type: 'tellTradesMoves'; projectId: string; moveIds: string[]; by: string }
   /** Something the work waits on from outside the trades (the Gantt, Phase 4: G-73 to G-75): put it on the schedule, tied to the work that needs it. */
@@ -1242,6 +1242,8 @@ export type GcAction =
   | { type: 'pushBackLateNotice'; projectId: string; noticeId: string; note: string; by: string }
   /** After a push back, the company says it will make the day (G-117). */
   | { type: 'tradeKeepDay'; projectId: string; partnerId: string; noticeId: string }
+  /** Work finished early (G-37): its plan catches up, and what was right behind it comes in by the days it gave back. On a press, never by itself. `leaveOut`: the activities a trade cannot start sooner. */
+  | { type: 'pullScheduleEarlier'; projectId: string; leaveOut: string[]; why: { reason: ScheduleMoveReason; note: string; by: string } }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {
@@ -1496,10 +1498,12 @@ export interface ScheduleWalk {
   moveIds: string[]
   /** How many bars the walk listed and nobody looked at. */
   skipped: number
+  /** The early finishes the walk answered with Keep the dates (G-37): no work is pulled in after them. Unset: none. */
+  keptEarly?: string[]
 }
 
 /** Why a bar moved: the look-ahead's reasons, and the ones a move adds. */
-export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'change order' | 'other'
+export type ScheduleMoveReason = 'weather' | 'trade before' | 'materials' | 'crew' | 'customer' | 'plans' | 'inspection' | 'us' | 'change order' | 'other' | 'early'
 
 /**
  * One move on the schedule (the owner, 2026-10-05: "anyone on our team may move a bar, when a bar
@@ -1537,6 +1541,12 @@ export interface ScheduleMove {
   changeOrderId?: string
   /** The trade's late notice this move took (the Gantt, G-117). Unset: an ordinary move. */
   lateNoticeId?: string
+  /**
+   * A pull (G-37): these lines finished early and their plans caught up (the move's own line is the
+   * first); everything else in `pushed` came in after them, not out. Tell the trades skips the
+   * finished lines: their work is done. Unset: an ordinary move.
+   */
+  pull?: { finished: string[] }
 }
 
 /**
