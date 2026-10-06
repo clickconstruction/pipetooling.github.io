@@ -10,7 +10,7 @@ The scope is the work agreed on. Writing it up takes about three minutes, and yo
 
 ## Turn it on (once)
 
-1. You go to {{icon:gear}} **Settings → Dashboard & alerts** and check {{chip:yellow|Write up a change from the field}}. The setting is off by default.
+1. Go to {{icon:gear}} **Settings → Dashboard & alerts** and check {{chip:yellow|Write up a change from the field}}. The setting is off by default.
 2. Every job in your Dashboard's **My Schedule** now carries a paper-and-pencil square beside **Leave Report**. A small **Write up a change on another job, or new work** link sits under the list.
 3. The same paper-and-pencil sits in the **Job window**'s icon row, on any tab, before ⚙. In **Job Mode**, a **Write up a change** link sits under the card's buttons for the job you're clocked into. Every door opens the write-up already on that job.
 
@@ -23,8 +23,8 @@ The scope is the work agreed on. Writing it up takes about three minutes, and yo
 1. On the job you're standing on, you tap the paper-and-pencil square. The wizard, a set of step-by-step screens, opens already on that job. The customer fills in automatically. The wizard asks **What's the change?** A **‹ Back** button on every screen lets you step backwards any time. Nothing you typed is lost.
 2. Not on your day? You tap the link under the list and pick **Change order**. Then you answer **Which job is it on?** Your schedule's jobs are right there. You use the search for a different one, or **Skip**.
 3. **What's the change?** This screen has the same fields the office's change order has. There is **Description of change**, which you can talk or type. To talk, you tap the mic on your keyboard. **Reason**, **Schedule impact**, and **Answer needed by** are optional. You snap photos with the **＋** square. Photos count as answers.
-4. **About how much?** You type a ballpark, a rough guess. Or you tap a quick number: $250 / $500 / $1,000 / $2,500. Or you tap ***Skip — let the office price it***. Your ballpark is a note to the office, never a price the customer sees.
-5. You check the *✓/—* summary. You add a note for dispatch if you want. Then you hit {{button:amber|Send to Dispatch}}.
+4. **About how much?** Type a ballpark, a rough guess. Or tap a quick number: $250 / $500 / $1,000 / $2,500. Or tap ***Skip — let the office price it***. Your ballpark is a note to the office, never a price the customer sees.
+5. Check the *✓/—* summary. Add a note for dispatch if you want. Then hit {{button:amber|Send to Dispatch}}.
 
 :::example What happens next
 Dispatch gets an inbox note with your summary and an **Open the draft** button. The office prices real cost lines, finishes the paperwork, and sends it to the customer. **You'll get an email the moment the customer accepts** — that's your green light for the extra work.

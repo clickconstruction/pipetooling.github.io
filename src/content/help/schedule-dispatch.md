@@ -254,8 +254,8 @@ You press {{chip:gray|Esc}} to close the modal. If a recipient dropdown is open,
 
 Office people used to get their "Office" block typed in by hand every morning. Now the schedule fills those in itself:
 
-1. You open **Dispatch**, the gear on the schedule, then **Standing office schedule**.
-2. You add each person who works office days. Assistants, controllers, and estimators are offered. You adjust their daily window if it is not 8:00 to 4:00.
+1. Open **Dispatch**, the gear on the schedule, then **Standing office schedule**.
+2. Add each person who works office days. Assistants, controllers, and estimators are offered. Adjust their daily window if it is not 8:00 to 4:00.
 3. That is it. Weekdays on the visible week get their Office block automatically, ahead of time.
 
 The automation stays polite:

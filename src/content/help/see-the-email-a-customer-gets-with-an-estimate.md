@@ -24,7 +24,7 @@ You press {{button:amber|Send to customer}} on an estimate. ClickTooling first a
 
 ## Preview it before you send
 
-1. You open the estimate.
+1. Open the estimate.
 2. Under **Customer experience**, you choose {{button:outline|Email}}.
 3. The preview is built by the same code that sends the email. So what you see is what lands. You change the title, the total, the expiry or the logo. The preview follows.
 
@@ -33,7 +33,7 @@ You press {{button:amber|Send to customer}} on an estimate. ClickTooling first a
 The customer says the email never came. Or it went to spam. Or you want to text them the link instead. You open the sent estimate and look under **Customer activity**:
 
 1. The line reads *Waiting for customer. The link went to pat@example.com.*
-2. You press {{button:blue|Resend link}}. The customer gets the same email again, with a **brand-new link**. The old one stops working the moment you press it.
+2. Press {{button:blue|Resend link}}. The customer gets the same email again, with a **brand-new link**. The old one stops working the moment you press it.
 3. A box appears under the button showing the new link once, with {{button:outline|Copy link}} beside it. You copy it into a text if the customer prefers that. Only this tab shows it. You close the tab and you resend again.
 
 :::example After a resend

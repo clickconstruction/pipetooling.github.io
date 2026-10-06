@@ -7,7 +7,9 @@
  * `CLAUDE.md` → Help guides ship with features). This file is their one home.
  *
  * 1. One idea per sentence. No sentence over 20 words.
- * 2. Start with what the person does: *you* + a verb, and the control's exact name.
+ * 2. Start with what the person does, and name the control exactly. A numbered step that
+ *    opens with a command gives each instruction as a command, like *Press* {{button}} or
+ *    *Open the estimate*. A sentence that describes, and running prose, keep *you* + a verb.
  * 3. No dashes, semicolons, parentheses or `·` lists inside a sentence.
  * 4. A trade word gets a plain word beside it the first time: *a cut sheet, the maker's
  *    page for the product*.

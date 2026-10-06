@@ -13,7 +13,7 @@ Each builder's card shows count chips for their bids: {{chip:green|4 won}} {{chi
 
 ## The Bid map shows the geography
 
-1. You click {{button:outline|Bid map}} on a builder's card. The button appears when the builder has at least one bid with an address.
+1. Click {{button:outline|Bid map}} on a builder's card. The button appears when the builder has at least one bid with an address.
 2. The Map page opens focused on that builder. The page shows **only their bids**, each pin colored by outcome. Green is won and red is lost. Yellow is pending, which means sent but undecided.
 3. The banner at the top keeps score: won, lost, pending and the **hit rate**. The hit rate is won ÷ decided. A bid sent to several GCs counts by **this builder's packet**. A packet is the bid as sent to one GC. If it was won with them, it counts as won. If it was lost with them, it counts as lost. Its pin takes that color too.
 

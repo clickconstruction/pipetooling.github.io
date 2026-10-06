@@ -11,10 +11,10 @@ An estimate says who would do it, at their hourly rate, for how many hours. Esti
 
 ## Add or change an estimate
 
-1. You find the **🖩 calculator** on a task row. It sits on **Checklist → Review** when you expand a person. It sits in the **Roadmap** page's Goals when you unfold a stage. It also sits on the **Roadmap → Plan** view's task rows.
-2. You pick **who does it**. Their **$/hour** fills in from People → Pay config. Edit it if needed. Salaried people may need a number typed in.
-3. You set **hours** with the quick-picks from 0.5h to 8h, or type a number. Watch the math: *2h × $50/hr → $100*.
-4. You press {{button:blue|Save cost}}. The calculator becomes a gold **$100** chip. Tap the chip any time to change or **Remove** the estimate.
+1. Find the **🖩 calculator** on a task row. It sits on **Checklist → Review** when you expand a person. It sits in the **Roadmap** page's Goals when you unfold a stage. It also sits on the **Roadmap → Plan** view's task rows.
+2. Pick **who does it**. Their **$/hour** fills in from People → Pay config. Edit it if needed. Salaried people may need a number typed in.
+3. Set **hours** with the quick-picks from 0.5h to 8h, or type a number. Watch the math: *2h × $50/hr → $100*.
+4. Press {{button:blue|Save cost}}. The calculator becomes a gold **$100** chip. Tap the chip any time to change or **Remove** the estimate.
 
 The rate is **snapshotted** when you save, so it is kept as it was that day. A later pay change doesn't rewrite old estimates.
 
