@@ -22,7 +22,8 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
  * short-lived signed URLs), demand letters, lien filings and (since v2.3797)
  * the § 53.056 notice desk items shaped down to the three sent-notice facts —
  * the owner's call, letter two, the GC's written okay — promises, collection
- * calls, contact history, field evidence, the matter's own entries — plus the
+ * calls, contact history, field evidence, the matter's own entries (with
+ * `acknowledged_at` since #85 item 17: the office's "seen", and a withdrawn ask) — plus the
  * firm and Click's particulars for filing — and, since v2.3789, the Lien desk's
  * Timeline book raw (`lienBook`) for counsel's grid.
  *
@@ -203,7 +204,7 @@ serve(async (req) => {
       admin.from('report_templates').select('id, name'),
       allJobIds.length ? admin.from('clock_sessions').select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at').in('job_ledger_id', allJobIds).order('work_date').limit(2000) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_thread_notes').select('job_id, body, created_at, author_user_id').in('job_id', allJobIds).order('created_at', { ascending: false }).limit(500) : Promise.resolve({ data: [] }),
-      admin.from('legal_matter_entries').select('id, matter_id, kind, amount, body, occurred_on, meta, via_portal, created_at').in('matter_id', matterIds).order('created_at'),
+      admin.from('legal_matter_entries').select('id, matter_id, kind, amount, body, occurred_on, meta, via_portal, acknowledged_at, created_at').in('matter_id', matterIds).order('created_at'),
     ])
 
     const jobs = (jobsRes.data ?? []) as Row[]

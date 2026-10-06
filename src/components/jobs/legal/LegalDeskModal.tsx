@@ -3,7 +3,7 @@ import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { askStateWords, buildLegalAsks, legalEntryKindWords, newAskMeta, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
+import { conversationRows, conversationStateWords, conversationWho, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import {
   formatLegalMoney,
@@ -359,7 +359,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (!answerFor || !matter) return
     const text = answerFor.text.trim()
     if (!text) return
-    const ok = await run('Answer', async () => (await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'answer', p_body: text })) ?? (await legalRpc('legal_acknowledge_entry', { p_entry_id: answerFor.entryId })))
+    const ok = await run('Answer', async () => (await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'answer', p_body: text, p_meta: officeAnswerMeta(answerFor.entryId) })) ?? (await legalRpc('legal_acknowledge_entry', { p_entry_id: answerFor.entryId })))
     if (ok) {
       setAnswerFor(null)
       showToast('Answer sent — the firm sees it on their portal.', 'success')
@@ -870,9 +870,21 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   const fees = firmFeeEntries(entries)
   const contingency = contingencyEntries(entries)
   const feeTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
-  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost')
-  const asksById = new Map(buildLegalAsks(entries).map((a) => [a.id, a] as const))
+  // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
+  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
+  const talk = conversationRows(entries)
+  const waitingOn = (list: ReadonlyArray<LegalEntryRow>) => list.filter((e) => e.via_portal && !e.acknowledged_at).length
   const askInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
+  const answerBox = (e: LegalEntryRow): ReactNode =>
+    !officeActs ? null : officeActs.answerFor?.entryId === e.id ? (
+      <span key="a" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        <input value={officeActs.answerFor.text} onChange={(ev) => officeActs.setAnswerFor({ entryId: e.id, text: ev.target.value })} placeholder="Your answer" style={{ ...askInput, width: 220 }} />
+        <button type="button" onClick={() => void officeActs.sendAnswer()} disabled={officeActs.busy} style={btn}>Send</button>
+        <button type="button" onClick={() => officeActs.setAnswerFor(null)} style={btn}>Cancel</button>
+      </span>
+    ) : (
+      <button key="a" type="button" onClick={() => officeActs.setAnswerFor({ entryId: e.id, text: '' })} style={btn}>Answer…</button>
+    )
   return (
     <div>
       <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
@@ -882,30 +894,36 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
         <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
       )}
       {contingency.length ? <p data-legal-contingency style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0 0' }}>The firm’s contingency on recoveries you applied, not in the demand: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}.</p> : null}
+      {talk.length ? (
+        <div data-legal-conversation>
+          <SectionTitle>The conversation{officeActs && waitingOn(talk.map((r) => r.entry)) ? ` · ${waitingOn(talk.map((r) => r.entry))} from the firm waiting on you` : ''}</SectionTitle>
+          <Table head={['Date', 'Who', 'What was said', '']}
+            rows={talk.map((r) => {
+              const e = r.entry
+              const s = conversationStateWords(r, 'office')
+              const acts = !r.isAnswer && r.thread.askedBy === 'firm' && r.thread.state === 'open' && officeActs ? (
+                answerBox(e)
+              ) : !r.isAnswer && r.thread.askedBy === 'office' && r.thread.state === 'open' && officeActs ? (
+                <span key="q" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                  {s ? pill(s.text, s.tone) : null}
+                  <button type="button" onClick={() => void officeActs.withdrawFirmAsk(e.id)} disabled={officeActs.busy} style={btn}>Withdraw</button>
+                </span>
+              ) : r.isAnswer && e.via_portal && !e.acknowledged_at && officeActs ? (
+                <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
+              ) : s ? pill(s.text, s.tone) : null
+              return [e.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 16, color: 'var(--text-muted)' } : undefined}>{r.isAnswer ? '↳ ' : ''}{conversationWho(r, 'office')}</span>, e.body, acts]
+            })}
+            empty="" />
+        </div>
+      ) : null}
       {firmSteps.length ? (
         <>
-          <SectionTitle>On the matter{officeActs && firmSteps.some((e) => e.via_portal && !e.acknowledged_at) ? ` · ${firmSteps.filter((e) => e.via_portal && !e.acknowledged_at).length} from the firm waiting on you` : ''}</SectionTitle>
+          <SectionTitle>On the matter{officeActs && waitingOn(firmSteps) ? ` · ${waitingOn(firmSteps)} from the firm waiting on you` : ''}</SectionTitle>
           <Table head={['Date', 'Kind', 'What happened', 'Amount', '']} numCols={[3]}
             rows={firmSteps.map((e) => {
               const waiting = e.via_portal && !e.acknowledged_at
-              const ask = asksById.get(e.id) ?? null
-              const acts = ask ? (
-                <span key="q" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                  {pill(askStateWords(ask).text, askStateWords(ask).tone)}
-                  {officeActs && ask.state === 'open' ? <button type="button" onClick={() => void officeActs.withdrawFirmAsk(e.id)} disabled={officeActs.busy} style={btn}>Withdraw</button> : null}
-                </span>
-              ) : officeActs && waiting ? (
-                e.kind === 'question' ? (
-                  officeActs.answerFor?.entryId === e.id ? (
-                    <span key="a" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                      <input value={officeActs.answerFor.text} onChange={(ev) => officeActs.setAnswerFor({ entryId: e.id, text: ev.target.value })} placeholder="Your answer" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 220 }} />
-                      <button type="button" onClick={() => void officeActs.sendAnswer()} disabled={officeActs.busy} style={btn}>Send</button>
-                      <button type="button" onClick={() => officeActs.setAnswerFor(null)} style={btn}>Cancel</button>
-                    </span>
-                  ) : (
-                    <button key="a" type="button" onClick={() => officeActs.setAnswerFor({ entryId: e.id, text: '' })} style={btn}>Answer…</button>
-                  )
-                ) : e.kind === 'payment_received' ? (
+              const acts = officeActs && waiting ? (
+                e.kind === 'payment_received' ? (
                   <span key="p" style={{ display: 'inline-flex', gap: 6 }}>
                     <button type="button" onClick={officeActs.onOpenPipelineRow} style={btn} title="Apply it on the job with Mark Paid, then come back">Mark Paid on the row ↗</button>
                     <button type="button" onClick={() => void officeActs.markApplied(e)} disabled={officeActs.busy} style={btn}>Mark applied</button>

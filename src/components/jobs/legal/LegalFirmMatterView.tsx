@@ -4,6 +4,7 @@ import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPack
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { conversationRows, conversationStateWords, conversationWho, isConversationEntry } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -153,7 +154,9 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   const fees = firmFeeEntries(matter.entries)
   const feesTotal = firmDemand(0, matter.entries).feesTotal
   const contingency = contingencyEntries(matter.entries)
-  const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost')
+  // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
+  const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
+  const talk = conversationRows(matter.entries)
   return (
     <div>
       <div style={h}>Fees and costs</div>
@@ -161,6 +164,15 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
       {fees.length ? <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Fees and costs in the demand</span><span style={portalNum}>{formatLegalMoney(feesTotal)}</span></div> : null}
       {contingency.length ? <p data-legal-contingency style={{ fontSize: 12.5, color: MUTED, margin: '6px 0 0' }}>Your contingency on recoveries the office applied: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}. It is your share of money collected, so it is not in the demand.</p> : null}
       {acts}
+      {talk.length ? (
+        <div data-legal-conversation>
+          <div style={h}>The conversation</div>
+          <PortalTable head={['Date', 'Who', 'What was said', 'State']} rows={talk.map((r) => {
+            const s = conversationStateWords(r, 'firm')
+            return [r.entry.occurred_on, <span key="w" style={r.isAnswer ? { paddingLeft: 18, color: MUTED } : undefined}>{r.isAnswer ? '↳ ' : ''}{conversationWho(r, 'firm')}</span>, r.entry.body, s ? <span key="s" style={{ color: s.tone === 'warn' ? COPPER : s.tone === 'stop' ? PAPER_RED : s.tone === 'ok' ? PAPER_GREEN : MUTED }}>{s.text}</span> : '']
+          })} empty="" />
+        </div>
+      ) : null}
       <div style={h}>On this matter</div>
       <PortalTable head={['Date', 'Kind', 'What happened', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), e.body, firmEntryStatusWords(e)])} empty="No steps recorded." />
       <div style={h}>Account history, oldest first</div>
