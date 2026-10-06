@@ -179,10 +179,10 @@ describe('LienTimelineStrip — closed months fold into one node (v2.4111)', () 
   })
 })
 
-describe('LienTimelineStrip — one story (v2.4652): job 890 on 2026-10-06, the lien is gone', () => {
-  // A residential sub job whose only work month, July, closed Sep 15 with nothing sent — nothing open, nothing ahead.
+describe('LienTimelineStrip — one story (v2.4652): job 890 read Oct 20, the lien is gone', () => {
+  // A residential sub job whose only work month, July, closed Sep 15 with nothing sent, and the affidavit window closed Oct 15 — nothing open, nothing ahead.
   const gone = buildLienTimeline({
-    todayYmd: '2026-10-06',
+    todayYmd: '2026-10-20',
     isSub: true,
     propertyKind: 'residential',
     lastMonth: '2026-07',
@@ -231,5 +231,36 @@ describe('LienTimelineStrip — one story (v2.4652): job 890 on 2026-10-06, the 
     expect(legend).toContain('│ today')
     expect(legend).not.toContain('days already gone')
     expect(legend).not.toContain('opens when the notice is mailed')
+  })
+})
+
+describe('LienTimelineStrip — the late notice (v2.4708): job 890 read Oct 6, the affidavit window still open', () => {
+  const late = buildLienTimeline({
+    todayYmd: '2026-10-06',
+    isSub: true,
+    propertyKind: 'residential',
+    lastMonth: '2026-07',
+    lastMonthFromCreation: false,
+    months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }],
+    noticeState: '',
+    retainage: null,
+    affidavit: null,
+    originalContractCompletedOn: null,
+    releasedAt: null,
+    paid: false,
+  })
+  it('the band says send it late then file, in amber; the lien is a dashed window hanging off today, not a ghost', () => {
+    const { container } = render(<LienTimelineStrip timeline={late} layout="row" view="windows" />)
+    const verdict = container.querySelector('[data-lien-timeline-verdict]')!
+    expect(verdict.getAttribute('data-tone')).toBe('amber')
+    expect(verdict.textContent).toContain('Send the Jul notice late, then file the affidavit — 9 days.')
+    expect(verdict.textContent).toContain('the lien can be filed any day until Oct 15')
+    const lien = container.querySelector('[data-lien-timeline-window="affidavit"]')!
+    expect(lien.getAttribute('data-lien-timeline-window-kind')).toBe('violet')
+    expect(lien.textContent).toContain('opens when the late notice is mailed · by Oct 15')
+    expect(lien.querySelector('[data-lien-timeline-move="ours"]')).toBeTruthy()
+    expect(container.querySelector('[data-lien-timeline-window="notice:2026-07"]')?.getAttribute('data-lien-timeline-window-kind')).toBe('closed')
+    expect(container.querySelector('[data-lien-timeline-windows-after]')?.textContent).toMatch(/^After a filing:/)
+    expect(container.querySelector('[data-lien-timeline-windows-legend]')!.textContent).toContain('┄ opens when the notice is mailed')
   })
 })

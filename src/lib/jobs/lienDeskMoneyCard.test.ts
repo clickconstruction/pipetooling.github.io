@@ -119,7 +119,7 @@ describe('buildLienDeskMoneyCard', () => {
       count: 16,
       tone: 'red',
     })
-    expect(card?.deadline).toEqual({ label: 'closed Sep 15', who: 'Loberg Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Loberg Contracting — the notice goes out as information; the lien right on that work is gone', pile: 'to_draft' })
+    expect(card?.deadline).toEqual({ label: 'closed Sep 15', who: 'Loberg Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Loberg Contracting — the window closed; a late notice can still carry the affidavit while its own window is open', pile: 'to_draft' })
     expect(buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 1, earliestDeadline: '2026-09-23' } }), TODAY)?.why).toBe('Closed yesterday: the first window closes · 1 awaiting approval')
   })
 })

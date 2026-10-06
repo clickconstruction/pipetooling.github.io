@@ -92,9 +92,10 @@ describe('buildLienTimeline — residential, one month missed and unnoted, the n
   })
 })
 
-describe('buildLienTimeline — every window closed, nothing sent (650 ATI Schertz)', () => {
+describe('buildLienTimeline — every window closed, nothing sent, and the affidavit window closed too (650 ATI Schertz, read Oct 20)', () => {
   const t = buildLienTimeline(
     base({
+      todayYmd: '2026-10-20',
       lastMonth: '2026-06',
       months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }],
       noticeState: 'to_draft',
@@ -120,9 +121,37 @@ describe('buildLienTimeline — every window closed, nothing sent (650 ATI Scher
     expect(lienFirmMoveWords('gc')).toBe('the GC')
   })
   it('once someone notes the miss, the aside goes quiet', () => {
-    const noted = buildLienTimeline(base({ lastMonth: '2026-06', months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' }] }))
+    const noted = buildLienTimeline(base({ todayYmd: '2026-10-20', lastMonth: '2026-06', months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' }] }))
     expect(noted.next.aside).toBe('')
     expect(noted.steps.find((s) => s.kind === 'notice')?.words).toBe('window closed · noted')
+  })
+})
+
+describe('buildLienTimeline — every window closed unsent while the affidavit window is still open: the late notice (v2.4708, 890 Dudley Mason read Oct 6)', () => {
+  // The owner's reading of 2026-10-06, against counsel's 2026-09-22 memo (answer 6): a late § 53.056 notice still carries the affidavit.
+  const late = buildLienTimeline(base({ todayYmd: '2026-10-06', propertyKind: 'residential', lastMonth: '2026-07', months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }], noticeState: '' }))
+  it('the lien is not gone; the affidavit is due, waiting on the late notice', () => {
+    expect(late.lienGone).toBe(false)
+    expect(kinds(late)).toEqual(['last_work=done', 'notice:2026-07=missed', 'retainage=undated', 'affidavit=due', 'serve=later', 'suit=later'])
+    const a = late.steps.find((s) => s.kind === 'affidavit')!
+    expect(a.words).toBe('9 days · send the late notice first')
+    expect(a.opensWords).toBe('opens when the late notice is mailed')
+    expect(a.dateWords).toBe('Oct 15')
+    expect(late.steps.find((s) => s.kind === 'notice')?.words).toBe('window closed · not noted')
+  })
+  it('Next says to send it late, then file; Waiting on is us; the Windows aside still speaks', () => {
+    expect(late.next.kind).toBe('late_notice')
+    expect(late.next.words).toBe('Send the Jul notice late, then file the affidavit — 9 days.')
+    expect(late.next.aside).toBe('The notice window closed; the affidavit can still be filed by Oct 15.')
+    expect(late.next.tone).toBe('amber')
+    expect(late.waitingOn).toEqual({ who: 'ours', words: 'the late notice, then the affidavit by Oct 15' })
+    expect(late.windowsAside).toContain('the lien can be filed any day until Oct 15')
+    expect(lienFirmNext(late.next).words).toBe(late.next.words)
+  })
+  it('once the affidavit window closes too, the lien is gone as before', () => {
+    const gone = buildLienTimeline(base({ todayYmd: '2026-10-20', propertyKind: 'residential', lastMonth: '2026-07', months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }], noticeState: '' }))
+    expect(gone.lienGone).toBe(true)
+    expect(gone.next.kind).toBe('lien_gone')
   })
 })
 

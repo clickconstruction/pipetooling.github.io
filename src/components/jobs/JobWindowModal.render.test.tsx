@@ -36,7 +36,7 @@ vi.mock('../projects/ProjectsJobHistoryTab', () => ({
 
 // The lien timeline above the grid (v2.3879) has its own render test; here it is a stub that names its job.
 vi.mock('./JobHistoryLienTimeline', () => ({
-  default: ({ job }: { job: { id: string } }) => <div data-testid="history-lien-timeline-stub">timeline for {job.id}</div>,
+  default: ({ timeline }: { timeline: { steps: unknown[] } }) => <div data-testid="history-lien-timeline-stub">timeline with {timeline.steps.length} steps</div>,
 }))
 
 // The Documents pane (v2.4491) has its own render test; here it is a stub that names its job.
@@ -108,7 +108,7 @@ describe('JobWindowModal', () => {
     expect(screen.queryByTestId('history-grid-stub')).toBeNull()
     fireEvent.click(tab('History'))
     await waitFor(() => expect(screen.getByTestId('history-grid-stub').textContent).toBe('history for job-1'))
-    expect(screen.getByTestId('history-lien-timeline-stub').textContent).toBe('timeline for job-1')
+    expect(screen.getByTestId('history-lien-timeline-stub').textContent).toBe('timeline with 6 steps')
     expect(tab('History').getAttribute('aria-selected')).toBe('true')
     fireEvent.click(tab('Job'))
     // Stays mounted (state survives), just hidden.

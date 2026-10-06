@@ -660,7 +660,15 @@ export default function LienDeskModal({
 
   // Months a new notice names: the draft's, else every open month, minus what the user unticked.
   const monthChoices = useMemo(() => (selected ? selected.months.map((m) => ({ ...m, closed: m.daysLeft < 0 })) : []), [selected])
-  const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : (selected?.dueMonths ?? [])), [item, selected])
+  // v2.4708: every window closed unsent while the affidavit's own window is still open — the new notice names the closed months, late.
+  const lateUntil = useMemo(() => {
+    if (!selected || !data) return null
+    const aff = data.affidavits.entries.find((e) => e.jobId === selected.jobId)
+    if (!aff || aff.pile === 'filed' || !aff.deadline || aff.deadline < todayYmd) return null
+    if (selected.dueMonths.length > 0 || selected.months.some((m) => m.noticed) || selected.missedMonths.length === 0) return null
+    return aff.deadline
+  }, [selected, data, todayYmd])
+  const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : selected?.dueMonths.length ? selected.dueMonths : lateUntil && selected ? selected.missedMonths : []), [item, selected, lateUntil])
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
@@ -1235,6 +1243,7 @@ export default function LienDeskModal({
         thisPile: selected.pile,
         propertyKind: property.propertyKind ?? '',
         todayYmd,
+        lateUntil,
       })
     : null
 
