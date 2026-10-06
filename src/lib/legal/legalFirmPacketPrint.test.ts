@@ -82,6 +82,13 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(html).toContain('Registered agent')
     expect(html).toContain("business records as of 2026-10-05")
   })
+
+  it('says how many entries the office held back, and nothing when none are (#85 item 29)', () => {
+    const opts = { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name }, particulars: payload.particulars }
+    const held = buildFirmPacketPrintHtml(packet, { ...opts, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, heldCount: 2 } })
+    expect(held).toContain('2 entries held back by the office.')
+    expect(html).not.toMatch(/held back by the office|nothing held back/)
+  })
 })
 
 describe('firmFeeEntries', () => {

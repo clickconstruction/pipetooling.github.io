@@ -236,7 +236,7 @@ export default function LegalPortal() {
                 tab={tab}
                 onTab={setTab}
                 acts={<><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} /></>}
-                onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries }, particulars: payload.particulars }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
+                onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount }, particulars: payload.particulars }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
             <div className="legalPortalList">
