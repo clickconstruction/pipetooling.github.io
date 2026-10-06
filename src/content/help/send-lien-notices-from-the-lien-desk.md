@@ -86,7 +86,7 @@ The steps are these:
 
 Each step wears a mark. {{chip:green|✓}} means done. {{chip:yellow|!}} means due, and it turns red inside a week. {{chip:red|✗}} means missed. A grey dash means blocked. A dashed ring is a step the app cannot date yet, with a door to set the date.
 
-**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band turns red and says so plainly. The lien is gone, and the money is still owed in Collections.
+**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band says what is left. While the affidavit window is still open, it says to send the notice late and then file. Once that window closes too, it turns red. The lien is gone, and the money is still owed in Collections.
 
 Under each step still to come, a small word says whose move it is. {{chip:blue|ours}} marks the notices, the retainage notice, the affidavit and the serve. {{chip:purple|the GC}} or {{chip:yellow|the owner}} marks the release until it is paid. {{chip:yellow|the owner}} also marks the owner's hold. {{chip:gray|counsel}} marks the year to sue, which the firm takes. **Waiting on** says who we wait on and for what.
 
@@ -152,7 +152,7 @@ A window that closes with nothing recorded is never silent. The Dashboard's lien
 
 Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
@@ -211,6 +211,22 @@ The desk shows the master only what needs a decision. He sees what is open with 
 - {{button:outline|Hold — they promised…}} asks him again on the promise date.
 - {{button:outline|Hold — I'll call first}} asks him again three days before the deadline.
 - **Back to the office** sends it back to be fixed.
+
+## A discount if they pay before the lien
+
+The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The box sits above the footer when he approves a notice.
+
+- Tick **Offer a discount if a bill is paid in full by a day**.
+- Pick the percent. The default is 10.
+- Pick the day. The default is 14 days from today. The offer never runs later than a week before the affidavit must be filed. So the affidavit can still go out on time if they do not pay.
+
+The box shows the most the offer gives up, and the sentence as the page prints it. The notice form itself never changes. The claim stays the full amount. The offer is our own sentence on our own page.
+
+The pay page says it in one boxed sentence under its title. Every bill's row shows the full amount and the lower one. The rule line says whoever pays gets the same amount off. The closing line sums the lower amounts. The GC's envelope still carries no pay page.
+
+On the desk an approved notice reads {{chip:blue|Offer 10% by Nov 15}}. Its step card says the same on the Approve rung. The leader can change or remove the offer until the run goes out. Press **Save the offer** on the ready footer.
+
+A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance. Counsel has not read the offer's words yet. The box says so in amber until they have.
 
 ## Sending the run
 

@@ -64,6 +64,9 @@ import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
+import LienOfferBox from './LienOfferBox'
+import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
+import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { gapToken, lienPaperGaps, paintGaps, withGapTokens, type LienPaperFacts } from '../../lib/jobs/lienPaperGaps'
@@ -282,6 +285,8 @@ export default function LienDeskModal({
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
   const [coverNote, setCoverNote] = useState(true)
+  // The pay offer (v2.4713): the leader's choice, written with the approval; read back from the item when one is selected.
+  const [offer, setOffer] = useState<LienPayOffer | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
@@ -647,11 +652,23 @@ export default function LienDeskModal({
   const ruleLive = selected ? selected.policy === 'send' && !ruleWaitsOnFirstNotice(selected.policy, gcHasPriorNotice) : false
   const wm = selected ? workMonths?.[selected.jobId] ?? null : null
   const item = selected?.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? selected.item : null
+  useEffect(() => {
+    setOffer(lienOfferFromItem(item))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, item?.offer_pct, item?.offer_by])
   const storedDraft = useMemo(() => (selected?.item ? parseLienDeskDraftFields(selected.item.fields) : null), [selected?.item])
 
   // Months a new notice names: the draft's, else every open month, minus what the user unticked.
   const monthChoices = useMemo(() => (selected ? selected.months.map((m) => ({ ...m, closed: m.daysLeft < 0 })) : []), [selected])
-  const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : (selected?.dueMonths ?? [])), [item, selected])
+  // v2.4708: every window closed unsent while the affidavit's own window is still open — the new notice names the closed months, late.
+  const lateUntil = useMemo(() => {
+    if (!selected || !data) return null
+    const aff = data.affidavits.entries.find((e) => e.jobId === selected.jobId)
+    if (!aff || aff.pile === 'filed' || !aff.deadline || aff.deadline < todayYmd) return null
+    if (selected.dueMonths.length > 0 || selected.months.some((m) => m.noticed) || selected.missedMonths.length === 0) return null
+    return aff.deadline
+  }, [selected, data, todayYmd])
+  const defaultMonths = useMemo(() => new Set(item?.months.length ? item.months : selected?.dueMonths.length ? selected.dueMonths : lateUntil && selected ? selected.missedMonths : []), [item, selected, lateUntil])
   useEffect(() => {
     setCheckedMonths(null)
     setCoverNote(selected?.item ? selected.item.cover_note : true)
@@ -833,9 +850,10 @@ export default function LienDeskModal({
             contactPerson: noticeFields.contactPerson,
             phone: (issuer?.phone ?? '').trim(),
             extras: docExtras,
+            offer,
           })
         : [],
-    [selected, payPage, noticeFields, issuer, docExtras],
+    [selected, payPage, noticeFields, issuer, docExtras, offer],
   )
   const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks) : ''), [payBlocks])
   const pageTotal = (coverHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
@@ -928,7 +946,17 @@ export default function LienDeskModal({
       },
       'Skipped — the lien right on those months is given up.',
     )
-  const approve = () => run('Approve', async () => void (item && (await approveLienDeskItem(item.id))), 'Approved — it is in the run.')
+  const approve = () =>
+    run(
+      'Approve',
+      async () => {
+        if (!item) return
+        await setLienDeskItemOffer(item.id, offer)
+        await approveLienDeskItem(item.id)
+      },
+      offer ? `Approved with a ${offer.pct}% offer — it is in the run.` : 'Approved — it is in the run.',
+    )
+  const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
   const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id))), 'Back in Ready to send.')
@@ -1044,7 +1072,7 @@ export default function LienDeskModal({
     }
     const e = data.queue.entries.find((x) => x.jobId === jobId)
     const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
-    return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false }
+    return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, offer: lienOfferFromItem(e?.item) }
   }
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
@@ -1215,6 +1243,7 @@ export default function LienDeskModal({
         thisPile: selected.pile,
         propertyKind: property.propertyKind ?? '',
         todayYmd,
+        lateUntil,
       })
     : null
 
@@ -1886,6 +1915,13 @@ export default function LienDeskModal({
   if (selected) {
     const state = selected.pile
     const monthsWord = monthsList.length ? describeNoticeMonths(monthsList) : 'no months'
+    // The pay offer (v2.4713): the leader's box above the footer, on a notice he can approve or has approved.
+    const affidavitDueOn = timeline?.steps.find((st) => st.kind === 'affidavit')?.date || null
+    const offerAmounts = payPage.rows.filter((r) => r.payable).map((r) => r.openAmount)
+    const offerProblem = offer ? lienOfferDayProblem(offer.by, todayYmd, affidavitDueOn) : null
+    const offerBox = (onSave?: () => void) => (
+      <LienOfferBox offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} onSave={onSave} saving={busy} />
+    )
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
       // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and a quiet
@@ -1959,6 +1995,8 @@ export default function LienDeskModal({
               btn={btn}
             />
           ) : (
+            <>
+            {leader && !blocked ? offerBox() : null}
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
                 <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
@@ -1987,7 +2025,7 @@ export default function LienDeskModal({
                     {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
                   </button>
                 ) : leader ? (
-                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
+                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await approveLienDeskItem(id) }, offer ? `Approved with a ${offer.pct}% offer — it is in the run.` : 'Approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>
                     Approve ▸
                   </button>
                 ) : (
@@ -1997,6 +2035,7 @@ export default function LienDeskModal({
                 )}
               </div>
             </div>
+            </>
           )}
         </>
       )
@@ -2013,6 +2052,8 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen(null)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
+            <>
+            {offerBox()}
             <div className="lienFootRow" data-lien-desk-next data-blocked="no">
               <span className="lienFootState">
                 <span aria-hidden="true">→</span> Your call on {monthsWord}
@@ -2023,8 +2064,9 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
               <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
               <button type="button" onClick={() => setByHandOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving">Already mailed? Record it…</button>
-              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Approve &amp; next ▸</button>
+              <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>Approve &amp; next ▸</button>
             </div>
+            </>
           )}
         </>
       ) : wordOpen ? (
@@ -2066,10 +2108,13 @@ export default function LienDeskModal({
         </div>
       ))
     } else if (state === 'ready') {
+      const itemOffer = lienOfferFromItem(selected.item)
       footer = byHandPane ?? (
+        <>
+        {leader ? offerBox(saveOffer) : null}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span>
-            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(calendarYmdInAppTzFromIso(selected.item.approved_at))}` : ''}`} · in the run.
+          <span data-lien-desk-ready-words>
+            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(calendarYmdInAppTzFromIso(selected.item.approved_at))}` : ''}`}{itemOffer ? ` · ${lienOfferChipWords(itemOffer)}` : ''} · in the run.
           </span>
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
@@ -2085,6 +2130,7 @@ export default function LienDeskModal({
             Send the run · {runCount} ▸
           </button>
         </div>
+        </>
       )
     } else if (state === 'printed') {
       // v2.4568: a printed notice had no footer at all. The run is where its tracking numbers are typed and the mailing recorded.

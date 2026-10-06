@@ -128,7 +128,7 @@ export interface LienTimelineDemandLetter {
   paidAt?: string | null
 }
 
-export type LienTimelineNextKind = 'lien_gone' | 'release' | 'serve' | 'notice' | 'retainage' | 'affidavit' | 'suit' | 'none'
+export type LienTimelineNextKind = 'lien_gone' | 'late_notice' | 'release' | 'serve' | 'notice' | 'retainage' | 'affidavit' | 'suit' | 'none'
 
 export interface LienTimelineNext {
   kind: LienTimelineNextKind
@@ -390,11 +390,17 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     steps.push({ kind: 'notice', key: 'notice', cite: '§ 53.056', label: '§ 53.056 notice', date: '', dateWords: 'none', state: 'done', words: 'not required · contracted with the owner', daysLeft: null, door: null })
   }
 
-  const lienGone = input.isSub && months.length > 0 && openMonths.length === 0 && !anySent && !input.affidavit?.filedAt
-
-  // 3 · affidavit facts, needed by the retainage/hold choice
+  // 3 · affidavit facts, needed by the lien-gone call and the retainage/hold choice
   const filingDeadline = input.affidavit?.deadline || (input.lastMonth ? filingDeadlineForMonth(`${input.lastMonth}-01`, input.propertyKind) : '')
   const filedAt = input.affidavit?.filedAt ? input.affidavit.filedAt.slice(0, 10) : ''
+
+  // Every notice window closed with nothing sent. While the affidavit's OWN window is still open, a
+  // LATE § 53.056 notice can still go out and the affidavit follow it — the owner's reading of
+  // 2026-10-06 (v2.4708; counsel's 2026-09-22 memo, answer 6, read a closed month as information
+  // only — that question is back with counsel). Once the affidavit window closes too, the lien is gone.
+  const noNoticeAllClosed = input.isSub && months.length > 0 && openMonths.length === 0 && !anySent && !filedAt
+  const lateNoticeOpen = noNoticeAllClosed && Boolean(filingDeadline) && filingDeadline >= todayYmd
+  const lienGone = noNoticeAllClosed && !lateNoticeOpen
   const releasedAt = input.releasedAt ? input.releasedAt.slice(0, 10) : ''
 
   // 4 · § 53.057 retainage — before the affidavit; drawn undated until the contract-end date exists
@@ -436,7 +442,10 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       state = openMonths.length ? 'later' : 'due'
       words = [daysWords(left), missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
       // The first day (v2.3815): a sub's lien follows its notice; an original contractor's the month after the work.
-      if (input.isSub) {
+      if (lateNoticeOpen) {
+        words = [daysWords(left), 'send the late notice first', missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
+        opensWords = 'opens when the late notice is mailed'
+      } else if (input.isSub) {
         const sentOn = months.filter((m) => m.outcome === 'sent' && m.at).map((m) => m.at.slice(0, 10)).sort()[0] ?? ''
         opensOn = sentOn
         opensWords = sentOn ? lienOpensWords(sentOn, todayYmd) : anySent ? 'open · the notice is out' : 'opens when the notice is mailed'
@@ -544,6 +553,17 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     next = { kind: 'none', words: `Released ${lienDateWords(releasedAt, todayYmd)} — the clock stopped.`, aside: '', date: releasedAt, daysLeft: null, tone: 'green' }
   } else if (lienGone) {
     next = { kind: 'lien_gone', words: 'Lien: gone. Money: still owed — chase it in Collections.', aside: unnotedMisses.length ? 'Write the closed window down with your name so the Dashboard stops naming it.' : '', date: '', daysLeft: null, tone: 'red' }
+  } else if (lateNoticeOpen) {
+    const a = steps.find((x) => x.kind === 'affidavit')!
+    const closedKeys = months.filter((m) => m.outcome !== 'sent' && m.outcome !== 'skipped').map((m) => m.key)
+    next = {
+      kind: 'late_notice',
+      words: `Send the ${monthsPhrase(closedKeys)} notice late, then file the affidavit — ${daysWords(a.daysLeft)}.`,
+      aside: `The notice window closed; the affidavit can still be filed by ${a.dateWords}.`,
+      date: a.date,
+      daysLeft: a.daysLeft,
+      tone: (a.daysLeft ?? 99) <= 7 ? 'red' : (a.daysLeft ?? 99) <= 14 ? 'amber' : 'quiet',
+    }
   } else if (filedAt && input.paid) {
     next = { kind: 'release', words: 'Paid — file the release of record.', aside: 'The owner is waiting for the paper; promise it the day funds clear.', date: '', daysLeft: 0, tone: 'green' }
   } else if (filedAt && !input.affidavit?.servedAt) {
@@ -583,7 +603,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   // The Windows view's second sentence (v2.3815): once the notice is out, the lien may follow it.
   const aff = steps.find((x) => x.kind === 'affidavit')
-  const windowsAside = next.kind === 'notice' && input.isSub && aff && aff.state !== 'done' && aff.state !== 'missed' && aff.date
+  const windowsAside = (next.kind === 'notice' || next.kind === 'late_notice') && input.isSub && aff && aff.state !== 'done' && aff.state !== 'missed' && aff.date
     ? `Once it is mailed, the lien can be filed any day until ${aff.dateWords}. Filing it is the leader’s call.`
     : ''
 
@@ -675,6 +695,8 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
   switch (next.kind) {
     case 'notice':
       return { who: 'ours', words: noticeWaitWords(input.noticeState) }
+    case 'late_notice':
+      return { who: 'ours', words: `the late notice, then the affidavit by ${next.date ? lienDateWords(next.date, todayYmd) : 'its last day'}` }
     case 'retainage':
       return { who: 'ours', words: 'the § 53.057 retainage notice to be sent' }
     case 'affidavit':

@@ -36,7 +36,7 @@ Surf Thru Express Car Wash owes $250 on one job with no agreement and no field e
 
 ## 4. Set the firm up once
 
-**Settings → Jobs & billing → Collections law firm** is for devs. The setting holds the firm's name, the handling person, and a contact email and phone. The setting also holds the fee model behind "Click keeps": the contingency % and filing cost. Below it, **Click's particulars for filing** show on the firm's portal as **Particulars for filing**. The particulars are the legal entity, license, registered agent, custodian of records and affiant. The particulars also include the office phone and email, and a W-9 note. So a petition or lien affidavit needs nothing from you. One firm at a time.
+**Settings → Jobs & billing → Collections law firm** is for devs. The Legal desk opens it too, from the firm's name in its header. With no firm yet, the header offers **Set up the firm…** in its place. The setting holds the firm's name, the handling person, and a contact email and phone. The setting also holds the fee model behind "Click keeps": the contingency % and filing cost. Below it, **Click's particulars for filing** show on the firm's portal as **Particulars for filing**. The particulars are the legal entity, license, registered agent, custodian of records and affiant. The particulars also include the office phone and email, and a W-9 note. So a petition or lien affidavit needs nothing from you. One firm at a time.
 
 The contact email is a contact, not a subscription. The firm's own people decide who gets emails, on their portal.
 

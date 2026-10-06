@@ -51,6 +51,7 @@ import {
 import { ProjectsJobHistoryTimeline } from './ProjectsJobHistoryTimeline'
 import JobHistoryCrewCalendar from '../jobs/JobHistoryCrewCalendar'
 import { buildCrewCalendar, crewRangeFor, type CrewRangeMode } from '../../lib/jobs/jobHistoryCalendar'
+import type { LienMonthLine } from '../../lib/jobs/lienMonthLines'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { ProjectsJobHistoryDayModal } from './ProjectsJobHistoryDayModal'
 
@@ -60,6 +61,8 @@ type Props = {
    *  project filter. Since v2.4694 it draws Days on the job — the month calendar — in place of the Gantt
    *  (and of the phone's day list), over the whole job by default. */
   jobId?: string | null
+  /** Single-job mode (v2.4707): each work month's § 53.056 line for the calendar's month headers, from the lien timeline the Job window reads; null when the lien box is not shown. */
+  lienMonthLines?: Record<string, LienMonthLine> | null
 }
 
 type ServiceTypeRow = { id: string; ledger_job_prefix: string | null; ledger_bid_prefix: string | null }
@@ -123,7 +126,7 @@ function writeOnlyWithProjects(value: boolean) {
   }
 }
 
-export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
+export function ProjectsJobHistoryTab({ customerId, jobId = null, lienMonthLines = null }: Props) {
   const { user: authUser, role: authRole } = useAuth()
   const authUserId = authUser?.id ?? null
   const isDocVisible = useDocumentVisibility()
@@ -657,6 +660,7 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
           calendar={crew}
           namesById={crewNames}
           todayYmd={todayKey}
+          monthLines={lienMonthLines}
           loading={loadingJobs || loadingSessions}
           range={{ mode: crewRangeMode, start: crewRange.start, end: crewRange.end }}
           onRangeMode={(mode) => {

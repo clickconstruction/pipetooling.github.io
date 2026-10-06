@@ -80,7 +80,7 @@ export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 
   return [
     { key: 'owner', ok: r.has_owner, label: 'Owner of record with a mailing address' },
     { key: 'legal', ok: r.has_legal, label: 'County + legal description on the property record' },
-    { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job' : 'No monthly notice required (contracted with the owner)' },
+    { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job — a late one counts while this window is open' : 'No monthly notice required (contracted with the owner)' },
     { key: 'homestead', ok: !r.homestead, label: r.homestead ? 'Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney' : 'Not a homestead' },
   ]
 }
