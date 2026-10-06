@@ -24,9 +24,13 @@ const BASE_COLS =
 // cannot keep.
 const COLS_WITH_REASON = `${BASE_COLS}, carry_reason`
 const COLS_WITH_LINES = `${COLS_WITH_REASON}, lines, split_labor_material`
-const COLS = `${COLS_WITH_LINES}, name`
-const COLUMN_SETS = [COLS, COLS_WITH_LINES, COLS_WITH_REASON, BASE_COLS] as const
-const isUnknownColumn = (code: string | undefined): boolean => code === '42703' || code === 'PGRST204'
+const COLS_WITH_NAME = `${COLS_WITH_LINES}, name`
+// The history (v2.4710) reads who saved the row and when: the stamps the table has always
+// carried, with the users' names through the two foreign keys. A database where the embed
+// cannot be followed answers PGRST200; the read then goes again without it.
+const COLS = `${COLS_WITH_NAME}, created_at, created_by, updated_by, created_by_user:users!job_pay_applications_created_by_fkey(name), updated_by_user:users!job_pay_applications_updated_by_fkey(name)`
+const COLUMN_SETS = [COLS, COLS_WITH_NAME, COLS_WITH_LINES, COLS_WITH_REASON, BASE_COLS] as const
+const isUnknownColumn = (code: string | undefined): boolean => code === '42703' || code === 'PGRST204' || code === 'PGRST200'
 
 /** The database cannot keep this application's lines yet (the lines migration is not applied). */
 export class PayApplicationLinesNotReady extends Error {
@@ -74,12 +78,13 @@ export async function savePayApplication(write: PayApplicationWrite, id: string 
   const needsLines = (Array.isArray(lines) && lines.length > 1) || split_labor_material === true
   const attempts: Array<[Record<string, unknown>, string]> = [
     [write, COLS],
+    [write, COLS_WITH_NAME],
     [withLines, COLS_WITH_LINES],
     [carry_reason === undefined ? base : { ...base, carry_reason }, COLS_WITH_REASON],
     [base, BASE_COLS],
   ]
   for (const [i, [payload, cols]] of attempts.entries()) {
-    if (i > 1 && needsLines) throw new PayApplicationLinesNotReady()
+    if (i > 2 && needsLines) throw new PayApplicationLinesNotReady()
     const { data, error } = await send(payload, cols)
     if (error && isUnknownColumn(error.code) && i < attempts.length - 1) continue
     if (error) {

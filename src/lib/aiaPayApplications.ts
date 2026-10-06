@@ -40,7 +40,11 @@ export type SavedPayApplication = {
   carryReason: string
   /** The office's own name for it ("Sent to the GC"), or ''. Never printed on the form. */
   name: string
+  /** When it was first saved and by whom, and when it was last saved and by whom (v2.4710): the database's stamps, the names as the users table has them or ''. */
+  createdAt: string | null
+  createdByName: string
   updatedAt: string | null
+  updatedByName: string
 }
 
 /** One kept file beside an application. Today that is a pasted link. */
@@ -66,6 +70,12 @@ export type PayApplicationRow = {
   split_labor_material?: boolean | null
   name?: string | null
   updated_at: string | null
+  /** The stamps and the names behind them (v2.4710), read with the row; older reads leave them out. */
+  created_at?: string | null
+  created_by?: string | null
+  updated_by?: string | null
+  created_by_user?: { name: string | null } | null
+  updated_by_user?: { name: string | null } | null
 }
 
 /** What the window holds for one application: the header boxes, the lines, and how the lines print. */
@@ -137,7 +147,10 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     link: linkFromFiles(row.files),
     carryReason: (row.carry_reason ?? '').trim(),
     name: cleanPayApplicationName(row.name),
+    createdAt: row.created_at ?? null,
+    createdByName: (row.created_by_user?.name ?? '').trim(),
     updatedAt: row.updated_at,
+    updatedByName: (row.updated_by_user?.name ?? '').trim(),
   }
 }
 

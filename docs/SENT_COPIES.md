@@ -2,7 +2,7 @@
 
 > Every time the company sends someone something, a copy is kept and the office can find it in Documents. This file is the plan, the rules and the list of what is wired; the code is `src/lib/sent/`.
 
-last_updated: 2026-10-05
+last_updated: 2026-10-06
 
 ## The owner's rules
 
@@ -24,7 +24,7 @@ Why it matters: before this, about thirty kinds of paper kept a "sent" date and 
 - **A repeat does not pile up.** The copy's SHA-256 is on the row. A second print of the same page points at the first file, and the list folds the rows into one line (*Printed 3 times, last …*).
 - **A key is never kept.** The law firm's portal link (`legal_firm_link`, from `legal-send-firm-link`) is a key to the firm's portal, so its filed copy shows the button and the address with `?t=…` (`sentCopyKeptHtml` in `_shared/sentCopyEmail.ts`); the firm's link is never in a filed copy.
 - **A copy is shown, never run.** A kept page opens inside a frame whose sandbox has scripts, forms and navigation off (`sentCopyFrameHtml`): the file was stored by someone on staff and is treated as a file.
-- **Where it reads.** The Job window's Documents tab, section **Sent from this job** ([`JobDocumentsSent.tsx`](../src/components/jobs/JobDocumentsSent.tsx)), by `job_ids`. A send that names no job (a GC statement, a price request, a bid letter, a law-firm notice) is kept and waits for step 4: the Documents page and the customer page.
+- **Where it reads.** The Job window's Documents tab, section **Sent from this job** ([`JobDocumentsSent.tsx`](../src/components/jobs/JobDocumentsSent.tsx)), by `job_ids`. A pay application's workbook (kind `pay_application`) lists under its application instead, in the tab's Pay applications table and in the AIA window's history (v2.4710), and stays out of that section. A send that names no job (a GC statement, a price request, a bid letter, a law-firm notice) is kept and waits for step 4: the Documents page and the customer page.
 
 Who: the office reads (`is_office_staff()`: dev, master, assistant, controller). Staff who send can file (the office, estimators, primary, superintendent). Deletes are dev only.
 

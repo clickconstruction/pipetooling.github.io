@@ -14,19 +14,28 @@ import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 /** The list starts short; the rest are one press away. */
 const SHOWN_AT_FIRST = 8
 
-export function JobDocumentsSent({ job }: { job: JobWithDetails }) {
-  const [rows, setRows] = useState<SentCopy[] | null>(null)
+/**
+ * `rows`: the copies to list when the tab has read them already (v2.4710: the Documents tab
+ * reads them once and keeps the pay application workbooks for its own table). Null while
+ * they load; left out, the section reads them itself.
+ */
+export function JobDocumentsSent({ job, rows: given }: { job: JobWithDetails; rows?: SentCopy[] | null }) {
+  const [own, setOwn] = useState<SentCopy[] | null>(null)
   const [all, setAll] = useState(false)
+  const reads = given === undefined
 
   useEffect(() => {
+    if (!reads) return
     let cancelled = false
     void loadSentCopiesForJob(job.id).then((list) => {
-      if (!cancelled) setRows(list)
+      if (!cancelled) setOwn(list)
     })
     return () => {
       cancelled = true
     }
-  }, [job.id])
+  }, [job.id, reads])
+
+  const rows = reads ? own : given
 
   const lines = useMemo(() => sentCopyLines(rows ?? []), [rows])
   const shown = all ? lines : lines.slice(0, SHOWN_AT_FIRST)

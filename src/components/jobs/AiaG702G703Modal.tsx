@@ -36,7 +36,6 @@ import {
   cleanPayApplicationLink,
   nextApplicationNumber,
   PAY_APPLICATION_NAME_MAX,
-  payApplicationLabel,
   parseApplicationNumber,
   payApplicationWriteFromForm,
   previousPayApplication,
@@ -55,7 +54,10 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
+import { fileSentCopy, loadSentCopiesForJob } from '../../lib/sent/sentCopiesIo'
+import type { SentCopy } from '../../lib/sent/sentCopies'
+import { payApplicationDay, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
+import AiaG702G703History from './AiaG702G703History'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -73,19 +75,6 @@ function triggerDownloadArrayBuffer(ab: ArrayBuffer, filename: string): void {
 }
 
 const swatch: CSSProperties = { display: 'inline-block', width: 22, height: 12, borderRadius: 2 }
-
-function applicationChipStyle(on: boolean): CSSProperties {
-  return {
-    padding: '0.25rem 0.6rem',
-    fontSize: '0.8125rem',
-    borderRadius: 999,
-    cursor: 'pointer',
-    border: '1px solid var(--border-strong)',
-    background: on ? 'var(--text-strong)' : 'var(--surface)',
-    color: on ? 'var(--surface)' : 'var(--text-700)',
-    fontVariantNumeric: 'tabular-nums',
-  }
-}
 
 function emptyFormState(): Record<AiaFieldKey, string> {
   const o = {} as Record<AiaFieldKey, string>
@@ -175,6 +164,7 @@ export default function AiaG702G703Modal({
   job,
   hcpForFilename,
   initialApplicationNumber = null,
+  startOn = 'history',
   zIndex = 1006,
 }: {
   open: boolean
@@ -183,6 +173,8 @@ export default function AiaG702G703Modal({
   hcpForFilename: string
   /** Open on this saved application when the job has it; otherwise on a new one. */
   initialApplicationNumber?: number | null
+  /** With no application named: the job's history when it has saved applications (the default), or straight to a new one. */
+  startOn?: 'history' | 'new'
   /** Above the window it is opened from (the job window sits at 1010). */
   zIndex?: number
 }) {
@@ -230,6 +222,11 @@ export default function AiaG702G703Modal({
   // The job's saved applications, and which one is open (null = a new one, not saved yet).
   const [saved, setSaved] = useState<SavedPayApplication[]>([])
   const [openId, setOpenId] = useState<string | null>(null)
+  // The workbooks that went out from this job (sent copies), for the history's lines.
+  const [sent, setSent] = useState<SentCopy[]>([])
+  // The history first on a job with saved applications; the form once one is opened or started.
+  const [view, setView] = useState<'history' | 'form'>('form')
+  const history = useMemo(() => payApplicationHistory(saved, sent), [saved, sent])
   // The bid's schedule of values, read when the job has a bid and nothing saved: application 1's lines.
   const [bidSchedule, setBidSchedule] = useState<BidSchedule | null>(null)
   // Where application 1's rows start from: one row, a row per Line Item, or the bid's schedule.
@@ -326,10 +323,11 @@ export default function AiaG702G703Modal({
     let cancelled = false
     setLoadedJobId(null)
     void (async () => {
-      const [, loadedFacts, list] = await Promise.all([
+      const [, loadedFacts, list, copies] = await Promise.all([
         fetchPhysicalInvoiceIssuerFromAppSettings({ authRole }),
         loadAiaPrefillFacts(job.id).catch(() => null),
         loadPayApplications(job.id).catch(() => [] as SavedPayApplication[]),
+        loadSentCopiesForJob(job.id).catch(() => [] as SentCopy[]),
       ])
       if (cancelled) return
       // The bid's schedule is only application 1's start: once something is saved, the job's own lines carry.
@@ -340,16 +338,19 @@ export default function AiaG702G703Modal({
       setBidSchedule(schedule)
       setFacts(loadedFacts)
       setSaved(list)
+      setSent(copies)
       const first = initialApplicationNumber == null ? null : list.find((a) => a.applicationNumber === initialApplicationNumber) ?? null
       setOpenId(first?.id ?? null)
       if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason, first.name)
       else startNew(list, loadedFacts, schedule)
+      // A job with earlier applications is read before it is typed on: the history first, unless one was asked for.
+      setView(!first && startOn === 'history' && list.length > 0 ? 'history' : 'form')
       setLoadedJobId(job.id)
     })()
     return () => {
       cancelled = true
     }
-  }, [open, job, authRole, loadForm, startNew, initialApplicationNumber])
+  }, [open, job, authRole, loadForm, startNew, initialApplicationNumber, startOn])
 
   const titleId = 'aia-g702-g703-modal-title'
 
@@ -368,16 +369,26 @@ export default function AiaG702G703Modal({
     if (await mayLeave()) onClose()
   }
 
-  const showApplication = async (app: SavedPayApplication | null) => {
-    if ((app?.id ?? null) === openId && !dirty) return
-    if (!(await mayLeave())) return
-    setOpenId(app?.id ?? null)
-    if (app) loadForm(formOfSaved(app), app.link, app.carryReason, app.name)
-    else startNew(saved, facts, bidSchedule)
-  }
-
   /** Back to where this application started: the saved one as saved, a new one as the job and the last one give it. */
   const resetForm = () => (openApp ? loadForm(formOfSaved(openApp), openApp.link, openApp.carryReason, openApp.name) : startNew(saved, facts, bidSchedule))
+
+  /** From the history: that application in the form. The history is only reached with a clean form, so nothing is asked. */
+  const openFromHistory = (app: SavedPayApplication) => {
+    setOpenId(app.id)
+    loadForm(formOfSaved(app), app.link, app.carryReason, app.name)
+    setView('form')
+  }
+  const newFromHistory = () => {
+    setOpenId(null)
+    startNew(saved, facts, bidSchedule)
+    setView('form')
+  }
+  /** From the form back to the history. Typed work is asked about; on Leave the form goes back to where it started. */
+  const backToHistory = async () => {
+    if (!(await mayLeave())) return
+    if (dirty) resetForm()
+    setView('history')
+  }
 
   // The choice of start is only there while nothing is saved on the job: after that the rows carry by their ids.
   // It also waits for the job to be read: a start picked before that would be undone when the read lands.
@@ -485,6 +496,7 @@ export default function AiaG702G703Modal({
       setSaved(rest)
       setOpenId(null)
       startNew(rest, facts, rest.length === 0 ? bidSchedule : null)
+      setView(rest.length > 0 ? 'history' : 'form')
       showToast(`Application ${openApp.applicationNumber} deleted.`, 'success')
     } catch (e) {
       console.error(e)
@@ -510,6 +522,10 @@ export default function AiaG702G703Modal({
         { kind: 'pay_application', title: `Pay application${number ? ` ${number}` : ''} · AIA G702-G703`, how: 'download', jobIds: [job.id], source: 'saved' in outcome ? { table: 'job_pay_applications', id: outcome.saved.id } : null },
         { blob: new Blob([ab], { type: XLSX_TYPE }), fileName: filename, contentType: XLSX_TYPE },
       )
+        // The history lists the workbook once it is filed.
+        .then(() => loadSentCopiesForJob(job.id))
+        .then((copies) => setSent(copies))
+        .catch(() => undefined)
       if ('saved' in outcome) showToast(`Workbook downloaded. Application ${outcome.saved.applicationNumber} saved on the job.`, 'success')
       else showToast(`Workbook downloaded. Not saved on the job: ${outcome.notSaved}`, 'warning')
     } catch (e) {
@@ -592,7 +608,7 @@ export default function AiaG702G703Modal({
           <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
             AIA G702-G703
           </h2>
-          {wide ? null : (
+          {wide || view === 'history' ? null : (
             <div role="group" aria-label="Form or preview" style={{ display: 'flex' }}>
               {(['form', 'preview'] as const).map((view, i) => (
                 <button
@@ -635,7 +651,12 @@ export default function AiaG702G703Modal({
         </div>
 
         <div style={wide ? { display: 'flex', flex: 1, minHeight: 0 } : undefined}>
-        {showPaper ? (
+        {view === 'history' ? (
+          <div data-testid="aia-history-pane" style={{ padding: '1rem 1.25rem', ...(wide ? { flex: 1, minHeight: 0, overflow: 'auto' } : {}) }}>
+            <AiaG702G703History history={history} nextNumber={nextApplicationNumber(saved)} onOpen={openFromHistory} onNew={newFromHistory} />
+          </div>
+        ) : null}
+        {view === 'form' && showPaper ? (
           <div
             data-testid="aia-preview-pane"
             style={{
@@ -671,6 +692,7 @@ export default function AiaG702G703Modal({
             </div>
           </div>
         ) : null}
+        {view === 'form' ? (
         <div
           style={
             wide
@@ -693,41 +715,18 @@ export default function AiaG702G703Modal({
           }}
         >
           <div data-testid="aia-applications" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.9rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
-              APPLICATIONS ON THIS JOB
-            </span>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
-              {saved.map((app) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              {saved.length > 0 ? (
                 <button
-                  key={app.id}
                   type="button"
-                  aria-pressed={app.id === openId}
-                  onClick={() => void showApplication(app)}
-                  style={applicationChipStyle(app.id === openId)}
-                  title={carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, saved) ? 'Its previous amounts no longer match the application before it.' : undefined}
+                  onClick={() => void backToHistory()}
+                  style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, padding: '0.25rem 0.6rem', fontSize: '0.8125rem', cursor: 'pointer' }}
                 >
-                  {carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, saved) ? '⚠ ' : ''}
-                  {payApplicationLabel(app)}
+                  ← Pay applications
                 </button>
-              ))}
-              <button
-                type="button"
-                aria-pressed={openId == null}
-                onClick={() => void showApplication(null)}
-                style={applicationChipStyle(openId == null)}
-              >
-                New · {nextApplicationNumber(saved)}
-              </button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
-              <span style={{ flex: 1 }}>
-                {openApp
-                  ? `Application ${openApp.applicationNumber} is saved on the job. You can change it and save it again.`
-                  : saved.length > 0
-                    ? `A new application. It starts from application ${saved[saved.length - 1]!.applicationNumber}: that work is now previous work.`
-                    : lineSource === 'bid'
-                      ? `Nothing is saved on this job yet. The lines come from the bid's schedule of values. Save keeps this application here.`
-                      : 'Nothing is saved on this job yet. Save keeps this application here, and the next one starts from it.'}
+              ) : null}
+              <span style={{ flex: 1, minWidth: 0, fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+                {openApp ? `Application ${openApp.applicationNumber}${openApp.name ? ` · ${openApp.name}` : ''}` : `New application ${nextApplicationNumber(saved)}`}
               </span>
               {openApp ? (
                 <button
@@ -739,6 +738,15 @@ export default function AiaG702G703Modal({
                 </button>
               ) : null}
             </div>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-600)' }}>
+              {openApp
+                ? `${payApplicationSavedWords(openApp, payApplicationDay)}${payApplicationSavedWords(openApp, payApplicationDay) ? '. ' : ''}You can change it and save it again.`
+                : saved.length > 0
+                  ? `It starts from application ${saved[saved.length - 1]!.applicationNumber}: that work is now previous work.`
+                  : lineSource === 'bid'
+                    ? `Nothing is saved on this job yet. The lines come from the bid's schedule of values. Save keeps this application here.`
+                    : 'Nothing is saved on this job yet. Save keeps this application here, and the next one starts from it.'}
+            </span>
           </div>
           {mismatch ? (
             <div
@@ -1296,6 +1304,7 @@ export default function AiaG702G703Modal({
           </button>
         </div>
         </div>
+        ) : null}
         </div>
       </div>
     </div>
