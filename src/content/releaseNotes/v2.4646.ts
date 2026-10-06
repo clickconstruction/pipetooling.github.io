@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4621',
+  version: 'v2.4646',
   date: '2026-10-05',
   title: 'Legal portal: the firm reads a plain sentence when something breaks',
   kind: 'fix',
