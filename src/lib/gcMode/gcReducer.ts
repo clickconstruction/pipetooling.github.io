@@ -17,10 +17,12 @@ import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
 import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
 import { crewCountAllowed, crewCountLogWords, crewCountProblem, crewCountsNow } from './gcCrewCounts'
+import { placeChanges, placesLogWords, withPlaces } from './gcPlaces'
 import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { recoveryMove, recoveryOffers } from './gcRecovery'
 import { WHAT_IF_NO_WHY, keepWhatIf, whatIfCopy, whatIfTried } from './gcWhatIf'
+import { linePctOf, movedParts, splitParts, withPartReport } from './gcSplitBars'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
@@ -415,6 +417,8 @@ function reduce(state: GcState, action: GcAction): GcState {
       const partner = awardedPartner(state, pkg)
       const line = pkg?.sow?.sov.find((l) => l.id === action.sovId)
       if (!pkg || !partner || !line) return state
+      // A split line is reported a part at a time (G-39), so the line and its parts cannot disagree.
+      if (state.projects.find((p) => p.id === action.projectId)?.schedule?.activities.find((a) => a.lineId === line.id)?.parts) return state
       const pct = Math.max(line.pctBilled, Math.min(100, action.pct))
       // The report sets the line's real start and finish on the schedule (the Gantt, G-55; the owner's OK 2026-10-06).
       const next = mapProject(state, action.projectId, (p) => {
@@ -1092,6 +1096,8 @@ function reduce(state: GcState, action: GcAction): GcState {
       const self = pkg?.selfPerform
       const line = pkg?.scope.find((l) => l.id === action.lineId)
       if (!pkg || !self || !line) return state
+      // A split stage is reported a part at a time (G-39).
+      if (state.projects.find((p) => p.id === action.projectId)?.schedule?.activities.find((a) => a.lineId === line.id)?.parts) return state
       const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
       if ((self.pctByLine?.[line.id] ?? 0) === pct && self.pctByLine) return state
       const pctByLine = { ...Object.fromEntries(pkg.scope.map((l) => [l.id, self.pctByLine?.[l.id] ?? 0])), [line.id]: pct }
@@ -2820,11 +2826,11 @@ function reduce(state: GcState, action: GcAction): GcState {
       const copy = project?.whatIf
       const inner = action.action
       if (!project || !copy) return state
-      if (inner.type !== 'setScheduleActivity' && inner.type !== 'pullScheduleEarlier' && inner.type !== 'undoScheduleMove' && inner.type !== 'redoScheduleMove' && inner.type !== 'recoverScheduleDays') return state
+      if (inner.type !== 'setScheduleActivity' && inner.type !== 'pullScheduleEarlier' && inner.type !== 'undoScheduleMove' && inner.type !== 'redoScheduleMove' && inner.type !== 'recoverScheduleDays' && inner.type !== 'moveActivityPart') return state
       if (inner.projectId !== project.id) return state
       // Why it moved is optional in the copy: a move with none keeps a stand-in, marked, so the copy's history has it.
-      const noWhy = inner.type === 'setScheduleActivity' && !inner.why
-      const run: GcAction = inner.type === 'setScheduleActivity' && !inner.why ? { ...inner, why: { ...WHAT_IF_NO_WHY, by: action.by } } : inner
+      const noWhy = (inner.type === 'setScheduleActivity' || inner.type === 'moveActivityPart') && !inner.why
+      const run: GcAction = (inner.type === 'setScheduleActivity' || inner.type === 'moveActivityPart') && !inner.why ? { ...inner, why: { ...WHAT_IF_NO_WHY, by: action.by } } : inner
       const tried = mapProject(state, project.id, (p) => ({ ...p, schedule: copy.schedule }))
       const out = gcReducer(tried, run)
       const schedule = out === tried ? null : out.projects.find((p) => p.id === project.id)?.schedule
@@ -2861,6 +2867,157 @@ function reduce(state: GcState, action: GcAction): GcState {
         }),
         'office',
         `${action.by} threw away a what-if on ${project.name}: ${tried} ${tried === 1 ? 'move' : 'moves'} tried.`,
+      )
+    }
+
+    case 'splitActivity': {
+      // A line split into parts (G-39): each with a name and dates, starting from the line's percent, so the line keeps it.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      const pkg = activity ? project?.packages.find((k) => k.id === activity.packageId) : undefined
+      if (!project || !schedule || !activity || !pkg || activity.inspection || activity.added || activity.parts) return state
+      const self = pkg.selfPerform
+      const linePct = self ? (self.pctByLine?.[activity.lineId] ?? self.pctDone ?? 0) : (pkg.sow?.sov.find((l) => l.id === activity.lineId)?.pctReported ?? 0)
+      const made = splitParts(activity, action.parts, linePct)
+      if ('problem' in made) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, activities: schedule.activities.map((a) => (a.lineId === activity.lineId ? { ...a, parts: made.parts } : a)) } })),
+        'office',
+        `${action.by} split ${moveActivityName(project, activity.lineId)} on ${project.name} into ${made.parts.length} parts: ${made.parts.map((x) => x.name).join(', ')}.`,
+      )
+    }
+
+    case 'joinActivity': {
+      // A split line made one bar again (G-39): the parts go, its percent and dates stay.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      if (!project || !schedule || !activity?.parts) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({
+          ...p,
+          schedule: {
+            ...schedule,
+            activities: schedule.activities.map((a) => {
+              if (a.lineId !== activity.lineId) return a
+              const { parts: _parts, ...one } = a
+              return one
+            }),
+          },
+        })),
+        'office',
+        `${action.by} made ${moveActivityName(project, activity.lineId)} on ${project.name} one bar again.`,
+      )
+    }
+
+    case 'moveActivityPart': {
+      // A part of a split line moved (G-39): the line's span becomes its parts' span and goes through
+      // setScheduleActivity, so the pushes, the record and the plan at Start are every move's. The move
+      // then keeps the parts' days before and after, for Undo and Redo.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      const activity = schedule?.activities.find((a) => a.lineId === action.lineId)
+      const moved = activity?.parts ? movedParts(activity, action.partId, action.start, action.finish) : null
+      if (!project || !schedule || !activity?.parts || !moved) return state
+      const why = action.why
+      if (why && moveWhyProblem(why.reason, why.note)) return state
+      const offsets = (list: { id: string; from: number; days: number }[]) => list.map((x) => ({ id: x.id, from: x.from, days: x.days }))
+      const was = offsets(activity.parts)
+      const now = offsets(moved.parts)
+      if (JSON.stringify(was) === JSON.stringify(now)) return state
+      let next: GcState
+      if (moved.start !== activity.start || moved.finish !== activity.finish) {
+        next = gcReducer(state, { type: 'setScheduleActivity', projectId: project.id, lineId: activity.lineId, start: moved.start, finish: moved.finish, after: activity.after, ...(why ? { why } : {}) })
+        if (next === state) return state
+      } else {
+        // The line's span holds: only the part moved. A move all the same, with its reason, the plan at Start kept.
+        const kept = withBaselineKept(project, schedule)
+        const plan = why ? planMove(project, activity.lineId, activity.start, activity.finish) : null
+        const move = why && plan ? moveRecord(schedule, activity.lineId, plan, why, state.today) : null
+        next = logged(
+          mapProject(state, project.id, (p) => ({ ...p, schedule: { ...kept, ...(move ? { moves: [move, ...(schedule.moves ?? [])] } : {}) } })),
+          'office',
+          `${moveActivityName(project, activity.lineId)}, ${activity.parts.find((x) => x.id === action.partId)?.name ?? 'a part'} now runs ${weekdayDate(action.start)} to ${weekdayDate(action.finish)}.${why ? ` ${why.by}: ${why.note.trim()}` : ''}`,
+        )
+      }
+      return mapProject(next, project.id, (p) => {
+        const sch = p.schedule
+        if (!sch) return p
+        return {
+          ...p,
+          schedule: {
+            ...sch,
+            activities: sch.activities.map((a) => (a.lineId === activity.lineId ? { ...a, parts: moved.parts } : a)),
+            ...(why ? { moves: (sch.moves ?? []).map((m, i) => (i === 0 ? { ...m, parts: { id: action.partId, was, now } } : m)) } : {}),
+          },
+        }
+      })
+    }
+
+    case 'tradeReportPart': {
+      // A trade reports one part of a split line (G-39): the part's percent and real days; the line's percent follows, never below what is billed.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const partner = awardedPartner(state, pkg)
+      const line = pkg?.sow?.sov.find((l) => l.id === action.sovId)
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const activity = project?.schedule?.activities.find((a) => a.lineId === action.sovId)
+      const part = activity?.parts?.find((x) => x.id === action.partId)
+      if (!pkg || !partner || !line || !project?.schedule || !activity || !part) return state
+      const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
+      if (pct === part.pct) return state
+      const reported = withPartReport(activity, part.id, pct, state.today)
+      const linePct = linePctOf(reported.parts ?? [])
+      if (linePct < line.pctBilled) return state
+      const kept = project.stage === 'building' ? reported : { ...activity, parts: reported.parts ?? [] }
+      const next = mapProject(state, action.projectId, (p) => {
+        const sch = p.schedule
+        const withLine = sch ? { ...p, schedule: { ...sch, activities: sch.activities.map((a) => (a.lineId === activity.lineId ? kept : a)) } } : p
+        return mapPackage(withLine, pkg.id, (k) => mapSow(k, (sw) => ({ ...sw, sov: sw.sov.map((l) => (l.id === line.id ? { ...l, pctReported: linePct } : l)) })))
+      })
+      return logged(next, 'trade', `${partner.company} reported ${line.label}, ${part.name} at ${pct}%. ${line.label} is ${linePct}%.`)
+    }
+
+    case 'selfReportPart': {
+      // Our own crew reports one part of a split stage (G-39): the stage's percent follows, and the whole trade's from the stages.
+      const { pkg } = find(state, action.projectId, action.packageId)
+      const self = pkg?.selfPerform
+      const line = pkg?.scope.find((l) => l.id === action.lineId)
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const activity = project?.schedule?.activities.find((a) => a.lineId === action.lineId)
+      const part = activity?.parts?.find((x) => x.id === action.partId)
+      if (!pkg || !self || !line || !project?.schedule || !activity || !part) return state
+      const pct = Math.max(0, Math.min(100, Math.round(action.pct)))
+      if (pct === part.pct) return state
+      const reported = withPartReport(activity, part.id, pct, state.today)
+      const linePct = linePctOf(reported.parts ?? [])
+      const kept = project.stage === 'building' ? reported : { ...activity, parts: reported.parts ?? [] }
+      const pctByLine = { ...Object.fromEntries(pkg.scope.map((l) => [l.id, self.pctByLine?.[l.id] ?? 0])), [line.id]: linePct }
+      const pctDone = Math.round(crewPctFromStages(pkg, pctByLine))
+      const next = mapProject(state, action.projectId, (p) => {
+        const sch = p.schedule
+        const withLine = sch ? { ...p, schedule: { ...sch, activities: sch.activities.map((a) => (a.lineId === activity.lineId ? kept : a)) } } : p
+        return mapPackage(withLine, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctByLine, pctDone } } : k))
+      })
+      return logged(next, 'office', `Our own crew reported ${line.label}, ${part.name} at ${pct}%. ${line.label} is ${linePct}%, the whole trade ${pctDone}%.`)
+    }
+
+    case 'setActivityPlaces': {
+      // Where bars' work is (G-83): the office's word on each bar, and on an open what-if copy's bar
+      // too, since a place is a fact about the work, not a move. Refused whole when any of it is.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule) return state
+      const changes = placeChanges(schedule.activities, action.places)
+      if (!changes || changes.length === 0) return state
+      return logged(
+        mapProject(state, project.id, (p) => ({
+          ...p,
+          schedule: { ...schedule, activities: withPlaces(schedule.activities, changes) },
+          ...(p.whatIf ? { whatIf: { ...p.whatIf, schedule: { ...p.whatIf.schedule, activities: withPlaces(p.whatIf.schedule.activities, changes) } } } : {}),
+        })),
+        'office',
+        placesLogWords(project, changes),
       )
     }
   }

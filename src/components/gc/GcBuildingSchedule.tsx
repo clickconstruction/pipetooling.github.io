@@ -44,6 +44,10 @@ import { GcLateNotices } from './GcLateNotices'
 import { GcLogVsChart } from './GcLogVsChart'
 import { GcPullBox, GcPullLine, GcPullWindow } from './GcPullEarlier'
 import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWhatIf'
+import { GcPartsCard } from './GcSplitBars'
+import { partMoveOf } from '../../lib/gcMode/gcSplitBars'
+import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
+import { crowdedWeeks } from '../../lib/gcMode/gcPlaces'
 import { whatIfGhosts, whatIfProject } from '../../lib/gcMode/gcWhatIf'
 import { planPull, pullGhosts } from '../../lib/gcMode/gcPullEarlier'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
@@ -133,6 +137,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const logNotes = useMemo(() => logChartNotes(logGaps), [logGaps])
   // A trade at work with its insurance run out (G-138): a red note on its bars under way, no stripes.
   const uninsured = useMemo(() => uninsuredNotes(state, project), [state, project])
+  // Too many trades in one place (G-83): each week a place has too many, from the places kept, on the schedule shown (a what-if copy's dates in a copy).
+  const crowded = useMemo(() => crowdedWeeks(state, project), [state, project])
   // The card under the chart opens a bar in the editor above it, and brings the editor into view.
   const openFromCard = (lineId: string) => {
     setPicked(lineId)
@@ -281,6 +287,7 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
                 <InspectionCheck project={project} activity={pickedRow.activity} today={state.today} dispatch={dispatch} hint="Our superintendent records it. A pass meets the milestone with the same name." />
               ) : undefined
             }
+            place={inCopy || !pickedRow.pkg ? undefined : <GcPlaceLine project={project} lineId={pickedRow.activity.lineId} trade={pickedRow.trade} label={pickedRow.label} dispatch={dispatch} />}
             onClose={() => setPicked(null)}
             tryIt={inCopy}
           />
@@ -289,6 +296,11 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
 
       {/* The opened activity, when it finished early, can come in, or keeps its dates behind an early finish (G-37). */}
       {pickedRow && offer && <GcPullBox offer={offer} lineId={pickedRow.activity.lineId} onPull={() => setPulling(true)} />}
+
+      {/* The opened line in parts (G-39): its parts with their dates and shares, or the way to split it. */}
+      {pickedRow && !pickedRow.activity.inspection && !pickedRow.activity.added && (
+        <GcPartsCard key={`parts:${pickedRow.activity.lineId}`} project={project} activity={pickedRow.activity} pct={pickedRow.actual} by={me} dispatch={dispatch} onMovePart={setPending} tryIt={inCopy} />
+      )}
 
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {inCopy ? (
@@ -320,8 +332,14 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           picked={picked}
           onPick={setPicked}
           onMove={(lineId, start, finish) => setPending({ lineId, start, finish, after: schedule.activities.find((a) => a.lineId === lineId)?.after ?? [] })}
+          onMovePart={(lineId, partId, start, finish) => {
+            const a = schedule.activities.find((x) => x.lineId === lineId)
+            const move = a ? partMoveOf(a, partId, start, finish) : null
+            if (move) setPending(move)
+          }}
           planOf={planOf}
           peopleOf={peopleOf}
+          crowded={crowded}
           onLink={(from, to) => {
             const a = schedule.activities.find((x) => x.lineId === to)
             if (a && !a.after.includes(from)) setPending({ lineId: to, start: a.start, finish: a.finish, after: [...a.after, from] })
@@ -361,7 +379,7 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
 
       {pulling && <GcPullWindow state={state} project={project} dispatch={dispatch} onClose={() => setPulling(false)} />}
 
-      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} tryIt={inCopy} />}
+      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}:${pending.part ? `${pending.part.id}:${pending.part.start}:${pending.part.finish}` : ''}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} tryIt={inCopy} />}
 
       {keeping && <GcWhatIfKeep state={state} project={realProject} dispatch={realDispatch} onClose={() => setKeeping(false)} onKept={() => setCopyShown(false)} />}
 
@@ -385,6 +403,9 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           />
 
           <WaitsCard state={state} project={project} rows={waits} items={m.items} dispatch={dispatch} />
+
+          {/* Where the work is (G-83): a place on each bar, kept by the office, so the chart can flag too many trades in one place. */}
+          <GcPlacesCard state={state} project={project} crowded={crowded} dispatch={dispatch} />
 
           <AddActivityCard project={project} items={m.items} today={state.today} by={me} dispatch={dispatch} />
 
@@ -469,6 +490,7 @@ function ActivityEditor({
   today,
   onActual,
   ready,
+  place,
   onClose,
   tryIt,
 }: {
@@ -486,6 +508,8 @@ function ActivityEditor({
   onActual?: (actualStart: string | null, actualFinish: string | null) => void
   /** Its trade is not ready to start it (G-77): what is not in, first under its name. */
   ready?: ReactNode
+  /** Where its work is (G-83): the place line. Unset: none, as for an inspection or in a what-if copy. */
+  place?: ReactNode
   onClose: () => void
   /** In a what-if copy (G-81): the change is tried, and a reason is optional. */
   tryIt?: boolean
@@ -558,6 +582,7 @@ function ActivityEditor({
           </label>
           {mustFinishBy && finish > mustFinishBy && <span style={{ color: 'var(--text-amber-800)' }}>It finishes {daysBetween(mustFinishBy, finish)} days past that.</span>}
         </div>
+        {place}
         <div>
           <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>It waits on</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.15rem 0.75rem' }}>

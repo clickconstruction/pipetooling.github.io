@@ -17,6 +17,7 @@ import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { planPull, pullCountWords, type PullOffer } from '../../lib/gcMode/gcPullEarlier'
 import { Btn, Chip, input } from './gcUi'
 import { GcPullBox, GcPullWindow } from './GcPullEarlier'
+import { partFacts } from '../../lib/gcMode/gcSplitBars'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
 function useMeName(): string | null {
@@ -313,6 +314,14 @@ export function GcScheduleWalk({ state, project, holds, dispatch, onClose }: { s
                   <li key={f}>{f}</li>
                 ))}
               </ul>
+              {/* A split bar's parts (G-39): a line each, under its facts. The question stays the line's finish. */}
+              {(activity.parts ?? []).length > 0 && (
+                <ul data-gc-walk-parts style={{ margin: '-0.3rem 0 0', paddingLeft: '2.1rem', display: 'grid', gap: '0.15rem', color: 'var(--text-600)', fontSize: '0.85rem' }}>
+                  {partFacts(activity, state.today).map((f) => (
+                    <li key={f}>{f}</li>
+                  ))}
+                </ul>
+              )}
               {/* The real days, beside the planned ones (G-55): the walk is where someone knows. */}
               {!activity.inspection && (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
