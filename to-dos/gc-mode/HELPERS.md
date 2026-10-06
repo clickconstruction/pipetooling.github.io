@@ -83,6 +83,15 @@ golden snapshots (the counts) goes last, by one helper, with the owner's OK to r
 
 ## Status
 
+Round three landed the same day, 2026-10-06, every *Later* row and every finding the helpers raised:
+G-138, G-140, G-139, G-45, G-82, G-142, G-81, G-136, G-84 (and G-144, the strip on the paper),
+G-57, G-137 (with two of theirs as a line's parts), G-83 (with the place in the exported file and
+back in), G-141, G-44, G-39 and the counts on the board row, Follow up and Needs you, the one
+golden re-pin of the day (59 snapshots, every moved reading named in its commit). The GC suite
+stands at 139 files and 1650 tests. Rows raised for the owner and not built: G-143 (a trade's
+site-finish lines after the dry-in gate, not its trims), G-145 (dates to meet only, onto a running
+job), G-146 (the call list's bar reasons counted on the row and the badge).
+
 Rounds one and two landed on `spike/gc-mode` the same day, 2026-10-06, each row reviewed and merged by
 the lead with the GC tests green and the golden test unmoved: G-77, G-117, G-115, G-60, G-21, G-97,
 G-37, G-118, G-98 and G-08, then a fit-and-finish pass (the late-finish lines and the pull's ghost on
