@@ -42,6 +42,7 @@ import { GcCrowdedLane } from './GcPlaces'
 import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gcMode/gcPlaces'
 import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
 import { GcGanttPrint } from './GcGanttPrint'
+import { GcScheduleExport } from './GcScheduleExport'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 
 const HEAD_H = 46
@@ -231,6 +232,8 @@ export function GcGantt({
   const [linking, setLinking] = useState<{ from: string; x: number; y: number; over: string | null } | null>(null)
   // Print or PDF (G-21): the window, fed the chart as the person has it.
   const [printing, setPrinting] = useState(false)
+  // Export (G-136): its own window, fed what Print or PDF is fed; a file is always the whole schedule.
+  const [exporting, setExporting] = useState(false)
   // A phone gives the names less room so a few weeks of bars still show beside them.
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   const labelW = phone ? 168 : 360
@@ -337,9 +340,11 @@ export function GcGantt({
             noteOf: (bar: GanttBar) => barNote(bar, logNotes?.get(bar.id), uninsured?.get(bar.id)),
             ...(lateSaid ? { lateSaid } : {}),
             ...(earlier ? { earlier } : {}),
+            // People on site per week under the last page's rows while the strip is on (G-144): our team's copy draws it.
+            ...(showPeople && peopleOf ? { peopleOf } : {}),
           }
         : null,
-    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier],
+    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier, showPeople, peopleOf],
   )
   const anyFilter = Object.values(filters).some(Boolean)
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
@@ -645,6 +650,17 @@ export function GcGantt({
               title={shown.length === 0 ? 'Nothing passes these filters, so there is nothing to print.' : 'Opens the chart as you see it on landscape pages, to print or save as a PDF.'}
             >
               Print or PDF
+            </button>
+          )}
+          {print && (
+            <button
+              type="button"
+              style={{ ...quietBtn, ...(all.length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) }}
+              disabled={all.length === 0}
+              onClick={() => setExporting(true)}
+              title="Saves the whole schedule as a spreadsheet, or as the file Microsoft Project and Primavera open. The filters do not change it."
+            >
+              Export
             </button>
           )}
           {toolbarExtra}
@@ -955,6 +971,7 @@ export function GcGantt({
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} spare={showSpare} people={showPeople && Boolean(peopleOf)} crowded={Boolean(crowded && crowded.length > 0)} />}
       {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} said={lateSaid?.get(hovered.id)} log={logNotes?.get(hovered.id)} uninsured={uninsured?.get(hovered.id)} soon={earlier?.get(hovered.id) ?? null} realSpan={real?.get(hovered.id) ?? null} />}
       {printing && printInput && <GcGanttPrint input={printInput} onClose={() => setPrinting(false)} />}
+      {exporting && printInput && <GcScheduleExport input={printInput} onClose={() => setExporting(false)} />}
     </div>
   )
 }

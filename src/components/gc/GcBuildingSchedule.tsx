@@ -74,6 +74,7 @@ import { barCaller, callList, callListFollowPeople, callSheetId } from '../../li
 import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { lateFinish, type LateFinish } from '../../lib/gcMode/gcLateFinish'
+import { finishOutlook, type FinishOutlook } from '../../lib/gcMode/gcFinishOutlook'
 import { recoveryOffers, sideBySideWords, type RecoveryOffer } from '../../lib/gcMode/gcRecovery'
 import { GcDaysBack } from './GcRecovery'
 
@@ -112,6 +113,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const late = useMemo(() => lateFinish(state, project), [state, project])
   // How to get days back (G-82): on a job past its contract, the offers on the red chain.
   const offers = useMemo(() => (project.stage === 'building' && (late.late ?? 0) > 0 ? recoveryOffers(state, project) : []), [state, project, late])
+  // The finish with weather and crews (G-57): a second line under the measure, ours only.
+  const outlook = useMemo(() => finishOutlook(state, project), [state, project])
   const [picked, setPicked] = useState<string | null>(null)
   // What holds each bar (gcChartHolds.ts): RFIs, submittals, waits, and a trade's papers not in (G-77).
   const holds = useMemo(() => chartHolds(state, project), [state, project])
@@ -204,7 +207,7 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
       <ScheduleWhy />
 
       {building ? (
-        <Measures m={m} late={late} {...(offers[0] ? { best: offers[0] } : {})} />
+        <Measures m={m} late={late} {...(offers[0] ? { best: offers[0] } : {})} {...(outlook ? { outlook } : {})} />
       ) : (
         <Card>
           <strong>Drawing the schedule.</strong>{' '}
@@ -1215,7 +1218,7 @@ function TradePick({ project, value, onChange }: { project: GcProject; value: st
 // The measures
 // ---------------------------------------------------------------------------------------------
 
-function Measures({ m, late, best }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer }) {
+function Measures({ m, late, best, outlook }: { m: ReturnType<typeof scheduleMeasures>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook }) {
   const behind = m.work.daysBehind
   const nextMilestone = m.milestones.find((r) => r.state === 'due')
   const lateOnes = m.milestones.filter((r) => r.state === 'late' || r.state === 'missed')
@@ -1250,7 +1253,7 @@ function Measures({ m, late, best }: { m: ReturnType<typeof scheduleMeasures>; l
       >
         {rel.done} of {rel.of} verified marks were done. {rel.waiting > 0 ? `${rel.waiting} ${rel.waiting === 1 ? 'mark waits' : 'marks wait'} on our superintendent.` : ''}
       </Measure>
-      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} />}
+      {m.finish && <FinishMeasure finish={m.finish} contract={m.contract} {...(late ? { late } : {})} {...(best ? { best } : {})} {...(outlook ? { outlook } : {})} />}
     </div>
   )
 }
@@ -1265,7 +1268,7 @@ function finishSentence(finish: ProjectedFinish, contract: ReturnType<typeof sub
   return `${finish.why} ${contract ? `The contract says substantial completion by ${shortDate(contract.on)}${contract.days > 0 ? `, with ${days(contract.days)} by change order` : ''}.` : 'No substantial completion milestone to measure against.'}`
 }
 
-function FinishMeasure({ finish, contract, late, best }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn>; late?: LateFinish; best?: RecoveryOffer }) {
+function FinishMeasure({ finish, contract, late, best, outlook }: { finish: ProjectedFinish; contract: ReturnType<typeof substantialCompletionOn>; late?: LateFinish; best?: RecoveryOffer; outlook?: FinishOutlook }) {
   const days = (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`
   // The days past come from the one call Bill the customer and the customer's words read too (G-98).
   const past = late ? late.risk.past : contract ? daysBetween(contract.on, finish.on) : null
@@ -1295,6 +1298,14 @@ function FinishMeasure({ finish, contract, late, best }: { finish: ProjectedFini
       {late && late.words.length > 0 && best && (
         <span data-tour="gc-days-back-worth" style={{ display: 'block', marginTop: '0.15rem', color: best.lateAfter === 0 ? 'var(--text-green-800)' : 'var(--text-base)' }}>
           Getting {best.words.worth}
+        </span>
+      )}
+      {/* The finish with weather and crews (G-57): its own ruled block, each rule named. Ours only: not on the paper, the portal or the letter until the owner says which line the customer hears. */}
+      {outlook && (
+        <span data-tour="gc-finish-outlook" style={{ display: 'grid', gap: '0.15rem', marginTop: '0.4rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)', color: 'var(--text-base)' }}>
+          <span style={{ fontWeight: 600, color: outlook.days > 0 ? 'var(--text-amber-800)' : 'var(--text-base)' }}>{outlook.words.line}</span>
+          <span>{outlook.words.weather}</span>
+          <span>{outlook.words.crews}</span>
         </span>
       )}
     </Measure>
