@@ -541,6 +541,56 @@ What the second look changed: the List is not only for phones. It is the same ro
 reader gets and the quickest read of "what is this stage doing", so it is a view anyone can
 switch to, and the phone only opens on it.
 
+## Phase 2, pulling work earlier, as built (2026-10-06)
+
+G-37, built by Helper 1 from `mockups/G-37.md` with the lead's go. `gcPullEarlier.ts` (tested, out of
+the barrel), `GcPullEarlier.tsx`, and a door each in the walk, the Schedule tab and the chart. The
+owner's call: on a press, never by itself, so no report or finish ever pulls anything on its own.
+
+- **What finished early**: an activity whose finish day is before its planned finish. That day is its
+  recorded finish (the walk's *It finished today*, the editor, a trade's 100% report), an inspection's
+  pass, or an added activity's done day. A line reported at 100% with no day recorded counts as today.
+- **What comes in**: the work right behind it, starting within 2 days after it finishes
+  (`RIGHT_BEHIND_DAYS`) plus any gap on the wait. Each comes in by the days given back and never
+  more, then what is right behind those. Never before tomorrow (`PULL_SOONEST_DAYS`), its *Not
+  before* day, or the day after an open delivery, decision, permit or utility on it is expected.
+- **What keeps its dates, and says why**: work started or done; work held by a submittal, an RFI or
+  a late wait; an inspection the city sees again; work drawn with more room; work still waiting on
+  something else; and anything the office unticks.
+- **One offer per job.** On Fair Oaks D neither Ductwork nor Top out alone moves the rough-in
+  inspection, which waits on both. Finished early together, they bring it in 7 days.
+- **The press**, *Pull the work earlier*: what finished early, each activity that comes in with a
+  tick, what keeps its dates and why, the finish, then *Finished early* preset as the reason (a new
+  reason) and the sentence filled in. It saves one move (`pullScheduleEarlier`, `ScheduleMove.pull`).
+  Undo, Redo and Tell the trades read it like any move, and Tell the trades never tells the company
+  that finished.
+- **Where it shows**: a green line under the walk line, with the press, or with what holds the days
+  when the next work is held (TPO membrane's followers wait on submittal 07 62 00-01 and RFI-003).
+  The walk lists *Work that finished early* above the week, and opens a box right after *It finished
+  today*. *Keep the dates* is kept on the walk (`ScheduleWalk.keptEarly`) and ends the offer. A box
+  under the opened activity. A green ghost on the chart at the sooner days, and *Could start* on the
+  hover card.
+- **After the press**: the history reads "Plumbing · Top out and 1 more finished early. Rough-in
+  inspection was pulled earlier with them." The customer reads "Rough-in is 7 days sooner than
+  planned. The finish holds." Days lost has its own line, *Finished early*, with days back, never
+  netted against a trade's door (the lead's call).
+- Tests: `gcPullEarlier.test.ts` (28) and `GcPullEarlier.render.test.tsx` (7). The golden test did
+  not move: no fixture change and no new step.
+
+What the second look changed:
+
+- **Only the days given back.** "As early as the waits allow" would bring Fair Oaks D's Plumbing trim
+  in from Nov 30 to Oct 14, through 47 days of room drawn by hand.
+- **One offer per job, not one per finish**, since two finishes can each be stopped by the other.
+- **Keep the dates is its own field on the walk.** Counted as kept as drawn, a *Yes, keep it* pressed
+  after *It finished today* would have ended the offer without anyone deciding.
+- **Held work is named, with no press.** An early finish wasted on a late submittal is what to chase.
+
+Not done, on purpose (the lead's call, out of this round): Needs you on the dashboard; a walkthrough
+stop, since the made-up data has no early finish to anchor one on; and a pulled trade reading "Can
+you start sooner?" instead of "Your dates moved", with its Spanish list. The defaults, my own with the
+lead's OK: 2 days for right behind, and tomorrow as the soonest a pull can start.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

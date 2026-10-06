@@ -135,6 +135,7 @@ export function GcGantt({
   tails,
   waits,
   lost,
+  earlier,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -160,6 +161,8 @@ export function GcGantt({
   waits?: WaitRow[]
   /** Days the daily log says each bar lost to the weather (G-58), marked on the bar. */
   lost?: Map<string, LostDay[]>
+  /** Where each bar could start now that the work before it finished early (G-37): a green ghost behind it, and a line on its hover card. */
+  earlier?: Map<string, { start: string; finish: string; words: string }>
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -326,6 +329,8 @@ export function GcGantt({
     const tailW = b.coTail && !dragging ? b.coTail.days * px : 0
     const canDrag = Boolean(onMove) && b.status !== 'done'
     const ghost = pushedTo.get(b.id)
+    // The sooner days a pull would give it (G-37), drawn behind the bar so only the days it gains show.
+    const soon = dragging ? undefined : earlier?.get(b.id)
     const isPicked = picked === b.id
     const rowBg = isPicked ? 'var(--bg-blue-tint)' : 'var(--surface)'
     const said = `${b.item.label}, ${b.item.company}. ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}. ${b.statusWords}.`
@@ -357,6 +362,13 @@ export function GcGantt({
             <span
               title={actualWords(a) ?? ''}
               style={{ position: 'absolute', left: x(a.actualStart), width: Math.max(px, (daysBetween(a.actualStart, a.actualFinish ?? (today > a.actualStart ? today : a.actualStart)) + 1) * px), top: 3, height: 3, borderRadius: 2, background: C.green, opacity: a.actualFinish ? 1 : 0.6 }}
+            />
+          )}
+          {soon && (
+            <span
+              aria-hidden
+              title={`Could start ${soon.words}`}
+              style={{ position: 'absolute', left: x(soon.start), width: Math.max(px, (daysBetween(soon.start, soon.finish) + 1) * px), top: (ROW_H - BAR_H) / 2, height: BAR_H, borderRadius: 4, boxSizing: 'border-box', border: `1.5px dashed ${C.green}`, background: 'var(--bg-green-100)', opacity: 0.8 }}
             />
           )}
           {b.moved && b.status !== 'done' && (
@@ -805,7 +817,7 @@ export function GcGantt({
       )}
 
       {view === 'chart' && <GanttLegend building={building} canMove={Boolean(onMove)} />}
-      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} />}
+      {view === 'chart' && hovered && hover && !drag && <GanttHoverCard bar={hovered} all={all} at={hover} building={building} today={today} lost={lost?.get(hovered.id) ?? []} soon={earlier?.get(hovered.id) ?? null} />}
     </div>
   )
 }
@@ -842,7 +854,7 @@ function GanttLegend({ building, canMove }: { building: boolean; canMove: boolea
 }
 
 /** Everything about one bar, beside the pointer: its days, how far along, what it waits on and holds up. */
-function GanttHoverCard({ bar, all, at, building, today, lost }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[] }) {
+function GanttHoverCard({ bar, all, at, building, today, lost, soon }: { bar: GanttBar; all: GanttBar[]; at: { x: number; y: number }; building: boolean; today: string; lost: LostDay[]; soon: { words: string } | null }) {
   const a = bar.item.activity
   const n = ganttNeighbors(all, bar.id)
   const note = barNote(bar)
@@ -895,6 +907,7 @@ function GanttHoverCard({ bar, all, at, building, today, lost }: { bar: GanttBar
       {a.mustFinishBy && row('Must finish by', weekdayDate(a.mustFinishBy), a.finish > a.mustFinishBy ? 'var(--text-red-700)' : undefined)}
       {bar.coTail && row('Change order', bar.coTail.words, 'var(--text-violet-800)')}
       {lost.length > 0 && row('Lost', lostDaysWords(lost) ?? '', 'var(--text-amber-800)')}
+      {soon && row('Could start', soon.words, 'var(--text-green-800)')}
       {note && !bar.coTail && row('Note', note.words, note.color)}
       {n.waitsOn.length > 0 && row('Waits on', n.waitsOn.join(', '))}
       {n.holdsUp.length > 0 && row('Holds up', n.holdsUp.join(', '))}

@@ -927,6 +927,7 @@ describe('GC mode golden walk', () => {
     used.add('setScheduleBaseline') // played in gcBaseline.test.ts: it needs a signed change order's days on the schedule first
     used.add('redoScheduleMove') // played in gcScheduleMoves.test.ts: it needs a move undone first
     used.add('sendCustomerSchedule') // played in gcCustomerScheduleSend.test.ts
+    used.add('pullScheduleEarlier') // played in gcPullEarlier.test.ts: it needs work that finished early first
     const all: GcAction['type'][] = [
       'issueAddendum', 'tradeConfirmBid', 'setStartItem', 'setStartDate', 'startProject', 'invite', 'nudge',
       'logContact', 'tradePromise', 'tradeOpenPlans', 'tradeSubmitBid', 'tradeDecline', 'officeDecline', 'setPlug',
@@ -978,6 +979,7 @@ describe('GC mode golden walk', () => {
       'addScheduleActivity', 'setAddedActivityDone', 'removeScheduleActivity',
       'setActualDates', 'setScheduleBaseline', 'redoScheduleMove',
       'sendCustomerSchedule',
+      'pullScheduleEarlier',
     ]
     expect(all.filter((t) => !used.has(t))).toEqual([])
   })

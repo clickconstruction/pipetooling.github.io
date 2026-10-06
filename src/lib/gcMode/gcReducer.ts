@@ -16,6 +16,7 @@ import { nextWaitId, waitKind } from './gcScheduleWaits'
 import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
 import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
+import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
@@ -2424,8 +2425,10 @@ function reduce(state: GcState, action: GcAction): GcState {
       // The weekly walk is on the record: the chart was true on this day, as far as this person looked.
       const project = state.projects.find((p) => p.id === action.projectId)
       const schedule = project?.schedule
-      if (!project || !schedule || action.kept.length + action.moveIds.length === 0) return state
-      const walk = { id: `walk-${(schedule.walks ?? []).length + 1}`, on: state.today, by: action.by, kept: action.kept, moveIds: action.moveIds, skipped: action.skipped }
+      // An early finish answered with Keep the dates is a look too (G-37), kept apart from the bars kept as drawn.
+      const keptEarly = action.keptEarly ?? []
+      if (!project || !schedule || action.kept.length + action.moveIds.length + keptEarly.length === 0) return state
+      const walk = { id: `walk-${(schedule.walks ?? []).length + 1}`, on: state.today, by: action.by, kept: action.kept, moveIds: action.moveIds, skipped: action.skipped, ...(keptEarly.length > 0 ? { keptEarly } : {}) }
       return logged(
         mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, walks: [walk, ...(schedule.walks ?? [])] } })),
         'office',
@@ -2652,6 +2655,23 @@ function reduce(state: GcState, action: GcAction): GcState {
         mapProject(state, project.id, (p) => ({ ...p, schedule })),
         'office',
         `${action.by} undid a move: ${move ? moveActivityName(project, move.lineId) : 'an activity'} is back to ${move ? spanWords(move.from) : 'where it was'}.`,
+      )
+    }
+
+    case 'pullScheduleEarlier': {
+      // Work that finished early (G-37): its plan catches up and what was right behind it comes in,
+      // by the days it gave back. On the office's press, never by itself; saved as one move with why.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule || moveWhyProblem(action.why.reason, action.why.note)) return state
+      const offer = planPull(state, project, action.leaveOut)
+      const move = offer ? pullMove(schedule, offer, action.why, state.today) : null
+      if (!offer || !move) return state
+      const kept = withBaselineKept(project, schedule)
+      return logged(
+        mapProject(state, project.id, (p) => ({ ...p, schedule: { ...kept, activities: offer.activities, moves: [move, ...(schedule.moves ?? [])] } })),
+        'office',
+        `${action.why.by} pulled ${pullCountWords(offer)} earlier on ${project.name}. ${offer.note}`,
       )
     }
   }
