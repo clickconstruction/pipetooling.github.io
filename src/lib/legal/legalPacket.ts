@@ -357,6 +357,8 @@ export type LegalSaidEntry = {
   text: string
   by: string | null
   jobLabel: string | null
+  /** A promise the customer made themselves, on their statement page: no one in the office recorded it. */
+  fromCustomer?: boolean
   /** Shared under the default rule (on or after the first bill). */
   sharedByDefault: boolean
   /** What actually goes to counsel after overrides. */
@@ -781,6 +783,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       kind: 'promise',
       text: `Promised to pay by ${p.promisedYmd}${p.saidBy ? ` — ${p.saidBy}` : p.source === 'customer' ? ' — the customer, on their statement page' : ''}${p.channel ? ` (${p.channel})` : ''} · ${state}${p.note ? ` — ${p.note}` : ''}`,
       by: p.heardByName,
+      fromCustomer: p.source === 'customer',
       jobLabel: labelByJob.get(p.jobId) ?? null,
     })
   }
@@ -795,7 +798,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     })
   }
   for (const l of jobLines) {
-    if (l.collectionsNote) raw.push({ key: `note:${l.jobId}`, ymd: l.collectionsYmd ?? todayYmd, kind: 'note', text: `Moved to Collections — ${l.collectionsNote}`, by: l.collectionsBy, jobLabel: l.label })
+    if (l.collectionsNote) raw.push({ key: `note:${l.jobId}`, ymd: l.collectionsYmd ?? todayYmd, kind: 'note', text: `Sent to collections: ${l.collectionsNote}`, by: l.collectionsBy, jobLabel: l.label })
   }
   const timeline: LegalSaidEntry[] = raw
     .map((e) => {

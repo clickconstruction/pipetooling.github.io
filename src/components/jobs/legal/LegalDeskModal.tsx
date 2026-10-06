@@ -637,6 +637,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             </div>
             <FirmMatterView
               packet={packet}
+              companyName={companyName}
               matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [] }}
               tab={previewTab}
               onTab={setPreviewTab}

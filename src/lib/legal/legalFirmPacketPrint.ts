@@ -11,7 +11,8 @@
 import { formatLegalMoney, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
-import { legalEntryKindWords } from './legalAsks'
+import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmSaidKindWords, firmSaidRecordedBy, legalFirmStageWords } from './legalFirmWords'
+import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
 
@@ -32,20 +33,6 @@ function row(cells: string[], num: boolean[] = []): string {
 function table(head: string[], rows: string[], empty: string, foot?: string): string {
   if (rows.length === 0) return `<p class="muted">${esc(empty)}</p>`
   return `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody>${foot ? `<tfoot>${foot}</tfoot>` : ''}</table>`
-}
-
-/** The matter's stage in the firm's words — the office's labels (`legalStageLabel`) say *With the firm · new*. */
-export function firmStageWords(stage: string): string {
-  switch (stage) {
-    case 'referred': return 'referred · no step recorded yet'
-    case 'demand': return 'demand sent'
-    case 'suit': return 'suit filed'
-    case 'judgment': return 'judgment entered'
-    case 'settled': return 'settled'
-    case 'pulled': return 'pulled back by the office'
-    case 'written_down': return 'written down by the office'
-    default: return 'under review by the office'
-  }
 }
 
 /** A job's record for the claim, as facts: what is on file, and what is not. */
@@ -74,7 +61,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const fees = firmFeeEntries(opts.matter.entries)
   const feesTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
   const demand = a.totals.balance + feesTotal
-  const stage = firmStageWords(opts.matter.stage)
+  const stage = legalFirmStageWords(opts.matter.stage)
   const firstBilled = a.ledger.find((e) => e.kind === 'invoice' && e.ymd)?.ymd ?? null
 
   // A. Account
@@ -94,7 +81,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
     return row([`<b>${esc(g.jobLabel)}</b>`, esc(text)])
   })
   const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
-  const nextRows = packet.paper.timelines.map((t) => row([`<b>${esc(t.jobLabel)}</b>`, esc(t.timeline.next.words), esc(t.retainageWords || '—')]))
+  const nextRows = packet.paper.timelines.map((t) => row([`<b>${esc(t.jobLabel)}</b>`, esc(lienFirmNext(t.timeline.next).words), esc(t.retainageWords || '—')]))
   const demandRows = packet.paper.demandLetters.map((d) => row([`<b>${esc(d.jobLabel)}</b>`, esc(d.sentYmd ?? 'not sent'), esc(d.method), esc(d.tracking || '—'), `${esc(d.deadlineYmd ?? '—')}${d.deadlinePassed ? ' (passed)' : ''}`, formatLegalMoney(d.amount)], [false, false, false, false, false, true]))
   const gcName = a.payer.viaGc ? a.payer.name : 'the general contractor'
   const envelopeRows = packet.paper.envelopes.flatMap((e) => {
@@ -105,12 +92,12 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   })
 
   // C. Record of contact — D. Evidence — E. Fees and steps
-  const saidRows = shared.map((e) => row([`<span class="date">${esc(e.ymd)}</span>`, esc(e.kind === 'note' ? 'collections note' : e.kind), esc(e.jobLabel ?? 'account'), esc(e.text), esc(e.by ?? 'the customer')]))
+  const saidRows = shared.map((e) => row([`<span class="date">${esc(e.ymd)}</span>`, esc(firmSaidKindWords(e.kind)), esc(e.jobLabel ?? 'account'), esc(e.text), esc(firmSaidRecordedBy(e))]))
   const evidenceRows = packet.evidence.map((e) => row([`<b>${esc(e.jobLabel)}</b>`, `${e.reports} (${e.reportsWithGps} with GPS)`, `${e.sessions} (${e.approvedSessions} approved, ${e.sessionsWithGps} with GPS)`, `${e.hours}h`, e.firstWorkYmd ? `${esc(e.firstWorkYmd)} to ${esc(e.lastWorkYmd)}` : '—', String(e.threadNotes)], [false, false, false, true, false, true]))
-  const feeRows = fees.map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, e.kind === 'fee' ? 'Attorney fee' : 'Cost', esc(e.body), formatLegalMoney(Number(e.amount ?? 0))], [false, false, false, true]))
+  const feeRows = fees.map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmFeeKindWords(e.kind)), esc(e.body), formatLegalMoney(Number(e.amount ?? 0))], [false, false, false, true]))
   const feeFoot = `<tr><td colspan="3"><b>Fees and costs to date</b></td><td class="num"><b>${formatLegalMoney(feesTotal)}</b></td></tr>`
-  const matterRows = opts.matter.entries.filter((e) => !(e.kind === 'fee' || e.kind === 'cost')).map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(legalEntryKindWords(e)), esc(e.body), e.amount != null && e.kind !== 'question' && e.kind !== 'answer' ? formatLegalMoney(Number(e.amount)) : '', e.via_portal ? esc(opts.firm.name) : esc(opts.companyName)], [false, false, false, true, false]))
-  const officeStepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(s.kind), esc(s.text)]))
+  const matterRows = opts.matter.entries.filter((e) => !(e.kind === 'fee' || e.kind === 'cost')).map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmEntryKindWords(e)), esc(e.body), e.amount != null && e.kind !== 'question' && e.kind !== 'answer' ? formatLegalMoney(Number(e.amount)) : '', e.via_portal ? esc(opts.firm.name) : esc(opts.companyName)], [false, false, false, true, false]))
+  const officeStepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(firmHistoryKindWords(s.kind)), esc(s.text)]))
 
   const exhibitItems = packet.exhibits.map((x) => `<tr><td class="letter">${x.letter}</td><td>${esc(x.title)}</td><td class="num">${x.count}</td><td class="muted">${esc(exhibitHome(x.title))}</td></tr>`).join('')
   const p = opts.particulars
@@ -178,7 +165,7 @@ ${opts.matter.noteToFirm ? `<div class="note"><b>From the office:</b> ${esc(opts
 ${packet.exhibits.length ? `<table><thead><tr><th></th><th>Exhibit</th><th>Items</th><th>Where</th></tr></thead><tbody>${exhibitItems}</tbody></table>` : '<p class="muted">Nothing to letter yet.</p>'}
 <h2><span class="sec">A</span> Account</h2>
 <h3>Who owes</h3>
-${table(['Contact', 'Role', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.name), esc((c as { role?: string | null }).role ?? '—'), esc(c.email ?? '—'), esc(c.phone ?? '—')])), 'No named contact on file.')}
+${table(['Contact', 'Note', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.name), esc(c.note || '—'), esc(c.email ?? '—'), esc(c.phone ?? '—')])), 'No named contact on file.')}
 <h3>Jobs in this account</h3>
 ${table(['Job', 'Name', 'Address', 'Age', 'On file', 'Balance'], jobsRows, 'No jobs.')}
 <h3>Statement of account</h3>

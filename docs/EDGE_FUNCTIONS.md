@@ -1672,6 +1672,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### submit-legal-portal
 
+> **v2.4625 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose firm emails now speak the firm's words ([legal-notify-dispatch](#legal-notify-dispatch)). The confirm email itself is unchanged; the confirmed page reads *one email per event or a weekly digest*.
+
 > **v2.4622 — no honeypot**: the `website` check is gone, and the portal's two hidden `website` boxes with it. The page never sent the field, so the trap guarded nothing; wired, a password manager that fills every box would have made a real act answer `{ ok: true }` and save nothing. A body that still carries `website` is saved like any other. **Redeploy required.**
 
 > **v2.4457 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose digest now reads its days in `APP_CALENDAR_TZ` ([legal-notify-dispatch](#legal-notify-dispatch)). This function sends only the confirm email, which carries no date, so nothing it sends changes; redeploy after merge so the bundle matches the repo.
@@ -1691,6 +1693,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
 
 ### legal-notify-dispatch
+
+> **v2.4625 — the firm's words**: [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) — the referred email says *{company} has referred X to {firm}*, a pull-back is *Referral withdrawn: X*, the digest prints each matter's stage through `legalFirmStageWords` (*referred · demand sent · suit filed · judgment entered*) and its events as *Referral withdrawn*, and every email's footer names `companyName` instead of a fixed brand (punch list #85, item 3). Redeploy after merge.
 
 > **v2.4574 — what the firm is sent is kept**: a send-now notice (`legal_notice`) and a digest (`legal_digest`) are filed with the recipient and the firm as the name they went to. They name no job; they are found on the Documents page once step 4 of the plan lands. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 

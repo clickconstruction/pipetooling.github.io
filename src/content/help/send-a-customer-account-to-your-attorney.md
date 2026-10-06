@@ -28,7 +28,7 @@ An account is the **payer**. The payer is the GC when one pays, otherwise the cu
 - **Click keeps** is the balance less the firm's contingency and a filing cost. The contingency is the firm's share of what it recovers. Click keeps comes with a verdict: *worth it*, *marginal* or *not worth it*.
 - **Before this goes to an attorney** lists {{chip:red|fix}} items an attorney asks for first. The list also shows {{chip:yellow|note}} items worth knowing. Most items have a button to the surface that owns the record.
 
-Then come five tabs: ***Account · Paper · Their word · Evidence · Fees & steps***. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You tick or untick what the firm may read on **Their word**, and come back. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
+Then come five tabs: ***Account · Paper · Their word · Evidence · Fees & steps***. The tabs are built from the same records the firm's portal is built from. You fix what the gap list says. You tick or untick what the firm may read on **Their word**, and come back. The firm sees that tab as **Record of contact**. Details: [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney).
 
 :::example Not every account should go
 Surf Thru Express Car Wash owes $250 on one job with no agreement and no field evidence. The desk reads {{chip:red|None yet}} and **Click keeps −$182 · not worth it** — the firm's third and a filing cost eat more than the balance. {{button:outline|Write down…}} is the honest exit for that one; the firm never needs to see it.
@@ -36,7 +36,7 @@ Surf Thru Express Car Wash owes $250 on one job with no agreement and no field e
 
 ## 4. Set the firm up once
 
-**Settings → Jobs & billing → Collections law firm** is for devs. The setting holds the firm's name, the handling person, and a contact email and phone. The setting also holds the fee model behind "Click keeps": the contingency % and filing cost. Below it, **Click's particulars for filing** show on the firm's portal. The particulars are the legal entity, license, registered agent, custodian of records and affiant. The particulars also include the office phone and email, and a W-9 note. So a petition or lien affidavit needs nothing from you. One firm at a time.
+**Settings → Jobs & billing → Collections law firm** is for devs. The setting holds the firm's name, the handling person, and a contact email and phone. The setting also holds the fee model behind "Click keeps": the contingency % and filing cost. Below it, **Click's particulars for filing** show on the firm's portal as **Particulars for filing**. The particulars are the legal entity, license, registered agent, custodian of records and affiant. The particulars also include the office phone and email, and a W-9 note. So a petition or lien affidavit needs nothing from you. One firm at a time.
 
 The contact email is a contact, not a subscription. The firm's own people decide who gets emails, on their portal.
 
@@ -54,7 +54,7 @@ On the portal's **Notifications** page, the firm adds its own people and gives e
 
 ## 7. The firm works the matter
 
-On the portal's **Fees & steps**, the firm adds fees and costs. The firm records steps: *demand sent · suit filed · judgment · settled*. The firm records a payment it received, and asks the office questions. Each item lands on the Dashboard for office roles as **"The law firm has N things for you"**. Its button opens the desk on that account's Fees & steps tab.
+On the portal's **Fees & steps**, the firm adds fees and costs. The firm records steps: *demand sent · suit filed · judgment entered · settled*. The firm records a payment it received, and asks the office questions. Each item lands on the Dashboard for office roles as **"The law firm has N things for you"**. Its button opens the desk on that account's Fees & steps tab.
 
 - A **question**: you answer it inline. The answer shows on their portal. The answer also emails the people who chose right away.
 - A **fee, cost or step**: you press {{button:outline|Acknowledge}}. Steps move the account's stage on the Pipeline row chip.
@@ -66,7 +66,7 @@ The firm never marks anything paid, edits a job, or emails the customer through 
 
 - **Settled**: the firm records the step. The matter closes as {{chip:gray|Settled}} the moment the firm records that step.
 - **Written down**: {{button:outline|Write down…}} on the desk records the agreed write-down on the largest open bill line. A write-down is the part of the balance we agree to give up. Write down… then closes the matter as {{chip:gray|Written down}}.
-- **Pulled back**: a dev's {{button:outline|Pull back}} returns the account to review. The account leaves the portal the next time the firm opens it. The firm's fees and steps stay on the record.
+- **Pulled back**: a dev's {{button:outline|Pull back}} returns the account to review. The account leaves the portal the next time the firm opens it. The firm's email says *Referral withdrawn*. The firm's fees and steps stay on the record.
 
 Closed matters sit under **Closed** on the desk's rail. So the history is one click away.
 
