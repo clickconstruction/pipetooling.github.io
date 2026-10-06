@@ -1,6 +1,7 @@
 import { useState, type Dispatch } from 'react'
 import { Btn, Card, Chip, input } from './gcUi'
-import { money, ownerFinishRisk, shortDate, type GcAction, type GcProject, type GcState } from '../../lib/gcMode/gcModel'
+import { money, shortDate, type GcAction, type GcProject, type GcState } from '../../lib/gcMode/gcModel'
+import { lateFinish } from '../../lib/gcMode/gcLateFinish'
 
 /**
  * GC mode design spike: the finish date against the owner contract, on Bill the owner (owner's
@@ -8,7 +9,9 @@ import { money, ownerFinishRisk, shortDate, type GcAction, type GcProject, type 
  * what finishing late costs at the contract's fee a day, which we enter from the owner contract.
  */
 export function GcOwnerBillingFinish({ state, project, dispatch }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction> }) {
-  const f = ownerFinishRisk(state, project)
+  // One call for the days here, on the Schedule tab and in the customer's words (G-98): Owner Billing's `ownerFinishRisk`, inside.
+  const late = lateFinish(state, project)
+  const f = late.risk
   const [open, setOpen] = useState(false)
   const [fee, setFee] = useState(String(f.perDay ?? ''))
   const feeNum = Number(fee)
@@ -50,6 +53,11 @@ export function GcOwnerBillingFinish({ state, project, dispatch }: { state: GcSt
             If {project.owner} caused the delay, a change order with the days moves the contract date.
           </div>
         )}
+        {/* Whose late days they are, and the change orders that moved the contract or would (G-98): the Schedule tab's same lines. */}
+        {late.split && <div style={{ color: 'var(--text-red-700)' }}>{late.split}</div>}
+        {late.orderLines.map((w) => (
+          <div key={w}>{w}</div>
+        ))}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.85rem' }}>

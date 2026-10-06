@@ -784,8 +784,9 @@ the Schedule tab.
   (*Activity*, *Dates*, *Done*, *Plan*, *Where it stands*), the dates to meet on every page, what the
   work waits on on page 1, the chart's own notes beside the bars (`barNote`, so G-77's papers and
   G-60's word from the daily log print as the chart says them), a trade's new day from its portal as
-  the chart's amber dashed tail (G-117), the lines, today, and a key of only the marks on that page,
-  with *Page n of N*.
+  the chart's amber dashed tail (G-117), where a bar could start earlier as the chart's green ghost
+  (G-37), the spare-day tails when they are on (G-08), the lines, today, and a key of only the marks
+  on that page, with *Page n of N*.
 - **The customer's copy** reads what the customer's own views read, from one call,
   `customerSchedulePicture` in `gcCustomerSchedule.ts`: the stages for an owner, every bar by stage
   for a GC or an owner's rep (`customerFullChart`, call 5), then *What changed this week* and *What
@@ -859,6 +860,77 @@ The second look: a month's trades (▸) answer the first question anyone asks of
 cash weeks following the bars is G-140, the owner's call: the trades' draws would have to follow
 in the same change. The bars' pace instead of their drawn days was not taken, because two dates
 would argue. The walk moves the bar, and the forecast follows.
+
+## Phase 4, the superintendent's morning list, as built (2026-10-06)
+
+G-118, by Helper 5 (the mock-up and plan: `mockups/G-118.md`). `gcMorningList.ts` (tested, out of
+the barrel), `GcMorningList.tsx` on the Daily log tab, and the chart's holds moved unchanged into
+`gcChartHolds.ts` (its own commit first, a test pinning Fair Oaks D's holds and the Held count of 6).
+
+- **The chart read for one day**, above the log on the Daily log tab: *Who should be on site · Fri
+  Oct 2*, "5 companies on 6 activities, and an inspection." Each company with work running that
+  day (G-60's `runsOn`) in the job's trade order: its name, which opens its window, its contact's
+  first name and phone as a call link, and the log's line, "Last on the log Thu Oct 1 with 3."
+  Under it each bar: the activity, where the day sits in it (*day 12 of 19*, *last day*, *6 days
+  past its finish*), its percent, and the chart's pill on today's list, then its hold ("waits on
+  …", G-77's papers too) and an open G-117 notice ("says it will finish Wed Oct 28").
+- **The count is the log's.** No trade reports a crew count, so it is the log's last count before
+  the day, said as the log's. The day's own log answers "On the log for Thu Oct 1 with 3" in green,
+  or "Not on the log for Thu Oct 1. Last on it Tue Sep 29 with 5." in red, and that company goes
+  first: the call to make.
+- **Also on it**: the day's inspections, with an earlier failure ("It is seen again today. It failed
+  Mon Sep 28: … That was Pecan Valley Electric's work."); deliveries, the utility and permits
+  expected that day ("The transformer, from CPS Energy."); and a company whose every bar that day is
+  held, under *Held, not expected*, with why.
+- **The day is the tab's.** The This week cards and the caught-up days pick it, and the header's
+  *‹ Thu* and *Sat ›* step it, no earlier than work started and no later than today. A day's list
+  sits over that day's log.
+
+What the second look changed:
+
+- **The chart's pill only on today's list.** It is the chart's standing now; on yesterday's list
+  "due today" would mean today, so a past day shows the log's answer instead.
+- **Left out on purpose**: *Here* ticks that write today's log as crews arrive (a new habit for the
+  log, the owner's call) and the trade's own crew count from its portal (a new bilingual answer).
+## Phase 4, the contract's late days, as built (2026-10-06)
+
+G-98, Helper 3 (mock-up `mockups/G-98.md`). `gcLateFinish.ts` (tested, out of the barrel): one call,
+`lateFinish`, on Owner Billing's `ownerFinishRisk` (the projected finish against substantial
+completion with signed change orders' days). The Schedule tab, Bill the customer and the customer's
+words all count from it, so a move that changes the finish moves all three together.
+
+- **Under the Projected finish measure**, on a job past its contract: *At $500 a day, the 3 days cost
+  $1,500.* Then whose they are: *All 3 are the customer's: a change order for them would save
+  $1,500.* Then each change order with days: *Change order 1 moved the contract 1 day, signed Fri
+  Oct 2.* and *Change order 2 would move the contract 2 days once they sign it.* With no fee typed:
+  *No late fee is entered from the contract. It goes on Bill the customer.* On time with a fee: *Each
+  day past Fri Dec 11 costs $500.* The measure's chip reads the same call.
+- **The customer's days** are the finish days of the standing moves whose reason lies at the
+  customer's door (G-96's `CAUSE_OF`), less a move that put a signed change order's days on the chart.
+  They are capped at the late days. They do not lower the money at risk: until the customer signs a
+  change order for them, every late day counts, so Bill the customer's chip and this line agree.
+- **Bill the customer's Finish date card** gets the same whose-days line and change orders under its
+  money line.
+- **The customer reads whose the days are**, after their finish, only when late: *Those 3 days came
+  from a decision we were waiting on from you.* Or *4 of those days came from …* and *We are working
+  to make up the other 3.* The words for why are their portal's own (`CUSTOMER_WHY`). Never a company,
+  never the fee. In the portal's *Your schedule*, the Friday report's *At a glance* and the schedule
+  letter.
+- On the fixture, Fair Oaks D finishes on the contract's day with no change orders and no fee, so
+  nothing new shows. The measure still says *no days to spare*.
+
+What the second look changed:
+
+- **The customer's days save money, they do not lower the risk.** A time extension is an ask until
+  it is signed.
+- **The money line stays off Bill the customer's card**, which has its own. The card gets the split
+  and the change orders.
+
+Not done, on purpose: the ring card, the board row and Needs you (they move the golden walk; the
+owner's call). Which days the contract excuses besides the customer's, such as the weather's, is the
+contract's to say and the real build's to read. *Ask for the days*, a press that drafts the time
+extension change order, is G-141: it needs a field on the change order and a guard in G-76's
+kernel. Who sees the dollars follows *Money* in the real build.
 
 ## Phase 1, spare days as a tail, as built (2026-10-06)
 

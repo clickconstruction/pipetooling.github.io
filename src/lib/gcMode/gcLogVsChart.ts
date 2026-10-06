@@ -81,8 +81,8 @@ function dayList(days: string[]): string {
   return listWords(days.map(dayName))
 }
 
-/** A bar runs on a day inside its planned dates, past its finish while it is not done, or inside its real dates (G-55). */
-function runsOn(item: ScheduleItem, day: string): boolean {
+/** A bar runs on a day inside its planned dates, past its finish while it is not done, or inside its real dates (G-55). The morning list (G-118) reads it too. */
+export function runsOn(item: ScheduleItem, day: string): boolean {
   const a = item.activity
   const done = item.actual >= 100
   if (a.start <= day && (day <= a.finish || !done)) return true
