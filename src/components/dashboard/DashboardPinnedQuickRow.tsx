@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
-import { lienWindowHref } from '../../lib/jobs/stagesDeepLinks'
+import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../../lib/bankingAccess'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
@@ -47,6 +47,7 @@ import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
+import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
 import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { useSubmittalsNudge } from '../../hooks/useSubmittalsNudge'
@@ -504,6 +505,9 @@ export function DashboardPinnedQuickRow({
   // The firm's portal acts awaiting the office (Legal portal PR 4) — office roles; the desk's Fees & steps clears them.
   const legalFirmActivityEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
+  // Owners who signed for our records on their portal (punch list #86) — the office set that works the Lien desk.
+  const ownerRecordsSignedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
@@ -589,6 +593,8 @@ export function DashboardPinnedQuickRow({
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
+    ownerRecordsSignedEnabled,
+    ownerRecordsSigned,
     hoursApprovalsEnabled,
     hoursApprovals,
     hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
@@ -823,6 +829,10 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
             } else if (item.key === 'lien-tracking-owed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+            } else if (item.key === 'owner-records-signed') {
+              // Records for an owner on the request that has waited longest (punch list #86); the desk's own door without a job.
+              const jobId = ownerRecordsSigned?.first.jobId
+              navigate(jobId ? ownerRecordsHref(jobId) : '/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-serve-copy') {
               // The lien whose serve-by day comes first, on its Mechanic's lien tab where service is recorded.
               const first = [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]
