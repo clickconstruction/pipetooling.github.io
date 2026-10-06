@@ -12,54 +12,64 @@ import { buildEvenSortModeSplit, type SortModeSplitLine } from './sortModeSplit'
  * the facts into words, so the office queue and the holder's phone say the same sentence.
  *
  * Confidence is a measured level, not a screen decision. `sure` would let a whole day go in one
- * press; `likely` is the best guess, right about three times in four; `none` is offered only.
- * Whether a likely chip arrives selected is the screen's call.
+ * press; `likely` is the best guess the day offers; `none` is offered only. Whether a likely chip
+ * arrives selected is the screen's call (the owner's: it does not).
  *
- * ## Rule set v1, measured
+ * ## Rule set v2, measured
  *
- * Replayed 2026-10-05 over 90 days of sorted card charges (839 charges in 500 sorting visits):
- * each day rebuilt as it stood when it was sorted, the history only what was sorted before it.
+ * Replayed 2026-10-06 over 90 days of sorted card charges (839 charges in 542 sorting visits) the
+ * way the office queue reads them: each charge on the day it was swiped, the history on its
+ * posting day (the history read has no swipe time yet), each day rebuilt as it stood when it was
+ * sorted, the history only what was sorted before it.
  *
- * | Rule | Level | n | Right | Precision | Where the misses went |
+ * | Rule | Level | n | Agrees | Share | Where the rest went |
  * |---|---|---|---|---|---|
- * | `clock-one-job` (a field job) | likely | 370 | 268 | 72% | 42 split, 16 Office, 16 a job clocked the day before or after, 15 a job scheduled that day, 13 another job |
- * | `schedule-one-job` | likely | 30 | 22 | 73% | 5 another job, 2 Office, 1 a job clocked nearby |
- * | `clock-one-job-mixed` | likely | 9 | 9 | n too small | none |
+ * | `clock-one-job` (a field job) | likely | 399 | 211 | 53% | 60 a job clocked the day before or after, 50 split, 50 another job, 21 Office, 7 a job scheduled that day |
+ * | `schedule-one-job` | likely | 29 | 18 | 62% | 7 another job, 2 Office, 2 a job clocked nearby |
+ * | `clock-one-job-mixed` | likely | 11 | 9 | n too small | 2 a job clocked nearby |
  * | `office-category` (3 categories) | likely | 16 | 14 | n too small | 2 to jobs |
- * | `clock-office`, as if it were likely | none | 103 | 45 | 44% | 54 to jobs, 4 split |
  *
- * Nothing is `sure` in v1. A rule earns it at 95% or better on 40 or more charges, measured
- * the same way. Two limits sit beside every number: the truth is one sorter's final choice
- * (one person sorted 98.6% of the 839), so a precision is agreement with that sorter, not
- * correctness; and clock sessions are read as stored today, after any later corrections, not
- * as the sorter saw them. Both make `sure` harder to earn. Rules built from the sorter's own
- * past sorts (the store runs, the day's sorted charges) can only echo the sorter's habits, so
- * they stay offered whatever they score.
+ * Keyed on the posting day, as rule set v1 was measured and as the office's Assign window shows
+ * the day, `clock-one-job` agrees 72% (268 of 370). The gap is the day itself: Mercury posts a
+ * charge a median 8 hours after the swipe, overnight, and two charges in five land on a later day.
+ * Where the swipe day and the posting day had different jobs, the office chose the posting day's
+ * job 48 times and the swipe day's 6, following the window. The work happened on the swipe day,
+ * so the kernel keys on it, and its agreement with those past sorts is lower by design.
  *
- * The day's chips held the answer for 640 of the 839 at the cap of 5: 647 uncapped, 612 without
- * the scheduled-but-not-clocked and neighbouring-day chips, 625 at a cap of 4, 643 at 6. The
- * median day shows 4 chips; a day never shows more than the cap.
+ * Nothing is `sure`. A rule earns it at 95% or better on 40 or more charges, measured the same
+ * way. Two limits sit beside every number: the truth is one sorter's final choice (one person
+ * sorted 98.6% of the 839), so a share is agreement with that sorter, not correctness; and clock
+ * sessions are read as stored today, after any later corrections, not as the sorter saw them.
+ * Rules built from the sorter's own past sorts (the store runs, the day's sorted charges) can only
+ * echo the sorter's habits, so they stay offered whatever they score.
  *
- * What the data overruled in the to-do and the drawing, each measured on the same replay:
+ * The day's chips held the answer for 605 of the 839 at the cap of 5: 616 uncapped, 577 at a cap
+ * of 4, 610 at 6. The median day shows 4 chips; a day never shows more than the cap.
+ *
+ * What the data overruled in the to-do and the drawing (rule set v1, by the posting day):
  * - The only job clocked that day is a guess, not an answer. On a day clocked only on Office it
- *   is 44%: office staff buy for jobs. So that day gets `clock-office`, offered only.
+ *   was 44%: office staff buy for jobs. So that day gets `clock-office`, offered only.
  * - A store's run does not beat the clock. Against a clocked job it was right 2 times in 12.
  *   Store rules are offered on the line, never chosen. Fuel gets none: it follows the job.
  * - Of the six office-type Mercury categories, only Advertising, Insurance and Internet and
  *   telephone went to Office (14 of 16). Software and Utilities mostly went to jobs.
  * - The splits the office made across a day's clocked jobs were even 35 times and by hours
- *   0 times. Even leads; by hours stays the last chip.
+ *   0 times. Even leads; from v2 by hours is not a chip, and its amounts ride on the line.
  * - The holder's previous charge went to the same job 32% of the time (232 of 729): no rule.
  * - Saturday's neighbours are Friday and Monday, so the reach is 3 days, not 1.
  *
  * Pure: no Supabase, no React. Days are company days (`calendarYmdInAppTzFromIso`), the
- * calendar `clock_sessions.work_date` uses, so an evening charge keeps its day. Amounts are
+ * calendar `clock_sessions.work_date` uses, so an evening charge keeps its day; a charge's day is
+ * the day of its swipe (`TallyCharge.madeAt`). Amounts are
  * SIGNED dollars as Mercury stores them (a purchase is negative); every split is whole cents
  * summing to the charge, in the `SortModeSplitLine` shape the Sort modal and both split RPCs take.
  */
 
-/** Bump when a rule's meaning or level changes, so a measured precision names the rule set it measured. */
-export const TALLY_SUGGESTION_RULES_VERSION = 1
+/**
+ * Bump when a rule's meaning or level changes, so a measured precision names the rule set it
+ * measured. v2 (PR 2a): a refund is not history, and the by-hours split is no longer a chip.
+ */
+export const TALLY_SUGGESTION_RULES_VERSION = 2
 
 /** How far back the holder's charges at a store count. */
 export const TALLY_STORE_LOOKBACK_DAYS = 30
@@ -97,8 +107,6 @@ export type TallyRuleId =
   | 'clock-job'
   /** Day: split evenly across the jobs clocked that day. */
   | 'split-even'
-  /** Day: split across the jobs clocked that day by their clocked hours. */
-  | 'split-by-hours'
   /** Day: nothing clocked; the only job scheduled that day. */
   | 'schedule-one-job'
   /** Day: a job on the holder's schedule that day (several scheduled, or scheduled but not clocked). */
@@ -120,7 +128,6 @@ export const TALLY_RULE_CONFIDENCE: Readonly<Record<TallyRuleId, TallyConfidence
   'clock-office': 'none',
   'clock-job': 'none',
   'split-even': 'none',
-  'split-by-hours': 'none',
   'schedule-one-job': 'likely',
   'schedule-job': 'none',
   'same-day-sorted': 'none',
@@ -133,7 +140,12 @@ export type TallyCharge = {
   id: string
   /** The card holder (`mercury_debit_card_user_links.user_id`). */
   holderId: string
-  postedAt: string
+  /**
+   * When the card was swiped: Mercury's `raw.createdAt`, falling back to `posted_at`. Posting
+   * comes a median 8 hours later, overnight, and lands on another day for two charges in five,
+   * so the day of the work is the day of the swipe.
+   */
+  madeAt: string
   /** Signed dollars as stored (a purchase is negative). */
   amount: number
   counterparty: string
@@ -141,9 +153,10 @@ export type TallyCharge = {
   category: string | null
 }
 
-/** One of the holder's charges that already has its job split. */
+/** One of the holder's charges that already has its job split. A refund (splits summing above 0) is not history. */
 export type TallySortedCharge = {
   id: string
+  /** `posted_at`: the history read carries no swipe time yet, so history keeps the posting day. */
   postedAt: string
   counterparty: string
   splits: ReadonlyArray<{ jobId: string; amount: number }>
@@ -167,7 +180,7 @@ export type TallyScheduledJob = {
 
 export type TallyDayInput = {
   holderId: string
-  /** The company day (`tallyDayKey` of the charges' posted time). */
+  /** The company day (`tallyDayKey` of the charges' swipe time). */
   ymd: string
   /** The day's unsorted charges. */
   charges: readonly TallyCharge[]
@@ -229,6 +242,8 @@ export type TallyClockedJob = {
   jobId: string
   /** Clocked hours that day; null when a session is still open on a past day. */
   hours: number | null
+  /** The job's sessions that day in clock-in order: the day card's evidence line. */
+  spans: Array<{ clockedInAt: string; clockedOutAt: string | null }>
 }
 
 export type TallyDaySuggestion = {
@@ -238,12 +253,18 @@ export type TallyDaySuggestion = {
   chips: TallySuggestion[]
   /** The first chip when it is `likely` or above. */
   best: TallySuggestion | null
-  /** One per charge, in posted order. */
+  /** One per charge, in the order they were made. */
   lines: TallyLineSuggestion[]
   /** Every line's best is `sure`: the day could go in one press. Never true in rule set v1. */
   allSure: boolean
-  /** The jobs clocked that day in clock-in order, with their hours. */
+  /** The jobs clocked that day in clock-in order, with their hours and sessions. */
   clockedJobs: TallyClockedJob[]
+  /** Time on a bid or with no job that day. */
+  otherTime: boolean
+  /** The jobs on the holder's schedule that day, in schedule order. */
+  scheduledJobs: string[]
+  /** The jobs worked on the neighbouring days, with the days (the same facts as the neighbour chips, uncapped). */
+  neighbours: Array<{ jobId: string; days: string[] }>
 }
 
 export type TallyChargeDay<T> = {
@@ -267,9 +288,13 @@ function byPostedAt(a: { postedAt: string }, b: { postedAt: string }): number {
   return Date.parse(a.postedAt) - Date.parse(b.postedAt)
 }
 
-/** The company day a charge belongs to, or null for an unreadable time. */
-export function tallyDayKey(postedAt: string): string | null {
-  return calendarYmdInAppTzFromIso(postedAt) || null
+function byMadeAt(a: { madeAt: string }, b: { madeAt: string }): number {
+  return Date.parse(a.madeAt) - Date.parse(b.madeAt)
+}
+
+/** The company day of a time (a charge's swipe, a history row's posting), or null for an unreadable time. */
+export function tallyDayKey(iso: string): string | null {
+  return calendarYmdInAppTzFromIso(iso) || null
 }
 
 /**
@@ -288,15 +313,16 @@ export function tallyStoreKey(counterparty: string | null | undefined): string {
 }
 
 /**
- * Group charges into person-days: one group per holder per company day, newest day first,
- * then by holder; each day's charges in posted order. Unreadable times are left out.
+ * Group charges into person-days: one group per holder per company day of the swipe, newest day
+ * first, then by holder; each day's charges in the order they were made. Unreadable times are
+ * left out.
  */
-export function groupTallyChargesByDay<T extends { holderId: string; postedAt: string }>(
+export function groupTallyChargesByDay<T extends { holderId: string; madeAt: string }>(
   charges: readonly T[],
 ): TallyChargeDay<T>[] {
   const byKey = new Map<string, TallyChargeDay<T>>()
   for (const c of charges) {
-    const ymd = tallyDayKey(c.postedAt)
+    const ymd = tallyDayKey(c.madeAt)
     if (!ymd) continue
     const key = `${c.holderId}|${ymd}`
     const day = byKey.get(key)
@@ -304,7 +330,7 @@ export function groupTallyChargesByDay<T extends { holderId: string; postedAt: s
     else byKey.set(key, { holderId: c.holderId, ymd, charges: [c] })
   }
   const days = [...byKey.values()]
-  for (const d of days) d.charges.sort(byPostedAt)
+  for (const d of days) d.charges.sort(byMadeAt)
   return days.sort((a, b) =>
     a.ymd !== b.ymd ? (a.ymd < b.ymd ? 1 : -1) : a.holderId < b.holderId ? -1 : a.holderId > b.holderId ? 1 : 0,
   )
@@ -346,9 +372,14 @@ export function tallyRowsForChoice(line: TallyLineSuggestion, choice: TallyChoic
   return choice.how === 'even' ? line.even : line.byHours
 }
 
-/** A sorted charge counts as history when some of it went to a job. */
-function hasJobSplit(c: TallySortedCharge): boolean {
-  return c.splits.some((s) => s.amount !== 0 && Boolean(s.jobId))
+/**
+ * A sorted charge counts as history when it is a purchase (its splits sum below 0) and some of it
+ * went to a job. A refund names the job of the purchase it returns, not where the store's next
+ * purchase goes.
+ */
+function isPurchaseHistory(c: TallySortedCharge): boolean {
+  const sum = c.splits.reduce((s, x) => s + (Number.isFinite(x.amount) ? x.amount : 0), 0)
+  return sum < 0 && c.splits.some((s) => s.amount !== 0 && Boolean(s.jobId))
 }
 
 /** The one job a sorted charge went to, or null when it was split across jobs. */
@@ -363,7 +394,7 @@ function clockDay(
   todayYmd: string,
   nowMs: number,
 ): { jobs: TallyClockedJob[]; otherTime: boolean } {
-  const byJob = new Map<string, { firstIn: number; hours: number | null }>()
+  const byJob = new Map<string, { firstIn: number; hours: number | null; spans: TallyClockedJob['spans'] }>()
   let otherTime = false
   for (const s of sessions) {
     if (s.workDate !== ymd) continue
@@ -376,16 +407,22 @@ function clockDay(
     const outMs = s.clockedOutAt ? Date.parse(s.clockedOutAt) : s.workDate === todayYmd ? nowMs : Number.NaN
     const hours = Number.isFinite(inMs) && Number.isFinite(outMs) ? Math.max(0, (outMs - inMs) / HOUR_MS) : null
     const firstIn = Number.isFinite(inMs) ? inMs : Number.POSITIVE_INFINITY
+    const span = { clockedInAt: s.clockedInAt, clockedOutAt: s.clockedOutAt }
     const cur = byJob.get(s.jobId)
-    if (!cur) byJob.set(s.jobId, { firstIn, hours })
+    if (!cur) byJob.set(s.jobId, { firstIn, hours, spans: [span] })
     else {
       cur.firstIn = Math.min(cur.firstIn, firstIn)
       cur.hours = cur.hours == null || hours == null ? null : cur.hours + hours
+      cur.spans.push(span)
     }
   }
   const jobs = [...byJob.entries()]
     .sort((a, b) => a[1].firstIn - b[1].firstIn || (a[0] < b[0] ? -1 : 1))
-    .map(([jobId, v]) => ({ jobId, hours: v.hours }))
+    .map(([jobId, v]) => ({
+      jobId,
+      hours: v.hours,
+      spans: v.spans.slice().sort((x, y) => Date.parse(x.clockedInAt) - Date.parse(y.clockedInAt)),
+    }))
   return { jobs, otherTime }
 }
 
@@ -420,13 +457,13 @@ function storeRun(history: readonly TallySortedCharge[], storeKey: string): { jo
  *
  * Chip order, fixed: the day's likely chip; the jobs clocked that day; the even split; the jobs
  * scheduled but not clocked; the jobs worked on the neighbouring days; where the day's sorted
- * charges went; Office; the split by hours. A job appears once, at its first place. The cap cuts
- * the tail, which stays behind "Another job…".
+ * charges went; Office. A job appears once, at its first place. The cap cuts the tail, which
+ * stays behind "Another job…".
  */
 export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
   const { holderId, ymd, officeJobId, nowMs } = input
   const todayYmd = todayYmdInAppTz(new Date(nowMs))
-  const charges = [...input.charges].sort(byPostedAt)
+  const charges = [...input.charges].sort(byMadeAt)
   const chargeIds = new Set(charges.map((c) => c.id))
 
   const clock = clockDay(input.sessions, ymd, todayYmd, nowMs)
@@ -437,7 +474,7 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
   const since = ymdAddDays(ymd, -TALLY_STORE_LOOKBACK_DAYS)
   const history = input.history
     .filter((h) => {
-      if (chargeIds.has(h.id) || !hasJobSplit(h)) return false
+      if (chargeIds.has(h.id) || !isPurchaseHistory(h)) return false
       const d = tallyDayKey(h.postedAt)
       return d != null && d >= since && d <= ymd
     })
@@ -466,7 +503,8 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
     add(suggestion(jobChoice(j.jobId), only && j.jobId === officeJobId ? 'clock-office' : 'clock-job', { hours: [j.hours] }))
   }
 
-  // 3. The even split across the clocked jobs (by hours comes last: the office never used it).
+  // 3. The even split across the clocked jobs. By hours is not a chip: the office never used it,
+  //    so its amounts ride on each line (`byHours`) for the screen to offer there.
   if (clock.jobs.length > 1) add(suggestion({ kind: 'split', how: 'even', jobIds: clockedIds }, 'split-even'))
 
   // 4. The jobs scheduled that day.
@@ -513,14 +551,6 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
   // 7. Office.
   if (officeJobId) add(suggestion(jobChoice(officeJobId), 'office'))
 
-  // 8. The split by clocked hours.
-  if (clock.jobs.length > 1 && clock.jobs.every((j) => j.hours != null && j.hours > 0)) {
-    add(
-      suggestion({ kind: 'split', how: 'hours', jobIds: clockedIds }, 'split-by-hours', {
-        hours: clock.jobs.map((j) => j.hours),
-      }),
-    )
-  }
 
   const chips = ordered.slice(0, Math.max(1, input.chipCap ?? TALLY_DAY_CHIP_CAP))
   const best = chips[0] && chips[0].confidence !== 'none' ? chips[0] : null
@@ -565,5 +595,8 @@ export function suggestTallyDay(input: TallyDayInput): TallyDaySuggestion {
     lines,
     allSure: lines.length > 0 && lines.every((l) => l.best?.confidence === 'sure'),
     clockedJobs: clock.jobs,
+    otherTime: clock.otherTime,
+    scheduledJobs: scheduledToday,
+    neighbours: [...neighbourDays].map(([jobId, days]) => ({ jobId, days })),
   }
 }
