@@ -1495,7 +1495,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'; pile?: LienDeskPile | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'; pile?: LienDeskPile | null; aim?: number } | null>(null)
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
@@ -4519,6 +4519,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         // v2.4531: a Calendar row's job number opens the job itself, over the desk.
         onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         initialPile={lienDesk?.pile ?? null}
+        aimKey={lienDesk?.aim}
         onOpenLegalDesk={() => {
           setLienDesk(null)
           setLegalDesk({ payerKey: null })
@@ -4611,7 +4612,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         // The next step's door (punch list #82): the desk sits under this window, so this one closes and the desk opens on the job.
         onOpenLienDesk={(jobId, deskKind) => {
           setLienInstrumentsModal(null)
-          setLienDesk({ jobId, kind: deskKind })
+          // `aim` changes every press (v2.4612), so a desk already on this job still switches to the tab.
+          setLienDesk({ jobId, kind: deskKind, aim: Date.now() })
         }}
         onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {
