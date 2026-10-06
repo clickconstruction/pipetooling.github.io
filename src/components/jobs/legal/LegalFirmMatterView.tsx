@@ -4,7 +4,7 @@ import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
-import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import LienTimelineStrip from '../LienTimelineStrip'
@@ -184,7 +184,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
       </div>
     )
   }
-  const fees = firmFeeEntries(matter.entries)
+  const fees = firmFeeRows(matter.entries)
   const feesTotal = firmDemand(0, matter.entries).feesTotal
   const contingency = contingencyEntries(matter.entries)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.

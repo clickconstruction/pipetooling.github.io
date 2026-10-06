@@ -31,7 +31,7 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
-import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
@@ -962,10 +962,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   }
 
   // The firm's fees and costs the debtor owes (item 5): the contingency is the firm's share of a recovery, said on its own line.
-  const fees = firmFeeEntries(entries)
+  const fees = firmFeeRows(entries)
   const contingency = contingencyEntries(entries)
   const userNameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
-  const feeTotal = fees.filter((e) => !isVoidedEntry(e)).reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  const feeTotal = firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
   const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && !isConversationEntry(e))
   const talk = conversationRows(entries)
