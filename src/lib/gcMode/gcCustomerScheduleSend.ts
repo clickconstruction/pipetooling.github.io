@@ -7,7 +7,7 @@
  * Its own file, out of the barrel: it reads the customer's schedule kernel.
  */
 import type { GcProject, GcState, ScheduleSend } from './gcTypes'
-import { customerAsks, customerChanges, customerMilestones, customerStages, customerStanding } from './gcCustomerSchedule'
+import { CUSTOMER_STAGE_WORDS, customerAsks, customerChanges, customerDoneWords, customerMilestones, customerStages, customerStanding } from './gcCustomerSchedule'
 import { customerContractDays } from './gcChangeOrderDays'
 import { lateFinish } from './gcLateFinish'
 import { shortDate, weekdayDate } from './gcWords'
@@ -20,8 +20,6 @@ export interface ScheduleLetter {
   lines: string[]
 }
 
-const STATE_WORDS = { done: 'done', underway: 'under way', behind: 'behind', notStarted: 'not started' } as const
-
 export function customerScheduleLetter(state: GcState, project: GcProject, by: string): ScheduleLetter {
   const customer = state.customers.find((c) => c.id === project.customerId)
   const contact = customer?.contact || customer?.name || project.owner
@@ -30,9 +28,10 @@ export function customerScheduleLetter(state: GcState, project: GcProject, by: s
   const stages = customerStages(state, project)
   const milestones = customerMilestones(state, project)
   const lines: string[] = [`Hello ${first},`, `Here is where ${project.name} stands as of ${weekdayDate(state.today)}.`, standing.finishWords, ...customerContractDays(project), ...lateFinish(state, project).customerWords]
-  if (standing.finish) lines.push(`${standing.donePct}% of the work is done. We planned ${standing.plannedPct}% by today.`)
+  const done = customerDoneWords(standing)
+  if (done) lines.push(done)
   for (const s of stages) {
-    const stand = s.state === 'done' ? 'done' : s.state === 'notStarted' ? `starts ${weekdayDate(s.start)}` : `${STATE_WORDS[s.state]}, ${Math.round(s.pct)}% done`
+    const stand = s.state === 'done' ? 'done' : s.state === 'notStarted' ? `starts ${weekdayDate(s.start)}` : `${CUSTOMER_STAGE_WORDS[s.state]}, ${Math.round(s.pct)}% done`
     lines.push(`${s.label}: ${stand}, ${shortDate(s.start)} to ${shortDate(s.finish)}.`)
   }
   for (const m of milestones) {
