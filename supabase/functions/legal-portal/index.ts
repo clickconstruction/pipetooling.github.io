@@ -8,6 +8,8 @@ import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
+// Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
+import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
 
 /**
@@ -229,6 +231,13 @@ serve(async (req) => {
     const notes = (noteRes.data ?? []) as Row[]
     const entries = (entryRes.data ?? []) as Row[]
 
+    // The payer's jobs (item 24): their numbers tell a contact log entry about an unreferred job from one about the
+    // matter or the account. The log has no job column; an entry names a job by its number.
+    const { data: payerJobRows } = customerIds.length
+      ? await admin.from('jobs_ledger').select('id, hcp_number, click_number, customer_id, gc_customer_id').or(`customer_id.in.(${customerIds.join(',')}),gc_customer_id.in.(${customerIds.join(',')})`).limit(5000)
+      : { data: [] }
+    const payerJobs = (payerJobRows ?? []) as Row[]
+
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
     for (const j of jobs) if (j.collections_by) userIds.add(j.collections_by as string)
@@ -278,8 +287,10 @@ serve(async (req) => {
         gcCustomer: j.gc_customer_id ? { id: j.gc_customer_id, name: customers.find((c) => c.id === j.gc_customer_id)?.name ?? null } : null,
         collections_by_name: userName.get(j.collections_by as string) ?? null,
       }))
+      const contactNumbers = contactScopeNumbers(mJobs, payerJobs.filter((j) => customerId != null && (j.customer_id === customerId || j.gc_customer_id === customerId)))
       const mContacts = contacts
         .filter((c) => customerId && c.customer_id === customerId)
+        .filter((c) => contactGoesWithShare(c.details as string | null, contactNumbers, heldOverrides[`contact:${c.id as string}`]))
         .map((c) => ({ id: c.id as string, ymd: c.contact_date ? todayYmdInAppTz(new Date(c.contact_date as string)) : todayYmd, method: (c.contact_method as string | null) ?? null, by: userName.get(c.created_by as string) ?? null, text: ((c.details as string | null) ?? '').trim() }))
         .filter((c) => goes(`contact:${c.id}`, c.ymd))
       const mPromises = promises
