@@ -3925,7 +3925,7 @@ body.my-time-boundary-dragging {
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
 .lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
 .lienDeskFooterSlot:empty { display: none; }
-/* Lien desk Share (v2.4311): the What to send menu's rows — hover and the picked one need a class (an inline background would beat :hover). */
+/* Lien desk Share (v2.4311): the Which liens menu's rows — hover and the picked one need a class (an inline background would beat :hover). */
 .lienShareItem { background: var(--surface); }
 .lienShareItem:hover, .lienShareItem:focus-visible { background: var(--bg-subtle); }
 .lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }

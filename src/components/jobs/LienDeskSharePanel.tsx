@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Mail, Share } from 'lucide-react'
+import { Mail, Share, Users } from 'lucide-react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { lienShareScopeFacts, type LienShareScope, type LienShareScopeOption } from '../../lib/jobs/lienDeskShare'
@@ -20,7 +20,7 @@ function scopeSub(o: LienShareScopeOption): string {
   return bits.join(' · ')
 }
 
-/** What to send: the whole desk, or one GC. One button, one menu (the desk's GC picker's look). */
+/** Which liens: the whole desk, or one GC. One button, one menu (the desk's GC picker's look). */
 export function LienShareScopeMenu({ options, value, onChange, big }: { options: readonly LienShareScopeOption[]; value: LienShareScope; onChange: (s: LienShareScope) => void; big?: boolean }) {
   const [open, setOpen] = useState(false)
   const current = options.find((o) => o.key === value) ?? options[0]
@@ -44,7 +44,7 @@ export function LienShareScopeMenu({ options, value, onChange, big }: { options:
       {open ? (
         <>
           <div onClick={() => setOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
-          <div role="menu" aria-label="What to send" style={{ position: 'absolute', left: 0, right: 0, top: 'calc(100% + 4px)', zIndex: 6, maxHeight: 'min(380px, 55dvh)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)' }}>
+          <div role="menu" aria-label="Which liens" style={{ position: 'absolute', left: 0, right: 0, top: 'calc(100% + 4px)', zIndex: 6, maxHeight: 'min(380px, 55dvh)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)' }}>
             {options.map((o, i) => (
               <button
                 key={o.key}
@@ -95,8 +95,10 @@ export type LienDeskSharePanelProps = {
 
 /**
  * Share where the liens stand (v2.4311): the panel under the desk's Share button (a sheet on a
- * phone). What to send, the message exactly as it goes, and the ways out: the share sheet (or a
- * copy where there is none), the team email, a plain copy, and counsel's live portal.
+ * phone). Who it is for (v2.4722, Taunya's ask: a To row leads — someone in the office, never a
+ * customer or a GC — so the panel reads like an envelope), which liens, the message exactly as it
+ * goes, and the ways out: the share sheet (or a copy where there is none), the team email, a
+ * plain copy, and counsel's live portal.
  */
 export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
   const sendRef = useRef<HTMLButtonElement | null>(null)
@@ -122,7 +124,7 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
   return (
     <>
       <div onClick={p.onClose} aria-hidden style={p.isMobile ? { position: 'fixed', inset: 0, zIndex: 29, background: 'rgba(17,24,39,0.42)' } : { position: 'fixed', inset: 0, zIndex: 29 }} />
-      <div role="dialog" aria-label="Share where the liens stand" data-lien-share-panel style={{ ...sheet, zIndex: 30, display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr) auto', gridTemplateColumns: 'minmax(0, 1fr)', background: 'var(--surface)', color: 'var(--text-base)', textAlign: 'left', fontWeight: 400 }}>
+      <div role="dialog" aria-label="Share where the liens stand" data-lien-share-panel style={{ ...sheet, zIndex: 30, display: 'grid', gridTemplateRows: 'auto auto auto minmax(0, 1fr) auto', gridTemplateColumns: 'minmax(0, 1fr)', background: 'var(--surface)', color: 'var(--text-base)', textAlign: 'left', fontWeight: 400 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: p.isMobile ? '14px 16px 6px' : '12px 14px 6px 16px' }}>
           <strong style={{ fontSize: p.isMobile ? '1rem' : '0.92rem' }}>Share where the liens stand</strong>
           <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>as of {p.asOfWords}</span>
@@ -131,7 +133,15 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
           </button>
         </div>
         <div style={{ padding: '4px 16px 10px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
-          <div style={boxHead}>What to send</div>
+          <div style={boxHead}>To</div>
+          <div data-lien-share-to style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', columnGap: 10, rowGap: 2, alignItems: 'start', padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+            <Users size={16} aria-hidden style={{ gridRow: '1 / span 2', marginTop: 2, color: 'var(--text-muted)' }} />
+            <strong style={{ fontSize: '0.84rem' }}>Someone in the office</strong>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>A master, a controller or an assistant. Never a customer or a GC.</span>
+          </div>
+        </div>
+        <div style={{ padding: '0 16px 10px', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
+          <div style={boxHead}>Which liens</div>
           <LienShareScopeMenu options={p.options} value={p.scope} onChange={p.onScope} big={p.isMobile} />
         </div>
         <div style={{ padding: '0 16px', minHeight: 0, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -144,7 +154,7 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
           <div style={{ display: p.isMobile ? 'grid' : 'flex', gridTemplateColumns: p.isMobile ? '1fr auto' : undefined, gap: 8, alignItems: 'center' }}>
             <button ref={sendRef} type="button" onClick={p.onSend} data-lien-share-send style={{ ...primaryBtn, gridColumn: p.isMobile ? '1 / -1' : undefined, minHeight: p.isMobile ? 48 : undefined, fontSize: p.isMobile ? '0.95rem' : primaryBtn.fontSize }}>
               <Share size={p.isMobile ? 18 : 15} aria-hidden />
-              {p.canShare ? 'Send…' : 'Copy the text'}
+              {p.canShare ? 'Send to a teammate…' : 'Copy the text'}
             </button>
             <button type="button" onClick={p.onEmail} data-lien-share-email style={{ ...plainBtn, minHeight: p.isMobile ? 44 : undefined, gridColumn: p.isMobile && !p.canShare ? '1 / -1' : undefined }}>
               <Mail size={15} aria-hidden />
@@ -157,7 +167,7 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
             ) : null}
           </div>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-            {p.canShare ? 'Send… opens the share sheet: Messages, Mail or any app.' : 'Paste it into a text, an email or a chat.'} The link opens the Lien desk after sign-in. It carries no names or money.
+            {p.canShare ? 'Send to a teammate… opens the share sheet: Messages, Mail or any app.' : 'Paste it into a text, an email or a chat.'} The link opens the Lien desk after sign-in.
           </div>
           {p.firm ? (
             <div data-lien-share-firm style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
