@@ -2,7 +2,7 @@
 name: "Records for an owner, on their portal: they ask, they sign, they download"
 number: 86
 group: gated
-status: proposed 2026-10-06 · nothing built · waits on the owner's pick between the two shapes below
+status: proposed 2026-10-06 · nothing built · the owner answered two of three questions the same day (a second allowed name: yes; counsel approved the wording); the pick between the two shapes is open
 summary: >
   Today an owner's records request is worked by hand: the office puts their written request on
   file, prints the acknowledgment for them to sign, prints or downloads the packet and hands it
@@ -15,7 +15,7 @@ summary: >
   accept (sign → download, nothing kept on the portal).
 next: The owner picks shape A or B. Then PR 1, the acknowledgment signed on the portal.
 size: M (shape A, four PRs) · S–M (shape B, two PRs)
-blocker: The owner's pick. Counsel has not approved the cover note or the acknowledgment wording (`OWNER_RECORDS_WORDING_APPROVED` is false); a signed acknowledgment on the portal should wait for that, or carry the draft stamp.
+blocker: The owner's pick between shape A and shape B.
 opinion: build shape A — the owner's own act on the portal is their request in writing, so it fills check 1 and check 4 in one sitting; shape B saves one PR and loses the record of what they got.
 ---
 
@@ -85,11 +85,14 @@ Stops 1 to 4 as above. At stop 5 there is no portal card: once the office presse
 
 Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/EDGE_FUNCTIONS.md` section and the guide edit. The functions deploy after merge.
 
-## Open questions for the owner
+## The owner's answers (2026-10-06)
 
-1. **A or B.** The card above says why A.
-2. **Who may sign.** The owner of record alone (the name on the county roll), or anyone the office names on the request (a spouse, a property manager)? The letter match needs one name to match against. Proposed: the owner of record, and the office may type a second name on the request when the roll's name is a company (*Harbor Ridge Homes LP* cannot sign; its manager can).
-3. **Counsel's wording.** The portal shows the acknowledgment to a member of the public. Wait for counsel, or ship behind the same draft stamp the window shows today?
+- **Who may sign: the owner of record, and a second name the office adds on the request** (a spouse, a property manager, the manager of a company on the roll). The letter match runs against either name. PR 1 adds the second name to the request step of the records window and to `file.request`.
+- **Counsel approved the wording.** The draft stamp and the ask-before-print are gone (v2.4627). The portal acknowledgment carries the approved words.
+
+## Still open: A or B
+
+In plain words. **A:** after the office sends, the owner's portal keeps the records under *Your papers*, with a Download button and an *Email it to me* box, for as long as the portal exists. **B:** the owner gets one Download button on the card they signed, and nothing is listed; if they lose the file, they ask the office again. The card above says why A.
 
 ## How to verify
 
