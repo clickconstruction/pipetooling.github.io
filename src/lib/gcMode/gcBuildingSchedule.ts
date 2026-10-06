@@ -557,7 +557,7 @@ export interface MilestoneRow {
 }
 
 /** The milestone the contract's end is: Substantial completion, by its name. */
-function isSubstantial(m: ScheduleMilestone): boolean {
+export function isSubstantial(m: ScheduleMilestone): boolean {
   return /substantial completion/i.test(m.label)
 }
 

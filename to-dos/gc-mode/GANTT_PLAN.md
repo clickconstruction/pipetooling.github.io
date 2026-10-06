@@ -1816,6 +1816,37 @@ What the build changed from the mockup:
 Left out, on purpose: the call list's own bar reasons in the count, a bar late, due, behind or held
 and a failed inspection. That is G-146, for the owner: it changes what *to call* means.
 
+## Later, their dates to meet onto a running job, as built (2026-10-06)
+
+G-145, by Helper 4, round four (the mock-up and plan: `mockups/G-145.md`). `gcTheirDates.ts`
+(tested, out of the barrel), `GcTheirDates.tsx`, one action, and a made-up file for the tests and the
+browser check (`gcTheirDatesSample.ts`, Cibolo Creek Partners' master schedule for Fair Oaks D).
+
+- **The door**: *Bring in their dates…* in the Milestones card, on a job being built. It reads G-137's
+  two files through `readScheduleFile` and takes only the rows marked as a date; their activities
+  are counted and passed over. Closed while a what-if copy is open, in G-137's words, and gone
+  inside the copy.
+- **The window**: each of their dates beside the one of ours with the same name, the difference in
+  days against the day ours is due, and a select for which of ours it takes the place of. A date
+  that differs and a new one still ahead start ticked; the same day, a new one passed and the
+  contract's finish do not, and one of ours already met cannot be ticked. Under substantial
+  completion, in the Projected finish measure's words: *This is the contract's finish. With
+  theirs, the projected finish, Fri Dec 11, is 7 days past the contract.* Two of theirs on one of
+  ours hold Take and say so.
+- **One action**, `takeTheirDates`, writes only `schedule.milestones`: ours take a new planned day,
+  a new one comes in as the job's own, not met, and the log names the file. Days signed change
+  orders added to substantial completion are read as part of their day, so its planned day takes
+  them off and nothing counts them twice. Refused whole off a job being built, with a copy open, on a
+  met date, an unknown id, a bad day or two on one of ours.
+- **After**: the chart's dates row and the customer's dates read the new days; the contract's day
+  changes only when substantial completion was ticked. Then the measure, Bill the customer's risk and
+  G-141's ask all read it from the one take, which a test pins on G-98's late job. Nothing moves:
+  the activities, moves, waits, baseline and look-ahead are the same objects after. Nothing is sent.
+- `sameName` is exported from `gcScheduleImport.ts` unchanged, so both doors match names by one rule,
+  and `isSubstantial` from `gcBuildingSchedule.ts`, so both read the contract's finish by one rule.
+- The Milestones card's lines are keyed by their day too: a date changed from the file draws its
+  line again, so the card's Save never holds a stale day to put back.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

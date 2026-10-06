@@ -47,6 +47,7 @@ import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWh
 import { GcPartsCard } from './GcSplitBars'
 import { partMoveOf } from '../../lib/gcMode/gcSplitBars'
 import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
+import { GcTheirDatesDoor } from './GcTheirDates'
 import { crowdedWeeks } from '../../lib/gcMode/gcPlaces'
 import { whatIfGhosts, whatIfProject } from '../../lib/gcMode/gcWhatIf'
 import { planPull, pullGhosts } from '../../lib/gcMode/gcPullEarlier'
@@ -421,7 +422,7 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
 
           <AddActivityCard project={project} items={m.items} today={state.today} by={me} dispatch={dispatch} />
 
-          <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} />
+          <MilestonesCard project={project} milestones={schedule.milestones} dispatch={dispatch} door={<GcTheirDatesDoor state={state} project={realProject} dispatch={realDispatch} by={me} />} />
 
           {schedule.baseline && <BaselineCard project={project} today={state.today} by={me} dispatch={dispatch} />}
 
@@ -1205,7 +1206,7 @@ function NewWait({ state, project, items, dispatch, onDone }: { state: GcState; 
 }
 
 /** The milestones: each one's day and the trade it belongs to. Add, move or take one off. */
-function MilestonesCard({ project, milestones, dispatch }: { project: GcProject; milestones: ScheduleMilestone[]; dispatch: Dispatch<GcAction> }) {
+function MilestonesCard({ project, milestones, dispatch, door }: { project: GcProject; milestones: ScheduleMilestone[]; dispatch: Dispatch<GcAction>; /** Their dates from a file on a job being built (G-145): the button, or why it is closed. */ door?: ReactNode }) {
   const [label, setLabel] = useState('')
   const [planned, setPlanned] = useState('')
   const [packageId, setPackageId] = useState('')
@@ -1213,11 +1214,15 @@ function MilestonesCard({ project, milestones, dispatch }: { project: GcProject;
   const sorted = [...milestones].sort((a, b) => (a.planned < b.planned ? -1 : 1))
   return (
     <Card>
-      <div style={{ fontWeight: 700, marginBottom: '0.4rem' }}>Milestones</div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <span style={{ fontWeight: 700 }}>Milestones</span>
+        {door}
+      </div>
       <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
         {sorted.map((m) => (
           <MilestoneLine
-            key={m.id}
+            // Keyed by its day too: a date changed from elsewhere (their dates, G-145) draws the line again, never a stale box Save would put back.
+            key={`${m.id}:${m.planned}:${m.packageId ?? ''}`}
             project={project}
             milestone={m}
             onSave={save}
