@@ -32,6 +32,8 @@ export type FollowItemKind =
   | 'signature'
   // A customer's bill past its due day (Board, 2026-10-04, on Owner Billing's reminder).
   | 'payment'
+  // A reason from a job's schedule, from the Gantt's call list (G-115): late work, new dates, what holds a bar.
+  | 'schedule'
 
 /** One thing a person owes us, with the words a message uses for it in each language. */
 export interface FollowItem {
@@ -56,6 +58,19 @@ export interface FollowItem {
   /** A quote's bid day, for "Our bid is due …". */
   bidDue?: string
   words: Record<PortalLang, { about: string; detail: string; ask: string }>
+  /** A `schedule` item's place on the schedule, for what the call's answer does (`callListCallActions`, G-115). */
+  schedule?: FollowScheduleRef
+}
+
+/** Where a `schedule` item sits: what kind of reason, the bar, and the move, the wait or the trade it is about. */
+export interface FollowScheduleRef {
+  kind: string
+  /** A held bar's hold, as the chart has it. */
+  hold?: string
+  lineId?: string
+  packageId?: string
+  moveId?: string
+  waitId?: string
 }
 
 export interface PartnerReach {

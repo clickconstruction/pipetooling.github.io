@@ -136,6 +136,7 @@ export function GcGantt({
   waits,
   lost,
   lateSaid,
+  callList,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -163,6 +164,8 @@ export function GcGantt({
   lost?: Map<string, LostDay[]>
   /** A trade's own new finish from its portal, not on the dates yet (G-117), drawn as an amber dashed tail. */
   lateSaid?: Map<string, { finish: string; words: string }>
+  /** By company as a call list (G-115): drawn under the toolbar while the chart is grouped by company. */
+  callList?: ReactNode
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -566,6 +569,8 @@ export function GcGantt({
           )}
         </div>
       </div>
+
+      {by === 'company' && callList}
 
       {view === 'list' && <GcGanttList groups={ganttListGroups(shown, today)} today={today} building={building} picked={picked} onPick={onPick} />}
 
