@@ -9,8 +9,17 @@
  * names only the payer's other jobs stays home. An entry that names no job is
  * about the account, and goes. "Names a job" means the entry's text carries
  * the job's number (its HCP number, else its Click number) as a standalone
- * token: `1042`, `#1042`, `J1042`, `job 1042`. The same digits inside money, a
- * decimal, a date, a phone number or a longer number do not name the job.
+ * token: `1042`, `#1042`, `J1042`, `job 1042`, `job#1042`, and a bill of it,
+ * `1042-1` / `#1042-2` / `Invoice 1042-1` (a dash and one or two digits). The
+ * same digits inside money, a decimal, a date, a phone number or a longer
+ * number do not name the job. Known false positives: a year or a phone's last
+ * four that happen to equal a job number written on their own (`in 2026`,
+ * `ext 1042`) read as naming that job; they send an entry to the firm, never
+ * hold one back.
+ *
+ * An explicit share wins: an entry the office shared by hand
+ * (`held_overrides[key] === false`) goes whatever job it names
+ * (`contactGoesWithShare`).
  *
  * Lives in `_shared` so the function and its test read one rule;
  * `src/lib/legal/legalContactScope.ts` is the client's door.
@@ -30,14 +39,15 @@ function escapeRegExp(s: string): string {
 }
 
 /**
- * True when the text names job number `n` on its own: optionally after `#` or
- * `J`, never touching a letter, digit, `$`, a separator or a dash before it,
- * and never followed by a letter, a digit, or a separator and another digit.
+ * True when the text names job number `n` on its own: optionally after `#`,
+ * `J` or `job#`, never touching a letter, digit, `$`, a separator or a dash
+ * before it; optionally followed by a bill suffix (`-1`, `-12`); and never
+ * followed by a letter, a digit, or a separator and another digit.
  */
 export function textNamesJob(text: string | null | undefined, n: string): boolean {
   const num = n.trim().toLowerCase()
   if (num.length < 3) return false
-  const re = new RegExp(`(?<![\\w$.,/\\-#])(?:#|j)?${escapeRegExp(num)}(?![\\w]|[.,/\\-]\\d)`)
+  const re = new RegExp(`(?<![\\w$.,/\\-#])(?:job#|#|j)?${escapeRegExp(num)}(?:-\\d{1,2}(?![\\w]))?(?![\\w]|[.,/\\-]\\d)`)
   return re.test((text ?? '').toLowerCase())
 }
 
@@ -66,4 +76,9 @@ export function contactScopeOf(text: string | null | undefined, numbers: { matte
 /** True when the entry goes to the firm: it names a matter job, or no job at all. */
 export function contactGoesToCounsel(text: string | null | undefined, numbers: { matter: ReadonlySet<string>; other: ReadonlySet<string> }): boolean {
   return contactScopeOf(text, numbers) !== 'other_job'
+}
+
+/** The scope rule with the office's own say: an entry it shared by hand (`held_overrides[key] === false`) always goes. */
+export function contactGoesWithShare(text: string | null | undefined, numbers: { matter: ReadonlySet<string>; other: ReadonlySet<string> }, override: unknown): boolean {
+  return override === false || contactGoesToCounsel(text, numbers)
 }

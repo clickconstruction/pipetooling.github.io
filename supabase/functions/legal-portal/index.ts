@@ -7,7 +7,7 @@ import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
-import { contactGoesToCounsel, contactScopeNumbers } from '../_shared/legalContactScope.ts'
+import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
 
 /**
@@ -288,7 +288,7 @@ serve(async (req) => {
       const contactNumbers = contactScopeNumbers(mJobs, payerJobs.filter((j) => customerId != null && (j.customer_id === customerId || j.gc_customer_id === customerId)))
       const mContacts = contacts
         .filter((c) => customerId && c.customer_id === customerId)
-        .filter((c) => contactGoesToCounsel(c.details as string | null, contactNumbers))
+        .filter((c) => contactGoesWithShare(c.details as string | null, contactNumbers, heldOverrides[`contact:${c.id as string}`]))
         .map((c) => ({ id: c.id as string, ymd: c.contact_date ? todayYmdInAppTz(new Date(c.contact_date as string)) : todayYmd, method: (c.contact_method as string | null) ?? null, by: userName.get(c.created_by as string) ?? null, text: ((c.details as string | null) ?? '').trim() }))
         .filter((c) => goes(`contact:${c.id}`, c.ymd))
       const mPromises = promises

@@ -1,6 +1,6 @@
 /** Punch list #85, item 24: the firm reads the payer's contact log only about the matter's jobs or the account. */
 import { describe, expect, it } from 'vitest'
-import { contactGoesToCounsel, contactScopeNumbers, contactScopeOf, jobNumberOf, textNamesJob } from './legalContactScope'
+import { contactGoesToCounsel, contactGoesWithShare, contactScopeNumbers, contactScopeOf, jobNumberOf, textNamesJob } from './legalContactScope'
 
 const matterJobs = [{ id: 'm1', hcp_number: '1042', click_number: '' }]
 const payerJobs = [...matterJobs, { id: 'o1', hcp_number: '1057', click_number: '' }, { id: 'o2', hcp_number: '', click_number: 'C-219' }, { id: 'o3', hcp_number: '12', click_number: '' }]
@@ -43,5 +43,24 @@ describe('contactScopeOf', () => {
 
   it('never reads a two-digit number as a job', () => {
     expect(contactScopeOf('12 fixtures left on the punch list', numbers)).toBe('account')
+  })
+})
+
+describe('a bill of the job, and job# (review)', () => {
+  it('counts Invoice 1042-1, #1042-2 and job#1042 as naming job 1042', () => {
+    for (const t of ['Sent Invoice 1042-1 again', 'Asked about #1042-2', 'job#1042 is still open', 'Re: 1042-12 retainage']) expect(textNamesJob(t, '1042'), t).toBe(true)
+  })
+  it('still refuses a longer number or a date run on with a dash', () => {
+    for (const t of ['call 512-1042-5555', 'ref 1042-2026', 'po 1042-123']) expect(textNamesJob(t, '1042'), t).toBe(false)
+  })
+})
+
+describe('contactGoesWithShare · an explicit share wins', () => {
+  const numbers = contactScopeNumbers([{ id: 'm1', hcp_number: '1042' }], [{ id: 'o1', hcp_number: '2077' }])
+  it('sends an entry about another job when the office shared it by hand, and holds it otherwise', () => {
+    expect(contactGoesWithShare('Called about 2077', numbers, false)).toBe(true)
+    expect(contactGoesWithShare('Called about 2077', numbers, undefined)).toBe(false)
+    expect(contactGoesWithShare('Called about 2077', numbers, true)).toBe(false)
+    expect(contactGoesWithShare('Called about 1042-1', numbers, undefined)).toBe(true)
   })
 })
