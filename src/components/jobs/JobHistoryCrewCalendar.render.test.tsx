@@ -77,4 +77,15 @@ describe('JobHistoryCrewCalendar', () => {
     expect(custom.container.querySelector('[data-crew-summary]')?.textContent).toBe('No days worked in this range.')
     expect(custom.container.querySelector('[data-crew-months]')).toBeNull()
   })
+
+  it('a month header carries its § 53.056 line when the lien timeline hands one in (v2.4707)', () => {
+    const { container } = draw({ monthLines: { '2026-07': { words: '§ 53.056 window closed · not noted', tone: 'red' }, '2026-10': { words: '§ 53.056 opens Nov 1', tone: 'green' } } })
+    const jul = container.querySelector('[data-crew-month="2026-07"] [data-crew-month-lien]')!
+    expect(jul.textContent).toBe('§ 53.056 window closed · not noted')
+    expect(jul.getAttribute('data-tone')).toBe('red')
+    expect(container.querySelector('[data-crew-month="2026-08"] [data-crew-month-lien]')).toBeNull()
+    expect(container.querySelector('[data-crew-month="2026-10"] [data-crew-month-lien]')?.getAttribute('data-tone')).toBe('green')
+    const plain = draw()
+    expect(plain.container.querySelector('[data-crew-month-lien]')).toBeNull()
+  })
 })
