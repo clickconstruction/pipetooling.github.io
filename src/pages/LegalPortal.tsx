@@ -60,6 +60,8 @@ export default function LegalPortal() {
   const loadedAtRef = useRef<number | null>(null)
   /** True while the load in flight is the quiet ten-minute reload: it never swaps the page for the error card. */
   const quietRef = useRef(false)
+  /** The page-level notice line a failed quiet reload leaves; cleared by the next load that works. */
+  const [refreshNote, setRefreshNote] = useState<string | null>(null)
 
   /** One POST to submit-legal-portal; reloads the payload on success. */
   const act: Act = async (payload, said) => {
@@ -103,8 +105,7 @@ export default function LegalPortal() {
     quietRef.current = false
     const fail = (message: string) => {
       if (quiet) {
-        setNotice(PORTAL_QUIET_RELOAD_FAILED)
-        setNoticeWarn(true)
+        setRefreshNote(PORTAL_QUIET_RELOAD_FAILED)
         return
       }
       setState({ kind: 'error', message })
@@ -126,6 +127,7 @@ export default function LegalPortal() {
           return
         }
         setState({ kind: 'ready', payload })
+        setRefreshNote(null)
         loadedAtRef.current = Date.now()
         // The first matter in the page's order opens by itself and stays pinned (the effect below).
       } catch {
@@ -216,6 +218,7 @@ export default function LegalPortal() {
         ) : null}
         {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /> : null}
         {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} /> : null}
+        {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
 
