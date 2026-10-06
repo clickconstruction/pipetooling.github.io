@@ -1481,9 +1481,12 @@ describe('LienDeskModal — the page labels stick (v2.4726)', () => {
     await settle()
     const labels = Array.from(document.querySelectorAll('[data-lien-desk-page-label]')) as HTMLElement[]
     expect(labels.length).toBeGreaterThanOrEqual(2)
-    // Stacked like the pile titles: the i-th label sits i bars from the top once passed and n-1-i bars from the bottom while ahead.
-    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${i * 30}px`))
-    expect(labels.map((l) => l.style.bottom)).toEqual(labels.map((_, i) => `${(labels.length - 1 - i) * 30}px`))
+    // Stacked like the pile titles, under the pane's section heads (v2.4733: four on this job, which bought from no house) — the i-th label sits
+    // heads + i bars from the top once passed; it does not stack at the foot, where the envelope head already names the pages.
+    const headCount = document.querySelectorAll('[data-lien-pane-head]').length
+    expect(headCount).toBe(4)
+    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${(headCount + i) * 30}px`))
+    expect(labels.map((l) => l.style.bottom)).toEqual(labels.map(() => 'auto'))
     expect(labels.map((l) => l.getAttribute('data-on'))).toEqual(labels.map((_, i) => (i === 0 ? 'yes' : 'no')))
     expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
     // Each is a button that goes to its page and lights up.
