@@ -7,6 +7,8 @@ order: 12
 ---
 Every purchase on your linked company card shows up in **Job Parts Tally → Transactions**. The purchase waits there to be sorted to the job or jobs the material was for.
 
+A purchase you leave unsorted waits for the office, as [sort the team's card purchases from the office](/help/sort-the-teams-card-purchases) explains.
+
 Open the tally from Settings. **Job Parts Tally** is the first chip under the search box at the top of the list, on every tab. You can also open it from the blue wrench square on your dashboard. On your phone, each purchase is a card with the store name, amount, and day. Sorting them takes a tap or two.
 
 ## Sorting one purchase

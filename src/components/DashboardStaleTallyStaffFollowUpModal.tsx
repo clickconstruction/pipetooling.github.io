@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import type { Database, Json } from '../types/database'
 import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocationsModal'
+import {
+  mercuryTxRowFromStaffListRow,
+  staffListRowFromSorted,
+  type StaleStaffRow as StaleStaffRowShared,
+} from '../lib/tally/teamPurchaseRows'
+import { assignChargeToOfficeAsStaff, backchargeDraftForCharge } from '../lib/tally/tallyBackcharge'
 import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
 import { TeamPurchasesSortedList } from './TeamPurchasesSortedList'
 import type { SortedTeamPurchaseRow } from '../lib/teamPurchasesSorted'
@@ -19,60 +24,12 @@ import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
 import { useAuth } from '../hooks/useAuth'
 import { fetchHideDevTallyTransactions, setHideDevTallyTransactions } from '../lib/hideDevTallyTransactions'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
-import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 
 const EMPTY_JOB_LABEL_BY_ID: Record<string, string> = {}
 
-type StaleStaffRow = Database['public']['Functions']['list_stale_unlinked_mercury_transactions_for_tally_staff']['Returns'][number]
-type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
-
-function mercuryTxRowFromStaffListRow(row: StaleStaffRow): MercuryTxRow {
-  const posted = row.posted_at ?? new Date().toISOString()
-  return {
-    id: row.mercury_transaction_id,
-    amount: row.amount,
-    counterparty_id: null,
-    counterparty_name: row.counterparty_name ?? null,
-    created_at: posted,
-    currency: row.currency ?? 'USD',
-    dashboard_link: null,
-    external_memo: null,
-    kind: '—',
-    mercury_account_id: row.mercury_account_id ?? '',
-    mercury_category: null,
-    mercury_id: row.mercury_id ?? '',
-    note: row.note ?? null,
-    posted_at: row.posted_at,
-    raw: row.raw ?? null,
-    status: '—',
-    synced_at: posted,
-    source: 'mercury',
-    manual_upload_id: null,
-    created_by: null,
-    duplicate_of_transaction_id: null,
-  }
-}
-
-/** A sorted charge in the To sort row's shape, so the Assign window opens on it the same way. */
-function staffListRowFromSorted(row: SortedTeamPurchaseRow): StaleStaffRow {
-  return {
-    target_user_id: row.target_user_id,
-    target_name: row.target_name ?? '',
-    target_email: '',
-    target_phone: '',
-    mercury_transaction_id: row.mercury_transaction_id,
-    posted_at: row.posted_at ?? '',
-    amount: row.amount,
-    counterparty_name: row.counterparty_name ?? '',
-    note: row.note ?? '',
-    mercury_account_id: row.mercury_account_id ?? '',
-    currency: row.currency ?? 'USD',
-    mercury_id: row.mercury_id ?? '',
-    raw: row.raw,
-    job_splits: row.job_splits,
-  } as StaleStaffRow
-}
+type StaleStaffRow = StaleStaffRowShared
 
 type FollowUpView = 'all' | 'stale' | 'sorted'
 
@@ -144,19 +101,6 @@ type Group = {
   target_email: string | null
   target_phone: string | null
   rows: StaleStaffRow[]
-}
-
-function buildBackchargeDraftFromStaleRow(g: Group, r: StaleStaffRow): PersonOffsetInitialDraft {
-  const cp = (r.counterparty_name ?? '').trim() || 'Unknown'
-  const postedMs = r.posted_at ? new Date(r.posted_at).getTime() : NaN
-  const ymd = Number.isFinite(postedMs) ? denverCalendarDayKey(postedMs) : denverCalendarDayKey(Date.now())
-  return {
-    personName: g.target_name,
-    type: 'backcharge',
-    amount: String(Math.abs(Number(r.amount))),
-    description: `Personal charge on company card: ${cp}`,
-    occurredDate: ymd,
-  }
 }
 
 export function DashboardStaleTallyStaffFollowUpModal({
@@ -265,33 +209,25 @@ export function DashboardStaleTallyStaffFollowUpModal({
       }
       setBackchargeBusyTxId(r.mercury_transaction_id)
       try {
-        const officeRows = await withSupabaseRetry(
-          () => supabase.rpc('get_jobs_ledger_office'),
-          'get jobs ledger office',
-        )
-        const officeId = Array.isArray(officeRows) && officeRows.length > 0 ? officeRows[0]?.id : null
-        if (!officeId) {
-          showToast('Office job not found (HCP 000 or name containing Office).', 'error')
-          return
-        }
-        const txAmount = Number(r.amount)
-        const p_rows = [{ job_id: officeId, amount: txAmount }] as unknown as Json
-        await withSupabaseRetry(
-          async () =>
-            supabase.rpc('replace_mercury_job_splits_for_linked_card_as_staff', {
-              p_for_user_id: r.target_user_id,
-              p_mercury_transaction_id: r.mercury_transaction_id,
-              p_rows,
-            }),
-          'replace mercury job splits office backcharge',
-        )
+        await assignChargeToOfficeAsStaff({
+          forUserId: r.target_user_id,
+          transactionId: r.mercury_transaction_id,
+          amount: Number(r.amount),
+        })
         showToast('Transaction assigned to Office job.', 'success')
         void load()
         onDataChanged?.()
 
         const names = await fetchOffsetPersonNameOptions({ authUserId: uid, ensureNames: [g.target_name] })
         setPersonOffsetNameOptions(names)
-        setPersonOffsetCreateDraft(buildBackchargeDraftFromStaleRow(g, r))
+        setPersonOffsetCreateDraft(
+          backchargeDraftForCharge({
+            personName: g.target_name,
+            counterparty: r.counterparty_name,
+            amount: Number(r.amount),
+            postedAt: r.posted_at,
+          }),
+        )
         setPersonOffsetFormOpen(true)
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Could not complete backcharge', 'error')

@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally
+keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly
 order: 60
 ---
 When someone buys on a company card and does not sort the purchase themselves, it waits for the office. On the Dashboard, the **Needs you** card says *Team purchases waiting to be sorted*. {{button:amber|Sort for the team}} opens the **Team purchases follow-up** window.
@@ -41,3 +41,18 @@ Open {{chip:gray|Sorted}}. Each row says where the purchase went, who sorted it 
 - {{button:outline|Change}} opens the job picker on a purchase that went to a job.
 
 An amber line at the top counts the purchases whose invoices do not add up. **Show only those** narrows the list to them.
+
+## From Job Parts Tally
+
+The same purchases wait in [Job Parts Tally](/tally?tab=transactions) under {{chip:blue|Team}}. There is one card per person per day.
+
+1. Read the line at the top of a card. It says when the person clocked in and on which job.
+2. Look at the first button. It is the likely job, marked *likely*, with the reason under it.
+3. Tap the job that fits the day. The purchases on the card take it. A purchase with its own likely job waits for its own tap.
+4. Press {{button:green|Sort the day}}. The button counts the purchases it will save.
+
+Nothing is picked until you tap. A purchase can go somewhere else than the rest of its day. Use **Pick a job** on its line, or {{button:outline|Another job…}} for the full job picker. {{button:outline|Invoices}} and {{button:outline|Backcharge}} work as they do in the window.
+
+On a day with two jobs, {{chip:blue|Split evenly}} splits each purchase between them. Under the amounts, **Split by hours instead** splits by the hours on each job.
+
+If a purchase cannot be saved, it stays picked and says why. The rest of the day is saved. {{chip:gray|Sorted}} at the top is the same 30-day list as in the window. {{chip:gray|My card}} shows only the purchases on your own card.
