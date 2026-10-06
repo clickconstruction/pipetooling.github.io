@@ -13,6 +13,7 @@ function rpcRow(i: number, over: Partial<CardChargesWindowRpcRow> = {}): CardCha
   return {
     mercury_transaction_id: `tx${i}`,
     posted_at: new Date(Date.UTC(2026, 8, 1) + i * 3600_000).toISOString(),
+    purchased_at: null,
     amount: -10,
     counterparty_name: 'Store',
     kind: 'debitCardTransaction',
@@ -112,11 +113,6 @@ describe('the migration', () => {
     expect(returnsTableColumns(MIGRATION, 'list_card_charges_window')).toEqual(rows)
   })
 
-  it('the client row type names every column the function returns', () => {
-    const names = returnsTableColumns(MIGRATION, 'list_card_charges_window').map((c) => c.split(' ')[0])
-    expect(Object.keys(rpcRow(0)).sort()).toEqual([...names].sort())
-  })
-
   it('the rows function is sql (checked at create) and only the wrapper calls it', () => {
     const rowsFn = MIGRATION.slice(MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public._card_charges_window_rows('), MIGRATION.indexOf('CREATE OR REPLACE FUNCTION public.list_card_charges_window('))
     expect(rowsFn).toMatch(/\nLANGUAGE sql\n/)
@@ -158,6 +154,76 @@ describe('the refunds migration', () => {
   })
 })
 
+// v2.4665 (20261006061356): the purchase time. RETURNS TABLE gains purchased_at, which CREATE OR
+// REPLACE cannot do, so both functions are dropped and created again; their bodies must otherwise
+// be the ones on prod (the rows function from the refunds migration, the wrapper from the first).
+const CREATED_AT_MIGRATION = readFileSync(join(__dirname, '../../../supabase/migrations/20261006061356_card_charges_window_purchased_at.sql'), 'utf8')
+
+/** One function's text, from its CREATE to the end of its body. */
+function functionText(sql: string, fn: string): string {
+  const start = sql.indexOf(`CREATE OR REPLACE FUNCTION public.${fn}(`)
+  expect(start, `${fn} is created`).toBeGreaterThanOrEqual(0)
+  return sql.slice(start, sql.indexOf('$function$;', start) + '$function$;'.length)
+}
+
+describe('the purchase-time migration', () => {
+  it('drops both functions before it creates them, lock timeout first', () => {
+    expect(CREATED_AT_MIGRATION.trimStart().startsWith("SET lock_timeout = '3s';")).toBe(true)
+    const dropWrapper = CREATED_AT_MIGRATION.indexOf('DROP FUNCTION IF EXISTS public.list_card_charges_window(date, date);')
+    const dropRows = CREATED_AT_MIGRATION.indexOf('DROP FUNCTION IF EXISTS public._card_charges_window_rows(timestamp with time zone, timestamp with time zone, uuid, boolean);')
+    expect(dropWrapper).toBeGreaterThan(0)
+    expect(dropRows).toBeGreaterThan(0)
+    expect(Math.max(dropWrapper, dropRows)).toBeLessThan(CREATED_AT_MIGRATION.indexOf('CREATE OR REPLACE FUNCTION'))
+  })
+
+  it('both return the same 23 columns: the old 22 with purchased_at after posted_at', () => {
+    const rows = returnsTableColumns(CREATED_AT_MIGRATION, '_card_charges_window_rows')
+    const before = returnsTableColumns(MIGRATION, 'list_card_charges_window')
+    expect(rows).toEqual([...before.slice(0, 2), 'purchased_at timestamp with time zone', ...before.slice(2)])
+    expect(returnsTableColumns(CREATED_AT_MIGRATION, 'list_card_charges_window')).toEqual(rows)
+  })
+
+  it('the client row type names every column the newest migration returns', () => {
+    const names = returnsTableColumns(CREATED_AT_MIGRATION, 'list_card_charges_window').map((c) => c.split(' ')[0])
+    expect(Object.keys(rpcRow(0)).sort()).toEqual([...names].sort())
+  })
+
+  it('reads createdAt from raw, only when it is a valid ISO timestamp, and still windows on posted_at', () => {
+    const rowsFn = functionText(CREATED_AT_MIGRATION, '_card_charges_window_rows')
+    expect(rowsFn).toContain("WHEN t.raw ->> 'createdAt' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T")
+    expect(rowsFn).toContain("AND pg_input_is_valid(t.raw ->> 'createdAt', 'timestamp with time zone')")
+    expect(rowsFn).toContain("THEN (t.raw ->> 'createdAt')::timestamp with time zone")
+    expect(rowsFn).not.toMatch(/\bt\.created_at\b/)
+    expect(rowsFn).toContain('WHERE t.posted_at >= p_lo\n      AND t.posted_at < p_hi')
+    expect(rowsFn).toContain('ORDER BY c.posted_at, c.id')
+  })
+
+  it('keeps prod’s bodies: the rows function from the refunds migration, the wrapper from the first, but for purchased_at', () => {
+    const rowsWithout = functionText(CREATED_AT_MIGRATION, '_card_charges_window_rows')
+      .replace('  purchased_at timestamp with time zone,\n', '')
+      .replace(/      -- Mercury's createdAt:[\s\S]*?      END AS purchased_at,\n/, '')
+      .replace('w.posted_at, w.purchased_at, w.amount', 'w.posted_at, w.amount')
+      .replace('    c.purchased_at,\n', '')
+    expect(rowsWithout).toBe(functionText(REFUNDS_MIGRATION, '_card_charges_window_rows'))
+    const wrapperWithout = functionText(CREATED_AT_MIGRATION, 'list_card_charges_window').replace('  purchased_at timestamp with time zone,\n', '')
+    expect(wrapperWithout).toBe(functionText(MIGRATION, 'list_card_charges_window'))
+  })
+
+  it('stays sql and closed to the app; the wrapper is granted to the app again', () => {
+    expect(functionText(CREATED_AT_MIGRATION, '_card_charges_window_rows')).toMatch(/\nLANGUAGE sql\n/)
+    for (const role of ['PUBLIC', 'anon', 'authenticated']) {
+      expect(CREATED_AT_MIGRATION).toMatch(new RegExp(`REVOKE ALL ON FUNCTION public\\._card_charges_window_rows\\([^)]*\\) FROM ${role};`))
+    }
+    expect(CREATED_AT_MIGRATION).not.toMatch(/GRANT [A-Z ,]*ON FUNCTION public\._card_charges_window_rows/)
+    for (const role of ['PUBLIC', 'anon']) {
+      expect(CREATED_AT_MIGRATION).toContain(`REVOKE ALL ON FUNCTION public.list_card_charges_window(date, date) FROM ${role};`)
+    }
+    expect(CREATED_AT_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.list_card_charges_window(date, date) TO authenticated;')
+    expect(CREATED_AT_MIGRATION).toMatch(/COMMENT ON FUNCTION public\._card_charges_window_rows\(/)
+    expect(CREATED_AT_MIGRATION).toMatch(/COMMENT ON FUNCTION public\.list_card_charges_window\(date, date\) IS/)
+  })
+})
+
 describe('cardChargeWindowRowFromRpc', () => {
   it('reads the splits and invoice links with the Sorted RPC’s keys', () => {
     const row = cardChargeWindowRowFromRpc(
@@ -186,6 +252,13 @@ describe('cardChargeWindowRowFromRpc', () => {
     const row = cardChargeWindowRowFromRpc(rpcRow(3, { kind: 'other', amount: 168.06, debit_card_id: 'card-1', holder_user_id: 'u-1', counterparty_name: 'The Home Depot', job_splits: [{ job_id: 'j-1033', amount: 168.06 }] }))
     expect(row).toMatchObject({ kind: 'other', amount: 168.06, debitCardId: 'card-1', holderUserId: 'u-1' })
     expect(row.splits).toEqual([{ jobId: 'j-1033', amount: 168.06, hcpNumber: null, clickNumber: null, jobName: null, serviceTypeId: null }])
+  })
+
+  it('carries the purchase time, and reads null from a server without the column', () => {
+    expect(cardChargeWindowRowFromRpc(rpcRow(4, { purchased_at: '2026-09-15T02:30:00.123456+00:00' })).purchasedAt).toBe('2026-09-15T02:30:00.123456+00:00')
+    expect(cardChargeWindowRowFromRpc(rpcRow(5, { purchased_at: null })).purchasedAt).toBeNull()
+    const { purchased_at: _gone, ...oldServer } = rpcRow(6)
+    expect(cardChargeWindowRowFromRpc(oldServer as CardChargesWindowRpcRow).purchasedAt).toBeNull()
   })
 
   it('blank text is null and a bad amount is 0', () => {
