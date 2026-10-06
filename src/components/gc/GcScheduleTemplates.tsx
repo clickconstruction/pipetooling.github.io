@@ -164,9 +164,10 @@ export function GcTemplatePick({
   const picked = choices.find((c) => c.id === value)
   return (
     <>
-      <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', minWidth: 0 }}>
+      {/* On a phone the select goes under its name, no wider than the card, so a long name never widens the page. */}
+      <label style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.4rem', alignItems: 'center', minWidth: 0, maxWidth: '100%' }}>
         <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Start from a template</span>
-        <select aria-label="Start from a template" value={picked ? value : ''} onChange={(e) => onChange(e.target.value)} style={{ ...box, minWidth: 0, maxWidth: '100%' }}>
+        <select aria-label="Start from a template" value={picked ? value : ''} onChange={(e) => onChange(e.target.value)} style={{ ...box, flex: '1 1 auto', minWidth: 0, maxWidth: '100%' }}>
           <option value="">No template</option>
           {choices.map((c) => (
             <option key={c.id} value={c.id}>
