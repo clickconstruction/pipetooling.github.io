@@ -17,6 +17,7 @@ import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
 import { askKindWords, openAsks } from '../lib/legal/legalAsks'
 import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
+import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 
 /**
@@ -70,7 +71,7 @@ export default function LegalPortal() {
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload }) })
       const body = (await res.json().catch(() => null)) as LegalActAnswer | null
       if (!res.ok || !body?.ok) {
-        setNotice(body?.error ?? 'Could not save that. Please try again.')
+        setNotice(res.ok ? 'Could not save that. Please try again.' : firmFacingErrorLine(res.status, body))
         return false
       }
       setReloadTick((t) => t + 1)
@@ -98,8 +99,8 @@ export default function LegalPortal() {
         const body = (await res.json().catch(() => null)) as unknown
         if (cancelled) return
         if (!res.ok) {
-          const msg = body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string' ? (body as { error: string }).error : 'We could not open the portal.'
-          setState({ kind: 'error', message: msg })
+          // Item 7 (#85): a 4xx keeps the words written for the firm; an unexpected 5xx reads as one plain sentence.
+          setState({ kind: 'error', message: firmFacingErrorLine(res.status, body) })
           return
         }
         const payload = parseLegalPortalPayload(body)
