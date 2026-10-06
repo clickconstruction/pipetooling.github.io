@@ -67,3 +67,13 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
 | Helper 5 | G-77 | A trade not ready to start (no signed statement of work, insurance run out): the bar says so before its start day |
 
 Round two, in order: G-60, G-97, G-98, G-118, G-08.
+
+## Status
+
+Rounds one and two landed on `spike/gc-mode` the same day, 2026-10-06, each row reviewed and merged by
+the lead with the GC tests green and the golden test unmoved: G-77, G-117, G-115, G-60, G-21, G-97,
+G-37, G-118, G-98 and G-08, then a fit-and-finish pass (the late-finish lines and the pull's ghost on
+the paper, the billing shift in the pull window, the capitals in a merged hold sentence) and the G-59
+row set to Have. Every row of `GANTT_FEATURES.md` with a phase number now stands Have. Round three
+waits on the owner's word on the *Later* rows; the rows the helpers raised for the owner are G-138 to
+G-141 and the snapshot-moving counts each mockup names under *Left out*.
