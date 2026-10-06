@@ -62,7 +62,7 @@ Office staff can move a job to Collections but cannot release it. {{button:outli
 
 ## The firm
 
-Settings → Jobs & billing → **Collections law firm** holds the firm's details. Only a dev sees it. It holds the firm's name, the handling person, a contact email and phone, and the fee model behind "Click keeps". The fee model is the contingency % and the filing cost. The contingency % is the firm's share of what is recovered. The contact email is not a subscription. The firm's own people and their email rules come from the portal's Notifications page. Nobody is emailed until they are on that list and confirmed.
+Settings → Jobs & billing → **Collections law firm** holds the firm's details. Only a dev sees it. The Legal desk opens the same details when you press the firm's name in its header. Everyone on the desk can read them there. It holds the firm's name, the handling person, a contact email and phone, and the fee model behind "Click keeps". The fee model is the contingency % and the filing cost. The contingency % is the firm's share of what is recovered. The contact email is not a subscription. The firm's own people and their email rules come from the portal's Notifications page. Nobody is emailed until they are on that list and confirmed.
 
 ## When the firm acts
 

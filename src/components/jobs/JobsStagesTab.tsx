@@ -4434,6 +4434,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         legal={legalMatters}
         canMarkReady={authRole === 'dev'}
         canEditReview={stagesGates.isStagesOfficeRole(authRole)}
+        canEditFirm={authRole === 'dev'}
       />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
