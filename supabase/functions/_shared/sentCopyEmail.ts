@@ -87,6 +87,16 @@ export function sentAttachmentType(filename: string): string {
 }
 
 /**
+ * The message as it is kept, by kind. The law firm's portal link (`legal_firm_link`) is a key to
+ * the firm's portal: the filed copy shows the button with `?t=…`, never the token, because four
+ * office roles read the filed copies (punch list #85, item 21).
+ */
+export function sentCopyKeptHtml(kind: string, html: string): string {
+  if (kind !== 'legal_firm_link') return html
+  return html.replace(/([?&](?:amp;)?t=)[^"'&<\s]+/g, '$1…')
+}
+
+/**
  * The page the office opens for an email: a grey head (from, to, cc, subject, the attachments
  * by name), then the message as it was read. The head goes inside the message's own `<body>`
  * when it has one, so a full document stays one document.

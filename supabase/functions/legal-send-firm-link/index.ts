@@ -15,9 +15,10 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
  * manages the link). Filed in `sent_documents` (kind `legal_firm_link`, source the active
  * `legal_portal_links` row), which is where the card reads *Sent to … on …* back.
  *
- * Body: `{ firmId, useOnFile?: boolean, typed?: string, note?: string, token?: string, publicOrigin?: string }`.
- * `token` is the raw link the card holds; it must match the firm's active link (raw or its hash),
- * and is only needed once the raw token is no longer stored.
+ * Body: `{ firmId, useOnFile?: boolean, typed?: string, note?: string, token?: string }`.
+ * `token` is the raw link the card holds; it must match the firm's active link (raw or its hash).
+ * With none, the row's raw token is used, else the Vault copy (`legal_portal_link_token`, service
+ * role, punch list #85 item 22). The link's origin is `APP_ORIGIN`, never the caller's.
  */
 
 const corsHeaders = {
@@ -47,7 +48,7 @@ serve(async (req) => {
     const { data: isOffice } = await userClient.rpc('legal_office_can_read')
     if (isOffice !== true) return json({ error: 'Only the office sends the firm its link.' }, 403)
 
-    const body = (await req.json().catch(() => null)) as { firmId?: string; useOnFile?: boolean; typed?: string; note?: string; token?: string; publicOrigin?: string } | null
+    const body = (await req.json().catch(() => null)) as { firmId?: string; useOnFile?: boolean; typed?: string; note?: string; token?: string } | null
     const firmId = (body?.firmId ?? '').trim()
     if (!firmId) return json({ error: 'Which firm?' }, 400)
 
@@ -69,9 +70,16 @@ serve(async (req) => {
       token = link.token_hash && (await sha256Hex(offered)) === link.token_hash ? offered : ''
       if (!token) return json({ error: 'That link is no longer the firm’s active link. Close the card and open it again.' }, 409)
     }
+    if (!token && !offered) {
+      // Hash only at rest (item 22): the raw token lives in Vault, readable by the service role alone.
+      const { data: vaulted, error: vaultErr } = await admin.rpc('legal_portal_link_token', { p_firm_id: firm.id })
+      if (vaultErr) console.warn('legal-send-firm-link: legal_portal_link_token', vaultErr.message)
+      token = typeof vaulted === 'string' ? vaulted : ''
+    }
     if (!token) return json({ error: 'The stored link cannot be read back. Press Rotate, then send the new link.' }, 409)
 
-    const origin = (typeof body?.publicOrigin === 'string' && /^https?:\/\//.test(body.publicOrigin) ? body.publicOrigin : null) ?? Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
+    // The link's origin is the app's, never one the caller names (a body origin would let a caller mail the firm a look-alike host).
+    const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
     const portalUrl = `${origin.replace(/\/$/, '')}/legal?t=${encodeURIComponent(token)}`
 
     const [{ count: matterCount }, { data: me }] = await Promise.all([

@@ -156,6 +156,7 @@ export function buildLegalWelcomeEmail(i: {
   const keep = 'The link needs no sign-in. Keep it inside the firm, because anyone holding it can open the portal. If it ever leaks, tell us and we will replace it.'
   const ask = phone ? `Questions: reply to this email, or call us at ${phone}.` : 'Questions: reply to this email.'
   const sig = [senderName, i.companyName, senderPhone, senderEmail].filter(Boolean)
+  const footer = `You get this because ${i.companyName} sent ${i.firmName} its portal link. Nothing else is emailed to this address unless someone at the firm adds it on the portal.`
 
   const p = (s: string) => `<p style="margin:0 0 12px">${s}</p>`
   const html =
@@ -172,7 +173,7 @@ export function buildLegalWelcomeEmail(i: {
     p(legalEsc(keep)) +
     p(legalEsc(ask)) +
     (sig.length ? `<p style="margin:16px 0 0;color:#5a6b7e">${sig.map(legalEsc).join('<br>')}</p>` : '') +
-    `<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because ${legalEsc(i.companyName)} sent ${legalEsc(i.firmName)} its portal link. Nothing else is emailed to this address unless someone at the firm adds it on the portal.</p>` +
+    `<p style="color:#8a97a6;font-size:12px;margin-top:22px">${legalEsc(footer)}</p>` +
     `</div>`
 
   const text = [
@@ -195,6 +196,8 @@ export function buildLegalWelcomeEmail(i: {
     '',
     ask,
     ...(sig.length ? ['', ...sig] : []),
+    '',
+    footer,
   ].join('\n')
 
   return { subject, text, html, replyTo: senderEmail || null }

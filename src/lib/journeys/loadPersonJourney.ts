@@ -154,7 +154,10 @@ export async function loadHouseRows(supplyHouseId: string): Promise<HouseRows> {
 
 export async function loadFirmRows(firmId: string): Promise<FirmRows> {
   const [portalLinks, recipients, queue] = await Promise.all([
-    rows<FirmRows['portalLinks'][number]>('journey firm links', () => supabase.from('legal_portal_links').select('id, token, revoked_at, created_at').eq('firm_id', firmId)),
+    // The columns the office keeps once the token is hash only at rest (#85 item 22); the raw token is read while the table still gives it.
+    rows<FirmRows['portalLinks'][number]>('journey firm links', () => supabase.from('legal_portal_links').select('id, firm_id, created_at, revoked_at, token_hash, token').eq('firm_id', firmId)).catch(() =>
+      rows<FirmRows['portalLinks'][number]>('journey firm links', () => supabase.from('legal_portal_links').select('id, firm_id, created_at, revoked_at, token_hash').eq('firm_id', firmId)).then((rs) => rs.map((r) => ({ ...r, token: null }))),
+    ),
     rows<FirmRows['recipients'][number]>('journey firm recipients', () => supabase.from('legal_firm_recipients').select('name, email, mode, confirmed_at, paused_at, removed_at, last_digest_at').eq('firm_id', firmId)),
     rows<FirmRows['queue'][number]>('journey firm queue', () => supabase.from('legal_notification_queue').select('sent_now_at, digested_at, created_at').eq('firm_id', firmId)),
   ])

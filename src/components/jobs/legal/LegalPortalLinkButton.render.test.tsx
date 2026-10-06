@@ -43,6 +43,22 @@ describe('LegalPortalLinkButton — Send the firm their link', () => {
     expect(opts.body).toMatchObject({ firmId: 'firm-1', useOnFile: true, typed: 'bo@firm.example.com', token: 'tok_0123456789abcdef' })
   })
 
+  it('a live link with no token readable (hash only at rest, item 22) still sends, with no token in the body', async () => {
+    tables.legal_portal_links = [{ id: 'link-1', firm_id: 'firm-1', token_hash: 'abc', created_at: '2026-10-01T15:00:00Z', revoked_at: null }]
+    tables.legal_firms = [{ email: 'ann@firm.example.com' }]
+    invoke.mockResolvedValue({ data: { ok: true, sentTo: ['ann@firm.example.com'] }, error: null })
+    renderWithProviders(<LegalPortalLinkButton firmId="firm-1" firmName="Sample & Partner" />)
+    fireEvent.click(screen.getByRole('button', { name: /Firm’s link/ }))
+    await waitFor(() => expect(document.querySelector('[data-legal-link-hidden]')).not.toBeNull())
+    expect(screen.queryByRole('button', { name: 'Copy link' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }))
+    await waitFor(() => expect(invoke).toHaveBeenCalled())
+    const [, opts] = invoke.mock.calls[0] as [string, { body: Record<string, unknown> }]
+    expect(opts.body).toMatchObject({ firmId: 'firm-1', useOnFile: true })
+    expect(opts.body).not.toHaveProperty('token')
+    expect(opts.body).not.toHaveProperty('publicOrigin')
+  })
+
   it('holds the button and says why when an address is not an email', async () => {
     tables.legal_portal_links = [{ id: 'link-1', token: 'tok_0123456789abcdef', created_at: '2026-10-01T15:00:00Z', revoked_at: null }]
     tables.legal_firms = [{ email: '' }]

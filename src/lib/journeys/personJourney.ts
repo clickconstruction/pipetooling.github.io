@@ -559,7 +559,8 @@ export function firmJourney(subject: Extract<PersonSubject, { kind: 'firm' }>, r
   const waiting = recipients.filter((r) => !r.confirmed_at)
   const paused = recipients.filter((r) => r.paused_at)
   const firmAction = { label: 'Manage who gets emails', to: '/customers' }
-  const activeLink = rows.portalLinks.find((l) => !l.revoked_at && l.token) ?? null
+  // A live link is one not revoked; its token may be unreadable (hash only at rest, #85 item 22).
+  const activeLink = rows.portalLinks.find((l) => !l.revoked_at) ?? null
   const sends = (rows.linkSends ?? []).filter((s) => !activeLink?.id || s.source_id === activeLink.id)
   const lastSend = latestBy(sends, (s) => s.sent_at)
   steps['firm-welcome-email'] = !activeLink
