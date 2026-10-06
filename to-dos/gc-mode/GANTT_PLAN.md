@@ -891,6 +891,45 @@ What the second look changed:
   "due today" would mean today, so a past day shows the log's answer instead.
 - **Left out on purpose**: *Here* ticks that write today's log as crews arrive (a new habit for the
   log, the owner's call) and the trade's own crew count from its portal (a new bilingual answer).
+## Phase 4, the contract's late days, as built (2026-10-06)
+
+G-98, Helper 3 (mock-up `mockups/G-98.md`). `gcLateFinish.ts` (tested, out of the barrel): one call,
+`lateFinish`, on Owner Billing's `ownerFinishRisk` (the projected finish against substantial
+completion with signed change orders' days). The Schedule tab, Bill the customer and the customer's
+words all count from it, so a move that changes the finish moves all three together.
+
+- **Under the Projected finish measure**, on a job past its contract: *At $500 a day, the 3 days cost
+  $1,500.* Then whose they are: *All 3 are the customer's: a change order for them would save
+  $1,500.* Then each change order with days: *Change order 1 moved the contract 1 day, signed Fri
+  Oct 2.* and *Change order 2 would move the contract 2 days once they sign it.* With no fee typed:
+  *No late fee is entered from the contract. It goes on Bill the customer.* On time with a fee: *Each
+  day past Fri Dec 11 costs $500.* The measure's chip reads the same call.
+- **The customer's days** are the finish days of the standing moves whose reason lies at the
+  customer's door (G-96's `CAUSE_OF`), less a move that put a signed change order's days on the chart.
+  They are capped at the late days. They do not lower the money at risk: until the customer signs a
+  change order for them, every late day counts, so Bill the customer's chip and this line agree.
+- **Bill the customer's Finish date card** gets the same whose-days line and change orders under its
+  money line.
+- **The customer reads whose the days are**, after their finish, only when late: *Those 3 days came
+  from a decision we were waiting on from you.* Or *4 of those days came from …* and *We are working
+  to make up the other 3.* The words for why are their portal's own (`CUSTOMER_WHY`). Never a company,
+  never the fee. In the portal's *Your schedule*, the Friday report's *At a glance* and the schedule
+  letter.
+- On the fixture, Fair Oaks D finishes on the contract's day with no change orders and no fee, so
+  nothing new shows. The measure still says *no days to spare*.
+
+What the second look changed:
+
+- **The customer's days save money, they do not lower the risk.** A time extension is an ask until
+  it is signed.
+- **The money line stays off Bill the customer's card**, which has its own. The card gets the split
+  and the change orders.
+
+Not done, on purpose: the ring card, the board row and Needs you (they move the golden walk; the
+owner's call). Which days the contract excuses besides the customer's, such as the weather's, is the
+contract's to say and the real build's to read. *Ask for the days*, a press that drafts the time
+extension change order, is G-141: it needs a field on the change order and a guard in G-76's
+kernel. Who sees the dollars follows *Money* in the real build.
 
 ## Status
 

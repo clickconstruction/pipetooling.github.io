@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { CUSTOMER_NOTHING_MOVED, customerAsks, customerChanges, customerFullChart, customerMaySeeEveryBar, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
 import { GcGanttList } from './GcGanttList'
 import { customerContractDays } from '../../lib/gcMode/gcChangeOrderDays'
+import { lateFinish } from '../../lib/gcMode/gcLateFinish'
 import { PortalBlock } from './GcPortalUi'
 
 /** Saturated on purpose: the same status colors as the office's chart. */
@@ -94,6 +95,10 @@ export function GcCustomerSchedule({ state, project }: { state: GcState; project
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {standing.finishWords}
           {contractDays.map((s) => (
+            <div key={s}>{s}</div>
+          ))}
+          {/* Whose the late days are, in their words: never a company, never the fee (G-98). */}
+          {lateFinish(state, project).customerWords.map((s) => (
             <div key={s}>{s}</div>
           ))}
         </div>

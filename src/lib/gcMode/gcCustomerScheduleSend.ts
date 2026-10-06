@@ -9,6 +9,7 @@
 import type { GcProject, GcState, ScheduleSend } from './gcTypes'
 import { CUSTOMER_STAGE_WORDS, customerAsks, customerChanges, customerDoneWords, customerMilestones, customerStages, customerStanding } from './gcCustomerSchedule'
 import { customerContractDays } from './gcChangeOrderDays'
+import { lateFinish } from './gcLateFinish'
 import { shortDate, weekdayDate } from './gcWords'
 import { GC_COMPANY } from './gcFixture'
 
@@ -26,7 +27,7 @@ export function customerScheduleLetter(state: GcState, project: GcProject, by: s
   const standing = customerStanding(state, project)
   const stages = customerStages(state, project)
   const milestones = customerMilestones(state, project)
-  const lines: string[] = [`Hello ${first},`, `Here is where ${project.name} stands as of ${weekdayDate(state.today)}.`, standing.finishWords, ...customerContractDays(project)]
+  const lines: string[] = [`Hello ${first},`, `Here is where ${project.name} stands as of ${weekdayDate(state.today)}.`, standing.finishWords, ...customerContractDays(project), ...lateFinish(state, project).customerWords]
   const done = customerDoneWords(standing)
   if (done) lines.push(done)
   for (const s of stages) {
