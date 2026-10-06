@@ -6,7 +6,7 @@ keywords: legal, attorney, law firm, portal, link, collections, packet, particul
 ---
 The collections law firm gets one private link that needs no sign-in. The link opens every account a dev has marked attorney-ready, and nothing else.
 
-Each account opens as the same five-section packet the Legal desk shows.
+Each account opens as the same five-section packet the Legal desk shows. The portal works on a phone too. On a narrow screen it is one column, with the matters list first.
 
 ## Create and send the link
 
@@ -18,7 +18,7 @@ Each account opens as the same five-section packet the Legal desk shows.
 
 ## What the firm sees
 
-- Every matter marked attorney-ready, largest first. A matter is one account in the firm's hands. Each matter shows its stage in the firm's words: referred, demand sent, suit filed or judgment entered.
+- Every matter marked attorney-ready, largest balance first. When two balances match, the newest referral comes first. The largest opens by itself. A matter is one account in the firm's hands. Each matter shows its stage in the firm's words: referred, demand sent, suit filed or judgment entered.
 - The same five tabs as the desk: ***Account · Paper · Record of contact · Evidence · Fees & steps***. The desk's **Their word** tab is **Record of contact** on the portal. The tabs are built from the same records by the same rules. So the firm and the office never disagree.
 - On **Account**, each job lists what is on file and what is not. That covers the agreement, the bill, the field record and any dispute. The desk's theory and the customer's payment terms stay with the office.
 - On **Paper**:
