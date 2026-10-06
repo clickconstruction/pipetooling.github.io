@@ -42,6 +42,7 @@ import { GcBuildingPromise } from './GcBuildingPromise'
 import { GcGantt } from './GcGantt'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
+import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
 import { planMove, whatIfSlips, type MoveLimits } from '../../lib/gcMode/gcScheduleMoves'
 import type { GanttHold } from '../../lib/gcMode/gcGantt'
 import { changeOrderMove, changeOrdersOnChart, changeOrderTails, type ChangeOrderOnChart } from '../../lib/gcMode/gcChangeOrderDays'
@@ -1565,6 +1566,8 @@ export function GcBuildingScheduleBlock({ project, today, box }: { project: GcPr
         ? { bg: 'var(--bg-amber-100)', fg: 'var(--text-amber-800)' }
         : { bg: 'var(--bg-green-100)', fg: 'var(--text-green-800)' }
   const late = sum.milestones.late.length > 0
+  // Not walked this week (G-59; the owner's OK 2026-10-06): the row says so, in place of the look-ahead line.
+  const walk = walkStanding(project, today)
   const small: CSSProperties = { fontSize: '0.68rem', whiteSpace: 'nowrap' }
   return (
     <span style={{ ...box, background: tone.bg, color: tone.fg, textAlign: 'center' }} title={scheduleSummaryWords(sum)} aria-label={scheduleSummaryWords(sum)}>
@@ -1581,7 +1584,7 @@ export function GcBuildingScheduleBlock({ project, today, box }: { project: GcPr
       <span style={{ ...small, fontWeight: late ? 700 : 400 }}>
         {sum.milestones.of > 0 ? `${sum.milestones.hit} of ${sum.milestones.of} milestones` : 'no milestone yet'}
       </span>
-      <span style={small}>{sum.lookAhead.of > 0 ? `look-ahead ${Math.round((sum.lookAhead.done / sum.lookAhead.of) * 100)}%` : 'look-ahead new'}</span>
+      {walk.stale ? <span style={{ ...small, fontWeight: 700 }}>not walked</span> : <span style={small}>{sum.lookAhead.of > 0 ? `look-ahead ${Math.round((sum.lookAhead.done / sum.lookAhead.of) * 100)}%` : 'look-ahead new'}</span>}
     </span>
   )
 }

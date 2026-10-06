@@ -126,6 +126,43 @@ export function moveAnswerWords(state: GcState, move: ScheduleMove): string[] {
   })
 }
 
+/** A company's open ask for another day, for Follow up (G-113; the owner's OK 2026-10-06). */
+export interface DatesAsk {
+  move: ScheduleMove
+  partner: Partner
+  /** The trade the moved line belongs to. */
+  trade: string
+  day: string | null
+  note: string | null
+  /** The day they asked. */
+  on: string
+  /** "Asked for Mon Oct 19 on TPO membrane after we moved it: “Rain all week.”" */
+  words: string
+}
+
+/**
+ * The asks still open: on a standing move, from a company that was told, with no newer standing
+ * move on the same line since the ask. Moving the bar again, or undoing the move, answers it.
+ */
+export function datesAsksOpen(state: GcState, project: GcProject): DatesAsk[] {
+  const moves = (project.schedule?.moves ?? []).filter((m) => !m.undoneOn)
+  return moves.flatMap((move) =>
+    (move.answers ?? [])
+      .filter((a) => !a.ok)
+      .flatMap((a) => {
+        const partner = partnerById(state, a.partnerId)
+        if (!partner) return []
+        const answered = moves.some((m) => m.lineId === move.lineId && m.id !== move.id && m.on > a.on)
+        if (answered) return []
+        const activity = project.schedule?.activities.find((x) => x.lineId === move.lineId)
+        const trade = project.packages.find((k) => k.id === activity?.packageId)?.trade ?? partner.trades[0] ?? 'trade'
+        const work = lineWork(project, move.lineId)
+        const words = `Asked for ${a.day ? weekdayDate(a.day) : 'another day'} on ${work} after we moved it${a.note ? `: “${a.note}”` : '.'}`
+        return [{ move, partner, trade, day: a.day ?? null, note: a.note ?? null, on: a.on, words }]
+      }),
+  )
+}
+
 /** The companies' answers that need the office: a day asked for that nobody has acted on. */
 export function datesAsksForOffice(state: GcState, project: GcProject): { move: ScheduleMove; partner: Partner; day: string | null; note: string | null }[] {
   return (project.schedule?.moves ?? []).flatMap((move) =>

@@ -15,7 +15,7 @@ import { companiesToTell } from './gcTellTrades'
 import { nextWaitId, waitKind } from './gcScheduleWaits'
 import { addedActivityProblem, nextOwnId } from './gcAddedActivity'
 import { withNewBaseline } from './gcBaseline'
-import { actualProblem } from './gcActualDates'
+import { actualProblem, withReportedActuals } from './gcActualDates'
 import { customerScheduleLetter, scheduleSendRecord } from './gcCustomerScheduleSend'
 import { lostWhyLabel } from './gcLost'
 import { daysBetween, draftSchedule, pushAfter, pushedAfterWords, scheduleLinesOf, withBaselineKept } from './gcBuildingSchedule'
@@ -406,14 +406,16 @@ function reduce(state: GcState, action: GcAction): GcState {
       const line = pkg?.sow?.sov.find((l) => l.id === action.sovId)
       if (!pkg || !partner || !line) return state
       const pct = Math.max(line.pctBilled, Math.min(100, action.pct))
-      const next = mapProject(state, action.projectId, (p) =>
-        mapPackage(p, pkg.id, (k) =>
+      // The report sets the line's real start and finish on the schedule (the Gantt, G-55; the owner's OK 2026-10-06).
+      const next = mapProject(state, action.projectId, (p) => {
+        const schedule = p.stage === 'building' ? withReportedActuals(p.schedule, line.id, pct, state.today) : p.schedule
+        return mapPackage({ ...p, ...(schedule ? { schedule } : {}) }, pkg.id, (k) =>
           mapSow(k, (s) => ({
             ...s,
             sov: s.sov.map((l) => (l.id === line.id ? { ...l, pctReported: pct } : l)),
           })),
-        ),
-      )
+        )
+      })
       return logged(next, 'trade', `${partner.company} reported ${line.label} at ${pct}%.`)
     }
 
@@ -1084,9 +1086,10 @@ function reduce(state: GcState, action: GcAction): GcState {
       if ((self.pctByLine?.[line.id] ?? 0) === pct && self.pctByLine) return state
       const pctByLine = { ...Object.fromEntries(pkg.scope.map((l) => [l.id, self.pctByLine?.[l.id] ?? 0])), [line.id]: pct }
       const pctDone = Math.round(crewPctFromStages(pkg, pctByLine))
-      const next = mapProject(state, action.projectId, (p) =>
-        mapPackage(p, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctByLine, pctDone } } : k)),
-      )
+      const next = mapProject(state, action.projectId, (p) => {
+        const schedule = p.stage === 'building' ? withReportedActuals(p.schedule, line.id, pct, state.today) : p.schedule
+        return mapPackage({ ...p, ...(schedule ? { schedule } : {}) }, pkg.id, (k) => (k.selfPerform ? { ...k, selfPerform: { ...k.selfPerform, pctByLine, pctDone } } : k))
+      })
       return logged(next, 'office', `Our own crew reported ${line.label} on ${pkg.trade} at ${pct}%. The whole trade is ${pctDone}% done.`)
     }
 

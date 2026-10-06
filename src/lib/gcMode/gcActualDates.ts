@@ -7,9 +7,23 @@
  *
  * Its own file, out of the barrel.
  */
-import type { ScheduleActivity } from './gcTypes'
+import type { ProjectSchedule, ScheduleActivity } from './gcTypes'
 import { daysBetween } from './gcBuildingSchedule'
 import { shortDate, weekdayDate } from './gcWords'
+
+/**
+ * A report sets the real days (the owner's OK, 2026-10-06): the first report over 0% on a line is
+ * its start, a report of 100% its finish, today, where none was recorded. The same schedule back
+ * when nothing changes.
+ */
+export function withReportedActuals(schedule: ProjectSchedule | undefined, lineId: string, pct: number, today: string): ProjectSchedule | undefined {
+  const a = schedule?.activities.find((x) => x.lineId === lineId)
+  if (!schedule || !a) return schedule
+  const start = pct > 0 && !a.actualStart ? today : undefined
+  const finish = pct >= 100 && !a.actualFinish ? today : undefined
+  if (!start && !finish) return schedule
+  return { ...schedule, activities: schedule.activities.map((x) => (x.lineId === lineId ? { ...x, ...(start ? { actualStart: start } : {}), ...(finish ? { actualFinish: finish } : {}) } : x)) }
+}
 
 /** "Started Mon Sep 21, as planned." · "Started Wed Sep 23, 2 days late; not finished." · "Sep 23 to Oct 10, 1 day longer than planned." Null: nothing recorded. */
 export function actualWords(a: ScheduleActivity): string | null {

@@ -2,6 +2,7 @@
  * GC mode — design spike. The progress ring on a Project Board row and its hover card.
  * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
  */
+import { walkStanding } from './gcScheduleWalk'
 import type { Draw, GcProject, GcStage, GcState } from './gcTypes'
 import { shortDate, thousands, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
@@ -322,6 +323,9 @@ function buildingProgress(state: GcState, project: GcProject): StageProgress {
   also.unshift(...failed, ...latePay)
   const sum = scheduleSummary(project, state.today)
   if (sum) also.unshift(scheduleSummaryWords(sum))
+  // Not walked lately (the Gantt, G-59; the owner's OK 2026-10-06): right after the schedule's line.
+  const walk = walkStanding(project, state.today)
+  if (sum && walk.stale) also.splice(1 + failed.length + latePay.length, 0, `${walk.words} Open the Schedule tab and tap Update the week.`)
   // The daily log (owner, 2026-10-04): a working day this week with no log, last in the card.
   // Only while work is still being reported: a job whose work is all in is closing out.
   const noLog = share < 1 ? missingLogsWords(missingLogs(project, state.today)) : null

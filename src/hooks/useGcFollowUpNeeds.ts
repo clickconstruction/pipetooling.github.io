@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { GcNeedsYou } from '../lib/gcMode/gcNeedsYou'
 import type { GcChangeRequestsNeedsYou } from '../lib/gcMode/gcChangeRequestsWaiting'
 import type { GcBackChargesNeedsYou } from '../lib/gcMode/gcBackChargesWaiting'
+import type { GcStaleSchedulesNeedsYou } from '../lib/gcMode/gcStaleSchedules'
 
 /**
  * GC mode design spike (the owner, 2026-10-04): GC Follow up for the dashboard's Needs you, read
@@ -74,6 +75,33 @@ export function useGcBackCharges(enabled: boolean): GcBackChargesNeedsYou | null
     void import('../lib/gcMode/gcModel').then((gc) => {
       if (!live) return
       const read = () => setNeeds(gc.gcBackChargesNeedsYou(gc.gcStoreState()))
+      read()
+      off = gc.gcStoreSubscribe(read)
+    })
+    return () => {
+      live = false
+      off()
+    }
+  }, [enabled])
+  return needs
+}
+
+/**
+ * GC mode design spike (the Gantt, G-59; the owner's OK 2026-10-06): schedules nobody has walked
+ * this week, for the dashboard's own Needs you line. Loads the GC model only when on.
+ */
+export function useGcStaleSchedules(enabled: boolean): GcStaleSchedulesNeedsYou | null {
+  const [needs, setNeeds] = useState<GcStaleSchedulesNeedsYou | null>(null)
+  useEffect(() => {
+    if (!enabled) {
+      setNeeds(null)
+      return
+    }
+    let live = true
+    let off = () => {}
+    void import('../lib/gcMode/gcModel').then((gc) => {
+      if (!live) return
+      const read = () => setNeeds(gc.gcStaleSchedulesNeedsYou(gc.gcStoreState()))
       read()
       off = gc.gcStoreSubscribe(read)
     })

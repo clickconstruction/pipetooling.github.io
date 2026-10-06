@@ -45,6 +45,7 @@ function phraseFor(state: GcState, person: ProjectPerson): string {
   if (code === 'insurance') return `${possessive(c)} insurance ran out`
   if (code === 'w9') return `${c} owes a W-9`
   if (code === 'promise') return `${c} is past a day they gave`
+  if (code === 'dates') return `${c} asked for another day`
   if (code === 'sentBack') return `${possessive(c)} pay application went back`
   if (code === 'bid') return `${c} has our bid`
   return `${c} owes us an answer`

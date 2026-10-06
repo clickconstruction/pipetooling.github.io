@@ -202,6 +202,12 @@ describe('buildNeedsYouItems', () => {
     expect(items.map((i) => [i.key, i.severity, i.figure, i.actionLabel])).toEqual([['gc-change-requests', 'amber', '1', 'Answer it']])
     expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcChangeRequests: gc }))).toEqual([])
   })
+  it('GC stale schedules (GC mode spike, 2026-10-06): their own item, our move, gated with GC follow up', () => {
+    const gc = { count: 1, late: true, title: '1 schedule not walked this week in GC mode', detail: 'Fair Oaks Shops, Building D: Not walked yet.', projectId: 'fairoaksd' }
+    const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcStaleSchedules: gc }))
+    expect(items.map((i) => [i.key, i.severity, i.figure, i.actionLabel])).toEqual([['gc-stale-schedules', 'red', '1', 'Walk it']])
+    expect(buildNeedsYouItems(inputs({ gcFollowUpEnabled: false, gcStaleSchedules: gc }))).toEqual([])
+  })
   it('GC back-charges (GC mode spike, 2026-10-05): their own item, our move, gated with GC follow up', () => {
     const gc = { count: 2, late: true, title: '2 back-charges to settle in GC mode', detail: 'Iron Horse Fabrication disputed $1,250 on Fair Oaks Shops, Building D.', projectId: 'fairoaksd', chargeId: 'fsteel-bc-1' }
     const items = buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, gcBackCharges: gc }))

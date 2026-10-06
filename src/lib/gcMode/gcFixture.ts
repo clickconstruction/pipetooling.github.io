@@ -1415,6 +1415,14 @@ export function initialGcState(): GcState {
     contingencyPct: 3,
     feePct: 10,
     schedule: fairOaksSchedule,
+    // What the work waits on from outside the trades (the Gantt, Phase 4; the owner's OK 2026-10-06
+    // to put samples here): the rooftop units on order and expected after their work starts, a tile
+    // the customer has to pick, and the utility's transformer.
+    waits: [
+      { id: 'fairoaksd-wait-1', kind: 'delivery', title: 'Rooftop units', packageId: 'fhvac', who: "Cool Breeze Mechanical's supplier", lineIds: ['fhvac-1'], askedOn: '2026-09-01', expectedOn: '2026-10-20', shippedOn: null, doneOn: null, note: 'Carrier: two of the four are built; the rest ship Oct 15.' },
+      { id: 'fairoaksd-wait-2', kind: 'decision', title: 'the restroom tile', packageId: 'fplumb', who: 'Cibolo Creek Partners', lineIds: ['fplumb-4'], askedOn: '2026-09-28', expectedOn: '2026-10-30', doneOn: null },
+      { id: 'fairoaksd-wait-3', kind: 'utility', title: 'The transformer', packageId: null, who: 'CPS Energy', lineIds: ['felec-5'], askedOn: '2026-09-15', expectedOn: '2026-10-15', doneOn: null },
+    ],
     // Building lane (2026-10-04): the superintendent's daily log, Sep 21 to Oct 1. The rain on
     // Sep 24 and 25 is the roofers' weather delay; Sep 30 was missed.
     dailyLogs: [

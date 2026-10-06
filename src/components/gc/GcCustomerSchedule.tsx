@@ -6,7 +6,9 @@
  */
 import type { GcProject, GcState } from '../../lib/gcMode/gcModel'
 import { daysBetween, shortDate, weekdayDate } from '../../lib/gcMode/gcModel'
-import { customerAsks, customerChanges, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
+import { useState } from 'react'
+import { customerAsks, customerChanges, customerFullChart, customerMaySeeEveryBar, customerMilestones, customerStages, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
+import { GcGanttList } from './GcGanttList'
 import { customerContractDays } from '../../lib/gcMode/gcChangeOrderDays'
 import { PortalBlock } from './GcPortalUi'
 
@@ -15,6 +17,8 @@ const C = { blue: '#3b82f6', green: '#16a34a', red: '#dc2626', amber: '#d97706' 
 
 export function GcCustomerSchedule({ state, project }: { state: GcState; project: GcProject }) {
   const stages = customerStages(state, project)
+  // A GC or an owner's rep may see every bar (call 3): the List view, with no company, no dollars, no spare days.
+  const [everyBar, setEveryBar] = useState(false)
   if (stages.length === 0) return null
   const standing = customerStanding(state, project)
   const milestones = customerMilestones(state, project)
@@ -75,6 +79,18 @@ export function GcCustomerSchedule({ state, project }: { state: GcState; project
             <span aria-hidden style={{ position: 'absolute', left: x(state.today), top: -2, bottom: 0, width: 2, background: C.blue, opacity: 0.6 }} />
           </div>
         </div>
+        {customerMaySeeEveryBar(project) && (
+          <div style={{ display: 'grid', gap: '0.4rem' }}>
+            <button type="button" aria-pressed={everyBar} onClick={() => setEveryBar((v) => !v)} style={{ justifySelf: 'start', background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem 0.6rem', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-base)' }}>
+              {everyBar ? 'Back to the stages' : 'See every bar'}
+            </button>
+            {everyBar && (
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                <GcGanttList groups={customerFullChart(state, project)} today={state.today} building={project.stage === 'building'} picked={null} onPick={() => undefined} plain />
+              </div>
+            )}
+          </div>
+        )}
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           {standing.finishWords}
           {contractDays.map((s) => (

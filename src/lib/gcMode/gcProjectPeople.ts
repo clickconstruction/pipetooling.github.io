@@ -9,6 +9,7 @@ import type { AskContact, GcCustomer, GcProject, GcState, Partner } from './gcTy
 import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
 import { followUps, packageIsOpen } from './gcFollowUp'
+import { datesAsksOpen } from './gcTellTrades'
 import { insuranceRenewals, paperAsks, tradePromisesOf, tradePromiseState, tradePromiseWords } from './gcPromises'
 import { architectSummary } from './gcCustomers'
 import { sentBackOpen, timesSentBack } from './gcBuilding'
@@ -173,6 +174,9 @@ export function projectPeople(state: GcState, project: GcProject): ProjectPeople
       const pkg = project.packages.find((k) => k.id === p.packageId)
       if (partner) trade(partner, pkg?.trade ?? partner.trades[0] ?? 'trade', { text: tradePromiseWords(p, state.today), tone: s === 'passed' ? 'red' : 'amber', code: 'promise' })
     }
+
+    // A company that asked for another day on a move (the Gantt, G-113; the owner's OK 2026-10-06): on Follow up until the bar moves again.
+    for (const ask of datesAsksOpen(state, project)) trade(ask.partner, ask.trade, { text: ask.words, tone: ask.day && ask.day < state.today ? 'red' : 'amber', code: 'dates' })
 
     // The architect: questions sent to them and not answered.
     const architect = state.customers.find((c) => c.id === project.architectId)

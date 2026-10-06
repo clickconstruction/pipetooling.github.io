@@ -1721,6 +1721,7 @@ exports[`GC mode golden walk > before any step 1`] = `
         "also": [
           "The schedule: 3 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Rough-in inspection, Oct 13. 4 look-ahead marks wait on our superintendent.",
           "The electrical service inspection failed Sep 28 on the Electrical work. Re-inspection Oct 2.",
+          "Not walked yet. Nobody has checked these dates against the job. Open the Schedule tab and tap Update the week.",
           "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
           "1 punch item on Concrete is fixed. Check it on Closeout.",
           "Iron Horse Fabrication asked for draw 2. Approve it.",
@@ -5717,6 +5718,7 @@ exports[`GC mode golden walk > step 47: Start 1`] = `
     "lastLog.text": "Helotes Dental Office is started. Work begins Mon Oct 12. Emailed the 4 companies on the job.",
     "projects.helotes.stage": "building",
     "projects.helotes.stageProgress.also[0]": "The schedule: 26 days ahead of the plan, 16% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
+    "projects.helotes.stageProgress.also[1]": "Not walked yet. Nobody has checked these dates against the job. Open the Schedule tab and tap Update the week.",
     "projects.helotes.stageProgress.center": "16%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "60% reported",
     "projects.helotes.stageProgress.groups[0].items[0].done": false,
@@ -5864,7 +5866,7 @@ exports[`GC mode golden walk > step 50: Hill Country asks for draw 2 1`] = `
   "changed": {
     "lastLog.id": 46,
     "lastLog.text": "Hill Country Interiors asked for draw 2 on Framing and drywall: $34,700, with a conditional waiver signed.",
-    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors asked for draw 2. Approve it.",
+    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors asked for draw 2. Approve it.",
   },
   "removed": [],
 }
@@ -5876,7 +5878,7 @@ exports[`GC mode golden walk > step 51: Approve draw 2 1`] = `
     "lastLog.id": 47,
     "lastLog.text": "Approved draw 2 on Framing and drywall. $31,230 to pay, $3,470 held.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[1]": "Draw 2 for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[2]": "Draw 2 for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -5887,7 +5889,7 @@ exports[`GC mode golden walk > step 52: Pay draw 2 1`] = `
   "changed": {
     "lastLog.id": 48,
     "lastLog.text": "Paid draw 2 on Framing and drywall: $31,230.",
-    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors owes the unconditional waiver on draw 2.",
+    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors owes the unconditional waiver on draw 2.",
   },
   "removed": [],
 }
@@ -5901,7 +5903,7 @@ exports[`GC mode golden walk > step 53: Hill Country signs the unconditional wai
     "lastLog.who": "trade",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[1]",
+    "projects.helotes.stageProgress.also[2]",
   ],
 }
 `;
@@ -6472,7 +6474,7 @@ exports[`GC mode golden walk > step 59: Hill Country sends pay application 3 (ce
     "lastLog.text": "Hill Country Interiors sent pay application 3 on Framing and drywall: $7,500, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "The schedule: 31 days ahead of the plan, 26% done where 0% was planned. Next: Rough-in inspection, Nov 13.",
-    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors asked for draw 3. Approve it.",
+    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors asked for draw 3. Approve it.",
     "projects.helotes.stageProgress.center": "26%",
     "projects.helotes.stageProgress.groups[0].items[0].detail": "100% reported",
     "projects.helotes.stageProgress.groups[0].items[0].done": true,
@@ -6652,8 +6654,8 @@ exports[`GC mode golden walk > step 65: Approve draw 3 1`] = `
   "changed": {
     "lastLog.id": 61,
     "lastLog.text": "Approved draw 3 on Framing and drywall. $6,750 to pay, $750 held.",
-    "projects.helotes.stageProgress.also[1]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
-    "projects.helotes.stageProgress.also[2]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
+    "projects.helotes.stageProgress.also[2]": "Draw 3 for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[3]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
   "removed": [],
 }
@@ -6664,7 +6666,7 @@ exports[`GC mode golden walk > step 66: Pay draw 3 1`] = `
   "changed": {
     "lastLog.id": 62,
     "lastLog.text": "Paid draw 3 on Framing and drywall: $6,750.",
-    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
+    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors owes the unconditional waiver on draw 3.",
   },
   "removed": [],
 }
@@ -6676,10 +6678,10 @@ exports[`GC mode golden walk > step 67: Hill Country signs the unconditional wai
     "lastLog.id": 63,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 3.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[1]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
+    "projects.helotes.stageProgress.also[2]": "Framing and drywall is all billed. Walk it, then accept the work on Closeout.",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[2]",
+    "projects.helotes.stageProgress.also[3]",
   ],
 }
 `;
@@ -6692,7 +6694,7 @@ exports[`GC mode golden walk > step 68: Accept the drywall work 1`] = `
     "lastLog.who": "office",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[1]",
+    "projects.helotes.stageProgress.also[2]",
   ],
 }
 `;
@@ -6713,7 +6715,7 @@ exports[`GC mode golden walk > step 70: Hill Country sends the final pay applica
   "changed": {
     "lastLog.id": 66,
     "lastLog.text": "Hill Country Interiors sent the final pay application on Framing and drywall: $6,420 of retainage, with a conditional final release of lien.",
-    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
+    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors asked for its retainage back. Approve it on Closeout.",
   },
   "removed": [],
 }
@@ -6725,7 +6727,7 @@ exports[`GC mode golden walk > step 71: Approve the retainage release 1`] = `
     "lastLog.id": 67,
     "lastLog.text": "Approved the retainage release on Framing and drywall: $6,420 to pay.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[1]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[2]": "The retainage release for Hill Country Interiors is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -6736,7 +6738,7 @@ exports[`GC mode golden walk > step 72: Pay the retainage 1`] = `
   "changed": {
     "lastLog.id": 68,
     "lastLog.text": "Paid draw 4 on Framing and drywall: $6,420.",
-    "projects.helotes.stageProgress.also[1]": "Hill Country Interiors owes the unconditional final release of lien.",
+    "projects.helotes.stageProgress.also[2]": "Hill Country Interiors owes the unconditional final release of lien.",
   },
   "removed": [],
 }
@@ -6750,7 +6752,7 @@ exports[`GC mode golden walk > step 73: Hill Country signs the unconditional wai
     "lastLog.who": "trade",
   },
   "removed": [
-    "projects.helotes.stageProgress.also[1]",
+    "projects.helotes.stageProgress.also[2]",
   ],
 }
 `;
@@ -6778,7 +6780,7 @@ exports[`GC mode golden walk > step 75: Cedar & Pine sends pay application 1 1`]
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork: $19,800, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "The schedule: 35 days ahead of the plan, 39% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.also[2]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "42%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "50% reported",
     "projects.helotes.stageProgress.headline": "42% of the work is done, by what the trades and our own crew have reported.",
@@ -6795,7 +6797,7 @@ exports[`GC mode golden walk > step 76: Send it back: we see the cabinets at 30%
     "lastLog.text": "Sent pay application 1 on Millwork back to Cedar & Pine Millwork. Four of the twelve operatory cabinets are set, not half.",
     "lastLog.who": "office",
     "projects.helotes.stageProgress.also[0]": "The schedule: 34 days ahead of the plan, 38% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[1]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
+    "projects.helotes.stageProgress.also[2]": "Pay application 1 is back with Cedar & Pine Millwork. Waiting on a fixed one.",
   },
   "removed": [],
 }
@@ -6807,7 +6809,7 @@ exports[`GC mode golden walk > step 77: Cedar & Pine sends pay application 1 aga
     "lastLog.id": 73,
     "lastLog.text": "Cedar & Pine Millwork sent pay application 1 on Millwork again, fixed: $17,160, with a conditional waiver signed.",
     "lastLog.who": "trade",
-    "projects.helotes.stageProgress.also[1]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
+    "projects.helotes.stageProgress.also[2]": "Cedar & Pine Millwork asked for draw 1. Approve it.",
     "projects.helotes.stageProgress.center": "41%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "43% reported",
     "projects.helotes.stageProgress.headline": "41% of the work is done, by what the trades and our own crew have reported.",
@@ -6823,7 +6825,7 @@ exports[`GC mode golden walk > step 78: Approve the fixed pay application 1 1`] 
     "lastLog.id": 74,
     "lastLog.text": "Approved draw 1 on Millwork. $15,444 to pay, $1,716 held.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[1]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[2]": "Draw 1 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -7129,7 +7131,7 @@ exports[`GC mode golden walk > step 89: Cedar & Pine sends pay application 2 1`]
     "lastLog.text": "Cedar & Pine Millwork sent pay application 2 on Millwork: $15,940, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.helotes.stageProgress.also[0]": "The schedule: 38 days ahead of the plan, 44% done where 0% was planned. Next: Dry-in, Oct 26.",
-    "projects.helotes.stageProgress.also[2]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
+    "projects.helotes.stageProgress.also[3]": "Cedar & Pine Millwork asked for draw 2. Approve it.",
     "projects.helotes.stageProgress.center": "47%",
     "projects.helotes.stageProgress.groups[0].items[4].detail": "83% reported",
     "projects.helotes.stageProgress.headline": "47% of the work is done, by what the trades and our own crew have reported.",
@@ -7145,7 +7147,7 @@ exports[`GC mode golden walk > step 90: Approve less: the cabinets at 80% 1`] = 
     "lastLog.id": 86,
     "lastLog.text": "Approved $11,970 of draw 2 on Millwork, less than the $14,346 asked. Two operatory cabinets are still on order.",
     "lastLog.who": "office",
-    "projects.helotes.stageProgress.also[2]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
+    "projects.helotes.stageProgress.also[3]": "Draw 2 for Cedar & Pine Millwork is approved. Pay it by Oct 12.",
   },
   "removed": [],
 }
@@ -7173,7 +7175,7 @@ exports[`GC mode golden walk > step 92: Close Fair Oaks D with work still open (
     "lastLog.text": "Closed Fair Oaks Shops, Building D. 8 things were still open.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[10]",
+    "projects.fairoaksd.stageProgress.also[11]",
   ],
 }
 `;
@@ -7797,7 +7799,7 @@ exports[`GC mode golden walk > step 129: Fair Oaks D: one more punch item on the
   "changed": {
     "lastLog.id": 125,
     "lastLog.text": "Punch list, Concrete: Grind the trip edge at the sidewalk joint, East entry. Guadalupe Flatwork fixes it in their portal.",
-    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[3]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
   },
   "removed": [],
 }
@@ -7809,8 +7811,8 @@ exports[`GC mode golden walk > step 130: Guadalupe fixes the spalled footing cor
     "lastLog.id": 126,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Patch the spalled corner on the column footing.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
-    "projects.fairoaksd.stageProgress.also[3]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[4]": "2 punch items on Concrete are fixed. Check them on Closeout.",
   },
   "removed": [],
 }
@@ -7822,8 +7824,8 @@ exports[`GC mode golden walk > step 131: Superintendent: the stockroom joints ar
     "lastLog.id": 127,
     "lastLog.text": "Our superintendent sent a punch item back to Guadalupe Flatwork: Seal the control joints in the stockroom slab. Two joints in the back corner are still open.",
     "lastLog.who": "office",
-    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
-    "projects.fairoaksd.stageProgress.also[3]": "1 punch item on Concrete is fixed. Check it on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "Guadalupe Flatwork has 2 punch items to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[4]": "1 punch item on Concrete is fixed. Check it on Closeout.",
   },
   "removed": [],
 }
@@ -7835,8 +7837,8 @@ exports[`GC mode golden walk > step 132: Guadalupe seals the last two joints 1`]
     "lastLog.id": 128,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Seal the control joints in the stockroom slab.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[2]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
-    "projects.fairoaksd.stageProgress.also[3]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "Guadalupe Flatwork has 1 punch item to fix on Concrete.",
+    "projects.fairoaksd.stageProgress.also[4]": "2 punch items on Concrete are fixed. Check them on Closeout.",
   },
   "removed": [],
 }
@@ -7847,16 +7849,16 @@ exports[`GC mode golden walk > step 133: Guadalupe grinds the trip edge 1`] = `
   "changed": {
     "lastLog.id": 129,
     "lastLog.text": "Guadalupe Flatwork fixed a punch item on Concrete: Grind the trip edge at the sidewalk joint.",
-    "projects.fairoaksd.stageProgress.also[2]": "3 punch items on Concrete are fixed. Check them on Closeout.",
-    "projects.fairoaksd.stageProgress.also[3]": "Iron Horse Fabrication asked for draw 2. Approve it.",
-    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
-    "projects.fairoaksd.stageProgress.also[5]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
-    "projects.fairoaksd.stageProgress.also[6]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
-    "projects.fairoaksd.stageProgress.also[7]": "No daily log for Wed Sep 30.",
-    "projects.fairoaksd.stageProgress.also[8]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+    "projects.fairoaksd.stageProgress.also[3]": "3 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[4]": "Iron Horse Fabrication asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[5]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
+    "projects.fairoaksd.stageProgress.also[6]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[7]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[8]": "No daily log for Wed Sep 30.",
+    "projects.fairoaksd.stageProgress.also[9]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[9]",
+    "projects.fairoaksd.stageProgress.also[10]",
   ],
 }
 `;
@@ -7867,7 +7869,7 @@ exports[`GC mode golden walk > step 134: Superintendent checks the footing corne
     "lastLog.id": 130,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Patch the spalled corner on the column footing. It is fixed.",
     "lastLog.who": "office",
-    "projects.fairoaksd.stageProgress.also[2]": "2 punch items on Concrete are fixed. Check them on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "2 punch items on Concrete are fixed. Check them on Closeout.",
   },
   "removed": [],
 }
@@ -7878,7 +7880,7 @@ exports[`GC mode golden walk > step 135: Superintendent checks the stockroom joi
   "changed": {
     "lastLog.id": 131,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Seal the control joints in the stockroom slab. It is fixed.",
-    "projects.fairoaksd.stageProgress.also[2]": "1 punch item on Concrete is fixed. Check it on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "1 punch item on Concrete is fixed. Check it on Closeout.",
   },
   "removed": [],
 }
@@ -7889,7 +7891,7 @@ exports[`GC mode golden walk > step 136: Superintendent checks the trip edge 1`]
   "changed": {
     "lastLog.id": 132,
     "lastLog.text": "Our superintendent checked a punch item on Concrete: Grind the trip edge at the sidewalk joint. It is fixed.",
-    "projects.fairoaksd.stageProgress.also[2]": "The punch list on Concrete is done. Accept the work on Closeout.",
+    "projects.fairoaksd.stageProgress.also[3]": "The punch list on Concrete is done. Accept the work on Closeout.",
   },
   "removed": [],
 }
@@ -7900,15 +7902,15 @@ exports[`GC mode golden walk > step 137: Accept the concrete work on Fair Oaks D
   "changed": {
     "lastLog.id": 133,
     "lastLog.text": "Accepted the Concrete work from Guadalupe Flatwork. The punch list is done.",
-    "projects.fairoaksd.stageProgress.also[2]": "Iron Horse Fabrication asked for draw 2. Approve it.",
-    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
-    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
-    "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
-    "projects.fairoaksd.stageProgress.also[6]": "No daily log for Wed Sep 30.",
-    "projects.fairoaksd.stageProgress.also[7]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+    "projects.fairoaksd.stageProgress.also[3]": "Iron Horse Fabrication asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric owes the unconditional waiver on draw 1.",
+    "projects.fairoaksd.stageProgress.also[5]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[6]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[7]": "No daily log for Wed Sep 30.",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[8]",
+    "projects.fairoaksd.stageProgress.also[9]",
   ],
 }
 `;
@@ -7975,10 +7977,10 @@ exports[`GC mode golden walk > step 143: Fair Oaks D: catch up Wednesday's log 1
   "changed": {
     "lastLog.id": 139,
     "lastLog.text": "Wrote the daily log for Wed Sep 30 on Fair Oaks Shops, Building D: 17 workers from 5 trades on site, 1 delay. Caught up after the day.",
-    "projects.fairoaksd.stageProgress.also[6]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[7]",
+    "projects.fairoaksd.stageProgress.also[8]",
   ],
 }
 `;
@@ -8171,7 +8173,7 @@ exports[`GC mode golden walk > step 152: Fair Oaks D: send Summit's flashing dra
     "lastLog.text": "Sent submittal 07 62 00-01, Sheet metal and flashing, to Marsh & Vale Architects.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[6]",
+    "projects.fairoaksd.stageProgress.also[7]",
   ],
 }
 `;
@@ -8192,7 +8194,7 @@ exports[`GC mode golden walk > step 154: Summit sends the flashing drawings agai
     "lastLog.id": 150,
     "lastLog.text": "Summit Roofing sent submittal 07 62 00-01, Sheet metal and flashing, round 2.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[6]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 07 62 00-01, Sheet metal and flashing, from Summit Roofing waits on us. It is needed today.",
   },
   "removed": [],
 }
@@ -8206,7 +8208,7 @@ exports[`GC mode golden walk > step 155: Send the flashing drawings to the archi
     "lastLog.who": "office",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[6]",
+    "projects.fairoaksd.stageProgress.also[7]",
   ],
 }
 `;
@@ -8226,7 +8228,7 @@ exports[`GC mode golden walk > step 157: Fair Oaks D: ask Pecan Valley for the s
   "changed": {
     "lastLog.id": 153,
     "lastLog.text": "Added submittal 26 56 00-01 on Electrical: Site lighting fixtures, product data.",
-    "projects.fairoaksd.stageProgress.also[6]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
   },
   "removed": [],
 }
@@ -8238,8 +8240,8 @@ exports[`GC mode golden walk > step 158: Cool Breeze sends the controls drawings
     "lastLog.id": 154,
     "lastLog.text": "Cool Breeze Mechanical sent submittal 23 09 23-01, Controls.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[6]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
-    "projects.fairoaksd.stageProgress.also[7]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
   },
   "removed": [],
 }
@@ -8587,9 +8589,9 @@ exports[`GC mode golden walk > step 162: Cool Breeze asks for pay application 2,
     "lastLog.text": "Cool Breeze Mechanical sent pay application 2 on HVAC: $57,600, with a conditional waiver signed.",
     "lastLog.who": "trade",
     "projects.fairoaksd.stageProgress.also[0]": "The schedule: 2 days behind the plan, 72% done where 76% was planned. Dry-in is 7 days late. Next: Substantial completion, Dec 11. 3 look-ahead marks wait on our superintendent.",
-    "projects.fairoaksd.stageProgress.also[6]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
-    "projects.fairoaksd.stageProgress.also[7]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
-    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
+    "projects.fairoaksd.stageProgress.also[7]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[9]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. They have not sent it yet.",
     "projects.fairoaksd.stageProgress.center": "75%",
     "projects.fairoaksd.stageProgress.groups[0].items[6].detail": "34% reported",
     "projects.fairoaksd.stageProgress.headline": "75% of the work is done, by what the trades and our own crew have reported.",
@@ -8680,7 +8682,7 @@ exports[`GC mode golden walk > step 169: Pecan Valley sends the site lighting fi
     "projects.boerne.trades.elec.tradeLineup[3].partner": "«partner westside»",
     "projects.boerne.trades.elec.tradeLineup[3].rank": 3,
     "projects.boerne.trades.elec.tradeLineup[3].travel.miles": 35,
-    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
+    "projects.fairoaksd.stageProgress.also[9]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
     "projects.fairoaksd.trades.felec.tradeLineup[1].invite": "«invite felec-pecanvalley»",
     "projects.fairoaksd.trades.felec.tradeLineup[1].partner": "«partner pecanvalley»",
     "projects.fairoaksd.trades.felec.tradeLineup[1].rank": null,
@@ -8744,15 +8746,15 @@ exports[`GC mode golden walk > step 171: Pecan Valley signs it, which keeps it 1
     "lastLog.id": 167,
     "lastLog.text": "Pecan Valley Electric signed the unconditional waiver for draw 1.",
     "lastLog.who": "trade",
-    "projects.fairoaksd.stageProgress.also[3]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
-    "projects.fairoaksd.stageProgress.also[4]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
-    "projects.fairoaksd.stageProgress.also[5]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
-    "projects.fairoaksd.stageProgress.also[6]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
-    "projects.fairoaksd.stageProgress.also[7]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
+    "projects.fairoaksd.stageProgress.also[4]": "Pecan Valley Electric asked for draw 2. Their insurance expired Sep 15. Approve it once that is fixed.",
+    "projects.fairoaksd.stageProgress.also[5]": "Pay application 1 is back with Summit Roofing. Waiting on a fixed one.",
+    "projects.fairoaksd.stageProgress.also[6]": "Cool Breeze Mechanical asked for draw 2. Approve it.",
+    "projects.fairoaksd.stageProgress.also[7]": "Submittal 23 09 23-01, Controls, from Cool Breeze Mechanical waits on us. It is needed by Oct 23.",
+    "projects.fairoaksd.stageProgress.also[8]": "Submittal 26 56 00-01, Site lighting fixtures, from Pecan Valley Electric is 4 days late. It waits on us.",
     "tradePromises[3].words": "Kept their word: the unconditional waiver on draw 1 came by Wed Oct 7.",
   },
   "removed": [
-    "projects.fairoaksd.stageProgress.also[8]",
+    "projects.fairoaksd.stageProgress.also[9]",
   ],
 }
 `;
@@ -12388,6 +12390,8 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "schedule": {
         "activities": [
           {
+            "actualFinish": "2026-10-02",
+            "actualStart": "2026-10-02",
             "after": [],
             "finish": "2026-10-16",
             "lineId": "dplumb-1",
@@ -12479,6 +12483,8 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "start": "2026-12-30",
           },
           {
+            "actualFinish": "2026-10-02",
+            "actualStart": "2026-10-02",
             "after": [
               "helotes-insp-roughin",
               "dry-1",
@@ -12489,6 +12495,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
             "start": "2027-01-01",
           },
           {
+            "actualStart": "2026-10-02",
             "after": [
               "helotes-insp-roughin",
               "dry-2",
@@ -15270,6 +15277,49 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         },
       ],
       "town": "Boerne",
+      "waits": [
+        {
+          "askedOn": "2026-09-01",
+          "doneOn": null,
+          "expectedOn": "2026-10-20",
+          "id": "fairoaksd-wait-1",
+          "kind": "delivery",
+          "lineIds": [
+            "fhvac-1",
+          ],
+          "note": "Carrier: two of the four are built; the rest ship Oct 15.",
+          "packageId": "fhvac",
+          "shippedOn": null,
+          "title": "Rooftop units",
+          "who": "Cool Breeze Mechanical's supplier",
+        },
+        {
+          "askedOn": "2026-09-28",
+          "doneOn": null,
+          "expectedOn": "2026-10-30",
+          "id": "fairoaksd-wait-2",
+          "kind": "decision",
+          "lineIds": [
+            "fplumb-4",
+          ],
+          "packageId": "fplumb",
+          "title": "the restroom tile",
+          "who": "Cibolo Creek Partners",
+        },
+        {
+          "askedOn": "2026-09-15",
+          "doneOn": null,
+          "expectedOn": "2026-10-15",
+          "id": "fairoaksd-wait-3",
+          "kind": "utility",
+          "lineIds": [
+            "felec-5",
+          ],
+          "packageId": null,
+          "title": "The transformer",
+          "who": "CPS Energy",
+        },
+      ],
       "weeklyReports": [
         {
           "body": "Hi Elena,

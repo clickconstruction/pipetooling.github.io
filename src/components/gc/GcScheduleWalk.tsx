@@ -31,6 +31,8 @@ const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', c
 export function GcWalkLine({ state, project, holds, onWalk }: { state: GcState; project: GcProject; holds: Map<string, GanttHold>; onWalk: () => void }) {
   const standing = walkStanding(project, state.today)
   const count = walkItems(state, project, holds).length
+  // The walk's day is Friday morning, before the Friday report goes (call 6, the owner's OK 2026-10-06).
+  const friday = new Date(`${state.today}T00:00:00Z`).getUTCDay() === 5 && standing.days !== 0
   return (
     <div data-tour="gc-walk-line" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.55rem 0.75rem', borderBottom: '1px solid var(--border)', background: standing.stale ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)' }}>
       {/* A walk that skipped bars is said so: walked, but not all of it. */}
@@ -38,6 +40,7 @@ export function GcWalkLine({ state, project, holds, onWalk }: { state: GcState; 
       <span style={{ fontSize: '0.875rem', color: standing.stale ? 'var(--text-amber-800)' : 'var(--text-600)', flex: '1 1 14rem' }}>
         {standing.words}
         {standing.last && !standing.stale ? ` ${walkTally(standing.last.kept.length, standing.last.moveIds.length, standing.last.skipped)}` : ''}
+        {friday ? ' It is Friday: walk it before the report goes.' : ''}
       </span>
       <Btn kind={standing.stale || standing.partial ? 'primary' : 'plain'} disabled={count === 0} onClick={onWalk} title="Go through every bar that should have moved this week, one at a time.">
         Update the week{count > 0 ? ` · ${count}` : ''}

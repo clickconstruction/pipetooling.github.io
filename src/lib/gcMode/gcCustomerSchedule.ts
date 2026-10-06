@@ -9,7 +9,7 @@
 import type { GcProject, GcState, ScheduleMoveReason } from './gcTypes'
 import { daysBetween, milestoneRows, projectedFinish, scheduleMeasures, substantialCompletionOn, type MilestoneRow } from './gcBuildingSchedule'
 import { shortDate, weekdayDate } from './gcWords'
-import { ganttBars, ganttGroups } from './gcGantt'
+import { ganttBars, ganttGroups, ganttListGroups } from './gcGantt'
 import { lineStage } from './gcNewProject'
 import { SCHEDULE_STAGES } from './gcNewProject'
 import { changeOrderDays, projectChangeOrders } from './gcOwnerBilling'
@@ -41,6 +41,17 @@ export function customerStages(state: GcState, project: GcProject): CustomerStag
       pct: g.pct,
       state: g.pct >= 100 ? 'done' : g.late > 0 ? 'behind' : g.bars.some((b) => b.item.activity.start <= state.today) ? 'underway' : 'notStarted',
     }))
+}
+
+/** A customer who is a GC or an owner's rep reads building schedules for a living: they may see every bar (call 3, the owner's OK 2026-10-06). */
+export function customerMaySeeEveryBar(project: GcProject): boolean {
+  return project.customerRole === 'gc' || project.customerRole === 'ownersRep'
+}
+
+/** Every bar as the List view draws it, by stage, today first: the names of the work, no company, no dollars, no spare days. */
+export function customerFullChart(state: GcState, project: GcProject) {
+  const m = scheduleMeasures(state, project)
+  return ganttListGroups(ganttBars(m.items, m.float, new Map(), state.today, project.stage === 'building'), state.today)
 }
 
 /** Where the job stands for the customer: the finish against their contract, work done, the next date they will care about. */

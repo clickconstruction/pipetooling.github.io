@@ -14,7 +14,7 @@ const C = { blue: '#3b82f6', green: '#16a34a', red: '#dc2626', amber: '#d97706',
 
 const srOnly = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
-export function GcGanttList({ groups, today, building, picked, onPick }: { groups: { group: GanttGroup; open: boolean; now: boolean }[]; today: string; building: boolean; picked: string | null; onPick: (lineId: string) => void }) {
+export function GcGanttList({ groups, today, building, picked, onPick, plain }: { groups: { group: GanttGroup; open: boolean; now: boolean }[]; today: string; building: boolean; picked: string | null; onPick: (lineId: string) => void; /** For a customer: no company, no spare days, and a row opens nothing. */ plain?: boolean }) {
   const [open, setOpen] = useState<Set<string>>(() => new Set(groups.filter((g) => g.open).map((g) => g.group.key)))
   const toggle = (key: string) =>
     setOpen((was) => {
@@ -75,16 +75,20 @@ export function GcGanttList({ groups, today, building, picked, onPick }: { group
                     return (
                       <tr key={b.id} aria-selected={isPicked} style={{ borderTop: '1px solid var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}>
                         <td style={{ padding: '0.4rem 0.5rem 0.4rem 0.75rem', minWidth: 0 }}>
-                          <button type="button" onClick={() => onPick(b.id)} aria-label={`${b.item.label}, ${b.item.company}. ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}. ${b.statusWords}. Opens it.`} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}>
-                            {b.item.label}
-                          </button>
-                          <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{b.item.company}</div>
+                          {plain ? (
+                            <span>{b.item.label}</span>
+                          ) : (
+                            <button type="button" onClick={() => onPick(b.id)} aria-label={`${b.item.label}, ${b.item.company}. ${weekdayDate(a.start)} to ${weekdayDate(a.finish)}. ${b.statusWords}. Opens it.`} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}>
+                              {b.item.label}
+                            </button>
+                          )}
+                          {!plain && <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{b.item.company}</div>}
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
                           {shortDate(a.start)} to {shortDate(a.finish)}
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <Chip tone={b.tone}>{b.statusWords}</Chip>
+                          <Chip tone={plain && (b.status === 'onTrack' || b.status === 'notStarted') ? 'grey' : b.tone}>{plain && b.status === 'onTrack' ? 'on plan' : plain && b.status === 'notStarted' ? 'not started' : b.statusWords}</Chip>
                         </td>
                         <td style={{ padding: '0.4rem 0.75rem 0.4rem 0.5rem', width: 88 }}>{bar(b, g)}</td>
                       </tr>

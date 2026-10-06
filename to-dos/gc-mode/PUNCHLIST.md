@@ -59,33 +59,36 @@ schedule words (G-95, G-114, G-93); the schedule sent on its own (G-94); the Lis
 keys and rows drawn in view only (G-19, G-20, G-135). Checked as the branch is checked: the
 golden test unmoved, 71 files and 1020 tests, the typecheck, the theme check.
 
+## The owner's calls, answered 2026-10-06
+
+The owner took every default ("I agree with all your suggestions, please build 1-9"). Built the
+same day, each named in its commit; the golden walk was re-pinned once for the four that move it.
+
+- [x] **Sample waits in the made-up data**: Fair Oaks D has a delivery coming late (the rooftop
+  units), a decision the customer owes (the restroom tile) and the utility's transformer.
+- [x] **A trade's report sets the actual dates**: the first report over 0% is the start, a report
+  of 100% the finish, where the walk recorded none (`withReportedActuals`).
+- [x] **A trade's "another day" on Follow up and Needs you**: an open ask is a reason on the
+  company's row (*Asked for Mon Oct 19 on TPO membrane after we moved it*) until the bar moves
+  again; the dashboard's phrase is "asked for another day" (`datesAsksOpen`).
+- [x] **The stale-schedule warning**: the ring card's second line, *not walked* on the board row's
+  schedule block, and the dashboard's own Needs you line *1 schedule not walked this week in GC
+  mode* with *Walk it* (`gcStaleSchedules.ts`).
+- [x] **What a GC or owner's rep customer sees**: the stages, with **See every bar** in their
+  portal: the List view with no company, no dollars, no spare days (`customerMaySeeEveryBar`).
+- [x] **Telling the trades** waits for the Tell the trades press, as built; several moves go as one
+  message.
+- [x] **The weekly walk's day** is Friday morning: on a Friday the walk line says *walk it before
+  the report goes*.
+- [x] **Who sets a new baseline**: anyone on our team, like a move, as built.
+- [x] **"The shape is settled."** Said 2026-10-06. The real build starts in the order under
+  `HANDOFF.md` → section 4, from `main`, in small PRs; the spike branch stays the prototype.
+
 ## The owner's calls still open
 
-Nothing below starts without the one named.
-
-- [ ] **"The shape is settled."** The gate for the real build (`HANDOFF.md` → section 4). Not said.
-- [ ] **A trade's "another day" on Follow up.** A company that asks for another day from its
-  portal shows on the move's row and in the log only. Putting it on Follow up and Needs you
-  changes the board's counts, which moves every lane's golden snapshots (`GANTT_PLAN.md`, Phase 3).
-- [ ] **The stale-schedule warning on the board row and the dashboard.** Today it is on the
-  Schedule tab only (*check the dates* / *part walked* / *walked*); a line on the ring card moves
-  every lane's snapshots (G-59).
-- [ ] **What the customer sees** when the customer is another GC or an owner's rep: stages only, as
-  now, or the full chart (`GANTT_PLAN.md`, call 3).
-- [ ] **Telling the trades**: wait for the **Tell the trades** press, as built, or email at once on
-  every move (call 4).
-- [ ] **The weekly walk's day**: Friday morning, before the Friday report, is the default (call 6).
-- [ ] **Who sets a new baseline** after a change order: anyone, like a move, or the project
-  manager (call 9). Built 2026-10-06 as anyone; the card says so.
-- [ ] **A trade's report setting the actual dates** (G-55): the first report over 0% would set
-  the start and a report of 100% the finish, but Helotes reports work after its schedule is drawn
-  in the golden walk, so the snapshots move. Say so and the reducer's `tradeReport` and
-  `selfReport` set them.
-- [ ] **Sample waits in the made-up data.** A delivery, a decision and a permit on Fair Oaks D
-  would show the new rows without adding one by hand, but the golden test pins the whole state at
-  the end, so they move that snapshot (`gcModel.test.ts`, *the whole state at the end*). Say so and
-  the next sitting adds them with `-u` on that one test.
-- [ ] Every earlier call in `HANDOFF.md` → section 1 (PR 1b, Quo, the defaults, the Spanish).
+- [ ] The earlier calls in `HANDOFF.md` → section 1 that the real build meets as it goes: Quo (its
+  own build), the defaults in `README.md` (each a constant), the portal's Spanish reader at
+  production, the two portal ideas not picked.
 
 ## Prototype work left, in the order I would take it
 

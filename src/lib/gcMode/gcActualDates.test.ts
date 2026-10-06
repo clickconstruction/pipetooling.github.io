@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
 import type { GcState } from './gcTypes'
-import { actualProblem, actualWords } from './gcActualDates'
+import { actualProblem, actualWords, withReportedActuals } from './gcActualDates'
 
 const ID = 'fairoaksd'
 const job = (state: GcState) => state.projects.find((p) => p.id === ID)!
@@ -30,5 +30,23 @@ describe('actual start and finish (G-55)', () => {
     expect(actualProblem(undefined, '2026-10-01', state.today)).toBe('Say when it started first.')
     expect(gcReducer(state, { type: 'setActualDates', projectId: ID, lineId: 'froof-1', actualFinish: '2026-10-01', by: 'Luis' })).toBe(state)
     expect(gcReducer(state, { type: 'setActualDates', projectId: ID, lineId: 'froof-1', actualStart: '2026-10-09', by: 'Luis' })).toBe(state)
+  })
+})
+
+describe("a trade's report sets the real days (the owner's OK, 2026-10-06)", () => {
+  it('the first report over zero is the start, a report of 100 the finish, where none was recorded', () => {
+    let state = initialGcState()
+    // Summit's sheet metal (froof-3) has nothing reported and no actuals.
+    expect(job(state).schedule!.activities.find((a) => a.lineId === 'froof-3')).not.toHaveProperty('actualStart')
+    state = gcReducer(state, { type: 'tradeReport', projectId: ID, packageId: 'froof', sovId: 'froof-3', pct: 20 })
+    const after = job(state).schedule!.activities.find((a) => a.lineId === 'froof-3')!
+    expect(after.actualStart).toBe('2026-10-02')
+    expect(after).not.toHaveProperty('actualFinish')
+    state = gcReducer(state, { type: 'tradeReport', projectId: ID, packageId: 'froof', sovId: 'froof-3', pct: 100 })
+    expect(job(state).schedule!.activities.find((a) => a.lineId === 'froof-3')).toMatchObject({ actualStart: '2026-10-02', actualFinish: '2026-10-02' })
+    // A day already recorded by the walk stands.
+    const s2 = withReportedActuals({ ...job(state).schedule!, activities: [{ lineId: 'x', packageId: 'p', start: '2026-09-01', finish: '2026-09-05', after: [], actualStart: '2026-09-02' }] }, 'x', 100, '2026-10-02')
+    expect(s2?.activities[0]).toMatchObject({ actualStart: '2026-09-02', actualFinish: '2026-10-02' })
+    expect(withReportedActuals(undefined, 'x', 50, '2026-10-02')).toBeUndefined()
   })
 })

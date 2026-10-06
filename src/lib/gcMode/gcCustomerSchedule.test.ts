@@ -4,6 +4,7 @@ import { gcReducer } from './gcReducer'
 import { addDays } from './gcBuilding'
 import type { GcState } from './gcTypes'
 import { customerAsks, customerChanges, customerStages, customerStanding } from './gcCustomerSchedule'
+import { customerFullChart, customerMaySeeEveryBar } from './gcCustomerSchedule'
 
 const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
@@ -45,9 +46,24 @@ describe("the customer's schedule", () => {
     expect(customerChanges(job(moved), addDays(moved.today, 8))).toEqual([])
   })
 
-  it('asks for the change orders waiting on their signature', () => {
+  it('asks for the change orders waiting on their signature, and the decisions they owe', () => {
     const state = initialGcState()
     const asks = customerAsks(job(state))
-    expect(asks.every((a) => a.words.startsWith('Your signature on change order'))).toBe(true)
+    expect(asks.every((a) => a.words.startsWith('Your signature on change order') || a.words.startsWith('Your decision on'))).toBe(true)
+    expect(asks.some((a) => a.words.startsWith('Your decision on the restroom tile'))).toBe(true)
+  })
+})
+
+describe('a GC or owner’s rep customer may see every bar (call 3, the owner’s OK 2026-10-06)', () => {
+  it('is offered to them only, as the List view with the names of the work', () => {
+    const state = initialGcState()
+    const project = job(state)
+    expect(customerMaySeeEveryBar(project)).toBe(false)
+    expect(customerMaySeeEveryBar({ ...project, customerRole: 'gc' })).toBe(true)
+    expect(customerMaySeeEveryBar({ ...project, customerRole: 'ownersRep' })).toBe(true)
+    const groups = customerFullChart(state, project)
+    expect(groups.length).toBeGreaterThan(0)
+    expect(groups[0]?.now).toBe(true)
+    expect(groups.flatMap((g) => g.group.bars).length).toBe(project.schedule!.activities.length)
   })
 })

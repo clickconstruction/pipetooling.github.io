@@ -1,7 +1,7 @@
 ---
 name: "GC mode: pick it up here"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · **2026-10-06: the open items are now kept in PUNCHLIST.md** (the Gantt landed 2026-10-05 and 2026-10-06, every phase by the second sitting of 2026-10-06; GANTT_PLAN.md and GANTT_FEATURES.md hold it) · the prototype is done enough to judge · every open question in README.md is answered · the owner has not yet said "the shape is settled", which starts the real build · on main only the plan kernels (`src/lib/gc/`, #4448)
+status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · **2026-10-06: the open items are now kept in PUNCHLIST.md** (the Gantt landed 2026-10-05 and 2026-10-06, every phase by the second sitting of 2026-10-06; GANTT_PLAN.md and GANTT_FEATURES.md hold it) · the prototype is done enough to judge · every open question in README.md is answered · **the owner said "the shape is settled" on 2026-10-06**, which starts the real build (section 4, from `main`, PR 1b first) · on main only the plan kernels (`src/lib/gc/`, #4448)
 summary: >
   What is left in GC mode and where to start, for someone new. The prototype plays the whole loop
   on made-up data (branch spike/gc-mode, page /bids/gc). Left: a short list of the owner's calls,
@@ -57,9 +57,9 @@ Nothing in the real build starts before the first one.
 
 | # | The call | Raised by | Where it stands |
 |---|---|---|---|
-| 1 | **"The shape is settled."** The gate for the real build (section 4). | The plan | Not said yet. |
+| 1 | **"The shape is settled."** The gate for the real build (section 4). | The plan | Said 2026-10-06. The real build is open, in section 4's order. |
 | 2 | ~~**Questions during construction (RFIs).** Its own tab? Trades ask from the portal? Needed 3 days before the work? A cost answer starts a change order in one click?~~ | Building | Answered 2026-10-05: **yes to all four.** Being built (section 2). |
-| 3 | **New Project's PR 1b**: lift the kernels added since PR 1 (the sheet table, the title block, budgets per square foot, the Drive link, the scope book) into `src/lib/gc/` with their tests. Pure code, no tables. | New Project | Waiting on his word, like PRs 2 and 3. |
+| 3 | **New Project's PR 1b**: lift the kernels added since PR 1 (the sheet table, the title block, budgets per square foot, the Drive link, the scope book) into `src/lib/gc/` with their tests. Pure code, no tables. | New Project | His word came 2026-10-06 with "the shape is settled": the first PR of the real build. |
 | 4 | **Quo**: whether to build the calls-and-texts link at all (exploration so far); billed yearly or monthly ($23 or $33 a seat); Claude reading texts from the first day or later. Before building, ask Quo whether texts sent from its own phone app come back to us as events, and whether calls forwarded to a cell are still recorded and summarized. | New Project | Everything else decided. See section 5. |
 | 5 | **The defaults he never confirmed**: `README.md` → *My defaults the owner has not confirmed* (about 30 rules), plus the lanes' timings below. | Every lane | Each is a constant in `src/lib/gcMode/`; change freely. |
 | 6 | **Owner Billing's defaults**: bill day the 25th (monthly was confirmed, the day was not); retainage step from 50% at 5%; late interest 1.5% a month and the day it starts (check against Texas prompt pay); a payment reminder's pay-by 5 days out; stored materials billed at the trade's cost, our fee once installed; the notification timings (bill day minus 2 days; the architect reminded at 3 days, the project manager at 5; the customer 3 days before a bill is due; a Monday forecast email). The customer emails' wording has not been read by him. | Owner Billing | Defaults in the code. |

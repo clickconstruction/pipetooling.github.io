@@ -167,16 +167,16 @@ Answered 2026-10-05:
 7. **Start with Phase 1.** Yes. "As you build ask yourself is this the best we can do along the way
    and let's make this look great and be very informative."
 
-Still open, each with my default:
+Answered 2026-10-06, each as its default (the owner: "I agree with all your suggestions"):
 
-3. **What the customer sees.** Stages only, no company names, no spare days. Should a customer who
-   is a GC or an owner's rep get the full chart?
-4. **Telling the trades.** Does a move email the trade at once, or wait for **Tell the trades** so
-   several moves go as one message? My default: it waits.
-5. **A trade's "another day".** Does it change the schedule, or come to us as a request? My
-   default: a request, on Needs you.
-6. **The weekly walk's day.** My default: Friday morning, before the weekly report goes.
-9. **Who sets a new baseline** after a change order: anyone, like a move, or the project manager?
+3. **What the customer sees.** Stages only; a customer who is a GC or an owner's rep gets **See
+   every bar**, the List view with no company, no dollars, no spare days.
+4. **Telling the trades.** A move waits for **Tell the trades**, so several moves go as one message.
+5. **A trade's "another day".** A request: on the move's row, on Follow up as a reason on the
+   company, and in the dashboard's phrase, until the bar moves again.
+6. **The weekly walk's day.** Friday morning, before the weekly report goes; the walk line says so
+   on a Friday.
+9. **Who sets a new baseline** after a change order: anyone on our team, like a move.
 
 ## The second look
 

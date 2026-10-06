@@ -102,6 +102,7 @@ export type NeedsYouItem = {
     | 'gc-follow-up'
     | 'gc-change-requests'
     | 'gc-back-charges'
+    | 'gc-stale-schedules'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -192,6 +193,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'gc-change-requests': 40,
   // Revenue tier: a disputed or agreed back-charge is money off a trade's draw, decided before the draw is paid (GC mode spike).
   'gc-back-charges': 40,
+  'gc-stale-schedules': 40,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -343,6 +345,11 @@ export type NeedsYouInputs = {
    * the people count. Action opens the oldest's job on Draws, at that charge.
    */
   gcBackCharges?: { count: number; late: boolean; title: string; detail: string; projectId: string; chargeId: string } | null
+  /**
+   * GC mode design spike (the Gantt, G-59; the owner's OK 2026-10-06): jobs being built whose schedule
+   * nobody walked this week (`gcStaleSchedulesNeedsYou`). Our move, so not in the people count.
+   */
+  gcStaleSchedules?: { count: number; late: boolean; title: string; detail: string; projectId: string } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -786,6 +793,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: gc.detail,
       figure: String(gc.count),
       actionLabel: gc.count === 1 ? 'Answer it' : 'Answer them',
+    })
+  }
+
+  if (inputs.gcFollowUpEnabled && inputs.gcStaleSchedules && inputs.gcStaleSchedules.count > 0) {
+    const gc = inputs.gcStaleSchedules
+    items.push({
+      key: 'gc-stale-schedules',
+      severity: gc.late ? 'red' : 'amber',
+      kicker: 'GC mode',
+      title: gc.title,
+      detail: gc.detail,
+      figure: String(gc.count),
+      actionLabel: gc.count === 1 ? 'Walk it' : 'Walk them',
     })
   }
 

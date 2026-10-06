@@ -5,6 +5,8 @@ import { addDays } from './gcBuilding'
 import type { GcState } from './gcTypes'
 import { portalHome, portalMessages } from './gcPortal'
 import { companiesToTell, datesAsksForOffice, datesMessage, datesNotices, moveAnswerWords, untoldMoves } from './gcTellTrades'
+import { projectPeople } from './gcProjectPeople'
+import { datesAsksOpen } from './gcTellTrades'
 
 const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
@@ -82,5 +84,27 @@ describe('telling them, and their answer', () => {
     expect(gcReducer(asked, { type: 'tradeAnswerDates', projectId: ID, partnerId: summit.id, moveId: move.id, ok: false })).toBe(asked)
     const stranger = asked.partners.find((p) => p.company === 'Tri-County Site')!
     expect(gcReducer(asked, { type: 'tradeAnswerDates', projectId: ID, partnerId: stranger.id, moveId: move.id, ok: true })).toBe(asked)
+  })
+})
+
+describe("a company's ask for another day reaches Follow up (G-113; the owner's OK 2026-10-06)", () => {
+  it('stands until the bar moves again, and names the company on the job’s people', () => {
+    let state = initialGcState()
+    const tpo = job(state).schedule!.activities.find((a) => a.lineId === 'froof-1')!
+    state = gcReducer(state, { type: 'setScheduleActivity', projectId: ID, lineId: 'froof-1', start: addDays(tpo.start, 7), finish: addDays(tpo.finish, 7), after: tpo.after, why: { reason: 'weather', note: 'Rain stopped the roof for a week.', by: 'Robert' } })
+    const move = job(state).schedule!.moves![0]!
+    state = gcReducer(state, { type: 'tellTradesMoves', projectId: ID, moveIds: [move.id], by: 'Robert' })
+    expect(datesAsksOpen(state, job(state))).toEqual([])
+    state = gcReducer(state, { type: 'tradeAnswerDates', projectId: ID, partnerId: 'summit', moveId: move.id, ok: false, day: '2026-10-19', note: 'We are on another job until then.' })
+    const [ask] = datesAsksOpen(state, job(state))
+    expect(ask).toMatchObject({ trade: 'Roofing', day: '2026-10-19', on: '2026-10-02' })
+    expect(ask?.words).toBe('Asked for Mon Oct 19 on TPO membrane after we moved it: “We are on another job until then.”')
+    const summit = projectPeople(state, job(state)).people.find((p) => p.partnerId === 'summit')!
+    expect(summit.reasons.some((r) => r.code === 'dates' && r.tone === 'amber')).toBe(true)
+    // Moving the bar again answers it.
+    const now = job(state).schedule!.activities.find((a) => a.lineId === 'froof-1')!
+    const later = { ...state, today: '2026-10-03' }
+    const moved = gcReducer(later, { type: 'setScheduleActivity', projectId: ID, lineId: 'froof-1', start: '2026-10-19', finish: addDays('2026-10-19', 18), after: now.after, why: { reason: 'crew', note: 'Summit comes back the 19th.', by: 'Robert' } })
+    expect(datesAsksOpen(moved, job(moved))).toEqual([])
   })
 })

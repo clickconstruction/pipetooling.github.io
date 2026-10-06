@@ -37,7 +37,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
-import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds, useGcStaleSchedules } from '../../hooks/useGcFollowUpNeeds'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
@@ -483,6 +483,7 @@ export function DashboardPinnedQuickRow({
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   const gcChangeRequests = useGcChangeRequests(gcFollowUpEnabled)
   const gcBackCharges = useGcBackCharges(gcFollowUpEnabled)
+  const gcStaleSchedules = useGcStaleSchedules(gcFollowUpEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
@@ -563,6 +564,7 @@ export function DashboardPinnedQuickRow({
     gcFollowUp,
     gcChangeRequests,
     gcBackCharges,
+    gcStaleSchedules,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,
@@ -740,6 +742,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids/gc?tab=followup')
             } else if (item.key === 'gc-change-requests') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcChangeRequests?.projectId ?? '')}&ptab=owner`)
+            } else if (item.key === 'gc-stale-schedules') {
+              navigate(`/bids/gc?project=${encodeURIComponent(gcStaleSchedules?.projectId ?? '')}&ptab=schedule`)
             } else if (item.key === 'gc-back-charges') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcBackCharges?.projectId ?? '')}&ptab=draws&charge=${encodeURIComponent(gcBackCharges?.chargeId ?? '')}`)
             } else if (item.key === 'jobs-stale-open') {

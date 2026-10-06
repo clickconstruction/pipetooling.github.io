@@ -8,8 +8,13 @@ import { customerDecisions, nextWaitId, waitCounts, waitHolds, waitNextStep, wai
 /** Fair Oaks Shops, Building D, today Fri Oct 2 2026. The rooftop units (fhvac-1) start Oct 12; the roof curbs (froof-4) Oct 5. */
 const ID = 'fairoaksd'
 const job = (state: GcState) => state.projects.find((p) => p.id === ID)!
+/** The job with the made-up waits taken off, so each test adds its own. */
+const bare = (): GcState => {
+  const s = initialGcState()
+  return { ...s, projects: s.projects.map((p) => (p.id === ID ? { ...p, waits: [] } : p)) }
+}
 
-function withUnits(expectedOn: string, from = initialGcState()): GcState {
+function withUnits(expectedOn: string, from = bare()): GcState {
   return gcReducer(from, { type: 'addScheduleWait', projectId: ID, kind: 'delivery', title: 'Rooftop units', packageId: 'fhvac', who: 'Carrier', lineIds: ['fhvac-1', 'nope'], expectedOn, askedOn: '2026-09-01' })
 }
 
@@ -51,7 +56,7 @@ describe('what the work waits on (G-73 to G-75)', () => {
     expect(waitHolds(state, job(state)).size).toBe(0)
     expect(state.log[0]?.text).toBe('Fair Oaks Shops, Building D: Rooftop units is on site, Fri Oct 2.')
     // Shipped is a delivery's step only; a permit goes applied for, then issued.
-    const permitted = gcReducer(initialGcState(), { type: 'addScheduleWait', projectId: ID, kind: 'permit', title: 'Electrical service permit', packageId: 'felec', who: '', lineIds: ['felec-4'], expectedOn: '2026-10-30' })
+    const permitted = gcReducer(bare(), { type: 'addScheduleWait', projectId: ID, kind: 'permit', title: 'Electrical service permit', packageId: 'felec', who: '', lineIds: ['felec-4'], expectedOn: '2026-10-30' })
     expect(permitted.log[0]?.text).toMatch(/a permit, expected Fri Oct 30 from the city/)
     expect(waitRows(permitted, job(permitted))[0]?.nextStep).toEqual({ step: 'asked', label: 'Applied for' })
     expect(gcReducer(permitted, { type: 'setScheduleWaitStep', projectId: ID, waitId: 'fairoaksd-wait-1', step: 'shipped', on: '2026-10-02' })).toBe(permitted)
@@ -66,7 +71,7 @@ describe('what the work waits on (G-73 to G-75)', () => {
   })
 
   it("the customer's decisions are what they read under What we need from you, with the day the work needs them", () => {
-    let state = gcReducer(initialGcState(), { type: 'addScheduleWait', projectId: ID, kind: 'decision', title: 'the restroom tile', packageId: 'fplumb', who: 'Cibolo Creek Partners', lineIds: ['fplumb-4'], expectedOn: '2026-11-20' })
+    let state = gcReducer(bare(), { type: 'addScheduleWait', projectId: ID, kind: 'decision', title: 'the restroom tile', packageId: 'fplumb', who: 'Cibolo Creek Partners', lineIds: ['fplumb-4'], expectedOn: '2026-11-20' })
     expect(customerDecisions(job(state))).toEqual([{ words: 'Your decision on the restroom tile, needed by Mon Nov 30: Trim waits on it.', by: '2026-11-30' }])
     expect(customerAsks(job(state)).map((a) => a.words)).toContain('Your decision on the restroom tile, needed by Mon Nov 30: Trim waits on it.')
     state = gcReducer(state, { type: 'setScheduleWaitStep', projectId: ID, waitId: 'fairoaksd-wait-1', step: 'done', on: '2026-10-02' })
@@ -83,6 +88,18 @@ describe('what the work waits on (G-73 to G-75)', () => {
     state = gcReducer(state, { type: 'removeScheduleWait', projectId: ID, waitId: 'fairoaksd-wait-1' })
     expect(job(state).waits?.map((w) => w.title)).toEqual(['The transformer'])
     expect(state.log[0]?.text).toBe("Rooftop units came off Fair Oaks Shops, Building D's schedule.")
+  })
+
+  it('the made-up job has three: a delivery coming late, a decision the customer owes, the utility', () => {
+    const state = initialGcState()
+    const rows = waitRows(state, job(state))
+    expect(rows.map((r) => [r.wait.kind, r.wait.title, r.state, r.late])).toEqual([
+      ['delivery', 'Rooftop units', 'asked', true],
+      ['utility', 'The transformer', 'asked', false],
+      ['decision', 'the restroom tile', 'asked', false],
+    ])
+    expect(waitHolds(state, job(state)).get('fhvac-1')?.words).toBe('Rooftop units, expected Oct 20, 8 days after this starts')
+    expect(customerDecisions(job(state))[0]?.words).toBe('Your decision on the restroom tile, needed by Mon Nov 30: Trim waits on it.')
   })
 
   it('knows who we usually wait on', () => {
