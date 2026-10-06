@@ -3,13 +3,19 @@
  * portal, in a firm's vocabulary rather than the office's. The office desk keeps its own
  * labels (`legalStageLabel`, `legalEntryKindWords`, *Needs You*); everything here is only
  * for the firm's page and the desk's preview of it. Pure.
+ *
+ * Facts, not theories (item 4): the firm reads what is on file for each job, with dates and
+ * names, never the office's triage (*sworn account holds*, *theory: signed contract*). Which
+ * cause of action fits is the firm's call.
  */
-import { legalFirmStageWords } from '../legalEmails'
+import { FIRM_EMAIL_MODE_WORDS, legalFirmStageWords } from '../legalEmails'
 import { askMetaOf, answerMetaOf, isFirmAnswer, isOfficeAsk } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
-import type { LegalSaidEntry, LegalStep } from './legalPacket'
+import type { LegalJobLine, LegalSaidEntry, LegalStep } from './legalPacket'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
-export { legalFirmStageWords }
+/** The rule's two choices on the Notifications page; they live beside the emails so the welcome email names them the same way. */
+export { FIRM_EMAIL_MODE_WORDS, legalFirmStageWords }
 
 /** A row on *Fees and costs*: `Attorney fee` / `Cost`. */
 export function firmFeeKindWords(kind: string): string {
@@ -88,8 +94,6 @@ export function firmRecipientStatusWords(r: { paused: boolean; confirmed: boolea
   return r.paused ? 'stopped' : r.confirmed ? 'confirmed' : 'not confirmed yet'
 }
 
-/** The rule's two choices on the Notifications page. */
-export const FIRM_EMAIL_MODE_WORDS = { now: 'Each event', digest: 'Weekly digest' } as const
 
 /**
  * The line the portal shows after an act saves: what happens next, for that act. The sample
@@ -109,4 +113,63 @@ export function firmSavedWords(payload: Readonly<Record<string, unknown>>): stri
     case 'recipient_resume': return 'Emails to this person are back on.'
     default: return 'Saved.'
   }
+}
+
+/** The agreement words for a not-needed job, the same on Account, Paper and the exhibits. */
+export function firmNotNeededWords(reason: string | null): string {
+  return `no agreement of ours needed, per the office${reason ? `: ${reason}` : ''}`
+}
+
+/** Paper's *Agreement* cell: signed with date and signer, sent and never signed, not needed per the office, or none on file. `missing` is true when the job lacks an agreement it needs. */
+export function firmAgreementWords(c: LegalJobLine['contract']): { words: string; missing: boolean } {
+  if (c.kind === 'signed') return { words: `Signed${c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}`, missing: false }
+  if (c.kind === 'not_needed') {
+    const w = firmNotNeededWords(c.reason)
+    return { words: w.charAt(0).toUpperCase() + w.slice(1), missing: false }
+  }
+  if (c.kind === 'sent') return { words: 'Sent, never signed', missing: true }
+  return { words: 'None on file', missing: true }
+}
+
+export type FirmJobRecord = { onFile: string[]; notOnFile: string[] }
+
+/** A job's record for the claim, as facts: what is on file, and what is not. */
+export function firmJobRecord(j: Pick<LegalJobLine, 'contract' | 'record'>): FirmJobRecord {
+  const onFile: string[] = []
+  const notOnFile: string[] = []
+  const c = j.contract
+  if (c.kind === 'signed') {
+    const when = c.signedAt ? ` ${calendarYmdInAppTzFromIso(c.signedAt)}` : ''
+    const who = c.signerName ? ` by ${c.signerName}` : ''
+    onFile.push(`signed agreement${when}${who}`)
+  } else if (c.kind === 'sent') {
+    onFile.push(`agreement sent ${calendarYmdInAppTzFromIso(c.sentAt)}, not signed`)
+    notOnFile.push('signed agreement')
+  } else if (c.kind === 'not_needed') {
+    onFile.push(firmNotNeededWords(c.reason))
+  } else {
+    notOnFile.push('signed agreement')
+  }
+  const r = j.record
+  if (r.bill === 'sent') onFile.push('bill sent')
+  else if (r.bill === 'not_sent') {
+    onFile.push('bill line, not sent')
+    notOnFile.push('bill sent to the customer')
+  } else notOnFile.push('bill line')
+  // A GPS location is a recorded latitude, never matched to the job's address: say what it is, not *on site*.
+  if (r.field === 'gps') onFile.push('field record with a GPS location')
+  else if (r.field === 'no_gps') {
+    onFile.push('field records, no GPS location')
+    notOnFile.push('a GPS location')
+  } else notOnFile.push('field records')
+  const waiting = r.awaitingApproval ?? 0
+  if (waiting > 0) onFile.push(`${waiting} clock session${waiting === 1 ? '' : 's'} awaiting approval`)
+  onFile.push(r.dispute ? 'dispute logged' : 'no dispute logged')
+  return { onFile, notOnFile }
+}
+
+/** The record as one line, for a table cell or the printed packet: `bill sent, field record with a GPS location, no dispute logged. Not on file: signed agreement` */
+export function firmJobRecordWords(j: Pick<LegalJobLine, 'contract' | 'record'>): string {
+  const { onFile, notOnFile } = firmJobRecord(j)
+  return `${onFile.join(', ')}${notOnFile.length ? `. Not on file: ${notOnFile.join(', ')}` : ''}`
 }

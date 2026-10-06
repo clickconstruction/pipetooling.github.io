@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
-import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { firmEntryKindWords, firmEntryStatusWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
+import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -55,6 +54,17 @@ function EnvelopeAnswersBand({ e, packet, companyName }: { e: LegalEnvelope; pac
   )
 }
 
+/** A job's record on Account → Jobs (punch list #85, item 4): what is on file, then what is not, in red. */
+function JobRecordCell({ job }: { job: LegalPacket['account']['jobs'][number] }) {
+  const r = firmJobRecord(job)
+  return (
+    <span data-legal-job-record={job.jobId}>
+      {r.onFile.join(', ')}
+      {r.notOnFile.length ? <span style={{ display: 'block', color: PAPER_RED }}>Not on file: {r.notOnFile.join(', ')}</span> : null}
+    </span>
+  )
+}
+
 /** Where each job stands (#41 PR 1): the job's rail and its next line, the desk's own kernel on the firm's paper. */
 function JobTimelines({ packet }: { packet: LegalPacket }) {
   const a = packet.account
@@ -93,11 +103,10 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
           <span style={{ color: MUTED }}>Address</span><span>{a.customerAddress || '—'}</span>
           <span style={{ color: MUTED }}>Emails</span><span>{a.emails.join(', ') || 'none on file'}</span>
           <span style={{ color: MUTED }}>Phones</span><span>{a.phones.join(', ') || 'none on file'}</span>
-          <span style={{ color: MUTED }}>Terms with Click</span><span>{a.paymentTerms}</span>
         </div>
         {a.contacts.length ? (<><div style={h}>Contacts</div><PortalTable head={['Name', 'Email', 'Phone']} rows={a.contacts.map((c) => [c.name, c.email ?? '—', c.phone ?? '—'])} empty="" /></>) : null}
         <div style={h}>Jobs</div>
-        <PortalTable head={['Job', 'Name', 'Address', 'Age', 'Basis', 'Balance']} numCols={[3, 5]} rows={a.jobs.map((j) => [<b key="l">{j.label}</b>, j.name, j.address, j.agingDays == null ? '—' : `${j.agingDays}d`, j.contract.kind === 'signed' ? 'signed contract' : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${j.swornMissing.join(', ')}`, formatLegalMoney(j.balance)])} empty="No jobs." />
+        <PortalTable head={['Job', 'Name', 'Address', 'Age', 'On file', 'Balance']} numCols={[3, 5]} rows={a.jobs.map((j) => [<b key="l">{j.label}</b>, j.name, j.address, j.agingDays == null ? '—' : `${j.agingDays}d`, <JobRecordCell key="r" job={j} />, formatLegalMoney(j.balance)])} empty="No jobs." />
         <div style={h}>Property record</div>
         <PortalTable head={['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', p.propertyKind === 'residential' ? 'residential' : p.propertyKind ? 'non-residential' : '—'])} empty="No property record on file." />
       </div>
@@ -106,11 +115,13 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   if (tab === 'paper') {
     return (
       <div>
-        <div style={h}>Agreements and theory</div>
-        <PortalTable head={['Job', 'Agreement', 'Sworn account', '']} rows={a.jobs.map((j) => {
+        <div style={h}>Agreements</div>
+        <PortalTable head={['Job', 'Agreement', '']} rows={a.jobs.map((j) => {
           const c = matter.contracts.find((x) => x.job_id === j.jobId && x.signedPdfUrl)
-          return [<b key="l">{j.label}</b>, <span key="s" style={{ color: j.contract.kind === 'signed' ? undefined : PAPER_RED }}>{j.contract.kind === 'signed' ? `Signed${j.contract.signedAt ? ` ${calendarYmdInAppTzFromIso(j.contract.signedAt)}` : ''}${j.contract.signerName ? ` by ${j.contract.signerName}` : ''} · ${j.contract.source}` : j.contract.kind === 'sent' ? 'Sent, never signed' : 'None on file'}</span>, j.swornMissing.length ? `needs ${j.swornMissing.join(', ')}` : 'holds — bill received, GPS evidence, no dispute', c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
+          const g = firmAgreementWords(j.contract)
+          return [<b key="l">{j.label}</b>, <span key="s" style={{ color: g.missing ? PAPER_RED : undefined }}>{g.words}</span>, c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
         })} empty="No jobs." />
+        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>Each job's bill, field record and any dispute are on Account, under Jobs.</p>
         <div style={h}>Where each job stands</div>
         <JobTimelines packet={packet} />
         <div style={h}>Final demand letters</div>
@@ -177,7 +188,6 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
               {packet.account.customerAddress || packet.account.jobs[0]?.address || ''}
               {packet.account.properties[0]?.county ? ` · ${packet.account.properties[0].county} County` : ''}
               {packet.account.properties[0]?.owner ? ` · owner of record: ${packet.account.properties[0].owner}` : ''}
-              {' · theory: '}<b style={{ color: INK }}>{packet.theory.label}</b>
             </div>
             {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>
@@ -212,7 +222,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
                   </td>
                 </tr>
               ))}
-              {packet.account.jobs.some((j) => j.contract.kind !== 'signed') ? <tr><td style={{ padding: '6px 4px', color: FAINT }}>—</td><td colSpan={2} style={{ padding: '6px 4px', color: PAPER_RED }}>No signed agreement on {packet.account.jobs.filter((j) => j.contract.kind !== 'signed').map((j) => j.label).join(', ')}{packet.theory.key === 'sworn' ? ' — proceeds as a sworn account' : ''}</td></tr> : null}
+              {packet.account.jobs.some((j) => firmAgreementWords(j.contract).missing) ? <tr><td style={{ padding: '6px 4px', color: FAINT }}>—</td><td colSpan={2} style={{ padding: '6px 4px', color: PAPER_RED }}>No signed agreement on {packet.account.jobs.filter((j) => firmAgreementWords(j.contract).missing).map((j) => j.label).join(', ')}.</td></tr> : null}
+              {packet.account.jobs.filter((j) => j.contract.kind === 'not_needed').map((j) => <tr key={`nn-${j.jobId}`}><td style={{ padding: '6px 4px', color: FAINT }}>—</td><td colSpan={2} style={{ padding: '6px 4px', color: MUTED }}>{j.label}: {firmNotNeededWords(j.contract.kind === 'not_needed' ? j.contract.reason : null)}.</td></tr>)}
             </tbody>
           </table>
         ) : <p style={{ color: MUTED, fontSize: 13 }}>Nothing to letter yet.</p>}

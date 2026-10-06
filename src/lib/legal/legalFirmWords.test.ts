@@ -1,6 +1,50 @@
 import { describe, expect, it } from 'vitest'
-import { firmExhibitTitle, firmEntryKindWords, firmEntryStatusWords, firmFeeKindWords, firmHistoryKindWords, firmRecipientStatusWords, firmSaidKindWords, firmSaidRecordedBy, firmSavedWords, legalFirmStageWords } from './legalFirmWords'
+import { firmAgreementWords, firmExhibitTitle, firmEntryKindWords, firmEntryStatusWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmJobRecordWords, firmRecipientStatusWords, firmSaidKindWords, firmSaidRecordedBy, firmSavedWords, legalFirmStageWords } from './legalFirmWords'
 import { legalStageLabel } from './legalMatters'
+import type { LegalJobLine } from './legalPacket'
+
+describe('firmJobRecord · punch list #85 item 4 · facts on file, not a theory to plead', () => {
+  const allFacts: LegalJobLine['record'] = { bill: 'sent', field: 'gps', dispute: false }
+  const signed: LegalJobLine['contract'] = { kind: 'signed', source: 'contract', signedAt: '2026-04-22T15:00:00Z', signerName: 'Pat Sample', contractId: 'c', estimateNumber: null, estimateId: null }
+
+  it('a signed agreement reads with its date and signer, and every other fact', () => {
+    expect(firmJobRecordWords({ contract: signed, record: allFacts })).toBe('signed agreement 2026-04-22 by Pat Sample, bill sent, field record with a GPS location, no dispute logged')
+  })
+
+  it('no agreement: the facts on file, then what is not on file', () => {
+    expect(firmJobRecord({ contract: { kind: 'none' }, record: allFacts })).toEqual({ onFile: ['bill sent', 'field record with a GPS location', 'no dispute logged'], notOnFile: ['signed agreement'] })
+    expect(firmJobRecordWords({ contract: { kind: 'none' }, record: allFacts })).toBe('bill sent, field record with a GPS location, no dispute logged. Not on file: signed agreement')
+  })
+
+  it('an agreement sent and never signed, a bill never sent, no GPS, a dispute', () => {
+    const r = firmJobRecord({ contract: { kind: 'sent', contractId: 'c', revision: 1, sentAt: '2026-03-02T15:00:00Z', viewCount: 2, recipientEmail: null }, record: { bill: 'not_sent', field: 'no_gps', dispute: true } })
+    expect(r.onFile).toEqual(['agreement sent 2026-03-02, not signed', 'bill line, not sent', 'field records, no GPS location', 'dispute logged'])
+    expect(r.notOnFile).toEqual(['signed agreement', 'bill sent to the customer', 'a GPS location'])
+  })
+
+  it('nothing from the field and no bill line are named as not on file', () => {
+    expect(firmJobRecord({ contract: { kind: 'none' }, record: { bill: 'none', field: 'none', dispute: false } }).notOnFile).toEqual(['signed agreement', 'bill line', 'field records'])
+  })
+
+  it('says clock sessions awaiting approval beside the field record', () => {
+    expect(firmJobRecord({ contract: { kind: 'none' }, record: { ...allFacts, awaitingApproval: 2 } }).onFile).toContain('2 clock sessions awaiting approval')
+    expect(firmJobRecord({ contract: { kind: 'none' }, record: { ...allFacts, awaitingApproval: 1 } }).onFile).toContain('1 clock session awaiting approval')
+  })
+
+  it('no agreement needed reads the same on Account and Paper, and is not a missing agreement', () => {
+    const nn = { kind: 'not_needed', at: '2026-09-01T12:00:00Z', reason: 'service call under $500' } as const
+    expect(firmJobRecordWords({ contract: nn, record: allFacts })).toMatch(/^no agreement of ours needed, per the office: service call under \$500/)
+    expect(firmAgreementWords(nn)).toEqual({ words: 'No agreement of ours needed, per the office: service call under $500', missing: false })
+    expect(firmAgreementWords({ kind: 'none' })).toEqual({ words: 'None on file', missing: true })
+    expect(firmAgreementWords(signed).missing).toBe(false)
+  })
+
+  it('never pleads a theory', () => {
+    for (const record of [allFacts, { bill: 'none', field: 'none', dispute: true } as const]) {
+      for (const contract of [signed, { kind: 'none' } as const]) expect(firmJobRecordWords({ contract, record })).not.toMatch(/sworn|holds|theory|contract\b/i)
+    }
+  })
+})
 
 const entry = (kind: string, via_portal: boolean, meta: unknown = {}, acknowledged_at: string | null = null) => ({ kind, via_portal, meta, acknowledged_at })
 

@@ -1,8 +1,8 @@
 ---
 name: "See what they see: a live view of the GC's room (and the portal) while you work"
 number: 62
-group: ready
-status: opened 2026-09-29 · the gating fix that prompted it shipped as v2.4169 · Layer 1 shipped v2.4174 (the reviewer's own headline under the rows, live as you edit) · Layer 2 shipped v2.4187 + v2.4189 (See what the GC sees: the GC's page beside the road, a sheet on a phone, from the draft's rows; a window since v2.4358) · re-read 2026-10-05: v2.4593 makes both say what the link shows today, v2.4595 builds the What customers see sample room through the room's kernel, v2.4599 has the room refuse the office · dropping Layers 3 and 4 is with the owner; v2.4606 (PR 1b-i) has the window draw the page's own header and the list of revisions the GC will see, naming the ones never shared · v2.4608 (PR 1b-ii) opens their real page from the office's door, flagged and refused every write, with the three ways in GLOSSARY → What customers see (findings below)
+group: close
+status: DONE 2026-10-05 — the five pieces shipped: v2.4593 (the line and the window say what the link shows), v2.4595 (the sample through the room's kernel, deployed), v2.4599 (the room refuses the office's session and the preview, deployed), v2.4606 (the page's own header and chips in the window), v2.4608 (the door to the real page in preview; the "What customers see" rule in GLOSSARY) · Layers 3 and 4 dropped by the owner 2026-10-06 · the emailed-revision question went to its own build (Helper 8, 2026-10-06)
 summary: >
   On Bids → Submittals the office edits rows and never sees what the GC or the architect will
   see until after sharing. The owner's ask (2026-09-29): "an active view of what they change and
@@ -12,12 +12,13 @@ summary: >
   and the sample views in What customers see — all rendered from the same kernels the real pages
   use, so a preview can never lie.
 next: >
-  Layer 3: the package cover as a live thumbnail in the pane (its model is client-side already:
-  `buildCoverModel`, `renderCoverPdf`), and for a job with a portal the customer's submittal card
-  the same way — needs a job with a portal to verify live.
+  Nothing to build here. Two follow-ons live elsewhere: a revision answered by email landing in
+  the GC's room (its own PR, from the dated findings below), and the other hand-built samples in
+  What customers see (the bid room, the customer portal) built through their kernels, a new row.
+  Delete this folder once the emailed-revision PR has merged.
 size: M (Layer 1 S; Layer 2 M; Layers 3–5 S each)
-blocker: none for Layers 1–2; Layer 3's portal card needs a job with a portal to verify live.
-ver: v2.4174 (Layer 1) · v2.4187 / v2.4189 (Layer 2)
+blocker: None.
+ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608
 opinion: soon — Wendi and Stephen are on the tab this week and first shares are coming; the pane is what teaches "why the reason matters" without a tour.
 ---
 
@@ -33,8 +34,8 @@ opinion: soon — Wendi and Stephen are on the tab this week and first shares ar
 
 1. **The sentence** (under the rows, live as you edit) — shipped v2.4174. *The GC's page will read: "1 row needs a call" — 3 rows match the plans and are marked approved. 1 differs — each says why. The GC sees nothing until you share.* `describeForReviewer(items, shared)` in `seeWhatTheySee.ts` runs the room's own kernel (`roomRowsFrom` → `roomCounts` → `roomHeadline` / `roomSubline`) on the draft, so the words are the reviewer's exact words, not a paraphrase.
 2. **The pane** — *See what the GC sees* on the strip — shipped v2.4187 (the room's rows as `RoomRevisionBody`, read-only capable) + v2.4189 (`SeeWhatTheGcSees`: a 400px pane beside the road on a desktop, a sheet on a phone; `roomRowsFrom` → `roomCounts` on the draft; nothing minted). Desktop: a side pane beside the road that stays open; phone: a sheet. It renders `SubmittalRoom`'s read-only view from the current draft — no room minted, nothing shared — through `buildRoomPayload` in `src/lib/submittals/`, a client-side twin of the edge function's kernel, with `roomPayload.test.ts` pinning both to the same fixtures (the function's kernel moves to `_shared/` if it is not already pure). Re-renders on every row edit; rows still owing something show exactly as the GC would see them. A *why* line at the top: *This is the page the GC opens from your link.*
-3. **The package and the portal.** The cover PDF as a live thumbnail in the pane (its model is client-side already); for a job with a portal, the customer's submittal card the same way.
-4. **What changed, for them** (after a share). *Dana opened Rev 2 on Sep 17. 4 rows changed since. She has not opened Rev 3.* From the room's opens and the Since-Rev column; sits under Their call.
+3. **The package and the portal.** ~~The cover PDF as a live thumbnail in the pane; for a job with a portal, the customer's submittal card the same way.~~ Dropped 2026-10-06 (the owner): the pane became a window (v2.4358), so nothing in it is live as you edit, and Build → Open package already gives the exact PDF; the portal carries no submittal data, so a card would be a new feature, not a preview. A sample package cover in What customers see is the one piece worth its own row.
+4. ~~**What changed, for them** (after a share).~~ Dropped 2026-10-06 (the owner): rooms have two view events ever, both test opens, so the line would read "not opened" for everyone; Their call (v2.4560) already says who answered and when. Revisit if rooms get real traffic. *Dana opened Rev 2 on Sep 17. 4 rows changed since. She has not opened Rev 3.* From the room's opens and the Since-Rev column; sits under Their call.
 5. **One place to learn it without a bid.** *What customers see* gains the review room and the portal card on the sample bid; the strip's door links there when the bid has nothing to show yet.
 
 ## Decisions (taken 2026-09-29)

@@ -45,7 +45,7 @@ If the job has more than one bill line, step 1 lets you pick which line(s) the r
 - **Check from**: the saved property owner for the job, else the GC, else the customer.
 - **Amount**: what's still open on the selected bill lines. For the unconditional progress form, it is what's been received. For the unconditional final form, it is the whole bill.
 - **Contractor / releasing party**: your company block from Settings → Jobs & billing → Physical invoice. Only a dev sees that block.
-- **Signed by**: the job leader's name and title. Add the signer title if it's blank.
+- **Signed by**: the company's signer from Settings, else the job's leader. The **Signs** pick in step 5 starts fresh each time the window opens. A saved draft keeps its own Signed by line. The signer's title fills in when he is the company's signer. Fill in the **His title** field if it is blank.
 
 ## It saves itself
 
@@ -55,7 +55,7 @@ There's no Save button and nothing to cancel. From your first edit the release k
 
 Step 5 offers three ways.
 
-- {{button:blue|✍ He is here, he signs now}} opens the signature pad on this screen. Hand him the phone or turn the screen. He draws his signature or types his name. When you are the signer, the button reads **✍ Sign it now**.
+- {{button:blue|✍ He is here, he signs now}} opens the signature pad on this screen. Hand him the phone or turn the screen. He draws his signature. When you are the signer, the button reads **✍ Sign it now**. Then you may press **Type it instead**.
 - **Send it to his desk** asks the leader to sign later. The window says it is waiting for his signature. The release locks so nobody edits what he is signing. **Cancel request** unlocks it.
 - Signing on paper instead? Press **Print it**, then **Mark issued**.
 

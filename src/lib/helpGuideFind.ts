@@ -1,5 +1,5 @@
 /**
- * Finding words inside one rendered guide (v2.4634 — the § Rules window on the Lien desk):
+ * Finding words inside one rendered guide (v2.4655 — the § Rules window on the Lien desk):
  * every match wrapped in a `<mark data-find>` so it reads on the page, and the guide narrowed
  * to the sections that hold one. Works on the DOM the guide was drawn into, so the words it
  * marks are exactly the words the reader sees; the HTML string is never touched. A heading's

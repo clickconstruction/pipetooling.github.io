@@ -128,6 +128,7 @@ when_to_read:
    - [legal-portal](#legal-portal)
    - [submit-legal-portal](#submit-legal-portal)
    - [legal-notify-dispatch](#legal-notify-dispatch)
+   - [legal-send-firm-link](#legal-send-firm-link)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -822,6 +823,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.4624 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `legal-send-firm-link` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
 
 > **v2.4459 — a bill's day from `billed_at`**: `get_customer`'s money comes from [`_shared/customerProfileStats.ts`](../supabase/functions/_shared/customerProfileStats.ts), which now reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` for the days-to-pay median and a job row's oldest open bill, as the profile screen does. Redeploy after merge.
 
@@ -1705,6 +1708,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 > **v2.4625 — the firm's words**: [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) — the referred email says *{company} has referred X to {firm}*, a pull-back is *Referral withdrawn: X*, the digest prints each matter's stage through `legalFirmStageWords` (*referred · demand sent · suit filed · judgment entered*) and its events as *Referral withdrawn*, and every email's footer names `companyName` instead of a fixed brand (punch list #85, item 3). Redeploy after merge.
 
+> **v2.4624 — the confirm page's expired words**: `GET ?confirm=<t>&json=1` with a token that matches nobody answers `reason` = `LEGAL_CONFIRM_EXPIRED_REASON` ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts)): ask whoever added you to press *Resend the confirmation* next to your name on the portal's Notifications tab, instead of *ask someone to add you again* (a second add of the same address is refused while the first row lives). The app page falls back to the same words. **Redeploy required.**
+
 > **v2.4574 — what the firm is sent is kept**: a send-now notice (`legal_notice`) and a digest (`legal_digest`) are filed with the recipient and the firm as the name they went to. They name no job; they are found on the Documents page once step 4 of the plan lands. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4457 — the digest's days**: the weekly digest ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) `buildLegalDigestEmail`) prints a matter's *since* (`legal_matters.released_at`) and each event's day (`legal_notification_queue.created_at`) in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not as the UTC date, which read the next day for anything after 7 pm Central. Redeploy after merge.
@@ -1722,6 +1727,18 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 **v2.3512 (What customers see PR 6):** the now and digest emails and the confirm / unsubscribe pages are built by `_shared/legalEmails.ts`; `GET ?confirm=sample` / `?unsubscribe=sample` render the two pages for Ann Sample without touching a row.
 
 **v2.3521:** the confirm / unsubscribe pages moved to the app (`/legal/confirm?t=…`, `&stop=1`) because the platform relays this function's HTML as text/plain. `GET ?confirm=<t>&json=1` / `?unsubscribe=<t>&json=1` do the work and answer JSON for that page; the bare link shape 302-redirects there. `unsubscribeLink` builds the app URL.
+
+### legal-send-firm-link
+
+**Purpose**: The Legal desk's **🌐 Firm's link → Send the firm their link** (v2.4624, punch list #85 item 21): one welcome email from the company to the firm, carrying the active portal link. [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) `buildLegalWelcomeEmail` writes it: the greeting (the firm's handling person, else the firm), who is writing, what the portal is, the link as a button and as text, how many accounts wait there, **what to do first** (open Notifications and add each person who should hear from us; each confirms by email), what the firm finds there, *keep the link inside the firm*, and the office phone; an optional line the office typed sits under the opening; signed by the sender with reply-to their address. A full plain-text part. No stop link: it is one email a person sent, and its footer says nothing else is emailed unless someone at the firm adds the address.
+
+**Endpoint**: `POST /functions/v1/legal-send-firm-link` — `{ firmId, useOnFile?: boolean (default true), typed?: string, note?: string, token?: string }`. Addresses: the firm's `legal_firms.email` when `useOnFile`, then each typed address (commas, semicolons, spaces), each once, at most three ([`_shared/legalFirmLink.ts`](../supabase/functions/_shared/legalFirmLink.ts) `legalFirmLinkAddresses`, the card's own check). One email: the first address on To, the rest on Cc. The link is the firm's active `legal_portal_links` row: its raw `token`, or the `token` the card sends when it matches that row (raw or `token_hash`), or, when the row keeps no token and the card sent none, the Vault copy read with `legal_portal_link_token(p_firm_id)` (service role; punch list #85 item 22), so the send keeps working once tokens are hash-only at rest. The link's origin is `APP_ORIGIN`; a body origin is ignored. The filed copy (`sent_documents`, kind `legal_firm_link`) has the token cut to `?t=…` ([SENT_COPIES.md](./SENT_COPIES.md)). No active link → 409 *Create the firm's link first*; no readable token → 409 *Press Rotate, then send the new link*.
+
+**Returns**: `{ ok: true, sentTo: string[], sentAt }`; a refused send → 502 `{ ok: false, error }`; 400 for addresses, 401 / 403 for the caller.
+
+**Sent copies**: filed with `file: { kind: 'legal_firm_link', source: { table: 'legal_portal_links', id }, recipientName: firm, sentBy }` ([`SENT_COPIES.md`](./SENT_COPIES.md)). The card reads its line *Sent to … on … by …* from those rows for the active link (`legalFirmLinkSentLine`), so a Rotate starts it over. Catalog id `legal_firm_link` (`emailType`).
+
+**Auth**: `verify_jwt = false` in `config.toml`; the caller's JWT is checked in the handler (`auth.getUser`), then `legal_office_can_read()` through the caller's own client (dev, master, assistant, controller — the roles that mint the link). The send-bid-room-link pattern. **Deploy**: `supabase functions deploy legal-send-firm-link` (new). Secrets: `RESEND_API_KEY`, `APP_ORIGIN` (fallback when the card sends no origin).
 
 ### get-estimate-public-terms
 

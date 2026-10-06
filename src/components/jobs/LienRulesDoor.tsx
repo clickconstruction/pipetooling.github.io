@@ -5,7 +5,7 @@ import LienRulesModal from './LienRulesModal'
 /**
  * § Rules (v2.3594; it read "§ The rules" until v2.4528): the door from the Lien desk header and the Lien window's tab row to
  * the guide *read the Texas lien rules the app follows*, opened at the row that matters for
- * what is on screen. Since v2.4634 it opens the rules as a window over the desk with a find
+ * what is on screen. Since v2.4655 it opens the rules as a window over the desk with a find
  * box (`LienRulesModal`), not a new page — the desk or window stays open behind it. Shows
  * wherever its surface shows; the guide's own front matter gates who reads it.
  */
