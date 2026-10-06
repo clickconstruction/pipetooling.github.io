@@ -117,7 +117,6 @@ describe('LienOwnerRecordsModal', () => {
     expect([...document.querySelectorAll('[data-step]')].map((s) => `${s.getAttribute('data-step')}:${s.getAttribute('data-state')}`)).toEqual(['request:todo', 'contract:todo', 'numbers:warn', 'acknowledgment:todo'])
     expect(step('numbers').textContent).toContain('$17,585 matches the notice. $1,050 on job 881 has no notice.')
     expect(step('contract').textContent).toContain('The leader ticks this.')
-    expect(screen.getByTestId('owner-records-draft').textContent).toContain('Your attorney has not approved them yet.')
     expect(sendButton().disabled).toBe(true)
     expect(sendButton().title).toBe('First: their request in writing, the contract check, their signed acknowledgment')
     expect(screen.getByTestId('owner-records-foot').textContent).toBe('Before it can be recorded as sent: their request in writing, the contract check, their signed acknowledgment.')
@@ -170,24 +169,18 @@ describe('LienOwnerRecordsModal', () => {
     expect(sendButton().title).toBe('First: their signed acknowledgment')
   })
 
-  it('printing asks first while the wording is a draft, then prints the packet or the acknowledgment', async () => {
+  it('printing prints the packet or the acknowledgment, and files each as it went', async () => {
     io.jobs = jobs
     io.file = full
     mount()
     await pick()
     fireEvent.click(screen.getByRole('button', { name: 'Print the packet' }))
-    const ask = await screen.findByRole('alertdialog', { name: 'Print the draft wording?' })
-    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Not yet' }))
-    fireEvent.click(within(ask).getByRole('button', { name: 'Not yet' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    expect(io.printed).toEqual([])
-    fireEvent.click(screen.getByRole('button', { name: 'Print the packet' }))
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Print it' }))
     await waitFor(() => expect(io.printed).toHaveLength(1))
+    // Counsel approved the wording (v2.4627): no ask before a print.
+    expect(screen.queryByRole('alertdialog')).toBeNull()
     expect(io.printed[0]).toContain('Statement for 9703 Lenox Hl, San Antonio, TX')
     expect(io.printed[0]).toContain('You asked us in writing on Oct 3, 2026')
     fireEvent.click(screen.getByRole('button', { name: 'Print the acknowledgment' }))
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Print it' }))
     await waitFor(() => expect(io.printed).toHaveLength(2))
     expect(io.printed[1]).toContain('Acknowledgment of a records request')
     // A print counts as a send: each page is filed as it was printed.
@@ -197,7 +190,7 @@ describe('LienOwnerRecordsModal', () => {
     ])
   })
 
-  it('Download the packet asks while the wording is a draft, saves the PDF, and files it as a download (v2.4619)', async () => {
+  it('Download the packet saves the PDF and files it as a download (v2.4619)', async () => {
     io.jobs = jobs
     io.file = full
     io.downloaded = []
@@ -205,12 +198,6 @@ describe('LienOwnerRecordsModal', () => {
     mount()
     await pick()
     fireEvent.click(screen.getByRole('button', { name: 'Download the packet' }))
-    const ask = await screen.findByRole('alertdialog', { name: 'Save the draft wording?' })
-    fireEvent.click(within(ask).getByRole('button', { name: 'Not yet' }))
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
-    expect(io.downloaded).toEqual([])
-    fireEvent.click(screen.getByRole('button', { name: 'Download the packet' }))
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Save it' }))
     await waitFor(() => expect(io.downloaded).toEqual([{ name: 'Records-9703-Lenox-Hl-San-Antonio-TX-2026-10-05.pdf', type: 'application/pdf' }]))
     await waitFor(() => expect(io.filed.map((f) => [f.kind, f.how])).toEqual([['owner_records_packet', 'download']]))
   })
