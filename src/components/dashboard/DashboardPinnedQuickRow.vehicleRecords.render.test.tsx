@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Wiring for the Needs You vehicle-records card (v2.4692): dev, assistant and controller get the
+ * Wiring for the Needs You vehicle-records card (v2.4700): dev, assistant and controller get the
  * vehicle gaps into the builder, other roles do not, and the card's button opens People → Vehicles.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'

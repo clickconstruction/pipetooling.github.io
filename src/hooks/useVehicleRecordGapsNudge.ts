@@ -7,7 +7,7 @@ import type { FleetInsurancePeriod, FleetPossession } from '../lib/vehicleFleet'
 import { vehicleRecordGaps, type VehicleRecordGap, type VehicleRecordVehicle } from '../lib/vehicleRecordGaps'
 
 /**
- * Needs You → Vehicles (v2.4692): the active vehicles with no insurance, registration or service
+ * Needs You → Vehicles (v2.4700): the active vehicles with no insurance, registration or service
  * on file (`vehicleRecordGaps`). Reads as the viewer: dev, assistant and controller pass the
  * vehicle tables' "Pay access users" policies. Holds and insurance periods are read only where
  * they reach today; service only for the active vehicles, paged past PostgREST's 1,000-row cap.

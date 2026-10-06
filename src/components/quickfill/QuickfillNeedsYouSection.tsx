@@ -104,7 +104,7 @@ export function QuickfillNeedsYouSection({
   const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
   const hrReportsEnabled = Boolean(authUser?.id) && role === 'dev'
   const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
-  // The owner, 2026-10-06 (v2.4692): the Dashboard's vehicle-records card here too, for dev, assistant and controller.
+  // The owner, 2026-10-06 (v2.4700): the Dashboard's vehicle-records card here too, for dev, assistant and controller.
   const vehicleRecordGapsEnabled = Boolean(authUser?.id) && (role === 'dev' || isAssistantLike(role))
   const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
 

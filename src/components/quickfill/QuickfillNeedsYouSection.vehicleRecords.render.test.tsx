@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Quickfill's Needs You carries the Dashboard's vehicle-records card (v2.4692, the owner's ask):
+ * Quickfill's Needs You carries the Dashboard's vehicle-records card (v2.4700, the owner's ask):
  * dev, assistant and controller get the vehicle gaps into the builder and the card on screen,
  * other roles do not, and the card's button opens People → Vehicles.
  */

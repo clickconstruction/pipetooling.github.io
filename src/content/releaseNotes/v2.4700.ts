@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4692',
+  version: 'v2.4700',
   date: '2026-10-06',
   title: 'Needs you: vehicles missing insurance, registration or service',
   kind: 'feature',

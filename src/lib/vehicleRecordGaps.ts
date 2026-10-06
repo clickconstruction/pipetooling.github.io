@@ -2,7 +2,7 @@ import { currentInsurancePeriod, currentPossession, isMotorPoolPossession, vehic
 import { effectiveWeeklyInsuranceCost } from './vehicleInsuranceCost'
 
 /**
- * Vehicle records on the Needs You card (v2.4692; the owner, 2026-10-06): an active vehicle with
+ * Vehicle records on the Needs You card (v2.4700; the owner, 2026-10-06): an active vehicle with
  * no insurance, registration or service on file. Active is the fleet board's rule, a person holds
  * it today (the motor pool and unassigned vehicles wait for a holder). Missing, each part:
  *   insurance    — no weekly cost counts today: off a plan, or on one at $0 (`effectiveWeeklyInsuranceCost`).

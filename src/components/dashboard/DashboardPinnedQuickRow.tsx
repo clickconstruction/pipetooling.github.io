@@ -491,7 +491,7 @@ export function DashboardPinnedQuickRow({
   // Supply-house job accounts (v2.3430): jobs that bought at a house expecting an account with none on record — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
-  // The owner, 2026-10-06 (v2.4692): dev, assistant and controller see active vehicles with no insurance, registration or service on file.
+  // The owner, 2026-10-06 (v2.4700): dev, assistant and controller see active vehicles with no insurance, registration or service on file.
   const vehicleRecordGapsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
   const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.

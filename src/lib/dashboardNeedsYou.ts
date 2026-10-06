@@ -197,7 +197,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lost-bids': 60,
   'd22-uncoded': 60,
   'job-account-missing': 60,
-  // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4692).
+  // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4700).
   'vehicle-records-missing': 60,
   'price-matrix-ready': 40,
   // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
@@ -497,7 +497,7 @@ export type NeedsYouInputs = {
   jobAccountGapsEnabled?: boolean
   /** v2.3430 — the evidence rule: jobs that bought at a house expecting a job account with none on record. */
   jobAccountGaps?: { jobs: number; pairs: number; allocatedTotal: number; houseNames: string } | null
-  /** v2.4692 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
+  /** v2.4700 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
   vehicleRecordGapsEnabled?: boolean
   /** `useVehicleRecordGapsNudge`: most missing first; null while loading or when none is missing. */
   vehicleRecordGaps?: VehicleRecordGap[] | null
