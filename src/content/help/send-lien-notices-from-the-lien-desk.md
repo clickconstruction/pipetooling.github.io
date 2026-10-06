@@ -120,7 +120,7 @@ Pick the row. The pane first shows what must be true before the notice can go. T
 - Each column is a § 53.056 notice already sent on the job, lettered A, B and on. A ✓ marks each month the paper names. Its header says when it was sent and links the saved copy.
 - The last column is this notice. Every open month is ticked, because one notice may carry several months. It must beat the earliest deadline.
 
-The claim amount sits under the grid, then the notice itself. It is the same paper the Lien window prints.
+The claim amount sits under the grid, then the notice itself. It is the same paper the Lien window prints. Each page has a label above it, like Page 2 of 3. The labels stack as you scroll, the way the pile titles do on the list. Pages you have passed stack at the top. Pages still ahead stack at the foot. The page under you is lit. Press a label to go to that page.
 
 Above the paper, one line says who gets it. The owner of record and the GC get it by certified mail. The GC also gets a PDF by email when we have an address. The **Include counsel's cover letter** box adds counsel's letter as page 1 of the owner's copy. The letter matches the property's kind, commercial, residential or homestead. The GC's copy is the form only.
 

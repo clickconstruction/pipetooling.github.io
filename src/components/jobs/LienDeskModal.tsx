@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
@@ -234,6 +234,8 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
 })
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+/** The page labels (v2.4726) stack like the Notices list's pile titles (v2.4651): one bar each, this tall. */
+const PAGE_LABEL_H = 30
 /** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
 const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
@@ -320,6 +322,13 @@ export default function LienDeskModal({
   const [ringField, setRingField] = useState<LienNoticeFieldKey | null>(null)
   const [claimOpenSignal, setClaimOpenSignal] = useState(0)
   const [paneScrolled, setPaneScrolled] = useState(false)
+  // The page labels stick under the strip while their page scrolls (v2.4726): the strip's height is measured, since its chips can wrap.
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  const [stripH, setStripH] = useState(0)
+  const [litPage, setLitPage] = useState<string | null>(null)
+  useEffect(() => {
+    setStripH(paneScrolled ? stripRef.current?.offsetHeight ?? 0 : 0)
+  }, [paneScrolled, selectedJobId])
   const paneRef = useRef<HTMLDivElement | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
   const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
@@ -1232,6 +1241,45 @@ export default function LienDeskModal({
     </div>
   )
 
+  // The page labels (v2.4726): the pages in the pane in order, each label a sticky bar that stacks under the strip once
+  // passed and at the pane's foot while ahead (the Notices list's pile titles, v2.4651), lit for the page under the reader,
+  // and a button that scrolls to its page.
+  const pageKeys: string[] = [...(coverHtml ? ['cover'] : []), 'notice', ...(payHtml ? ['pay'] : [])]
+  const relightPages = (host: HTMLElement) => {
+    let on: string | null = null
+    pageKeys.forEach((key, i) => {
+      const label = host.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
+      if (label && label.offsetTop <= host.scrollTop + stripH + (i + 1) * PAGE_LABEL_H) on = key
+    })
+    setLitPage((prev) => (prev === on ? prev : on))
+  }
+  const scrollToPage = (key: string, i: number) => {
+    const host = paneRef.current
+    const label = host?.querySelector<HTMLElement>(`[data-lien-desk-page-label="${key}"]`)
+    if (!host || !label) return
+    const top = Math.max(0, label.offsetTop - stripH - i * PAGE_LABEL_H)
+    if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
+    else host.scrollTop = top
+    setLitPage(key)
+  }
+  const pageLabel = (key: string, words: string, extra: ReactNode) => {
+    const i = pageKeys.indexOf(key)
+    const on = (litPage ?? pageKeys[0]) === key
+    return (
+      <div className="lienPileHead" data-lien-desk-page-label={key} data-on={on ? 'yes' : 'no'} style={{ top: stripH + i * PAGE_LABEL_H, bottom: (pageKeys.length - 1 - i) * PAGE_LABEL_H, zIndex: 1, margin: '0 -1.1rem -0.3rem', padding: '0 1.1rem' }}>
+        <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPage(key, i)} title="Go to this page" style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <span>{words}</span>
+          {extra ? (
+            <>
+              {' '}
+              <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{extra}</span>
+            </>
+          ) : null}
+        </button>
+      </div>
+    )
+  }
+
   // A month is shown once: still-open months (and whatever this item names) are cards; the rest of the job's months are history.
   const monthCards: LienDeskMonthCard[] = monthChoices
     .filter((m) => months.has(m.key) || (!m.noticed && !m.closed))
@@ -1328,11 +1376,13 @@ export default function LienDeskModal({
       onScroll={(ev) => {
         const next = ev.currentTarget.scrollTop > STRIP_COLLAPSE_PX
         setPaneScrolled((prev) => (prev === next ? prev : next))
+        relightPages(ev.currentTarget)
       }}
       style={{ padding: '0 1.1rem 0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       {paneScrolled ? (
         <div
+          ref={stripRef}
           data-lien-desk-strip
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
@@ -1679,18 +1729,19 @@ export default function LienDeskModal({
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
       {coverHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of {pageTotal} · cover letter</div>
+          {pageLabel('cover', `Page 1 of ${pageTotal} · cover letter`, null)}
           <div data-theme="light" data-lien-desk-cover style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
           </div>
         </>
       ) : null}
-      <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
-        {`Page ${coverHtml ? 2 : 1} of ${pageTotal} · the notice`}{' '}
+      {pageLabel(
+        'notice',
+        `Page ${coverHtml ? 2 : 1} of ${pageTotal} · the notice`,
         <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
           · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}
-        </span>
-      </div>
+        </span>,
+      )}
       <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
         {editing ? (
@@ -1719,10 +1770,7 @@ export default function LienDeskModal({
       {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
       {payHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
-            {`Page ${pageTotal} of ${pageTotal} · pay codes`}{' '}
-            <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {payPageSummary(payPage.rows)} · filled from the bills, nothing to type</span>
-          </div>
+          {pageLabel('pay', `Page ${pageTotal} of ${pageTotal} · pay codes`, <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {payPageSummary(payPage.rows)} · filled from the bills, nothing to type</span>)}
           <div data-theme="light" data-lien-desk-pay style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: payHtml }} />
           </div>

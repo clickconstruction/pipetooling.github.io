@@ -1363,3 +1363,24 @@ describe('LienDeskModal · the pile titles stack (v2.4672)', () => {
     expect(document.querySelector('[data-lien-pile-head="needs_owner"]')).toBeTruthy()
   })
 })
+
+describe('LienDeskModal — the page labels stick (v2.4726)', () => {
+  it('the page labels stack under the strip and at the foot like the pile titles, the one under the reader lit, each a button to its page', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const labels = Array.from(document.querySelectorAll('[data-lien-desk-page-label]')) as HTMLElement[]
+    expect(labels.length).toBeGreaterThanOrEqual(2)
+    // Stacked like the pile titles: the i-th label sits i bars from the top once passed and n-1-i bars from the bottom while ahead.
+    expect(labels.map((l) => l.style.top)).toEqual(labels.map((_, i) => `${i * 30}px`))
+    expect(labels.map((l) => l.style.bottom)).toEqual(labels.map((_, i) => `${(labels.length - 1 - i) * 30}px`))
+    expect(labels.map((l) => l.getAttribute('data-on'))).toEqual(labels.map((_, i) => (i === 0 ? 'yes' : 'no')))
+    expect(labels[0]!.textContent).toMatch(/^Page 1 of \d/)
+    // Each is a button that goes to its page and lights up.
+    const pane = document.querySelector('[data-lien-desk-pane]') as HTMLElement
+    pane.scrollTo = vi.fn() as never
+    fireEvent.click(labels[1]!.querySelector('button') as HTMLElement)
+    expect(pane.scrollTo).toHaveBeenCalled()
+    expect(labels[1]!.getAttribute('data-on')).toBe('yes')
+    expect(labels[0]!.getAttribute('data-on')).toBe('no')
+  })
+})
