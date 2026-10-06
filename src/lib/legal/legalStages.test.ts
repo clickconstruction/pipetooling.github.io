@@ -3,6 +3,7 @@ import { firmStepDecision, LEGAL_FIRM_STEP_WORDS, LEGAL_FIRM_STEPS, LEGAL_PORTAL
 import { legalRowChip, legalStageLabel, matterAwaitsClose, matterIsClosed, matterIsWithFirm, stageIsWithFirm, type LegalMatterRow } from './legalMatters'
 import { legalEntryKindWords, stepProposalOf } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
+import { buildLegalDigestEmail, buildLegalNowEmail } from '../legalEmails'
 
 const matter = (over: Partial<LegalMatterRow>): LegalMatterRow => ({
   id: 'm1', payer_key: 'c:x', customer_id: 'x', payer_name: 'Lenox Builders', firm_id: 'f1', stage: 'judgment', ready_marked_by: null, ready_marked_at: null, released_at: null,
@@ -56,5 +57,16 @@ describe('firmStepDecision (#85 item 16)', () => {
     expect(stepProposalOf(e)).toEqual({ stage: 'demand', from: 'judgment' })
     expect(stepProposalOf({ kind: 'step', meta: { stage: 'demand' } })).toBeNull()
     expect(legalEntryKindWords({ ...e, via_portal: true })).toBe('step · asks to move the stage back')
+  })
+})
+
+describe('the pull-back email carries the reason (#85 item 16)', () => {
+  it('says why, and what stays readable', () => {
+    const mail = buildLegalNowEmail({ companyName: 'Click', firmName: 'Example Law', trigger: 'pulled', payer: 'Ridgeway Dental', reason: 'Paid in full on 10-03', portalUrl: 'https://x', unsubscribeUrl: 'https://y' })
+    expect(mail.subject).toBe('Referral withdrawn: Ridgeway Dental')  // the firm's words (v2.4625)
+    expect(mail.html).toContain('Why: <i>Paid in full on 10-03</i>')
+    expect(mail.html).toContain('stay readable on the portal')
+    const digest = buildLegalDigestEmail({ companyName: 'Click', recipientName: 'Dana', matters: [], events: [{ createdAt: '2026-10-04T15:00:00Z', trigger: 'pulled', payer: 'Ridgeway Dental', reason: 'Paid in full' }], portalUrl: 'https://x', unsubscribeUrl: 'https://y' })
+    expect(digest.html).toContain('Ridgeway Dental</b> — Paid in full')
   })
 })

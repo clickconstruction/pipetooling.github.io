@@ -25,12 +25,9 @@ export const LEGAL_END_STAGES = ['settled', 'uncollectible', 'dismissed'] as con
 /** What the portal shows and accepts acts on — while `closed_at` is null. */
 export const LEGAL_PORTAL_STAGES: readonly string[] = [...LEGAL_ACTIVE_STAGES, ...LEGAL_END_STAGES]
 
-/** The steps the firm can record, in the picker's order. Until the item 16 migration widens the CHECK, only the first four and `settled` save. */
+/** The steps the firm can record, in the picker's order (the CHECK takes them all since migration 20261006150000). */
 export const LEGAL_FIRM_STEPS = ['demand', 'suit', 'judgment', 'post_judgment', 'payment_plan', 'settled', 'uncollectible', 'dismissed'] as const
 export type LegalFirmStep = (typeof LEGAL_FIRM_STEPS)[number]
-
-/** The steps the table accepted before the item 16 migration. */
-export const LEGAL_FIRM_STEPS_BEFORE_16 = ['demand', 'suit', 'judgment', 'settled'] as const
 
 /** The step's line in the matter's stream (`legal_matter_entries.body`). */
 export const LEGAL_FIRM_STEP_WORDS: Record<LegalFirmStep, string> = {
@@ -43,6 +40,12 @@ export const LEGAL_FIRM_STEP_WORDS: Record<LegalFirmStep, string> = {
   uncollectible: 'Uncollectible',
   dismissed: 'Dismissed',
 }
+
+/** The picker's two groups: working it, and how it ended. */
+export const LEGAL_FIRM_STEP_GROUPS: ReadonlyArray<{ label: string; steps: readonly LegalFirmStep[] }> = [
+  { label: 'Working it', steps: ['demand', 'suit', 'judgment', 'post_judgment', 'payment_plan'] },
+  { label: 'How it ended', steps: ['settled', 'uncollectible', 'dismissed'] },
+]
 
 export function isLegalFirmStep(raw: unknown): raw is LegalFirmStep {
   return typeof raw === 'string' && (LEGAL_FIRM_STEPS as readonly string[]).includes(raw)

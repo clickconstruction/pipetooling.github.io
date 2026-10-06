@@ -1402,7 +1402,8 @@ The ⚖ Legal desk on the Pipeline's Collections tier is visible to the Collecti
 |---|---|---|
 | Curate: hold a timeline entry back from counsel with a reason (everything else goes, v2.4680), ask a dev to review, write down | dev · master_technician · assistant · controller | `legal_matter_save_review`, `legal_close_matter`, the agreed write-down |
 | Set a matter's settlement floor (dollars or a percent of the balance, or none), and sign off or decline the firm's settlement under it (v2.4643) | dev · master_technician · assistant · controller | `legal_set_settlement_floor`, `legal_answer_settlement` |
-| **Mark attorney-ready (= release to the firm)**, pull back | **dev only** | `legal_mark_attorney_ready`, `legal_pull_back` |
+| **Mark attorney-ready (= release to the firm)**, pull back (with a required reason the firm reads, v2.4645) | **dev only** | `legal_mark_attorney_ready`, `legal_pull_back` |
+| Close a firm end (settled · uncollectible · dismissed); accept a firm step that would move the stage back (v2.4645) | dev · master_technician · assistant · controller | `legal_close_matter`, `legal_set_stage` |
 | Add or edit the collections law firm (name, handling person, email, fee model) | dev only | Settings → Jobs & dispatch → Collections law firm (`legal_firms` insert/update policies). **One active firm at a time**: the partial unique index `legal_firms_one_active` (v2.4641) refuses a second row with `active = true`; retire the old firm first. |
 | See the "N Collections accounts await your review" Needs You card | dev only | Dashboard |
 

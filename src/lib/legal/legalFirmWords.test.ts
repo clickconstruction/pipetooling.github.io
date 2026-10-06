@@ -52,7 +52,7 @@ describe('legalFirmWords · punch list #85 item 3 · the firm reads its own word
   it('stages read as a firm says them, and the office keeps its own labels', () => {
     expect(['referred', 'demand', 'suit', 'judgment', 'settled', 'pulled'].map(legalFirmStageWords)).toEqual(['referred', 'demand sent', 'suit filed', 'judgment entered', 'settled', 'referral withdrawn'])
     expect(legalFirmStageWords(null)).toBe('under review by the office')
-    expect(['post_judgment', 'payment_plan', 'uncollectible', 'dismissed'].map(legalFirmStageWords)).toEqual(['judgment being collected', 'payment plan', 'written off as uncollectible', 'dismissed'])
+    expect(['post_judgment', 'payment_plan', 'uncollectible', 'dismissed'].map(legalFirmStageWords)).toEqual(['after judgment', 'payment plan', 'uncollectible', 'dismissed'])
     expect(legalStageLabel('referred')).toBe('With the firm · new')
   })
 

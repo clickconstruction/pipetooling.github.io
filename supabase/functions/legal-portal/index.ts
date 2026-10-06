@@ -153,6 +153,14 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
   }
 }
 
+/** Which of a pulled-back matter's entries the firm still reads: its fees and costs and the questions and answers, from before the pull-back, never voided. */
+function pulledEntryTravels(e: Row, pulledAt: string | null): boolean {
+  if (!['fee', 'cost', 'question', 'answer'].includes(e.kind as string)) return false
+  if ((e as { voided_at?: string | null }).voided_at) return false
+  if (pulledAt && typeof e.created_at === 'string' && e.created_at > pulledAt) return false
+  return true
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...corsHeaders, ...privateHeaders } })
   try {
@@ -215,8 +223,25 @@ serve(async (req) => {
     if (matterRes.error) matterRes = await readMatters(MATTER_COUNSEL_SELECT.matters)
     const matterRows = matterRes.data
     const matters = (matterRows ?? []) as Row[]
+    // #85 item 16: a matter the office pulled back stays readable, slim — the reason, the firm's own fees and
+    // steps, the conversation. None of the customer's records: counsel no longer has the matter. A column the
+    // migration has not added yet reads as no pulled matters.
+    const { data: pulledRows } = await admin.from('legal_matters').select('id, payer_name, pulled_at, pulled_reason').eq('firm_id', link.firm_id).eq('stage', 'review').not('pulled_at', 'is', null).order('pulled_at', { ascending: false }).limit(50)
+    const pulled = (pulledRows ?? []) as Row[]
+    const { data: pulledEntryRows } = pulled.length
+      ? await admin.from('legal_matter_entries').select('id, matter_id, kind, amount, body, occurred_on, meta, via_portal, acknowledged_at, created_at').in('matter_id', pulled.map((p) => p.id as string)).order('created_at')
+      : { data: [] }
+    const pulledMatters = pulled.map((p) => ({
+      id: p.id,
+      payerName: p.payer_name,
+      pulledAt: p.pulled_at ? todayYmdInAppTz(new Date(p.pulled_at as string)) : null,
+      reason: (p.pulled_reason as string | null) ?? '',
+      // Slim (#85 item 16 review): only the firm's own fee and cost rows and the conversation, dated before the
+      // pull-back, and never a voided row. The office's steps, notes and anything after the pull-back stay home.
+      entries: ((pulledEntryRows ?? []) as Row[]).filter((e) => e.matter_id === p.id && pulledEntryTravels(e, p.pulled_at as string | null)),
+    }))
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], lienBook: await readLienBook(admin) })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -410,7 +435,7 @@ serve(async (req) => {
       })
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out, lienBook: await readLienBook(admin) })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('legal-portal', e), 500)
   }
