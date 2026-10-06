@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -445,9 +446,9 @@ export function BidsCountsTab({
     setClearAllCountsBusy(true)
     try {
       await withSupabaseRetry(
-        async () => (activeBidVersionId
+        async () => withBidAction(activeBidVersionId
           ? supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).eq('bid_version_id', activeBidVersionId)
-          : supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).is('bid_version_id', null)),
+          : supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).is('bid_version_id', null), BID_ACTIONS.countsClearAll),
         'clear all bid count rows'
       )
       setClearAllCountsOpen(false)
@@ -531,7 +532,8 @@ export function BidsCountsTab({
     // which is what looked hung. RETURNING keeps the VALUES order, so the ids line up with the rows.
     for (let i = 0; i < payload.length; i += COUNTS_IMPORT_INSERT_CHUNK) {
       const chunk = payload.slice(i, i + COUNTS_IMPORT_INSERT_CHUNK)
-      const { data, error } = await supabase.from('bids_count_rows').insert(chunk).select('id')
+      // Tagged as one import (bid history, PR 1b), so the ledger reads the batches as one action.
+      const { data, error } = await withBidAction(supabase.from('bids_count_rows').insert(chunk).select('id'), BID_ACTIONS.countsImport)
       if (error) return { inserted, insertedIds, error: error.message }
       inserted += chunk.length
       for (const r of data ?? []) if (r?.id) insertedIds.push(r.id)

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -1799,8 +1800,12 @@ export function BidsPricingTab({
     if (!bidId || !versionId || matches.length === 0) return
     setWbFillingBook(true)
     try {
-      const { error: err } = await supabase.from('bid_pricing_assignments').insert(
-        matches.map((m) => ({ bid_id: bidId, count_row_id: m.countRowId, price_book_entry_id: m.entryId, price_book_version_id: versionId })),
+      // One press, one action in the bid's history (PR 1b).
+      const { error: err } = await withBidAction(
+        supabase.from('bid_pricing_assignments').insert(
+          matches.map((m) => ({ bid_id: bidId, count_row_id: m.countRowId, price_book_entry_id: m.entryId, price_book_version_id: versionId })),
+        ),
+        BID_ACTIONS.bookFill,
       )
       if (err) {
         setError(err.message)

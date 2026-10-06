@@ -18,6 +18,7 @@ NAME="pgtest-bid-changes"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 LEDGER="supabase/migrations/20261007040000_bid_changes.sql"
 TRIGGERS="supabase/migrations/20261007041000_bid_changes_triggers.sql"
+TAG="supabase/migrations/20261007050000_bid_changes_action_tag.sql"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -34,7 +35,7 @@ for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 done
 # A second run of each must change nothing (and the triggers file must take no lock doing so).
-for f in "$LEDGER" "$TRIGGERS"; do
+for f in "$LEDGER" "$TRIGGERS" "$TAG"; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/bid_changes/20_scenario.sql 2>&1 || true)"
