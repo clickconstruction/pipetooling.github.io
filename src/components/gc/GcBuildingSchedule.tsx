@@ -44,6 +44,8 @@ import { GcLateNotices } from './GcLateNotices'
 import { GcLogVsChart } from './GcLogVsChart'
 import { GcPullBox, GcPullLine, GcPullWindow } from './GcPullEarlier'
 import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWhatIf'
+import { GcPartsCard } from './GcSplitBars'
+import { partMoveOf } from '../../lib/gcMode/gcSplitBars'
 import { whatIfGhosts, whatIfProject } from '../../lib/gcMode/gcWhatIf'
 import { planPull, pullGhosts } from '../../lib/gcMode/gcPullEarlier'
 import { walkStanding } from '../../lib/gcMode/gcScheduleWalk'
@@ -265,6 +267,11 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
       {/* The opened activity, when it finished early, can come in, or keeps its dates behind an early finish (G-37). */}
       {pickedRow && offer && <GcPullBox offer={offer} lineId={pickedRow.activity.lineId} onPull={() => setPulling(true)} />}
 
+      {/* The opened line in parts (G-39): its parts with their dates and shares, or the way to split it. */}
+      {pickedRow && !pickedRow.activity.inspection && !pickedRow.activity.added && (
+        <GcPartsCard key={`parts:${pickedRow.activity.lineId}`} project={project} activity={pickedRow.activity} pct={pickedRow.actual} by={me} dispatch={dispatch} onMovePart={setPending} tryIt={inCopy} />
+      )}
+
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {inCopy ? (
           <GcWhatIfLine state={state} project={realProject} dispatch={realDispatch} onKeep={() => setKeeping(true)} onReal={() => setCopyShown(false)} />
@@ -295,6 +302,11 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           picked={picked}
           onPick={setPicked}
           onMove={(lineId, start, finish) => setPending({ lineId, start, finish, after: schedule.activities.find((a) => a.lineId === lineId)?.after ?? [] })}
+          onMovePart={(lineId, partId, start, finish) => {
+            const a = schedule.activities.find((x) => x.lineId === lineId)
+            const move = a ? partMoveOf(a, partId, start, finish) : null
+            if (move) setPending(move)
+          }}
           planOf={planOf}
           onLink={(from, to) => {
             const a = schedule.activities.find((x) => x.lineId === to)
@@ -335,7 +347,7 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
 
       {pulling && <GcPullWindow state={state} project={project} dispatch={dispatch} onClose={() => setPulling(false)} />}
 
-      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} tryIt={inCopy} />}
+      {pending && <GcMoveExplain key={`${pending.lineId}:${pending.start}:${pending.finish}:${pending.part ? `${pending.part.id}:${pending.part.start}:${pending.part.finish}` : ''}`} state={state} project={project} pending={pending} dispatch={dispatch} onClose={() => setPending(null)} tryIt={inCopy} />}
 
       {keeping && <GcWhatIfKeep state={state} project={realProject} dispatch={realDispatch} onClose={() => setKeeping(false)} onKept={() => setCopyShown(false)} />}
 

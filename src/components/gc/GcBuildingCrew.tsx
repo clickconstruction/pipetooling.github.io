@@ -1,6 +1,8 @@
 import type { Dispatch } from 'react'
 import { money, ownCrewWork, type GcAction, type GcProject, type TradePackage } from '../../lib/gcMode/gcModel'
 import { Card, Chip, Stat, input } from './gcUi'
+import { GcCrewPartRows } from './GcSplitBars'
+import { splitActivityOf } from '../../lib/gcMode/gcSplitBars'
 
 /**
  * GC mode design spike: a trade our own crew does, on the Draws tab. It has no statement of work,
@@ -36,7 +38,11 @@ export function GcBuildingCrewCard({ project, pkg, dispatch }: { project: GcProj
         </div>
       </div>
       <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.7rem' }}>
-        {crew.stages.map((st) => (
+        {crew.stages.map((st) =>
+          // A stage split into parts (G-39): its percent, then a picker for each part.
+          splitActivityOf(project, st.lineId) ? (
+            <GcCrewPartRows key={st.lineId} project={project} packageId={pkg.id} lineId={st.lineId} label={`${st.label} · ${money((crew.worth * st.weight) / 100)}`} pct={st.pct} bar={bar} dispatch={dispatch} />
+          ) : (
           <div key={st.lineId} className="gcBar-row">
             <span>
               {st.label} · {money((crew.worth * st.weight) / 100)}
@@ -55,7 +61,8 @@ export function GcBuildingCrewCard({ project, pkg, dispatch }: { project: GcProj
               ))}
             </select>
           </div>
-        ))}
+          ),
+        )}
         <div className="gcBar-row" style={{ fontWeight: 600 }}>
           <span>The whole trade</span>
           {bar(crew.pct)}
