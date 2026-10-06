@@ -2,7 +2,7 @@
 title: understand how liens work and which lien tool to use
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien, mechanic's lien, Texas, Property Code, chapter 53, notice, 53.056, affidavit, 53.052, release, waiver, work month, GC, subcontractor, owner of record, deadline, Lien desk, Next up, liens on job, homestead, retainage
+keywords: lien, mechanic's lien, Texas, Property Code, chapter 53, notice, 53.056, affidavit, 53.052, release, waiver, work month, GC, subcontractor, owner of record, deadline, Lien desk, Do now, liens on job, homestead, retainage
 ---
 A lien is a claim on the property the work went into. Texas lets a plumber who has not been paid put one there.
 
@@ -39,7 +39,7 @@ Two related papers point the other way. First come the four Texas **lien waivers
 
 | You want to | Go to |
 |---|---|
-| See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens on *Next up*, the papers that ask for an act. The desk's other two views are *Calendar* and *All paper*. The desk opens from Dashboard → Needs you, the card that names the next lien deadline. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|Lien desk}}, the button with the orange gavel. |
+| See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens on *Do now*, the papers that ask for an act. The desk's other two views are *Deadlines* and *All filings*. The desk opens from Dashboard → Needs you, the card that names the next lien deadline. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|Lien desk}}, the button with the orange gavel. |
 | See the months and hours behind one bill. | **Jobs → Pipeline → Forecast**, the chevron on the row. |
 | Send one notice or a demand letter by hand. File the affidavit. Record the filing and the service. | The job's Lien window, titled *Liens on job* and its number. Press the orange lien icon on a Billed or Collections row. Its top card names your next step. |
 | Give a customer a release when they pay. | The blue release button on the row, or **Bill Customer → Lien releases**. |

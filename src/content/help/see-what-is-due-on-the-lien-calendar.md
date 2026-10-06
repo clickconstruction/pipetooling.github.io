@@ -4,11 +4,11 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search
 ---
-The Calendar tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
+The Deadlines tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
 
-## Open the Calendar
+## Open Deadlines
 
-Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|Calendar}} tab, beside Next up. Every billed job with money still owed is on it.
+Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|Deadlines}} tab, beside Do now. Every billed job with money still owed is on it.
 
 ## Read the pills
 
@@ -54,7 +54,7 @@ Office users on a computer can press it. Everyone else sees the count.
 
 ## Read the key
 
-The key runs along the bottom of the Calendar. Press a mark to read what it means. Press it again or press Esc to close it.
+The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it.
 
 ## On a phone
 

@@ -8,9 +8,9 @@ Texas counts lien deadlines from the month the work was done, not from the bill.
 
 On a job with a GC, every unpaid month needs its own § 53.056 notice. It is due by the 15th of the third month after the work. On a residential property it is due a month sooner. The office readies and drafts each notice. The leader approves it. Then it goes out on paper.
 
-## Start on Next up
+## Start on Do now
 
-Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Next up** tab. That is one list of every lien paper that needs someone to act.
+Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do now** tab. That is one list of every lien paper that needs someone to act.
 
 - **Needs you now** holds what is late or due within seven days. **Coming up** holds the rest. Each group runs in date order.
 - Each row has a tag. It reads {{chip:blue|Notice}}, {{chip:red|Affidavit}} or {{chip:yellow|Retainage}}.
@@ -19,26 +19,28 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Next
 - A GC with two or more notices ready is one row. Its button reads {{button:blue|Send the run}}.
 - A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
+- A rail above the rows shows the four steps of a notice. They are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Press a step to see only those rows. Press it again to see every row. Affidavits get a rail of their own when one needs an act.
+- Each row wears four dots and a count like 2/4. Point at the dots to read where that paper stands. The card lists what is done, what is being done now and what is left. On a phone, tap the dots.
 
-When nothing needs anyone, the tab says so and points you at the Calendar.
+When nothing needs anyone, the tab says so and points you at the Deadlines.
 
 ## The three views
 
 The top of the desk has three tabs.
 
-- **Next up** is the list of what to do now.
-- **Calendar** shows when each deadline falls.
-- **All paper** holds every paper by its state. A second row of tabs appears under it. They are **Notices**, **Affidavits**, **Retainage** and **Timeline**.
+- **Do now** is the list of what to do now.
+- **Deadlines** shows when each deadline falls.
+- **All filings** holds every paper by its state. A second row of tabs appears under it. They are **Notices**, **Affidavits**, **Retainage** and **Timeline**.
 
-All paper reopens on the tab you last used there. This guide names those four tabs often. Each one sits under All paper.
+All filings reopens on the tab you last used there. This guide names those four tabs often. Each one sits under All filings.
 
-## Look ahead on the Calendar
+## Look ahead on the Deadlines
 
-The **Calendar** tab is beside Next up. It shows when each lien deadline falls.
+The **Deadlines** tab is beside Do now. It shows when each lien deadline falls.
 
 Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
 
-Press a job to open its Lien window. The desk stays open behind it. Close the Lien window and you are back on the desk, where you left it. A job's number is a button of its own. Press it to open the job itself, with its history, its bills and **Edit**. It is on every Calendar and Timeline row. On the Notices, Affidavits and Retainage tabs it is at the top of the job you picked. The Calendar is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
+Press a job to open its Lien window. The desk stays open behind it. Close the Lien window and you are back on the desk, where you left it. A job's number is a button of its own. Press it to open the job itself, with its history, its bills and **Edit**. It is on every Deadlines and Timeline row. On the Notices, Affidavits and Retainage tabs it is at the top of the job you picked. The Deadlines is shown step by step in [see what is due on the lien calendar](/help/see-what-is-due-on-the-lien-calendar).
 
 ## Where it opens
 

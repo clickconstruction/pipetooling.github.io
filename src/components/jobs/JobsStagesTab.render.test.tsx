@@ -449,8 +449,8 @@ describe('JobsStagesTab render smoke', () => {
     await act(async () => {
       ref.current!.openLienDesk()
     })
-    // A plain open lands on Next up (punch list #82); the Calendar is one tab over.
-    fireEvent.click(await screen.findByRole('tab', { name: 'Calendar' }))
+    // A plain open lands on Do now (punch list #82); Deadlines is one tab over.
+    fireEvent.click(await screen.findByRole('tab', { name: 'Deadlines' }))
     expect(cache.asked).toContain('billed_all')
     expect(screen.getByText('Reading the board…')).toBeTruthy()
     expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
@@ -470,8 +470,8 @@ describe('JobsStagesTab render smoke', () => {
     await act(async () => {
       ref.current!.openLienDesk()
     })
-    // A plain open lands on Next up (punch list #82); the Calendar is one tab over.
-    fireEvent.click(await screen.findByRole('tab', { name: 'Calendar' }))
+    // A plain open lands on Do now (punch list #82); Deadlines is one tab over.
+    fireEvent.click(await screen.findByRole('tab', { name: 'Deadlines' }))
     const desk = await screen.findByRole('dialog', { name: 'Lien desk' })
     await within(desk).findByRole('button', { name: 'All · 1 job · $1,000' })
     // The calendar folds its groups: open Overdue, then the job's row is there to click.

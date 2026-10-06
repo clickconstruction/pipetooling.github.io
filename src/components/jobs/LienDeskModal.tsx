@@ -65,6 +65,7 @@ import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import type { LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
 import { callLetterFactsFor, practiceCallFacts, type CallerJobHit, type CallerMatchInput, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
@@ -363,7 +364,7 @@ export default function LienDeskModal({
       setMobileListShown(false)
     }
   }, [open, initialJobId, initialKind, aimKey])
-  // All paper (punch list #82, PR 5): the four lists share one view; it reopens on the list last looked at.
+  // All filings (punch list #82, PR 5; All paper until v2.4630): the four lists share one view; it reopens on the list last looked at.
   const paperShown = kind === 'notice' || kind === 'affidavit' || kind === 'retainage' || kind === 'timeline'
   const [lastPaperKind, setLastPaperKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>('notice')
   useEffect(() => {
@@ -483,7 +484,7 @@ export default function LienDeskModal({
       setSelectedJobId(hit.jobId)
     }
   }
-  // Next up (punch list #82): the queues this desk already holds, folded into one ordered list. No read of its own.
+  // Do now (punch list #82; Next up until v2.4630): the queues this desk already holds, folded into one ordered list. No read of its own.
   const nextUpRows = useMemo(() => {
     if (!data) return []
     const serveDue = Object.values(data.filingsByJob)
@@ -502,7 +503,7 @@ export default function LienDeskModal({
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
     })
   }, [data, authRole, todayYmd])
-  /** A Next up row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
+  /** A Do now row's button: the pane that already does that work, on that job and pile. Nothing is written here. */
   const actOnNextUp = (row: LienNextUpRow) => {
     const t = row.target
     setMobileListShown(false)
@@ -925,6 +926,26 @@ export default function LienDeskModal({
   const retReady = data?.retainage.counts.ready ?? 0
   /** What the run lists (v2.4568): ready and printed notices, and ready retainage. The buttons that open it count the same. */
   const runCount = (counts?.ready ?? 0) + (counts?.printed ?? 0) + retReady
+  // What a Do now row's card may say about its job (v2.4631): read from what the desk already holds, nothing new.
+  const stepFactsFor = (row: LienNextUpRow): LienStepFacts => {
+    const base: LienStepFacts = { readyToSend: counts?.ready ?? 0, viewerIsLeader: leader }
+    if (!data || !row.jobId) return base
+    const jobId = row.jobId
+    const rowJob = data.jobsById[jobId]
+    const rowAddress = rowJob?.customer_address_id ? data.addressesById[rowJob.customer_address_id] ?? null : null
+    const rowOwner = lienPropertyOwnerDisplayName(resolveLienProperty(rowAddress, data.ownerByJob[jobId] ?? null).owner).trim() || null
+    if (row.kind === 'affidavit') {
+      const e = data.affidavits.entries.find((x) => x.jobId === jobId)
+      return { ...base, ownerName: rowOwner, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, gatesMissing: e?.gates.filter((g) => !g.ok).map((g) => g.label) ?? [] }
+    }
+    if (row.kind === 'retainage') {
+      const e = data.retainage.entries.find((x) => x.jobId === jobId)
+      return { ...base, ownerName: rowOwner, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, readyToSend: retReady }
+    }
+    const e = data.queue.entries.find((x) => x.jobId === jobId)
+    const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
+    return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false }
+  }
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
   const list = (
@@ -2094,13 +2115,13 @@ export default function LienDeskModal({
           {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
-          {/* Three views (punch list #82, PR 5): Next up, Calendar, All paper. All paper holds the four lists that were tabs of their own, as a second row. */}
+          {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
           <div ref={kindTabs.ref} onScroll={kindTabs.onScroll} role="tablist" aria-label="View" data-lien-desk-kinds style={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0, border: '1px solid var(--border-strong)', borderRadius: 7, overflowX: 'auto', overflowY: 'hidden', ...kindTabs.style }}>
             {(['next', 'calendar', 'paper'] as const).map((v) => {
               const on = v === 'paper' ? paperShown : kind === v
               return (
                 <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
-                  {v === 'next' ? `Next up${data ? ` · ${nextUpRows.length}` : ''}` : v === 'calendar' ? 'Calendar' : `All paper${data ? ` · ${entries.filter((e) => e.pile !== 'sent').length + affCount + retCount}` : ''}`}
+                  {v === 'next' ? `Do now${data ? ` · ${nextUpRows.length}` : ''}` : v === 'calendar' ? 'Deadlines' : 'All filings'}
                 </button>
               )
             })}
@@ -2256,7 +2277,7 @@ export default function LienDeskModal({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'next' ? (
-            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} />
+            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} />
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}

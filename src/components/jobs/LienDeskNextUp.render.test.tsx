@@ -94,3 +94,63 @@ describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
     expect(onOpenJob).toHaveBeenCalledWith('j1')
   })
 })
+
+describe('LienDeskNextUp · the steps (v2.4631)', () => {
+  const rows = [
+    row({ action: 'find_owner', sub: 'Needs the owner of record', button: 'Find the owner' }),
+    row({ key: 'notice:j2', jobId: 'j2', title: '651 · ATI Schertz II' }),
+    row({ key: 'notice:j3', jobId: 'j3', title: '652 · Take 5', action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }),
+    row({ key: 'affidavit:j4', jobId: 'j4', kind: 'affidavit', title: '977 · Springtown', action: 'fix_property', sub: 'Affidavit · the property record is not complete', button: 'Fix the property', target: { open: 'affidavits', jobId: 'j4' } }),
+  ]
+  it('draws a rail per ladder with its counts, the run count on the fourth rung, and a press narrows the list to that rung', () => {
+    const onOpenRun = vi.fn()
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={() => {}} ready={{ notice: 11 }} onOpenRun={onOpenRun} viewerIsLeader />)
+    expect(screen.getByTestId('lien-step-rail-notice')).toBeTruthy()
+    expect(screen.getByTestId('lien-step-rail-affidavit')).toBeTruthy()
+    expect(screen.queryByTestId('lien-step-rail-retainage')).toBeNull()
+    expect(['1', '2', '3', '4'].map((n) => screen.getByTestId(`lien-step-count-notice-${n}`).textContent)).toEqual(['1', '1', '1', '11 ready'])
+    expect(screen.getByTestId('lien-step-count-affidavit-1').textContent).toBe('1')
+    fireEvent.click(screen.getByTestId('lien-step-notice-2'))
+    expect(screen.getByTestId('lien-step-notice-2').getAttribute('aria-pressed')).toBe('true')
+    expect((document.querySelector('[data-lien-next-up-row="notice:j2"]') as HTMLElement).getAttribute('data-dim')).toBeNull()
+    expect((document.querySelector('[data-lien-next-up-row="notice:j1"]') as HTMLElement).getAttribute('data-dim')).toBe('yes')
+    expect((document.querySelector('[data-lien-next-up-row="affidavit:j4"]') as HTMLElement).getAttribute('data-dim')).toBe('yes')
+    fireEvent.click(screen.getByTestId('lien-step-notice-2'))
+    expect(document.querySelectorAll('[data-dim="yes"]')).toHaveLength(0)
+    // The fourth rung is the run itself.
+    fireEvent.click(screen.getByTestId('lien-step-notice-4'))
+    expect(onOpenRun).toHaveBeenCalledTimes(1)
+  })
+  it('every row wears four dots and its fraction; hovering them opens the card beside, with the ladder written out and the row’s own button', () => {
+    const onAct = vi.fn()
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} factsFor={() => ({ ownerName: 'Elbel Holdings LLC', viewerIsLeader: true })} viewerIsLeader />)
+    const marks = screen.getAllByTestId('lien-step-mark')
+    expect(marks).toHaveLength(4)
+    expect(marks[2]!.textContent).toBe('3/4')
+    expect(screen.queryByTestId('lien-step-card')).toBeNull()
+    fireEvent.mouseEnter(marks[2]!)
+    const card = screen.getByTestId('lien-step-card')
+    expect(card.getAttribute('data-place')).toBe('beside')
+    expect(screen.getByTestId('lien-step-card-title').textContent).toBe('652 · Take 5')
+    expect(screen.getByTestId('lien-step-card-deadline').textContent).toBe('In the mail by Oct 9 · 4 days left')
+    expect(screen.getAllByTestId('lien-step-card-item').map((el) => el.getAttribute('data-state'))).toEqual(['done', 'done', 'now', 'todo'])
+    expect(card.textContent).toContain('Elbel Holdings LLC, from the property record.')
+    expect(screen.getByTestId('lien-step-card-foot').textContent).toBe('Step 3 of 4 · 2 done · 2 to go')
+    fireEvent.click(screen.getByTestId('lien-step-card-act'))
+    expect(onAct).toHaveBeenCalledTimes(1)
+    expect(onAct.mock.calls[0]![0].key).toBe('notice:j3')
+    expect(screen.queryByTestId('lien-step-card')).toBeNull()
+    // Esc closes a card and nothing else.
+    fireEvent.mouseEnter(marks[3]!)
+    expect(screen.getByTestId('lien-step-card-blocked').textContent).toBe('Blocked by: the property record')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-step-card')).toBeNull()
+  })
+  it('on a phone a tap on the dots opens the card as a sheet with a Close', () => {
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} />)
+    fireEvent.click(screen.getAllByTestId('lien-step-mark')[0]!)
+    expect(screen.getByTestId('lien-step-card').getAttribute('data-place')).toBe('sheet')
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('lien-step-card')).toBeNull()
+  })
+})
