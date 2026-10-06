@@ -116,8 +116,9 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-94 | A link or a PDF to send on its own, dated, kept as sent | Tell | Have (built 2026-10-06: the letter on the Schedule tab, the same picture as the portal, Send keeps it as it went, Print or PDF opens it as a page; `gcCustomerScheduleSend.ts`) | 3 |
 | G-95 | The architect's view: the customer's view plus submittals and RFIs waiting on them, with the work each holds | Tell, Chase | Have (built 2026-10-06: *The schedule* in the architect's portal, the stages and what waits on them, each with the work it holds and the day we need it back; `gcArchitectSchedule.ts`) | 3 |
 | G-96 | Days lost by cause across the job, for a time extension ask: the customer's, the weather's, ours, a trade's | Tell | Have (built 2026-10-06: Days lost, by cause on the Schedule tab adds every standing move up by whose door its reason lays at, on the finish and on the work, with the log's weather days beside) | 4 |
-| G-97 | The billing forecast follows the schedule: what we expect to bill each month, as the bars move | Tell | Part (Owner Billing's forecast) | 4 |
+| G-97 | The billing forecast follows the schedule: what we expect to bill each month, as the bars move | Tell | Have (built 2026-10-06: *What we expect to bill* under the draft on Bill the customer, with each month's trades and what this week's moves changed; *What we bill, month by month* on the Money tab; the customer's bills ahead in their portal, rounded; *Billing: …* in Why it moved and on a move's row. Each bill is Owner Billing's own `ownerPayApp` run on the job at that day's percents; `gcBillingForecast.ts`) | 4 |
 | G-98 | The late-finish days in the contract, counted against the projected finish | See, Tell | Part (the contract's day) | 4 |
+| G-140 | The cash forecast follows the bars too: *The next 6 weeks* counts each bill as the schedule has it, and the trades' draws follow the same bars | See, Tell | New | Later |
 
 ## G. Chasing the trades
 

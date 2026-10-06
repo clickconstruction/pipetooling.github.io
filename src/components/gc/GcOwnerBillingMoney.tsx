@@ -1,6 +1,7 @@
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import type { Dispatch } from 'react'
 import { GcOwnerBillingAhead } from './GcOwnerBillingAhead'
+import { GcBillingForecastMoney } from './GcBillingForecast'
 import { GcOwnerBillingBillDay } from './GcOwnerBillingBillDay'
 import { GcOwnerBillingMargin } from './GcOwnerBillingMargin'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
@@ -76,6 +77,9 @@ export function GcOwnerBillingMoney({
       <GcOwnerBillingBillDay state={state} dispatch={dispatch} onOpenBill={onOpenBill} />
 
       <GcOwnerBillingAhead state={state} />
+
+      {/* What we bill each month as each job's schedule stands (the Gantt, G-97). */}
+      <GcBillingForecastMoney state={state} onOpenBill={onOpenBill} />
 
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <div style={{ padding: '0.75rem 1rem 0.4rem', fontWeight: 700, fontSize: '1rem' }}>Each job</div>
