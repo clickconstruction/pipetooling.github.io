@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { peopleCountColor } from '../../lib/projectsJobHistoryData'
 import { crewDayLabel, crewHoursWords, crewQuietWords, crewSummaryWords, type CrewCalendar, type CrewRangeMode } from '../../lib/jobs/jobHistoryCalendar'
+import type { LienMonthLine, LienMonthLineTone } from '../../lib/jobs/lienMonthLines'
 
 /**
  * Days on the job (v2.4694): the job window's History tab as a calendar. One
@@ -8,8 +9,10 @@ import { crewDayLabel, crewHoursWords, crewQuietWords, crewSummaryWords, type Cr
  * day counts — press one and only their days stay lit; a month grid for every
  * month the job had work, the number in a day being how many people clocked in,
  * in the Gantt's own blue scale; weekends sit back, today has a ring, a day
- * still clocked in a corner mark. Press a day for the day window. Presentational;
- * the kernel decides every cell.
+ * still clocked in a corner mark. Press a day for the day window. Since v2.4707 a sub
+ * job's month header carries its § 53.056 line (`monthLines`, from the lien timeline the
+ * box above draws) — a work month is a notice month, so the two pictures read as one.
+ * Presentational; the kernels decide every cell and every line.
  */
 
 type Props = {
@@ -23,6 +26,12 @@ type Props = {
   pickedUserId: string | null
   onPickUser: (userId: string | null) => void
   onOpenDay: (ymd: string) => void
+  /** 'YYYY-MM' → the month's § 53.056 line; null or missing = no line. */
+  monthLines?: Record<string, LienMonthLine> | null
+}
+
+function lineColor(tone: LienMonthLineTone): string {
+  return tone === 'red' ? 'var(--text-red-600)' : tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-800)' : 'var(--text-muted)'
 }
 
 const LABEL: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
@@ -42,7 +51,7 @@ function chip(active: boolean): CSSProperties {
   }
 }
 
-export default function JobHistoryCrewCalendar({ calendar, namesById, todayYmd, loading = false, range, onRangeMode, onCustomRange, pickedUserId, onPickUser, onOpenDay }: Props) {
+export default function JobHistoryCrewCalendar({ calendar, namesById, todayYmd, loading = false, range, onRangeMode, onCustomRange, pickedUserId, onPickUser, onOpenDay, monthLines = null }: Props) {
   const summary = loading && calendar.daysWorked === 0 ? 'Loading…' : crewSummaryWords(calendar, todayYmd)
   return (
     <section data-job-history-crew-calendar aria-label="Days on the job" style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.8rem 0.55rem', background: 'var(--surface)', display: 'grid', gap: '0.55rem' }}>
@@ -112,6 +121,11 @@ export default function JobHistoryCrewCalendar({ calendar, namesById, todayYmd, 
                   <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-strong)' }}>{m.name}</span>
                   {quiet ? <span data-crew-quiet style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>{quiet}</span> : null}
                 </div>
+                {monthLines && monthLines[m.key] ? (
+                  <div data-crew-month-lien data-tone={monthLines[m.key]!.tone} style={{ fontSize: '0.7rem', fontWeight: 600, lineHeight: 1.2, color: lineColor(monthLines[m.key]!.tone), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={monthLines[m.key]!.words}>
+                    {monthLines[m.key]!.words}
+                  </div>
+                ) : null}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 2 }}>
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((w, i) => (
                     <div key={i} aria-hidden style={{ fontSize: '0.6rem', fontWeight: 700, color: 'var(--text-faint)', textAlign: 'center', letterSpacing: '0.04em' }}>{w}</div>
