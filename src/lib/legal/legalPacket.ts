@@ -981,6 +981,8 @@ export function quickNet(balance: number, fee: LegalFeeModel = LEGAL_DEFAULT_FEE
   return balance - balance * fee.contingencyPct - fee.filingCost
 }
 
+/** `$1,234.50`; a negative number reads `−$1,234.50` (the sign before the dollar, never `$-`). */
 export function formatLegalMoney(n: number): string {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return n < 0 && abs !== '0.00' ? `−$${abs}` : `$${abs}`
 }
