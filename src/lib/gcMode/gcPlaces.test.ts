@@ -21,11 +21,11 @@ const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
 const play = (state: GcState, ...actions: GcAction[]) => actions.reduce((s, a) => gcReducer(s, a), state)
 const lineOf = (s: GcState, label: string) => scheduleItems(s, job(s)).find((i) => i.label === label && i.pkg)!.activity.lineId
-const placesOf = (s: GcState, places: Record<string, string | null>): GcAction => ({ type: 'setActivityPlaces', projectId: ID, places })
+const placesOf = (places: Record<string, string | null>): GcAction => ({ type: 'setActivityPlaces', projectId: ID, places })
 
 /** The made-up job with every guess kept, as Keep these places sends them. */
 function guessesKept(state = initialGcState()): GcState {
-  return gcReducer(state, placesOf(state, Object.fromEntries(placeRows(state, job(state)).flatMap((r) => (r.guess ? [[r.lineId, r.guess.place]] : [])))))
+  return gcReducer(state, placesOf(Object.fromEntries(placeRows(state, job(state)).flatMap((r) => (r.guess ? [[r.lineId, r.guess.place]] : [])))))
 }
 
 /** A bar's dates, changed in place: for the rule's edges, not a move. */
@@ -81,23 +81,23 @@ describe('the action', () => {
   it('sets one place tidied, takes it off, and refuses what cannot take one', () => {
     const s0 = initialGcState()
     const topOut = lineOf(s0, 'Top out')
-    const set = gcReducer(s0, placesOf(s0, { [topOut]: '  Level   2 ' }))
+    const set = gcReducer(s0, placesOf({ [topOut]: '  Level   2 ' }))
     expect(job(set).schedule!.activities.find((a) => a.lineId === topOut)?.place).toBe('Level 2')
     expect(set.log[0]?.text).toBe('Set the place of Top out to Level 2.')
     // The same place again changes nothing.
-    expect(gcReducer(set, placesOf(set, { [topOut]: 'Level 2' }))).toBe(set)
+    expect(gcReducer(set, placesOf({ [topOut]: 'Level 2' }))).toBe(set)
     for (const off of [null, '   ']) {
-      const cleared = gcReducer(set, placesOf(set, { [topOut]: off }))
+      const cleared = gcReducer(set, placesOf({ [topOut]: off }))
       expect('place' in job(cleared).schedule!.activities.find((a) => a.lineId === topOut)!).toBe(false)
       expect(cleared.log[0]?.text).toBe('Took the place off Top out.')
     }
     const refused: GcAction[] = [
-      placesOf(s0, { nope: 'Roof' }),
-      placesOf(s0, { 'fairoaksd-insp-roughin': 'Inside' }),
-      placesOf(s0, { [topOut]: 'x'.repeat(41) }),
+      placesOf({ nope: 'Roof' }),
+      placesOf({ 'fairoaksd-insp-roughin': 'Inside' }),
+      placesOf({ [topOut]: 'x'.repeat(41) }),
       { type: 'setActivityPlaces', projectId: 'nowhere', places: { [topOut]: 'Inside' } },
       // One refused line refuses the whole press.
-      placesOf(s0, { [topOut]: 'Inside', nope: 'Roof' }),
+      placesOf({ [topOut]: 'Inside', nope: 'Roof' }),
     ]
     for (const action of refused) expect(gcReducer(s0, action)).toBe(s0)
   })
@@ -105,7 +105,7 @@ describe('the action', () => {
   it('sets the place on an open what-if copy too, and a move and its undo keep it', () => {
     const copy = play(initialGcState(), { type: 'startWhatIf', projectId: ID, by: 'Robert' })
     const topOut = lineOf(copy, 'Top out')
-    const placed = gcReducer(copy, placesOf(copy, { [topOut]: 'Inside' }))
+    const placed = gcReducer(copy, placesOf({ [topOut]: 'Inside' }))
     expect(job(placed).whatIf!.schedule.activities.find((a) => a.lineId === topOut)?.place).toBe('Inside')
     const a = job(placed).schedule!.activities.find((x) => x.lineId === topOut)!
     const moved = gcReducer(placed, { type: 'setScheduleActivity', projectId: ID, lineId: topOut, start: a.start, finish: '2026-10-12', after: a.after, why: { reason: 'crew', note: 'Two plumbers out this week.', by: 'Robert' } })
@@ -152,7 +152,7 @@ describe('the made-up job with its guesses kept', () => {
 
   it('says up to 4 when a fourth trade is there only some of the days: Erection put inside', () => {
     const k = guessesKept()
-    const s = gcReducer(k, placesOf(k, { [lineOf(k, 'Erection')]: 'Inside' }))
+    const s = gcReducer(k, placesOf({ [lineOf(k, 'Erection')]: 'Inside' }))
     const weeks = crowdedWeeks(s, job(s))
     expect(weeks.map((w) => [w.weekOf, w.most, w.even, w.words, w.rows.find((r) => r.label === 'When')?.lines[0]])).toEqual([
       ['2026-09-28', 4, false, 'Inside has up to 4 trades at once, Fri Oct 2 to Sun Oct 4.', 'Fri Oct 2 to Sun Oct 4, up to 4 trades at once.'],
