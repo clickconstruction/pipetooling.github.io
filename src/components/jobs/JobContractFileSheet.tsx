@@ -4,16 +4,18 @@
  * when, one button. The Contract modal mounts it as a stacked sheet; the
  * sweep mounts it inline in the pane (and prefilled with a file dropped on a
  * row). The write is `fileSignedJobContract` — one path for all three doors.
+ * A paper signed by two (v2.4657): a Second signer box, filled with the second signer the draft
+ * named, files that name as the agreement's second signature.
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isGoogleDocsUrl, isHttpUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import type { JobContractDraftPayload } from '../../lib/jobs/jobContractDraftWrite'
-import { fileSignedContractDateBlocks, fileSignedContractReady, fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
-import type { JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { coSignatureOnFile, fileSignedContractDateBlocks, fileSignedContractReady, fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
+import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 
 const labelStyle: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }
 const inputStyle: CSSProperties = {
@@ -45,6 +47,11 @@ export type JobContractFileSheetProps = {
   jobId: string
   /** Who signs by default — the recipient the office typed, else the job's customer. */
   defaultSignerName: string
+  /**
+   * The second signer the draft names (the Contract modal's live name); omitted = the draft row's own.
+   * It fills the Second signer box, which the office clears when only one person signed (v2.4657).
+   */
+  defaultCoSignerName?: string
   /** The job's live draft, if any — it converts in place. */
   existingDraft: JobContractRow | null
   /** The document fields + terms + recipient the record keeps (the caller's payload); null = the job id alone. */
@@ -69,11 +76,24 @@ export type JobContractFileSheetProps = {
   onCancel: () => void
 }
 
-export default function JobContractFileSheet({ jobId, defaultSignerName, existingDraft, basePayload, initialFile = null, initialLink = '', initialSignedOn, foundNote, recordLabel = 'Record as signed', cancelLabel = 'Cancel', layout, inlineTitle, onFiled, onCancel }: JobContractFileSheetProps) {
+export default function JobContractFileSheet({ jobId, defaultSignerName, defaultCoSignerName, existingDraft, basePayload, initialFile = null, initialLink = '', initialSignedOn, foundNote, recordLabel = 'Record as signed', cancelLabel = 'Cancel', layout, inlineTitle, onFiled, onCancel }: JobContractFileSheetProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [signedOn, setSignedOn] = useState(() => (initialSignedOn === undefined ? todayYmdInAppTz() : initialSignedOn))
-  const [signerName, setSignerName] = useState('')
+  // Both boxes start with their names as values, so each reads as what will be filed (v2.4657).
+  const [signerName, setSignerName] = useState(() => defaultSignerName.trim())
+  const namedCoSigner = (defaultCoSignerName ?? existingDraft?.co_signer_name ?? '').trim()
+  const draftLoaded = existingDraft != null
+  const [coSignerName, setCoSignerName] = useState(namedCoSigner)
+  const coTypedRef = useRef(false)
+  // The sweep's draft row can land, or change, after the sheet opens: an untouched box follows its second
+  // signer, both ways. A name the office typed stays, and before any draft loads there is nothing to follow.
+  useEffect(() => {
+    if (coTypedRef.current || (!namedCoSigner && !draftLoaded)) return
+    setCoSignerName(namedCoSigner)
+  }, [namedCoSigner, draftLoaded])
+  /** A PDF emailed to sign by hand keeps its link: the second signer may have signed there already. */
+  const coOnFile = coSignatureOnFile(existingDraft)
   const [file, setFile] = useState<File | null>(initialFile)
   const [link, setLink] = useState(initialLink)
   /** The green "linked" line only after a paste / Enter / blur — typing keeps the input mounted (v2.2744). */
@@ -101,7 +121,7 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, existin
     }
     setBusy(true)
     try {
-      const { row, uploadError } = await fileSignedJobContract({ jobId, existingDraft, basePayload, signerName: effectiveName, signedOn, link, file, authUserId: authUser?.id ?? null })
+      const { row, uploadError } = await fileSignedJobContract({ jobId, existingDraft, basePayload, signerName: effectiveName, coSignerName: coOnFile ? '' : coSignerName, signedOn, link, file, authUserId: authUser?.id ?? null })
       if (!row) {
         showToast('Could not record the paper contract.', 'error')
         return
@@ -185,6 +205,23 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, existin
       <div style={rowStyle}>
         <span style={labelStyle}>Signed by</span>
         <input style={inputStyle} value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder={defaultSignerName.trim() || 'Customer name'} aria-label="Who signed" />
+        <span style={labelStyle}>Second signer</span>
+        {coOnFile ? (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="contract-file-co-on-file">
+            {coOnFile.name} signed through the link on {formatContractStamp(coOnFile.signedAt)?.split(',')[0] ?? 'an earlier day'}. That signature stays.
+          </span>
+        ) : (
+          <input
+            style={inputStyle}
+            value={coSignerName}
+            onChange={(e) => {
+              coTypedRef.current = true
+              setCoSignerName(e.target.value)
+            }}
+            placeholder="Only if two people signed"
+            aria-label="Second signer"
+          />
+        )}
         <span style={labelStyle}>Signed on</span>
         <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={signedOn} onChange={(e) => setSignedOn(e.target.value)} aria-label="Date the contract was signed" />
       </div>

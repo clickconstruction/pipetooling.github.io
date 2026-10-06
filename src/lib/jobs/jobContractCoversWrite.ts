@@ -4,11 +4,12 @@
  * a handed-over copy converts in place, as everywhere else), and the rows share
  * `covers_group_id` (the first row's id). Adding a job copies the paper's record onto a new
  * row in the same group; removing a job voids that job's row; taking the paper off voids
- * every row in the group. Pure decisions live in `jobContractCovers.ts`.
+ * every row in the group. A paper signed by two carries both frames to every row (v2.4657).
+ * Pure decisions live in `jobContractCovers.ts`.
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { fileSignedJobContract, JOB_CONTRACT_BUCKET, paperUploadPath } from './jobContractFileWrite'
+import { coSignatureOnFile, fileSignedJobContract, JOB_CONTRACT_BUCKET, paperUploadPath } from './jobContractFileWrite'
 import type { JobContractRow } from './jobContractLifecycle'
 import { isAwaitingPaperCopy } from './jobContractHandoff'
 import { dispatchJobContractChanged } from './jobContractNotNeeded'
@@ -62,6 +63,19 @@ export function papersFromRows(rows: ReadonlyArray<JobContractRow>): CoversPaper
   return groupPapers(rows as unknown as PaperRowLike[])
 }
 
+/**
+ * The second signer the anchor job's live draft (or its copy out on paper) names, to start the
+ * sheet's Second signer box (v2.4657); '' when it names none, or when that signer already signed
+ * through the link.
+ */
+export function anchorCoSignerName(rows: ReadonlyArray<JobContractRow>, anchorJobId: string | null): string {
+  if (!anchorJobId) return ''
+  const mine = rows.filter((r) => r.job_id === anchorJobId && r.voided_at == null)
+  const live = mine.find((r) => r.status === 'draft') ?? mine.find((r) => isAwaitingPaperCopy(r)) ?? null
+  if (!live || coSignatureOnFile(live)) return ''
+  return (live.co_signer_name ?? '').trim()
+}
+
 async function setGroup(rowIds: ReadonlyArray<string>, groupId: string): Promise<void> {
   if (rowIds.length === 0) return
   await withSupabaseRetry(() => supabase.from('job_contracts').update({ covers_group_id: groupId }).in('id', [...rowIds]), 'link the paper to its jobs')
@@ -74,6 +88,8 @@ async function setGroup(rowIds: ReadonlyArray<string>, groupId: string): Promise
 export async function fileContractForJobs(input: {
   jobIds: ReadonlyArray<string>
   signerName: string
+  /** The second person who signed the paper; blank = one signer. */
+  coSignerName?: string
   signedOn: string
   link: string
   file: File | null
@@ -92,6 +108,7 @@ export async function fileContractForJobs(input: {
       existingDraft: draft,
       basePayload: null,
       signerName: input.signerName,
+      coSignerName: input.coSignerName,
       signedOn: input.signedOn,
       link: input.link,
       file: input.file,
@@ -112,11 +129,14 @@ export async function addJobToPaper(paper: CoversPaper, jobId: string, authUserI
   const groupId = (src.covers_group_id ?? '').trim() || src.id
   const existing = (await loadContractRowsForJobs([jobId])).filter((r) => r.voided_at == null)
   const draft = existing.find((r) => r.status === 'draft') ?? existing.find((r) => isAwaitingPaperCopy(r)) ?? null
+  // The paper's second signature comes along (v2.4657); a second frame signed through a link stays with its own job.
+  const coSignerName = src.co_signer_mode === 'paper' && src.co_signed_at ? (src.co_signer_printed_name ?? '').trim() : ''
   const { row } = await fileSignedJobContract({
     jobId,
     existingDraft: draft,
     basePayload: null,
     signerName: src.signer_printed_name ?? '',
+    coSignerName,
     signedOn: src.paper_signed_on ?? '',
     link: src.signed_document_url ?? '',
     file: null,
@@ -134,7 +154,12 @@ export async function addJobToPaper(paper: CoversPaper, jobId: string, authUserI
     () =>
       supabase
         .from('job_contracts')
-        .update({ covers_group_id: groupId, signed_at: src.signed_at, ...(uploadPath ? { paper_upload_path: uploadPath } : {}) })
+        .update({
+          covers_group_id: groupId,
+          signed_at: src.signed_at,
+          ...(coSignerName && row.co_signer_mode === 'paper' ? { co_signed_at: src.co_signed_at } : {}),
+          ...(uploadPath ? { paper_upload_path: uploadPath } : {}),
+        })
         .eq('id', row.id),
     'add the job to the paper',
   )

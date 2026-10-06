@@ -20,6 +20,21 @@ const two = {
   co_signer_consented_at: '2026-09-29T19:05:00Z',
 }
 
+/** A paper filed with both names: the second frame marked paper, stamped with the record (v2.4657). */
+const paperTwo = {
+  ...one,
+  signer_mode: 'paper',
+  signer_consented_at: null,
+  co_signer_name: 'Alex Owner',
+  co_signed_at: one.signed_at,
+  co_signer_printed_name: 'Alex Owner',
+  co_signer_mode: 'paper',
+  co_signer_consented_at: null,
+}
+
+/** The first frame filed from a paper; the second signed through the link before it came back (v2.4657). */
+const paperAfterLink = { ...paperTwo, co_signer_mode: 'draw', co_signer_consented_at: '2026-09-29T19:05:00Z' }
+
 describe('jobContractSignersAuditLine — the line in History and Documents', () => {
   it('one signer reads exactly as the one-block line', () => {
     expect(jobContractSignersAuditLine(one)).toBe(jobContractSignatureAuditLine(one))
@@ -35,6 +50,16 @@ describe('jobContractSignersAuditLine — the line in History and Documents', ()
     const paper = { ...two, signer_mode: 'paper', signer_consented_at: null, co_signed_at: null, co_signer_printed_name: null, signer_printed_name: 'Sam Owner and Alex Owner' }
     expect(jobContractSignersAuditLine(paper)).toBe('Signed on paper by Sam Owner and Alex Owner · recorded Sep 29, 2026, 2:05 PM CT')
     expect(jobContractSignersAuditLine({ ...two, signed_at: null, co_signed_at: null, co_signer_printed_name: null })).toBeNull()
+  })
+
+  it('a paper signed by two names both frames; a second signer who did not sign is left out (v2.4657)', () => {
+    expect(jobContractSignersAuditLine(paperTwo)).toBe('Signed on paper by Sam Owner and Alex Owner · recorded Sep 29, 2026, 2:05 PM CT')
+    const named = { ...paperTwo, co_signed_at: null, co_signer_printed_name: null, co_signer_mode: null }
+    expect(jobContractSignersAuditLine(named)).toBe('Signed on paper by Sam Owner · recorded Sep 29, 2026, 2:05 PM CT')
+  })
+
+  it('a paper filed after the second signer signed through the link names only the paper’s signer (v2.4657)', () => {
+    expect(jobContractSignersAuditLine(paperAfterLink)).toBe('Signed on paper by Sam Owner · recorded Sep 29, 2026, 2:05 PM CT')
   })
 })
 
@@ -78,5 +103,29 @@ describe('jobContractSignatureBlocks — what every print draws', () => {
     const b = jobContractSignatureBlocks(paper)
     expect(b.signature).toMatchObject({ printedName: 'Sam Owner', paper: true })
     expect(b.coSignerName).toBeNull()
+  })
+
+  it('a paper signed by two is still one block, and it names both (v2.4657)', () => {
+    const b = jobContractSignatureBlocks(paperTwo, { record: { jobNumber: '1053' } })
+    expect(b.signature).toMatchObject({
+      printedName: 'Sam Owner and Alex Owner',
+      auditLine: 'Signed on paper by Sam Owner and Alex Owner · recorded Sep 29, 2026, 2:05 PM CT',
+      paper: true,
+      whenLabel: 'Sep 29, 2026, 2:05 PM CT',
+    })
+    expect(b.coSignerName).toBeNull()
+    expect(b.coSignature).toBeNull()
+  })
+
+  it('a second signature given through the link before the paper came back keeps its own block (v2.4657)', () => {
+    const b = jobContractSignatureBlocks(paperAfterLink, { coSignatureUrl: 'https://x.test/b.png' })
+    expect(b.signature).toMatchObject({ printedName: 'Sam Owner', auditLine: 'Signed on paper by Sam Owner · recorded Sep 29, 2026, 2:05 PM CT', paper: true })
+    expect(b.coSignerName).toBe('Alex Owner')
+    expect(b.coSignature).toMatchObject({
+      printedName: 'Alex Owner',
+      auditLine: `Signed electronically by Alex Owner (drawn) · Sep 29, 2026, 2:05 PM CT · consent recorded${STATUTES}`,
+      imageUrl: 'https://x.test/b.png',
+      paper: false,
+    })
   })
 })

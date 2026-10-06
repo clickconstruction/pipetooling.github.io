@@ -2,7 +2,7 @@
 name: "A second signer: every place a signed agreement shows or prints its signers"
 number: 64
 group: close
-status: PR A built v2.4590 (the kernel, items 1–5, the app-side readers) · PR B built v2.4596 (item 6 the portal, the signed copy's email, the firm's page) · left: three deploys after PR B merges, then a live read on J1053
+status: PR A v2.4590 and PR B v2.4596 merged, their three functions deployed · v2.4657 built (a paper signed by two is filed as two signatures, the owner's answer) · left: a live read, then the small PRs under Left after this row
 summary: >
   v2.4186 gave a job's service agreement a second signature frame, and the page the customer
   signs, the stored PDF, the window's banner and its paper all carry both signers — checked live
@@ -13,11 +13,11 @@ summary: >
   also never says *1 of 2 signed*), the History and Documents audit line, the customer portal's
   *Your agreements*, and the browser print (*Print / save as PDF*, *Open full size*), which shows
   one signature block where the stored PDF has two.
-next: Merge PR A, then PR B (stacked on it); deploy customer-portal, share-job-contract and legal-portal after PR B merges; read J1053 live; then answer the owner question under Left after this row.
-size: S — PR B, three redeploys and a live read
-blocker: The two merges.
+next: Merge v2.4657; read J1053 live, with v2.4657's filing tried on a throwaway job; then the small PRs under Left after this row.
+size: S — one merge and a live read
+blocker: The v2.4657 merge.
 ver: from v2.4186 · the window v2.4175 / v2.4183
-opinion: build — PR B is small; the paper filing question below is the owner's.
+opinion: build — the owner chose to record each signature on a paper signed by two (v2.4657); what is left is small tidy work.
 mockup: not required — no new screen; the printed page gains the second pen rules and signature block the stored PDF already prints, and the pill, chip and lines gain a second name
 ---
 
@@ -25,20 +25,16 @@ mockup: not required — no new screen; the printed page gains the second pen ru
 
 ## Where it stands
 
-Two PRs, both built. **PR A** ([v2.4590](../docs/recent-features/v2.4590.md)) moves the names into one kernel and fixes items 1–5. It also fixes the app-side readers the survey below missed: the legal desk, the share sheet's attachment line, the signed rail's banner, the filing sheet's default name and the covers kernel. **PR B** ([v2.4596](../docs/recent-features/v2.4596.md)) is stacked on it. It carries item 6, the customer portal, plus the signed copy's email and the firm's page. Those are three edge functions to deploy after it merges.
+Both PRs merged, and their three edge functions are deployed. **PR A** ([v2.4590](../docs/recent-features/v2.4590.md)) moves the names into one kernel and fixes items 1–5. It also fixes the app-side readers the survey below missed: the legal desk, the share sheet's attachment line, the signed rail's banner, the filing sheet's default name and the covers kernel. **PR B** ([v2.4596](../docs/recent-features/v2.4596.md)) carries item 6, the customer portal, plus the signed copy's email and the firm's page. **[v2.4657](../docs/recent-features/v2.4657.md)** answers the owner's paper question: a paper signed by two is filed as two signatures. The filing sheet has a **Second signer** box, filled with the second signer the draft named, and a paper for several jobs carries both.
 
 ## Left after this row
 
-Outside both PRs, each for its own small PR:
+Outside these PRs, each for its own small PR:
 
 - **The job's activity line.** *Contract signed by Sam Owner* is written by the `job_contracts` trigger in `20260903141146_job_contracts.sql`. It names the first signer only. Fixing it needs a migration.
 - **The signing function joins names on its own.** `sign-job-contract` builds its *signed by* line by hand. It should read `signerNamesLine` from `supabase/functions/_shared/jobContractSigners.ts`. The words are the same today, so this is tidy work, plus a redeploy.
 - **Dead code.** The default export of `src/components/jobs/JobContractRecordModal.tsx` is mounted nowhere. Neither is its `JobContractRecordBody`, whose facts grid names one signer. Delete both. Keep `buildJobContractRecordHtml` and `useJobContractRecordUrls`, which are in use.
-- **A paper that comes back signed by two.** Filing it records one typed *Who signed*. Since v2.4590 it defaults to both names. It never records the second signature as its own frame.
-
-  **Question for the owner:** when a homestead contract comes back signed on paper by both spouses, should filing it record each signature separately, or is one *Who signed* line that names both enough?
-
-  **Recommendation:** record each one. When the draft named a second signer, the filing sheet would show a second *Who signed* box filled with that name. Filing would save it as the second signature, marked as signed on paper. A paper filed for several jobs would carry both. The record then names both people the same way an e-signed agreement does, with no typed *and* to get wrong. It needs no table change, just one app PR on the filing sheet and its write.
+- **Signed partly through the link, partly on paper.** A PDF emailed to sign by hand keeps its link, so one spouse can sign there before the paper comes back signed by the other. Since v2.4657 the filing keeps a second signature given through the link. It still replaces a first signature given there, and that frame's consent stamp leaves the row. The `co_signed` event and the consent ledger keep it. Doing it right needs a record that is part link and part paper: each frame keeps its own way, the lists say so, and `share-job-contract` stops rebuilding that kind of record as if its paper frame was typed. That is an edge change and a deploy, in its own PR.
 
 ## The ask, in the owner's words
 
