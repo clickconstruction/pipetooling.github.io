@@ -4516,8 +4516,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null })
         }}
         onOpenOwnerRecords={() => setOwnerRecordsOpen(true)}
-        // v2.4531: a Calendar row's job number opens the job itself, over the desk.
-        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
+        // v2.4531: a job's number (v2.4628: and the Next up row's name) opens the job itself, over the desk; the desk re-reads on a save and again when the window closes.
+        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk(), onClosed: () => refetchLienDesk() })}
         initialPile={lienDesk?.pile ?? null}
         aimKey={lienDesk?.aim}
         onOpenLegalDesk={() => {

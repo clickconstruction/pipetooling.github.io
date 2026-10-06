@@ -2253,7 +2253,7 @@ export default function LienDeskModal({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'next' ? (
-            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} />
+            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} />
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}

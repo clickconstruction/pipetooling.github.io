@@ -61,3 +61,36 @@ describe('LienDeskNextUp', () => {
     expect(lienNextUpDueWords({ dueOn: null, daysLeft: null })).toBe('')
   })
 })
+
+describe('LienDeskNextUp · the job as a door (v2.4628)', () => {
+  it('with onOpenJob the number and name are a text button that opens the job and not the row; a GC run row stays plain', () => {
+    const onAct = vi.fn()
+    const onOpenJob = vi.fn()
+    const rows = [row({}), row({ key: 'run:gc1', jobId: null, title: 'Loberg Contracting', sub: '2 notices approved · ready to send', action: 'send_run', button: 'Send the run', target: { open: 'run', gcId: 'gc1' } })]
+    render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} />)
+    const door = screen.getByTestId('lien-next-up-job-j1')
+    expect(door.tagName).toBe('BUTTON')
+    expect(door.textContent).toBe('650 · ATI Schertz')
+    expect(door.className).toBe('lienJobDoor')
+    expect(door.getAttribute('title')).toBe('Open the job: its history, its bills and Edit')
+    fireEvent.click(door)
+    expect(onOpenJob).toHaveBeenCalledWith('j1')
+    expect(onAct).not.toHaveBeenCalled()
+    // The run row names a GC, not a job: plain words, and the row still opens on a press.
+    const run = document.querySelector('[data-lien-next-up-row="run:gc1"]') as HTMLElement
+    expect(within(run).queryByRole('button', { name: 'Loberg Contracting' })).toBeNull()
+    fireEvent.click(run)
+    expect(onAct).toHaveBeenCalledTimes(1)
+  })
+  it('without onOpenJob the title is plain words, as before', () => {
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile={false} onAct={() => {}} />)
+    expect(screen.queryByTestId('lien-next-up-job-j1')).toBeNull()
+    expect(screen.getByText('650 · ATI Schertz').tagName).toBe('SPAN')
+  })
+  it('on a phone the card\u2019s title is the same door', () => {
+    const onOpenJob = vi.fn()
+    render(<LienDeskNextUp rows={[row({})]} loading={false} isMobile onAct={() => {}} onOpenJob={onOpenJob} />)
+    fireEvent.click(screen.getByTestId('lien-next-up-job-j1'))
+    expect(onOpenJob).toHaveBeenCalledWith('j1')
+  })
+})
