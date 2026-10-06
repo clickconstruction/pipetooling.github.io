@@ -28,6 +28,12 @@ const one = (over: Partial<LienNextUpInput>) => {
 }
 
 describe('buildLienNextUp — notices', () => {
+  it('an approved notice with a pay offer (v2.4713) says so in its words', () => {
+    const item = { id: 'i-offer', status: 'approved', offer_pct: 10, offer_by: '2026-11-15' } as unknown as LienDeskEntry['item']
+    const r = one({ notices: [notice('j1', 'ready', { item })] })
+    expect(r.sub).toBe('Approved · offer 10% by Nov 15 · ready to send')
+    expect(one({ notices: [notice('j1', 'ready')] }).sub).toBe('Approved · ready to send')
+  })
   it('each pile names its one move and opens the Notices pane on that job and pile', () => {
     const cases: Array<[LienDeskPile, string, string]> = [
       ['needs_owner', 'find_owner', 'Find the owner'],

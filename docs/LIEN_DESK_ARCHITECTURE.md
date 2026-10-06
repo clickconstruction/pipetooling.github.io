@@ -213,6 +213,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 | `lienNoticePreview.ts` | 315 | 13 | wording edits/diff, preview HTML + messages |
 | `lienNoticeDraft.ts` | 348 | 5 | `buildLienNoticeFieldsForJob`, `parseLienDeskDraftFields`, cover note, `retainageInsideClaim` |
 | `lienNoticePayPage.ts` | 127 | 8 | pay page blocks/summary |
+| `lienPayOffer.ts` | 150 | 9 | the pay offer (v2.4713): the day rules, the cents, every sentence; `LienOfferBox` above the footer |
 | `lienDeskRun.ts` | 444 | 20 | run notices, `runCoverNoteBlocks` |
 | `gcOnNotice.ts` | 571 | 14 | `fillCoverLetter`, `letterTwoTemplate`, affidavit month word |
 | `lienLetterTwo.ts` | 119 | 8 | kinds, `letterTwoIsDue` |

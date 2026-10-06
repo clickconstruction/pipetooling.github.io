@@ -43,6 +43,10 @@ describe('countLienSteps + lienLaddersShown', () => {
 })
 
 describe('lienStepCard', () => {
+  it('an approved notice with a pay offer (v2.4713) says so on the Approve rung', () => {
+    const c = lienStepCard(row({ action: 'send', sub: 'Approved · ready to send', button: 'Send' }), { approvedOn: '2026-10-30T14:00:00Z', offer: { pct: 10, by: '2026-11-15' } })
+    expect(c.items[2]!.detail).toBe('Approved Oct 30 with a 10% offer, by Nov 15.')
+  })
   it("writes a notice's ladder out: done rungs carry the facts, the current rung says who is waiting, the foot counts", () => {
     const c = lienStepCard(row({ action: 'approve', sub: 'Waiting on your approval', button: 'Approve' }), { ownerName: 'Take 5 Properties LLC', draftedOn: '2026-10-03T14:00:00Z', coverNote: true, readyToSend: 11, viewerIsLeader: true })
     expect(c.kindWords).toBe('Notice')

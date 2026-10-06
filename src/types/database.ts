@@ -10305,6 +10305,10 @@ export type Database = {
           job_id: string
           kind: string
           months: string[]
+          offer_by: string | null
+          offer_pct: number
+          offer_set_at: string | null
+          offer_set_by: string | null
           printed_at: string | null
           printed_by: string | null
           pulled_back_at: string | null
@@ -10335,6 +10339,10 @@ export type Database = {
           job_id: string
           kind?: string
           months?: string[]
+          offer_by?: string | null
+          offer_pct?: number
+          offer_set_at?: string | null
+          offer_set_by?: string | null
           printed_at?: string | null
           printed_by?: string | null
           pulled_back_at?: string | null
@@ -10365,6 +10373,10 @@ export type Database = {
           job_id?: string
           kind?: string
           months?: string[]
+          offer_by?: string | null
+          offer_pct?: number
+          offer_set_at?: string | null
+          offer_set_by?: string | null
           printed_at?: string | null
           printed_by?: string | null
           pulled_back_at?: string | null
@@ -12098,6 +12110,15 @@ export type Database = {
           id: string
           is_primary_rtb_bundle: boolean
           job_id: string
+          lien_offer_applied_at: string | null
+          lien_offer_by: string | null
+          lien_offer_credit_cents: number | null
+          lien_offer_credit_note_id: string | null
+          lien_offer_ended_at: string | null
+          lien_offer_filing_id: string | null
+          lien_offer_pct: number
+          lien_offer_set_by: string | null
+          lien_offer_taken_at: string | null
           sent_by_user_id: string | null
           sent_to_customer_at: string | null
           sequence_order: number
@@ -12131,6 +12152,15 @@ export type Database = {
           id?: string
           is_primary_rtb_bundle?: boolean
           job_id: string
+          lien_offer_applied_at?: string | null
+          lien_offer_by?: string | null
+          lien_offer_credit_cents?: number | null
+          lien_offer_credit_note_id?: string | null
+          lien_offer_ended_at?: string | null
+          lien_offer_filing_id?: string | null
+          lien_offer_pct?: number
+          lien_offer_set_by?: string | null
+          lien_offer_taken_at?: string | null
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
@@ -12164,6 +12194,15 @@ export type Database = {
           id?: string
           is_primary_rtb_bundle?: boolean
           job_id?: string
+          lien_offer_applied_at?: string | null
+          lien_offer_by?: string | null
+          lien_offer_credit_cents?: number | null
+          lien_offer_credit_note_id?: string | null
+          lien_offer_ended_at?: string | null
+          lien_offer_filing_id?: string | null
+          lien_offer_pct?: number
+          lien_offer_set_by?: string | null
+          lien_offer_taken_at?: string | null
           sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number

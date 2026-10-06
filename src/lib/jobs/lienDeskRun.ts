@@ -13,6 +13,7 @@ import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
+import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -68,6 +69,8 @@ export type RunNotice = {
   recipients: RunRecipient[]
   /** The owner came from the appraisal roll (the nightly save, v2.3450) and no person has confirmed it — the run refuses until someone does. */
   ownerUnconfirmed: boolean
+  /** The pay offer (v2.4713): the leader's discount on each enclosed bill paid in full by a day, carried from the desk item to the pay page; absent or null = none. */
+  offer?: LienPayOffer | null
 }
 
 /** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
@@ -127,6 +130,7 @@ export function buildLienDeskRun(
       coverNote: null,
       coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
+      offer: lienOfferFromItem(item),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
         { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: gcEmail, method: 'certified_mail', tracking: '', courtesy: gcEmail.trim() !== '' },
@@ -321,6 +325,7 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
     contactPerson: n.fields.contactPerson,
     phone,
     extras: n.extras,
+    offer: n.offer ?? null,
   })
 }
 

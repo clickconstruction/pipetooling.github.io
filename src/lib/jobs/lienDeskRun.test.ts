@@ -277,6 +277,16 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
   })
 
+  it('carries the pay offer (v2.4713) from the approved item to the page', () => {
+    const d = data([{ ...approved, offer_pct: 10, offer_by: '2026-11-15' } as typeof approved])
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(n.offer).toEqual({ pct: 10, by: '2026-11-15' })
+    const owner = runPayPageBlocks(n, n.recipients[0]!, rows, assets, '')
+    expect(owner.filter((b) => b.kind === 'callout')[0]).toMatchObject({ text: expect.stringContaining('in full by November 15, 2026 and it is 10% less') })
+    expect(owner.find((b) => b.kind === 'payRow')).toMatchObject({ amountLine: 'Still owed: $33,500.00 · $30,150.00 if paid in full by November 15' })
+    expect(buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert', TODAY)[0]!.offer).toBeNull()
+  })
+
   it("prints between the owner's copy and the invoices, and nowhere on the GC's copy", () => {
     const d = data([approved])
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)

@@ -74,7 +74,7 @@ describe('buildLienTimelineBook', () => {
       ...input(),
       todayYmd: '2026-10-20',
       items: [
-        { id: 'i1', job_id: 'j650', kind: 'notice_53_056', status: 'missed', months: ['2026-06'], fields: { notice: {}, windowClosed: { name: 'Taunya', at: '2026-09-21T15:00:00Z' } }, created_at: '2026-09-21T15:00:00Z', updated_at: '2026-09-21T15:00:00Z', drafted_at: '2026-09-21T15:00:00Z', drafted_by: null, approval_mode: null, approved_at: null, approved_by: null, cover_note: false, held_at: null, held_by: null, hold_reason: '', hold_until: null, pulled_back_at: null, pulled_back_by: null, sent_at: null, sent_filing_id: null, submitted_at: null, voided_at: null, printed_at: null, printed_by: null, word_channel: '', word_note: '' },
+        { id: 'i1', job_id: 'j650', kind: 'notice_53_056', status: 'missed', months: ['2026-06'], fields: { notice: {}, windowClosed: { name: 'Taunya', at: '2026-09-21T15:00:00Z' } }, created_at: '2026-09-21T15:00:00Z', updated_at: '2026-09-21T15:00:00Z', drafted_at: '2026-09-21T15:00:00Z', drafted_by: null, approval_mode: null, approved_at: null, approved_by: null, cover_note: false, held_at: null, held_by: null, hold_reason: '', hold_until: null, pulled_back_at: null, pulled_back_by: null, sent_at: null, sent_filing_id: null, submitted_at: null, voided_at: null, printed_at: null, printed_by: null, word_channel: '', word_note: '', offer_pct: 0, offer_by: null, offer_set_by: null, offer_set_at: null },
       ],
     })
     expect(noted.rows.find((r) => r.jobId === 'j650')?.lens).toBe('dead')
