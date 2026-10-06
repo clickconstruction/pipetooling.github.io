@@ -30,14 +30,14 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
   changed sentence someone else's test reads.
 - **A new action type** goes in the golden test's `all` list, with a `used.add(...)` line naming
   the test file that plays it.
-- **Theme tokens, not hexes** (`node scripts/theme-tokenize.mjs --check src/components/gcMode`).
+- **Theme tokens, not hexes** (`node scripts/theme-tokenize.mjs --check src/components/gc`).
 - **Plain words** for anything a first-timer reads, a tour stop, a card's line, a Next line: one idea
   per sentence, none over 20 words, no dashes, semicolons or parentheses in a sentence
   (`src/lib/plainWords.ts`).
 - **Commits carry the G-number**: `spike: GC mode G-37, pull work earlier on a press`. In the same
   commit, set your row's *Stands* in `GANTT_FEATURES.md` to *Have* with a date, and add a short
   *as built* section to `GANTT_PLAN.md` (what it does, the words, where it is in the UI, the tests).
-- Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gcMode`.
+- Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc`.
   Lint: `npx eslint <your files>`. Typecheck: `npm run typecheck` in the background; it takes 10 to
   25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push.
 
