@@ -2,16 +2,16 @@
 name: "Lien screens: the app's own words that are stale"
 number: 87
 group: ready
-status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look) · not started
+status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06 · not started
 summary: >
-  Seven places on the lien screens where the app's own words promise something the app does not do,
+  Eight places on the lien screens where the app's own words promise something the app does not do,
   or name a rule it no longer follows. The help guides were patched to say what the app does today;
-  these are the app's side, kept here so they are not lost. E, F and J are wording; G, H, I and K
+  these are the app's side, kept here so they are not lost. E, F and J are wording; G, H, I, K and L
   need the owner's call.
-next: E, F and J as one small PR (a focus and two sentences); G, H, I and K once the owner says which way.
+next: E, F and J as one small PR (a focus and two sentences); G, H, I, K and L once the owner says which way.
 size: XS each
-blocker: None for E, F and J. G, H, I and K wait on the owner.
-opinion: build E, F and J — each is one line; G, H, I and K are your call.
+blocker: None for E, F and J. G, H, I, K and L wait on the owner.
+opinion: build E, F and J — each is one line; G, H, I, K and L are your call.
 mockup: not required — words and one focus on screens that exist
 ---
 
@@ -78,3 +78,9 @@ This card was first numbered #85. The legal-portal train had already named its c
 - The guides describe each side. *read the Pipeline's money view* (L30-32) has the runway's residential date. *send lien notices from the Lien desk* (L91) and *see when a customer will pay* (L85) have the commercial dates. *read the Texas lien rules the app follows* (L81) states the commercial dates as the whole app's rule, which the runway and the Calendar break.
 - The owner's call: one rule everywhere. The earlier date is the safe one for a deadline, or every screen could show commercial dates with the warning.
 
+**L. The desk and the timeline disagree about a lien with no notice.** On job 890 (2026-10-06) the desk's Affidavits pile listed the job under Coming up with *9 days left · Fix the property*, while the timeline on the same job read *blocked · no notice on record* and *Lien: gone*. Both read the same fact: July's notice window closed Sep 15 with nothing sent.
+
+- `src/lib/jobs/lienDeskAffidavits.ts:77-84` (`affidavitGates`) makes a missing § 53.056 notice a gate the office can still clear, so the job stays in *Needs the property facts* with a countdown to the affidavit's last day.
+- `src/lib/jobs/lienTimeline.ts:379` (`lienGone`) treats a sub job whose every window closed unsent as having no affidavit to file, and the strip draws the lien as blocked (a dotted ghost since v2.4652).
+- Counsel's question: can a notice sent after its window still carry the affidavit, or is the claim gone for those months? If gone, the Affidavits pile should drop the job or list it under *Nothing left to claim*. If not, the timeline's *blocked* is too strong.
+- Found 2026-10-06 while redrawing the timeline (v2.4652).
