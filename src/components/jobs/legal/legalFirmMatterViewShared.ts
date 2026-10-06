@@ -6,7 +6,7 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 export const FIRM_TABS = ['account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
 export type FirmTab = (typeof FIRM_TABS)[number]
-export const FIRM_TAB_LABELS: Record<FirmTab, string> = { account: 'Account', paper: 'Paper', their_word: 'Their word', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+export const FIRM_TAB_LABELS: Record<FirmTab, string> = { account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps' }
 
 /** The slice of a matter the view needs — the portal passes its payload matter, the desk builds one from the sheet. */
 export type FirmMatterLike = {

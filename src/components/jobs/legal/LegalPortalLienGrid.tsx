@@ -31,7 +31,7 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName }: { ra
         <div>
           <div style={portalCap}>Lien grid</div>
           <div style={{ fontSize: 12.5, color: MUTED, marginTop: 2 }}>
-            Every billed job with money open and a lien month, as the office's Lien desk holds it today — {rows.length} {rows.length === 1 ? 'job' : 'jobs'} · {formatUsdNoCents(open)} open
+            Each job with money open and a lien month, from the office's records today — {rows.length} {rows.length === 1 ? 'job' : 'jobs'} · {formatUsdNoCents(open)} open
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, fontSize: 12.5 }}>
             <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>

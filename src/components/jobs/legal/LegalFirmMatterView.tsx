@@ -3,7 +3,7 @@ import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } fr
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
-import { legalEntryKindWords } from '../../../lib/legal/legalAsks'
+import { firmEntryKindWords, firmEntryStatusWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords } from '../../../lib/legal/legalFirmWords'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -38,19 +38,19 @@ export function PortalTable({ head, rows, empty, numCols = [], subRows = [] }: {
   )
 }
 
-/** The GC the owner's answers are about — the payer when Click is the subcontractor. */
+/** The GC the owner's answers are about — the payer when the company is the subcontractor. */
 function envelopeGcName(packet: LegalPacket): string {
   return packet.account.payer.viaGc ? packet.account.payer.name : 'the GC'
 }
 
 /** Under a § 53.056 notice (#41 PR 1b): the owner's answers and the pile, letter two's clock, the GC's written okay. */
-function EnvelopeAnswersBand({ e, packet }: { e: LegalEnvelope; packet: LegalPacket }) {
+function EnvelopeAnswersBand({ e, packet, companyName }: { e: LegalEnvelope; packet: LegalPacket; companyName: string }) {
   if (!e.answers) return null
   const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName: envelopeGcName(packet), formatMoney: formatLegalMoney })
   return (
     <div data-legal-envelope-answers={e.key} style={{ background: NOTE_BAND, borderRadius: 6, padding: '6px 10px', fontSize: 12.5, lineHeight: 1.45 }}>
       <div><b>The owner's answers</b> <span style={{ color: MUTED }}>· {w.owner}</span></div>
-      <div><b>Letter two</b> <span style={{ color: MUTED }}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay Click direct:</b> <span style={{ color: MUTED }}>{w.gcOkay}</span></div>
+      <div><b>Letter two</b> <span style={{ color: MUTED }}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay {companyName} directly:</b> <span style={{ color: MUTED }}>{w.gcOkay}</span></div>
     </div>
   )
 }
@@ -79,7 +79,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
   )
 }
 
-export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; acts?: ReactNode }) {
+export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode }) {
   const a = packet.account
   const h = portalH
   if (tab === 'account') {
@@ -114,10 +114,10 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
         <div style={h}>Where each job stands</div>
         <JobTimelines packet={packet} />
         <div style={h}>Final demand letters</div>
-        <PortalTable head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount']} numCols={[5]} rows={packet.paper.demandLetters.map((d) => [<b key="l">{d.jobLabel}</b>, d.sentYmd ?? 'not sent', d.method, d.tracking || '—', `${d.deadlineYmd ?? '—'}${d.deadlinePassed ? ' · passed' : ''}`, formatLegalMoney(d.amount)])} empty="No demand letter on record from Click." />
+        <PortalTable head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount']} numCols={[5]} rows={packet.paper.demandLetters.map((d) => [<b key="l">{d.jobLabel}</b>, d.sentYmd ?? 'not sent', d.method, d.tracking || '—', `${d.deadlineYmd ?? '—'}${d.deadlinePassed ? ' · passed' : ''}`, formatLegalMoney(d.amount)])} empty="No demand letter sent before referral." />
         <div style={h}>The paper that went out</div>
-        <PortalTable head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]} rows={packet.paper.envelopes.map((e) => [<b key="a" style={{ color: COPPER }}>{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: COPPER }}>open ↗</a> : '—'])} subRows={packet.paper.envelopes.map((e) => (e.answers ? <EnvelopeAnswersBand key={e.key} e={e} packet={packet} /> : null))} empty="No § 53.056 notice, affidavit or release recorded." />
-        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Under a notice: the owner's answers to the three questions the letter asks (and counsel's pile), whether the second owner letter is due or sent, and any written okay from the GC for the owner to pay Click directly. Dates above are the app's reading of Chapter 53 from each job's last day on site and the property kind.</p>
+        <PortalTable head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]} rows={packet.paper.envelopes.map((e) => [<b key="a" style={{ color: COPPER }}>{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: COPPER }}>open ↗</a> : '—'])} subRows={packet.paper.envelopes.map((e) => (e.answers ? <EnvelopeAnswersBand key={e.key} e={e} packet={packet} companyName={companyName} /> : null))} empty="No § 53.056 notice, affidavit or release recorded." />
+        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Under a notice: the owner's answers to the letter's three questions, whether the second owner letter is due or sent, and any written okay from the GC for the owner to pay {companyName} directly. Dates above are the app's reading of Chapter 53 from each job's last day on site and the property kind.</p>
       </div>
     )
   }
@@ -125,8 +125,8 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
     const tw = packet.theirWord
     return (
       <div>
-        <p style={{ fontSize: 12.5, color: MUTED, margin: '4px 0 8px' }}>Everything the office has on record with this customer that it chose to share — contacts, promises{tw.decided ? ` (keeps ${tw.kept} of ${tw.decided}${tw.broken ? `, ${tw.broken} broken` : ''})` : ''}, collection calls, and why it was parked — oldest first.</p>
-        <PortalTable head={['Date', 'Kind', 'Job', 'What was said', 'By']} rows={tw.timeline.filter((e) => e.shared).map((e) => [e.ymd, e.kind === 'note' ? 'collections' : e.kind, e.jobLabel ?? 'account', e.text, e.by ?? 'the customer'])} empty="Nothing on record that the office shared." />
+        <p style={{ fontSize: 12.5, color: MUTED, margin: '4px 0 8px' }}>{companyName}'s contact record with this customer, oldest first. Calls, emails, visits, promises to pay and the note that sent it to collections.{tw.decided ? ` Promises kept: ${tw.kept} of ${tw.decided}${tw.broken ? `, ${tw.broken} broken` : ''}.` : ''}</p>
+        <PortalTable head={['Date', 'Kind', 'Job', 'What was said', 'Recorded by']} rows={tw.timeline.filter((e) => e.shared).map((e) => [e.ymd, e.kind === 'note' ? 'collections note' : e.kind, e.jobLabel ?? 'account', e.text, e.by ?? 'the customer'])} empty="No contact on record." />
       </div>
     )
   }
@@ -143,20 +143,22 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
   return (
     <div>
       <div style={h}>Fees and costs</div>
-      <PortalTable head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
+      <PortalTable head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, firmFeeKindWords(e.kind), e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
       {acts}
       <div style={h}>On this matter</div>
-      <PortalTable head={['Date', 'Kind', 'What happened', 'Office']} rows={steps.map((e) => [e.occurred_on, legalEntryKindWords(e), e.body, e.via_portal ? (e.acknowledged_at ? 'seen' : 'waiting on the office') : e.kind === 'question' ? (e.acknowledged_at ? 'withdrawn' : 'asks you') : 'the office'])} empty="No steps recorded." />
-      <div style={h}>What Click did, in order</div>
-      <PortalTable head={['Date', 'Job', 'Step', 'What happened']} rows={packet.feesAndSteps.steps.map((s) => [s.ymd ?? '—', s.jobLabel ?? '', s.kind, s.text])} empty="No steps recorded." />
+      <PortalTable head={['Date', 'Kind', 'What happened', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), e.body, firmEntryStatusWords(e)])} empty="No steps recorded." />
+      <div style={h}>Account history, oldest first</div>
+      <PortalTable head={['Date', 'Job', 'Step', 'What happened']} rows={packet.feesAndSteps.steps.map((s) => [s.ymd ?? '—', s.jobLabel ?? '', firmHistoryKindWords(s.kind), s.text])} empty="No history recorded." />
     </div>
   )
 }
 
 /** The matter card (header + tab strip + the tab) and the exhibits card, exactly as the firm's page lays them out. */
-export function FirmMatterView({ packet, matter, tab, onTab, acts, onPrint }: {
+export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint }: {
   packet: LegalPacket
   matter: FirmMatterLike
+  /** The company the firm acts for, from the payload (the desk passes its own) — never a hard-coded brand. */
+  companyName: string
   tab: FirmTab
   onTab: (t: FirmTab) => void
   /** The firm's acts on Fees & steps — the portal injects them; the desk's preview passes nothing. */
@@ -177,7 +179,7 @@ export function FirmMatterView({ packet, matter, tab, onTab, acts, onPrint }: {
               {packet.account.properties[0]?.owner ? ` · owner of record: ${packet.account.properties[0].owner}` : ''}
               {' · theory: '}<b style={{ color: INK }}>{packet.theory.label}</b>
             </div>
-            {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From Click:</b> {matter.noteToFirm}</div> : null}
+            {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ ...portalNum, fontSize: 20, fontWeight: 700 }}>{formatLegalMoney(totalDemand)}</div>
@@ -194,7 +196,7 @@ export function FirmMatterView({ packet, matter, tab, onTab, acts, onPrint }: {
             </button>
           ))}
         </div>
-        <FirmMatterTab tab={tab} packet={packet} matter={matter} acts={acts} />
+        <FirmMatterTab tab={tab} packet={packet} matter={matter} companyName={companyName} acts={acts} />
       </div>
       <div style={{ ...portalCard, marginTop: 12 }}>
         <div style={portalCap}>Exhibits</div>
@@ -204,7 +206,7 @@ export function FirmMatterView({ packet, matter, tab, onTab, acts, onPrint }: {
               {packet.exhibits.map((x) => (
                 <tr key={x.letter}>
                   <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}`, color: COPPER, fontWeight: 700, width: 26 }}>{x.letter}</td>
-                  <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}` }}>{x.title} <span style={{ color: FAINT }}>· {x.count} item{x.count === 1 ? '' : 's'}</span></td>
+                  <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}` }}>{firmExhibitTitle(x.title)} <span style={{ color: FAINT }}>· {x.count} item{x.count === 1 ? '' : 's'}</span></td>
                   <td style={{ padding: '6px 4px', borderBottom: `1px dotted ${HAIR}`, textAlign: 'right', fontSize: 12, color: FAINT }}>
                     {x.title === 'Signed agreements' && matter.contracts.some((c) => c.signedPdfUrl) ? matter.contracts.filter((c) => c.signedPdfUrl).map((c) => <a key={c.id} href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER, marginLeft: 8 }}>PDF ↗</a>) : 'in the printed packet'}
                   </td>

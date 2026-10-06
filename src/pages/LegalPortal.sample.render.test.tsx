@@ -32,6 +32,26 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).not.toMatch(/NaN|undefined/)
   })
 
+  it('speaks the firm’s words, not the office’s (punch list #85 item 3)', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = sampleLegalPortalResponse({ name: 'Acme Mechanical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=sample']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getAllByText(/Sample Contracting/).length).toBeGreaterThan(0))
+    expect(screen.getByText('referred')).toBeTruthy()
+    expect(screen.getByText('Particulars for filing')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Record of contact' }))
+    expect(document.body.textContent).toMatch(/Acme Mechanical's contact record with this customer/)
+    fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
+    expect(document.body.textContent).toMatch(/Account history, oldest first/)
+    expect(document.body.textContent).toMatch(/Attorney fee/)
+    expect(document.body.textContent).not.toMatch(/Needs You|Their word|From Click|Click’s|What Click did|chose to share/)
+  })
+
   it('draws the owner\'s answers under a notice on Paper when the payload carries the desk item that sent it (#41 PR 1b)', async () => {
     const today = new Date().toISOString().slice(0, 10)
     const payload = sampleLegalPortalResponse({ name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today) as { matters: Array<Record<string, unknown> & { jobs: Array<{ id: string }> }> }

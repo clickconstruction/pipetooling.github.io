@@ -8,7 +8,7 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, P
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
 import { buildLegalPacketPrintHtml } from '../lib/legal/legalPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
-import { legalStageLabel } from '../lib/legal/legalMatters'
+import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
@@ -20,10 +20,10 @@ import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterV
  * The collections law firm's portal (Legal portal PR 3): the no-login page
  * behind the firm's capability link (`/legal?t=<token>`). Every matter the
  * office marked attorney-ready, each as the same five-section packet the
- * office desk shows — Account · Paper · Their word · Evidence · Fees & steps —
+ * office desk shows — Account · Paper · Record of contact · Evidence · Fees & steps —
  * built by the one packet kernel from the records `legal-portal` returns (held
- * entries never arrive). Plus Click's particulars for filing and the exhibits
- * as links. Read-only; the firm's own acts (fees, steps, questions, payments
+ * entries never arrive). Plus the company's particulars for filing and the exhibits
+ * as links. Every word here is the firm's (`legalFirmWords.ts`, punch list #85 item 3), not the office's. Read-only; the firm's own acts (fees, steps, questions, payments
  * received) land with PR 4. Same paper as the customer statement, pinned light.
  */
 
@@ -66,7 +66,7 @@ export default function LegalPortal() {
         return false
       }
       setReloadTick((t) => t + 1)
-      setNotice('Saved — the office sees it on their Needs You list.')
+      setNotice(firmSavedWords(payload))
       return true
     } catch {
       setNotice('Could not reach the office. Check your connection and try again.')
@@ -125,7 +125,7 @@ export default function LegalPortal() {
         {sample ? <SampleModeBanner /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${COPPER}`, paddingBottom: 10, marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Click Plumbing and Electrical'}</div>
+            <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Legal portal'}</div>
             <div style={{ fontSize: 12, color: MUTED }}>Collections referred to counsel{payload ? ` · prepared ${payload.preparedOn}` : ''} · no sign-in, one revocable link</div>
           </div>
           {payload ? (
@@ -159,6 +159,7 @@ export default function LegalPortal() {
             <div>
               <FirmMatterView
                 packet={packet}
+                companyName={payload.company.name}
                 matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries }}
                 tab={tab}
                 onTab={setTab}
@@ -175,15 +176,15 @@ export default function LegalPortal() {
                   <button key={m.id} type="button" onClick={() => { setSelectedId(m.id); setTab('account') }} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 12px', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 12px', marginTop: 8, background: CARD, border: `1px solid ${on ? COPPER : HAIR}`, borderRadius: 6, color: INK, cursor: 'pointer', font: 'inherit' }}>
                     <b style={{ fontSize: 13.5 }}>{m.payer.name}</b>
                     <span style={{ ...num, fontSize: 13.5, fontWeight: 600 }}>{p ? formatLegalMoney(p.account.totals.balance) : '—'}</span>
-                    <span style={{ fontSize: 11.5, color: MUTED }}>{m.jobs.length} job{m.jobs.length === 1 ? '' : 's'}{m.releasedAt ? ` · since ${m.releasedAt}` : ''}{m.handling ? ` · handling ${m.handling}` : ''}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: NOTE_BAND, color: MUTED, justifySelf: 'end' }}>{legalStageLabel(m.stage).replace('With the firm · ', '')}</span>
+                    <span style={{ fontSize: 11.5, color: MUTED }}>{m.jobs.length} job{m.jobs.length === 1 ? '' : 's'}{m.releasedAt ? ` · referred ${m.releasedAt}` : ''}{m.handling ? ` · handling ${m.handling}` : ''}</span>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: NOTE_BAND, color: MUTED, justifySelf: 'end' }}>{legalFirmStageWords(m.stage)}</span>
                   </button>
                 )
               })}
               <div style={{ ...card, marginTop: 14, fontSize: 12.5, color: MUTED }}>
-                <b style={{ color: INK }}>Click’s particulars for filing</b>
+                <b style={{ color: INK }}>Particulars for filing</b>
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', marginTop: 6 }}>
-                  <span>Entity</span><span style={{ color: INK }}>{payload.particulars.entity || payload.company.name}</span>
+                  <span>Legal entity</span><span style={{ color: INK }}>{payload.particulars.entity || payload.company.name}</span>
                   <span>License</span><span style={{ color: INK }}>{payload.particulars.license || '—'}</span>
                   <span>Registered agent</span><span style={{ color: INK }}>{payload.particulars.agent || '—'}</span>
                   <span>Custodian of records</span><span style={{ color: INK }}>{payload.particulars.custodian || '—'}</span>
@@ -193,8 +194,8 @@ export default function LegalPortal() {
                 </div>
               </div>
               <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
-                <b style={{ color: INK }}>What you get</b><br />The account, every agreement and notice, Click’s contact history with the customer, their promises, the field evidence, and the steps so far — as one lettered packet. Print packet is the PDF.<br /><br />
-                <b style={{ color: INK }}>What you can do</b><br />On Fees &amp; steps: add fees and costs, record a step (demand · suit · judgment · settled), record a payment you received, ask the office. Each lands on the office's Needs You list.<br /><br /><b style={{ color: INK }}>What you cannot do</b><br />Mark anything paid, edit a job, or email the customer through Click. Only accounts released to you are here; the Lien grid shows dates and dollars for every job with a lien month, and nothing anyone said.
+                <b style={{ color: INK }}>What is here</b><br />Each account referred to you, as one lettered packet. The statement of account, the agreements and notices, the record of contact, the field evidence and the account history. Print packet makes the PDF.<br /><br />
+                <b style={{ color: INK }}>What you can record</b><br />On Fees &amp; steps you add fees and costs and record a step. A step is demand sent, suit filed, judgment entered or settled. You can also record a payment you received and ask the office a question. The office sees each one and answers here.<br /><br /><b style={{ color: INK }}>What stays with the office</b><br />Applying payments, changing a job, and contacting the customer. Only accounts referred to you are listed here. The Lien grid shows dates and dollars for each job with a lien month, and nothing anyone said.
               </div>
             </div>
           </div>
@@ -282,7 +283,7 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
         <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Send</button>
       </form>
-      <p style={{ fontSize: 11.5, color: FAINT, margin: 0 }}>You never mark anything paid: the office applies a payment you report to the job and records your share. Steps move the matter's stage on the office's board.</p>
+      <p style={{ fontSize: 11.5, color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
     </div>
   )
 }
@@ -314,12 +315,12 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
           <div key={r.id} style={{ ...card, marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <div><b>{r.name}</b> <span style={{ color: MUTED, fontSize: 12.5 }}>{r.email}{r.role ? ` · ${r.role}` : ''}</span></div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{r.paused ? 'stopped' : r.confirmed ? 'confirmed' : 'waiting for their click'}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{firmRecipientStatusWords(r)}</span>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
-              <span style={{ color: MUTED }}>Tell me</span>
+              <span style={{ color: MUTED }}>Emails</span>
               <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: 11.5, fontWeight: 700 }}>
-                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: 700 }}>{m === 'now' ? 'Right away' : 'Weekly digest'}</button>)}
+                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: 700 }}>{FIRM_EMAIL_MODE_WORDS[m]}</button>)}
               </span>
               {r.mode === 'digest' ? (
                 <>
@@ -353,8 +354,8 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
           </form>
         </div>
         <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
-          <b style={{ color: INK }}>How this behaves</b><br />Each person chooses right away or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
-          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering a question, an account pulled back — right away or in the digest. The digest also lists every open matter.
+          <b style={{ color: INK }}>How this behaves</b><br />Each person chooses an email for each event or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
+          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering a question, and a referral withdrawn. Each comes as its own email or in the digest. The digest also lists every open matter.
         </div>
       </div>
     </div>

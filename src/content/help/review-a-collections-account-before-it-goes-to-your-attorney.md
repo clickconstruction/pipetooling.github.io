@@ -30,7 +30,7 @@ The same five the firm will see:
 
 - **Account** shows who owes, contacts, the jobs, every invoice and payment in date order, and the property record.
 - **Paper** shows agreements per job with the sworn-account column, the **lien clock**, demand letters and lien filings. The lien clock is each job's § 53.056 notice and affidavit deadlines, counted from its last clock-session day. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays.
-- **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. Entries dated **before the first bill are held back** from counsel by default. Counsel means the law firm. Held entries show struck through.
+- **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. Entries dated **before the first bill are held back** from counsel by default. Counsel means the law firm. Held entries show struck through. The firm sees this tab as **Record of contact**.
 - **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links.
 - **Fees & steps** shows what the office did, in order. It shows the exhibits the packet would carry, lettered A onward. Exhibits are the documents attached to the packet.
 
