@@ -25,7 +25,7 @@ The right side is the packet. It lists every job at that property for that owner
 - Each job shows its total, what was paid and what is still owed.
 - Each bill shows its amount and the day it went out.
 - Each payment shows the day it was paid and the time it was recorded.
-- The last line is what is owed at the property.
+- **Owed at this property** is what is owed there. One line under it gives the job total and what was paid.
 
 Under it, **Left out, on purpose** names what the packet never holds. That is other owners' jobs, what the GC paid on other properties, check images and our own notes.
 
@@ -46,7 +46,7 @@ Check 3 is a warning. It does not stop you. Read what it says before you send an
 2. Give it to the owner.
 3. Pick how it went to them, then press {{button:blue|Record it as sent}}.
 
-**Record it as sent** stays grey until checks 1, 2 and 4 are on file. Hover it to see what is missing.
+**Record it as sent** stays faded until checks 1, 2 and 4 are on file. Hover it to see what is missing.
 
 You can close the window and come back. The checks you put on file are kept.
 
