@@ -53,12 +53,15 @@ import { WAIT_KINDS, waitKind, waitRows, waitWhoDefault, type WaitRow } from '..
 import { daysLostByCause, lostDaysByLine } from '../../lib/gcMode/gcDaysLost'
 import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
 import { logChartGaps, logChartNotes } from '../../lib/gcMode/gcLogVsChart'
+import { uninsuredNotes } from '../../lib/gcMode/gcNotReady'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
 import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../../lib/gcMode/gcCustomerScheduleSend'
 import { chartHolds } from '../../lib/gcMode/gcChartHolds'
 import { GcNotReady } from './GcNotReady'
+import { GcRoughSchedule } from './GcRoughSchedule'
+import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gcMode/gcRoughSchedule'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gcMode/gcCustomerSchedule'
 import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
 import { useAuth } from '../../hooks/useAuth'
@@ -115,6 +118,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   // What this week's daily log says against the chart (G-60): read with the chart's holds, so a held bar is explained.
   const logGaps = useMemo(() => logChartGaps(state, project, holds), [state, project, holds])
   const logNotes = useMemo(() => logChartNotes(logGaps), [logGaps])
+  // A trade at work with its insurance run out (G-138): a red note on its bars under way, no stripes.
+  const uninsured = useMemo(() => uninsuredNotes(state, project), [state, project])
   // The card under the chart opens a bar in the editor above it, and brings the editor into view.
   const openFromCard = (lineId: string) => {
     setPicked(lineId)
@@ -160,6 +165,9 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const schedule = project.schedule
   const building = project.stage === 'building'
 
+  // While we bid, the tab is the rough schedule for our bid (G-45): its own record, never the schedule.
+  if (project.stage === 'pursuing') return <GcRoughSchedule project={project} today={state.today} by={me} dispatch={dispatch} />
+
   if (!schedule || m.rows.length === 0) {
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -192,6 +200,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
             Pick an activity to change its dates and what it waits on. Start locks this plan as the baseline. The measures read
             against it from then on.
           </span>
+          {/* The first draft against the weeks we bid (G-45). */}
+          {firstDraftAgainstBid(project) && <div data-tour="gc-draft-vs-bid" style={{ marginTop: '0.35rem' }}>{firstDraftAgainstBid(project)}</div>}
         </Card>
       )}
 
@@ -265,6 +275,7 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           lost={lost}
           lateSaid={lateSaid}
           logNotes={logNotes}
+          uninsured={uninsured}
           {...(printJob && !inCopy ? { print: printJob } : {})}
           earlier={earlier}
           {...(inCopy ? { real: realGhosts } : {})}
@@ -378,7 +389,8 @@ function ScheduleWhy() {
 
 /** Nothing drawn yet: a start day and a first draft to draw from. */
 function DraftCard({ project, today, dispatch }: { project: GcProject; today: string; dispatch: Dispatch<GcAction> }) {
-  const [start, setStart] = useState(project.startDate ?? addDays(mondayOf(today), 7))
+  // The first draft starts from the rough's start day when we bid one (G-45).
+  const [start, setStart] = useState(project.startDate ?? project.rough?.start ?? addDays(mondayOf(today), 7))
   return (
     <Card>
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
@@ -386,12 +398,13 @@ function DraftCard({ project, today, dispatch }: { project: GcProject; today: st
           <strong>No schedule is drawn yet.</strong> Start from a first draft: every line of every trade, the trades in build order,
           each line after the one before it. Then change what is wrong.
         </div>
+        {roughFirstDraftWords(project) && <div style={{ color: 'var(--text-600)' }}>{roughFirstDraftWords(project)}</div>}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <span style={{ color: 'var(--text-muted)' }}>Work starts</span>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={rowBox} />
           </label>
-          <Btn kind="primary" disabled={!start} onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start })}>
+          <Btn kind="primary" disabled={!start} onClick={() => dispatch({ type: 'draftSchedule', projectId: project.id, start, ...(project.rough ? { days: project.rough.days } : {}) })}>
             Draw a first draft
           </Btn>
         </div>

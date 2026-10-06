@@ -968,7 +968,122 @@ G-08, Helper 2 on `spike/g08`; the mock-up and plan are `mockups/G-08.md`. `spar
 Left out, the owner's calls: the room each bar had at Start (it needs the float over the baseline's
 dates), and spare days counted to the contract's day (it changes what spare days mean everywhere).
 
-## The what-if copy, as built (2026-10-06)
+## Later, running bars with lapsed insurance, as built (2026-10-06)
+
+G-138, by Helper 5, round three (the mock-up and plan: `mockups/G-138.md`). Additions to
+`gcNotReady.ts` (`uninsuredBars`, `uninsuredNotes`, `uninsuredBlock`, `lapsedInsuranceWords`) and a
+third optional argument on the chart's `barNote`.
+
+- **A red note, no stripes.** A hired trade's bar under way (work reported or a real start, not
+  done) whose insurance ran out, or was never on file, gets *insurance ran out Sep 15* beside it in
+  red. The work goes on, so it is not held: the pill and the Held count stay. Its place in the order
+  is after a failed inspection and a hold, before G-60's log note, a change order's tail and the
+  slip. The hover card's *Insurance* line says "Pecan Valley Electric's insurance ran out Tue Sep 15.
+  Nothing they do for us is covered.", and Print or PDF prints the note (`noteOf` passes the map).
+- **G-77's own gap, read on the day.** Under way is the complement of G-77's not started, so a bar is
+  never both: on Fair Oaks D, Panels and feeders and Lighting carry the red note while Site lighting
+  and Fire alarm stay held. A test pins the four side by side.
+- **What the office does, and what already guards it.** The opened bar's block reads "Pecan Valley
+  Electric is working on this without current insurance." with *Ask for it* on the certificate, and
+  its last line is the guard that stands: "On Draws, Approve stays locked until a current certificate
+  is in." (`partnerBlockers`).
+- **At the gate**: G-118's morning list says it in red on the company's line, "Their insurance ran out
+  Tue Sep 15. Nothing they do for us is covered.", read on the list's day.
+
+Left for Helper 1's counts row: an uninsured running trade as a reason on Follow up and Needs you,
+from `uninsuredBars`, so it lands in the one re-pin.
+
+## Later, the cash weeks follow the bars, as built (2026-10-06)
+
+G-140, built by Helper 4 from `to-dos/gc-mode/mockups/G-140.md`, on the owner's yes. The kernel is
+`gcCashForecast.ts`, and *The next 6 weeks* (`cashAhead`) reads it for what it expects.
+
+- **One rule each side.** Our bills are G-97's forecast, each month's bill on the bill day plus
+  that customer's usual days to pay. Each trade's draws are taken at each bill day, from the
+  percents its bars reach (`sovLinePctAt`, shared with G-97), through its own pay application:
+  `payApplication` with `drawMoney`, the math `tradeSendPayApp` uses. Each is paid 10 days after.
+  A job with no schedule keeps the old rule.
+- **At reported percents it is the old rule, number for number.** Owner Billing's five tests that
+  pin the old numbers pass `{ bars: 'reported' }` and keep every assertion. A test sends Cool
+  Breeze's own pay application at the same percents and gets the $9,720 the weeks expect.
+- **Fair Oaks D, as the schedule stands:** the trades' draws on Wed Nov 4 come to $284,328
+  (Summit Roofing $118,800, Cool Breeze Mechanical $84,240, Pecan Valley Electric $61,200, Hill
+  Country Interiors $14,688, Iron Horse Fabrication $5,400). The week of Nov 2 goes to $323,600
+  carrying, against $117,680 as reported. All $526,492 of the bills it expects come after the six
+  weeks; Cibolo pays in 38 days.
+- **The card says it.** *The next 6 weeks follows the schedule now. Before, it counted only the work
+  reported so far.* Beside it: *$205,920 more goes to the trades in these weeks* and *the bills it
+  expects bring $380,624 more, all of it after these weeks*. Under the headline: *Summit Roofing
+  $118,800 and Cool Breeze Mechanical $84,240 are most of it.* Every expected row names its bill
+  day. *As reported so far* is the way back, one press, remembered per browser.
+
+Left out, as planned: pay-when-paid, a statement-of-work term the data does not carry. Retainage
+growth on both sides stays *no day yet* at today's amounts. Our own crew's cost is payroll's.
+
+## Later, one readiness list for both sides, as built (2026-10-06)
+
+G-139, by Helper 5, round three (the mock-up and plan: `mockups/G-139.md`). `startNeeds` in
+`gcStartReminders.ts` reads G-77's `startGaps`; six new portal keys; `PORTAL_SPANISH.md` regenerated.
+
+- **One list.** The trade's 14- and 3-day reminder keeps its submittals first, then reads the very
+  list the office's bar reads, on the same first day, in Get started's order, each gap in the trade's
+  words (`GAP_WORDS`, a `Record` over every gap kind: a kind the office adds without a trade sentence
+  fails the typecheck). Kendall Air on Helotes, started anyway, read Oct 6, used to hear only "Your
+  statement of work is not signed yet." while its bar waited on the master agreement too, and the
+  statement was only drafted. Now: "Your master agreement is not signed yet. Sign it in your
+  portal." and "Your statement of work is not sent yet. We will send it to sign."
+- **The new sentences**, English and Spanish: a master agreement sent or not sent, an insurance
+  certificate that already ran out ("ran out Tue Sep 15", where it used to say "runs out … before your
+  work starts" of a date already past), no W-9, a statement of work not sent, and one signed on plans
+  that changed since. The genders are `PORTAL_SPANISH.md`'s: *contrato maestro* masculine, *orden de
+  trabajo* feminine.
+- **The import cycle broken first**, its own commit: `NOT_READY_LATE_DAYS` is its own 3, held equal to
+  the last of `START_REMINDER_DAYS` by a test.
+- G-77's test that the bar never misses a paper the reminder names became equality: on the
+  reminder's days, the papers it names are the office's gaps, in order (eight mixes, both days).
+
+What the second look changed: a button per line in the reminder was not needed, since every message
+ends with the link to the company's portal home, whose to-dos already open each paper.
+## Later, a schedule while bidding, as built (2026-10-06)
+
+G-45, Helper 2 on `spike/g45`; the mock-up and plan are `mockups/G-45.md`. `gcRoughSchedule.ts`
+(tested, out of the barrel), `GcRoughSchedule.tsx`, one optional argument on `scheduleDraft`, the
+`setRough` action, and lines on the Schedule tab and Our number.
+
+- **Where**: a job still bidding opens its Schedule tab on **A rough schedule for our bid**: *If work
+  starts*, **Draw a rough schedule**, then one row per stage the job has, each with its days to change,
+  its dates and its bar on one axis, the inspections, and the dates to meet; **Redraw** after a change.
+  Its words: *Draw it from the stages of the job to know how many weeks it takes to build. Our number
+  shows the weeks beside the price. Nothing here goes to the trades or to Cibolo Creek Partners. When
+  we win, the first draft starts from it.*
+- **What draws it**: the first draft's own kernel, `scheduleDraft`, on the trades' scope lines, with an
+  optional third argument for the job's stage days; with none it draws exactly what it drew before (a
+  snapshot of every fixture job's draw, written before the change, holds it). Boerne Retail Shell from
+  Mon Nov 2: 10 stages, substantial completion Sun Feb 7, 14 weeks; Structure at 25 days makes it 16.
+- **What it feeds**: one count, `roughWeeks`. Our number shows *Weeks to build 14* beside the price,
+  the sentence, and *For the proposal: We will build Boerne Retail Shell in 14 weeks from the day work
+  starts.* with Copy. *We sent our bid*'s log line adds *It takes 14 weeks to build, by the rough
+  schedule.* and is word for word what it was without a rough.
+- **The lock** (the lead's pin): when the bid goes in, the weeks and the finish are kept as they went,
+  `setRough` is refused, the boxes and Redraw go, and the tab and Our number read *Our bid went in Fri
+  Oct 2 with 14 weeks to build. The rough stays as it went.* A later draw cannot move them.
+- **At award**: the rough is kept (its weeks too, if the bid was never marked sent) and never copied
+  into the schedule, since the trades' statements of work bring the lines the bars must be on. The
+  first-draft card says *We bid 14 weeks, from the rough schedule. The first draft starts from its
+  start day and its stage lengths.*, starts on the rough's day, and draws with its stage lengths; the
+  *Drawing the schedule* card then says *The first draft runs the 14 weeks we bid.* or *The first draft
+  runs 15 weeks. We bid 14.*
+- **Nothing reaches the trades or the customer**: the rough lives in `project.rough`, never in
+  `project.schedule`, which their views read; it has no Print or PDF and nothing on it moves.
+- **Tests**: `gcRoughSchedule.test.ts` (8: the draw pin, the weeks and stages, the job's days, the
+  customer's picture empty, the lock and no drift, the refusals, award and the first draft, plain
+  words), `GcRoughSchedule.render.test.tsx` (5). The golden test lists `setRough`; no fixture change,
+  no snapshot moved.
+
+Left out, the owner's calls: general conditions worked out from the weeks (it ties the price to the
+schedule), and jobs like it (the prototype's past jobs carry no durations).
+
+## Later, the what-if copy, as built (2026-10-06)
 
 G-81, built by Helper 1 from `mockups/G-81.md` with the lead's go. `gcWhatIf.ts` (tested, out of the
 barrel), `GcWhatIf.tsx`, and four actions: `startWhatIf`, `inWhatIf`, `keepWhatIf` and
