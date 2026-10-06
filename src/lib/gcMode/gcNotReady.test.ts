@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
 import { gcReducer } from './gcReducer'
 import { plainWordsFailures } from '../plainWords'
-import { startNeeds } from './gcStartReminders'
+import { START_REMINDER_DAYS, startNeeds } from './gcStartReminders'
 import { walkItems } from './gcScheduleWalk'
 import type { GanttHold } from './gcGantt'
 import type { GcProject, GcState, Partner } from './gcTypes'
@@ -116,6 +116,8 @@ describe('a trade not ready to start (G-77)', () => {
 
   it('turns late once the bar starts within three days, or its day passed with nothing reported', () => {
     expect(NOT_READY_LATE_DAYS).toBe(3)
+    // The day the trade's last start reminder goes (G-114): its own number here, held equal.
+    expect(NOT_READY_LATE_DAYS).toBe(START_REMINDER_DAYS[START_REMINDER_DAYS.length - 1])
     const on = (today: string) => {
       const state = { ...initialGcState(), today }
       return { state, bar: notReadyBars(state, fairOaks(state)).find((b) => b.lineId === 'felec-5') }
