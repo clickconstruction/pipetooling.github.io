@@ -54,6 +54,7 @@ import {
   renderReadyToBillSummary,
   type ReadyToBillPayload,
 } from './readyToBillRender.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -172,7 +173,7 @@ async function loadRtbRecipients(admin: Admin): Promise<RtbRecipient[]> {
   if (prefs.length === 0) return []
   const { data: users } = await admin
     .from('users')
-    .select('id, email, name, role, archived_at').eq('is_sample', false)
+    .select('id, email, name, role, archived_at').match(REAL_ACCOUNT)
     .in('id', prefs.map((p) => p.id))
     .is('archived_at', null)
   const byId = new Map(
@@ -260,7 +261,7 @@ async function requireDevOrMaster(
 
   const { data: meRow } = await admin
     .from('users')
-    .select('role, email, name, archived_at').eq('is_sample', false)
+    .select('role, email, name, archived_at').match(REAL_ACCOUNT)
     .eq('id', user.id)
     .maybeSingle()
   if (!meRow || meRow.archived_at || !DETAILED_ROLES.has(String(meRow.role))) {
@@ -299,7 +300,7 @@ async function loadRecipients(
   if (ids.length === 0) return []
   const { data: users } = await admin
     .from('users')
-    .select('id, email, name, role, archived_at').eq('is_sample', false)
+    .select('id, email, name, role, archived_at').match(REAL_ACCOUNT)
     .in('id', ids)
     .is('archived_at', null)
   return ((users ?? []) as Array<RecipientRow & { archived_at: string | null }>).filter(
@@ -542,7 +543,7 @@ serve(async (req) => {
       if (testRecipientId && (mode === 'test_push' || (mode === 'test_send' && isRtb))) {
         const { data: rec } = await admin
           .from('users')
-          .select('id, email, name, role, archived_at').eq('is_sample', false)
+          .select('id, email, name, role, archived_at').match(REAL_ACCOUNT)
           .eq('id', testRecipientId)
           .maybeSingle()
         if (!rec || rec.archived_at) return jsonResponse({ error: 'Recipient not found or archived' }, 404)
@@ -582,7 +583,7 @@ serve(async (req) => {
         if (!recipientId) return jsonResponse({ error: 'recipient_user_id required' }, 400)
         const { data: rec } = await admin
           .from('users')
-          .select('id, email, name, role, archived_at').eq('is_sample', false)
+          .select('id, email, name, role, archived_at').match(REAL_ACCOUNT)
           .eq('id', recipientId)
           .maybeSingle()
         if (!rec || rec.archived_at) return jsonResponse({ error: 'Recipient not found or archived' }, 404)

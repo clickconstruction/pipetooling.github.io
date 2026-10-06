@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 // The email itself is `_shared/fieldReportEmail.ts` (v2.4180) — What the team sees renders it on sample data.
 import { buildReportEmail, type ReportContent } from '../_shared/fieldReportEmail.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 /**
  * Emails reports to configured recipients (report_email_subscriptions).
@@ -130,7 +131,7 @@ async function resolveRecipientEmail(
   if (!sub.recipient_user_id) return null
   const { data } = await admin
     .from('users')
-    .select('email, archived_at').eq('is_sample', false)
+    .select('email, archived_at').match(REAL_ACCOUNT)
     .eq('id', sub.recipient_user_id)
     .single()
   const u = data as { email: string | null; archived_at: string | null } | null

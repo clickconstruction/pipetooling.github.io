@@ -15,6 +15,7 @@ import {
   weekdayIndexSun0InZone,
 } from '../_shared/recurringJobReportTimezone.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,7 +76,7 @@ async function recipientEmail(
 ): Promise<{ email: string | null; archived: boolean }> {
   const { data } = await admin
     .from('users')
-    .select('email, archived_at').eq('is_sample', false)
+    .select('email, archived_at').match(REAL_ACCOUNT)
     .eq('id', userId)
     .maybeSingle()
   const email = (typeof data?.email === 'string' ? data.email : '').trim()
@@ -194,7 +195,7 @@ async function runInstant(req: Request, admin: Admin, resendApiKey: string): Pro
   // Role gate (mirror schedule-dispatch edit roles).
   const { data: meRow } = await admin
     .from('users')
-    .select('role, archived_at').eq('is_sample', false)
+    .select('role, archived_at').match(REAL_ACCOUNT)
     .eq('id', user.id)
     .maybeSingle()
   if (!meRow || meRow.archived_at || !MANAGE_ROLES.has(String(meRow.role))) {

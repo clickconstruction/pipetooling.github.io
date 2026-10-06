@@ -17,6 +17,7 @@ import {
   scheduleMatchesNowWallQuarter,
   weekdayIndexSun0InZone,
 } from '../_shared/recurringJobReportTimezone.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -154,7 +155,7 @@ serve(async (req) => {
 
         const { data: u } = await admin
           .from('users')
-          .select('email,archived_at').eq('is_sample', false)
+          .select('email,archived_at').match(REAL_ACCOUNT)
           .eq('id', recipientId)
           .maybeSingle()
 
