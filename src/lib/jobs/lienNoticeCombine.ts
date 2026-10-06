@@ -7,6 +7,7 @@
  * packet, each with its own share and the paper's total. Pure; the run modal
  * decides when to call it and the IO writes the rows.
  */
+import type { NoticeRelease } from './lienNoticeRelease'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import type { RunNotice, RunSendRecord } from './lienDeskRun'
 import { propertyKey } from './ownerConfirm'
@@ -19,6 +20,8 @@ export type CombinedPart = {
   label: string
   amount: number
   months: string[]
+  /** The conditional release this part's draft enclosed (v2.4729); the record issues each. */
+  release?: NoticeRelease | null
 }
 
 export type CombinedRunNotice = RunNotice & {
@@ -66,7 +69,7 @@ export function combineNoticesByProperty(notices: ReadonlyArray<RunNotice>, opts
     if (group.length === 1) { out.push({ ...group[0]! }); continue }
     const sorted = group.slice().sort((a, b) => b.amount - a.amount || a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }))
     const lead = sorted[0]!
-    const parts: CombinedPart[] = sorted.map((n) => ({ itemId: n.itemId, jobId: n.jobId, jobNumber: n.jobNumber, label: n.label, amount: n.amount, months: n.months.slice() }))
+    const parts: CombinedPart[] = sorted.map((n) => ({ itemId: n.itemId, jobId: n.jobId, jobNumber: n.jobNumber, label: n.label, amount: n.amount, months: n.months.slice(), ...(n.release ? { release: n.release } : {}) }))
     const months = [...new Set(sorted.flatMap((n) => n.months))].sort()
     const amount = Math.round(sorted.reduce((s, n) => s + n.amount, 0) * 100) / 100
     const jobNumber = combinedJobNumbers(parts)

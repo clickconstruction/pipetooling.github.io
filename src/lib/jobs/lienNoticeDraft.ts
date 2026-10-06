@@ -206,6 +206,8 @@ export type LienDeskDraftFields = {
   staleNote?: string
   /** The office left the supply houses out of the owner's letter (v2.4725); absent means the paragraph rides when a house is owed. */
   housesInLetter?: false
+  /** The conditional release enclosed with this notice (v2.4729): the `job_lien_releases` draft the tick made; issued when the run is recorded. */
+  releaseId?: string
   /** The wording was changed from the job's defaults (v2.3522): who, and when — the leader sees it before approving. */
   wording?: { editedBy: string; editedAt: string }
   /** The months named are the job's creation month, not clock hours (v2.3747) — the paper trail says where the date came from. */
@@ -243,6 +245,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),
     ...(typeof o.staleNote === 'string' && o.staleNote.trim() ? { staleNote: o.staleNote.trim() } : {}),
     ...((o as { housesInLetter?: unknown }).housesInLetter === false ? { housesInLetter: false as const } : {}),
+    ...(typeof (o as { releaseId?: unknown }).releaseId === 'string' && (o as { releaseId: string }).releaseId ? { releaseId: (o as { releaseId: string }).releaseId } : {}),
     ...(o.skippedBy && typeof o.skippedBy === 'object' && typeof (o.skippedBy as { name?: unknown }).name === 'string'
       ? { skippedBy: { name: str((o.skippedBy as { name?: unknown }).name), at: str((o.skippedBy as { at?: unknown }).at) } }
       : {}),

@@ -192,6 +192,7 @@ export default function LienDeskRunModal({
       if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.${courtesy.sent ? ` ${courtesy.sent}` : ''}${split.waiting.length ? ` ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the mail pile until its number is typed.` : ''}`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       if (courtesy.failed) showToast(courtesy.failed, 'warning')
+      if (result.releaseFailed.length) showToast(`The enclosed release was not issued on ${result.releaseFailed.map((f) => `${f.label} (${f.reason})`).join('; ')}. Issue it from the Release of Lien window.`, 'warning')
       onRecorded()
       if (result.failed.length === 0 && split.waiting.length === 0) onClose()
       else {

@@ -109,7 +109,7 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
       { recipient: 'owner', method: 'certified_mail', tracking: '9407 1', sent_on: '2026-10-06' },
       { recipient: 'original_contractor', method: 'certified_mail', tracking: '9407 2', sent_on: '2026-10-06' },
     ])
-    expect(result).toEqual({ recorded: ['it1'], failed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [], offers: [] })
+    expect(result).toEqual({ recorded: ['it1'], failed: [], releaseFailed: [], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [], offers: [] })
   })
 
   it('a courtesy email that fails leaves the notice recorded and says why', async () => {

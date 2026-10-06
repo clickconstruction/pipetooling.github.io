@@ -166,7 +166,9 @@ The pane shows what goes in the envelope, page by page.
 
 1. Counsel's cover letter is page 1 while its box is ticked. Untick it, and the page leaves.
    When a supply house is still owed on the job, the letter ends with a paragraph about it. A second box reads **Name the supply house owed**. It starts ticked. Untick it, and the paragraph leaves. Read more in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job#name-the-house-in-the-owners-letter).
-2. The notice comes next.
+   A third box reads **Enclose a conditional release**. It starts off. Ticked, the app's conditional release rides behind the letter. The letter says it is not effective until the money clears. Read more in [give a customer a lien release](/help/give-a-customer-a-lien-release#enclose-one-with-a-lien-notice).
+2. The conditional release is page 2 when its box is ticked.
+3. The notice comes next.
 3. The pay codes page comes last when the job has unpaid bills. It shows one QR code per Stripe bill, with what is still owed on it. It says that once these bills are paid, no lien will be filed.
 
 The job's unpaid invoices follow in the packet. On a residential or homestead property, the § 53.254 statement prints under the form on its own. The property record's kind and homestead flag decide it.
