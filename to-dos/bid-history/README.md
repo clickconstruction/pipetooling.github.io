@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: PR 1 (capture) built 2026-10-05 as #4583, open, CI green and not armed; it merges only after its full-schema bed runs green (blocker) · planned 2026-09-30 (the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up) · PR 0 waits for Wendi's answer
+status: PR 1 (capture) built 2026-10-05 as #4583; its full-schema bed ran green 2026-10-06 (33 checks, Docker started under the sessions' account), rebased onto main, migrations renumbered 20261007040000 / 20261007041000, auto-merge armed · planned 2026-09-30 (the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up) · PR 0 waits for Wendi's answer
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -13,17 +13,15 @@ summary: >
   from CountTooling"); and Put back, per value and per removed row, so an estimator recovers her
   own work without a dev. Three small fixes stop the losses at the source and can ship first.
 next: >
-  Run PR 1's bed (`npm run test:pg:bid-changes`, Postgres 17.6 in Docker) on #4583's branch, then
-  review, merge and push it: two migrations, `20261006190000_bid_changes` then
-  `20261006191000_bid_changes_triggers`. Renumber both after main's newest if a later migration
-  lands first, since `supabase db push` refuses an older stamp, and list the pending migrations
-  before the push, since a push applies every pending file. The deploy note is in its triggers
-  migration's doc. Then PR 1b, the request tag (the labor minted on send and the copy RPCs need a
+  When #4583 merges, `supabase db push` its two migrations (list the pending set first: a push
+  applies every pending file; stamps 20261007040000 / 20261007041000 are above main's newest, so no
+  --include-all unless a later stamp lands first). The deploy note is in the triggers migration's
+  doc. Then PR 1b, the request tag (the labor minted on send and the copy RPCs need a
   transaction-local mark), then PRs 2 to 5. The owner's four calls (who sees whose edits; how long
   to keep; may a non-dev put a row back; which bid columns are shown) come before PRs 2 to 4. PR
-  0's three loss fixes are independent.
+  0's three loss fixes are independent; 0c is now archive coverage alone (the key shipped in v2.4413).
 size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
-blocker: PR 1's bed needs Docker, and Docker Desktop on the owner's Mac runs under a different macOS account than the one the Claude sessions use. Run the bed from that account, start Docker under the sessions' account, or (the owner's yes) add a manual GitHub Actions job that runs the test:pg beds on a chosen branch. When #4583 is rebased onto this edit, keep its own status, next and Where it stands, and keep this blocker until the bed runs.
+blocker: None for PR 1 — the bed ran green on 2026-10-06 (Docker Desktop started with `open -a Docker` from the sessions' account). PR 0 waits for Wendi's answer; PRs 2–4 for the owner's four calls.
 ---
 
 # Bid history: every value anyone entered on a bid, and a way to put one back
@@ -47,7 +45,8 @@ could look like?"
 - **Deletes are kept, for a dev, for 90 days.** `deleted_records_archive` (a BEFORE DELETE trigger
   over the bid's cascade closure) and Settings → Data & recovery → *Recently deleted*, which puts a
   whole bundle back, all or nothing. Three bid tables are not covered: `bid_count_row_custom_costs`
-  (which also has no FK to its count row, so its rows are orphaned by a delete), `bid_takeoff_stage_splits`,
+  (its count-row key came with v2.4413 on 2026-10-02, so a removed count row now takes its quoted
+  cost with it; the archive still does not keep it), `bid_takeoff_stage_splits`,
   `bid_submittal_takeoff_choices`.
 - **Two things called "history" on the tabs are not this bid's past**: `bid_pricing_history` is the
   Pricing tab's win/loss calibration strip from other bids; `takeoff_fixture_history` is "what this
@@ -188,7 +187,7 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 |---|---|---|
 | 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid | S |
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
-| 0c | `bid_count_row_custom_costs` FK + archive coverage for three tables | XS (migration) |
+| 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
 | 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger | S — with or right after PR 1 |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
@@ -238,7 +237,7 @@ waits a day for her answer, while PR 1 ships regardless.
 ## Where it stands
 
 Planned 2026-09-30. **PR 1 built 2026-10-05 as v2.4598**, directed and reviewed by PUNCHLIST: two
-migrations (`20261006190000_bid_changes`, then `20261006191000_bid_changes_triggers`, the
+migrations (`20261007040000_bid_changes`, then `20261007041000_bid_changes_triggers`, the
 seventeen triggers alone so their write locks are held for nothing else), the CI test
 `bidChangesCapture.test.ts`, and the full-schema bed `npm run test:pg:bid-changes`. It ran on a
 scratch Postgres 15 with stub tables (33 assertions; the bed itself needs docker and has not run, and the PR merges only after it runs green);

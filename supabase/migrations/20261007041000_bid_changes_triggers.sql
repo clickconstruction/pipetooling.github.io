@@ -1,7 +1,7 @@
 SET lock_timeout = '3s';
 
 -- Bid history, PR 1, file 2 of 2 (to-dos/bid-history, punch list #73): the seventeen triggers.
--- The ledger, its function and its lists are in 20261006190000_bid_changes; this file only
+-- The ledger, its function and its lists are in 20261007040000_bid_changes; this file only
 -- attaches record_bid_change() to the tables bid_changes_tables() names, and history starts the
 -- moment it commits.
 --

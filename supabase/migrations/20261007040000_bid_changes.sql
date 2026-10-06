@@ -3,7 +3,7 @@ SET lock_timeout = '3s';
 -- Bid history, PR 1 of 2 files (to-dos/bid-history, punch list #73): the ledger. Nothing on a bid
 -- kept its old value: an edit overwrote it, a delete was kept for a dev for 90 days, and nobody
 -- could see who changed what. This file makes the place the history goes; the next file
--- (20261006191000_bid_changes_triggers) attaches the trigger that writes it to the seventeen
+-- (20261007041000_bid_changes_triggers) attaches the trigger that writes it to the seventeen
 -- tables that hold what people type on a bid.
 --
 --   bid_changes               — one row per insert, real change or delete of a row on those tables.

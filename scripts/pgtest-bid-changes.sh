@@ -16,8 +16,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55442}"
 NAME="pgtest-bid-changes"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-LEDGER="supabase/migrations/20261006190000_bid_changes.sql"
-TRIGGERS="supabase/migrations/20261006191000_bid_changes_triggers.sql"
+LEDGER="supabase/migrations/20261007040000_bid_changes.sql"
+TRIGGERS="supabase/migrations/20261007041000_bid_changes_triggers.sql"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }

@@ -180,13 +180,13 @@ VALUES ('00000000-0000-0000-0000-00000000c731', 'City permit', 450, 0, 0, 1);
 UPDATE public.cost_estimate_labor_rows SET rough_in_hrs_per_unit = 2 WHERE cost_estimate_id = '00000000-0000-0000-0000-00000000c731';
 UPDATE public.cost_estimates SET labor_rate = 92 WHERE id = '00000000-0000-0000-0000-00000000c731';
 INSERT INTO public.bid_sov_lines (bid_id, label, value) VALUES ('00000000-0000-0000-0000-00000000c7d1', 'Underground', 30000);
-INSERT INTO public.bid_payment_schedule_rows (bid_id, timing, percent) VALUES ('00000000-0000-0000-0000-00000000c7d1', 'At rough-in', 40);
+INSERT INTO public.bid_payment_schedule_rows (bid_id, timing, percent) VALUES ('00000000-0000-0000-0000-00000000c7d1', 'after_rough_in', 40);
 UPDATE public.bid_versions SET name = 'Base bid' WHERE id = '00000000-0000-0000-0000-00000000c7a5';
 SELECT bct.same('labor, costs, SOV, schedule, version',
   bct.log('00000000-0000-0000-0000-00000000c7d1', (SELECT id FROM mark)),
   E'cost_estimates insert -\ncost_estimate_labor_rows insert Lav-1\ncost_estimate_permit_rows insert City permit\n' ||
   E'cost_estimate_labor_rows update Lav-1 rough_in_hrs_per_unit\ncost_estimates update - labor_rate\n' ||
-  E'bid_sov_lines insert Underground\nbid_payment_schedule_rows insert At rough-in\nbid_versions update Base bid name');
+  E'bid_sov_lines insert Underground\nbid_payment_schedule_rows insert after_rough_in\nbid_versions update Base bid name');
 UPDATE mark SET id = bct.last();
 
 -- 5b · The other four direct-cost tables: each reaches the bid through its cost estimate and is
@@ -213,14 +213,14 @@ SELECT bct.same('equipment, other, subcontractor, waste: twelve rows, all under 
 UPDATE mark SET id = bct.last();
 
 -- 6 · SUMP removed: its row, and everything its delete took with it, each still named SUMP (the
--- archive's snapshot of the count row) and in Base. The quoted cost has no key to its count row
--- (punch list #73, PR 0c), so it is not removed and not listed.
+-- archive's snapshot of the count row) and in Base. The quoted cost goes too: v2.4413 gave
+-- bid_count_row_custom_costs its count-row key (ON DELETE CASCADE), so its row is named with its house.
 DELETE FROM public.bids_count_rows WHERE id = '00000000-0000-0000-0000-00000000c702';
 SELECT bct.same('SUMP removed: named, in Base, by the estimator',
   (SELECT string_agg(table_name || ' ' || op || ' ' || COALESCE(label, '-') || ' ' || (bid_version_id = '00000000-0000-0000-0000-00000000c7a5')::text || ' ' ||
                      (changed_by = '00000000-0000-0000-0000-00000000c7e1')::text, E'\n' ORDER BY table_name, label)
      FROM bct.rows_after((SELECT id FROM mark))),
-  E'bid_count_row_custom_prices delete SUMP true true\nbid_pricing_assignments delete SUMP true true\nbid_takeoff_stage_splits delete SUMP true true\n' ||
+  E'bid_count_row_custom_costs delete SUMP · House B true true\nbid_count_row_custom_prices delete SUMP true true\nbid_pricing_assignments delete SUMP true true\nbid_takeoff_stage_splits delete SUMP true true\n' ||
   E'bids_count_rows delete SUMP true true\nbids_takeoff_rough_part_lines delete History closet carrier true true\nbids_takeoff_rough_part_lines delete History P-trap true true');
 SELECT bct.same('SUMP removed: the price it had is kept',
   (SELECT trim_scale((old_values ->> 'unit_price')::numeric)::text FROM bct.rows_after((SELECT id FROM mark)) WHERE table_name = 'bid_count_row_custom_prices'),
