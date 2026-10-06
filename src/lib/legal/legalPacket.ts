@@ -44,7 +44,7 @@ function demandSnapshotExhibits(fields: unknown): number {
 import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
 import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRow, type LegalPropertyLine } from './legalProperty'
-import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
+import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -428,7 +428,9 @@ export function legalLienClockWords(c: { status: LegalLienClockStatus; noticeLef
 export type LegalLienClockLine = {
   jobId: string
   jobLabel: string
+  /** `legalLastWorkBasis`: the last approved session, else the job's last work date, else its creation day. */
   lastWorkYmd: string | null
+  lastWorkSource: LegalLastWorkSource
   /** '' for original contractors (no monthly notice) or when unknown. */
   noticeDeadline: string
   filingDeadline: string
@@ -466,8 +468,10 @@ export type LegalEvidenceJob = {
   reports: number
   reportsWithGps: number
   latestReport: LegalReportLike | null
+  /** Approved clock sessions that were not rejected or revoked — the one evidence rule (item 25); hours, days and GPS read only these. */
   sessions: number
-  approvedSessions: number
+  /** Live sessions nobody has approved yet: said, never counted. */
+  awaitingApproval: number
   sessionsWithGps: number
   hours: number
   firstWorkYmd: string | null
@@ -674,7 +678,10 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   // --- Evidence (needed before sworn-account checks) -----------------------
   const evidence: LegalEvidenceJob[] = jobs.map((j) => {
     const reports = input.reports.filter((r) => r.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    const sessions = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified)
+    // One evidence rule (item 25): an approved session that was not rejected or revoked counts, as in the
+    // timeline's work months (`workMonthsFromSessions`); the rest are said as awaiting approval.
+    const live = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified)
+    const sessions = live.filter((s) => s.approved)
     const notes = input.threadNotes.filter((n) => n.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     const workDays = sessions.map((s) => s.workDate).sort()
     return {
@@ -684,7 +691,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       reportsWithGps: reports.filter((r) => r.hasGps).length,
       latestReport: reports[0] ?? null,
       sessions: sessions.length,
-      approvedSessions: sessions.filter((s) => s.approved).length,
+      awaitingApproval: live.length - sessions.length,
       sessionsWithGps: sessions.filter((s) => s.hasGps).length,
       hours: Math.round(sessions.reduce((s, x) => s + hoursBetween(x.clockedInAt, x.clockedOutAt), 0) * 10) / 10,
       firstWorkYmd: workDays[0] ?? null,
@@ -696,6 +703,12 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     }
   })
   const evidenceByJob = new Map(evidence.map((e) => [e.jobId, e] as const))
+  // One fallback chain for the lien clock and the Paper tab (item 25), the timeline kernel's own:
+  // the last approved session, else the job's last work date, else its creation day.
+  const lastWorkByJob = new Map(jobs.map((j) => {
+    const days = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified && s.approved).map((s) => s.workDate)
+    return [j.id, legalLastWorkBasis(days, j)] as const
+  }))
 
   const accountTouches = input.chaseTouches.filter((t) =>
     t.jobId ? jobIds.has(t.jobId) : account.customerId != null && t.customerId === account.customerId,
@@ -709,7 +722,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     return {
       bill: billed.length === 0 ? 'none' : billed.some(invoiceReachedCustomer) ? 'sent' : 'not_sent',
       field: !ev || ev.reports + ev.sessions === 0 ? 'none' : ev.reportsWithGps + ev.sessionsWithGps === 0 ? 'no_gps' : 'gps',
-      awaitingApproval: ev ? ev.sessions - ev.approvedSessions : 0,
+      awaitingApproval: ev ? ev.awaitingApproval : 0,
       dispute: disputeOnRecord,
     }
   }
@@ -826,8 +839,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const releasedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'release_of_record').map((f) => f.job_id))
 
   const lienClock: LegalLienClockLine[] = jobs.map((j) => {
-    const ev = evidenceByJob.get(j.id)
-    const lastWorkYmd = ev?.lastWorkYmd ?? null
+    const { ymd: lastWorkYmd, source: lastWorkSource } = lastWorkByJob.get(j.id) ?? { ymd: null, source: 'none' as const }
     const clock = computeJobLienClock({ lastWorkYmd, propertyKind: propertyKindOf(j.id), isSub: account.viaGc })
     const noticeLeft = clock.noticeDeadline ? daysLeft(clock.noticeDeadline, todayYmd) : null
     const filingLeft = clock.filingDeadline ? daysLeft(clock.filingDeadline, todayYmd) : null
@@ -839,7 +851,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     else status = 'closed'
     const suitDeadline = suitDeadlineFor(clock.filingDeadline)
     const suitLeft = suitDeadline ? daysLeft(suitDeadline, todayYmd) : null
-    return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status, suitDeadline, suitLeft, served: servedJobIds.has(j.id), released: releasedJobIds.has(j.id) }
+    return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, lastWorkSource, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status, suitDeadline, suitLeft, served: servedJobIds.has(j.id), released: releasedJobIds.has(j.id) }
   })
 
   // Where each job stands + the paper that went out (#41 PR 1) — the desk's timeline kernel and the envelopes, from the same rows.
@@ -847,7 +859,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     jobs,
     labelOf: (id) => labelByJob.get(id) ?? '—',
     openBalanceOf: (id) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 },
-    lastWorkOf: (id) => evidenceByJob.get(id)?.lastWorkYmd ?? null,
+    lastWorkOf: (id) => lastWorkByJob.get(id)?.ymd ?? null,
+    lastWorkSourceOf: (id) => lastWorkByJob.get(id)?.source ?? 'none',
     sessions: input.clockSessions,
     filings: lienFilingsLive,
     propertyKind: '',
@@ -1027,7 +1040,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     else if (p.gaps.length > 0) gaps.push({ key: `property:${p.key}`, severity: 'warn', label: `Property record incomplete · ${p.address} (${on})`, detail: `Missing ${p.gaps.filter((g) => g !== NO_PROPERTY_RECORD_GAP).join(', ')}.`, jobId: p.jobIds[0] ?? null, fix: 'lien_instruments' })
   }
   for (const e of evidence) {
-    if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
+    if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: e.awaitingApproval > 0 ? `No field reports, and ${e.awaitingApproval} clock session${e.awaitingApproval === 1 ? ' is' : 's are'} awaiting approval. Approve them in Hours: only approved sessions count as evidence or date the lien clock.` : 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
   }
   if (timeline.every((e) => e.kind === 'note')) gaps.push({ key: 'never_asked', severity: 'warn', label: 'Never asked when they would pay', detail: 'No promise, no collection call and no contact on record. One call in call mode gives the attorney a “they said…” line.', jobId: null, fix: 'call_mode' })
   if (verdict === 'not worth it') gaps.push({ key: 'worth', severity: 'warn', label: `Estimated net is $${Math.round(net).toLocaleString('en-US')} — consider writing it down`, detail: theory.key === 'none' ? 'Nothing to plead yet and the firm’s cut plus costs eat the balance. Write down / stop pursuing keeps the record and clears the row.' : 'The firm’s cut and costs eat what is left. Write down / stop pursuing keeps the record and clears the row.', jobId: jobs[0]?.id ?? null, fix: 'write_down' })
@@ -1091,6 +1104,12 @@ export function sortAccountsByNet(accounts: ReadonlyArray<LegalAccountSummary>, 
 /** Quick net without the full packet (rail sorting before packets load): balance after the firm's cut and cost. */
 export function quickNet(balance: number, fee: LegalFeeModel = LEGAL_DEFAULT_FEE): number {
   return balance - balance * fee.contingencyPct - fee.filingCost
+}
+
+/** The clock sessions cell, one wording for the desk, the firm's view and both prints (item 25): `2 approved (2 with GPS) · 1 awaiting approval`. */
+export function legalSessionWords(e: Pick<LegalEvidenceJob, 'sessions' | 'sessionsWithGps' | 'awaitingApproval'>): string {
+  const counted = `${e.sessions} approved${e.sessions ? ` (${e.sessionsWithGps} with GPS)` : ''}`
+  return e.awaitingApproval ? `${counted} · ${e.awaitingApproval} awaiting approval` : counted
 }
 
 /** `$1,234.50`; a negative number reads `−$1,234.50` (the sign before the dollar, never `$-`). */

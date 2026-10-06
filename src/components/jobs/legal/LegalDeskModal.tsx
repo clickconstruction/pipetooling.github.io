@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
-import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import {
@@ -15,6 +15,7 @@ import {
   type LegalPacket,
   type LegalPayerKey,
   legalLargestOpenLine,
+  legalSessionWords,
 } from '../../../lib/legal/legalPacket'
 import {
   feeModelOf,
@@ -825,14 +826,14 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>
             <div>
               <button type="button" onClick={() => { const job = jobOf(t.jobId); if (job) props.onOpenLienInstruments(job) }} style={{ ...btn, fontWeight: 700 }}>{t.jobLabel}</button>
-              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
+              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
               {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
             </div>
             <LienTimelineStrip timeline={t.timeline} />
           </div>
         ))}
-        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's approved hours, its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
+        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's last approved clock day (else its last work date, else its creation month, as each job's line says), its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
         <SectionTitle doors={first ? <Door label="Liens on the job" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
         <Table head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount', '']} numCols={[5]}
           rows={packet.paper.demandLetters.map((d) => [
@@ -902,7 +903,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           rows={packet.evidence.map((e) => [
             <b key="l">{e.jobLabel}</b>,
             <span key="r">{e.reports}{e.reports ? <span style={MUTED}> · {e.reportsWithGps} with GPS</span> : null}{e.latestReport ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>latest {calendarYmdInAppTzFromIso(e.latestReport.createdAt)} · {e.latestReport.templateName || 'report'} · {e.latestReport.authorName}</div> : null}</span>,
-            <span key="s">{e.sessions}{e.sessions ? <span style={MUTED}> · {e.approvedSessions} approved · {e.sessionsWithGps} with GPS</span> : null}</span>,
+            <span key="s">{legalSessionWords(e)}</span>,
             `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—',
             <span key="n">{e.threadNotes}{e.latestNote ? <div style={{ ...MUTED, fontSize: '0.76rem', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.latestNote.body}</div> : null}</span>,
             <span key="k" style={{ display: 'flex', gap: 6 }}>
@@ -911,7 +912,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
               {!e.picturesLink && !e.driveLink ? <span style={MUTED}>—</span> : null}
             </span>,
           ])} empty="No jobs." />
-        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Rejected and revoked clock sessions are left out. A sworn account needs at least one report or session carrying GPS on the property.</p>
+        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Only approved clock sessions count: hours, days worked, the sworn-account check and the lien dates read them. Rejected and revoked sessions are left out; the rest show as awaiting approval. A sworn account needs at least one report or session carrying GPS on the property.</p>
       </div>
     )
   }

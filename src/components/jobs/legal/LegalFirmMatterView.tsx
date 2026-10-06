@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
-import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
-import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
+import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../lib/legal/legalPacket'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
@@ -81,7 +81,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
         <div key={t.jobId} data-legal-job-timeline={t.jobId} className="legalJobTimeline" style={{ padding: '8px 0', borderBottom: `1px dotted ${HAIR}` }}>
           <div style={{ fontSize: 12.5 }}>
             <b style={{ fontSize: 13 }}>{t.jobLabel}</b>
-            <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWordsOf(t.jobId)} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
+            <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
             <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
             {t.retainageWords ? <div style={{ color: MUTED, fontSize: 11.5 }}>{t.retainageWords}</div> : null}
           </div>
@@ -131,7 +131,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
         <PortalTable head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount']} numCols={[5]} rows={packet.paper.demandLetters.map((d) => [<b key="l">{d.jobLabel}</b>, d.sentYmd ?? 'not sent', d.method, d.tracking || '—', `${d.deadlineYmd ?? '—'}${d.deadlinePassed ? ' · passed' : ''}`, formatLegalMoney(d.amount)])} empty="No demand letter sent before referral." />
         <div style={h}>The paper that went out</div>
         <PortalTable head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]} rows={packet.paper.envelopes.map((e) => [<b key="a" style={{ color: COPPER }}>{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: COPPER }}>open ↗</a> : '—'])} subRows={packet.paper.envelopes.map((e) => (e.answers ? <EnvelopeAnswersBand key={e.key} e={e} packet={packet} companyName={companyName} /> : null))} empty="No § 53.056 notice, affidavit or release recorded." />
-        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Under a notice: the owner's answers to the letter's three questions, whether the second owner letter is due or sent, and any written okay from the GC for the owner to pay {companyName} directly. Dates above are the app's reading of Chapter 53 from each job's last day on site and the property kind.</p>
+        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Under a notice: the owner's answers to the letter's three questions, whether the second owner letter is due or sent, and any written okay from the GC for the owner to pay {companyName} directly. Dates above are the app's reading of Chapter 53 from each job's last day of work (its last approved clock day, else its last work date, else its creation month, as each job's line says) and the property kind.</p>
       </div>
     )
   }
@@ -150,8 +150,8 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   if (tab === 'evidence') {
     return (
       <div>
-        <PortalTable head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes']} numCols={[3]} rows={packet.evidence.map((e) => [<b key="l">{e.jobLabel}</b>, `${e.reports} (${e.reportsWithGps} with GPS)`, `${e.sessions} (${e.approvedSessions} approved, ${e.sessionsWithGps} with GPS)`, `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—', String(e.threadNotes)])} empty="No jobs." />
-        <p style={{ fontSize: 12, color: MUTED, marginTop: 8 }}>Rejected and revoked clock sessions are left out. Individual reports and sessions come with the printed packet; ask the office for the originals.</p>
+        <PortalTable head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes']} numCols={[3]} rows={packet.evidence.map((e) => [<b key="l">{e.jobLabel}</b>, `${e.reports} (${e.reportsWithGps} with GPS)`, legalSessionWords(e), `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—', String(e.threadNotes)])} empty="No jobs." />
+        <p style={{ fontSize: 12, color: MUTED, marginTop: 8 }}><b style={{ color: INK }}>Only approved clock sessions count</b>: hours, days worked and the lien dates read them. Rejected and revoked sessions are left out; sessions not yet approved show as awaiting approval. Individual reports and sessions come with the printed packet; ask the office for the originals.</p>
       </div>
     )
   }
