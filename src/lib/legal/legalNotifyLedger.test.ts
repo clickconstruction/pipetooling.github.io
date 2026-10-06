@@ -3,7 +3,7 @@ import { LEGAL_NOTIFY_MAX_TRIES, constantTimeEqual, legalNotReachingLine, legalN
 
 const NOW = '2026-10-05T15:00:00Z'
 
-describe('legalNotifyDue / Record / Done · v2.4632', () => {
+describe('legalNotifyDue / Record / Done · v2.4662', () => {
   it('freezes the targets on the first tick and sends to all of them', () => {
     const p = legalNotifyDue({}, ['ann', 'bo'])
     expect(p.due).toEqual(['ann', 'bo'])
@@ -49,7 +49,7 @@ describe('legalNotifyDue / Record / Done · v2.4632', () => {
   })
 })
 
-describe('legalRecipientSendPatch · v2.4632', () => {
+describe('legalRecipientSendPatch · v2.4662', () => {
   it('keeps the first failure’s time, takes the newest error, clears on success', () => {
     expect(legalRecipientSendPatch(null, { success: false, error: 'bounced' }, NOW)).toEqual({ send_failed_since: NOW, send_error: 'bounced' })
     expect(legalRecipientSendPatch('2026-10-04T10:00:00Z', { success: false, error: 'again' }, NOW)).toEqual({ send_failed_since: '2026-10-04T10:00:00Z', send_error: 'again' })
@@ -57,7 +57,7 @@ describe('legalRecipientSendPatch · v2.4632', () => {
   })
 })
 
-describe('legalNotReachingLine · v2.4632', () => {
+describe('legalNotReachingLine · v2.4662', () => {
   it('the office reads the mail service’s words; the firm reads what to do', () => {
     expect(legalNotReachingLine({ email: 'bo@firm.test', sinceYmd: '2026-10-05', error: 'The to address is invalid.' }, 'office')).toBe('Could not reach bo@firm.test since 2026-10-05: The to address is invalid. The queue tries each email again every five minutes, for an hour.')
     expect(legalNotReachingLine({ email: 'bo@firm.test', sinceYmd: '2026-10-05', error: null }, 'office')).toBe('Could not reach bo@firm.test since 2026-10-05. The queue tries each email again every five minutes, for an hour.')
@@ -75,7 +75,7 @@ describe('legalNotReachingLine · v2.4632', () => {
   })
 })
 
-describe('legalUnsubscribeSecret · v2.4632', () => {
+describe('legalUnsubscribeSecret · v2.4662', () => {
   it('prefers its own secret, falls back to the service key, and is empty when both are', () => {
     expect(legalUnsubscribeSecret('own', 'svc')).toBe('own')
     expect(legalUnsubscribeSecret('  ', 'svc')).toBe('svc')
@@ -83,7 +83,7 @@ describe('legalUnsubscribeSecret · v2.4632', () => {
   })
 })
 
-describe('constantTimeEqual · v2.4632', () => {
+describe('constantTimeEqual · v2.4662', () => {
   it('equal only when every byte and the length match', () => {
     expect(constantTimeEqual('cron-secret', 'cron-secret')).toBe(true)
     expect(constantTimeEqual('cron-secret', 'cron-secreT')).toBe(false)
@@ -93,7 +93,7 @@ describe('constantTimeEqual · v2.4632', () => {
   })
 })
 
-describe('legalUnsubscribeToken · v2.4632 · minted once', () => {
+describe('legalUnsubscribeToken · v2.4662 · minted once', () => {
   it('the same person and salt give the same token every time; its hash is SHA-256 of it', async () => {
     const a = await legalUnsubscribeToken('key', 'rec-1', null)
     const b = await legalUnsubscribeToken('key', 'rec-1', null)

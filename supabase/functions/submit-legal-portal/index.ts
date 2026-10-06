@@ -85,7 +85,7 @@ serve(async (req) => {
         const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
         await admin.from('legal_firm_recipients').update({ confirm_token_hash: await sha256Hex(raw), updated_at: nowIso }).eq('id', id)
         const key = Deno.env.get('RESEND_API_KEY')
-        // v2.4632: a confirmation that does not go marks the person "not reaching" (send_failed_since), as the dispatcher does.
+        // v2.4662: a confirmation that does not go marks the person "not reaching" (send_failed_since), as the dispatcher does.
         const note = async (res: { success: boolean; error?: string }) => {
           const { data: prev } = await admin.from('legal_firm_recipients').select('send_failed_since').eq('id', id).maybeSingle()
           await admin.from('legal_firm_recipients').update(legalRecipientSendPatch((prev as { send_failed_since?: string | null } | null)?.send_failed_since ?? null, res, new Date().toISOString())).eq('id', id)
@@ -136,7 +136,7 @@ serve(async (req) => {
         return jsonResponse({ ok: true })
       }
       if (kind === 'recipient_resume') {
-        // v2.4632: turning emails back on is the one rotation of the stop link — a new salt, so a stop link
+        // v2.4662: turning emails back on is the one rotation of the stop link — a new salt, so a stop link
         // in an old (perhaps forwarded) email no longer pauses them. The dispatcher mints the new one.
         // Two writes: the resume never waits on the salt column.
         await admin.from('legal_firm_recipients').update({ paused_at: null, updated_at: nowIso }).eq('id', r.id)

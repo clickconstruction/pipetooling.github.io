@@ -1,5 +1,5 @@
 /**
- * legal-notify-dispatch's own handler, run here (v2.4632, punch list #85 item 26): the function's
+ * legal-notify-dispatch's own handler, run here (v2.4662, punch list #85 item 26): the function's
  * `index.ts` with its URL imports and its mail sender stood in for, over a small in-memory database.
  * It proves the "now" lane stamps each person only on success, retries the rest each tick up to
  * twelve times, never re-sends to someone already sent, mints each person's stop link once, and
@@ -92,7 +92,7 @@ const q = (id: string) => T('legal_notification_queue').find((r) => r.id === id)
 const rec = (id: string) => T('legal_firm_recipients').find((r) => r.id === id)!
 const stopLink = (html: string) => /\/legal\/confirm\?t=([0-9a-f]+)&stop=1/.exec(html)?.[1] ?? null
 
-describe('legal-notify-dispatch · the now lane per person (v2.4632)', () => {
+describe('legal-notify-dispatch · the now lane per person (v2.4662)', () => {
   it('stamps the event only when everyone is sent; a failing person is retried and never re-sends to the rest', async () => {
     failFor.add('bo@firm.test')
     expect((await tick()).body).toMatchObject({ ok: true, now: 1, retrying: 1, gaveUp: 0 })

@@ -1,4 +1,4 @@
-# 20261006025316_legal_notify_per_recipient.sql (2026-10-06, v2.4632)
+# 20261006055407_legal_notify_per_recipient.sql (2026-10-06, v2.4662)
 
 Four additive columns for the law firm's emails (punch list #85 item 26). No new table, no function, no policy.
 
@@ -11,7 +11,7 @@ Four additive columns for the law firm's emails (punch list #85 item 26). No new
 
 ## Why
 
-`legal-notify-dispatch` stamped `sent_now_at` after its loop whether Resend took each email or not, so a refused *New account referred* was never retried, and nobody could see it had failed. Its `unsubscribeLink` minted a fresh token and overwrote the stored hash on every email, so the *Stop these emails* link in any older email was dead. The code that reads these columns is [`_shared/legalNotifyLedger.ts`](../../supabase/functions/_shared/legalNotifyLedger.ts) and the [v2.4632 fragment](../recent-features/v2.4632.md).
+`legal-notify-dispatch` stamped `sent_now_at` after its loop whether Resend took each email or not, so a refused *New account referred* was never retried, and nobody could see it had failed. Its `unsubscribeLink` minted a fresh token and overwrote the stored hash on every email, so the *Stop these emails* link in any older email was dead. The code that reads these columns is [`_shared/legalNotifyLedger.ts`](../../supabase/functions/_shared/legalNotifyLedger.ts) and the [v2.4662 fragment](../recent-features/v2.4662.md).
 
 ## House rules
 

@@ -20,7 +20,7 @@ import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
 import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
 
-export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4632: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
+export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4662: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
 
 export type LegalPortalContract = JobContractRowLike & { signedPdfUrl: string | null }
 

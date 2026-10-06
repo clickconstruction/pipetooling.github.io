@@ -423,7 +423,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const requesterName = matter?.review_requested_by ? (users.find((u) => u.id === matter.review_requested_by)?.name ?? 'the office') : null
   const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', legal?.recipients ?? [])
   const firmPaused = Boolean(legal?.firmPaused)
-  // v2.4632 (punch list #85 item 26): people whose emails have stopped going through.
+  // v2.4662 (punch list #85 item 26): people whose emails have stopped going through.
   const notReaching = (legal?.recipients ?? []).filter((r) => r.send_failed_since && !r.paused_at).length
   const setFirmPaused = async (paused: boolean) => { await run(paused ? 'Pause' : 'Resume', () => legalRpc('legal_firm_set_paused', { p_firm_id: firm?.id, p_paused: paused })) }
   const removeRecipient = async (id: string, name: string) => { await run('Remove', () => legalRpc('legal_firm_recipient_remove', { p_recipient_id: id })); showToast(`${name} removed from the firm's list.`, 'info') }

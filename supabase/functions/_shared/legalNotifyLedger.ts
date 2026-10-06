@@ -1,5 +1,5 @@
 /**
- * The firm's "now" emails, per person (v2.4632, punch list #85 item 26) — the pure rules
+ * The firm's "now" emails, per person (v2.4662, punch list #85 item 26) — the pure rules
  * `legal-notify-dispatch` runs each tick. No Deno API here: `src/lib/legal/legalNotifyLedger.test.ts`
  * runs it under vitest.
  *
@@ -81,7 +81,7 @@ export function legalRecipientSendPatch(prevFailedSince: string | null | undefin
 }
 
 /**
- * The line a failing person carries (v2.4632): on the desk's Firm's emails (`office`, with the mail
+ * The line a failing person carries (v2.4662): on the desk's Firm's emails (`office`, with the mail
  * service's words) and against the person on the firm's Notifications page (`firm`). `sinceYmd` is
  * the company-zone day of `send_failed_since`.
  */
@@ -111,7 +111,7 @@ export function constantTimeEqual(a: string, b: string): boolean {
 const hex = (buf: ArrayBuffer): string => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('')
 
 /**
- * A person's "Stop these emails" token, minted once (v2.4632): an HMAC of the person's id and
+ * A person's "Stop these emails" token, minted once (v2.4662): an HMAC of the person's id and
  * their salt under a server key, so the same token rides every email and none is kept raw. The
  * row keeps only its SHA-256 (`unsubscribe_token_hash`, what the stop link is looked up by). A
  * new salt — set when the person turns emails back on — is the only rotation.

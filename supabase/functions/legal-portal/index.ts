@@ -162,7 +162,7 @@ serve(async (req) => {
     }
 
     // The firm's people and their email rules (PR 5) — the portal's Notifications page.
-    // v2.4632: `*` so the read never waits on the migration that adds send_failed_since; only the mapped fields leave
+    // v2.4662: `*` so the read never waits on the migration that adds send_failed_since; only the mapped fields leave
     // (no token hash, no salt). `failingSince` is the company-zone day emails to the person began failing.
     const { data: recRows } = await admin.from('legal_firm_recipients').select('*').eq('firm_id', link.firm_id).is('removed_at', null).order('created_at')
     const recipients = ((recRows ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: r.digest_weekday, digestTime: r.digest_time, confirmed: r.confirmed_at != null, paused: r.paused_at != null, addedViaPortal: Boolean(r.added_via_portal), failingSince: typeof r.send_failed_since === 'string' ? todayYmdInAppTz(new Date(r.send_failed_since)) : null }))

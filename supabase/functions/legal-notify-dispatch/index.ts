@@ -13,7 +13,7 @@ import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, 
  *   POST (pg_cron every 5 minutes, X-Cron-Secret) —
  *     1. drains legal_notification_queue rows not yet sent: every confirmed, unpaused
  *        recipient at the firm with mode 'now' (and, for scope 'mine', named as the
- *        matter's handling person) gets one email per event. v2.4632: each person is
+ *        matter's handling person) gets one email per event. v2.4662: each person is
  *        stamped in the event's `sent_to` only when their send went through; a failed
  *        send is tried again next tick, twelve tries at most (`_shared/legalNotifyLedger.ts`),
  *        and the person carries send_failed_since / send_error until one goes through.
@@ -68,7 +68,7 @@ function ymdInAppTz(iso: string | null | undefined): string | null {
 type Recipient = { id: string; firm_id: string; name: string; email: string; mode: string; scope: string; digest_weekday: number; digest_time: string; confirmed_at: string | null; paused_at: string | null; last_digest_at: string | null; unsubscribe_token_hash: string | null; unsubscribe_salt?: string | null; send_failed_since?: string | null }
 
 async function unsubscribeLink(admin: SupabaseClient, r: Recipient): Promise<string> {
-  // v2.4632: minted once — an HMAC of the person's id and salt under the service key, so every email
+  // v2.4662: minted once — an HMAC of the person's id and salt under the service key, so every email
   // carries the same token and an older email's stop link keeps working. Only its hash is stored;
   // the row is written when the hash is missing or stale (a new salt, a rotated key), never per email.
   // v2.3521: the link lands on the app's page (the platform relays this function's HTML as text/plain).
@@ -149,7 +149,7 @@ serve(async (req) => {
   // --- POST: the cron tick -----------------------------------------------------
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   const secret = Deno.env.get('CRON_SECRET')
-  // v2.4632: compared in constant time.
+  // v2.4662: compared in constant time.
   if (!secret || !constantTimeEqual(req.headers.get('x-cron-secret') ?? '', secret)) return json({ error: 'Unauthorized' }, 401)
   const resendKey = Deno.env.get('RESEND_API_KEY')
   if (!resendKey) return json({ error: 'RESEND_API_KEY missing' }, 500)
@@ -187,7 +187,7 @@ serve(async (req) => {
       // 1. "Now" recipients drain the queue.
       const { data: openRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('sent_now_at', null).order('created_at').limit(50)
       for (const ev of (openRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; sent_to?: unknown }>) {
-        // v2.4632: the per-person ledger. Before the migration's column exists (`sent_to` absent) the
+        // v2.4662: the per-person ledger. Before the migration's column exists (`sent_to` absent) the
         // event is stamped after one pass, as before, so a deploy ahead of the push never re-sends.
         const hasLedger = ev.sent_to !== undefined
         const targetIds = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id)).map((r) => r.id)
