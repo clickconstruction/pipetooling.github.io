@@ -1330,6 +1330,61 @@ wait is one day in both files, since the pin rules out the mock-up's span from t
 Left out, as planned: Excel's own `.xlsx`, Primavera's own XER file, and what changed since the last
 file went (it needs a record of each file sent, G-94's ground).
 
+## Keeping it true, weather and crews, as built (2026-10-06)
+
+G-57, Helper 3 (mock-up `mockups/G-57.md`). `gcFinishOutlook.ts`, tested, out of the barrel. No
+action, no record, no fixture change; the golden test reads none of it.
+
+- **A second line, ours only.** A ruled block at the foot of the Projected finish measure, after
+  G-98's and G-82's lines (`data-tour="gc-finish-outlook"`): *With weather and crews: Fri Dec 11, the
+  same day.* Then one sentence on the weather and one on the crews. The pace line above it is
+  untouched. The paper, the portal and the letter do not have it until the owner says which line
+  the customer hears.
+- **Weather** (`WEATHER_DAYS_A_MONTH` = 2): days a month on the work left of each trade the log has
+  seen the weather stop (G-58's reading, never guessed from the trade). Once the log covers a
+  month (`LOG_MONTH_DAYS` = 28) the rate is the log's own: the days the weather stopped work over
+  the days the log spans, times 30. The sentence names which: *Our rule, 2 a month on roofing and
+  electrical, fits inside their spare days.* or *The log's 3 a month …*. No weather on the log
+  adds none and says so.
+- **Crews**: so far is the log's people a day on the days the trade was on site. Now is its own
+  count for the week the work falls in (G-142's `crewCountsNow`, the default argument), else its
+  crew this week: its count for this week, else, with work under way, its newest day on the log in
+  the last 7. A trade with all its work ahead is not here yet, not short. A smaller crew stretches
+  the work left by so far over now. A bigger one is not counted on. A trade with work under way and
+  nobody this week is named, *Summit Roofing has nobody on site this week.*, and not divided.
+- **Through the projection's own walk.** `projectedFinish` takes an optional map of days more per
+  bar, added to the work left. Bars that wait on a stretched bar move with it, the later of plan
+  and pace still wins, and the line can only come later than the pace line. The measure's own call
+  passes nothing, so it reads as before.
+- **The sentences add up.** *Crews add 19 days* is the crews alone. *Weather adds 1 day* is what
+  weather adds on top, since it falls on the longer work. Their sum is the line's *20 days later*.
+- **Pick 2, the short crew is a call.** A trade whose crew alone moves the finish joins G-115's call
+  list in amber, with the same days the crews sentence says: *They have 1 on site this week against
+  3 so far. At that, the job finishes 19 days later, Wed Dec 30.* On the Follow up sheet it is
+  *Crew on site*, and the message asks *Can you bring it back up to size?*, in English and Spanish.
+
+What changed from the plan:
+
+- **Days more, not stretched copies.** A copy with a bar restarted today reads earlier than today's
+  line when the bar waits on unfinished work, since the projection reruns its whole length after
+  it. The days now go into the same walk, so every bar's end can only move later.
+- **Weather's days are on top of the crews'.** Read alone, a short crew's 19 days and weather's
+  none left a line of 20 with a day from nowhere.
+- **This week's word carries to the weeks after it.** A trade that said nobody this week was also
+  counted short on next week's work, from the log's last day.
+- **The log speaks only for a trade on the job now.** Moved a month out, Summit's work was all ahead,
+  yet last week's 4 against 5 made it short on work weeks away and put it on the call list. Four of
+  G-113's, G-115's and G-117's tests caught it, and they pass unchanged. A trade with nothing under
+  way is read from its own counts only.
+- Words: *no trade has fewer on site than so far* (a bigger crew is not its usual size), *the log
+  has no weather yet*, *the log has no crews yet*, and *Two more trades are short too.* as its own
+  sentence, to stay under 20 words.
+
+Not done, on purpose: tails on the chart for the stretch (a second row, only where a tail reaches
+the finish); the contract on the second line (G-98 says it for the pace line, and a second count
+would argue with it until the owner picks the line the customer hears); past jobs' weather and the
+season (the fixture has one job with logs); a crew per bar (a bar has none, so so far stands in).
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)
