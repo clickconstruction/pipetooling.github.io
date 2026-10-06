@@ -1315,7 +1315,7 @@ describe('LienDeskModal · an evening stamp keeps its day (v2.4468)', () => {
   })
 })
 
-describe('LienDeskModal · the pile titles stack (v2.4651)', () => {
+describe('LienDeskModal · the pile titles stack (v2.4672)', () => {
   it('draws a sticky title per pile with its count and its place, no chip row; a press scrolls the list and lights the title', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
     await settle()
