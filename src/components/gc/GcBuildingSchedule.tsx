@@ -52,6 +52,8 @@ import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivit
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
 import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../../lib/gcMode/gcCustomerScheduleSend'
+import { withNotReady } from '../../lib/gcMode/gcNotReady'
+import { GcNotReady } from './GcNotReady'
 import { useAuth } from '../../hooks/useAuth'
 import type { WaitKind } from '../../lib/gcMode/gcTypes'
 import { barCaller, callList, callListFollowPeople, callSheetId } from '../../lib/gcMode/gcCallList'
@@ -82,7 +84,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const me = useMeName() ?? 'The office'
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   const [picked, setPicked] = useState<string | null>(null)
-  const holds = useMemo(() => holdsOf(state, project), [state, project])
+  // A trade not ready to start holds its bars too (G-77): its papers, read on each bar's start day.
+  const holds = useMemo(() => withNotReady(holdsOf(state, project), state, project), [state, project])
   // Days a signed change order adds that are not on the dates yet, drawn as tails (G-76).
   const tails = useMemo(() => changeOrderTails(project, state.today), [project, state.today])
   // What the work waits on from outside the trades (G-73 to G-75): rows on the chart, and the card.
@@ -153,6 +156,7 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
             onSave={(start, finish, after, limits) => setPending({ lineId: pickedRow.activity.lineId, start, finish, after, limits })}
             today={state.today}
             onActual={(actualStart, actualFinish) => dispatch({ type: 'setActualDates', projectId: project.id, lineId: pickedRow.activity.lineId, actualStart, actualFinish, by: me })}
+            ready={<GcNotReady state={state} project={project} lineId={pickedRow.activity.lineId} />}
             extra={
               pickedRow.activity.added ? (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -327,6 +331,7 @@ function ActivityEditor({
   extra,
   today,
   onActual,
+  ready,
   onClose,
 }: {
   project: GcProject
@@ -341,6 +346,8 @@ function ActivityEditor({
   today: string
   /** The real start and finish, recorded (G-55). Null clears one. */
   onActual: (actualStart: string | null, actualFinish: string | null) => void
+  /** Its trade is not ready to start it (G-77): what is not in, first under its name. */
+  ready?: ReactNode
   onClose: () => void
 }) {
   const a = row.activity
@@ -385,6 +392,7 @@ function ActivityEditor({
             Close
           </Btn>
         </div>
+        {ready}
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
             <span style={{ color: 'var(--text-muted)' }}>Starts</span>

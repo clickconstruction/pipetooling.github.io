@@ -63,7 +63,7 @@ export function GcCompanyWindow({
   state: GcState
   partner: Partner
   dispatch: Dispatch<GcAction>
-  at?: { tab?: CompanyTab; doc?: string; focus?: string }
+  at?: { tab?: CompanyTab; doc?: string; focus?: string; send?: boolean }
   onClose: () => void
   onOpenProject: (projectId: string) => void
 }) {
@@ -76,8 +76,8 @@ export function GcCompanyWindow({
   const firstDoc = docs.groups[0]?.docs[0]?.key ?? null
   const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const [doc, setDoc] = useState<string | null>(at?.doc ?? firstDoc)
-  /** The paper being sent, by its Documents key: its send shows in the paper's place. */
-  const [sending, setSending] = useState<string | null>(null)
+  /** The paper being sent, by its Documents key: its send shows in the paper's place. Opened on it (`at.send`, a not-ready bar's button, G-77) while it has a next step. */
+  const [sending, setSending] = useState<string | null>(() => (at?.send && at.doc && paperStep(state, partner, at.doc) ? at.doc : null))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

@@ -88,9 +88,9 @@ export function holidaysIn(start: string, finish: string): string[] {
 // Each bar's standing
 // ---------------------------------------------------------------------------------------------
 
-/** What holds an activity: a submittal not approved, a question not answered, or something the work waits on from outside (a delivery, a decision, a permit, the utility; G-73 to G-75). */
+/** What holds an activity: a submittal not approved, a question not answered, or something the work waits on from outside (a delivery, a decision, a permit, the utility; G-73 to G-75). `paperwork`: the trade's papers are not in before it starts (G-77, `gcNotReady.ts`). */
 export interface GanttHold {
-  kind: 'submittal' | 'rfi' | 'delivery' | 'decision' | 'permit' | 'utility'
+  kind: 'submittal' | 'rfi' | 'delivery' | 'decision' | 'permit' | 'utility' | 'paperwork'
   /** "submittal 07 62 00-01", "RFI-003", "Rooftop units, expected Oct 20, 8 days after this starts". */
   words: string
   late: boolean
