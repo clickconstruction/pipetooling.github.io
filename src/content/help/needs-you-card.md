@@ -2,7 +2,7 @@
 title: work the Needs you list on the dashboard
 category: Getting Started
 roles: all
-keywords: needs you, bid follow-ups, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill
+keywords: needs you, bid follow-ups, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
 order: 13
 ---
 The Needs you card sits near the top of the Dashboard. It collects the things waiting on a decision from you.
@@ -51,6 +51,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 - **Field capacity has run under 60% three weeks running**. {{button:outline|Open Capacity}} opens Job Summary's Capacity view. The card names the three complete weeks. It gives each week's utilization, the share of available hours that was worked. It reads like *48% · 52% · 41% for the weeks of Aug 24, Aug 31 and Sep 7*. It also gives the field hours clocked against the roster's available hours. The current week never counts until it is over.
 - **N jobs are waiting on a follow-up**. {{button:outline|Start review}} starts the follow-up review on the Jobs board.
 - **Lien windows**. A lien is a legal claim on the property for unpaid work. The item may be a notice or filing window closing soon. It may be a filed lien not yet served, or a demand deadline. A window closing soon opens the Lien desk. A filed lien not yet served, or a demand deadline, opens the job's Lien window. A cleared payment behind a conditional release gets {{button:outline|Issue releases}}. That opens the **cleared releases list** right over the card. You issue the unconditional version from the row. See [give a customer a lien release](?g=give-a-customer-a-lien-release).
+- **N vehicles are missing insurance, registration or service**. Only the office sees this one. It covers each vehicle someone is driving. The card names the driver and what is missing. One vehicle reads ***The 2019 Ford F-150 has no registration or service on file***. {{button:outline|Open Vehicles}} opens **People → Vehicles**. Open the vehicle there. **Add to plan** on its **Insurance** card puts it on a plan with a cost. A vehicle already on a plan with no cost reads **insurance cost**. {{button:outline|Edit}} opens the vehicle's form, where **Registration** is its weekly cost. {{button:outline|Log service}} records a shop visit. A vehicle counts as serviced once any service is logged. Review prices a company truck from these. Until they are entered, they count as $0 there. See [manage company vehicles](/help/manage-company-vehicles).
 
 **Bids**
 
