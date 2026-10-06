@@ -11,6 +11,9 @@ import {
   MATTER_DEMAND_COLUMNS,
   MATTER_ENTRY_COLUMNS,
   MATTER_FILING_COLUMNS,
+  MATTER_CUSTOMER_COLUMNS,
+  MATTER_ENTRY_PENDING_COLUMNS,
+  MATTER_INVOICE_COLUMNS,
   MATTER_JOB_COLUMNS,
   shapeMatterForCounsel,
 } from './legalMatterShape'
@@ -73,9 +76,21 @@ describe('shapeMatterForCounsel', () => {
 
   it('keeps item 6’s columns: the job’s property record id, and owners without their email', () => {
     expect(MATTER_JOB_COLUMNS).toContain('customer_address_id')
-    expect(MATTER_COUNSEL_SELECT.propertyOwners).not.toContain('owner_email')
-    const shaped = shapeMatterForCounsel({ jobs: [], propertyOwners: [{ job_id: 'j', owner_mode: 'homeowner', owner_name: 'Sam', company_name: null, mailing_address: '1 St', owner_email: 'sam@SECRET.example.com' }] })
+    expect(MATTER_COUNSEL_SELECT.jobOwners).not.toContain('owner_email')
+    const shaped = shapeMatterForCounsel({ jobs: [], jobOwners: [{ job_id: 'j', owner_mode: 'homeowner', owner_name: 'Sam', company_name: null, mailing_address: '1 St', owner_email: 'sam@SECRET.example.com' }], jobAddresses: [{ id: 'a', address: '1 St', county: 'Hays', note: 'gate code 1234 SECRET' }] })
     expect(JSON.stringify(shaped)).not.toMatch(/SECRET|owner_email/)
+    expect(shaped).not.toHaveProperty('propertyOwners')
+    expect((shaped.jobAddresses as Row[])[0]).toMatchObject({ id: 'a', county: 'Hays' })
+  })
+
+  it('carries what the other items read: bill order and creation day, no-agreement-needed, the void columns, no credit terms', () => {
+    expect(MATTER_INVOICE_COLUMNS).toEqual(expect.arrayContaining(['sequence_order', 'created_at']))
+    expect(MATTER_JOB_COLUMNS).toEqual(expect.arrayContaining(['contract_not_needed_at', 'contract_not_needed_reason']))
+    expect(MATTER_ENTRY_COLUMNS).toEqual(expect.arrayContaining(['voided_at', 'voided_via_portal', 'void_reason']))
+    // Selected only once item 18 PR 2's migration exists.
+    for (const c of MATTER_ENTRY_PENDING_COLUMNS) expect(MATTER_COUNSEL_SELECT.entries.split(', ')).not.toContain(c)
+    expect(MATTER_CUSTOMER_COLUMNS).not.toEqual(expect.arrayContaining(['payment_terms']))
+    expect(MATTER_COUNSEL_SELECT.matters).not.toContain('*')
   })
 
   it('selects every column it keeps, plus only the storage paths the function signs', () => {

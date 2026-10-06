@@ -208,7 +208,7 @@ serve(async (req) => {
     const recipients = ((recRows ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: r.digest_weekday, digestTime: r.digest_time, confirmed: r.confirmed_at != null, paused: r.paused_at != null, addedViaPortal: Boolean(r.added_via_portal), failingSince: typeof r.send_failed_since === 'string' ? todayYmdInAppTz(new Date(r.send_failed_since)) : null }))
     const firmPaused = (firm as Row).paused_at != null
 
-    const { data: matterRows } = await admin.from('legal_matters').select('*').eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
+    const { data: matterRows } = await admin.from('legal_matters').select(MATTER_COUNSEL_SELECT.matters).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
     const matters = (matterRows ?? []) as Row[]
     if (matters.length === 0) {
       return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], lienBook: await readLienBook(admin) })
@@ -279,8 +279,8 @@ serve(async (req) => {
     // owner's email. The packet kernel resolves one property per job and runs each job's lien clock from it.
     const jobAddressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
     const [jobAddrRes, ownerRes] = await Promise.all([
-      jobAddressIds.length ? admin.from('customer_addresses').select('id, customer_id, address, county, legal_description, owner_mode, owner_name, owner_company, owner_mailing_address, parcel_id, homestead, property_kind').in('id', jobAddressIds) : Promise.resolve({ data: [] }),
-      allJobIds.length ? admin.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      jobAddressIds.length ? admin.from('customer_addresses').select(MATTER_COUNSEL_SELECT.jobAddresses).in('id', jobAddressIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_property_owners').select(MATTER_COUNSEL_SELECT.jobOwners).in('job_id', allJobIds) : Promise.resolve({ data: [] }),
     ])
     const jobAddressRows = (jobAddrRes.data ?? []) as Row[]
     const ownerRows = (ownerRes.data ?? []) as Row[]
