@@ -2,7 +2,7 @@
 name: "Job Parts Tally → Transactions: the team's queue, sorted where it is"
 number: 72
 group: waiting
-status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · PR 1, the suggestion kernel, v2.4591 on `feat/tally-sort-suggestion-kernel` 2026-10-05; its replay of 90 days found no rule sure enough to sort a day in one press · the owner's go 2026-10-06 on a faster queue, the likely chip first and never pre-selected · PR 2a, the team queue, v2.4654 on `feat/tally-team-queue`, keyed on the day of the swipe
+status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · PR 1, the suggestion kernel, v2.4591 on `feat/tally-sort-suggestion-kernel` 2026-10-05; its replay of 90 days found no rule sure enough to sort a day in one press · the owner's go 2026-10-06 on a faster queue, the likely chip first and never pre-selected · PR 2a, the team queue, v2.4654 on `feat/tally-team-queue`, keyed on the day of the swipe · v2.4668 moves the Assign window, Sort mode and the Posted button to the swipe day
 summary: >
   The Transactions tab was built for the card holder to sort their own purchases, with a phone
   Sort mode and a clock-out nudge. Ninety days of production say the field does not: one assistant
@@ -24,7 +24,7 @@ next: >
   gains the swipe time. The wrong-guess answers from the field become rules the replay scores.
 size: M (five PRs; the kernel and the queue are the two real ones)
 blocker: PR 2a's review; then a few days of real use before 2b.
-ver: v2.4591 (PR 1) · v2.4654 (PR 2a)
+ver: v2.4591 (PR 1) · v2.4654 (PR 2a) · v2.4668 (the swipe day)
 opinion: build — the sorter's minute per charge becomes a glance and a tap, and the page can prove its rules before any of them runs on its own.
 mockup: tally-transactions-refresh-before-after.html
 ---
@@ -61,8 +61,9 @@ someone else can see the mockups and build to spec later."
 | Payroll marks by rule / by hand | 904 / 9 |
 | Charges before the 2026-03-31 floor never sorted | ~4,200 (under the floor by decision) |
 
-Every charge reaches the app the day it is made (Mercury webhook), so timing is not why the field
-skips the nudge. Mercury carries no receipts on these charges (4 attachments in 1,063, all check
+Every charge reaches the database the day it is made (Mercury webhook), but it stays pending, with
+no `posted_at`, until Mercury settles it, and the lists drop pending rows: at clock-out most of the
+day's purchases are not yet on the holder's list (measured under PR 4 below). Mercury carries no receipts on these charges (4 attachments in 1,063, all check
 images). The office's actual tool is `DashboardStaleTallyStaffFollowUpModal` (Dashboard and
 Quickfill, *Team purchases*), which lists every unlinked charge across the team and opens
 `MercuryTransactionAllocationsModal` per row — the window already offers the holder's schedule and
@@ -158,15 +159,24 @@ Assign window, which is what the After replaces.
    **PR 2b** — after a few days of real use, the Dashboard and Quickfill doors open here and the
    Team purchases window retires. **PR 2c** — a keyboard path for the desktop sorter, after one
    real session. The own-card block's extraction into `TallyTransactionsTab` is its own PR.
-   **Follow-ups found by 2a**: the Assign window's "that day" and the holder's Sort mode move to
-   the swipe day (about 48 charges in 90 days may sit on the next day's job); `list_card_charges_window`
-   gains the swipe time so store runs and same-day chips move too (#52).
+   **Follow-ups found by 2a**: the Assign window's "that day", Sort mode and the own-card table's
+   Posted button moved to the swipe day in v2.4668, which also put Sort mode's swipe-day jobs
+   first. The about 48 charges in 90 days already on the next day's job wait on the owner's
+   five-case answer, then go to the office as a read-only list, with no code.
+   `list_card_charges_window` gains the swipe time (`purchased_at`, #52), so store runs and
+   same-day chips move too.
 3. **PR 3 — the pay bar**: the pay-send bar that marks and widens the matching payroll rule, and
    undo per line. The obvious bar (sort-all for ✓ days) waits until PR 5 promotes a rule to sure;
    with the levels the replay found, it would have written a wrong charge on about 4 obvious days
    in 10.
 4. **PR 4 — the holder's card gains the day's chip**: phone cards, Sort mode, the pre-clock-out
-   sheet, one component over the same kernel.
+   sheet, one component over the same kernel. Found 2026-10-06 while building 2a: Mercury keeps a
+   card charge `pending`, with no `posted_at`, until it settles, and the date floor drops a row
+   with no `posted_at`. Over the 90 days, 337 of the 585 purchases made before that day's
+   clock-out (58%) were still pending when the holder clocked out, and 7 of 32 recent card rows
+   ended `failed`. So the clock-out sheet cannot show most of a day's purchases unless it shows
+   pending charges keyed on the swipe, with the care a pending amount needs. That changes what
+   the nudge can ever do, so it is the owner's call before PR 4 is planned.
 5. **PR 5 — the page measures itself**: PR 1's replay per rule and per rule × holder, the
    accuracy line on the through-date, and an owner switch per rule for auto-apply (off), offered
    only to a rule at 95% or better on 40 or more charges. Open for its plan: the replay measures

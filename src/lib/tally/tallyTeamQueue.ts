@@ -5,6 +5,7 @@
 // `tallySortSuggestion.ts`, the words `tallySuggestionWords.ts`.
 
 import { mercuryCategoryString } from '../mercuryOfficeLikeCategories'
+import { mercurySwipeAtIso } from '../mercurySwipeTime'
 import type { CardChargeWindowRow } from '../banking/cardChargesWindow'
 import { ymdAddDays } from '../../utils/dateUtils'
 import type { StaleStaffRow } from './teamPurchaseRows'
@@ -97,9 +98,7 @@ export function tallyCategoryFromRaw(raw: unknown): string | null {
  * time on each line read this; the date floor and the over-2-days count stay on `posted_at`.
  */
 export function tallyChargeMadeAt(row: StaleStaffRow): string | null {
-  const created = row.raw && typeof row.raw === 'object' ? (row.raw as { createdAt?: unknown }).createdAt : null
-  if (typeof created === 'string' && tallyDayKey(created)) return created
-  return row.posted_at && tallyDayKey(row.posted_at) ? row.posted_at : null
+  return mercurySwipeAtIso(row.raw, row.posted_at)
 }
 
 /** The staff row as the kernel's charge; null when it has no readable time. */

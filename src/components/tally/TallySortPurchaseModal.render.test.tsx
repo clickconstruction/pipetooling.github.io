@@ -95,6 +95,17 @@ describe('TallySortPurchaseModal', () => {
     expect(screen.getByText('Nothing left to sort.')).toBeTruthy()
   })
 
+  it('reads the day jobs and the date for the day the card was swiped, not the posting day', async () => {
+    fetchDayJobs.mockReset()
+    fetchDayJobs.mockResolvedValue({ data: DAY_JOBS, error: null })
+    // Swiped Tue Aug 4, 9:17 AM Chicago; posted overnight into Wednesday.
+    const swiped = row({ raw: { createdAt: '2026-08-04T14:17:00Z' }, posted_at: '2026-08-05T07:30:00Z' })
+    renderWithProviders(<TallySortPurchaseModal {...makeProps({ rows: [swiped] })} />)
+    await waitFor(() => expect(fetchDayJobs).toHaveBeenCalled())
+    expect(fetchDayJobs.mock.calls[0]![1]).toBe('2026-08-04T14:17:00Z')
+    expect(screen.getByText(/Bought Tuesday Aug 4\./)).toBeTruthy()
+  })
+
   it('"Another job…" hands the row to the full Assign modal', async () => {
     fetchDayJobs.mockResolvedValue({ data: [], error: null })
     const onOpenFullAssign = vi.fn()
