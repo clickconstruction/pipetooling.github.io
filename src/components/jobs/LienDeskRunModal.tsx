@@ -6,7 +6,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { RUN_SEND_METHODS, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, runCopyPages, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
@@ -14,6 +14,7 @@ import { runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnv
 import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
+import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -133,6 +134,22 @@ export default function LienDeskRunModal({
   const blocked = problems.some((p) => p.length > 0)
   const envelopes = useMemo(() => runEnvelopes(shown), [shown])
   const shared = envelopes.length < runCopies(shown)
+  // Read a copy before it prints (v2.4621): one entry per copy in packet order, its pages the ones the packet stacks.
+  const previewEntries = useMemo<LienRunPreviewEntry[]>(
+    () =>
+      envelopes.flatMap((env) =>
+        env.contents.map(({ notice: n, recipient: r }) => ({
+          key: `${n.itemId}-${r.key}`,
+          title: `${n.label} · ${r.label.toLowerCase()}`,
+          envelopeLine: `Envelope ${env.n} · ${r.label} ${env.name}${env.address ? ` · ${env.address}` : ''}`,
+          pages: runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob),
+        })),
+      ),
+    [envelopes, invoiceSectionsByJob, payPagesByJob],
+  )
+  const [preview, setPreview] = useState<number | null>(null)
+  // What the packet is (v2.4621): behind a ? beside the title, so the envelopes come first.
+  const [explainerOpen, setExplainerOpen] = useState(false)
 
   // One method and one tracking number per envelope — every recipient inside it takes the patch, so the record writes the same send on each notice.
   const setEnvelope = (env: RunEnvelope, patch: { method?: RunSendMethod; tracking?: string }) => {
@@ -197,10 +214,26 @@ export default function LienDeskRunModal({
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(960px, calc(100vw - 2rem))', maxHeight: 'min(90vh, calc(100dvh - 2rem - var(--app-top-chrome, 0px)))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-              One packet with every approved notice — a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order: the owner of record's copy behind its cover page, the original contractor's copy alone{payCodes > 0 ? `, the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'} — one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `, the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
+              <button
+                type="button"
+                aria-label="What the packet is"
+                aria-expanded={explainerOpen}
+                aria-pressed={explainerOpen}
+                title="What the packet is"
+                onClick={() => setExplainerOpen((v) => !v)}
+                data-testid="run-explainer-toggle"
+                style={{ width: 20, height: 20, borderRadius: 999, border: '1px solid var(--border-strong)', background: explainerOpen ? 'var(--bg-blue-tint)' : 'var(--surface)', color: explainerOpen ? 'var(--text-link)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, padding: 0, cursor: 'pointer', flexShrink: 0 }}
+              >
+                ?
+              </button>
+            </div>
+            {explainerOpen ? (
+              <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
+                One packet with every approved notice: a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order. The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+              </p>
+            ) : null}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
         </div>
@@ -301,7 +334,20 @@ export default function LienDeskRunModal({
                           {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}
                         </td>
                         <td className="lienRunMonths" style={{ color: 'var(--text-muted)' }}>{n.kind === 'retainage_53_057' ? '§ 53.057 retainage' : describeNoticeMonths(n.months)}</td>
-                        <td colSpan={2} className="lienRunFor" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Copy for: {r.label.toLowerCase()}</td>
+                        <td colSpan={2} className="lienRunFor" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                          Copy for: {r.label.toLowerCase()}
+                          {(() => {
+                            const at = previewEntries.findIndex((e) => e.key === `${n.itemId}-${r.key}`)
+                            return at >= 0 ? (
+                              <>
+                                {' · '}
+                                <button type="button" onClick={() => setPreview(at)} data-testid={`run-preview-${n.jobId}-${r.key}`} title="Read this copy as the packet prints it" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
+                                  Preview ›
+                                </button>
+                              </>
+                            ) : null
+                          })()}
+                        </td>
                       </tr>
                     )
                   }),
@@ -334,6 +380,7 @@ export default function LienDeskRunModal({
           </button>
         </div>
       </div>
+      {preview != null && previewEntries.length > 0 ? <LienRunPreviewOverlay entries={previewEntries} index={preview} onIndex={setPreview} onClose={() => setPreview(null)} /> : null}
     </div>
   )
 }

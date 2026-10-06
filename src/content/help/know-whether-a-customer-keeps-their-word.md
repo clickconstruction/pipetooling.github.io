@@ -83,7 +83,7 @@ The record only has to be good enough to prompt a decision. The decision lives o
 Meadowbrook has kept one promise in five and slips about three weeks. On Customer review, click {{chip:gray|set terms…}}, choose **Winding down**, note "finish Cypress Bend, no Ph. 2 — Robert 9/11". The next time anyone opens New Bid for Meadowbrook, the red bar says so before a number is typed.
 :::
 
-**In the demand letter.** The Final Demand Desk's notice history lists every date the customer promised, in their words. A line reads *"Payment promised by Sep 12 — by the customer, in writing, from their statement page"*. So a broken promise is part of the paper trail.
+**In the demand letter.** In the job's Lien window, the **Demand letter** tab's notice history lists every date the customer promised, in their words. A line reads *"Payment promised by Sep 12 — by the customer, in writing, from their statement page"*. So a broken promise is part of the paper trail.
 
 ## Who can do what
 

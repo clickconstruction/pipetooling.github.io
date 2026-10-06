@@ -11,7 +11,7 @@ The packet is for one owner and one property. It never shows another owner's job
 ## Open it
 
 1. Open the [Lien desk](/jobs?tab=stages&liendesk=1).
-2. Press {{button:outline|An owner asked for records ›}} in the title bar.
+2. Press {{button:outline|An owner asked for records ›}} at the right under the desk's title.
 3. Pick the owner. Type a name, an address or a GC to narrow the list.
 
 The list holds the owners of jobs with a notice on the desk. An owner asks after a notice has reached them.
@@ -51,10 +51,6 @@ Check 3 is a warning. It does not stop you. Read what it says before you send an
 You can close the window and come back. The checks you put on file are kept.
 
 A copy of each page is kept when you print it or download it. The packet is kept again when you record it as sent. See [find a copy of what we sent](/help/find-a-copy-of-what-we-sent).
-
-## The wording is a draft
-
-The cover note and the acknowledgment are draft wording. The window says so until your attorney approves them. Each print asks before it goes.
 
 :::example Umar Khan asks about 9703 Lenox Hl
 He emails on Oct 3. Taunya opens the desk, presses An owner asked for records, and picks him. The packet shows four jobs and $29,337 owed. She puts his email on file. Malachi reads the Dudley contract and ticks check 2. She prints the acknowledgment. He signs it on Oct 6. She prints the packet, hands it to him, and records it as sent.

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { formatDenverCalendarDayWithYear, formatDenverTimeOnly, formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { formatCurrency, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -13,7 +12,6 @@ import {
   OWNER_RECORDS_HOW_WORDS,
   OWNER_RECORDS_LEFT_OUT,
   OWNER_RECORDS_SENT_HOW_WORDS,
-  OWNER_RECORDS_WORDING_APPROVED,
   buildOwnerPacket,
   ownerPacketNumbers,
   ownerRecordsFootWords,
@@ -102,7 +100,6 @@ export default function LienOwnerRecordsModal({
   onClose: () => void
 }) {
   const { showToast } = useToastContext()
-  const confirmDialog = useConfirmDialog()
   /** The packet PDF is being drawn (v2.4619). */
   const [pdfBusy, setPdfBusy] = useState(false)
   const [query, setQuery] = useState('')
@@ -202,16 +199,6 @@ export default function LienOwnerRecordsModal({
 
   async function print(what: 'packet' | 'acknowledgment') {
     if (!facts || !packet) return
-    if (!OWNER_RECORDS_WORDING_APPROVED) {
-      const yes = await confirmDialog({
-        title: 'Print the draft wording?',
-        message: 'Your attorney has not approved the cover note and the acknowledgment yet. Print it anyway?',
-        confirmLabel: 'Print it',
-        cancelLabel: 'Not yet',
-        cancelIsSafe: true,
-      })
-      if (!yes) return
-    }
     const html = what === 'packet' ? ownerPacketHtml(packet, facts, fmt) : ownerAcknowledgmentHtml(facts, fmt)
     // A print counts as a send: the page is filed as it was printed (v2.4554).
     if (!printAndFile(html, filing(what))) showToast('The print window was blocked. Allow pop-ups for this site and press it again.', 'error')
@@ -220,16 +207,6 @@ export default function LienOwnerRecordsModal({
   /** The packet as a PDF to keep or attach (v2.4619): the same pages the print makes; a download counts as a send, as a print does. */
   async function download() {
     if (!facts || !packet || pdfBusy) return
-    if (!OWNER_RECORDS_WORDING_APPROVED) {
-      const yes = await confirmDialog({
-        title: 'Save the draft wording?',
-        message: 'Your attorney has not approved the cover note yet. Save the PDF anyway?',
-        confirmLabel: 'Save it',
-        cancelLabel: 'Not yet',
-        cancelIsSafe: true,
-      })
-      if (!yes) return
-    }
     setPdfBusy(true)
     try {
       const blob = await ownerPacketPdfBlob(packet, facts, fmt)
@@ -422,11 +399,6 @@ export default function LienOwnerRecordsModal({
                   </div>
                 </div>
               ))}
-              {!OWNER_RECORDS_WORDING_APPROVED ? (
-                <div data-testid="owner-records-draft" style={{ padding: '0.6rem 1.1rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
-                  The cover note and the acknowledgment are draft wording. Your attorney has not approved them yet.
-                </div>
-              ) : null}
               {!available ? (
                 <div data-testid="owner-records-unavailable" style={{ padding: '0.6rem 1.1rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-red-600)' }}>
                   Saving is not ready yet. You can read and print the packet. The checks cannot be put on file.

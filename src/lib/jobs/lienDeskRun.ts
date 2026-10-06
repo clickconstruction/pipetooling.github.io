@@ -319,13 +319,46 @@ export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly P
 /** The pay page's HTML per job and copy, as the run modal builds it once the bills are loaded. */
 export type RunPayPages = Readonly<Record<string, Partial<Record<RunRecipient['key'], string>>>>
 
+/** One page of a copy as the packet prints it: what it is, and its HTML (a `filingDocHtml` fragment). */
+export type RunCopyPage = { label: string; html: string }
+
+/**
+ * The pages one recipient's copy prints, in order (v2.4621 — the run's preview reads them, and
+ * `runPacketHtml` stacks them): the cover page when it is the owner's copy and the draft carries a
+ * letter or a note, the form, the pay page when `payPagesByJob` carries one (v2.3758), then the
+ * job's unpaid invoices when `invoiceSectionsByJob` carries them (v2.3437, § 53.056(a-3)).
+ */
+export function runCopyPages(
+  n: RunNotice,
+  r: RunRecipient,
+  invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>,
+  payPagesByJob?: RunPayPages,
+): RunCopyPage[] {
+  const pages: RunCopyPage[] = []
+  const invoices = invoiceSectionsByJob?.[n.jobId] ?? []
+  if (r.key === 'owner') {
+    const note = runCoverNoteBlocks({ ...n, withInvoices: invoices.length > 0 })
+    if (note.length) pages.push({ label: n.coverLetter ? 'Cover letter' : 'Cover note', html: filingDocHtml(note) })
+  }
+  pages.push({ label: `${n.kind === 'retainage_53_057' ? '§ 53.057 retainage notice' : '§ 53.056 notice'} · copy for ${r.label.toLowerCase()}`, html: filingDocHtml(runNoticeBlocks(n, r)) })
+  // The pay page (v2.3758) sits between the form and the invoices it points at.
+  const pay = payPagesByJob?.[n.jobId]?.[r.key]
+  if (pay) pages.push({ label: 'Pay codes', html: pay })
+  invoices.forEach((html, i) => pages.push({ label: invoices.length === 1 ? 'Unpaid invoice' : `Unpaid invoice ${i + 1} of ${invoices.length}`, html }))
+  return pages
+}
+
+/** The preview's index one step along the packet, held inside it (v2.4621). */
+export function stepRunPreview(index: number, delta: -1 | 1, total: number): number {
+  return Math.min(Math.max(index + delta, 0), Math.max(total - 1, 0))
+}
+
 /**
  * The whole packet as one print document, in envelope order so the stack comes
  * off the printer ready to stuff: the cover sheet, then per envelope each notice
  * inside it — the owner's copy behind its cover page (the run's letter or the
  * note), the original contractor's copy alone, as the emailed copies are — each
- * copy followed by its pay page when `payPagesByJob` carries one (v2.3758) and by the
- * job's unpaid invoices when `invoiceSectionsByJob` carries them (v2.3437, § 53.056(a-3)).
+ * copy's pages from `runCopyPages`.
  */
 export function runPacketHtml(
   notices: ReadonlyArray<RunNotice>,
@@ -339,15 +372,7 @@ export function runPacketHtml(
   pages.push(filingDocHtml(runCoverSheetBlocks(notices, todayYmd, letter)))
   for (const env of runEnvelopes(notices)) {
     for (const { notice: n, recipient: r } of env.contents) {
-      if (r.key === 'owner') {
-        const note = runCoverNoteBlocks({ ...n, withInvoices: (invoiceSectionsByJob?.[n.jobId]?.length ?? 0) > 0 })
-        if (note.length) pages.push(filingDocHtml(note))
-      }
-      pages.push(filingDocHtml(runNoticeBlocks(n, r)))
-      // The pay page (v2.3758) sits between the form and the invoices it points at.
-      const pay = payPagesByJob?.[n.jobId]?.[r.key]
-      if (pay) pages.push(pay)
-      for (const sec of invoiceSectionsByJob?.[n.jobId] ?? []) pages.push(sec)
+      for (const pg of runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob)) pages.push(pg.html)
     }
   }
   const body = pages.map((p, i) => `<section style="${i < pages.length - 1 ? 'page-break-after:always;' : ''}">${p}</section>`).join('')

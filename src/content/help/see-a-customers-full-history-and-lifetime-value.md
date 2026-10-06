@@ -93,7 +93,7 @@ Use {{button:outline|✎ Edit customer}} in the header to change their info, arc
 
 ## Find the property's legal record for lien paperwork
 
-Each additional address also carries the property's **legal identity**. That is the county the lien files in. It is the legal description from the appraisal district, the county office that values property for tax. And it is the owner of record with their mailing address. You no longer type those from the appraisal district's website. Open **▶ Property legal info** under the address. The app looks the property up on the Texas parcel roll, the appraisal districts' own data.
+Each property also carries its **legal identity**. That is the county the lien files in. It is the legal description from the appraisal district, the county office that values property for tax. And it is the owner of record with their mailing address. You no longer type those from the appraisal district's website. Press **Edit** on the property and find **Property record**. The app looks the property up on the Texas parcel roll, the appraisal districts' own data.
 
 :::example What the lookup fills in
 {{button:outline|Look up the property record}} {{chip:green|✓ lien-ready}} Comal CAD ↗
@@ -104,7 +104,7 @@ Each additional address also carries the property's **legal identity**. That is 
 **Owner mailing address** 412 GRUENE RD, NEW BRAUNFELS, TX 78130
 :::
 
-- **The lookup runs by itself** the first time you open the panel. That happens on an address that has never been looked up. {{button:outline|Look up again}} re-runs it after you fix the address.
+- **The lookup runs by itself** the first time you open the property. That happens on an address that has never been looked up. {{button:outline|Look up again}} re-runs it after you fix the address.
 - **It fills blanks only.** Anything you typed stays. A field that differs from the record shows a small *use the record's: …* link. Click it to take the record's value.
 - **County comes from the map, not a guess.** The parcel, the map pin and the city table can disagree. Schertz sits in Bexar, Guadalupe and Comal. Then the panel shows each answer as a pill with where it came from. The parcel wins unless you know better.
 - **Homestead is still your call.** A homestead is the owner's own home. The roll has no exemption data. The panel suggests homestead when the owner gets mail at the property, and says so. Confirm the HS exemption on the CAD page before a homestead job starts. HS is short for homestead. CAD is the county appraisal district.

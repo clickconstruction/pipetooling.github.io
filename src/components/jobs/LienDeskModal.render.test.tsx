@@ -170,6 +170,8 @@ describe('LienDeskModal', () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const door = screen.getByTestId('lien-owner-records-door')
+    // v2.4629: at the right end of the title bar's second line, on every view.
+    expect(door.closest('[data-lien-desk-right]')).toBeTruthy()
     expect(door.textContent).toBe('An owner asked for records ›')
     fireEvent.click(door)
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
@@ -190,6 +192,8 @@ describe('LienDeskModal', () => {
     await settle()
     // Nothing is Ready to send, one is printed: the header still offers the run, counting what the run lists.
     expect(screen.getByRole('button', { name: 'Send the run · 1' })).toBeTruthy()
+    // v2.4629: the run is the first thing on the second line, at the left under the title.
+    expect(document.querySelector('[data-lien-desk-header-break]')!.nextElementSibling!.hasAttribute('data-lien-desk-run')).toBe(true)
     const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
     expect(footer.textContent).toContain('Printed September 14, 2026 · in the mail.')
     expect(within(footer).getByRole('button', { name: /Record the mailing · 1/ })).toBeTruthy()

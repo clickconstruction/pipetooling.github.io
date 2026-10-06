@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
 import { MemoryRouter } from 'react-router-dom'
 import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 import LegalPortal from './LegalPortal'
@@ -72,5 +73,23 @@ describe('LegalPortal — the sample matter', () => {
     expect(band?.textContent).toMatch(/pile A/)
     expect(band?.textContent).toMatch(/not needed — the GC authorized direct pay/)
     expect(band?.textContent).toMatch(/Sep 12 · Taunya · email from Pat/)
+  })
+
+  it('draws no hidden honeypot box, and the function no longer reads one (v2.4622, punch list #85 item 28)', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = sampleLegalPortalResponse({ name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=sample']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getAllByText(/Sample Contracting/).length).toBeGreaterThan(0))
+    expect(document.querySelector('input[name="website"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Notifications/ }))
+    await waitFor(() => expect(document.body.textContent).toMatch(/Add a person at the firm/))
+    expect(document.querySelector('input[name="website"]')).toBeNull()
+    // A password manager that fills every text box would have made a real act vanish behind "Saved".
+    expect(readFileSync('supabase/functions/submit-legal-portal/index.ts', 'utf8')).not.toMatch(/body\.website/)
   })
 })

@@ -18,6 +18,7 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Next
 - The button opens the tab that does that work, on that job. Nothing is sent from the list itself.
 - A GC with two or more notices ready is one row. Its button reads {{button:blue|Send the run}}.
 - A row waiting on the leader shows {{button:outline|Open}} to the office. The leader sees {{button:blue|Approve}}.
+- The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 
 When nothing needs anyone, the tab says so and points you at the Calendar.
 
@@ -210,13 +211,13 @@ The desk shows the master only what needs a decision. He sees what is open with 
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} in the desk's title bar opens the run.
+Approved notices go out together. {{button:blue|Send the run · N}} sits at the left under the desk's title, on every view. It opens the run.
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
 Three steps run across the top of the run.
 
-1. **Print the packet.** {{button:outline|Envelope faces}} prints one page per envelope. Each page has your return address, the certified mail line and the recipient as the notice names them. {{button:outline|Print the packet · N envelopes}} prints one document in envelope order, ready to stuff. A cover sheet lists every envelope first. Each owner's copy sits behind counsel's letter. Printing moves the notices to their own pile, {{chip:yellow|In the mail · tracking owed}}. So a printed notice never goes missing between the printer and the record.
+1. **Print the packet.** {{button:outline|Envelope faces}} prints one page per envelope. Each page has your return address, the certified mail line and the recipient as the notice names them. {{button:outline|Print the packet · N envelopes}} prints one document in envelope order, ready to stuff. Press **Preview ›** on any copy row to read that copy as the packet prints it. The arrow keys walk every copy in the packet. Esc closes only the preview. The **?** beside the run's title explains what the packet holds. A cover sheet lists every envelope first. Each owner's copy sits behind counsel's letter. Printing moves the notices to their own pile, {{chip:yellow|In the mail · tracking owed}}. So a printed notice never goes missing between the printer and the record.
 2. **Mail them.** Back from the post office, type each envelope's tracking number in the run. The app checks it as you type, because a certified number has 20 digits. Type the day they went out once, in **Mailed on**.
 3. **Record the mailing.** The button names what it will do, like recording 2 mailed while 1 stays in the pile. Each envelope with a number is recorded now. Each notice is written to its job with every month it covered. The courtesy emails go out, and the row moves to **Sent**. An envelope with no number waits in the mail pile until its number is typed.
 

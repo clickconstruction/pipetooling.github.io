@@ -6,7 +6,7 @@ import { SampleModeBanner } from '../components/SampleModeBanner'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED, PORTAL_FONT } from '../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
-import { buildLegalPacketPrintHtml } from '../lib/legal/legalPacketPrint'
+import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
@@ -164,7 +164,7 @@ export default function LegalPortal() {
                 tab={tab}
                 onTab={setTab}
                 acts={<><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} /></>}
-                onPrint={() => { if (!openHtmlPrintWindow(buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name }))) alert('Your browser blocked the print window. Allow pop-ups and try again.') }}
+                onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries }, particulars: payload.particulars }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
             <div>
@@ -263,7 +263,6 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
       {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}>{notice}</div> : null}
       <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote }, () => { setFeeAmount(''); setFeeNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 8, alignItems: 'end' }}>
-        <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden />
         <label style={lab}>Kind<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
         <label style={lab}>Amount<input type="number" min={1} step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} placeholder="450" required style={input} /></label>
         <label style={lab}>Note<input value={feeNote} onChange={(e) => setFeeNote(e.target.value)} placeholder="Demand letter on firm letterhead" required style={input} /></label>
@@ -346,7 +345,6 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
         <div style={card}>
           <div style={cap}>Add a person at the firm</div>
           <form onSubmit={onAdd} style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-            <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden />
             <label style={lab}>Name<input value={name} onChange={(e) => setName(e.target.value)} required style={input} /></label>
             <label style={lab}>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={input} /></label>
             <label style={lab}>Role<select value={role} onChange={(e) => setRole(e.target.value)} style={input}><option value="paralegal">paralegal</option><option value="attorney">attorney</option><option value="billing">billing</option></select></label>
