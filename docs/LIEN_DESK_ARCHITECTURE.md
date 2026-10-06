@@ -19,7 +19,7 @@ last_updated: 2026-10-05
 
 > **v2.4355 (the title bar on one line):** region A's spacing moved from inline margins to the `lienDeskTitleBar` column gap (`index.css`), the tab buttons to `lienDeskKindTab`, and Share's word to a `lienDeskShareWord` span. A viewport from 641 to 1,131 px closes the gap, narrows the tabs and hides the word, so a desk narrower than 1,100 px keeps one title line. No container query: one on the bar would trap the phone's fixed Share sheet.
 
-> **v2.4535 (the door on the other tabs):** the number button is shared — [`LienJobNumber.tsx`](../src/components/jobs/LienJobNumber.tsx) (`LienJobNumber`, and `LienJobHeading` over `splitLienJobLabel` in `lib/jobs/lienJobLabel.ts`). A Timeline row's number opens the job (`LienDeskTimelineTab` `onOpenJob`; the row is a `div` that takes the click for its pane, the name its keyboard button), and the Notices, Affidavits and Retainage panes draw their heading as the number button beside the name. The left lists are untouched: a click there selects.
+> **v2.4535 (the door on the other tabs):** the number button is shared — [`LienJobNumber.tsx`](../src/components/jobs/LienJobNumber.tsx) (`LienJobNumber`, and `LienJobHeading` over `splitLienJobLabel` in `lib/jobs/lienJobLabel.ts`). A Timeline row's number opens the job (`LienDeskTimelineTab` `onOpenJob`; the row is a `div` that takes the click for its pane, the name its keyboard button), and the Notices, Affidavits and Retainage panes draw their heading as the number button beside the name. The left lists are untouched: a click there selects. **v2.4628:** every door is text, not a chip — `.lienJobDoor` (was `.lienCalJobNo`) underlines on hover and focus; a pane's heading is one button of the whole line; the Next up row's number and name are the same door (`LienDeskNextUp` `onOpenJob`, `lien-next-up-job-<id>`), a GC's run row stays plain. The Pipeline's mount passes `onEditJobSaved` and `onClosed` (new on `OpenJobDetailOptions`), both `refetchLienDesk`, so the desk re-reads after a save and when the window closes.
 >
 > **v2.4531 (the job number is a door):** a Calendar row's number is its own button (`JobNumber` in `LienDeskCalendarTab.tsx`, `onOpenJobWindow`) that opens the job — `LienDeskModal`'s `onOpenJob` → `jobDetailModal.openJobDetail` in `JobsStagesTab` — over the desk (the Job window is z 1010, the desk 780). The rest of the cell still opens the Lien window: the cell's `div` takes the click, the name is its keyboard button, and the number stops the click from reaching it. Desktop axis and phone list alike.
 >
@@ -310,7 +310,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | `LienCallerDoor` (v2.3854) | 166 | 1999 | none (desk smoke 985–1047) |
 | `LienDeskShare` / `LienDeskSharePanel` / `LienDeskEmailSheet` (v2.4311) | 128 / 174 / 239 | 2038 | render 11 (`LienDeskShare`) |
 | `LienTrackingOwedEditor` (v2.4119) | 82 | the Sent footer | render 1 |
-| `LienJobHeading` (`LienJobNumber.tsx`, v2.4535) | 46 | the notice pane's heading | render 5 |
+| `LienJobHeading` (`LienJobNumber.tsx`, v2.4535; text doors v2.4628) | 63 | the notice pane's heading | render 6 |
 | `LienDeskGates` | 94 | 1127–1282 | none (kernel 11) |
 | `LienOwnerCallDialog` | 183 | 2214–2221, 2225–2234 (practice) | none (desk smoke 952) |
 | `LienWordRecordRow` | 72 | 1702, 1786 | none (desk smoke) |

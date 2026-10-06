@@ -28,6 +28,8 @@ export type OpenJobDetailOptions = {
   /** When set (including `[]`), used as-is. When omitted, rows are derived from JobsListCache. */
   assignedJobsRows?: DetailJobModalAssignedJobRow[]
   onEditJobSaved?: () => void
+  /** Called once when the window closes by any route (v2.4628): the opener re-reads what the window may have changed. */
+  onClosed?: () => void
   /** Auto-open the Share-with-supply-house modal on top (v2.1610 — Dispatch inbox one-click). */
   openSupplyHouseShare?: boolean
 }
@@ -88,14 +90,20 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
     return cacheAssignedRows
   }, [openState, cacheAssignedRows])
 
+  // The opener's `onClosed` (v2.4628), held outside the state so a close from any route finds it.
+  const onClosedRef = useRef<(() => void) | undefined>(undefined)
   const closeJobDetail = useCallback(() => {
     setOpenState({ kind: 'closed' })
+    const onClosed = onClosedRef.current
+    onClosedRef.current = undefined
+    onClosed?.()
   }, [])
 
   const openJobDetail = useCallback((options: OpenJobDetailOptions) => {
     jobDetailModalInstanceSeed += 1
     const hasExplicitRows = 'assignedJobsRows' in options
     const explicitAssignedRows = hasExplicitRows ? (options.assignedJobsRows ?? []) : null
+    onClosedRef.current = options.onClosed
     setOpenState({
       kind: 'open',
       instanceKey: jobDetailModalInstanceSeed,
@@ -114,6 +122,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
   /** `openEditJob` delegates here (via the bridge) — same window, Edit tab. */
   const openJobWindowEdit = useCallback((jobId: string, options: JobWindowEditOpenOptions) => {
     jobDetailModalInstanceSeed += 1
+    onClosedRef.current = undefined
     setOpenState({
       kind: 'open',
       instanceKey: jobDetailModalInstanceSeed,
