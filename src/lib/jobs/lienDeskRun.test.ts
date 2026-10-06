@@ -277,7 +277,7 @@ describe('the pay page in the packet (v2.3758)', () => {
     expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
   })
 
-  it('carries the pay offer (v2.4700) from the approved item to the page', () => {
+  it('carries the pay offer (v2.4708) from the approved item to the page', () => {
     const d = data([{ ...approved, offer_pct: 10, offer_by: '2026-11-15' } as typeof approved])
     const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
     expect(n.offer).toEqual({ pct: 10, by: '2026-11-15' })
