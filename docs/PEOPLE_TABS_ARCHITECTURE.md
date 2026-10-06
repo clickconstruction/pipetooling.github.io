@@ -31,12 +31,12 @@ last_updated: 2026-10-05
 - **Phase 2 (shared hooks): DONE.** `usePeopleAccess`, `usePeopleRoster`, `useCrewJobMap`, `usePayConfig` and `usePeopleHoursData` (under `src/hooks/`). `useTeamSummaryData` was folded into `PeopleReviewTab`; its kernel is `lib/people/derivePersonTeamSummary.ts`.
 - **Phase 3 (hub tabs): tabs DONE, residue open.** `overhead`, `review`, `pay_stubs` (the Pay run table only), `users`, and every Hours sub-section are components (see the [Hours sub-sections table](#hours--hours--pay-grid-the-hub)). The Cost matrix, trade tags and view sharing were retired on 2026-07-15 (PRs #322/#324/#326, v2.671–v2.677; `PeopleCostMatrix.tsx` and `PeopleHoursSharing.tsx` deleted). What remains is the four clusters above. The [Recommended extraction order](#recommended-extraction-order-value--risk) ranks them.
 
-Tabs switch on a single `activeTab` state (330, `useState<PeopleTab>`). The `PeopleTab` type has **20 keys** and lives in [`src/lib/people/peopleTabGroups.ts`](../src/lib/people/peopleTabGroups.ts) (v2.2811). Subs landed in v2.1214, Teams was removed in v2.1292 (`?tab=teams` redirects to Users), HR in v2.2221 and Person in v2.2710:
+Tabs switch on a single `activeTab` state (330, `useState<PeopleTab>`). The `PeopleTab` type has **21 keys** and lives in [`src/lib/people/peopleTabGroups.ts`](../src/lib/people/peopleTabGroups.ts) (v2.2811). Subs landed in v2.1214, Teams was removed in v2.1292 (`?tab=teams` redirects to Users), HR in v2.2221, Person in v2.2710 and Spending in v2.4602:
 
 ```
 'scoreboard' | 'review' | 'hr' | 'person' | 'users' | 'subs' | 'overhead' | 'employment'
 | 'pay_stubs' | 'hours' | 'offsets' | 'vehicles' | 'housing' | 'licenses'
-| 'contracts' | 'writeups' | 'feedback' | 'activity' | 'day_book' (v2.3542) | 'whos_where' (v2.3607)
+| 'contracts' | 'writeups' | 'feedback' | 'activity' | 'day_book' (v2.3542) | 'whos_where' (v2.3607) | 'spending' (v2.4602)
 ```
 
 ### Six top-level groups (v2.2811)
@@ -44,7 +44,7 @@ The strip shows **six group tabs** and a **second row** listing the active group
 
 | Group | Views (row order) | Shows when |
 |---|---|---|
-| People | `users` · `subs` · `person` · `day_book` · `whos_where` | Always. `person` needs `canOpenPersonDesk(authRole)`. `day_book` needs `canSeeDayBook` (devs and controllers since v2.3732). `whos_where` needs `canSeeWhosWhere`. |
+| People | `users` · `subs` · `person` · `spending` · `day_book` · `whos_where` | Always. `person` needs `canOpenPersonDesk(authRole)`. `spending` needs `canOpenSpending(authRole)` (the office roles, v2.4602). `day_book` needs `canSeeDayBook` (devs and controllers since v2.3732). `whos_where` needs `canSeeWhosWhere`. |
 | Pay | `hours` · `pay_stubs` · `offsets` · `employment` · `overhead` | `canOpenHoursTab` / `canAccessPay` / `canAccessOverheadTab` |
 | Paperwork | `contracts` · `licenses` · `writeups` · `hr` | `canAccessContracts` / `canAccessLicenses` / `isDev` (HR) |
 | Fleet & Housing | `vehicles` · `housing` | `canAccessVehicles` / `canAccessPay` |
@@ -99,6 +99,7 @@ Render anchors are line ranges in `People.tsx` at a05cef4c4. Component line coun
 | `users` | 3226–3274 | [`PeopleUsersTab`](../src/components/people/PeopleUsersTab.tsx) (1,033) | extracted, with a **residue** in the parent | **9 `useState`, 2 effects**, 3 modals + the Hire mount ([Users residue](#users-residue)) | **31 props**: rosters, `payLens` (the `usePayConfig` cluster), the two signal gates, and roster-action state + setters | `PeopleUsersTab.render` (v2.3912), `UsersTabPhoneRow.render`, `UsersTabStatusColumn.render`, `usersTabRows`/`usersTabPhone`/`usersTabLens`/`hireWrites`/`personActiveProjects` kernels. | order #2 **shipped v2.3912**; the account writes are what is left |
 | `subs` | 3224 | [`PeopleSubsTab`](../src/components/people/PeopleSubsTab.tsx) (883) | extracted, self-contained (v2.1214) | 0 | none; loads under the caller's RLS | `PeopleSubsTab.render`, `subsHqRows`, `subCompliance`, `subSheetNameSuggestion`, `subDocumentDraft` | Done |
 | `person` | 4152 | [`PersonDeskPage`](../src/components/personDesk/PersonDeskPage.tsx) (188) | extracted from birth (v2.2710) | 0 | gate `canOpenPersonDesk(authRole)` | `personDeskGates` + desk kernels | Done |
+| `spending` | one line after `whos_where` (added v2.4602, not in the a05cef4c4 fact sheet) | [`PeopleSpendingTab`](../src/components/people/PeopleSpendingTab.tsx) (460) | extracted from birth (v2.4602; punch list #52 — loader `lib/people/loadSpending.ts`, kernels `spendingRollup.ts` · `spendingPeriod.ts`, read `list_card_charges_window`) | 0 | `canSeePayroll` (= `canAccessPay`); gate `canOpenSpending(authRole)` (`lib/people/spendingAccess.ts`) | `PeopleSpendingTab.render`, `spendingRollup`, `spendingPeriod`, `cardChargesWindow` | Done |
 | `day_book` | 4180–4182 | [`PeopleDayBookTab`](../src/components/people/PeopleDayBookTab.tsx) (471) | extracted from birth (v2.3542; kernel `lib/people/dayBook.ts`, door `dayBookDoor.ts`, RPC `get_day_book_payload`) | 0 | `authUserId`, `authRole`, `canPickPerson` (= `canPickDayBookPerson`); gate `canSeeDayBook` | `PeopleDayBookTab.render`, `dayBook*` (8 lib test files) | Done |
 | `whos_where` | 4183 | [`PeopleWhosWhereTab`](../src/components/people/PeopleWhosWhereTab.tsx) (559) + `WhosWhereWeek` (227) | extracted from birth (v2.3607 day, v2.3609 week; `lib/people/whosWhere.ts`, `fetchWhosWhereWeek.ts`; reads `clock_sessions` + `job_schedule_blocks`) | 0 | `authRole`; gate **`canSeeWhosWhere`** | `PeopleWhosWhereTab.render`, `whosWhere`, `whosWhereWeek` | Done |
 | `hours` | 3699–4084, + 10 page-level modals 4380–4696 | every section is a component ([table](#hours--hours--pay-grid-the-hub)) | **partial**: the shell is inline | **37 `useState`, 15 effects, 7 refs** | **Owns** the hours range, `hoursDaysCorrect`, teams, display order. Feeds Payroll (`peopleHours`, `getRunPayrollReviewDayItems`, `showPeopleForHours`). | see dossier | very high → **last (#8)** |
