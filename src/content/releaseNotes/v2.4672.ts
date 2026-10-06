@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4651',
+  version: 'v2.4672',
   date: '2026-10-06',
   title: 'Lien desk: the pile titles stay on screen as the Notices list scrolls',
   kind: 'feature',

@@ -296,7 +296,7 @@ export default function LienDeskModal({
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
   const [busy, setBusy] = useState(false)
   const [mobileListShown, setMobileListShown] = useState(true)
-  // The pile titles stack as the Notices list scrolls (v2.4651): the list's scroller, and the pile the reader is in.
+  // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
   const listRef = useRef<HTMLDivElement | null>(null)
   const [litPile, setLitPile] = useState<LienDeskPile | null>(null)
   // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
@@ -1048,7 +1048,7 @@ export default function LienDeskModal({
   }
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
-  // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4651).
+  // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   const PILE_HEAD_H = 30
   const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p) })).filter((x) => x.rows.length > 0)
   const scrollToPile = (p: LienDeskPile, i: number) => {
@@ -2336,7 +2336,7 @@ export default function LienDeskModal({
                 )
               })
             : null}
-          {/* v2.4651: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
+          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, the leader's spoken-word line, and the owner-records door, in one span pushed right. */}
           <span data-lien-desk-right style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
