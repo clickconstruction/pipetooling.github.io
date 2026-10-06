@@ -11,6 +11,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { MemoryRouter } from 'react-router-dom'
+import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 import LegalPortal from './LegalPortal'
 
 vi.mock('../lib/supabase', async () => {
@@ -125,5 +126,42 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.querySelector('input[name="website"]')).toBeNull()
     // A password manager that fills every text box would have made a real act vanish behind "Saved".
     expect(readFileSync('supabase/functions/submit-legal-portal/index.ts', 'utf8')).not.toMatch(/body\.website/)
+  })
+
+  it('lists the matters largest balance first and opens the largest (punch list #85 item 11)', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = sampleLegalPortalResponse({ name: 'Acme Mechanical', cityLine: 'Kyle, TX', licenseLine: '', phone: '(512) 555-0100', email: 'office@example.com' } as never, today) as { matters: Array<Record<string, unknown>> }
+    // The function sends the oldest referral first: a small matter referred long ago, then the sample. A live token, so the page fetches.
+    const small = JSON.parse(JSON.stringify(payload.matters[0])) as { id: string; releasedAt: string; payer: { name: string }; jobs: Array<{ invoices: Array<{ amount: number }>; revenue: number; payments: unknown[]; payments_made: number }> }
+    small.id = 'small-matter'
+    small.releasedAt = '2026-01-05'
+    small.payer.name = 'Hill Country Dental'
+    small.jobs[0]!.invoices = [{ ...small.jobs[0]!.invoices[0]!, amount: 6_100 }]
+    small.jobs[0]!.revenue = 6_100
+    small.jobs[0]!.payments = []
+    small.jobs[0]!.payments_made = 0
+    payload.matters = [small, payload.matters[0]!]
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=tok_live']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText(/largest balance first/)).toBeTruthy())
+    const listed = [...document.querySelectorAll('button b')].map((b) => b.textContent).filter((t) => t === 'Brazos Ridge Contracting' || t === 'Hill Country Dental')
+    expect(listed).toEqual(['Brazos Ridge Contracting', 'Hill Country Dental'])
+    expect(document.body.textContent).toMatch(/total demand · balance \$14,400\.00/)
+  })
+
+  it('lays the page out by classes the phone query can fold, matters list before the matter (punch list #85 item 8)', async () => {
+    await openSample()
+    const split = document.querySelector('.legalPortalSplit') as HTMLElement
+    expect(split).toBeTruthy()
+    expect(split.style.gridTemplateColumns).toBe('')
+    expect([...split.children].map((c) => c.className)).toEqual(['legalPortalMain', 'legalPortalList', 'legalPortalAside'])
+    fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
+    const forms = [...document.querySelectorAll('form.legalPortalForm')] as HTMLElement[]
+    expect(forms).toHaveLength(4)
+    for (const f of forms) expect(f.style.gridTemplateColumns).toBe('')
   })
 })
