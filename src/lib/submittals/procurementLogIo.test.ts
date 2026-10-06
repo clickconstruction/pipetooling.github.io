@@ -70,3 +70,27 @@ describe('2026-10-02 · an order-only fixture waits for no call', () => {
     expect(buildProcurementLog({ items: out, records: [], tagStage: {}, stageDates: {} })[0]!.status).toBe('not_submitted')
   })
 })
+
+describe('v2.4685 · a house\'s usual lead time stands in for a part that has none', () => {
+  // A client that answers the one query the reader makes for houses; no takeoff row is asked for.
+  const withHouses = (houses: Array<{ id: string; name: string; default_lead_time_days: number | null }>) =>
+    ({ from: () => ({ select: () => ({ in: async () => ({ data: houses, error: null }) }) }) }) as unknown as Client
+  const houses = [{ id: 'h-nw', name: 'National Wholesale', default_lead_time_days: 21 }, { id: 'h-moore', name: 'Moore Supply', default_lead_time_days: null }]
+
+  it('a part with no lead time reads its house\'s usual; a typed number wins; a house with no usual leaves it blank; the row\'s own lead still comes before the house', async () => {
+    const parts = [
+      part('bowl', 'TOTO CT728CUVG#01', 1, { supply_house_id: 'h-nw', lead_time_days: null }),
+      part('valve', 'TOTO TET2UB31#SS', 2, { supply_house_id: 'h-nw', lead_time_days: 7 }),
+      part('seat', 'MAINLINE ML1055SSC000', 3, { supply_house_id: 'h-moore', lead_time_days: null }),
+      part('stop', 'BRASSCRA PLB113XP', 4, { supply_house_id: null, lead_time_days: null }),
+    ]
+    const out = await procurementItemsFrom(withHouses(houses), [row({ lead_time_days: null })] as unknown as Items, true, parts)
+    expect(out.map((l) => [l.partKey, l.supplyHouse, l.leadTimeDays])).toEqual([['k-bowl', 'National Wholesale', 21], ['k-valve', 'National Wholesale', 7], ['k-seat', 'Moore Supply', null], ['k-stop', null, null]])
+    // The row's own lead time (the roll-up) still comes before the house's usual.
+    const rolled = await procurementItemsFrom(withHouses(houses), [row({ lead_time_days: 14 })] as unknown as Items, true, parts.slice(0, 1))
+    expect(rolled[0]!.leadTimeDays).toBe(14)
+    // A row with no parts reads its own house the same way.
+    const bare = await procurementItemsFrom(withHouses(houses), [row({ lead_time_days: null, supply_house_id: 'h-nw' })] as unknown as Items, true, [])
+    expect(bare[0]!.leadTimeDays).toBe(21)
+  })
+})

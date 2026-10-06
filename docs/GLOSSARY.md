@@ -1116,7 +1116,7 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 
 **Database**: `supply_houses` table
 
-**Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
+**Fields**: name, contact info, address, notes, default_lead_time_days (v2.4685 · the house's usual lead time; a submittal part with none of its own reads it on the procurement log), monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
 
 **Price coverage** (Materials, v2.2903 — the button and modal were titled "Supply Houses" until then): how many parts carry a price at each supply house, so the estimator can see which houses the Price Book actually quotes from. Only houses whose **vendor kind** is *Supply house* (v2.3172; the older `is_insurer` flag was dropped in v2.3244) appear in the quoting pickers.
 

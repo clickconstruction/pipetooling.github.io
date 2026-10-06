@@ -103,10 +103,18 @@ type ItemLike = { id?: string; review_note?: string | null; tag: string; submitt
 export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean, parts: ReadonlyArray<SubmittalPartRow> = []): Promise<ProcurementItemSource[]> {
   const houseIds = [...new Set([...items.map((i) => i.supply_house_id), ...parts.map((p) => p.supply_house_id)].filter((x): x is string => !!x))]
   const names = new Map<string, string>()
+  // v2.4685 · a house's usual lead time stands in for a part that has none of its own; a typed number wins.
+  const usual = new Map<string, number>()
   if (houseIds.length > 0) {
-    const { data } = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
-    for (const h of data ?? []) names.set(h.id, h.name)
+    // Until the column is pushed the select with it fails: read the names alone then, as the Materials tab does.
+    let res = await supabase.from('supply_houses').select('id, name, default_lead_time_days').in('id', houseIds)
+    if (res.error) res = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
+    for (const h of (res.data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>) {
+      names.set(h.id, h.name)
+      if (h.default_lead_time_days != null) usual.set(h.id, h.default_lead_time_days)
+    }
   }
+  const leadOf = (own: number | null | undefined, houseId: string | null | undefined): number | null => own ?? (houseId ? usual.get(houseId) ?? null : null)
   // How many fixtures the takeoff counted, for the parts' quantities and each tag's heading (2026-10-02).
   const countRowIds = [...new Set(items.map((i) => i.source_count_row_id).filter((x): x is string => !!x))]
   const counts = new Map<string, number>()
@@ -132,7 +140,7 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const base = { tag: i.tag.trim(), shared, sourceCountRowId: counted, itemId: itemId ?? null, fixture: counted ? fixtures.get(counted) ?? null : null, fixtureCount: counted ? counts.get(counted) ?? null : null }
     const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
     if (rowParts.length === 0) {
-      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision, reviewNote: i.review_note?.trim() || null, ...(submitted ? {} : { noProduct: true }), ...(noGc ? { orderOnly: true, noGc: true } : {}) })
+      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: leadOf(i.lead_time_days, i.supply_house_id), decision: rowDecision, reviewNote: i.review_note?.trim() || null, ...(submitted ? {} : { noProduct: true }), ...(noGc ? { orderOnly: true, noGc: true } : {}) })
       continue
     }
     const fixtureCount = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
@@ -143,7 +151,7 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
         ...base,
         product: p.label.trim(),
         supplyHouse: p.supply_house_id ? names.get(p.supply_house_id) ?? null : null,
-        leadTimeDays: p.lead_time_days ?? i.lead_time_days,
+        leadTimeDays: leadOf(p.lead_time_days ?? i.lead_time_days, p.supply_house_id),
         decision: noGc ? null : partLineDecision({ onSubmittal: p.on_submittal, own: own ? { kind: own, at: p.reviewed_at } : null, row: rowDecision, rowCalledByPart }),
         partKey: p.procure_key,
         partOrder: p.sequence_order,
