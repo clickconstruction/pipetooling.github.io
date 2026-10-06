@@ -56,7 +56,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { fileSentCopy, loadSentCopiesForJob } from '../../lib/sent/sentCopiesIo'
 import type { SentCopy } from '../../lib/sent/sentCopies'
-import { payApplicationDay, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
+import { payApplicationDay, payApplicationHistory, payApplicationSavedWords, payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 import AiaG702G703History from './AiaG702G703History'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -517,9 +517,17 @@ export default function AiaG702G703Modal({
       const outcome = await saveOnJob(appForm)
       // Sent copies (docs/SENT_COPIES.md, step 5): a workbook leaves the app as a file, so the file
       // itself is kept as it was downloaded. The saved application stays editable; this does not.
+      // What the application said goes with the copy (v2.4714), so a later save can be named against it.
       const number = String(values.g702_n5_project ?? '').trim()
       void fileSentCopy(
-        { kind: 'pay_application', title: `Pay application${number ? ` ${number}` : ''} · AIA G702-G703`, how: 'download', jobIds: [job.id], source: 'saved' in outcome ? { table: 'job_pay_applications', id: outcome.saved.id } : null },
+        {
+          kind: 'pay_application',
+          title: `Pay application${number ? ` ${number}` : ''} · AIA G702-G703`,
+          how: 'download',
+          jobIds: [job.id],
+          source: 'saved' in outcome ? { table: 'job_pay_applications', id: outcome.saved.id } : null,
+          sourceSnapshot: 'saved' in outcome ? payApplicationSnapshot(outcome.saved) : null,
+        },
         { blob: new Blob([ab], { type: XLSX_TYPE }), fileName: filename, contentType: XLSX_TYPE },
       )
         // The history lists the workbook once it is filed.

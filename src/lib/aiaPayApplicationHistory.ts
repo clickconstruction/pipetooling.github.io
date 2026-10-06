@@ -1,4 +1,5 @@
 import type { SavedPayApplication } from './aiaPayApplications'
+import type { PayApplicationLine } from './aiaPayApplicationLines'
 import { formatAiaMoney } from './aiaG702G703Preview'
 import type { SentCopy } from './sent/sentCopies'
 import { formatDenverCalendarDayShort, formatDenverDateTimeShort } from '../utils/dateUtils'
@@ -148,4 +149,124 @@ export function payApplicationSavedWords(app: Pick<SavedPayApplication, 'created
 export function payApplicationWentOutWords(copy: Pick<SentCopy, 'sentAt' | 'sentByName'>, when: (iso: string) => string): string {
   const at = when(copy.sentAt)
   return `Went out${at ? ` ${at}` : ''}${copy.sentByName ? ` by ${copy.sentByName}` : ''}`
+}
+
+/**
+ * What the application said when its workbook went out (v2.4714): filed with the copy as
+ * `sent_documents.source_snapshot`, so a later save can be named against it. The lines carry
+ * the four typed amounts; the totals are the G702's.
+ */
+export type PayApplicationSnapshotLine = { id: string; label: string; scheduledValue: number; fromPrevious: number; thisPeriod: number; stored: number }
+export type PayApplicationSnapshot = {
+  applicationNumber: number
+  periodTo: string | null
+  contractSumToDate: number
+  totalCompletedAndStored: number
+  retainagePct: number
+  retainageHeld: number
+  totalEarnedLessRetainage: number
+  currentPaymentDue: number
+  lines: PayApplicationSnapshotLine[]
+}
+
+const snapshotLine = (l: PayApplicationLine): PayApplicationSnapshotLine => ({
+  id: l.id,
+  label: l.label,
+  scheduledValue: l.scheduledValue,
+  fromPrevious: l.fromPrevious,
+  thisPeriod: l.thisPeriod,
+  stored: l.stored,
+})
+
+export function payApplicationSnapshot(app: SavedPayApplication): PayApplicationSnapshot {
+  return {
+    applicationNumber: app.applicationNumber,
+    periodTo: app.periodTo,
+    contractSumToDate: app.contractSumToDate,
+    totalCompletedAndStored: app.totalCompletedAndStored,
+    retainagePct: app.retainagePct,
+    retainageHeld: app.retainageHeld,
+    totalEarnedLessRetainage: app.totalEarnedLessRetainage,
+    currentPaymentDue: app.currentPaymentDue,
+    lines: app.lines.map(snapshotLine),
+  }
+}
+
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : 0)
+const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+/** A filed snapshot read back, defensively; null when it is not one (another paper's snapshot, or nothing). */
+export function parsePayApplicationSnapshot(raw: unknown): PayApplicationSnapshot | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.applicationNumber !== 'number' || !Array.isArray(r.lines)) return null
+  return {
+    applicationNumber: r.applicationNumber,
+    periodTo: typeof r.periodTo === 'string' ? r.periodTo : null,
+    contractSumToDate: num(r.contractSumToDate),
+    totalCompletedAndStored: num(r.totalCompletedAndStored),
+    retainagePct: num(r.retainagePct),
+    retainageHeld: num(r.retainageHeld),
+    totalEarnedLessRetainage: num(r.totalEarnedLessRetainage),
+    currentPaymentDue: num(r.currentPaymentDue),
+    lines: r.lines
+      .filter((l): l is Record<string, unknown> => !!l && typeof l === 'object')
+      .map((l) => ({ id: str(l.id), label: str(l.label), scheduledValue: num(l.scheduledValue), fromPrevious: num(l.fromPrevious), thisPeriod: num(l.thisPeriod), stored: num(l.stored) })),
+  }
+}
+
+/** One amount that moved since the workbook went out. */
+export type ChangedAmount = { label: string; was: number; now: number }
+export type ChangedAfterWentOut = {
+  /** The newest workbook that carries a snapshot: what the GC has. */
+  copy: SentCopy
+  differences: ChangedAmount[]
+}
+
+const centsOf = (n: number): number => Math.round(n * 100)
+const differs = (a: number, b: number): boolean => centsOf(a) !== centsOf(b)
+
+/**
+ * The saved application against the newest workbook that went out with a snapshot: null when
+ * no workbook carries one, or nothing moved. Lines match by id, then by label; a line only on
+ * one side is named as added or taken off. Then the G702's totals that moved.
+ */
+export function changedAfterWentOut(app: SavedPayApplication, wentOut: ReadonlyArray<SentCopy>): ChangedAfterWentOut | null {
+  const newest = newestFirst(wentOut).find((c) => parsePayApplicationSnapshot(c.sourceSnapshot) != null)
+  const snap = newest ? parsePayApplicationSnapshot(newest.sourceSnapshot) : null
+  if (!newest || !snap) return null
+  const differences: ChangedAmount[] = []
+  const name = (label: string): string => label.trim() || 'The line'
+  const matched = new Set<PayApplicationSnapshotLine>()
+  for (const line of app.lines) {
+    const then = snap.lines.find((l) => !matched.has(l) && l.id === line.id) ?? snap.lines.find((l) => !matched.has(l) && l.label.trim() === line.label.trim())
+    if (!then) {
+      differences.push({ label: `${name(line.label)}, a new line, this period`, was: 0, now: line.thisPeriod })
+      continue
+    }
+    matched.add(then)
+    const pairs: Array<[string, number, number]> = [
+      ['scheduled value', then.scheduledValue, line.scheduledValue],
+      ['from previous application', then.fromPrevious, line.fromPrevious],
+      ['this period', then.thisPeriod, line.thisPeriod],
+      ['stored', then.stored, line.stored],
+    ]
+    for (const [what, was, now] of pairs) if (differs(was, now)) differences.push({ label: `${name(line.label)} ${what}`, was, now })
+  }
+  for (const then of snap.lines) if (!matched.has(then)) differences.push({ label: `${name(then.label)}, a line taken off, this period`, was: then.thisPeriod, now: 0 })
+  const totals: Array<[string, number, number]> = [
+    ['contract sum to date', snap.contractSumToDate, app.contractSumToDate],
+    ['completed and stored', snap.totalCompletedAndStored, app.totalCompletedAndStored],
+    ['retainage held', snap.retainageHeld, app.retainageHeld],
+    ['payment due', snap.currentPaymentDue, app.currentPaymentDue],
+  ]
+  for (const [what, was, now] of totals) if (differs(was, now)) differences.push({ label: what, was, now })
+  return differences.length > 0 ? { copy: newest, differences } : null
+}
+
+/** "Changed after it went out Sep 2: Top Out this period $12,078.40 → $11,323.50 · payment due $10,870.56 → $10,191.15". */
+export function changedAfterWords(changed: ChangedAfterWentOut, when: (iso: string) => string): string {
+  const at = when(changed.copy.sentAt)
+  const moved = changed.differences.map((d) => `${d.label} ${formatAiaMoney(d.was)} → ${formatAiaMoney(d.now)}`).join(' · ')
+  return `Changed after it went out${at ? ` ${at}` : ''}: ${moved}`
 }

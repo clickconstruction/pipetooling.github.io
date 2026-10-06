@@ -12,6 +12,7 @@ import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplic
 import type { PayApplicationLine } from '../../lib/aiaPayApplicationLines'
 import type { BidSchedule } from '../../lib/aiaBidSchedule'
 import type { SentCopy } from '../../lib/sent/sentCopies'
+import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
@@ -87,6 +88,7 @@ function workbook(p: Partial<SentCopy>): SentCopy {
     attachments: [],
     sentAt: '2026-10-02T15:12:00Z',
     sentByName: 'Taunya',
+    sourceSnapshot: null,
     ...p,
   }
 }
@@ -486,10 +488,13 @@ describe('AiaG702G703Modal', () => {
     expect(saveSpy).toHaveBeenCalledTimes(1)
     // Each download files the workbook itself: the first with no saved application to point at, the second on its row.
     expect(filedSpy).toHaveBeenCalledTimes(2)
-    expect(filedSpy.mock.calls[0]![0]).toMatchObject({ kind: 'pay_application', how: 'download', jobIds: [job.id], source: null })
+    expect(filedSpy.mock.calls[0]![0]).toMatchObject({ kind: 'pay_application', how: 'download', jobIds: [job.id], source: null, sourceSnapshot: null })
     const [filing, body] = filedSpy.mock.calls[1]!
     expect(filing).toMatchObject({ kind: 'pay_application', title: 'Pay application 1 · AIA G702-G703', how: 'download', jobIds: [job.id] })
     expect((filing.source as { table: string }).table).toBe('job_pay_applications')
+    // What the application said goes with the workbook, so a later save can be named against it.
+    expect(filing.sourceSnapshot).toMatchObject({ applicationNumber: 1, totalCompletedAndStored: 19400, currentPaymentDue: 17460 })
+    expect((filing.sourceSnapshot as { lines: unknown[] }).lines).toHaveLength(1)
     expect(body.fileName).toMatch(/\.xlsx$/)
     expect(body.contentType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     expect(body.blob.size).toBe(8)
@@ -572,6 +577,18 @@ describe('AiaG702G703Modal', () => {
     await waitFor(() => expect(field('g702_n5_project').value).toBe('2'))
     expect(screen.getByTestId('aia-applications').textContent).toContain('Application 2')
     expect(screen.getByTestId('aia-applications').textContent).toContain('Saved Nov 2 by Taunya · saved again Nov 5 by Robert. You can change it and save it again.')
+  })
+
+  it('names what moved since the workbook went out, against the figures filed with it', async () => {
+    setWide(true)
+    // Application 1 went out at 19,400 this period and was then saved again at 21,000.
+    const went = payApplicationSnapshot(savedOne())
+    onJob = [savedOneChanged()]
+    sentOnJob = [workbook({ id: 'copy-1', sourceSnapshot: went as unknown as Record<string, unknown>, sentAt: '2026-10-02T15:12:00Z' })]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    const flag = await screen.findByTestId('aia-history-changed')
+    expect(flag.textContent).toContain('Changed after it went out Oct 2: Plumbing this period $19,400.00 → $21,000.00 · completed and stored $19,400.00 → $21,000.00 · retainage held $1,940.00 → $2,100.00 · payment due $17,460.00 → $18,900.00.')
+    expect(flag.textContent).toContain('The GC has the Oct 2 workbook. Generate it again to send the change, or open it and put the amounts back.')
   })
 
   it('starts on a new application when asked to, and offers no Form / Preview switch on a narrow history', async () => {

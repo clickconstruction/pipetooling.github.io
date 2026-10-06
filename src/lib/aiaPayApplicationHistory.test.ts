@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  changedAfterWentOut,
+  changedAfterWords,
   isPayApplicationCopy,
+  parsePayApplicationSnapshot,
+  payApplicationSnapshot,
   payApplicationFileName,
   payApplicationHistory,
   payApplicationSavedWords,
@@ -40,6 +44,7 @@ function copy(p: Partial<SentCopy>): SentCopy {
     attachments: [],
     sentAt: '2026-08-01T14:12:00Z',
     sentByName: 'Taunya',
+    sourceSnapshot: null,
     ...p,
   }
 }
@@ -129,5 +134,67 @@ describe('the words', () => {
   it('says when a workbook went out and by whom', () => {
     expect(payApplicationWentOutWords(copy({}), day)).toBe('Went out 2026-08-01 by Taunya')
     expect(payApplicationWentOutWords(copy({ sentByName: '' }), day)).toBe('Went out 2026-08-01')
+  })
+})
+
+describe('changed after it went out', () => {
+  const one = () => app(1, 15098, 0, 0)
+
+  it('files what the application said, and reads it back', () => {
+    const snap = payApplicationSnapshot(one())
+    expect(snap).toMatchObject({ applicationNumber: 1, periodTo: '2026-07-30', contractSumToDate: 37745, totalCompletedAndStored: 15098, retainagePct: 10, retainageHeld: 1509.8, currentPaymentDue: 13588.2 })
+    expect(snap.lines).toEqual([{ id: 'line-1', label: 'Plumbing', scheduledValue: 37745, fromPrevious: 0, thisPeriod: 15098, stored: 0 }])
+    expect(parsePayApplicationSnapshot(JSON.parse(JSON.stringify(snap)))).toEqual(snap)
+    // Another paper's snapshot, or nothing, is not one.
+    expect(parsePayApplicationSnapshot({ total: 5 })).toBeNull()
+    expect(parsePayApplicationSnapshot(null)).toBeNull()
+    expect(parsePayApplicationSnapshot([1])).toBeNull()
+  })
+
+  it('is nothing when no workbook carries a snapshot, or nothing moved', () => {
+    const a = one()
+    expect(changedAfterWentOut(a, [copy({})])).toBeNull()
+    expect(changedAfterWentOut(a, [copy({ sourceSnapshot: payApplicationSnapshot(a) as unknown as Record<string, unknown> })])).toBeNull()
+    expect(changedAfterWentOut(a, [])).toBeNull()
+  })
+
+  it('names each amount that moved since the newest workbook with a snapshot, lines first', () => {
+    // Went out at 15,098 this period; saved again at 12,078.40, with a change order line added.
+    const went = payApplicationSnapshot(one())
+    const now = app(1, 12078.4, 0, 0)
+    now.lines = [...now.lines, { id: 'co-1', label: 'CO 1', scheduledValue: 500, labor: null, stage: null, fromPrevious: 0, thisPeriod: 500, stored: 0 }]
+    const changed = changedAfterWentOut(now, [
+      copy({ id: 'old', sentAt: '2026-08-01T10:00:00Z', sourceSnapshot: { applicationNumber: 1, lines: [] } }),
+      copy({ id: 'newest', sentAt: '2026-08-02T10:00:00Z', sourceSnapshot: went as unknown as Record<string, unknown> }),
+      copy({ id: 'no-snapshot', sentAt: '2026-08-03T10:00:00Z' }),
+    ])
+    expect(changed?.copy.id).toBe('newest')
+    expect(changed?.differences).toEqual([
+      { label: 'Plumbing this period', was: 15098, now: 12078.4 },
+      { label: 'CO 1, a new line, this period', was: 0, now: 500 },
+      // The totals stay what the write computed from the one line.
+      { label: 'completed and stored', was: 15098, now: 12078.4 },
+      { label: 'retainage held', was: 1509.8, now: 1207.84 },
+      { label: 'payment due', was: 13588.2, now: 10870.56 },
+    ])
+    expect(changedAfterWords(changed!, day)).toBe(
+      'Changed after it went out 2026-08-02: Plumbing this period $15,098.00 → $12,078.40 · CO 1, a new line, this period $0.00 → $500.00 · completed and stored $15,098.00 → $12,078.40 · retainage held $1,509.80 → $1,207.84 · payment due $13,588.20 → $10,870.56',
+    )
+  })
+
+  it('matches a renamed line by id and a re-made line by label, and names a line taken off', () => {
+    const went = payApplicationSnapshot(one())
+    const renamed = app(1, 15098, 0, 0)
+    renamed.lines = [{ ...renamed.lines[0]!, label: 'Plumbing, all of it' }]
+    expect(changedAfterWentOut(renamed, [copy({ sourceSnapshot: went as unknown as Record<string, unknown> })])).toBeNull()
+
+    const remade = app(1, 15098, 0, 0)
+    remade.lines = [{ ...remade.lines[0]!, id: 'line-9' }]
+    expect(changedAfterWentOut(remade, [copy({ sourceSnapshot: went as unknown as Record<string, unknown> })])).toBeNull()
+
+    const emptied = app(1, 0, 0, 0)
+    emptied.lines = [{ id: 'other', label: 'Gas', scheduledValue: 37745, labor: null, stage: null, fromPrevious: 0, thisPeriod: 0, stored: 0 }]
+    const changed = changedAfterWentOut(emptied, [copy({ sourceSnapshot: went as unknown as Record<string, unknown> })])
+    expect(changed?.differences.map((d) => d.label)).toEqual(['Gas, a new line, this period', 'Plumbing, a line taken off, this period', 'completed and stored', 'retainage held', 'payment due'])
   })
 })

@@ -5,7 +5,7 @@ import { formatAiaDate } from '../../lib/aiaG702G703Template'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
 import { loadPayApplications } from '../../lib/aiaPayApplicationsIo'
-import { isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationFileName, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
+import { changedAfterWentOut, changedAfterWords, isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationFileName, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
 import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
 import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
@@ -121,6 +121,7 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                   {history.lines.map(({ app, wentOut }) => {
                     const mismatch = carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, apps)
                     const saved = payApplicationSavedWords(app, payApplicationDay).replace(/^Saved /, '')
+                    const changed = changedAfterWentOut(app, wentOut)
                     return (
                     <Fragment key={app.id}>
                     <tr data-testid="job-documents-pay-app">
@@ -159,6 +160,13 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                         </button>
                       </td>
                     </tr>
+                    {changed ? (
+                      <tr data-testid="job-documents-pay-app-changed">
+                        <td colSpan={6} style={{ ...td, paddingTop: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                          ⚠ {changedAfterWords(changed, payApplicationDay)}. The GC has the {payApplicationDay(changed.copy.sentAt)} workbook.
+                        </td>
+                      </tr>
+                    ) : null}
                     {mismatch ? (
                       <tr data-testid="job-documents-pay-app-flag">
                         <td colSpan={6} style={{ ...td, paddingTop: 0, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>

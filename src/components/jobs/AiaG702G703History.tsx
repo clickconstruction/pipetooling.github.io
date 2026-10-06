@@ -5,6 +5,8 @@ import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplica
 import {
   type PayApplicationHistory,
   type PayApplicationSummary,
+  changedAfterWentOut,
+  changedAfterWords,
   payApplicationDay,
   payApplicationDayTime,
   payApplicationFileName,
@@ -122,6 +124,7 @@ export default function AiaG702G703History({
         {history.lines.map(({ app, wentOut }) => {
           const mismatch = carryMismatch({ values: app.fields, lines: app.lines }, app.applicationNumber, apps)
           const saved = payApplicationSavedWords(app, payApplicationDay)
+          const changed = changedAfterWentOut(app, wentOut)
           return (
             <div key={app.id} data-testid="aia-history-line" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', padding: '0.6rem 0', borderTop: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
@@ -138,6 +141,11 @@ export default function AiaG702G703History({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.6rem', borderLeft: '2px solid var(--border)' }}>
                 {saved ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>{saved}</span> : null}
                 {wentOut.length > 0 ? wentOut.map(wentOutLine) : <span style={muted}>Not downloaded yet.</span>}
+                {changed ? (
+                  <span data-testid="aia-history-changed" style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                    ⚠ {changedAfterWords(changed, payApplicationDay)}. The GC has the {payApplicationDay(changed.copy.sentAt)} workbook. Generate it again to send the change, or open it and put the amounts back.
+                  </span>
+                ) : null}
                 {mismatch ? (
                   <span data-testid="aia-history-flag" style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
                     ⚠ No longer matches application {mismatch.previousNumber}. {app.carryReason ? `Kept as it is: ${app.carryReason}` : 'No reason given yet.'}
