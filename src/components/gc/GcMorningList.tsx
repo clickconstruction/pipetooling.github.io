@@ -62,6 +62,8 @@ export function GcMorningList({ state, project, day, onDay }: { state: GcState; 
               )}
             </div>
             <div style={{ color: c.missing ? 'var(--text-red-700)' : c.onTheDay ? 'var(--text-green-800)' : 'var(--text-muted)', fontWeight: c.missing ? 600 : 400 }}>{c.logWords}</div>
+            {/* At the gate (G-138): a crew whose insurance ran out works uncovered. */}
+            {c.insurance && <div style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>{c.insurance}</div>}
             {c.bars.map((b) => (
               <div key={b.lineId} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', paddingLeft: '0.75rem' }}>
                 <span style={{ flex: '1 1 9rem', minWidth: 0 }}>{b.name}</span>

@@ -26,6 +26,8 @@ describe('the morning list', () => {
     expect(screen.getByText('day 12 of 19')).toBeTruthy()
     expect(container.querySelectorAll('[data-morning-company]').length).toBe(5)
     expect(screen.getByText(/It is seen again today\. It failed Mon Sep 28/)).toBeTruthy()
+    // At the gate (G-138): Pecan Valley works with its insurance run out.
+    expect(screen.getByText('Their insurance ran out Tue Sep 15. Nothing they do for us is covered.')).toBeTruthy()
     expect(screen.getByText("No log for today yet. Each company's count comes in when it is written.")).toBeTruthy()
   })
 
