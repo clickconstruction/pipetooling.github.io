@@ -32,7 +32,7 @@ describe('EMAIL_CATALOG', () => {
     if (wf.editable.kind === 'templates') expect(wf.editable.templateTypes).toHaveLength(11)
   })
 
-  it('covers the full inventory: 39 rows, every sender named, no blank subjects', () => {
+  it('covers the full inventory: 45 rows, every sender named, no blank subjects', () => {
     // 33 composition paths from the 2026-09-02 inventory, folded: the 11
     // workflow templates ride one aggregate row, pure variants (resends,
     // reminders, [TEST] twins) ride their parent row. +1 (v2.2664): the
@@ -43,7 +43,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.3985): the ask-by-link email to an account man (gc-word-ask).
     // +1 (v2.4020): the payer's own Stripe bill email (send-stripe-invoice), which Stripe used to send.
     // +1 (v2.4311): where the liens stand, from the Lien desk's Share (send-lien-desk-summary).
-    expect(EMAIL_CATALOG).toHaveLength(44)
+    // +1 (v2.4624): the law firm's portal link, sent from the Legal desk (legal-send-firm-link).
+    expect(EMAIL_CATALOG).toHaveLength(45)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

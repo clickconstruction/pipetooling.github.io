@@ -22,7 +22,7 @@ import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailS
 import type { GcReviewGroup } from './gcReviewRollup'
 import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
-import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
+import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail, buildLegalWelcomeEmail } from './legalEmails'
 import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { LEGAL_CONFIRMED_SAMPLE_PATH, LEGAL_PORTAL_SAMPLE_PATH, PAY_SAMPLE_PATH } from './customerJourneys'
 import { buildStripeBillEmail } from '../../supabase/functions/_shared/stripeBillEmail'
@@ -257,11 +257,13 @@ export function buildSampleJobAccountEmail(ctx: SampleEmailContext): BuiltEmail 
 
 
 
-/** The firm's three emails (v2.3512): the senders' own builders over the sample firm. */
-export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal-digest', ctx: SampleEmailContext): BuiltEmail {
+/** The firm's emails (v2.3512; the welcome v2.4624): the senders' own builders over the sample firm. */
+export function buildSampleLegalEmail(id: 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest', ctx: SampleEmailContext): BuiltEmail {
   const portalUrl = `${ctx.origin}${LEGAL_PORTAL_SAMPLE_PATH}`
   const confirmUrl = `${ctx.origin}${LEGAL_CONFIRMED_SAMPLE_PATH}`
   const unsubscribeUrl = `${confirmUrl}&stop=1`
+  if (id === 'legal-welcome')
+    return buildLegalWelcomeEmail({ companyName: PORTAL_COMPANY.name, companyPhone: PORTAL_COMPANY.phone, firmName: SAMPLE_FIRM.name, greetName: SAMPLE_FIRM.handling, portalUrl, matterCount: 1, sender: ctx.sender })
   if (id === 'legal-confirm') return buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email: SAMPLE_FIRM.recipients[1].email, confirmUrl })
   if (id === 'legal-now')
     return buildLegalNowEmail({
@@ -331,7 +333,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-statement') return buildSampleGcStatementEmail(ctx)
   if (id === 'rfq-request') return buildSampleRfqEmail(ctx)
   if (id === 'job-account') return buildSampleJobAccountEmail(ctx)
-  if (id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
+  if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

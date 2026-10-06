@@ -176,6 +176,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Weekly digest — 3 open matters at Click Plumbing and Electrical',
   },
   {
+    id: 'legal_firm_link',
+    name: 'Legal portal — the firm’s link, sent from the desk',
+    group: 'lien',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'legal-send-firm-link',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Your collections portal from Click Plumbing and Electrical',
+  },
+  {
     id: 'legal_recipient_confirm',
     name: 'Legal portal — confirm your email',
     group: 'lien',

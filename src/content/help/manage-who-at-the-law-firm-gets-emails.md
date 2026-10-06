@@ -16,7 +16,7 @@ The firm opens the **Notifications** page on its portal. Each person at the firm
 - **Every matter** or **Only my matters**. A matter is one account sent to the firm. My matters are the ones where the person is named as the handling person.
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
-**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
+**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. When that email cannot be sent, the portal says so in red. The firm presses {{button:outline|Resend the confirmation}} a minute later. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
 
 ## What they hear about
 
@@ -41,4 +41,4 @@ Until the firm adds its people on the portal, nobody is emailed — the matter s
 
 ## Wording
 
-There are three emails: account referred, the weekly digest, and the confirmation. The account-referred email also has an office-answered variant and a referral-withdrawn variant. All three are listed in the Outbound email catalog on Settings → Email templates. They show as `legal-notify-dispatch` and `submit-legal-portal` sends. Their wording is fixed in this release.
+There are four emails: the firm's link, account referred, the weekly digest, and the confirmation. The office sends the firm's link from {{button:outline|🌐 Firm's link}}. The account-referred email also has an office-answered variant and a referral-withdrawn variant. All four are listed in the Outbound email catalog on Settings → Email templates. Their wording is fixed.

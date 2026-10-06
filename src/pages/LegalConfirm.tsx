@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
-import { legalConfirmedPageBody, legalUnsubscribedPageBody } from '../lib/legalEmails'
+import { LEGAL_CONFIRM_EXPIRED_REASON, legalConfirmedPageBody, legalUnsubscribedPageBody } from '../lib/legalEmails'
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 
@@ -21,7 +21,7 @@ type Answer = { kind: 'confirmed'; name: string; email: string } | { kind: 'unsu
 function bodyFor(a: Answer, stop: boolean): string {
   if (a.kind === 'confirmed') return legalConfirmedPageBody(PORTAL_COMPANY.name, a.name, a.email)
   if (a.kind === 'unsubscribed') return legalUnsubscribedPageBody(PORTAL_COMPANY.name, a.name)
-  const reason = a.reason ?? (stop ? 'Use the link in a newer email, or stop emails from the portal.' : 'Ask someone at the firm to add you again from the portal.')
+  const reason = a.reason ?? (stop ? 'Use the link in a newer email, or stop emails from the portal.' : LEGAL_CONFIRM_EXPIRED_REASON)
   return `<h1>That link has expired.</h1><p>${reason.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</p>`
 }
 

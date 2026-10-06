@@ -10,7 +10,7 @@
  *
  * What is built is `sentCopyEmail.ts` (pure, tested under vitest); this file is the fetches.
  */
-import { type SentEmailFiling, type SentEmailMessage, type SentEmailStoredAttachment, sentAttachmentPath, sentAttachmentType, sentEmailCopyHtml, sentEmailRow } from './sentCopyEmail.ts'
+import { type SentEmailFiling, type SentEmailMessage, type SentEmailStoredAttachment, sentAttachmentPath, sentAttachmentType, sentCopyKeptHtml, sentEmailCopyHtml, sentEmailRow } from './sentCopyEmail.ts'
 
 export type { SentEmailFiling } from './sentCopyEmail.ts'
 
@@ -48,7 +48,7 @@ export async function fileSentEmailBestEffort(filing: SentEmailFiling, msg: Sent
     const id = crypto.randomUUID()
     if (!sentEmailRow(id, filing, msg, { copyPath: null, copyHash: '', copyBytes: null, attachments: [] })) return
 
-    const page = new TextEncoder().encode(sentEmailCopyHtml(msg))
+    const page = new TextEncoder().encode(sentEmailCopyHtml({ ...msg, html: sentCopyKeptHtml(filing.kind, msg.html) }))
     const copyPath = `${id}/copy.html`
     const kept = await put(supabaseUrl, serviceKey, copyPath, page, 'text/html').catch(() => false)
 

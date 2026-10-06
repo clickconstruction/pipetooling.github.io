@@ -8,13 +8,14 @@
  * names, never the office's triage (*sworn account holds*, *theory: signed contract*). Which
  * cause of action fits is the firm's call.
  */
-import { legalFirmStageWords } from '../legalEmails'
+import { FIRM_EMAIL_MODE_WORDS, legalFirmStageWords } from '../legalEmails'
 import { askMetaOf, answerMetaOf, isFirmAnswer, isOfficeAsk } from './legalAsks'
 import type { LegalEntryRow } from './legalMatters'
 import type { LegalJobLine, LegalSaidEntry, LegalStep } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
-export { legalFirmStageWords }
+/** The rule's two choices on the Notifications page; they live beside the emails so the welcome email names them the same way. */
+export { FIRM_EMAIL_MODE_WORDS, legalFirmStageWords }
 
 /** A row on *Fees and costs*: `Attorney fee` / `Cost`. */
 export function firmFeeKindWords(kind: string): string {
@@ -93,8 +94,6 @@ export function firmRecipientStatusWords(r: { paused: boolean; confirmed: boolea
   return r.paused ? 'stopped' : r.confirmed ? 'confirmed' : 'not confirmed yet'
 }
 
-/** The rule's two choices on the Notifications page. */
-export const FIRM_EMAIL_MODE_WORDS = { now: 'Each event', digest: 'Weekly digest' } as const
 
 /**
  * The line the portal shows after an act saves: what happens next, for that act. The sample
