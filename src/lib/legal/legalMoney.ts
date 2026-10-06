@@ -54,7 +54,13 @@ export function isContingencyEntry(e: Pick<LegalEntryRow, 'kind' | 'body' | 'met
 }
 
 /** The firm's fees and costs the debtor owes: every fee and cost entry except the contingency rows. */
-export function firmFeeEntries<E extends Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal'>>(entries: ReadonlyArray<E>): E[] {
+export function firmFeeEntries<E extends Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal'> & { voided_at?: string | null }>(entries: ReadonlyArray<E>): E[] {
+  // An undone fee or cost (#85 item 18) is out of every total: the demand, the print, the desk and Needs You.
+  return firmFeeRows(entries).filter((e) => !e.voided_at)
+}
+
+/** The fee and cost rows a table lists, the undone ones included (struck through, with their reason); never the contingency. */
+export function firmFeeRows<E extends Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal'>>(entries: ReadonlyArray<E>): E[] {
   return entries.filter((e) => (e.kind === 'fee' || e.kind === 'cost') && !isContingencyEntry(e))
 }
 
@@ -64,7 +70,7 @@ export function contingencyEntries<E extends Pick<LegalEntryRow, 'kind' | 'body'
 }
 
 /** Balance + the firm's fees and costs = the demand, never below 0 (an overpaid account owes nothing; its credit is a ledger line). One sum for the matter card, the desk and the print. */
-export function firmDemand(balance: number, entries: ReadonlyArray<Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal' | 'amount'>>): { feesTotal: number; demand: number } {
+export function firmDemand(balance: number, entries: ReadonlyArray<Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal' | 'amount'> & { voided_at?: string | null }>): { feesTotal: number; demand: number } {
   const feesTotal = round2(firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0))
   return { feesTotal, demand: Math.max(0, round2(balance + feesTotal)) }
 }

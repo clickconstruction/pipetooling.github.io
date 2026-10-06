@@ -1375,7 +1375,7 @@ Default recipients of the "<who> signed $…" email (customer accepted an estima
 
 ## SECURITY DEFINER RPCs and the anon key (v2.2954)
 
-Supabase grants `EXECUTE` on every new function to `PUBLIC`, so the `anon` role — whoever holds the publishable key, which ships in the client bundle — can call any RPC. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them.
+Supabase grants `EXECUTE` on every new function to `PUBLIC`, so the `anon` role — whoever holds the publishable key, which ships in the client bundle — can call any RPC. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them. The three CREATE TABLE sweep helpers (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`) slipped that audit; since v2.4686 (`20261006160500`) only the migration owner and the service role can call them.
 
 Rules for every RPC, existing or new:
 
@@ -1404,6 +1404,7 @@ The ⚖ Legal desk on the Pipeline's Collections tier is visible to the Collecti
 | Set a matter's settlement floor (dollars or a percent of the balance, or none), and sign off or decline the firm's settlement under it (v2.4643) | dev · master_technician · assistant · controller | `legal_set_settlement_floor`, `legal_answer_settlement` |
 | **Mark attorney-ready (= release to the firm)**, pull back (with a required reason the firm reads, v2.4645) | **dev only** | `legal_mark_attorney_ready`, `legal_pull_back` |
 | Close a firm end (settled · uncollectible · dismissed); accept a firm step that would move the stage back (v2.4645) | dev · master_technician · assistant · controller | `legal_close_matter`, `legal_set_stage` |
+| Undo a fee, cost or note the office wrote, with a reason the firm reads (v2.4648; the firm undoes its own fees, costs and unapplied payments through its portal) | dev · master_technician · assistant · controller | `legal_void_entry` |
 | Add or edit the collections law firm (name, handling person, email, fee model) | dev only | Settings → Jobs & dispatch → Collections law firm (`legal_firms` insert/update policies). **One active firm at a time**: the partial unique index `legal_firms_one_active` (v2.4641) refuses a second row with `active = true`; retire the old firm first. |
 | See the "N Collections accounts await your review" Needs You card | dev only | Dashboard |
 
@@ -1413,7 +1414,7 @@ Owner decision 2026-09-11: only a dev releases; the office asks with a note. A w
 
 **The firm's acts** (v2.3322): `submit-legal-portal` writes `legal_matter_entries` rows (`via_portal = true`) under the service role — fees, costs, steps, questions, payments received — only on matters with the token's firm and in the with-firm set. The office (the same four roles) answers, applies and acknowledges them from the desk; the firm cannot mark anything paid or touch a job.
 
-**The firm's emails** (v2.3325): `legal_firm_recipients` and `legal_notification_queue` are office-read; the firm manages its people through `submit-legal-portal` (service role); confirm and unsubscribe are public token links on `legal-notify-dispatch`. The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_remove` — are the Collections managers'.
+**The firm's emails** (v2.3325; every office event since v2.4649): `legal_firm_recipients` and `legal_notification_queue` are office-read, and the queue is written only by triggers; the firm manages its people through `submit-legal-portal` (service role); confirm and unsubscribe are public token links on `legal-notify-dispatch`. The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_remove` — are the Collections managers'.
 
 
 ## Job accounts at a supply house (v2.3423)

@@ -9,7 +9,9 @@
  *     saves once;
  *   - the hourly limit: 60 acts per matter, and the refusal names the matter
  *     and the time it lifts;
- *   - who recorded it (`meta.recordedBy` = { id, name } from the firm's own list).
+ *   - who recorded it (`meta.recordedBy` = { id, name } from the firm's own list);
+ *   - undo with a reason (PR 2): which entries each side may void, and that a
+ *     voided entry leaves every total.
  */
 
 export const LEGAL_ACTS_PER_MATTER_PER_HOUR = 60
@@ -52,4 +54,35 @@ export function recordedByOf(meta: unknown): LegalRecordedBy | null {
   const id = (r as Record<string, unknown>).id
   const name = (r as Record<string, unknown>).name
   return typeof id === 'string' && typeof name === 'string' && name.trim() ? { id, name: name.trim() } : null
+}
+
+type VoidableEntry = { kind: string; via_portal: boolean; voided_at?: string | null; acknowledged_at?: string | null }
+
+/** Undone (#85 item 18): the entry stays in the stream, struck through, and leaves every total. */
+export function isVoidedEntry(e: { voided_at?: string | null }): boolean {
+  return Boolean(e.voided_at)
+}
+
+/**
+ * Why the firm cannot undo this entry; null when it can. The firm undoes its own fees and costs, and a payment
+ * it reported that the office has not applied yet. A step is corrected by recording the right step; anything
+ * else is the office's, and the firm asks in the conversation.
+ */
+export function firmVoidProblem(e: VoidableEntry): string | null {
+  if (!e.via_portal) return 'That entry is the office’s. Ask them in the conversation.'
+  if (e.voided_at) return 'Already undone.'
+  if (e.kind === 'fee' || e.kind === 'cost') return null
+  if (e.kind === 'payment_received') return e.acknowledged_at ? 'The office already applied that payment. Ask them in the conversation.' : null
+  if (e.kind === 'step') return 'Record the right step instead.'
+  return 'That entry cannot be undone.'
+}
+
+/** True when the firm already undid this entry through its portal for the same reason: a retry, answered ok. */
+export function voidIsRetry(e: { voided_at: string | null; voided_via_portal?: boolean | null; void_reason?: string | null }, reason: string): boolean {
+  return Boolean(e.voided_at) && e.voided_via_portal === true && (e.void_reason ?? '').trim() === reason.trim()
+}
+
+/** The office undoes the fees, costs and notes it wrote (`legal_void_entry` holds the same rule). */
+export function officeCanVoid(e: VoidableEntry): boolean {
+  return !e.via_portal && !e.voided_at && (e.kind === 'fee' || e.kind === 'cost' || e.kind === 'note')
 }

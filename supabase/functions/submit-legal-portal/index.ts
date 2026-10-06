@@ -8,7 +8,7 @@ import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
-import { isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 
@@ -84,7 +84,7 @@ serve(async (req) => {
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
-    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
+    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     const link = await resolveLink(admin, token)
@@ -208,6 +208,23 @@ serve(async (req) => {
       meta.recordedBy = { id: (who as { id: string }).id, name: (who as { name: string }).name }
     }
 
+    // #85 item 18 (a): the firm undoes its own act, with a reason both sides read. Nothing is deleted.
+    if (kind === 'void') {
+      const entryId = str(body.entryId, 64)
+      if (!note) return jsonResponse({ error: 'Say why you are undoing it.' }, 400)
+      const { data: row } = await admin.from('legal_matter_entries').select('id, matter_id, kind, via_portal, voided_at, voided_via_portal, void_reason, acknowledged_at, meta').eq('id', entryId).maybeSingle()
+      const target = row as { id: string; matter_id: string; kind: string; via_portal: boolean; voided_at: string | null; voided_via_portal: boolean | null; void_reason: string | null; acknowledged_at: string | null; meta: Record<string, unknown> | null } | null
+      if (!target || target.matter_id !== matterId) return jsonResponse({ error: 'That entry is not on this matter.' }, 400)
+      // A retried undo (a double press, a timeout) is the same act: answer ok when the firm already undid it for the same reason.
+      if (voidIsRetry(target, note)) return jsonResponse({ ok: true, entryId: target.id, notice: 'Undone. It stays on the record, struck through, out of every total.' })
+      const problem = firmVoidProblem(target)
+      if (problem) return jsonResponse({ error: problem }, 400)
+      const nextMeta = { ...(target.meta ?? {}), ...(meta.recordedBy ? { voidedBy: meta.recordedBy } : {}) }
+      const { error: vErr } = await admin.from('legal_matter_entries').update({ voided_at: new Date().toISOString(), voided_via_portal: true, void_reason: note, meta: nextMeta }).eq('id', target.id).is('voided_at', null)
+      if (vErr) return jsonResponse({ error: 'Could not undo that.' }, 500)
+      return jsonResponse({ ok: true, entryId: target.id, notice: 'Undone. It stays on the record, struck through, out of every total.' })
+    }
+
     if (kind === 'fee' || kind === 'cost') {
       const n = Number(body.amount)
       if (!Number.isFinite(n) || n <= 0 || n > MAX_AMOUNT) return jsonResponse({ error: 'Enter an amount.' }, 400)
@@ -301,7 +318,14 @@ serve(async (req) => {
       .insert({ matter_id: matterId, kind: entryKind, amount, body: entryBody, occurred_on: occurredOn, meta, via_portal: true })
       .select('id')
       .single()
-    if (error) return jsonResponse({ error: 'Could not save that.' }, 500)
+    if (error) {
+      // #85 item 18 (d): the unique index on (matter_id, meta->>'clientId') caught a same-instant twin — answer the first.
+      if ((error as { code?: string }).code === '23505' && clientId) {
+        const { data: twin } = await admin.from('legal_matter_entries').select('id').eq('matter_id', matterId).eq('meta->>clientId', clientId).limit(1).maybeSingle()
+        if (twin) return jsonResponse({ ok: true, entryId: (twin as { id: string }).id, duplicate: true })
+      }
+      return jsonResponse({ error: 'Could not save that.' }, 500)
+    }
     return jsonResponse({ ok: true, entryId: (inserted as { id: string }).id, ...(notice ? { notice } : {}) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('submit-legal-portal', e), 500)

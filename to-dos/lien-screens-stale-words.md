@@ -2,16 +2,21 @@
 name: "Lien screens: the app's own words that are stale"
 number: 87
 group: ready
-status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; M found 2026-10-05 and fixed in v2.4679, waiting for a live look; N added 2026-10-06 · not started
+status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; N added 2026-10-06 · shipped: E and F v2.4675, I v2.4659, M v2.4679 (waiting for a live look) · of the four held as the owner's decisions, C shipped v2.4661 and D v2.4674, A rides on the legal-portal train's #4637, and B is #4666, held for the owner's one line
 summary: >
   Nine open places on the lien screens (E to L, and N) where the app's own words promise something the app does not do,
   name a rule it no longer follows, or lose the leader the office picked. The help guides were patched
   to say what the app does today; these are the app's side, kept here so they are not lost. E, F and J
   are wording and N is a small fix; G, H, I, K and L need the owner's call. M is fixed and waits for a
   live look.
-next: E, F and J as one small PR (a focus and two sentences); N as its own small PR; G, H, I, K and L once the owner says which way; M deleted once seen live.
+next: >
+  J (one sentence) and N (save the Signs pick with the draft) as small PRs. B merges on the owner's
+  one line, the tick's default and wording (#4666's body: on, 1 as built; or on, 2 / off, 1 / off,
+  2). A lands with #4637. G, H, K and L wait on the owner, L also on counsel. M: confirm it on a
+  waiting waiver live, then delete it. As each lands, the guide sentences held for it are made true
+  or rewritten (the guide PRs v2.4614, v2.4617, v2.4620 and v2.4623 list them).
 size: XS each
-blocker: None for E, F, J and N. G, H, I, K and L wait on the owner.
+blocker: None for J and N. B, G, H, K and L wait on the owner (L also on counsel); A on #4637.
 opinion: build E, F, J and N — each is small; G, H, I, K and L are your call.
 mockup: not required — words and one focus on screens that exist
 ---
@@ -25,6 +30,18 @@ On 2026-10-05 the owner's coordinating session asked for every lien help guide t
 Four more of that kind (a fee the firm adds cannot be acknowledged, the courtesy PDF, *Cancel request* unlocking a release, *Issue unconditional* reselecting one bill) are with the owner as decisions. They are listed in the guide PRs as held sentences, not here. Item I below is here as well, because its fix is in the app's code.
 
 This card was first numbered #85. The legal-portal train had already named its card #85 in its PRs, so this one moved to #87.
+
+## Where each item stands (2026-10-06)
+
+- **Shipped:** E and F (v2.4675), I (v2.4659), M (v2.4679, still to be seen live). Of the four
+  decisions held in the guide PRs, the owner chose on 2026-10-06 to fix the app for all four:
+  C (*Cancel request* unlocks a waiver its own request minted) shipped in v2.4661, D (*Issue
+  unconditional* selects every covered bill) in v2.4674.
+- **In other hands:** A (a fee or cost the firm adds can be acknowledged) is built into the
+  legal-portal train's #4637, which rewrites the Legal desk's fees table. B (the GC's courtesy PDF
+  from the run) is #4666, built and green, held for the owner's one line on the tick's default.
+- **Ready:** J and N.
+- **The owner's calls:** G, H, K and L (L also counsel's).
 
 ## The items
 

@@ -204,7 +204,7 @@ export function SubmittalTheirCallPanel({ items, partsOf, decisions, decisionsTe
         <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="reviewer-files">
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
             <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
-            <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type what they said with Their answer on each row — the record reads entered by you'}</span>
+            <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'press a fixture above to type what they said — the record reads entered by you'}</span>
           </div>
           {reviewerFiles.map((f, i) => {
             const t = liveTask(tasks, 'read_redlines', (inp) => inp.reviewer_index === i && (!inp.path || inp.path === f.path))
