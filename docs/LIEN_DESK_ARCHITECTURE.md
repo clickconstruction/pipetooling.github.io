@@ -145,7 +145,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 - **Owned state:** `checkedMonths` 273 (written here, but read only by C's `months` 500 — seam state, not pane-local), `rulePick` 286, `paneScrolled` 301, `activeGate` 304 (+ 4 s clear effect 305–309, `pickGate` 310 — also called by F1's Go to gate 1741), `kindBusy` 312; ref `paneRef` 302 (also used by C's reset effect 498, D's claim door 607 and F1's Go to gate 1741).
 - **Derived:** `monthCards` 942–958, `monthGrid` 961–975 (`buildLienMonthGrid`), `{ gates, verdict }` 977–988 (`buildLienDeskGates`), `gateByKey` 989, `timeline` 1009–1025 (`buildLienTimelineFromDesk` + `lienRetainageClockFromDesk`).
 - **Writes:** `savePropertyKind` (pickKind 461–473, own try/catch — **not** through `run`), `lookLienClaimCorrection`/`clearLienClaimCorrection`/`saveLienClaimCorrection` via `run`, `noteMissed` 676–679, `saveRule` 757–758.
-- **Children out:** `LienTimelineStrip` (530), `LienDeskGates` (94), `LienDeskOwnerPane` (238, keyed by job, writes the owner itself), `PropertyKindSwitch` (52), `LienDeskMonths` (217), `LienClaimBox` (175), `LienJobSuppliersCard` (in `LienJobSuppliers.tsx`, 350).
+- **Children out:** `LienTimelineStrip` (676; since v2.4652 the verdict band leads the row, the list and the calendar, and the calendar draws every window, the closed ones too — the History tab fixes the calendar), `LienDeskGates` (94), `LienDeskOwnerPane` (238, keyed by job, writes the owner itself), `PropertyKindSwitch` (52), `LienDeskMonths` (217), `LienClaimBox` (175), `LienJobSuppliersCard` (in `LienJobSuppliers.tsx`, 350).
 - **Extraction:** last Stage B (`LienDeskNoticePane`), after C/D seam; move strip, leader card, gate details, carry strip and rule box as sub-components first if the pane is still too big.
 
 ### F1. Draft / awaiting / ready / held actions
@@ -298,7 +298,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | Component | Lines | Mounted at | Own test |
 |---|---|---|---|
 | `LienDeskAffidavitPane` | 417 | 1505–1529 | none (desk smoke) |
-| `LienTimelineStrip` | 530 | 1085 | render 7 (v2.3877: the move pill, the Waiting-on line, the demand node) |
+| `LienTimelineStrip` (+ `lib/jobs/lienWindowsAxis.ts`, v2.4652) | 676 | 1085 | render 11 (v2.3877: the move pill, the Waiting-on line, the demand node; v2.4652: the verdict band first, the closed month as a struck bar, the ghost lien, the three-month axis, the legend) + kernel 5 |
 | `LienDeskRetainagePane` | 316 | 1585–1605 | none (desk smoke) |
 | `LienDeskRunModal` | 386 (+ `LienRunPreviewOverlay` 114, v2.4621) | 2236–2247 | render 9 |
 | `LienDeskOwnerPane` | 238 | 1179–1191 | none (desk smoke 338–397) |
