@@ -289,7 +289,8 @@ describe('LienDeskModal', () => {
     expect(timeline.querySelector('[data-lien-timeline-step="retainage"]')?.textContent).not.toContain('set the date') // the door waits for the contract-end field (v2.3753)
     // Readiness: owner missing → the door, and the send button is disabled with the reason.
     fireEvent.click(screen.getByRole('button', { name: 'Find the owner ›' }))
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650')
+    // It opens Edit Job at the Property record, as its hover says (punch list #87 E).
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'property-record')
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
     // The gates (v2.3657): the verdict is the headline, gate 1 is the one blocker, and its detail is numbered to match.
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
