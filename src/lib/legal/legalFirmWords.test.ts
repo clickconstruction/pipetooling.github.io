@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { firmAgreementWords, firmExhibitTitle, firmEntryKindWords, firmEntryStatusWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmJobRecordWords, firmRecipientStatusWords, firmSaidKindWords, firmSaidRecordedBy, firmSavedWords, legalFirmStageWords } from './legalFirmWords'
+import { firmAgreementWords, firmExhibitTitle, firmExhibitWhere, firmEntryKindWords, firmEntryStatusWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmJobRecordWords, firmRecipientStatusWords, firmSaidKindWords, firmSaidRecordedBy, firmSavedWords, legalFirmStageWords } from './legalFirmWords'
 import { legalStageLabel } from './legalMatters'
 import type { LegalJobLine } from './legalPacket'
 
@@ -115,5 +115,35 @@ describe('firmSaidRecordedBy · firmSaidKindWords (integration pass)', () => {
     expect(firmSaidRecordedBy({ by: null, kind: 'promise', fromCustomer: false })).toBe('—')
     expect(firmSaidRecordedBy({ by: null, kind: 'note' })).toBe('—')
     expect((['contact', 'promise', 'call', 'note'] as const).map(firmSaidKindWords)).toEqual(['contact', 'promise to pay', 'collection call', 'collections note'])
+  })
+})
+
+describe('firmExhibitWhere · v2.4701 · an exhibit cell never promises a document the packet does not carry', () => {
+  const none = { agreementPdfs: false, paperCopies: false }
+
+  it('the statement, the property record and the record of contact print in full', () => {
+    expect(firmExhibitWhere('Invoices and payments', none)).toBe('in full in the printed packet')
+    expect(firmExhibitWhere('Property record', none)).toBe('in full in the printed packet')
+    expect(firmExhibitWhere('What was said — contacts, promises, calls', none)).toBe('in full in the printed packet')
+  })
+
+  it('field reports are only counted, and demand letters only listed', () => {
+    expect(firmExhibitWhere('Field reports and clock sessions', none)).toBe('counted in the printed packet · ask the office for the reports')
+    expect(firmExhibitWhere('Final demand letters', none)).toBe('listed in the printed packet · ask the office for the letter')
+  })
+
+  it('lien paper points at the Paper tab only when a saved copy exists', () => {
+    expect(firmExhibitWhere('Lien notices and filings', { agreementPdfs: false, paperCopies: true })).toBe('copies on the Paper tab')
+    expect(firmExhibitWhere('Lien notices and filings', none)).toBe('listed in the printed packet · ask the office for copies')
+  })
+
+  it('a signed agreement with no stored PDF asks the office', () => {
+    expect(firmExhibitWhere('Signed agreements', none)).toBe('ask the office for a copy')
+  })
+
+  it('no exhibit title the packet makes falls through to the bare default', () => {
+    for (const t of ['Invoices and payments', 'Signed agreements', 'Final demand letters', 'Lien notices and filings', 'What was said — contacts, promises, calls', 'Field reports and clock sessions', 'Property record']) {
+      expect(firmExhibitWhere(t, none)).not.toBe('ask the office')
+    }
   })
 })

@@ -74,6 +74,17 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).not.toMatch(/Agreements and theory|holds — bill received/)
   })
 
+  it('says where each exhibit really is, and that the packet only counts the field reports (v2.4701)', async () => {
+    await openSample()
+    const rows = Array.from(document.querySelectorAll('tr')).map((r) => r.textContent ?? '')
+    const reports = rows.find((t) => /Field reports and clock sessions/.test(t))
+    expect(reports).toMatch(/counted in the printed packet · ask the office for the reports/)
+    expect(rows.find((t) => /Final demand letters/.test(t) && /item/.test(t))).toMatch(/ask the office for the letter/)
+    fireEvent.click(screen.getByRole('button', { name: 'Evidence' }))
+    expect(document.body.textContent).toMatch(/The printed packet counts the reports and sessions\. Ask the office for the reports themselves\./)
+    expect(document.body.textContent).not.toMatch(/come with the printed packet/)
+  })
+
   it('fills the property record and the company’s particulars with sample values', async () => {
     await openSample()
     expect(document.body.textContent).toMatch(/Lot 4, Block B, Creekside Commerce Park/)
