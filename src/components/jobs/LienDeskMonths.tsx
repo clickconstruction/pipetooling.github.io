@@ -67,14 +67,14 @@ function windowCell(r: LienGridRow, onNoteMissed: ((month: string) => void) | un
       const left = Math.min(totalDays, w.daysLeft)
       return (
         <>
-          <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{w.daysLeft <= totalDays ? 'open since' : 'opens'} {formatYmdMonthDay(opensOn)}</span>{' '}
-          <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline)}</span>
+          <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{w.daysLeft <= totalDays ? 'open since' : 'opens'} {formatYmdMonthDay(opensOn).replace(' ', '\u00a0')}</span>{' '}
+          <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline).replace(' ', '\u00a0')}</span>
           {spentBar(((totalDays - left) / totalDays) * 100, false)}
           <div style={faint}>{left} of {totalDays} days left</div>
         </>
       )
     }
-    return <><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline)}</span>{w.daysLeft != null ? <div style={faint}>{daysLeftWords(w.daysLeft)}</div> : null}</>
+    return <><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline).replace(' ', '\u00a0')}</span>{w.daysLeft != null ? <div style={faint}>{daysLeftWords(w.daysLeft)}</div> : null}</>
   }
   // closed
   if (w.skipped) return <><span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>skipped</span><div style={faint}>{w.skippedBy ? `${w.skippedBy}: ` : ''}“{w.skipReason}”</div></>
