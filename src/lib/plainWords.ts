@@ -24,8 +24,9 @@
  *
  * One habit the test cannot judge is warned about instead: a sentence that opens on a bare
  * pronoun pointing back across a full stop ("It shows…", "That means…"). `pronounOpeners.ts`
- * finds them and `npm run check:pronouns` prints them for the guides a change touches; it never
- * fails, because only the writer can tell whether the pronoun has one noun it could mean.
+ * finds them and `npm run check:pronouns` prints the ones on the lines a change writes in a guide,
+ * counting the rest; it never fails, because only the writer can tell whether the pronoun has one
+ * noun it could mean.
  *
  * What is quoted is not held: a mock-UI token is the control's exact name whatever it
  * contains, an italic span in a guide is what the screen prints, quoted as printed, and a

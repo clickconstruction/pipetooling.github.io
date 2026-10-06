@@ -81,3 +81,24 @@ export function helpGuidePronounOpeners(source: string): PronounOpener[] {
   }
   return out
 }
+
+/**
+ * The lines a change wrote in a file, from `git diff -U0`: each hunk's lines on the new side. A new
+ * file is every line; a hunk that only deletes writes none. The warning reads only these, so a writer
+ * who fixes one sentence is not shown forty they did not write (2026-10-06, after v2.4660).
+ */
+export function changedLinesFromDiff(diff: string): Set<number> {
+  const out = new Set<number>()
+  for (const m of diff.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/gm)) {
+    const start = Number(m[1])
+    const count = m[2] == null ? 1 : Number(m[2])
+    for (let i = 0; i < count; i++) out.add(start + i)
+  }
+  return out
+}
+
+/** The findings on the lines a change wrote, and how many sit on lines it left alone. */
+export function openersOnChangedLines(found: ReadonlyArray<PronounOpener>, changed: ReadonlySet<number>): { onChanged: PronounOpener[]; elsewhere: number } {
+  const onChanged = found.filter((f) => changed.has(f.line))
+  return { onChanged, elsewhere: found.length - onChanged.length }
+}
