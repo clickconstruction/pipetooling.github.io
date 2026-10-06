@@ -543,7 +543,7 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payloa
         </div>
         <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
           <b style={{ color: INK }}>How this behaves</b><br />Each person chooses an email for each event or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
-          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering a question, and a referral withdrawn. Each comes as its own email or in the digest. The digest also lists every open matter.
+          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering or asking you something, a note from the office, a payment the office applied, and a referral withdrawn and why: each as its own email or in the digest. A fee or cost the office saw rides the digest only. The digest also lists every open matter.
         </div>
       </div>
     </div>

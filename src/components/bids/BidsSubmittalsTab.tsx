@@ -251,13 +251,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [tourStage, setTourStage] = useState<number | null>(null)
   const [statusLegendOpen, setStatusLegendOpen] = useState(false)
   // v2.4248 · the supply houses: the row editor's picker, and the name under each row's product. One read; a failed read hides both.
-  const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
+  const [houses, setHouses] = useState<Array<{ id: string; name: string; default_lead_time_days: number | null }>>([])
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses')
-        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string }>).filter((h) => h.name?.trim()))
+        // v2.4685 · with the house's usual lead time; until the column is pushed, the names alone.
+        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name, default_lead_time_days').order('name'), 'load supply houses').catch(() => withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses'))
+        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>).filter((h) => h.name?.trim()).map((h) => ({ id: h.id, name: h.name, default_lead_time_days: h.default_lead_time_days ?? null })))
       } catch {
         if (!cancelled) setHouses([])
       }
@@ -2156,7 +2157,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 2026-10-03 · every stage that is live, not the first alone: a draft answered by email has its rows, Their call and Resubmit live at once.
   const liveStageKeys = journey.stages.filter((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure').map((st) => st.key)
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
-  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
+  // v2.4689 · step 7 opens step 6 alone: the Resubmit button's own line names the rows sent back, so the fourteen rows of
+  // step 3 need not open with it (BP375 at step 7 opened 3, 6 and 8 at once — five screens before the log; punch list #89, item 7).
+  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['review'] }
   // 2026-10-05 · the robot's schedule read keeps step 1 open only while its tags wait to be confirmed; anything else it is doing rides on the folded step's line.
   const scheduleRead = liveTask(tasks, 'read_schedule')
   const scheduleReadNote = scheduleRead ? robotScheduleNote(scheduleRead, robotSeat, Date.now(), formatShortDate) : null

@@ -10,7 +10,7 @@
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { RoomHeader, RoomRevisionBody, RoomRevisionChips } from '../components/bids/SubmittalRoomView'
-import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { useSearchParams } from 'react-router-dom'
 
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
@@ -21,7 +21,8 @@ import { SampleModeBanner } from '../components/SampleModeBanner'
 import { ROOM_ROLES, rollUpPartDecisions, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { RecordRoomPayload, RecordRoomRevision } from '../../supabase/functions/_shared/submittalRecord'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
-import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
+import { buildProcurementLog, floatText, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
+import { procurementNextLine, procurementSteps, type ProcurementStepTone } from '../lib/submittals/procurementBoard'
 import { rowsThatStand } from '../lib/submittals/standingRows'
 import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
 
@@ -35,6 +36,8 @@ const paper: CSSProperties = { minHeight: '100vh', background: 'var(--bg-subtle)
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 0.95rem' }
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const quiet: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
+// v2.4684 · the colour of a step's note: sent back amber, something to order dark, late red.
+const STEP_TONE: Record<ProcurementStepTone, string> = { back: 'var(--text-amber-700)', go: 'var(--text-strong)', late: '#b42318', quiet: 'var(--text-muted)' }
 
 function shortDate(iso: string | null): string {
   if (!iso) return ''
@@ -513,15 +516,35 @@ function ProcurementCard({ revisions, procurement, companyName }: { /** The curr
   const records: ProcurementRecord[] = procurement.records.map((x, i) => ({ id: `room-${i}`, tag: x.tag, partKey: x.partKey ?? null, label: x.label, leadTimeDays: x.leadTimeDays, stage: (x.stage as ProcurementStage | null) ?? null, orderedOn: x.orderedOn, poRef: '', expectedOn: x.expectedOn, deliveredOn: x.deliveredOn, note: x.note, sortOrder: x.sortOrder }))
   const splits: StageSplitRecord[] = procurement.splits.map((sp) => ({ countRowId: sp.countRowId, lineId: sp.lineId, partId: sp.partId, weights: { rough_in: sp.roughIn, top_out: sp.topOut, trim_set: sp.trimSet }, source: (['hand', 'rule', 'book', 'assembly'].includes(sp.source) ? sp.source : 'hand') as StageSplitSource }))
   const tagStage = tagStagesFrom(procurement.countRows, splits, items.map((i) => i.tag))
-  const rows = buildProcurementLog({ items, records, tagStage, stageDates: procurement.stageDates as StageDates }).filter((r) => r.status !== 'not_submitted' && r.status !== 'awaiting' || r.isHand)
+  // v2.4684 · the four steps and the Next sentence are the office's own kernels in the GC's voice (punch list #89, item 6):
+  // every line counted once, over every line, so the first step counts what still waits on them. The table below
+  // lists what is released or further along; the rows waiting on them are the revision above.
+  const all = buildProcurementLog({ items, records, tagStage, stageDates: procurement.stageDates as StageDates })
+  const rows = all.filter((r) => r.status !== 'not_submitted' && r.status !== 'awaiting' || r.isHand)
   if (rows.length === 0) return null
+  const steps = procurementSteps(all, null, 'gc')
+  const next = procurementNextLine(all, todayYmdInAppTz(), null, 'gc')
   const hasRequired = rows.some((r) => r.requiredOn)
   return (
     <div style={{ ...card, marginTop: 10 }} data-testid="room-procurement">
       <div style={{ ...label, color: COPPER }}>Procurement</div>
       <div style={{ ...quiet, marginTop: 4 }}>
-        {procurement.lastUpdateAt ? `Updated ${logDate(calendarYmdInAppTzFromIso(procurement.lastUpdateAt))} by ${companyName}` : `As it stands today, from ${companyName}`} · {procurementHeadline(rows)}
+        {procurement.lastUpdateAt ? `Updated ${logDate(calendarYmdInAppTzFromIso(procurement.lastUpdateAt))} by ${companyName}` : `As it stands today, from ${companyName}`}
       </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginTop: 8 }} data-testid="room-procurement-steps">
+        {steps.map((st) => (
+          <div key={st.key} style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.35rem 0.5rem', display: 'grid', gap: 2, minWidth: 0 }} data-testid={`room-procurement-step-${st.key}`}>
+            <span style={{ ...label, letterSpacing: '0.05em' }}>{st.label}</span>
+            <b style={{ fontSize: '1.2rem', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: st.count === 0 ? 'var(--text-muted)' : 'var(--text-strong)', fontWeight: st.count === 0 ? 500 : 700 }}>{st.count}</b>
+            <span style={{ fontSize: '0.72rem', minHeight: '1.1em', color: STEP_TONE[st.tone], fontWeight: st.tone === 'quiet' ? 400 : 600 }}>{st.note}</span>
+          </div>
+        ))}
+      </div>
+      {next.length > 0 ? (
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-strong)', marginTop: 8 }} data-testid="room-procurement-next">
+          <b>Next:</b> {next.join(' ')}
+        </div>
+      ) : null}
       <div style={{ overflowX: 'auto', marginTop: 8 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: 420 }}>
           <thead>

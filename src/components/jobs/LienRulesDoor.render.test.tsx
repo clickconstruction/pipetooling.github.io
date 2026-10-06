@@ -3,12 +3,19 @@
  * § Rules as a window (v2.4655): the door opens the rules guide over the desk at the rule for
  * what is on screen, the find box marks and narrows, Enter walks the matches, Esc closes it alone.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders as render } from '../../test/renderSmokeMocks'
 import { LienRulesDoor } from './LienRulesDoor'
 
 afterEach(cleanup)
+
+// The window is a lazy chunk (v2.4695) that carries every help guide; its first import can take
+// longer than a findBy wait under a full CI run. Load it once here so React.lazy resolves from the
+// module cache, and each test still goes through the door's lazy path.
+beforeAll(async () => {
+  await import('./LienRulesModal')
+})
 
 describe('LienRulesDoor', () => {
   it('opens the rules in a window at the rule for the surface, not a new page', async () => {
@@ -17,7 +24,8 @@ describe('LienRulesDoor', () => {
     expect(door.tagName).toBe('BUTTON')
     expect(screen.queryByTestId('lien-rules-modal')).toBeNull()
     fireEvent.click(door)
-    expect(screen.getByTestId('lien-rules-modal')).toBeTruthy()
+    // The window is a lazy chunk (v2.4695): it arrives after the import resolves.
+    expect(await screen.findByTestId('lien-rules-modal')).toBeTruthy()
     expect(screen.getByTestId('lien-rules-modal-at').textContent).toBe('The § 53.056 notice')
     const body = screen.getByTestId('lien-rules-body')
     expect(body.textContent).toContain('Every lien deadline and every line in a demand letter comes from a rule in Texas law.')
@@ -25,10 +33,11 @@ describe('LienRulesDoor', () => {
     expect((screen.getByTestId('lien-rules-open-page') as HTMLAnchorElement).getAttribute('target')).toBe('_blank')
   })
   it('the find box marks and narrows, Show all brings the guide back, and Esc closes the window alone', async () => {
+    render(<LienRulesDoor where="desk_affidavit" />)
+    fireEvent.click(screen.getByTestId('lien-rules-door'))
+    await screen.findByTestId('lien-rules-modal')
     vi.useFakeTimers()
     try {
-      render(<LienRulesDoor where="desk_affidavit" />)
-      fireEvent.click(screen.getByTestId('lien-rules-door'))
       expect(screen.getByTestId('lien-rules-modal-at').textContent).toBe('The affidavit')
       const body = screen.getByTestId('lien-rules-body')
       const all = body.children.length

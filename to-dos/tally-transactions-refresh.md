@@ -17,13 +17,14 @@ summary: >
   carrying the same chips, and the page measuring its own guesses. A bar that sorts the obvious
   days in one press, and any rule that applies itself, wait until a rule measures sure.
 next: >
-  PR 2a's review and merge, then a few days of the office sorting on it before PR 2b moves the
-  Dashboard and Quickfill doors here and retires the Team purchases window. PR 2c (a keyboard path)
-  after one real sorting session. Two follow-ups found by 2a, each its own PR: the Assign window's
-  "that day" and the holder's Sort mode move to the swipe day, and `list_card_charges_window`
-  gains the swipe time. The wrong-guess answers from the field become rules the replay scores.
+  The owner's word that the office has sorted on the Team queue for a few days, then PR 2b (the
+  Dashboard and Quickfill doors open the tab and the Team purchases window retires), PR 2c (the
+  keyboard path) after one real session, then the own-card block's extraction. PR 3 (the pay bar,
+  undo per line) can go any time. PR 4 waits on the owner's pending-charges call, and PR 5 comes
+  last. The about 48 charges already on the next day's job wait on his answer to five sample cases
+  (Where it stands), then go to the office as a read-only list, with no code.
 size: M (five PRs; the kernel and the queue are the two real ones)
-blocker: PR 2a's review; then a few days of real use before 2b.
+blocker: The owner: a few days of real use before 2b, the five sample cases before the 48, and the pending-charges call before PR 4.
 ver: v2.4591 (PR 1) · v2.4654 (PR 2a) · v2.4668 (the swipe day) · v2.4683 (history on the swipe day)
 opinion: build — the sorter's minute per charge becomes a glance and a tap, and the page can prove its rules before any of them runs on its own.
 mockup: tally-transactions-refresh-before-after.html
@@ -90,6 +91,17 @@ but nothing is selected until the sorter taps. PR 2a (v2.4654) found that Mercur
 not the day of the work: a charge posts a median 8 hours after the swipe, on a later day for two in
 five. The queue keys a charge's day on the swipe (`raw.createdAt`); where the two days had
 different jobs, past sorts followed the posting day the Assign window shows, 48 times to 6.
+
+**Hand-off, 2026-10-06.** Built and merged: PR 1 (v2.4591), PR 2a (v2.4654), the swipe-day fix
+(v2.4668) and the history move (v2.4683). Three things wait on the owner. (1) The office uses the
+Team queue for a few days before PR 2b moves the doors. (2) Five sample cases of the next-day
+sorts were put to him in chat on 2026-10-06; names stay out of this public repo, so a later
+session regenerates them: from `list_card_charges_window` over Jul 7 to Oct 5 2026, the sorted
+charges whose swipe day (`purchased_at`) and posting day (`posted_at`) are different company
+days, each day with exactly one clocked job and the two jobs different, whose split went to the
+posting day's job (48 charges, $3,143). The question: in those, is the swipe day's job the right
+one? If yes, the 48 go to the office as a read-only list to re-sort, with no code. (3) The
+pending-charges finding (plan item 4) is his call before PR 4 is planned.
 
 ## The decision (drawn; the owner's go taken)
 

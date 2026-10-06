@@ -104,8 +104,11 @@ describe('SubmittalRoom', () => {
     expect(lines).toHaveLength(1)
     expect(lines[0]).toContain('WC-1')
     expect(lines[0]).toContain('Ordered 09/23')
-    // DWH-1 is Rev 2's to call: Rev 1's rejection says nothing on the card, and a row waiting on the GC is not listed.
+    // DWH-1 is Rev 2's to call: Rev 1's rejection says nothing on the card, and a row waiting on the GC is not listed —
+    // but the first step counts it, and the Next sentence asks for it (v2.4684).
     expect(cardEl.textContent).not.toContain('DWH-1')
+    expect(screen.getAllByTestId(/^room-procurement-step-/).map((b) => b.textContent)).toEqual(['Waiting on you1', 'To order0nothing approved yet', 'On order1next arrives 09/23', 'On site0'])
+    expect(screen.getByTestId('room-procurement-next').textContent).toBe('Next: Nothing can be ordered until you answer. 1 part waits on your answer.')
   })
 
   describe('2026-10-06 · a revision answered by email lands in the room as the record (BP398)', () => {
@@ -197,7 +200,11 @@ describe('SubmittalRoom', () => {
     mount('/submittal?t=roomtoken')
     const cardEl = await screen.findByTestId('room-procurement')
     expect(cardEl.textContent).toContain('Updated 09/28 by Click Plumbing')
-    expect(cardEl.textContent).toContain('2 released · 3 ordered · 1 delivered · 1 behind schedule')
+    // v2.4684 · the office's four steps and its Next sentence, in the GC's words: KS-1 waits on them, nothing to order,
+    // two on order (the interceptor late), WC-1 on site. The delivered WC-1 is not counted as ordered too.
+    expect(screen.getAllByTestId(/^room-procurement-step-/).map((b) => b.textContent)).toEqual(['Waiting on you1', 'To order0nothing approved yet', 'On order21 late', 'On site1last 09/26'])
+    expect(screen.getByTestId('room-procurement-next').textContent).toBe('Next: Nothing can be ordered until you answer. 1 part waits on your answer. 1 part on order arrives late.')
+    expect(cardEl.textContent).not.toContain('released ·')
     const lines = screen.getAllByTestId('room-procurement-row').map((r) => r.textContent)
     // DWH-1: ordered 09/24 + 6 wk → 11/05 against Trim Set 11/17 → on time. WC-1 delivered → on site. The interceptor: 8 wk from 09/18 → 11/13 against Rough In 10/06 → late.
     expect(lines[0]).toContain('DWH-1')

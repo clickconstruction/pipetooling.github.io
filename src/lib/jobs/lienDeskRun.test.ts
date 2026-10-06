@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runEnvelopeFacesHtml } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -373,5 +373,62 @@ describe('the pages one copy prints (v2.4621 — the run preview reads them, the
     expect(stepRunPreview(2, 1, 3)).toBe(2)
     expect(stepRunPreview(0, -1, 3)).toBe(0)
     expect(stepRunPreview(0, 1, 0)).toBe(0)
+  })
+})
+
+describe('the courtesy PDF to the original contractor (punch list #87 B)', () => {
+  it('the builders tick it on the GC copy when an email is on file, never on the owner copy', () => {
+    const d = data([approved])
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(n.recipients.map((r) => [r.key, r.courtesy])).toEqual([
+      ['owner', undefined],
+      ['original_contractor', true],
+    ])
+    // The owner has an email too: still no courtesy copy, the desk line promises the GC one only.
+    d.ownerByJob = { j650: { owner_mode: 'building_owner', owner_name: '', company_name: 'Elbel Holdings LLC', mailing_address: '4 Example Way, Schertz, TX', owner_email: 'owner@elbel.test' } }
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!.recipients[0]!.email).toBe('owner@elbel.test')
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!.recipients[0]!.courtesy).toBeUndefined()
+    // No email on file: nothing to tick.
+    d.gcsById.loberg = { ...d.gcsById.loberg!, email: '' }
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!.recipients[1]!.courtesy).toBe(false)
+    // The § 53.057 retainage notice goes to the same GC on the same terms.
+    const ret = data([])
+    const retItem = { ...approved, id: 'ret1', kind: 'retainage_53_057', months: [] } as LienDeskItemRow
+    const entry: LienRetainageEntry = { jobId: 'j650', retainageHeld: 1_760, contractEndedOn: '2026-09-03', contractEndedHow: 'complete', deadline: '2026-10-05', daysLeft: 21, severity: 'amber', noticed: false, inClaim: false, openBalance: 33_500, customerId: 'ati', gcCustomerId: 'loberg', propertyKind: 'non_residential', hasOwner: true, paymentBond: 'unknown', gates: [], ready: true, item: retItem, pile: 'ready' }
+    expect(buildLienRetainageRun([entry], ret, null, () => 'Robert', TODAY)[0]!.recipients.map((r) => r.courtesy)).toEqual([undefined, true])
+  })
+
+  it('a recorded notice owes one courtesy email per ticked copy with an email that goes on paper', () => {
+    const d = data([approved])
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(runCourtesyCopies(n).map((r) => [r.key, r.email])).toEqual([['original_contractor', 'office@loberg.test']])
+    // Untick it and it owes none.
+    expect(runCourtesyCopies({ recipients: n.recipients.map((r) => ({ ...r, courtesy: false })) })).toEqual([])
+    // An envelope sent by email already is the email: no second one.
+    expect(runCourtesyCopies({ recipients: n.recipients.map((r) => ({ ...r, method: 'email' as const })) })).toEqual([])
+    // Courier and hand delivery still get it.
+    expect(runCourtesyCopies({ recipients: n.recipients.map((r) => ({ ...r, method: 'hand' as const })) })).toHaveLength(1)
+    // A blank email never sends, ticked or not.
+    expect(runCourtesyCopies({ recipients: n.recipients.map((r) => ({ ...r, courtesy: true, email: ' ' })) })).toEqual([])
+  })
+
+  it('the email says it is a courtesy copy, names the form, and says how the notice itself travels (the owner\u2019s wording, 2026-10-06)', () => {
+    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650 · ATI Schertz' }, 'certified_mail')).toEqual({
+      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
+      text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail.',
+    })
+    expect(runCourtesyEmailWords({ kind: 'retainage_53_057', label: '650 · ATI Schertz' }, 'traceable_courier')).toEqual({
+      subject: 'Courtesy copy: notice of claim for unpaid retainage — 650 · ATI Schertz',
+      text: 'Attached is a courtesy copy of our notice of claim for unpaid retainage (Tex. Prop. Code § 53.057). The notice itself is being delivered by traceable courier.',
+    })
+    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'hand').text).toContain('The notice itself is being delivered by hand.')
+  })
+
+  it('the record says who got one and which did not go, and that a failed one leaves the notice recorded', () => {
+    expect(runCourtesyResultWords([], [])).toEqual({ sent: '', failed: '' })
+    const sent = { itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }
+    expect(runCourtesyResultWords([sent], []).sent).toBe('Courtesy PDF emailed to office@loberg.test.')
+    expect(runCourtesyResultWords([sent, { ...sent, itemId: 'it2', label: '651 · Annex' }], []).sent).toBe('2 courtesy PDFs emailed to office@loberg.test.')
+    expect(runCourtesyResultWords([], [{ ...sent, reason: 'Resend 502' }]).failed).toBe('Courtesy PDF not emailed: 650 · ATI Schertz to office@loberg.test (Resend 502). That notice is recorded all the same.')
   })
 })

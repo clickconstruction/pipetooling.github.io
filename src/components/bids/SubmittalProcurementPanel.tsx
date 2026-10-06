@@ -1104,7 +1104,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           </div>
           {rows.length > 0 ? (
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }} data-testid="procurement-next">
-              <b>Next:</b> {procurementNextLine(rows, today, draftRev).join(' ')}
+              {/* v2.4688 · no bold Next: here — the strip above already has one, and a page with two Nexts has none (punch list #89, item 5). */}
+              {procurementNextLine(rows, today, draftRev).join(' ')}
               {onEnterApproval ? (
                 <>
                   {' '}<span style={smallMuted}>Approved outside the app?</span>{' '}
@@ -1312,7 +1313,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               return (
                 <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', justifyContent: 'flex-end' }}>
                   {g.right && !narrow ? <span style={smallMuted}>{g.right}</span> : null}
-                  {onAnswerItem && g.answerItemId && !first?.isHand && g.rows.some((r) => answerDoor(r) === 'enter') ? <button type="button" disabled={busy} onClick={() => onAnswerItem({ itemId: g.answerItemId!, partKey: null })} title="Record what they said about this fixture. Nobody is emailed." aria-label={`Their answer for the fixture ${g.title}`} style={link} data-testid="procurement-fixture-answer">Their answer…</button> : null}
+                  {/* v2.4687 · no Their answer… here: step 6 is the door's home (punch list #89, item 4). */}
                 </span>
               )
             }
