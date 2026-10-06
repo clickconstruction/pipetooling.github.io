@@ -154,19 +154,21 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} onOpenLienDesk={onOpenLienDesk} onOpenRelease={onOpenRelease} />)
     await settle()
     expect(screen.getByRole('dialog', { name: /^Liens on job / })).toBeTruthy()
+    // v2.4693: the step is said once, in the timeline's verdict band, with its door at the right; the box under the strip is a phone's.
     const card = await waitFor(() => {
-      const el = document.querySelector('[data-lien-window-next-step]') as HTMLElement | null
+      const el = document.querySelector('[data-lien-timeline-verdict]') as HTMLElement | null
       expect(el).toBeTruthy()
       return el!
     })
-    expect(card.textContent).toContain('Your next step')
+    expect(card.textContent).toContain('Next on the path')
+    expect(document.querySelector('[data-lien-window-next-step]')).toBeNull()
     const door = card.querySelector('[data-lien-window-next-step-button]') as HTMLButtonElement | null
     if (door) {
       fireEvent.click(door)
       // A notice step goes to the desk on this job; any other step switches this window's tab.
       if (/Lien desk/.test(door.textContent ?? '')) expect(onOpenLienDesk).toHaveBeenCalledWith(job().id, expect.stringMatching(/notice|retainage/))
     }
-    fireEvent.click(within(document.querySelector('[data-lien-window-waivers]') as HTMLElement).getByRole('button', { name: 'Open Release of Lien ›' }))
+    fireEvent.click(within(document.querySelector('[data-lien-window-waivers]') as HTMLElement).getByRole('button', { name: 'Waivers are their own paper ›' }))
     expect(onOpenRelease).toHaveBeenCalledTimes(1)
   })
 

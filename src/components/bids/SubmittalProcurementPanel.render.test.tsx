@@ -83,7 +83,7 @@ describe('SubmittalProcurementPanel', () => {
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={items} reviewerNames={['Dana W.']} currentUser={{ id: 'u', name: 'Wendi' }} />)
     // v2.4581 · four steps, every line counted once: WH-1 is approved and not ordered, BFP-1 is on order and late.
     await waitFor(() => expect(stepWords()).toEqual(['Waiting on the GC0', 'To order1first by 10/06', 'On order11 late', 'On site0']))
-    expect(screen.getByTestId('procurement-next').textContent).toMatch(/^Next: Order 1 part by 10\/06.*\. 1 part on order arrives late\.$/)
+    expect(screen.getByTestId('procurement-next').textContent).toMatch(/^Order 1 part by 10\/06.*\. 1 part on order arrives late\.$/)
     expect(screen.getByTestId('procurement-last-update').textContent).toBe('No update sent yet. The first one sends every row.')
     expect(screen.getByTestId('procurement-send').textContent).toBe('Send update…')
     // Before the first update no row is painted as changed.
@@ -308,7 +308,7 @@ describe('SubmittalProcurementPanel', () => {
     // v2.4587 · To order as orders: a section a house, the part sent back on its own with what they wrote.
     await waitFor(() => expect(screen.getAllByTestId('procurement-section').map((r) => r.textContent)).toEqual(['Order now · National Wholesale11 order to place, by date', 'Order now · no house yet11 order to place, by date · set a house to order', 'Sent back by the GC1pick another product, then resubmit on step 7']))
     // Neither approved part has a needed date (WC-1 has no stage), so the Next line gives no day.
-    expect(screen.getByTestId('procurement-next').textContent).toBe('Next: 2 parts are approved and not ordered. The GC sent 1 part back.')
+    expect(screen.getByTestId('procurement-next').textContent).toBe('2 parts are approved and not ordered. The GC sent 1 part back.')
     expect(stepWords()).toEqual(['Waiting on the GC11 sent back', 'To order2', 'On order0', 'On site0'])
     // Two houses on the lines: the lens row does not name one. Nothing has a date to place, so no calendar is drawn.
     expect(screen.getByTestId('procurement-shared').textContent).toBe('No dates to draw yet.')
@@ -595,7 +595,7 @@ describe('SubmittalProcurementPanel', () => {
     expect(folded().map(([, open]) => open)).toEqual(['true', 'true'])
     expect(screen.queryByText('WOODFORD B74C')).toBeNull()
     expect(link.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByTestId('procurement-next').textContent).toMatch(/^Next: Order 1 part by 09\/22/)
+    expect(screen.getByTestId('procurement-next').textContent).toMatch(/^Order 1 part by 09\/22/)
     // v2.4581 · a step does the same for its lines, and takes the blocker's place.
     fireEvent.click(screen.getByTestId('procurement-step-gc'))
     expect(screen.getByTestId('procurement-step-gc').getAttribute('aria-pressed')).toBe('true')
@@ -627,7 +627,7 @@ describe('SubmittalProcurementPanel', () => {
       { tag: 'WC-1', product: 'TOTO TET2UB31#SS', supplyHouse: 'National Wholesale', leadTimeDays: null, decision: { kind: 'rejected', at: '2026-10-02T15:00:00Z' }, shared: true, itemId: 'row-wc' },
     ]
     const { unmount } = renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onEnterApproval={onEnterApproval} />)
-    await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer. Approved outside the app? Enter their approval…'))
+    await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer. Approved outside the app? Enter their approval…'))
     fireEvent.click(screen.getByTestId('procurement-enter-approval'))
     expect(onEnterApproval).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('procurement-shared').textContent).toBe('Every part comes from National Wholesale. No dates to draw yet.')
@@ -636,7 +636,7 @@ describe('SubmittalProcurementPanel', () => {
     unmount()
     // No door handed: the line ends with its sentences.
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B375" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} />)
-    await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer.'))
+    await waitFor(() => expect(screen.getByTestId('procurement-next').textContent).toBe('Nothing can be ordered until the GC answers. They sent 1 part back. 1 more waits on their answer.'))
   })
 
   it('v2.4663 · a draft nobody has shared: the first step and the pill read Not sent yet, the Next line says to share Rev 4, the orders sit under Not sent to the GC yet with no door; shared, the same rows wait on the GC', async () => {
@@ -651,7 +651,7 @@ describe('SubmittalProcurementPanel', () => {
     ]
     const { unmount } = renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B398" companyName="Click" items={lines} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onCounts={onCounts} onAnswerItem={onAnswerItem} draftRev={4} />)
     await waitFor(() => expect(stepWords()).toEqual(['Not sent yet3Share Rev 4 first', 'To order0nothing approved yet', 'On order0', 'On site0']))
-    expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. Share Rev 4 first. 3 parts have not been sent.')
+    expect(screen.getByTestId('procurement-next').textContent).toBe('Nothing can be ordered until the GC answers. Share Rev 4 first. 3 parts have not been sent.')
     expect(onCounts).toHaveBeenLastCalledWith(expect.objectContaining({ gcLabel: 'Not sent yet', steps: { gc: 3, to_order: 0, on_order: 0, on_site: 0 } }))
     expect(screen.getAllByTestId('procurement-section').map((r) => [r.getAttribute('data-kind'), r.textContent])).toEqual([['not_sent', 'Not sent to the GC yet32 fixtures · share Rev 4 to get an answer']])
     // No Their answer… door on a fixture the GC has never seen, and no right-hand words.
@@ -664,7 +664,7 @@ describe('SubmittalProcurementPanel', () => {
     // The same rows once Rev 4 is shared (the tab hands no draft number): the GC is waiting, with the door.
     renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B398" companyName="Click" items={lines.map((l) => ({ ...l, shared: true }))} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onCounts={onCounts} onAnswerItem={onAnswerItem} />)
     await waitFor(() => expect(stepWords()).toEqual(['Waiting on the GC3', 'To order0nothing approved yet', 'On order0', 'On site0']))
-    expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. 3 parts wait on their answer.')
+    expect(screen.getByTestId('procurement-next').textContent).toBe('Nothing can be ordered until the GC answers. 3 parts wait on their answer.')
     expect(screen.getAllByTestId('procurement-section').map((r) => r.getAttribute('data-kind'))).toEqual(['waiting'])
   })
 

@@ -88,7 +88,12 @@ export function robotOfferText(kind: RobotKind, input: { hasPlans?: boolean } = 
  */
 export const ASK_STALE_AFTER_MS = DAY
 
+/** v2.4690 · past a week the ask is old: the line says how many days, and the button reads Withdraw the ask. */
+export const ASK_OLD_AFTER_DAYS = 7
+
 export type StaleAsk = {
+  /** Whole days since the ask. */
+  daysWaited: number
   /** "You asked the robot on Sep 29. No robot has run in 12 days." */
   head: string
   /** What to do by hand, for the chore asked. */
@@ -109,9 +114,15 @@ export function staleAsk(kind: RobotKind, requestedAt: string | null | undefined
   const waited = nowMs - asked
   if (seat.live && waited < ASK_STALE_AFTER_MS) return null
   const when = day(requestedAt as string)
+  const daysWaited = Math.max(0, Math.floor(waited / DAY))
+  // v2.4690 · a week on, the day it was asked matters less than how long it has sat: say the days, and that nobody came.
+  if (daysWaited >= ASK_OLD_AFTER_DAYS) {
+    return { daysWaited, head: `You asked the robot ${daysWaited} days ago. Nobody has picked it up.`, detail: BY_HAND[kind], suffix: `asked ${daysWaited} days ago · nobody picked it up` }
+  }
   // A live seat that has not taken it in a day: say so in place of the seat's own line, which would read as hope.
   const seatWords = seat.live ? `${seat.line} It has not picked this up.` : seat.line
   return {
+    daysWaited,
     head: `You asked the robot${when ? ` on ${when}` : ''}. ${seatWords}`,
     detail: BY_HAND[kind],
     suffix: `${when ? `asked ${when} · ` : ''}${seat.live ? 'not picked up yet' : seat.line.replace(/\.$/, '').replace(/^No /, 'no ').replace(/^A /, 'a ')}`,

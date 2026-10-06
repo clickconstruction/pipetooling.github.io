@@ -104,7 +104,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
   const billedYmd = row ? billedReferenceYmd(row) : null
   if (billedYmd) {
     const ago = daysBetweenYmd(billedYmd, todayYmd) ?? 0
-    rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day every clock below starts from`, sub: '' })
+    rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day the pay estimate below counts from`, sub: '' })
   }
 
   // The money — their word if they gave one, else the estimate from their pay history

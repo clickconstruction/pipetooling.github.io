@@ -2,7 +2,7 @@
 name: "Records for an owner, on their portal: they ask, they sign, they download"
 number: 86
 group: close
-status: live 2026-10-06 (v2.4650, v2.4651) · left: the end-to-end walk on a ZZ TEST request, then the first real owner
+status: live 2026-10-06 (v2.4650, v2.4651, v2.4702) · left: the end-to-end walk on a ZZ TEST request, then the first real owner
 summary: >
   Today an owner's records request is worked by hand: the office puts their written request on
   file, prints the acknowledgment for them to sign, prints or downloads the packet and hands it
@@ -16,7 +16,7 @@ summary: >
 next: Walk it end to end on a ZZ TEST request, as How to verify below says. Offer it, sign on the portal, record it as sent On their portal, download. Delete this folder once the first real owner has signed.
 size: XS
 blocker: A live walk. The office side needs a signed-in session; the localhost dev login (AGENTS.md) gives one.
-ver: v2.4650 · v2.4651
+ver: v2.4650 · v2.4651 · v2.4702
 ---
 
 # Records for an owner, on their portal
@@ -79,7 +79,7 @@ Stops 1 to 4 as above. At stop 5 there is no portal card: once the office presse
 ## The plan
 
 1. **PR 1 (S–M): sign on the portal — built v2.4650.** The name kernel + tests; `sign-owner-records`; the portal card's ask and signing stops; the `file` writes; the office window's **Offer it on their portal ›** and the request check's new words. Nothing is shown to the owner after signing but *Thank you. The office sends the records once it has checked our contract.*
-2. **PR 2 (S): the office sends to the portal — built v2.4651.** `OwnerRecordsSentHow` gains `portal`; *Record it as sent* files the packet and marks it shown. The Needs you line was not built (see *Where it stands*).
+2. **PR 2 (S): the office sends to the portal — built v2.4651.** `OwnerRecordsSentHow` gains `portal`; *Record it as sent* files the packet and marks it shown. The Needs you line came later, as v2.4702.
 3. **PR 3 (S–M, shape A only): Your papers.** The `owner_records` verb returns the sent packets; the portal lists them with **Download** (signed URL) and **Email it to me**; `send-owner-records-email`.
 4. **PR 4 (S, shape B instead of 3): the one Download — built v2.4651.** The signed card shows **Download** once the office has sent.
 
@@ -97,7 +97,7 @@ Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/
 
 **Left: one end-to-end walk, for any session.** Nothing on prod has run the flow yet. The session that built it stopped at the deploys: its browser pane was signed out. The recipe is under *How to verify*. The first portal signing is also the first `lien_owner_record_request` row in `esign_consents`, so a failure at that step points at the migration.
 
-**Not built from the plan: the Dashboard's Needs you line** at stop 4 (*Umar Khan signed for the records on 9703 Lenox Hill*). Today the office sees a portal signing only on the records window, at check 1 and check 4. Build it or drop it: the owner's call.
+**The Dashboard's Needs you line, v2.4702.** The plan's stop 4 line, which v2.4650 and v2.4651 left out: a portal signing puts *Umar Khan signed for the records on 9703 Lenox Hill* on the Needs you card, and Quickfill's, until the request is recorded as sent. **Open their request** opens the Lien desk with this window on that property (`?ownerrecords=<job id>`).
 
 **What each PR holds.** v2.4650: `_shared/ownerNameMatch.ts`; `sign-owner-records`; `customer-portal`'s `ownerRecords`; `PortalOwnerRecordsCard`; the window's **Offer it on their portal ›** with the second name; `file.offer` and the portal `acknowledgment`; migration `20261006040000` for the consent ledger. v2.4651: *On their portal* is the fifth way to record it as sent (offered only once the records were offered there); that send files the packet as a PDF, and the owner's card shows **Download the records** with a signed URL to it (good for an hour, minted each time the portal loads).
 
@@ -109,7 +109,7 @@ The walk. **This is prod data: use a ZZ TEST request only** (*ZZ TEST GC On Noti
 2. **Open the request.** Press **An owner asked for records ›** and pick a ZZ TEST property. **Offer it on their portal ›** shows only when the property's owner of record is a customer row; make sure that customer is a test one, since the offer mints that customer's portal link.
 3. **Offer it.** Press **Offer it on their portal ›**, type a second name in *Also allowed to sign*, and press **Offer it and copy the link**. Check 1 reads *Offered on their portal <day>. Waiting for them to sign.* The built-in browser pane refuses clipboard writes; the window then shows the link in a toast for 12 seconds instead.
 4. **Sign as the owner.** Open the link in a private window (the portal needs no sign-in). The card *Our records for <address>* asks them to sign. Type initials first: it answers *Type your name as the county lists it: <owner>*. Then type the owner's name with a double space, a hyphen and lower case: it matches. Tick the consent, sign typed, and press **Sign and send my request**. The card thanks them by name.
-5. **Read it back in the office.** Reload the records window. Check 1 reads *On their portal from <name>, <day>. Their signing is the request.* Check 4 reads *Signed on their portal <day> by <name>, typed.* with no Change. On the row: `file.request.how = 'portal'`, `file.acknowledgment.printedName`, and an `esign_consents` row with `record_type = 'lien_owner_record_request'`.
-6. **Send it.** Tick check 2 (the contract), pick *On their portal*, and press **Record it as sent**. A `sent_documents` row of kind `owner_records_packet` gets a `copy_path`, and `file.sent.how = 'portal'`.
+5. **Read it back in the office.** Open the Dashboard. Needs you reads *<name> signed for the records on <address>*. Press **Open their request**: the Lien desk opens with the records window on that property. Check 1 reads *On their portal from <name>, <day>. Their signing is the request.* Check 4 reads *Signed on their portal <day> by <name>, typed.* with no Change. On the row: `file.request.how = 'portal'`, `file.acknowledgment.printedName`, and an `esign_consents` row with `record_type = 'lien_owner_record_request'`.
+6. **Send it.** Tick check 2 (the contract), pick *On their portal*, and press **Record it as sent**. A `sent_documents` row of kind `owner_records_packet` gets a `copy_path`, and `file.sent.how = 'portal'`. Back on the Dashboard the Needs you line is gone.
 7. **Download as the owner.** Reload the portal. The card reads *The office sent your records on <day>.* **Download the records** saves one PDF: the cover note and the statement.
 8. **The second name.** On a second ZZ TEST request, offer with a second name and sign as that name, drawn this time. It matches, and check 4 reads *drawn*.

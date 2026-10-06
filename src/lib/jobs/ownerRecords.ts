@@ -250,7 +250,19 @@ export const OWNER_RECORDS_LEFT_OUT: ReadonlyArray<string> = ["Other owners' job
 
 // ---------- the pickers ----------
 
-export type OwnerRecordsPropertyRow = { key: string; seedJobId: string; owner: string; address: string; gcName: string; jobs: number; open: number; /** Another row has this address: two customer records may be one owner. */ sharesAddress?: boolean }
+export type OwnerRecordsPropertyRow = {
+  key: string
+  seedJobId: string
+  owner: string
+  address: string
+  gcName: string
+  jobs: number
+  open: number
+  /** Another row has this address: two customer records may be one owner. */
+  sharesAddress?: boolean
+  /** Every job folded into the row, the head first (punch list #86: the Dashboard's door finds a request's row by its job). */
+  jobIds?: string[]
+}
 
 /**
  * The properties an owner can ask about: the jobs with a lien record, folded by property and
@@ -276,6 +288,7 @@ export function ownerRecordsProperties<J extends { jobId: string; owner: string;
     open: cents(g.all.reduce((s, j) => s + j.open, 0)),
     // The same property under a second customer record is kept apart (it may be a different owner), and said.
     sharesAddress: groups.some((x) => x !== g && sameProperty(x.head, g.head)),
+    jobIds: g.all.map((j) => j.jobId),
   }))
   return rows.sort((a, b) => a.owner.localeCompare(b.owner) || a.address.localeCompare(b.address))
 }
@@ -285,4 +298,39 @@ export function ownerRecordsPropertyMatches(row: OwnerRecordsPropertyRow, query:
   if (!q) return true
   const hay = `${row.owner} ${row.address} ${row.gcName}`.toLowerCase()
   return q.split(/\s+/).every((t) => hay.includes(t))
+}
+
+/** The picker's row that holds a job (punch list #86, the Dashboard's door): its head first, else a job folded into it. */
+export function ownerRecordsRowForJob(rows: ReadonlyArray<OwnerRecordsPropertyRow>, jobId: string): OwnerRecordsPropertyRow | null {
+  return rows.find((r) => r.seedJobId === jobId) ?? rows.find((r) => r.jobIds?.includes(jobId)) ?? null
+}
+
+// ---------- the Dashboard's line (punch list #86) ----------
+
+/** One open request as the Dashboard reads it: the `lien_owner_record_requests` columns the line needs. */
+export type OwnerRecordsSignedRow = { id: string; seed_job_id: string | null; job_ids: string[] | null; property_address: string | null; file: unknown }
+
+export type OwnerRecordsSigned = {
+  /** Requests the owner signed on their portal that are not recorded as sent. */
+  count: number
+  /** The one waiting longest: who signed, for which property, on which day, and a job that opens it. */
+  first: { requestId: string; jobId: string | null; name: string; address: string; signedOn: string }
+}
+
+/**
+ * The owners who signed for the records on their portal and wait for the packet (punch list
+ * #86): open requests whose acknowledgment carries the name they typed. A paper signature is
+ * the office's own act, so it is not news and is not counted. A request recorded as sent, any
+ * way, is done. Oldest signing first; null when none wait.
+ */
+export function ownerRecordsSignedWaiting(rows: ReadonlyArray<OwnerRecordsSignedRow>): OwnerRecordsSigned | null {
+  const waiting: OwnerRecordsSigned['first'][] = []
+  for (const r of rows) {
+    const f = parseOwnerRecords(r.file)
+    const name = f?.acknowledgment?.printedName?.trim()
+    if (!f?.acknowledgment || !name || f.sent) continue
+    waiting.push({ requestId: r.id, jobId: r.seed_job_id ?? r.job_ids?.[0] ?? null, name, address: (r.property_address ?? '').trim(), signedOn: f.acknowledgment.signedOn })
+  }
+  waiting.sort((a, b) => a.signedOn.localeCompare(b.signedOn))
+  return waiting.length ? { count: waiting.length, first: waiting[0]! } : null
 }

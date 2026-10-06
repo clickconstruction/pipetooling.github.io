@@ -226,8 +226,11 @@ export default defineConfig({
       // the custom sw.ts (nothing called skipWaiting), leaving clients stale forever.
       registerType: 'prompt',
       injectManifest: {
-        // Workbox default is 2 MiB; main chunk can exceed 3 MiB as the app grows.
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Workbox default is 2 MiB; the main chunk is ~4.9 MiB (every public page is eager in App.tsx).
+        // A file over this cap fails the deploy build. 6 MiB leaves ~1 MiB for normal growth and still
+        // trips on a regression like v2.4655's, which put every help guide (~1.7 MB) in the main chunk
+        // (fixed v2.4695: LienRulesDoor lazy-loads its window). Raise it only with a reason here.
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
         globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**'],
       },

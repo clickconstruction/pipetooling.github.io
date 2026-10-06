@@ -8,7 +8,7 @@
  */
 import type { LienDeskPile } from './lienDesk'
 
-export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'lienWindow' | 'round' | 'chase' | 'forecast' | 'rtb'
+export type StagesDeepLinkKey = 'followups' | 'gcReview' | 'gcNotice' | 'lienDesk' | 'lienWindow' | 'ownerRecords' | 'round' | 'chase' | 'forecast' | 'rtb'
 
 /** The params each door consumes — stripped together, so a door's whole address leaves the URL at once. */
 export const STAGES_DEEP_LINK_PARAMS: Record<StagesDeepLinkKey, readonly string[]> = {
@@ -17,6 +17,7 @@ export const STAGES_DEEP_LINK_PARAMS: Record<StagesDeepLinkKey, readonly string[
   gcNotice: ['gcnotice'],
   lienDesk: ['liendesk', 'liendeskJob', 'liendeskPile', 'kind'],
   lienWindow: ['lienwindow', 'lientab'],
+  ownerRecords: ['ownerrecords'],
   round: ['round', 'gc'],
   chase: ['chase'],
   forecast: ['forecast'],
@@ -39,6 +40,11 @@ export function lienWindowHref(jobId: string, tab: StagesLienWindowTab = 'demand
   return `/jobs?tab=stages&lienwindow=${encodeURIComponent(jobId)}&lientab=${tab}`
 }
 
+/** The Lien desk with Records for an owner open on the property holding the job (punch list #86, the Dashboard's line). */
+export function ownerRecordsHref(jobId: string): string {
+  return `/jobs?tab=stages&ownerrecords=${encodeURIComponent(jobId)}`
+}
+
 export type StagesDeepLinks = {
   /** `?followups=1` (v2.1720): the follow-up deck. */
   followups: boolean
@@ -50,6 +56,8 @@ export type StagesDeepLinks = {
   lienDesk: StagesLienDeskLink | null
   /** `?lienwindow=<job id>` (+ `lientab`): that job's Lien window on a tab (the demand letter unless named). */
   lienWindow: StagesLienWindowLink | null
+  /** `?ownerrecords=<job id>` (punch list #86): the Lien desk with Records for an owner open on that job's property. */
+  ownerRecordsJobId: string | null
   /** `?round=1` (+ `gc`) (v2.2771): GC Review straight into the round overlay. */
   round: { gcId: string | null } | null
   /** `?chase=1` (v2.2025): payment follow-up call mode. */
@@ -77,6 +85,7 @@ export function parseStagesDeepLinks(search: URLSearchParams): StagesDeepLinks {
         }
       : null,
     lienWindow: lienWindowJobId ? { jobId: lienWindowJobId, tab: LIEN_WINDOW_TABS.find((t) => t === search.get('lientab')) ?? 'demand' } : null,
+    ownerRecordsJobId: search.get('ownerrecords') || null,
     round: flag('round') ? { gcId: search.get('gc') || null } : null,
     chase: flag('chase'),
     forecast: flag('forecast'),

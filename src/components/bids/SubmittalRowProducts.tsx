@@ -8,7 +8,8 @@
  * The part and its answer are two cells of one grid row, so they stay side by side however the
  * part's name wraps; on a phone the answer sits under its part (`.sub-rows-answers`).
  */
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { assemblyLine, doubledKinds, formatPartQty, orderOnlyLine, partHouseIds, splitPartLabel, submittedParts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { rowAnswers, type AnswerMark } from '../../lib/submittals/rowsTableModel'
 import { asStatus, formatPages, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
@@ -41,8 +42,14 @@ export function SubmittalRowProducts({ item, parts, houseNameById, showAnswers, 
   /** A row with no product offers the door to type one. */
   onAddProduct?: () => void
 }) {
-  const shown = submittedParts(parts)
+  const all = submittedParts(parts)
   const answers = rowAnswers(item, parts)
+  // v2.4690 · on a phone a fixture's parts fold under its first one (BP375's DWH-1 card was a screen): a tap opens the rest.
+  // A row whose parts carry their own answers stays open, so no verdict is folded away.
+  const narrow = useIsNarrowScreen()
+  const [partsOpen, setPartsOpen] = useState(false)
+  const foldable = narrow && all.length > 1 && answers.byPart.size === 0
+  const shown = foldable && !partsOpen ? all.slice(0, 1) : all
   const by = item.reviewed_by_name ?? ''
   const line = (key: string, left: ReactNode, right: ReactNode) => (
     <div key={key} className="sub-rows-answers" data-answers={showAnswers ? 'true' : undefined} data-testid="row-part-line">
@@ -81,6 +88,11 @@ export function SubmittalRowProducts({ item, parts, houseNameById, showAnswers, 
           mark ? <Mark mark={mark} by={p.reviewed_by_name ?? by} testId="row-part-call" /> : waiting(i === 0),
         )
       })}
+      {foldable ? (
+        <button type="button" onClick={() => setPartsOpen((v) => !v)} aria-expanded={partsOpen} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer', alignSelf: 'flex-start' }} data-testid="row-parts-fold">
+          {partsOpen ? 'Fewer parts' : `and ${all.length - 1} more part${all.length - 1 === 1 ? '' : 's'}`}
+        </button>
+      ) : null}
       {parts.length === 0
         ? line(
             'product',
