@@ -62,7 +62,9 @@ import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import { SubmittalHouseFileModal } from './SubmittalHouseFileModal'
-import { SubmittalFoldModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
+import { SubmittalFoldModal, SubmittalScheduleGradeModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
+import { gradePatch, planScheduleGrade } from '../../lib/submittals/gradeAgainstSchedule'
+import { openOrSaveFromStorage, saveBlobAs, saveFromStorage } from '../../lib/storageSave'
 import { matchFileToRows, pairParts, defaultFileChoice, planFileApply, readHouseFile, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
 import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
 import { SubmittalAnswerDialog, type AnswerSave } from './SubmittalAnswerDialog'
@@ -176,6 +178,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [splitRuleOpen, setSplitRuleOpen] = useState(false)
   /** 2026-10-01 · a draft catching up: the takeoff's parts on its rows, a hand row folded into a fixture. */
   const [refreshOpen, setRefreshOpen] = useState(false)
+  // v2.4609 · the schedule, typed after the takeoff built the rows, grades them.
+  const [gradeOpen, setGradeOpen] = useState(false)
   const [foldFrom, setFoldFrom] = useState<{ fromId: string; intoId: string | null } | null>(null)
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
@@ -904,6 +908,26 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setBusy(false)
     }
   }
+  /** v2.4609 · each Proposed row the schedule names takes the plans' product and the status the comparison gives. */
+  async function gradeRowsAgainstSchedule() {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    setBusy(true)
+    try {
+      let n = 0
+      for (const r of gradePlan.rows) {
+        const { error } = await db.from('bid_submittal_items').update(gradePatch(r)).eq('id', r.itemId)
+        if (error) throw error
+        n++
+      }
+      setGradeOpen(false)
+      setItems(await loadItems(selectedRev.id))
+      showToast(`${n} row${n === 1 ? '' : 's'} graded against the schedule.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not grade the rows'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
   async function openTakeoffRefresh() {
     if (!bidId) return
     // The takeoff read fresh, so the list shows what it says now.
@@ -1199,9 +1223,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   async function openReviewerFile(f: ReviewerFile) {
     try {
-      const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(f.path, 300)
-      if (error || !data?.signedUrl) throw error ?? new Error('No link.')
-      window.open(data.signedUrl, '_blank', 'noopener')
+      // v2.4610 · a redlined PDF opens to be read; a forwarded email is saved, from the app's own address.
+      if (!(await openOrSaveFromStorage(SUBMITTALS_BUCKET, f.path, f.name))) throw new Error('No link.')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not open the file.', 'error')
     }
@@ -1436,29 +1459,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  /** v2.4579 · the dropped vendor file, saved whole under its own name (a five-minute signed link). */
+  /** v2.4579 · the dropped vendor file, saved whole under its own name (read into the page, then saved from the app's own address, v2.4610). */
   async function saveSourceFile(fileIndex: number) {
     const f = sourceFiles[fileIndex]
     if (!f) return
     const name = /\.pdf$/i.test(f.name) ? f.name : `${f.name}.pdf`
-    const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(f.path, 300, { download: name })
-    if (error || !data?.signedUrl) {
-      showToast(`${f.name} could not be saved right now. Try again.`, 'error')
-      return
-    }
-    window.open(data.signedUrl, '_blank', 'noopener')
+    if (!(await saveFromStorage(SUBMITTALS_BUCKET, f.path, name))) showToast(`${f.name} could not be saved right now. Try again.`, 'error')
   }
 
-  /** A five-minute signed link to the stored package; the fresh blob as the fallback when the link cannot be minted. */
+  /** The stored package, saved under its name; the fresh blob when it has just been built, so nothing is read twice (v2.4610). */
   async function openStoredPackage(path: string, revNumber: number, fallback?: Blob) {
     const name = packageFileName(revNumber, bidWorkflowTabHeading(bid, prefixMap))
-    const { data } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(path, 300, { download: name })
-    const url = data?.signedUrl ?? (fallback ? URL.createObjectURL(fallback) : null)
-    if (!url) {
-      showToast('The package is stored, but the link could not be opened right now.', 'error')
+    if (fallback) {
+      saveBlobAs(fallback, name)
       return
     }
-    window.open(url, '_blank', 'noopener')
+    if (!(await saveFromStorage(SUBMITTALS_BUCKET, path, name))) showToast('The package is stored, but it could not be read right now.', 'error')
   }
 
   /**
@@ -1476,14 +1492,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         return downloadFile(f.path)
       })
       const name = cutSheetFileName(it.tag)
-      const url = URL.createObjectURL(new Blob([out.bytes as BlobPart], { type: 'application/pdf' }))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = name
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      window.setTimeout(() => URL.revokeObjectURL(url), 30_000)
+      saveBlobAs(new Blob([out.bytes as BlobPart], { type: 'application/pdf' }), name)
       showToast(`Saved ${name} · ${out.pages} page${out.pages === 1 ? '' : 's'}. Attach it to your email or text.`, 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not save the cut sheet.', 'error')
@@ -2091,6 +2100,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const isDraft = selectedRev ? asRevisionStatus(selectedRev.status) === 'draft' : false
   // 2026-10-01 · what a draft could catch up on: rows the takeoff reads differently, hand rows that read like another row's part.
   const refreshPlan = isDraft && takeoff ? planTakeoffRefresh(items, partsOf, takeoff.candidates) : { rows: [], skipped: [] }
+  const gradePlan = isDraft && specified.length > 0 ? planScheduleGrade(items, specified, partsOf) : { rows: [], skipped: [] }
   const foldHints = isDraft ? foldSuggestions(items, partsOf) : []
 
   // The road (v2.4090): a done stage folds to its line; the current stage and the stage it reads from stay open;
@@ -2305,6 +2315,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 {isDraft && (picks.length > 0 || specified.length > 0) ? (
                   <button type="button" disabled={busy} onClick={() => void rebuildRows()} style={btn} title="Build every row again from today's picks. Your edits stay where the product did not change">
                     Rebuild rows from picks
+                  </button>
+                ) : null}
+                {isDraft && gradePlan.rows.length > 0 ? (
+                  <button type="button" disabled={busy} onClick={() => setGradeOpen(true)} style={{ ...btn, borderColor: '#2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }} title="The schedule names rows that read Proposed. Each takes the plans' product and its status; nothing you typed changes" data-testid="grade-against-schedule">
+                    Grade {gradePlan.rows.length} row{gradePlan.rows.length === 1 ? '' : 's'} against the schedule…
                   </button>
                 ) : null}
                 <span style={smallMuted}>{selectedRev.note ? selectedRev.note : isDraft ? 'A draft until you share it. Each shared version stays as the record.' : 'Shared. A new version starts when the GC sends rows back, or a product changes.'}</span>
@@ -2659,6 +2674,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setApprovingAll(false)}
         />
       ) : null}
+      {gradeOpen ? <SubmittalScheduleGradeModal rows={gradePlan.rows} skipped={gradePlan.skipped} busy={busy} onConfirm={() => void gradeRowsAgainstSchedule()} onClose={() => setGradeOpen(false)} /> : null}
       {refreshOpen ? <SubmittalTakeoffRefreshModal rows={refreshPlan.rows} skipped={refreshPlan.skipped} busy={busy} onConfirm={() => void refreshRowsFromTakeoff()} onClose={() => setRefreshOpen(false)} /> : null}
       {foldFrom && items.some((x) => x.id === foldFrom.fromId) ? (
         <SubmittalFoldModal from={items.find((x) => x.id === foldFrom.fromId)!} rows={items} partsByItem={partsOf} suggestedIntoId={foldFrom.intoId} busy={busy} onConfirm={(intoId, replaceId) => void foldRowInto(foldFrom.fromId, intoId, replaceId)} onClose={() => setFoldFrom(null)} />

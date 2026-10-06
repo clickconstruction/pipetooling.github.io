@@ -5,7 +5,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { SubmittalFoldModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
+import { SubmittalFoldModal, SubmittalScheduleGradeModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
 import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 
@@ -97,5 +97,38 @@ describe('SubmittalFoldModal', () => {
     render(<SubmittalTakeoffRefreshModal rows={[]} skipped={[]} busy onConfirm={() => {}} onClose={onClose} />)
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('SubmittalScheduleGradeModal (v2.4609)', () => {
+  it('lists each Proposed row the schedule names with the plans’ product and the status it takes, says why the others stay, and grades on the button', () => {
+    const onConfirm = vi.fn()
+    render(
+      <SubmittalScheduleGradeModal
+        rows={[
+          { itemId: 'wc', tag: 'WC-1, WC-2', scheduleTag: 'WC-1', specified: { manufacturer: 'TOTO', model: 'CT728CUVG#01', description: null }, product: 'TOTO CT728CUVG#01 TORNADO + TOTO TET2UB31#SS', from: 'proposed', to: 'as_specified', near: false },
+          { itemId: 'hb', tag: 'HB-3', scheduleTag: 'HB-3', specified: { manufacturer: 'WOODFORD', model: 'B74', description: null }, product: 'WOODFORD B74C', from: 'proposed', to: 'as_specified', near: true },
+          { itemId: 'lav', tag: 'LAV-1', scheduleTag: 'LAV-1', specified: { manufacturer: 'KOHLER', model: 'K-2005', description: null }, product: 'TSL.MON.B.38.2.PS1.BK MONOLITH', from: 'proposed', to: 'alternate', near: false },
+          { itemId: 'ut', tag: 'UTILITY SINK', scheduleTag: 'UTILITY SINK', specified: { manufacturer: null, model: null, description: 'By contractor' }, product: '', from: 'missing', to: 'missing', near: false },
+        ]}
+        skipped={[{ itemId: 'ur', tag: 'UR-1', why: 'not_on_schedule' }, { itemId: 'mix', tag: 'LAV-2, HB-4', why: 'two_tags_differ' }]}
+        onConfirm={onConfirm}
+        onClose={() => {}}
+      />,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Grade the rows against the schedule' })
+    expect(screen.getByTestId('grade-summary').textContent).toBe('2 as specified (1 to check) · 1 alternate, say why · 1 still missing.')
+    expect(screen.getAllByTestId('grade-to').map((x) => x.textContent)).toEqual(['As specified', 'As specified · check the model', 'Alternate', 'Missing'])
+    expect(screen.getAllByTestId('grade-row').map((x) => x.textContent)).toEqual([
+      'WC-1, WC-2As specifiedThe plans: TOTO CT728CUVG#01Your row: TOTO CT728CUVG#01 + TOTO TET2UB31#SS',
+      'HB-3As specified · check the modelThe plans: WOODFORD B74Your row: WOODFORD B74C',
+      'LAV-1AlternateThe plans: KOHLER K-2005Your row: TSL.MON.B.38.2.PS1.BK',
+      'UTILITY SINKMissingThe plans: By contractorYour row: no product yet',
+    ])
+    expect(screen.getByTestId('grade-skipped').textContent).toBe('UR-1 is not on the schedule, so it stays Proposed.LAV-2, HB-4 lists two tags the schedule names differently; grade it with Edit.')
+    expect(dialog.textContent).toContain('Parts, houses, lead times, reasons and cut sheets stay as they are.')
+    fireEvent.click(screen.getByTestId('grade-confirm'))
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('grade-confirm').textContent).toBe('Grade 4 rows')
   })
 })

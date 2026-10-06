@@ -17,8 +17,8 @@
  * Rules 1 and 3 are mechanical and live here. Rules 2, 4 and 5 are each surface's own test
  * cases (`submittalTour.test.ts`, `workbenchHelp.test.ts`), since the verbs, the trade
  * words and the shape belong to the surface. `helpGuidePlainWords.test.ts` holds every
- * guide not on `LEGACY_PLAIN_WORDS_GUIDES` (`plainWordsLegacy.ts`), and
- * `npm run check:plain-words` fails CI when a PR touches a guide still on that list.
+ * guide, a new one from its first commit. The guides written before the rules were all
+ * rewritten by 2026-10-05 (punch list #75), so no guide is exempt.
  *
  * What is quoted is not held: a mock-UI token is the control's exact name whatever it
  * contains, an italic span in a guide is what the screen prints, quoted as printed, and a

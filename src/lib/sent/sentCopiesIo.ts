@@ -10,7 +10,7 @@
  */
 import { supabase } from '../supabase'
 import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../jobsDocuments/printWindow'
-import { openInExternalBrowser } from '../openInExternalBrowser'
+import { fileNameOf, openOrSaveFromStorage } from '../storageSave'
 import { type SentCopy, type SentCopyBody, type SentCopyStored, type SentFiling, type SentKindGroup, parseSentCopy, sentCopyDoor, sentCopyFrameHtml, sentCopyPath, sentDocumentInsert, sentKindGroupFilter, sentSearchFilter } from './sentCopies'
 
 /** The private bucket the copies live in: `<sent_documents.id>/<file>`. */
@@ -122,13 +122,10 @@ export async function openSentCopy(row: Pick<SentCopy, 'copyPath' | 'copyType'>,
   return openSentFile(row.copyPath)
 }
 
-/** Open a kept file (a copy that is not a page, or an email's attachment) through a five-minute link. */
+/** Open a kept file the browser can show (a PDF) through a five-minute link; save one it cannot (a pay application workbook) from the app's own address (v2.4610). */
 export async function openSentFile(path: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase.storage.from(SENT_COPIES_BUCKET).createSignedUrl(path, 300)
-    if (error || !data?.signedUrl) return false
-    openInExternalBrowser(data.signedUrl)
-    return true
+    return await openOrSaveFromStorage(SENT_COPIES_BUCKET, path, fileNameOf(path, 'copy'))
   } catch {
     return false
   }

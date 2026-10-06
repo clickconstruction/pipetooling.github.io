@@ -82,7 +82,8 @@ export function QuickfillFieldPhotoHandoverSection() {
             g.photos.map(async (p) => {
               const { data: s } = await supabase.storage
                 .from('estimate-field-photos')
-                .createSignedUrl(p.storage_path, 3600, { download: p.filename ?? true })
+                // v2.4610 · the picture opens to be looked at; a link that forced a download made Safari ask about two sites.
+                .createSignedUrl(p.storage_path, 3600)
               return { ...p, url: s?.signedUrl ?? null }
             }),
           ),
@@ -186,7 +187,7 @@ export function QuickfillFieldPhotoHandoverSection() {
                     href={p.url}
                     target="_blank"
                     rel="noreferrer"
-                    title={`${p.filename ?? 'photo'} — opens/downloads full size`}
+                    title={`${p.filename ?? 'photo'} — opens full size`}
                   >
                     <img
                       src={p.url}

@@ -250,6 +250,17 @@ vi.mock('../../lib/supabase', () => ({
 
 const bid = { id: 'b398', bid_number: '398', project_name: 'ZZ Test', address: '1 Test Ln', customers: null, bids_gc_builders: null, service_type_id: null } as unknown as BidWithBuilder
 
+/** v2.4610 · a saved file is a hidden link clicked from a blob: jsdom has no object URLs, so these stand in. */
+function stubSave() {
+  const saved: string[] = []
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { saved.push(this.download) })
+  const urlApi = URL as unknown as { createObjectURL?: unknown; revokeObjectURL?: unknown }
+  const before = { create: urlApi.createObjectURL, revoke: urlApi.revokeObjectURL }
+  urlApi.createObjectURL = () => 'blob:saved'
+  urlApi.revokeObjectURL = () => {}
+  return { saved, restore: () => { click.mockRestore(); urlApi.createObjectURL = before.create; urlApi.revokeObjectURL = before.revoke } }
+}
+
 function mount() {
   return renderWithProviders(
     <BidsSubmittalsTab bids={[bid]} selectedBid={bid} narrowViewport640={false} bidPreview={null} onSelectBid={() => {}} onClose={() => {}} onOpenPricing={() => {}} onlyMyBids={false} setOnlyMyBids={() => {}} isMyBid={() => true} />,
@@ -715,7 +726,7 @@ describe('BidsSubmittalsTab', () => {
     }
   })
 
-  it('Build package downloads only the files the rows use, stores package-rev<N>.pdf, stamps the revision, and opens the signed link', async () => {
+  it('Build package downloads only the files the rows use, stores package-rev<N>.pdf, stamps the revision, and saves the fresh package under its name', async () => {
     state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }, { path: 'b398/rev-1/1.pdf', name: 'Moore.pdf', pages: 4, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
     state.items = [
       item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL', status: 'alternate', reason_kind: 'lead_time', sheet_file: 0, sheet_pages: [3] }),
@@ -724,19 +735,24 @@ describe('BidsSubmittalsTab', () => {
     state.writes = []
     state.storage = []
     state.packageCalls = []
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const save = stubSave()
     mount()
     await screen.findAllByTestId('submittal-row')
     fireEvent.click(screen.getByTestId('build-package'))
     await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittals')).toBe(true))
     expect(state.packageCalls).toEqual([{ files: 1, sheets: ['DWH-1', 'WC-1'] }])
-    expect(state.storage).toEqual(['download b398/rev-1/0.pdf', 'upload b398/rev-1/package-rev1.pdf', 'sign b398/rev-1/package-rev1.pdf'])
+    // v2.4610 · no signed link: the package just built is saved from the app's own address, under its name.
+    expect(state.storage).toEqual(['download b398/rev-1/0.pdf', 'upload b398/rev-1/package-rev1.pdf'])
     const upd = state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittals')!
     expect(upd.payload).toEqual({ package_path: 'b398/rev-1/package-rev1.pdf' })
-    expect(open).toHaveBeenCalledWith('https://signed.test/b398/rev-1/package-rev1.pdf', '_blank', 'noopener')
+    await waitFor(() => expect(save.saved).toEqual([expect.stringMatching(/^Submittal Rev 1 - .+\.pdf$/)]))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Open package' })).toBeTruthy())
     expect(screen.getByTestId('revision-line').textContent).toMatch(/package built/)
-    open.mockRestore()
+    // Open package reads the stored file and saves it the same way.
+    fireEvent.click(screen.getByRole('button', { name: 'Open package' }))
+    await waitFor(() => expect(save.saved).toHaveLength(2))
+    expect(state.storage).toEqual(['download b398/rev-1/0.pdf', 'upload b398/rev-1/package-rev1.pdf', 'download b398/rev-1/package-rev1.pdf'])
+    save.restore()
   })
 
   it('2026-10-04 · a row with no cut sheet no longer holds the package: the button counts it, a question names it, and the built package can be shared', async () => {
@@ -752,7 +768,7 @@ describe('BidsSubmittalsTab', () => {
     state.parts = []
     state.tasks = []
     state.noSources = true
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const save = stubSave()
     try {
       mount()
       const button = await screen.findByTestId('build-package')
@@ -777,7 +793,7 @@ describe('BidsSubmittalsTab', () => {
       expect(screen.getByTestId('submittal-journey').textContent).toContain('The package is built. 1 row in it reads cut sheet to follow. Tap Share to get a link for the GC.')
       expect(screen.getByTestId('build-package').textContent).toBe('Rebuild package · 1 cut sheet to follow')
     } finally {
-      open.mockRestore()
+      save.restore()
       state.noSources = false
     }
   })
@@ -1713,6 +1729,57 @@ describe('BidsSubmittalsTab', () => {
     } finally {
       state.parts = []
       state.noSources = false
+    }
+  })
+
+  it('v2.4609 · the schedule typed after the takeoff built the rows grades them: the door counts the Proposed rows it names, the window shows each, and Grade writes the plans’ product and the status onto the row and nothing else', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    // Three rows from the takeoff: WC-1 reads the plans' model, DWH-1 another maker's, HB-3 is not on the schedule.
+    state.items = [
+      item({ id: 'g-wc', tag: 'WC-1', sequence_order: 1, submitted_label: 'TOTO CT708UVG#01 TORNADO FLUSH', status: 'proposed', source_count_row_id: 'cr-1', lead_time_days: 21, reason_note: 'keep me' }),
+      item({ id: 'g-dwh', tag: 'DWH-1', sequence_order: 2, submitted_label: 'BRADFORD WHITE RE2HP50', status: 'proposed', source_count_row_id: 'cr-2' }),
+      item({ id: 'g-hb', tag: 'HB-3', sequence_order: 3, submitted_label: 'WOODFORD B74C', status: 'proposed', source_count_row_id: 'cr-3' }),
+    ]
+    state.writes = []
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    // Step 2 is folded once a revision exists: its title opens it.
+    fireEvent.click(screen.getByRole('button', { name: /2 · Rev 1/ }))
+    const door = await screen.findByTestId('grade-against-schedule')
+    expect(door.textContent).toBe('Grade 2 rows against the schedule…')
+    fireEvent.click(door)
+    const dialog = await screen.findByRole('dialog', { name: 'Grade the rows against the schedule' })
+    expect(within(dialog).getAllByTestId('grade-to').map((x) => x.textContent)).toEqual(['As specified', 'Alternate'])
+    expect(within(dialog).getByTestId('grade-skipped').textContent).toBe('HB-3 is not on the schedule, so it stays Proposed.')
+    fireEvent.click(within(dialog).getByTestId('grade-confirm'))
+    await waitFor(() => expect(state.writes.filter((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toHaveLength(2))
+    const writes = state.writes.filter((w) => w.op === 'update' && w.table === 'bid_submittal_items')
+    expect(writes[0]!.filters).toContainEqual(['id', 'g-wc'])
+    expect(writes[0]!.payload).toEqual({ specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', specified_description: 'Wall-hung, 1.28 gpf', status: 'as_specified' })
+    expect(writes[1]!.payload).toEqual({ specified_manufacturer: 'Rheem', specified_model: 'RH375', specified_description: '40 gal', status: 'alternate' })
+    // The rows read graded, the lead time and the note stayed, HB-3 is still Proposed, and the door is gone.
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Grade the rows against the schedule' })).toBeNull())
+    expect(state.items.find((r) => r.id === 'g-wc')).toMatchObject({ status: 'as_specified', lead_time_days: 21, reason_note: 'keep me' })
+    expect(state.items.find((r) => r.id === 'g-hb')!.status).toBe('proposed')
+    await waitFor(() => expect(screen.queryByTestId('grade-against-schedule')).toBeNull())
+  })
+
+  it('v2.4610 · Save PDF on a vendor file reads the stored file and saves it under its own name, from the app’s own address: no signed link, no new tab', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS SUBMITTAL', pages: 4, house_id: null, house_name: 'NWS' }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, submitted_label: 'RHEEM PROPH40', status: 'proposed', sheet_file: 0, sheet_pages: [1] })]
+    state.storage = []
+    const save = stubSave()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    try {
+      mount()
+      await screen.findAllByTestId('submittal-row')
+      fireEvent.click(await screen.findByRole('button', { name: 'Save NWS SUBMITTAL as a PDF' }))
+      await waitFor(() => expect(save.saved).toEqual(['NWS SUBMITTAL.pdf']))
+      expect(state.storage).toEqual(['download b398/rev-1/0.pdf'])
+      expect(open).not.toHaveBeenCalled()
+    } finally {
+      save.restore()
+      open.mockRestore()
     }
   })
 })
