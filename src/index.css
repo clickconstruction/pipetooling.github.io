@@ -4740,8 +4740,9 @@ button.gcStep:hover > em { text-decoration: underline; }
 .submittal-road { display: grid; grid-template-columns: 22px 34px 1fr; column-gap: 0.6rem; }
 .submittal-road-rail { grid-column: 2; }
 .submittal-road-step { grid-column: 3; }
-.submittal-road-loop { grid-column: 1; grid-row: 2 / 7; margin: 14px -0.6rem -16px 18px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border: 2px dashed #2563eb; border-right: 0; border-radius: 10px 0 0 10px; pointer-events: none; }
-.submittal-road-loop__head { position: absolute; top: -6px; right: -1px; width: 8px; height: 8px; border-top: 2px solid #2563eb; border-right: 2px solid #2563eb; transform: rotate(45deg); }
+/* v2.4690 · the loop takes the theme's link blue, so it reads on the dark surface too (a literal #2563eb was faint there). */
+.submittal-road-loop { grid-column: 1; grid-row: 2 / 7; margin: 14px -0.6rem -16px 18px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border: 2px dashed var(--text-blue-700); border-right: 0; border-radius: 10px 0 0 10px; pointer-events: none; }
+.submittal-road-loop__head { position: absolute; top: -6px; right: -1px; width: 8px; height: 8px; border-top: 2px solid var(--text-blue-700); border-right: 2px solid var(--text-blue-700); transform: rotate(45deg); }
 .submittal-road-loop__label { position: sticky; top: calc(var(--app-top-chrome, 0px) + 7rem); bottom: 6rem; margin-left: -20px; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: 0.72rem; line-height: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--text-blue-700); }
 @media (max-width: 720px) {
   .submittal-road { grid-template-columns: 34px 1fr; }

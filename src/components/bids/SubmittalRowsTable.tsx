@@ -105,7 +105,8 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
           })}
         </div>
       ) : null}
-      {proposed || houseName ? (
+      {/* v2.4690 · the one house is said on the procurement log's lens row, not here too (punch list #89, the trims). */}
+      {proposed ? (
         <span style={smallMuted} data-testid="rows-said-once">
           {proposed ? (
             <>
@@ -113,7 +114,6 @@ export function SubmittalRowsTable({ items, gcItems, orderOnlyItems, parts, part
               {onTypeSchedule ? <><button type="button" onClick={onTypeSchedule} style={linkBtn}>Type the schedule</button> to change that.{' '}</> : null}
             </>
           ) : null}
-          {houseName ? `Every part comes from ${houseName}.` : ''}
         </span>
       ) : null}
       <div className="sub-rows-wrap" style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }}>
