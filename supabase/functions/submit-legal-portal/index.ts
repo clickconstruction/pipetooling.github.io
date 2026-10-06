@@ -19,8 +19,10 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
  * acknowledged_at NULL — the office's Needs You reads exactly those. The firm
  * never marks anything paid, edits a job, or emails the customer through us.
  *
- * Guards: honeypot `website`, length caps, the matter must belong to the
- * firm and be in the with-firm set, 30 acts per firm per hour.
+ * Guards: the link is the key, length caps, the matter must belong to the
+ * firm and be in the with-firm set, 30 acts per firm per hour, twelve people.
+ * No honeypot (v2.4622): the page is behind a private link, and a hidden box a
+ * password manager fills would have made a real act vanish behind "Saved".
  */
 
 const corsHeaders = {
@@ -64,7 +66,6 @@ serve(async (req) => {
   try {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
     if (!body || typeof body !== 'object') return jsonResponse({ error: 'Bad request' }, 400)
-    if (str(body.website, 100)) return jsonResponse({ ok: true }) // honeypot: pretend success, write nothing
     const token = str(body.token, 128)
     if (token.length < 16) return jsonResponse({ error: 'Missing token' }, 400)
     const kind = str(body.kind, 40)
