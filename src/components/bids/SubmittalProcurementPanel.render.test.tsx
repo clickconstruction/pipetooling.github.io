@@ -666,7 +666,6 @@ describe('SubmittalProcurementPanel', () => {
     await waitFor(() => expect(stepWords()).toEqual(['Waiting on the GC3', 'To order0nothing approved yet', 'On order0', 'On site0']))
     expect(screen.getByTestId('procurement-next').textContent).toBe('Next: Nothing can be ordered until the GC answers. 3 parts wait on their answer.')
     expect(screen.getAllByTestId('procurement-section').map((r) => r.getAttribute('data-kind'))).toEqual(['waiting'])
-    expect(screen.getAllByTestId('procurement-fixture-answer')).toHaveLength(2)
   })
 
   it('v2.4587 · orders by PO, on site by PO, a part sent back with what they wrote and its two doors, a waiting fixture with Their answer…', async () => {
@@ -694,7 +693,7 @@ describe('SubmittalProcurementPanel', () => {
     const groups = () => screen.getAllByTestId('procurement-group')
     expect(groups().map((g) => [g.getAttribute('data-kind'), g.textContent, within(g).getByTestId('procurement-group-fold').getAttribute('aria-expanded')])).toEqual([
       ['placed', 'PO 45022WHA-200, WHA-300 · 2 wk lead · ordered 10/20Arrives 11/03', 'false'],
-      ['fixture', 'LAV-22LAV2 × 6 · 1 part · 1 order onlyTheir answer…', 'false'],
+      ['fixture', 'LAV-22LAV2 × 6 · 1 part · 1 order only', 'false'],
       ['on_site', 'PO 44711FCO · ordered 10/06✓ On site 10/15', 'false'],
     ])
     // Opened, a part is one line with Dates… at the right; the dates editor opens under it as before.
@@ -709,9 +708,8 @@ describe('SubmittalProcurementPanel', () => {
     expect(onOpenItem).toHaveBeenLastCalledWith({ itemId: 'row-lav2', partKey: 'k-lav' })
     fireEvent.click(screen.getByRole('button', { name: 'Change their answer on LAV-2 KOHLER 2215-0' }))
     expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-lav2', partKey: 'k-lav' })
-    // The waiting fixture opens the row's Their answer window; inside, the order-only part sits under its heading.
-    fireEvent.click(screen.getByTestId('procurement-fixture-answer'))
-    expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-lav2', partKey: null })
+    // v2.4687 · the waiting fixture offers no Their answer… door: step 6 is its home. Opened, the order-only part sits under its heading.
+    expect(screen.queryByTestId('procurement-fixture-answer')).toBeNull()
     fireEvent.click(within(groups()[1]!).getByTestId('procurement-group-fold'))
     expect(screen.getByTestId('procurement-order-only-divider').textContent).toBe('Ordered, not on the GC’s copy · 1 part')
     expect(screen.getByRole('button', { name: 'Enter their answer on LAV-2 BOBRICK B-8236' })).toBeTruthy()
@@ -825,10 +823,9 @@ describe('SubmittalProcurementPanel', () => {
       // An order placed: the day it lands, in words, in place of its bar.
       expect(within(groups[1]!).getByTestId('procurement-group-fold').textContent).toBe('PO 1191')
       expect(within(groups[1]!).getByTestId('procurement-group-date').textContent).toBe('arrives 10/20, 14 days late')
-      // A fixture that waits: its one door.
-      expect(within(groups[2]!).getByTestId('procurement-group-right').textContent).toBe('Their answer…')
-      fireEvent.click(within(groups[2]!).getByTestId('procurement-fixture-answer'))
-      expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-s3', partKey: null })
+      // A fixture that waits has no door here (v2.4687): step 6 is its home.
+      expect(within(groups[2]!).getByTestId('procurement-group-right').textContent).toBe('')
+      expect(screen.queryByTestId('procurement-fixture-answer')).toBeNull()
       // The first order is open: its part is a short card, with the quantity when there is one and Dates… to open the editor.
       const cards = screen.getAllByTestId('procurement-row')
       expect(cards.map((c) => c.tagName)).toEqual(['DIV'])
