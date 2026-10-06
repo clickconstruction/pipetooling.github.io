@@ -1,5 +1,5 @@
 /**
- * The calendar beside the orders (punch list #82, PR 3): one line of weeks, and each order's
+ * The calendar beside the orders (the procurement log redraw, PR 3; its card was PR #4527): one line of weeks, and each order's
  * place on it as plain data. An order to place is a diamond at its order-by date, an order
  * placed is a bar from the day it was ordered to the day it lands, a fixture that waits is an
  * open diamond at the day the GC must answer by; each runs on to a tick at the day the job

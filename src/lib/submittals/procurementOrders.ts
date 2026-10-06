@@ -1,5 +1,5 @@
 /**
- * The To order lens as orders (punch list #82, PR 2): the log's lines in five sections, each
+ * The To order lens as orders (the procurement log redraw, PR 2; its card was PR #4527): the log's lines in five sections, each
  * line under the order it belongs to. What can be ordered is grouped by its order-by date, what
  * is ordered and what landed by PO, what waits on the GC by fixture; a part sent back stands
  * alone. Pure: the panel draws these.
