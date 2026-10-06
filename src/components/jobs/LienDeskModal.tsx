@@ -295,6 +295,9 @@ export default function LienDeskModal({
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
   const [busy, setBusy] = useState(false)
   const [mobileListShown, setMobileListShown] = useState(true)
+  // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const [litPile, setLitPile] = useState<LienDeskPile | null>(null)
   // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
   const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
   const previewWinRef = useRef<Window | null>(null)
@@ -1044,8 +1047,30 @@ export default function LienDeskModal({
   }
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
+  // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
+  const PILE_HEAD_H = 30
+  const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p) })).filter((x) => x.rows.length > 0)
+  const scrollToPile = (p: LienDeskPile, i: number) => {
+    const host = listRef.current
+    const rows = host?.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
+    if (!host || !rows) return
+    const top = Math.max(0, rows.offsetTop - (i + 1) * PILE_HEAD_H)
+    if (typeof host.scrollTo === 'function') host.scrollTo({ top, behavior: 'smooth' })
+    else host.scrollTop = top
+    setLitPile(p)
+  }
+  const relightPiles = () => {
+    const host = listRef.current
+    if (!host) return
+    let on: LienDeskPile | null = null
+    pilesShown.forEach(({ p }, i) => {
+      const rows = host.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
+      if (rows && rows.offsetTop <= host.scrollTop + (i + 2) * PILE_HEAD_H) on = p
+    })
+    setLitPile(on)
+  }
   const list = (
-    <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
+    <div ref={listRef} onScroll={relightPiles} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
       {visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {loading || data == null ? 'Looking at every unpaid sub job…' : pile ? 'Nothing in this pile.' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
@@ -1061,13 +1086,27 @@ export default function LienDeskModal({
           </button>
         </div>
       ) : null}
-      {PILE_ORDER.map((p) => {
-        const rows = visible.filter((e) => e.pile === p)
-        if (rows.length === 0) return null
+      {pilesShown.map(({ p, rows }, i) => {
         const label = LIEN_DESK_PILES.find((x) => x.key === p)?.label ?? p
         return (
-          <div key={p}>
-            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.6rem 0.9rem 0.2rem' }}>{label}</div>
+          <Fragment key={p}>
+            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} style={{ top: i * PILE_HEAD_H, bottom: (pilesShown.length - 1 - i) * PILE_HEAD_H }}>
+              <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPile(p, i)} title="Go to this pile">
+                {label}
+                <span className="n" data-lien-pile-count={p}>{counts?.[p] ?? rows.length}</span>
+              </button>
+              {p === 'ready' && office && runCount > 0 ? (
+                <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Send the run · {runCount}
+                </button>
+              ) : null}
+              {pile ? (
+                <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 600, letterSpacing: 0, textTransform: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  show every pile
+                </button>
+              ) : null}
+            </div>
+            <div data-lien-pile-rows={p}>
             {rows.map((e) => {
               const j = data?.jobsById[e.jobId]
               const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
@@ -1135,7 +1174,8 @@ export default function LienDeskModal({
                 </button>
               )
             })}
-          </div>
+            </div>
+          </Fragment>
         )
       })}
     </div>
@@ -2294,16 +2334,7 @@ export default function LienDeskModal({
                 )
               })
             : null}
-          {kind === 'notice' ? LIEN_DESK_PILES.map((p) => {
-            const n = counts?.[p.key] ?? 0
-            if (n === 0 && pile !== p.key) return null
-            const on = pile === p.key
-            return (
-              <button key={p.key} type="button" aria-pressed={on} onClick={() => setPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
-                {p.label} · <strong>{n}</strong>
-              </button>
-            )
-          }) : null}
+          {/* v2.4672: the notice piles' chips became the stacked titles inside the list; `pile` still narrows (deep links, Do now doors) and the title offers *show every pile*. */}
           {/* The right end of the second line (v2.4629): Put a GC on notice, the leader's spoken-word line, and the owner-records door, in one span pushed right. */}
           <span data-lien-desk-right style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (

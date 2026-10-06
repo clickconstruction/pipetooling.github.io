@@ -56,7 +56,7 @@ The button left of the × makes the desk full screen. The same button sits on Pu
 
 ## The piles
 
-The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The pills under the title line are the piles.
+The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button.
 
 - {{chip:yellow|Needs the owner}} means no owner of record with a mailing address is on file. The notice goes to the owner, so this comes first. The pane looks the property up on the county appraisal roll as it opens. It shows the answer under gate 1, laid out the way the envelope will read. A note below flags anything unusual, like a landlord or a public owner. {{button:blue|Use this owner}} saves it on the property record, and the row moves to To draft. {{button:outline|Find the owner ›}} opens Edit Job. Edit Job's Property record has the paste box. Use it when the roll cannot place the address.
 - **A public owner is never drafted.** A city, a county, a school district or the State cannot carry a lien. The remedy is a claim on the GC's payment bond, so the pane says to talk to the attorney. Its send buttons stay off. Saving that owner is still right, because it is how the desk knows.
