@@ -1444,3 +1444,29 @@ describe('LienDeskModal — the page labels stick (v2.4726)', () => {
     expect(labels[0]!.getAttribute('data-on')).toBe('no')
   })
 })
+
+describe('LienDeskModal — find on the list (v2.4721)', () => {
+  it('narrows the piles as you type, writes the hidden fact that matched into the row, counts, says what to try when nothing matches, and the one match selects itself', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    const box = screen.getByTestId('lien-desk-find')
+    expect(box.getAttribute('data-finding')).toBe('no')
+    const input = screen.getByTestId('lien-desk-find-input') as HTMLInputElement
+    // The owner's name is not on the row; the find still lands on it and says so.
+    fireEvent.change(input, { target: { value: 'elbel' } })
+    expect(screen.getByTestId('lien-desk-find-count').textContent).toBe('1 job')
+    const list = document.querySelector('[data-lien-desk-list]') as HTMLElement
+    expect(list.querySelector('[data-lien-find-hit="owner"]')?.textContent).toContain('owner Elbel Holdings LLC')
+    expect(list.querySelector('[data-lien-pile-count]')?.textContent).toMatch(/^1 of \d+$/)
+    expect(list.querySelectorAll('[data-lien-find-mark]').length).toBeGreaterThan(0)
+    // Nothing matches: the words say what to try and where else to look; the piles keep their titles, greyed.
+    fireEvent.change(input, { target: { value: 'zzz' } })
+    expect(screen.getByTestId('lien-desk-find-nothing').textContent).toContain('Nothing matches “zzz”.')
+    expect(screen.getByTestId('lien-desk-find-nothing').textContent).toContain('Someone’s calling')
+    expect(list.querySelector('[data-lien-pile-head][data-empty="yes"]')).toBeTruthy()
+    // × clears it and the list comes back whole.
+    fireEvent.click(screen.getByTestId('lien-desk-find-clear'))
+    expect(box.getAttribute('data-finding')).toBe('no')
+    expect(screen.queryByTestId('lien-desk-find-nothing')).toBeNull()
+  })
+})

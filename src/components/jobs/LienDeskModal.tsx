@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienAffidavitBlocks, buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
@@ -93,6 +93,8 @@ import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type 
 import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
+import LienDeskFindBox, { LienFindHits, LienFindMarked } from './LienDeskFindBox'
+import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle, lienFindWords, type LienFindFact, type LienFindFacts } from '../../lib/jobs/lienDeskFind'
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
@@ -286,6 +288,13 @@ export default function LienDeskModal({
   /** The GCs on the desk right now — the picker behind Put a GC on notice… (v2.3470; rows v2.3817: how soon, what is stuck, nothing-left last). */
   const gcPickerOptions = useMemo(() => buildLienGcPickerOptions(data?.queue.entries ?? [], data?.gcsById ?? {}), [data])
   const [pile, setPile] = useState<LienDeskPile | null>(initialPile ?? null)
+  // Find on the list (v2.4721): one box, one set of words, for every list on the desk; cleared when the desk closes.
+  const [find, setFind] = useState('')
+  const findWords = useMemo(() => lienFindWords(find), [find])
+  const finding = findWords.length > 0
+  useEffect(() => {
+    if (!open) setFind('')
+  }, [open])
   // Each open starts on the pile its door names, or on every pile (v2.4568): a pile from an earlier door no longer sticks.
   useEffect(() => {
     if (open) setPile(initialPile ?? null)
@@ -454,14 +463,48 @@ export default function LienDeskModal({
     }
     return marks
   }, [suppliers.byJob])
+  // What a row offers the find (v2.4721): the words it shows, plus the street and the owner it keeps quiet.
+  const findFactsFor = useCallback(
+    (jobId: string, gcId: string | null, shown: ReadonlyArray<string>): LienFindFacts => {
+      const j = data?.jobsById[jobId]
+      const g = gcId ? data?.gcsById[gcId] : undefined
+      const addr = j?.customer_address_id ? data?.addressesById[j.customer_address_id] ?? null : null
+      const owner = data ? lienPropertyOwnerDisplayName(resolveLienProperty(addr, data.ownerByJob[jobId] ?? null).owner).trim() : ''
+      return {
+        shown: [jobLabel(j, jobId), g?.name ?? '', supplierMarks.get(jobId)?.words ?? '', ...shown],
+        hidden: [
+          { label: 'address', text: (j?.job_address ?? '').trim() },
+          { label: 'owner', text: owner },
+        ].filter((h) => h.text),
+      }
+    },
+    [data, supplierMarks],
+  )
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
   const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
-  const visible = useMemo(() => {
+  const visibleAll = useMemo(() => {
     // Missed is a lens (v2.3679): a job in To draft with a closed month shows under it too.
     const scoped = calendarJobFilter ? entries.filter((e) => calendarJobFilter.jobIds.has(e.jobId)) : entries
     const list = pile ? scoped.filter((e) => e.pile === pile || (pile === 'missed' && e.missedMonths.length > 0)) : scoped
     return PILE_ORDER.flatMap((p) => list.filter((e) => e.pile === p))
   }, [entries, pile, calendarJobFilter])
+  // The find narrows the list (v2.4721); the hidden facts it landed on ride beside each row.
+  const { visible, findHits } = useMemo(() => {
+    const hits = new Map<string, LienFindFact[]>()
+    if (!finding) return { visible: visibleAll, findHits: hits }
+    const kept = visibleAll.filter((e) => {
+      const m = lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [e.dueMonths.map(workMonthShort).join(' '), e.missedMonths.map(workMonthShort).join(' '), LIEN_DESK_PILES.find((x) => x.key === e.pile)?.label ?? '']), findWords)
+      if (m.ok && m.hits.length) hits.set(e.jobId, m.hits)
+      return m.ok
+    })
+    return { visible: kept, findHits: hits }
+  }, [visibleAll, finding, findWords, findFactsFor])
+  // One match selects itself (v2.4721).
+  useEffect(() => {
+    const one = lienFindSingle(visible, finding)
+    if (one) setSelectedJobId(one)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finding, visible.map((e) => e.jobId).join('|')])
 
   // Selection follows the list: the requested job, else the first visible row (desktop).
   useEffect(() => {
@@ -553,6 +596,7 @@ export default function LienDeskModal({
     const at = paperRows.findIndex((r) => r.key === paperFilledFrom.key)
     if (at >= 0) setPaperOpen((cur) => (cur == null || cur === at ? cur : at))
   }, [paperRows, paperFilledFrom])
+  const nextUpRowsFound = useMemo(() => (finding ? nextUpRows.filter((r) => lienFindMatch(r.jobId ? findFactsFor(r.jobId, r.gcId, [r.title, r.sub]) : { shown: [r.title, r.sub], hidden: [] }, findWords).ok) : nextUpRows), [nextUpRows, finding, findWords, findFactsFor])
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -1156,11 +1200,11 @@ export default function LienDeskModal({
 
   const counts = data?.queue.counts
   const affEntries = data?.affidavits.entries ?? []
-  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p)))
+  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p))).filter((e) => !finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [workMonthShort(e.lastMonth), e.pile]), findWords).ok)
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!isMobile ? affVisible[0] : undefined) ?? null
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
   const retEntries = data?.retainage.entries ?? []
-  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
+  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key) && (!finding || lienFindMatch(findFactsFor(e.jobId, e.gcCustomerId, [p.label]), findWords).ok)))
   const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!isMobile ? retVisible[0] : undefined) ?? null
   const retCount = retEntries.filter((e) => e.pile !== 'sent').length
   const retReady = data?.retainage.counts.ready ?? 0
@@ -1190,7 +1234,7 @@ export default function LienDeskModal({
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   const PILE_HEAD_H = 30
-  const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p) })).filter((x) => x.rows.length > 0)
+  const pilesShown = PILE_ORDER.map((p) => ({ p, rows: visible.filter((e) => e.pile === p), total: visibleAll.filter((e) => e.pile === p).length })).filter((x) => (finding ? x.total > 0 : x.rows.length > 0))
   const scrollToPile = (p: LienDeskPile, i: number) => {
     const host = listRef.current
     const rows = host?.querySelector<HTMLElement>(`[data-lien-pile-rows="${p}"]`)
@@ -1212,7 +1256,13 @@ export default function LienDeskModal({
   }
   const list = (
     <div ref={listRef} onScroll={relightPiles} data-lien-desk-list style={{ position: 'relative', borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
-      {visible.length === 0 ? (
+      {visible.length === 0 && finding && visibleAll.length > 0 ? (
+        <div data-testid="lien-desk-find-nothing" style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4 }}>
+          <strong style={{ color: 'var(--text-strong)' }}>{lienFindNothingWords(find).head}</strong>
+          <span>{lienFindNothingWords(find).tryWords}</span>
+          <span>{lienFindNothingWords(find).elsewhere}</span>
+        </div>
+      ) : visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {loading || data == null ? 'Looking at every unpaid sub job…' : pile ? 'Nothing in this pile.' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
         </p>
@@ -1227,14 +1277,14 @@ export default function LienDeskModal({
           </button>
         </div>
       ) : null}
-      {pilesShown.map(({ p, rows }, i) => {
+      {pilesShown.map(({ p, rows, total }, i) => {
         const label = LIEN_DESK_PILES.find((x) => x.key === p)?.label ?? p
         return (
           <Fragment key={p}>
-            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} style={{ top: i * PILE_HEAD_H, bottom: (pilesShown.length - 1 - i) * PILE_HEAD_H }}>
+            <div className="lienPileHead" data-lien-pile-head={p} data-on={(litPile ?? pilesShown[0]?.p) === p ? 'yes' : 'no'} data-empty={finding && rows.length === 0 ? 'yes' : undefined} style={{ top: i * PILE_HEAD_H, bottom: (pilesShown.length - 1 - i) * PILE_HEAD_H, opacity: finding && rows.length === 0 ? 0.55 : undefined }}>
               <button type="button" className="lienPileHeadBtn" onClick={() => scrollToPile(p, i)} title="Go to this pile">
                 {label}
-                <span className="n" data-lien-pile-count={p}>{counts?.[p] ?? rows.length}</span>
+                <span className="n" data-lien-pile-count={p}>{finding ? lienFindPileCount(rows.length, total, true) : (counts?.[p] ?? rows.length)}</span>
               </button>
               {p === 'ready' && office && runCount > 0 ? (
                 <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -1287,8 +1337,8 @@ export default function LienDeskModal({
                 >
                   <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
                   <span style={{ minWidth: 0 }}>
-                    <strong>{jobLabel(j, e.jobId)}</strong>
-                    {g?.name ? <span style={{ color: 'var(--text-muted)' }}> · GC {g.name}</span> : null}
+                    <strong><LienFindMarked text={jobLabel(j, e.jobId)} words={findWords} /></strong>
+                    {g?.name ? <span style={{ color: 'var(--text-muted)' }}> · GC <LienFindMarked text={g.name} words={findWords} /></span> : null}
                   </span>
                   <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
                   <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
@@ -1311,6 +1361,7 @@ export default function LienDeskModal({
                       return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
                     })()}
                     <LienSupplierMarkLine mark={supplierMarks.get(e.jobId)} />
+                    <LienFindHits hits={findHits.get(e.jobId)} words={findWords} />
                   </span>
                 </button>
               )
@@ -1360,6 +1411,13 @@ export default function LienDeskModal({
       </div>
     )
   }
+  // The find box above a list (v2.4721): one column, the box then the scrolling list.
+  const withFind = (node: ReactNode, matched: number) => (
+    <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }} data-lien-desk-find-column>
+      <LienDeskFindBox value={find} onChange={setFind} matched={matched} isMobile={isMobile} />
+      {node}
+    </div>
+  )
 
   // A month is shown once: still-open months (and whatever this item names) are cards; the rest of the job's months are history.
   const monthCards: LienDeskMonthCard[] = monthChoices
@@ -2701,7 +2759,10 @@ export default function LienDeskModal({
             return <LienPaperPropertyWindow job={fixJob} address={fixAddress} ownerOnJob={resolveLienProperty(fixAddress, data.ownerByJob[fixJob.id] ?? null).owner.source === 'job_override'} focus={paperFix.gap.key} onClose={done} />
           })() : null}
           {kind === 'next' ? (
-            <LienDeskNextUp rows={nextUpRows} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
+            <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
+            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
               rows={calendarRows ?? null}
@@ -2740,22 +2801,22 @@ export default function LienDeskModal({
               }}
             />
           ) : kind === 'affidavit'
-            ? (isMobile ? (mobileListShown ? affList : affPane) : (
+            ? (isMobile ? (mobileListShown ? withFind(affList, affVisible.length) : affPane) : (
                 <>
-                  {affList}
+                  {withFind(affList, affVisible.length)}
                   {affPane}
                 </>
               ))
             : kind === 'retainage'
-              ? (isMobile ? (mobileListShown ? retList : retPane) : (
+              ? (isMobile ? (mobileListShown ? withFind(retList, retVisible.length) : retPane) : (
                   <>
-                    {retList}
+                    {withFind(retList, retVisible.length)}
                     {retPane}
                   </>
                 ))
-            : isMobile ? (mobileListShown ? list : pane) : (
+            : isMobile ? (mobileListShown ? withFind(list, visible.length) : pane) : (
             <>
-              {list}
+              {withFind(list, visible.length)}
               {pane}
             </>
           )}

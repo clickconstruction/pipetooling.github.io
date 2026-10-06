@@ -54,6 +54,10 @@ Press a job to open its Lien window. The desk stays open behind it. Close the Li
 
 The button left of the × makes the desk full screen. The same button sits on Put a GC on notice. Each window opens the way you left it. Press the button again to go back to the window.
 
+## Find a job on the list
+
+A find box sits under {{button:blue|Send the run · N}} on every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+
 ## The piles
 
 The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button.
