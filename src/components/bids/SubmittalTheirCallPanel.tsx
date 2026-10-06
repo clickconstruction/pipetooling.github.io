@@ -43,6 +43,8 @@ export type SubmittalTheirCallPanelProps = {
   nextRev: number
   /** How the revision reached the reviewer ("Room link · shared Sep 16 · opened 2×"); said while nothing is answered. */
   sharedLine?: string
+  /** 2026-10-06 · on a revision nobody shared: what typing the reviewer's answer does to the GC's page (`emailedRecordLine`). */
+  recordLine?: string
   /** The revision is out, or already holds a reviewer's file: the drop button draws. */
   showDropFile: boolean
   reviewerFiles: ReadonlyArray<ReviewerFile>
@@ -86,7 +88,7 @@ const quietLink = { ...btnQuiet, padding: 0, fontSize: '0.75rem', color: 'var(--
 /** How many waiting fixtures are named before the rest fold behind "and N more". */
 const WAITING_SHOWN = 14
 
-export function SubmittalTheirCallPanel({ items, partsOf, decisions, decisionsText, approvable, canEdit, isNewest, nextRev, sharedLine = '', showDropFile, reviewerFiles, tasks, robotSeat, room, messages, threadOpen, replyTo, replyBody, replying, busy, onEdit, onAnswer, onApproveAll, onPickFile, onAskRobot, onOpenFile, onRemoveFile, onCancelTask, onConfirmRedlines, onToggleThread, onReplyTo, onReplyBody, onSendReply }: SubmittalTheirCallPanelProps) {
+export function SubmittalTheirCallPanel({ items, partsOf, decisions, decisionsText, approvable, canEdit, isNewest, nextRev, sharedLine = '', recordLine = '', showDropFile, reviewerFiles, tasks, robotSeat, room, messages, threadOpen, replyTo, replyBody, replying, busy, onEdit, onAnswer, onApproveAll, onPickFile, onAskRobot, onOpenFile, onRemoveFile, onCancelTask, onConfirmRedlines, onToggleThread, onReplyTo, onReplyBody, onSendReply }: SubmittalTheirCallPanelProps) {
   const { showToast } = useToastContext()
   const [allWaiting, setAllWaiting] = useState(false)
   const board = theirCallBoard(items, partsOf)
@@ -118,6 +120,11 @@ export function SubmittalTheirCallPanel({ items, partsOf, decisions, decisionsTe
           <span style={smallMuted} data-testid="their-call-who">
             {board.allApproved ? allApprovedLine(board.counts.approved, items) : who || [sharedLine, 'No answers yet.'].filter(Boolean).join(' · ')}
           </span>
+          {recordLine ? (
+            <span style={smallMuted} data-testid="their-call-record-line">
+              {recordLine}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

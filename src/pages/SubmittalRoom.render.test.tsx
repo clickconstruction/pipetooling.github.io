@@ -12,6 +12,8 @@ import { MemoryRouter } from 'react-router-dom'
 import SubmittalRoom from './SubmittalRoom'
 import { sampleSubmittalRoomResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
+import { answeredByEmailAt, onRecord, revisionStandings } from '../../supabase/functions/_shared/submittalRecord'
+import { roomCounts, type RoomRow } from '../../supabase/functions/_shared/submittalRoomPayload'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: () => Promise.resolve({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
 
@@ -104,6 +106,74 @@ describe('SubmittalRoom', () => {
     expect(lines[0]).toContain('Ordered 09/23')
     // DWH-1 is Rev 2's to call: Rev 1's rejection says nothing on the card, and a row waiting on the GC is not listed.
     expect(cardEl.textContent).not.toContain('DWH-1')
+  })
+
+  describe('2026-10-06 · a revision answered by email lands in the room as the record (BP398)', () => {
+    const approved = { kind: 'approved', note: null, byName: 'Dana W.', byPersonId: 'p1', at: '2026-10-02T17:00:00Z' }
+    const rowsOf: Record<string, Array<Record<string, unknown>>> = {
+      // Rev 2, shared Sep 16: WC-1 came back sent back.
+      r2: [row({ id: 'w2', tag: 'WC-1', kind: 'differs', proposed: 'TOTO TET1LA32', why: 'x', decision: { kind: 'revise', note: 'use the CT728', byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-17T15:00:00Z' } })],
+      // Rev 3, answered by email Oct 2 and typed in, never shared: WC-1 approved, and the kitchen sinks and toilets.
+      r3: [
+        row({ id: 'w3', tag: 'WC-1', kind: 'matches', proposed: 'TOTO CT728CUVG', decision: approved, leadTimeDays: 0 }),
+        row({ id: 'k3', tag: 'KS-1', kind: 'matches', plans: 'Elkay LRAD2522', proposed: 'Elkay LRAD2522', decision: approved, leadTimeDays: 0 }),
+        row({ id: 't3', tag: 'WC-2', kind: 'matches', plans: 'TOTO CST454', proposed: 'TOTO CST454', decision: approved, leadTimeDays: 0 }),
+      ],
+      r4: [row({ id: 'd4', tag: 'DWH-1', kind: 'differs', proposed: 'Bradford White RE2HP50', why: 'x' })],
+    }
+    const procurement = {
+      records: [
+        { tag: 'WC-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-29', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 },
+        { tag: 'KS-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-10-01', expectedOn: null, deliveredOn: null, note: '', sortOrder: 1 },
+        { tag: 'WC-2', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-30', expectedOn: null, deliveredOn: null, note: '', sortOrder: 2 },
+      ],
+      countRows: [],
+      splits: [],
+      stageDates: {},
+      lastUpdateAt: null,
+    }
+    /** The revisions get-submittal-room serves, by the one rule in `_shared/submittalRecord.ts`. */
+    const served = (rev4Shared: boolean) =>
+      onRecord(
+        revisionStandings(
+          [
+            { id: 'r4', rev_number: 4, shared_at: rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: rev4Shared ? 'p4.pdf' : null },
+            { id: 'r3', rev_number: 3, shared_at: null, package_path: 'p3.pdf' },
+            { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z', package_path: 'p2.pdf' },
+          ],
+          new Map([['r3', [{ decision_source: 'entered', review_decision: 'approved', reviewed_at: '2026-10-02T17:00:00Z' }]]]),
+        ),
+      ).map((r, i) => {
+        const rows = rowsOf[r.id] ?? []
+        return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, answeredByEmailAt: answeredByEmailAt(r), current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows as unknown as RoomRow[]) }
+      })
+    const cardLines = () => screen.getAllByTestId('room-procurement-row').map((r) => r.textContent ?? '')
+
+    it('before Rev 4 is shared: Rev 3 is current, answered by email, its line says so, and the card keeps every tag with WC-1 released', async () => {
+      mockFetch(200, payload({ revisions: served(false), procurement }))
+      mount('/submittal?t=roomtoken')
+      expect((await screen.findByTestId('room-revisions')).textContent).toMatch(/Rev 3 · current · answered by email · Oct 2.*Rev 2 · Sep 16/)
+      expect(screen.getByTestId('room-emailed-line').textContent).toBe('You answered this revision by email. Our office typed your answers in here, as the record.')
+      const lines = cardLines()
+      expect(lines.map((l) => l.match(/^[A-Z]+-\d/)?.[0])).toEqual(['KS-1', 'WC-1', 'WC-2'])
+      expect(screen.getByTestId('room-procurement').textContent).not.toMatch(/Sent back/)
+    })
+
+    it('after Rev 4 is shared: Rev 4 current, Rev 3 under it as the record, and the card still keeps Kitchen sinks and Toilets', async () => {
+      mockFetch(200, payload({ revisions: served(true), procurement }))
+      mount('/submittal?t=roomtoken')
+      expect((await screen.findByTestId('room-revisions')).textContent).toMatch(/Rev 4 · current · Oct 6.*Rev 3 · answered by email · Oct 2.*Rev 2 · Sep 16/)
+      expect(screen.queryByTestId('room-emailed-line')).toBeNull()
+      const lines = cardLines()
+      expect(lines.find((l) => l.startsWith('KS-1'))).toContain('Ordered 10/01')
+      expect(lines.find((l) => l.startsWith('WC-2'))).toContain('Ordered 09/30')
+      expect(lines.find((l) => l.startsWith('WC-1'))).toContain('Ordered 09/29')
+      fireEvent.click(screen.getByRole('button', { name: 'Rev 3 · answered by email · Oct 2' }))
+      expect(screen.getByTestId('room-emailed-line')).toBeTruthy()
+      // The answers read as the reviewer gave them, with no staff name.
+      fireEvent.click(screen.getByRole('button', { name: /Show the 3 rows as the plans specify/ }))
+      expect(document.body.textContent).toMatch(/Approved · Dana W\./)
+    })
   })
 
   it('the procurement card (v2.4087): released, ordered and delivered tags with when they land against the schedule — status and dates, never a PO or a house', async () => {
@@ -226,7 +296,7 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
   it('a watching person cannot send; a stale revision answer shows the office\'s words', async () => {
     const f = vi.fn((url: string, _init?: RequestInit) => {
       if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Logan Parsons', role: 'builder', mayDecide: false } })) } as Response)
-      return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'A newer revision has been shared since you opened this page. Reload to see it.', code: 'stale_revision' }) } as Response)
+      return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'A newer revision has been added since you opened this page. Reload to see it.', code: 'stale_revision' }) } as Response)
     })
     vi.stubGlobal('fetch', f)
     mount('/submittal?t=logantoken')

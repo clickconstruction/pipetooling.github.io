@@ -19,6 +19,7 @@ import { describeThreadEntry, parseSubmittalRoomPayload, pendingKey, ROOM_ROLE_L
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { ROOM_ROLES, rollUpPartDecisions, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
+import type { RecordRoomPayload, RecordRoomRevision } from '../../supabase/functions/_shared/submittalRecord'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
 import { rowsThatStand } from '../lib/submittals/standingRows'
@@ -27,7 +28,7 @@ import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsBy
 // The live build's env carries a trailing slash — strip it so the function URLs read one slash.
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 
-type View = { kind: 'loading' } | { kind: 'dead'; message: string } | { kind: 'closed'; payload: SubmittalRoomPayload } | { kind: 'empty'; message: string } | { kind: 'open'; payload: SubmittalRoomPayload }
+type View = { kind: 'loading' } | { kind: 'dead'; message: string } | { kind: 'closed'; payload: RecordRoomPayload } | { kind: 'empty'; message: string } | { kind: 'open'; payload: RecordRoomPayload }
 
 const COPPER = '#b0662f'
 const paper: CSSProperties = { minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }
@@ -301,8 +302,8 @@ export default function SubmittalRoom() {
   }
 
   const payload = view.kind === 'open' || view.kind === 'closed' ? view.payload : null
-  const rev: RoomRevision | null = payload && view.kind === 'open' ? payload.revisions.find((r) => r.id === revId) ?? payload.revisions[0] ?? null : null
-  const pdfHref = (r: RoomRevision) => sample ? '#' : `${supabaseUrl}/functions/v1/open-submittal-pdf?t=${encodeURIComponent(token)}&r=${encodeURIComponent(r.id)}`
+  const rev: RecordRoomRevision | null = payload && view.kind === 'open' ? payload.revisions.find((r) => r.id === revId) ?? payload.revisions[0] ?? null : null
+  const pdfHref = (r: RecordRoomRevision) => sample ? '#' : `${supabaseUrl}/functions/v1/open-submittal-pdf?t=${encodeURIComponent(token)}&r=${encodeURIComponent(r.id)}`
 
   return (
     <div data-theme="light" style={paper}>

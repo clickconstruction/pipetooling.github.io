@@ -15,7 +15,8 @@
  *     (2026-10-01) the call lands on the part named (or on every part the GC sees), and the
  *     row carries the roll-up (`rollUpPartDecisions`); refused when the
  *     room or the person's link is closed (410), the person is marked watching (403), the
- *     revision is not the newest shared one (409 stale_revision), or the rows are not on
+ *     revision is not the newest on the GC's record (409 stale_revision; shared, or answered by email
+ *     with its package, `_shared/submittalRecord.ts`), or the rows are not on
  *     that revision (404). A `decided` event with the counts.
  * No JWT — the token is the credential; service role behind it (the sign-bid-room pattern).
  * v2.4599: identify, message and decide are refused (403, `code: 'office' | 'preview'`) when the
@@ -28,6 +29,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, officeRoleOf, officeWriteVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
 import { isPreviewFlag, PUBLIC_PREVIEW_PARAM } from '../_shared/publicViewCounting.ts'
 import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource, gcRoomItems } from '../_shared/submittalRoomPayload.ts'
+import { loadRevisionStandings, onRecord } from '../_shared/submittalRecord.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -131,16 +133,17 @@ serve(async (req) => {
       const v = parsed.value
       const { room, person } = await roomByToken(v.token)
       if (!room || !person) return json({ error: 'Tell us who you are first.', code: 'identify' }, 401)
-      const { data: sub } = await admin.from('bid_submittals').select('id, bid_id, rev_number, shared_at').eq('id', v.submittalId).maybeSingle()
-      const s = sub as { id: string; bid_id: string; rev_number: number; shared_at: string | null } | null
-      const { data: newest } = await admin.from('bid_submittals').select('id').eq('bid_id', room.bid_id).not('shared_at', 'is', null).order('rev_number', { ascending: false }).limit(1).maybeSingle()
+      const { data: sub } = await admin.from('bid_submittals').select('id, bid_id, rev_number').eq('id', v.submittalId).maybeSingle()
+      const s = sub as { id: string; bid_id: string; rev_number: number } | null
+      // The GC's record (2026-10-06): shared, or answered by email with its package. The newest on it is current.
+      const record = onRecord(await loadRevisionStandings(admin, room.bid_id))
       const verdict = decideVerdict({
         roomStatus: room.closed_at ? 'closed' : room.status,
         personClosed: !!person.closed_at,
         mayDecide: person.may_decide,
         submittalBelongs: !!s && s.bid_id === room.bid_id,
-        submittalShared: !!s?.shared_at,
-        currentSubmittalId: (newest as { id: string } | null)?.id ?? null,
+        submittalOnRecord: !!s && record.some((r) => r.id === s.id),
+        currentSubmittalId: record[0]?.id ?? null,
         submittalId: v.submittalId,
       })
       if (!verdict.ok) return json({ error: verdict.error, code: verdict.code }, verdict.status)
@@ -222,8 +225,7 @@ serve(async (req) => {
         }
       }
       if (!submittalId) {
-        const { data: newest } = await admin.from('bid_submittals').select('id, rev_number').eq('bid_id', room.bid_id).not('shared_at', 'is', null).order('rev_number', { ascending: false }).limit(1).maybeSingle()
-        const n = newest as { id: string; rev_number: number } | null
+        const n = onRecord(await loadRevisionStandings(admin, room.bid_id))[0] ?? null
         submittalId = n?.id ?? null
         revNumber = n?.rev_number ?? null
       }

@@ -6,7 +6,7 @@
  * owed an answer, and a quiet foot.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalTheirCallPanel, type SubmittalTheirCallPanelProps } from './SubmittalTheirCallPanel'
 import type { DecisionSummary } from '../../lib/submittals/reviewDecisions'
@@ -102,6 +102,14 @@ describe('SubmittalTheirCallPanel', () => {
       expect(screen.getByTestId('their-call-waiting').textContent).toContain('Waiting on the reviewer · 2 fixtures')
       expect(screen.queryByTestId('their-call-sent-back')).toBeNull()
       expect(screen.getByTestId('approve-all-open').parentElement!.textContent).toContain('when they approved the whole submittal in one go')
+    })
+
+    it('2026-10-06 · on a revision nobody shared, the heads-up says what typing their answer does; none when it says nothing', () => {
+      mount({ items: [dwh, fco], approvable: 2, recordLine: 'Typing their answer puts Rev 3 on the GC’s page as the record.' })
+      expect(screen.getByTestId('their-call-record-line').textContent).toBe('Typing their answer puts Rev 3 on the GC’s page as the record.')
+      cleanup()
+      mount({ items: [dwh, fco], approvable: 2 })
+      expect(screen.queryByTestId('their-call-record-line')).toBeNull()
     })
 
     it('everything approved: one line says so and points on; nothing waits', () => {
