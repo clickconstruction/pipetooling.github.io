@@ -412,17 +412,16 @@ describe('the courtesy PDF to the original contractor (punch list #87 B)', () =>
     expect(runCourtesyCopies({ recipients: n.recipients.map((r) => ({ ...r, courtesy: true, email: ' ' })) })).toEqual([])
   })
 
-  it('the email names the form it carries and how the paper copy travels', () => {
+  it('the email says it is a courtesy copy, names the form, and says how the notice itself travels (the owner\u2019s wording, 2026-10-06)', () => {
     expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650 · ATI Schertz' }, 'certified_mail')).toEqual({
-      subject: 'Notice of claim for unpaid labor or materials — 650 · ATI Schertz',
-      // the email function's own default, word for word, for the case it was written for
-      text: 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.',
+      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
+      text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail.',
     })
     expect(runCourtesyEmailWords({ kind: 'retainage_53_057', label: '650 · ATI Schertz' }, 'traceable_courier')).toEqual({
-      subject: 'Notice of claim for unpaid retainage — 650 · ATI Schertz',
-      text: 'Please find the attached notice of claim for unpaid retainage (Tex. Prop. Code § 53.057). A copy is also being delivered by traceable courier.',
+      subject: 'Courtesy copy: notice of claim for unpaid retainage — 650 · ATI Schertz',
+      text: 'Attached is a courtesy copy of our notice of claim for unpaid retainage (Tex. Prop. Code § 53.057). The notice itself is being delivered by traceable courier.',
     })
-    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'hand').text).toContain('A copy is also being delivered by hand.')
+    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'hand').text).toContain('The notice itself is being delivered by hand.')
   })
 
   it('the record says who got one and which did not go, and that a failed one leaves the notice recorded', () => {

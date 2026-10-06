@@ -101,8 +101,8 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
       job_id: 'j650',
       to_email: 'office@loberg.test',
       recipient_label: 'original_contractor',
-      subject: 'Notice of claim for unpaid labor or materials — 650 · ATI Schertz',
-      email_text: 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.',
+      subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
+      email_text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail.',
     })
     // The statutory record is the paper: the courtesy email is not one of the sends.
     expect((db.inserts[0] as { sends: { recipient: string; method: string; tracking: string }[] }).sends).toEqual([

@@ -410,14 +410,16 @@ const PAPER_ROUTE: Record<Exclude<RunSendMethod, 'email'>, string> = {
 
 /**
  * The courtesy email's subject and text: the form the notice is and how its paper copy travels.
- * The email function's own default names § 53.056 and certified mail whatever went.
+ * The owner's wording (2026-10-06): the email says it is a courtesy copy and that the notice itself
+ * goes on paper. The email function's own default names § 53.056 and certified mail whatever went.
  */
 export function runCourtesyEmailWords(n: Pick<RunNotice, 'kind' | 'label'>, method: RunSendMethod): { subject: string; text: string } {
   const form = runNoticeInstrumentWords(n.kind)
+  const lower = `${form.charAt(0).toLowerCase()}${form.slice(1)}`
   const route = method === 'email' ? '' : PAPER_ROUTE[method]
   return {
-    subject: `${form.replace(/ \(.*\)$/, '')} — ${n.label}`,
-    text: `Please find the attached ${form.charAt(0).toLowerCase()}${form.slice(1)}.${route ? ` A copy is also being delivered ${route}.` : ''}`,
+    subject: `Courtesy copy: ${lower.replace(/ \(.*\)$/, '')} — ${n.label}`,
+    text: `Attached is a courtesy copy of our ${lower}.${route ? ` The notice itself is being delivered ${route}.` : ''}`,
   }
 }
 
