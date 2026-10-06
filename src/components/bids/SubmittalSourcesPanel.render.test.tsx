@@ -86,14 +86,28 @@ describe('SubmittalSourcesPanel', () => {
     expect(screen.queryByTestId('robot-schedule-confirm')).toBeNull()
   })
 
-  it('an ask nobody came for says the day it was asked and offers to take it back', () => {
+  it('v2.4690 · an ask a week or more old counts the days, says nobody came, and offers Withdraw the ask', () => {
+    // `queued` was asked on 2026-09-17, long past the week mark whatever today is.
     const on = mount({ tasks: [queued] })
     const state = screen.getByTestId('robot-schedule')
     expect(state.getAttribute('data-stale')).toBe('true')
-    // The chip itself says the ask is stuck and the day it was asked: nothing that matters waits for a hover.
-    expect(within(state).getByTestId('robot-schedule-chip').textContent).toBe('🤖 Asked Sep 17 · no robot seat exists')
+    expect(within(state).getByTestId('robot-schedule-chip').textContent).toMatch(/^🤖 Asked \d+ days ago · nobody picked it up$/)
     fireEvent.click(within(state).getByTestId('robot-schedule-chip'))
-    expect(within(state).getByRole('note').textContent).toContain('You asked the robot on Sep 17.')
+    expect(within(state).getByRole('note').textContent).toMatch(/You asked the robot \d+ days ago\. Nobody has picked it up\./)
+    fireEvent.click(within(state).getByRole('button', { name: 'Withdraw the ask' }))
+    expect(on.onCancelTask).toHaveBeenCalledWith('task-q')
+  })
+
+  it('an ask nobody came for says the day it was asked and offers to take it back', () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000)
+    const day = twoDaysAgo.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' })
+    const on = mount({ tasks: [{ ...queued, requested_at: twoDaysAgo.toISOString() } as SubmittalTaskRow] })
+    const state = screen.getByTestId('robot-schedule')
+    expect(state.getAttribute('data-stale')).toBe('true')
+    // The chip itself says the ask is stuck and the day it was asked: nothing that matters waits for a hover.
+    expect(within(state).getByTestId('robot-schedule-chip').textContent).toBe(`🤖 Asked ${day} · no robot seat exists`)
+    fireEvent.click(within(state).getByTestId('robot-schedule-chip'))
+    expect(within(state).getByRole('note').textContent).toContain(`You asked the robot on ${day}.`)
     expect(within(state).getByTestId('robot-line').textContent).toBe('Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.')
     fireEvent.click(within(state).getByRole('button', { name: 'Take the ask back' }))
     expect(on.onCancelTask).toHaveBeenCalledWith('task-q')
