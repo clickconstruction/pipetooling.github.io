@@ -33,23 +33,23 @@ An instrument is a legal paper.
 3. **The § 53.052 affidavit** is the lien itself. The affidavit is sworn before a notary. The affidavit is filed with the County Clerk in the property's county. The filing is due by the **15th of the fourth month** after the *last* month worked. On a residential job the deadline is the 15th of the third month. The affidavit needs the owner of record and the county and legal description of the property. The legal description is the lot as the county records name it. On sub jobs the affidavit also needs a recorded notice. And the property must not be a **homestead**. A homestead lien needs a contract signed by both spouses and recorded before the work. A homestead lien is attorney territory. A copy must reach the owner and the GC within **5 days** of filing.
 4. **The release**: once the money lands, the customer is owed a release. A release gives up our lien claim for the money paid. A **conditional** release goes out with an unpaid bill and takes effect when the check clears. An **unconditional** one says we have been paid. A recorded affidavit gets a **release of record** filed with the same clerk.
 
-Two related papers point the other way. First come the four Texas **lien waivers** we ask a sub to sign when we pay them. Then there is the **retainage** notice the statute has for money a GC holds back. That notice is not modeled in the app yet. Ask before relying on it.
+Two related papers point the other way. First come the four Texas **lien waivers** we ask a sub to sign when we pay them. Then there is the **retainage** notice the statute has for money a GC holds back. The Lien desk sends it from **All paper → Retainage**.
 
 ## Which tool does what
 
 | You want to | Go to |
 |---|---|
-| See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens from Dashboard → Needs you {{chip:red|N lien notices to draft}}. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|⏱ Lien desk}}. |
+| See which unpaid months are closing and get the notices out. | **The Lien desk**. The desk opens on *Next up*, the papers that ask for an act. The desk's other two views are *Calendar* and *All paper*. The desk opens from Dashboard → Needs you, the card that names the next lien deadline. The desk also opens from Jobs → Pipeline → Collections header {{button:outline|Lien desk}}, the button with the orange gavel. |
 | See the months and hours behind one bill. | **Jobs → Pipeline → Forecast**, the chevron on the row. |
 | Send one notice or a demand letter by hand. File the affidavit. Record the filing and the service. | The job's Lien window, titled *Liens on job* and its number. Press the orange lien icon on a Billed or Collections row. Its top card names your next step. |
 | Give a customer a release when they pay. | The blue release button on the row, or **Bill Customer → Lien releases**. |
-| Ask a sub to waive their lien rights when you pay them. | **Job → Subs → Pay → Lien waiver…** |
+| Ask a sub to waive their lien rights when you pay them. | **Jobs → Subs → Pay → Lien waiver…** |
 | Hand an unpaid account to the attorney after the paper is done. | {{button:outline|⚖ Legal}} on the Collections header. |
 
 ## The everyday loop
 
-1. **The Dashboard says what is due.** {{chip:red|6 lien notices to draft}} counts unpaid work months on jobs with a GC. The count covers months whose notice closes within 30 days, with the dollars riding on them. The master technician sees a second card, {{chip:blue|Approve N lien notices}}, when drafts wait on their approval.
-2. **The office readies and drafts.** The desk's first pile is *Needs the owner*. The notice cannot go anywhere without the owner of record's mailing address. So {{button:outline|Find the owner ›}} opens the property record where the county appraisal link lives. Then you press {{button:blue|Send for approval ▸}}. Or you press {{button:amber|The leader said to send it ▸}} when Robert already said so.
+1. **The Dashboard says what is due.** The lien card names the next deadline, like {{chip:gray|Next lien deadline: Oct 15 · in 23 days}}. The card counts the notices still to draft for that day on jobs with a GC, with their dollars. Inside seven days the card turns red and reads *N lien windows close …*. The master technician sees a second card, {{chip:blue|Approve N lien notices the office drafted}}, when drafts wait on their approval.
+2. **The office readies and drafts.** The desk's first pile is *Needs the owner*. The notice cannot go anywhere without the owner of record's mailing address. So {{button:outline|Find the owner ›}} opens Edit Job, whose Property record holds the county appraisal link. Then you press {{button:blue|Send for approval ▸}}. Or you press {{button:outline|The leader said to send it…}} when Robert already said so.
 3. **The master decides once per GC.** The master approves, holds, or sets a **standing rule** on the GC, like *send without asking*. Then routine notices stop coming to the master. A live payment promise always comes back to the master.
 4. **The run goes out.** {{button:blue|Send the run · N}} prints one packet and one tracking form. The packet is a cover sheet, then every notice for the owner and for the GC. {{button:blue|Record the run ▸}} writes each notice to its job, naming every month it covered.
 5. **The affidavit follows the same path** under the desk's Affidavits switch. The affidavit files from the Lien window's affidavit tab. When the money arrives, the release goes out. When the money does not come, the Legal desk takes over.
@@ -60,9 +60,10 @@ J650 ran June through September for a GC and nothing is paid. June's notice is d
 
 ## Who can do what
 
-- **Draft, send for approval, record the leader's spoken word, send the run, record filings and releases:** the office roles. The office roles are dev, master technician, assistant and controller.
+- **Draft, send for approval, send the run, record filings and releases:** the office roles. The office roles are dev, master technician, assistant and controller.
+- **Record the leader's spoken word:** dev, assistant and controller. The master approves instead.
 - **Approve, hold, set a standing rule, sign the affidavit:** master technician and dev. The database refuses an approval from anyone else.
-- **See any of it:** the same office roles. Customers never see lien paperwork in their portal.
+- **See any of it:** the same office roles. Customers never see a draft. A customer's portal shows each signed lien waiver with its bill. An owner also sees our § 53.056 notice on their property while the job still owes.
 
 ## The step-by-step guides
 

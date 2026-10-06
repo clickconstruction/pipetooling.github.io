@@ -98,7 +98,7 @@ A 15th on a weekend moves to Monday.
 
 **What it says.** A GC on the job means we are a subcontractor. GC means the general contractor. Then every unpaid month needs a notice before any lien. The notice goes to the owner and to the GC. No GC means we contracted with the owner. Then no monthly notice is needed. The affidavit stands alone.
 
-**What the app does.** The notice tab shows a *Role* line. The Lien desk lists only jobs with a GC.
+**What the app does.** The notice tab shows a *Role* line. The Lien desk's Notices list shows only jobs with a GC.
 
 **Cite.** *§ 53.056, § 53.052*
 
@@ -106,7 +106,7 @@ A 15th on a weekend moves to Monday.
 
 **What it says.** The notice is a form the statute sets. It goes to the owner of record and to the original contractor. It is due by the 15th of the third month after the work month. On a residential property it is due by the 15th of the second month. It goes by certified mail or another service that can be traced. **It may include the invoice.**
 
-**What the app does.** You send it from the notice tab or from {{button:outline|⏱ Lien desk}}. The invoice is enclosed behind the notice.
+**What the app does.** You send it from the notice tab or from {{button:outline|Lien desk}}. The invoice is enclosed behind the notice.
 
 **Cite.** *§ 53.056(a-1) to (a-3), § 53.003*
 
@@ -114,7 +114,7 @@ A 15th on a weekend moves to Monday.
 
 **What it says.** The owner may withhold what we are owed from the GC. This is called fund trapping. The owner is liable for money paid out after the notice.
 
-**What the app does.** Counsel's cover letter goes on every notice. It says the owner may withhold. It says what paying the GC anyway risks. The demand letter points the owner to the notice. It does not point to a demand.
+**What the app does.** Counsel's cover letter goes on the owner's copy of every notice the desk sends. The office can untick the letter on a draft. It says the owner may withhold. It says what paying the GC anyway risks. The demand letter points the owner to the notice. It does not point to a demand.
 
 **Cite.** *§ 53.081, § 53.082, § 53.084*
 

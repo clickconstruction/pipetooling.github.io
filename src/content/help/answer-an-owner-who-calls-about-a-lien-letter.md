@@ -22,7 +22,7 @@ It is for the **owner**, not the GC, the general contractor. If the builder is t
 
 ## Where it is
 
-1. Open the **Lien desk**. You reach it from Jobs → Pipeline → the Collections header {{button:outline|Lien desk}}. Or open Dashboard → Needs you {{chip:red|N lien notices to draft}}.
+1. Open the **Lien desk**. You reach it from Jobs → Pipeline → the Collections header {{button:outline|Lien desk}}. Or open Dashboard → Needs you, the card that names the next lien deadline, and press **Open the Lien desk**.
 2. On the desk's header, next to {{button:outline|§ Rules}}, press {{button:blue|☎ Someone's calling ›}}.
 
 You can also reach the same sheet from a job you already have open on the desk. Pick the job in **Sent**. The footer has {{button:outline|Record the owner's call…}}.
@@ -65,7 +65,7 @@ At the bottom of the box, {{button:blue|▶ Practice call}} opens the same call 
 
 - **The top line is the letter they hold.** It says which notice, mailed when, for how much, under which GC, and who signed it. Glance at it so your words match their paper.
 - **Say the green line.** It is written to be read aloud. The small **ⓘ** beside it holds the statute cites for your own reference. Do not read those out.
-- **Tap what they say.** Under the line are two or three replies in the owner's own words. They read like *"I already paid RMC — everything"*, *"There's still a payment to RMC"* or *"I'd have to check"*. Tap the closest one and the next card opens. Some replies open a small box first. It asks how much is left, the day the 10% went to the builder, or the day the builder finished. The builder may be *still going*. Type what they tell you, then {{button:blue|Next ›}}.
+- **Tap what they say.** Under the line are a few replies in the owner's own words. They read like *"I already paid RMC — everything"*, *"There's still a payment to RMC"* or *"I'd have to check"*. Tap the closest one and the next card opens. Some replies open a small box first. It asks how much is left, the day the 10% went to the builder, or the day the builder finished. The builder may be *still going*. Type what they tell you, then {{button:blue|Next ›}}.
 - **The chips at the top jump.** The owner may change the subject, from "I paid" to "can I pay you?". Tap that chip and the sheet goes with them. *‹ Back* undoes a tap.
 - **The sentence at the bottom is the record.** It builds as you go: *Priya paid RMC in full. They let the 10% go to RMC on Sep 10, 19 days before the hold ended. RMC finished Aug 30.* Check it reads like what they told you.
 
