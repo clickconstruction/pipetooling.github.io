@@ -56,6 +56,18 @@ export function runEnvelopes(notices: ReadonlyArray<RunNotice>): RunEnvelope[] {
   return out
 }
 
+/**
+ * The courtesy tick an envelope offers (punch list #87 B): only on the original contractor's
+ * copies, only with an email on file, only while the envelope goes on paper. On when every such
+ * copy inside is ticked; one email per notice inside.
+ */
+export function envelopeCourtesy(env: Pick<RunEnvelope, 'method' | 'contents'>): { emails: string[]; copies: number; on: boolean } | null {
+  if (env.method === 'email') return null
+  const gc = env.contents.filter((c) => c.recipient.key === 'original_contractor' && c.recipient.email.trim() !== '')
+  if (gc.length === 0) return null
+  return { emails: [...new Set(gc.map((c) => c.recipient.email.trim()))], copies: gc.length, on: gc.every((c) => c.recipient.courtesy === true) }
+}
+
 /** The recipient-count the envelopes replaced — how many the run would have mailed one per copy. */
 export function runCopies(notices: ReadonlyArray<RunNotice>): number {
   return notices.reduce((s, n) => s + n.recipients.length, 0)
