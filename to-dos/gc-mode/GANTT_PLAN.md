@@ -968,6 +968,31 @@ G-08, Helper 2 on `spike/g08`; the mock-up and plan are `mockups/G-08.md`. `spar
 Left out, the owner's calls: the room each bar had at Start (it needs the float over the baseline's
 dates), and spare days counted to the contract's day (it changes what spare days mean everywhere).
 
+## Later, running bars with lapsed insurance, as built (2026-10-06)
+
+G-138, by Helper 5, round three (the mock-up and plan: `mockups/G-138.md`). Additions to
+`gcNotReady.ts` (`uninsuredBars`, `uninsuredNotes`, `uninsuredBlock`, `lapsedInsuranceWords`) and a
+third optional argument on the chart's `barNote`.
+
+- **A red note, no stripes.** A hired trade's bar under way (work reported or a real start, not
+  done) whose insurance ran out, or was never on file, gets *insurance ran out Sep 15* beside it in
+  red. The work goes on, so it is not held: the pill and the Held count stay. Its place in the order
+  is after a failed inspection and a hold, before G-60's log note, a change order's tail and the
+  slip. The hover card's *Insurance* line says "Pecan Valley Electric's insurance ran out Tue Sep 15.
+  Nothing they do for us is covered.", and Print or PDF prints the note (`noteOf` passes the map).
+- **G-77's own gap, read on the day.** Under way is the complement of G-77's not started, so a bar is
+  never both: on Fair Oaks D, Panels and feeders and Lighting carry the red note while Site lighting
+  and Fire alarm stay held. A test pins the four side by side.
+- **What the office does, and what already guards it.** The opened bar's block reads "Pecan Valley
+  Electric is working on this without current insurance." with *Ask for it* on the certificate, and
+  its last line is the guard that stands: "On Draws, Approve stays locked until a current certificate
+  is in." (`partnerBlockers`).
+- **At the gate**: G-118's morning list says it in red on the company's line, "Their insurance ran out
+  Tue Sep 15. Nothing they do for us is covered.", read on the list's day.
+
+Left for Helper 1's counts row: an uninsured running trade as a reason on Follow up and Needs you,
+from `uninsuredBars`, so it lands in the one re-pin.
+
 ## Later, a schedule while bidding, as built (2026-10-06)
 
 G-45, Helper 2 on `spike/g45`; the mock-up and plan are `mockups/G-45.md`. `gcRoughSchedule.ts`

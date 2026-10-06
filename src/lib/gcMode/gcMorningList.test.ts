@@ -111,6 +111,19 @@ describe('the superintendent’s morning list (G-118)', () => {
     expect(morningList(state, helotes, new Map())).toMatchObject({ expected: [], summary: 'The list starts once work starts.' })
   })
 
+  it('says at the gate when a company’s insurance ran out (G-138)', () => {
+    const list = listOf(initialGcState())
+    expect(list.expected.map((c) => [c.company, c.insurance])).toEqual([
+      ['Iron Horse Fabrication', null],
+      ['Pecan Valley Electric', 'Their insurance ran out Tue Sep 15. Nothing they do for us is covered.'],
+      ['Summit Roofing', null],
+      ['Our own crew', null],
+      ['Cool Breeze Mechanical', null],
+    ])
+    // Read on the list's own day: before it ran out, nothing.
+    expect(listOf(initialGcState(), '2026-09-14').expected.find((c) => c.company === 'Pecan Valley Electric')?.insurance).toBeNull()
+  })
+
   it('steps a day at a time, from the day work started to today', () => {
     const project = fairOaks(initialGcState())
     expect(morningSteps(project, '2026-10-02', '2026-10-02')).toEqual({ before: '2026-10-01', after: null })

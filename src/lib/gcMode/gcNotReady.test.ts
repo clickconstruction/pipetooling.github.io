@@ -7,7 +7,9 @@ import { walkItems } from './gcScheduleWalk'
 import type { GanttHold } from './gcGantt'
 import type { GcProject, GcState, Partner } from './gcTypes'
 import { chartHolds } from './gcChartHolds'
-import { NOT_READY_LATE_DAYS, holdWordsInList, notReadyBars, notReadyBlock, notReadyWords, startGaps, withNotReady, type NotReadyBlock } from './gcNotReady'
+import { NOT_READY_LATE_DAYS, holdWordsInList, lapsedInsuranceWords, notReadyBars, notReadyBlock, notReadyWords, startGaps, uninsuredBars, uninsuredBlock, uninsuredNotes, withNotReady, type NotReadyBlock } from './gcNotReady'
+import { scheduleMeasures } from './gcBuildingSchedule'
+import { ganttBars, ganttCounts } from './gcGantt'
 
 /** Fair Oaks Shops, Building D, being built; the made-up today is Fri Oct 2, and Pecan Valley's insurance ran out Sep 15. */
 const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd')!
@@ -254,5 +256,75 @@ describe('a trade not ready to start (G-77)', () => {
     }
     // The cases do name papers: the check is not empty.
     expect(named).toBe(10)
+  })
+})
+
+describe('a trade at work with its insurance run out (G-138)', () => {
+  const running = 'Pecan Valley Electric\'s insurance ran out Tue Sep 15. Nothing they do for us is covered.'
+
+  it('says so in red on Pecan Valley’s bars under way, while its bars not started stay held (G-77)', () => {
+    const state = initialGcState()
+    const project = fairOaks(state)
+    const notes = uninsuredNotes(state, project)
+    const holds = chartHolds(state, project)
+    // Side by side: Panels and feeders and Lighting are under way, Site lighting and Fire alarm are not started.
+    expect([...notes]).toEqual([
+      ['felec-2', { note: 'insurance ran out Sep 15', words: running }],
+      ['felec-3', { note: 'insurance ran out Sep 15', words: running }],
+    ])
+    expect(holds.has('felec-2') || holds.has('felec-3')).toBe(false)
+    expect(holds.get('felec-5')?.words).toBe('current insurance, theirs ran out Sep 15')
+    expect(holds.get('felec-4')?.words).toBe('current insurance and submittal 28 31 11-01')
+    expect(notes.has('felec-5') || notes.has('felec-4')).toBe(false)
+    // No stripes: the Held filter stays at 6.
+    const m = scheduleMeasures(state, project)
+    expect(ganttCounts(ganttBars(m.items, m.float, holds, state.today, true)).held).toBe(6)
+  })
+
+  it('says nothing for a trade insured, our own crew, or a job being bought out', () => {
+    const state = initialGcState()
+    // Summit's TPO membrane is under way and insured; our own Top out is under way too.
+    expect(uninsuredBars(state, fairOaks(state)).map((b) => b.lineId)).toEqual(['felec-2', 'felec-3'])
+    // With no certificate on file at all, it says that instead.
+    const none = withPartner(state, 'summit', { coiExpires: null })
+    expect(uninsuredNotes(none, fairOaks(none)).get('froof-1')).toEqual({ note: 'no insurance on file', words: 'Summit Roofing has no insurance on file. Nothing they do for us is covered.' })
+    // A renewed certificate clears Pecan Valley.
+    const renewed = withPartner(state, 'pecanvalley', { coiExpires: '2027-09-15' })
+    expect(uninsuredNotes(renewed, fairOaks(renewed)).size).toBe(0)
+    const { state: drawn, project } = helotes(false)
+    expect(uninsuredBars(drawn, project)).toEqual([])
+  })
+
+  it('opens on what to do, and the guard that already stands', () => {
+    const state = initialGcState()
+    const project = fairOaks(state)
+    expect(notReadyBlock(state, project, 'felec-3')).toBeNull()
+    expect(uninsuredBlock(state, project, 'felec-3')).toMatchObject({
+      title: 'Pecan Valley Electric is working on this without current insurance.',
+      lines: [{ kind: 'insurance', line: 'Insurance ran out Tue Sep 15.', doc: 'insurance', verb: 'Ask for it', promise: null, hint: null }],
+      last: 'On Draws, Approve stays locked until a current certificate is in.',
+      late: true,
+    })
+    // Once asked, with a day they gave: the reminder and the day, in Follow up's words.
+    const asked = gcReducer(state, { type: 'recordPromise', partnerId: 'pecanvalley', kind: 'insurance', by: '2026-10-09', from: 'office' })
+    expect(uninsuredBlock(asked, fairOaks(asked), 'felec-3')?.lines).toMatchObject([{ verb: 'Remind them', promise: 'Promised the renewed insurance certificate by Fri Oct 9, in 7 days.' }])
+    // A bar not started keeps G-77's block; a bar insured or done has none.
+    expect(uninsuredBlock(state, project, 'felec-5')).toBeNull()
+    expect(uninsuredBlock(state, project, 'froof-1')).toBeNull()
+    expect(uninsuredBlock(state, project, 'felec-1')).toBeNull()
+  })
+
+  it('gives the morning list its line, read on the list’s day', () => {
+    const pecan = initialGcState().partners.find((p) => p.id === 'pecanvalley')!
+    expect(lapsedInsuranceWords(pecan, '2026-10-02')).toBe('Their insurance ran out Tue Sep 15. Nothing they do for us is covered.')
+    expect(lapsedInsuranceWords(pecan, '2026-09-14')).toBeNull()
+    expect(lapsedInsuranceWords({ ...pecan, coiExpires: null }, '2026-10-02')).toBe('No insurance on file. Nothing they do for us is covered.')
+  })
+
+  it('says every sentence in plain words', () => {
+    const state = initialGcState()
+    const block = uninsuredBlock(state, fairOaks(state), 'felec-3')
+    const sentences = [...[...uninsuredNotes(state, fairOaks(state)).values()].flatMap((n) => [n.note, n.words]), ...sentencesOf(block), 'No insurance on file. Nothing they do for us is covered.']
+    expect(sentences.flatMap(plainWordsFailures)).toEqual([])
   })
 })
