@@ -89,6 +89,16 @@ describe('the contract’s late days (G-98)', () => {
     expect(f.customerWords).toEqual(['2 of those days came from a decision we were waiting on from you.', 'We are working to make up the other 2.'])
   })
 
+  it('two late days, both the customer’s: “Both”, before the ask and once a draft asks for them (G-141)', () => {
+    const fee = gcReducer(initialGcState(), { type: 'setOwnerLateFinish', projectId: ID, perDay: 500 })
+    const s = moveBy(fee, 'Trim', 7, 'customer', 'Waiting on the restroom tile decision.')
+    const f = lateFinish(s, job(s))
+    expect([f.late, f.customers]).toEqual([2, 2])
+    expect(f.split).toBe("Both are the customer's: a change order for them would save $1,000.")
+    const drafted = gcReducer(s, { type: 'draftTimeExtension', projectId: ID })
+    expect(lateFinish(drafted, job(drafted)).split).toBe("Both are the customer's: change order 1 asks for 5, the days their moves put on the finish. It is a draft on Bill the customer.")
+  })
+
   it('none of them the customer’s: the customer hears we are making them up', () => {
     const s = moveBy(initialGcState(), 'Test and balance', 9, 'weather', 'Rain kept the roof open a week.')
     const f = lateFinish(s, job(s))

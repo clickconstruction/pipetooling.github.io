@@ -905,7 +905,7 @@ words all count from it, so a move that changes the finish moves all three toget
 
 - **Under the Projected finish measure**, on a job past its contract: *At $500 a day, the 3 days cost
   $1,500.* Then whose they are: *All 3 are the customer's: a change order for them would save
-  $1,500.* Then each change order with days: *Change order 1 moved the contract 1 day, signed Fri
+  $1,500.*, and for two, *Both are the customer's: …*. Then each change order with days: *Change order 1 moved the contract 1 day, signed Fri
   Oct 2.* and *Change order 2 would move the contract 2 days once they sign it.* With no fee typed:
   *No late fee is entered from the contract. It goes on Bill the customer.* On time with a fee: *Each
   day past Fri Dec 11 costs $500.* The measure's chip reads the same call.
