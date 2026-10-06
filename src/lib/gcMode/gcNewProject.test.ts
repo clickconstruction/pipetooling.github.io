@@ -47,6 +47,8 @@ import {
   lineStage,
   ownBidPriced,
   scheduleDraft,
+  scheduleSetLines,
+  stageChain,
   sqFtInText,
   guessLineSheets,
   lineReads,
@@ -63,6 +65,8 @@ import {
   usualScope,
   type NewProjectDraft,
 } from './gcModel'
+import { addDays } from './gcBuilding'
+import { weekdayDate } from './gcWords'
 
 function draft(over: Partial<NewProjectDraft> = {}): NewProjectDraft {
   return {
@@ -371,13 +375,74 @@ describe('the schedule\'s first draft', () => {
     expect(at(shell, 'site-3').start <= at(shell, 'plumb-2').finish).toBe(true)
   })
 
+  it('lets site lighting run beside the work inside, after dry-in, not after its own fire alarm (G-143)', () => {
+    const roofs = ['roof-1', 'roof-2', 'roof-3', 'roof-4']
+    // It waits on the dry-in gate and nothing of its own trade: Electrical has no site line before it.
+    expect(at(shell, 'elec-5').after).toEqual(roofs)
+    const lastRoof = roofs.map((id) => at(shell, id).finish).sort().pop() ?? ''
+    expect(at(shell, 'elec-5').start).toBe(addDays(lastRoof, 1))
+    expect(at(shell, 'elec-5').finish < at(shell, 'elec-4').finish).toBe(true)
+    // The trade's other site work keeps its own path: paving after the utilities, the sidewalks after the slab, striping after paving.
+    expect(at(shell, 'site-3').after).toContain('site-2')
+    expect(at(shell, 'conc-3').after).toContain('conc-2')
+    expect(at(shell, 'site-4').after).toContain('site-3')
+    // Each stage's own path: site finish's skips the inside work, closeout's skips site finish.
+    expect([...stageChain('siteFinish')]).toEqual(['siteFinish', 'dryIn', 'structure', 'slab', 'underground', 'foundations', 'sitePrep'])
+    expect([...stageChain('closeout')]).toEqual(['closeout', 'trim', 'finishes', 'closeIn', 'roughIn', 'framing', 'dryIn', 'structure', 'slab', 'underground', 'foundations', 'sitePrep'])
+  })
+
+  it('draws Boerne’s Site lighting Dec 29 to Jan 7 with the paving, done before the trims, and substantial completion on Tue Feb 2, from Mon Nov 2 (G-143)', () => {
+    const fromNov2 = scheduleDraft(boerne, '2026-11-02')
+    const siteLights = at(fromNov2, 'elec-5')
+    expect([siteLights.start, siteLights.finish]).toEqual(['2026-12-29', '2027-01-07'])
+    // The same days as the paving and the striping, beside the electricians' own rough-ins, and done before any trim starts.
+    expect([at(fromNov2, 'site-3').start, at(fromNov2, 'site-4').finish]).toEqual([siteLights.start, siteLights.finish])
+    expect(at(fromNov2, 'elec-1').start).toBe(siteLights.start)
+    const trims = ['elec-3', 'elec-4', 'plumb-4', 'hvac-3', 'fire-3'].map((id) => at(fromNov2, id).start)
+    expect(trims.every((d) => d > siteLights.finish)).toBe(true)
+    const substantial = fromNov2.milestones.find((m) => m.id === 'boerne-substantial')?.planned ?? ''
+    expect([substantial, weekdayDate(substantial)]).toEqual(['2027-02-02', 'Tue Feb 2'])
+  })
+
+  it('leaves Fair Oaks D’s own schedule as the made-up data has it: data, not a draw (G-143)', () => {
+    const fairOaks = initialGcState().projects.find((p) => p.id === 'fairoaksd')
+    const own = fairOaks?.schedule?.activities.find((a) => a.lineId === 'felec-5')
+    expect([own?.start, own?.finish, own?.after]).toEqual(['2026-10-19', '2026-10-30', ['fconc-3']])
+    // A fresh draw of the same trades would put it after the dry-in gate; the job's own schedule keeps its dates and waits.
+    const fresh = fairOaks ? scheduleDraft(fairOaks, '2026-11-02') : null
+    expect(fresh ? [at(fresh, 'felec-5').start, at(fresh, 'felec-5').after] : null).toEqual(['2026-12-29', ['froof-1', 'froof-2', 'froof-3', 'froof-4']])
+  })
+
+  it('places a set’s new site line after the dry-in gate and its trade’s earlier site line, never after its trims, and a closeout line never after a site line (G-143)', () => {
+    const drawn = scheduleDraft(boerne, '2026-11-02')
+    const elec = boerne.packages.find((k) => k.trade === 'Electrical')
+    if (!elec) throw new Error('no electrical on Boerne')
+    const out = scheduleSetLines(
+      boerne,
+      drawn.activities,
+      [
+        { packageId: elec.id, lineId: 'elec-9', label: 'Parking lot lighting' },
+        { packageId: elec.id, lineId: 'elec-10', label: 'Commissioning' },
+      ],
+      '2026-10-02',
+    )
+    const parking = out.find((a) => a.lineId === 'elec-9')
+    expect(parking?.after).toEqual(['roof-1', 'roof-2', 'roof-3', 'roof-4', 'elec-5'])
+    expect(parking?.start).toBe(addDays(at(drawn, 'elec-5').finish, 1))
+    expect(parking?.after).not.toContain('elec-4')
+    const commissioning = out.find((a) => a.lineId === 'elec-10')
+    expect(commissioning?.after).toContain('elec-4')
+    expect(commissioning?.after).not.toContain('elec-5')
+    expect(commissioning?.after).not.toContain('elec-9')
+  })
+
   it('splits a stage\'s days across a trade\'s lines in it, and sets the three milestones', () => {
     const roof = shell.activities.filter((a) => a.packageId === 'roof')
     expect(roof.map((a) => a.start)).toEqual(['2026-11-26', '2026-11-29', '2026-12-02', '2026-12-05'])
     expect(shell.milestones.map((m) => [m.id, m.planned])).toEqual([
       ['boerne-dryin', at(shell, 'roof-4').finish],
       ['boerne-roughin', '2026-12-25'],
-      ['boerne-substantial', '2027-01-17'],
+      ['boerne-substantial', '2027-01-12'],
     ])
     expect(shell.baseline).toBeNull()
   })

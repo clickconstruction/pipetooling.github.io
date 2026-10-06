@@ -37,23 +37,23 @@ const lastLog = (s: GcState) => s.log[0]?.text ?? ''
 const rough = (s: GcState, days: Record<string, number> = {}, start = '2026-11-02') => gcReducer(s, { type: 'setRough', projectId: shell(s).id, start, days, by: 'Robert Douglas' })
 
 describe('a rough schedule while we bid (G-45)', () => {
-  it('draws Boerne Retail Shell from Mon Nov 2: 14 weeks to Sun Feb 7, by its stages, and nothing in the schedule', () => {
+  it('draws Boerne Retail Shell from Mon Nov 2: 14 weeks to Tue Feb 2, by its stages, and nothing in the schedule', () => {
     const s = rough(initialGcState())
     const p = shell(s)
     expect(p.rough).toEqual({ start: '2026-11-02', days: {}, by: 'Robert Douglas', on: '2026-10-02' })
-    expect(roughWeeks(p)).toEqual({ weeks: 14, start: '2026-11-02', finish: '2027-02-07', kept: null })
+    expect(roughWeeks(p)).toEqual({ weeks: 14, start: '2026-11-02', finish: '2027-02-02', kept: null })
     expect(p.schedule ?? null).toBeNull()
-    expect(roughWeeksWords(p)).toBe('If work starts Mon Nov 2, substantial completion is Sun Feb 7. That is 14 weeks.')
+    expect(roughWeeksWords(p)).toBe('If work starts Mon Nov 2, substantial completion is Tue Feb 2. That is 14 weeks.')
     expect(proposalWeeksWords(p)).toBe('We will build Boerne Retail Shell in 14 weeks from the day work starts.')
     expect(lastLog(s)).toBe('Drew a rough schedule for our bid on Boerne Retail Shell. It takes 14 weeks if work starts Mon Nov 2.')
     const st = roughStages(p)
     expect(st?.rows.map((r) => r.label)).toEqual(['Site prep', 'Foundations', 'Underground', 'Slab', 'Structure', 'Dry-in', 'Rough-in', 'Trim', 'Site finish', 'Closeout'])
     expect(st?.rows.find((r) => r.key === 'structure')).toEqual({ key: 'structure', label: 'Structure', days: 15, usual: 15, start: '2026-12-02', finish: '2026-12-16' })
-    expect(st?.inspections).toEqual({ start: '2027-01-14', finish: '2027-02-04' })
+    expect(st?.inspections).toEqual({ start: '2027-01-14', finish: '2027-01-30' })
     expect(st?.milestones).toEqual([
       { label: 'Dry-in', on: '2026-12-28' },
       { label: 'Rough-in inspection', on: '2027-01-15' },
-      { label: 'Substantial completion', on: '2027-02-07' },
+      { label: 'Substantial completion', on: '2027-02-02' },
     ])
   })
 
@@ -64,7 +64,7 @@ describe('a rough schedule while we bid (G-45)', () => {
     // Structural steel's three lines take ceil(25 / 3) = 9 days each, one after another, instead of 5.
     expect(st && daysBetween(st.start, st.finish) + 1).toBe(27)
     const w = roughWeeks(p)
-    expect(w?.weeks).toBe(16)
+    expect(w?.weeks).toBe(15)
     expect(w?.weeks).toBe(drawWeeks(roughDraw(p)!)?.weeks)
   })
 
@@ -80,13 +80,13 @@ describe('a rough schedule while we bid (G-45)', () => {
     let s = rough(initialGcState())
     s = gcReducer(s, { type: 'markBidSent', projectId: shell(s).id })
     const p = shell(s)
-    expect(p.rough?.kept).toEqual({ on: '2026-10-02', weeks: 14, finish: '2027-02-07', at: 'bid' })
+    expect(p.rough?.kept).toEqual({ on: '2026-10-02', weeks: 14, finish: '2027-02-02', at: 'bid' })
     expect(lastLog(s)).toBe('Our bid on Boerne Retail Shell went to Cibolo Creek Partners. It takes 14 weeks to build, by the rough schedule. Bid tabs can go out now.')
     expect(gcReducer(s, { type: 'setRough', projectId: p.id, start: '2026-11-02', days: { structure: 25 }, by: 'Robert Douglas' })).toBe(s)
     expect(roughWeeksWords(p)).toBe('Our bid went in Fri Oct 2 with 14 weeks to build. The rough stays as it went.')
-    // The record cannot drift from the proposal: were the draw to say 16 weeks, the weeks stay 14.
+    // The record cannot drift from the proposal: were the draw to say 15 weeks, the weeks stay 14.
     const drifted = { ...p, rough: { ...p.rough!, days: { structure: 25 } } }
-    expect(drawWeeks(roughDraw(drifted)!)?.weeks).toBe(16)
+    expect(drawWeeks(roughDraw(drifted)!)?.weeks).toBe(15)
     expect(roughWeeks(drifted)?.weeks).toBe(14)
     expect(proposalWeeksWords(drifted)).toBe('We will build Boerne Retail Shell in 14 weeks from the day work starts.')
   })
@@ -109,20 +109,20 @@ describe('a rough schedule while we bid (G-45)', () => {
     s = gcReducer(s, { type: 'markWon', projectId: id })
     let p = shell(s)
     expect(p.stage).toBe('buyout')
-    expect(p.rough?.kept).toEqual({ on: '2026-10-02', weeks: 16, finish: roughWeeks(p)?.finish, at: 'award' })
+    expect(p.rough?.kept).toEqual({ on: '2026-10-02', weeks: 15, finish: roughWeeks(p)?.finish, at: 'award' })
     expect(p.schedule ?? null).toBeNull()
-    expect(roughWeeksWords(p)).toBe('We won it with 16 weeks to build on the rough. The rough stays as it was.')
-    expect(roughFirstDraftWords(p)).toBe('We bid 16 weeks, from the rough schedule. The first draft starts from its start day and its stage lengths.')
+    expect(roughWeeksWords(p)).toBe('We won it with 15 weeks to build on the rough. The rough stays as it was.')
+    expect(roughFirstDraftWords(p)).toBe('We bid 15 weeks, from the rough schedule. The first draft starts from its start day and its stage lengths.')
     // Drawn from the rough's start and lengths, the first draft keeps the weeks we bid.
     const fromRough = gcReducer(s, { type: 'draftSchedule', projectId: id, start: p.rough!.start, days: p.rough!.days })
     p = shell(fromRough)
     const steel = p.packages.find((k) => k.trade === 'Structural steel')
     const steelBars = (p.schedule?.activities ?? []).filter((a) => a.packageId === steel?.id)
     expect(steelBars.map((a) => daysBetween(a.start, a.finish) + 1)).toEqual([9, 9, 9])
-    expect(firstDraftAgainstBid(p)).toBe('The first draft runs the 16 weeks we bid.')
+    expect(firstDraftAgainstBid(p)).toBe('The first draft runs the 15 weeks we bid.')
     // Drawn with the usual lengths instead, it says so against the bid.
     const usual = shell(gcReducer(s, { type: 'draftSchedule', projectId: id, start: '2026-11-02' }))
-    expect(firstDraftAgainstBid(usual)).toBe('The first draft runs 14 weeks. We bid 16.')
+    expect(firstDraftAgainstBid(usual)).toBe('The first draft runs 14 weeks. We bid 15.')
   })
 
   it('says every new sentence in plain words', () => {

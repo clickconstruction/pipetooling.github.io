@@ -1059,7 +1059,8 @@ G-45, Helper 2 on `spike/g45`; the mock-up and plan are `mockups/G-45.md`. `gcRo
 - **What draws it**: the first draft's own kernel, `scheduleDraft`, on the trades' scope lines, with an
   optional third argument for the job's stage days; with none it draws exactly what it drew before (a
   snapshot of every fixture job's draw, written before the change, holds it). Boerne Retail Shell from
-  Mon Nov 2: 10 stages, substantial completion Sun Feb 7, 14 weeks; Structure at 25 days makes it 16.
+  Mon Nov 2: 10 stages, substantial completion Tue Feb 2, 14 weeks; Structure at 25 days makes it 15
+  (Sun Feb 7 and 16 before G-143 let site lighting run beside the work inside).
 - **What it feeds**: one count, `roughWeeks`. Our number shows *Weeks to build 14* beside the price,
   the sentence, and *For the proposal: We will build Boerne Retail Shell in 14 weeks from the day work
   starts.* with Copy. *We sent our bid*'s log line adds *It takes 14 weeks to build, by the rough
@@ -1815,6 +1816,65 @@ What the build changed from the mockup:
 
 Left out, on purpose: the call list's own bar reasons in the count, a bar late, due, behind or held
 and a failed inspection. That is G-146, for the owner: it changes what *to call* means.
+
+## Later, site work beside the work inside, as built (2026-10-06)
+
+G-143, Helper 2 on `spike/g143`; the mock-up and plan are `mockups/G-143.md`. One function,
+`stageChain`, in `gcNewProject.ts`, used by the first draft (`scheduleDraft`) and by its copy for a
+new set's lines (`scheduleSetLines`). No action, no fixture change, and the golden test did not move.
+
+- **The rule**: inside a trade, a line waits on its trade's line before it along its own stage's
+  path, its chain: the stage and every stage it comes after, along `after`.
+  - Every stage but two comes right after the one listed before it, so nothing changes for them.
+  - Site finish comes after dry-in. A site line now waits on its trade's earlier site line, or its
+    last line before dry-in, never on its framing, rough-ins, close-in, finishes or trims.
+  - Closeout comes after trim, so a closeout line never waits on a site line.
+  - What counts as site finish (`lineStage`) and the gate it waits on are unchanged.
+- **What it does**: on Boerne Retail Shell drawn from Mon Nov 2, Site lighting runs Tue Dec 29 to Thu
+  Jan 7. It waits on the roof's four dry-in lines and nothing of its own trade, beside the
+  electricians' own rough-ins and on the same days as the paving and the striping. It is done before
+  any trim starts on Jan 16; it ran Jan 24 to Feb 2, after Fire alarm. The final inspection moves
+  from Feb 3 to Jan 29, and substantial completion from Sun Feb 7 to Tue Feb 2. Fair Oaks D's trades
+  drawn fresh do the same. Paving still waits on the utilities, Striping on Paving, and Sidewalks
+  and curbs on the Slab. Pad B, Helotes and Stone Oak draw as before.
+- **What did not move**:
+  - The golden walk's Helotes draw: Helotes has no site line, and no set in the walk brings one.
+  - Fair Oaks D's own schedule, which is the made-up data's, not a draw. A test holds its Site
+    lighting at Oct 19 to Oct 30, waiting on the sidewalks.
+  - G-44's templates: a covered line runs on the template's own offsets and waits, so the Fair Oaks
+    D redraw pin still lands every line on its own dates.
+  - G-137's fill: its tests pin our lines not in a file against `scheduleDraft` itself.
+- **What moved once** (the owner's OK, every reading named in the commit):
+  - `gcRoughSchedule.test.ts`:
+    - the snapshot of every made-up job's draw: Boerne's and Fair Oaks D's Site lighting, final
+      inspection and substantial completion, six lines, nothing else;
+    - Boerne's rough from Nov 2: still 14 weeks, to Tue Feb 2 not Sun Feb 7, with its sentence, the
+      inspections' span to Jan 30 and its substantial completion;
+    - Structure at 25 days: 16 weeks to 15;
+    - the bid lock's kept finish, and the drifted draw;
+    - at award: 15 weeks in the kept record and in its four sentences.
+  - `GcRoughSchedule.render.test.tsx`: the Nov 2 sentence, and Redraw's *15 weeks to build* with its
+    proposal sentence.
+  - `gcNewProject.test.ts`: the kernel's Boerne draw from Oct 12, substantial completion Jan 17 to
+    Jan 12.
+  - The G-45 as-built line above, amended in place.
+- **Tests**: four new ones in `gcNewProject.test.ts`:
+  - the rule and both chains;
+  - Boerne's Site lighting Dec 29 to Jan 7 and substantial completion Tue Feb 2 (the lead's pin);
+  - Fair Oaks D's own schedule unchanged (the lead's pin);
+  - a set's new site line after the gate and the trade's earlier site line, and a closeout line never
+    after a site line.
+
+  Breaking the rule on purpose fails them: four tests under the old order in the draft, and the
+  set's test under the old order in `scheduleSetLines`.
+
+Left out:
+- Moving Site finish up the stage list: the list is also the order every stage list draws in (the
+  rough's rows, the customer's stages, the paper), so many more readings would move.
+- Site lighting waiting on the electrical service: one line's special case, which the office adds in
+  one window.
+- An inside crew and a site crew per trade: the schedule has no crews, so it would be a new record.
+  The owner's call.
 
 ## Later, their dates to meet onto a running job, as built (2026-10-06)
 
