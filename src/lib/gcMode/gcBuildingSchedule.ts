@@ -120,8 +120,8 @@ export function scheduleLinesOf(pkg: TradePackage): { lineId: string; label: str
  * (`scheduleDraft` in gcNewProject.ts: the rough-ins side by side after framing, close-in after
  * the inspection, the trims after the finishes). The Draw a first draft button calls this.
  */
-export function draftSchedule(project: GcProject, start: string): ProjectSchedule {
-  return scheduleDraft(project, start)
+export function draftSchedule(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>): ProjectSchedule {
+  return scheduleDraft(project, start, stageDays)
 }
 
 /**
