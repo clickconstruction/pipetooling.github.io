@@ -182,7 +182,7 @@ Week grid scheduling crews/subs onto jobs (and bid-anchored blocks). Drag to ass
 Roles: dev, master, assistant, controller, superintendent (limited).
 
 ### /people — People
-Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Person desk (`?tab=person&id=`), clock cards, hours approval (People→Hours grid).
+Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Person desk (`?tab=person&id=`), who is spending what on the company cards (`?tab=spending`, office roles; help: `see-who-is-spending-what-on-the-company-cards`), clock cards, hours approval (People→Hours grid).
 Roles: dev, master, assistant (no wages), controller (wages too), estimator (limited).
 
 ### /customers — Customers · /customers/:id — Customer Hub

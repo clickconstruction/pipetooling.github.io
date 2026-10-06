@@ -219,13 +219,28 @@ describe('buildSpendingRollup — the columns', () => {
     }
   })
 
+  it('every row: its fuel is the fuel of its jobs, its buckets and its charges not on a job, so the breakdown adds up', () => {
+    for (const r of rollup.rows) {
+      const jobsFuel = r.jobs.reduce((s, j) => s + j.fuel, 0)
+      const looseFuel = r.looseCharges.filter((l) => l.fuel && !l.beforeSortingBegan).reduce((s, l) => s + l.notOnJobUsd, 0)
+      expect(jobsFuel + r.onSupplyInvoices.fuel + r.office.fuel + r.payroll.fuel + r.beforeSorting.fuel + looseFuel).toBeCloseTo(r.fuel, 2)
+    }
+  })
+
+  it('a fuel charge on a supply-house invoice or the Office job carries its fuel into that line', () => {
+    const fuelOnInvoice = charge({ amount: -64, attributedUserId: 'u-dana', bankCategory: 'FuelAndGas', invoiceLinks: [INVOICE] })
+    const fuelToOffice = charge({ amount: -21, attributedUserId: 'u-dana', bankCategory: 'FuelAndGas', splits: [split(OFFICE, -21)] })
+    const r = buildSpendingRollup({ charges: [fuelOnInvoice, fuelToOffice], lookups: LOOKUPS, fuelTagId: FUEL.id, officeJobId: OFFICE, sortingFloorYmd: FLOOR, directory: DIRECTORY })
+    expect(r.rows[0]).toMatchObject({ fuel: 85, onSupplyInvoices: { usd: 64, charges: 1, fuel: 64 }, office: { usd: 21, charges: 1, fuel: 21 } })
+  })
+
   it('Malachi: refund nets, the transfer is not spend, the old short split leaves $4 not on a job, the March charge is before sorting', () => {
     const m = rowOf('u:u-malachi')
     expect(m.cardSpend).toBe(195) // 100 + 40 − 25 + 70 + 10
     expect(m.fuel).toBe(40)
     expect(m.onJobs).toBe(121) // 100 + 40 − 25 + 6
     expect(m.notOnJob).toBe(4)
-    expect(m.beforeSorting).toEqual({ usd: 70, charges: 1 })
+    expect(m.beforeSorting).toEqual({ usd: 70, charges: 1, fuel: 0 })
     expect(m.charges).toBe(5)
     expect(m.jobs.map((j) => [j.jobId, j.spend, j.fuel, j.charges])).toEqual([['j1', 121, 40, 4]])
   })
@@ -235,8 +250,8 @@ describe('buildSpendingRollup — the columns', () => {
     expect(d.cardSpend).toBe(167.5) // 60 + 18 + 80 + 22 − 12.50 refunded
     expect(d.fuel).toBe(18) // the label made it fuel; the other charge's fuel category lost to its label
     expect(d.onJobs).toBe(145.5) // 30 + 30 + 18 + 80 − 12.50
-    expect(d.onSupplyInvoices).toEqual({ usd: 80, charges: 1 })
-    expect(d.office).toEqual({ usd: 22, charges: 1 })
+    expect(d.onSupplyInvoices).toEqual({ usd: 80, charges: 1, fuel: 0 })
+    expect(d.office).toEqual({ usd: 22, charges: 1, fuel: 0 })
     expect(d.notOnJob).toBe(0)
     expect(d.jobs.map((j) => [j.jobId, j.spend])).toEqual([['j2', 35.5], ['j1', 30]])
     expect(d.jobs.some((j) => j.jobId === OFFICE)).toBe(false)
@@ -244,7 +259,7 @@ describe('buildSpendingRollup — the columns', () => {
 
   it('a payroll mark is its own bucket, not work to do', () => {
     const p = rowOf('p:p-pat')
-    expect(p.payroll).toEqual({ usd: 50, charges: 1 })
+    expect(p.payroll).toEqual({ usd: 50, charges: 1, fuel: 0 })
     expect(p.notOnJob).toBe(0)
     expect(p.looseCharges).toEqual([])
   })
@@ -267,9 +282,9 @@ describe('buildSpendingRollup — the columns', () => {
       charges: 15,
       notOnJobCharges: 5,
       notOnJobFuel: 50, // Jorge's 35 + the untied 15
-      untied: { usd: 15, charges: 1 },
+      untied: { usd: 15, charges: 1, fuel: 15 },
       jobs: 2,
-      internalTransfers: { usd: 500, charges: 1 },
+      internalTransfers: { usd: 500, charges: 1, fuel: 0 },
     })
   })
 })

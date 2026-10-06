@@ -14,6 +14,7 @@ import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
 import { askKindWords, openAsks } from '../lib/legal/legalAsks'
+import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 
 /**
@@ -30,6 +31,8 @@ import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterV
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
 type PageState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; payload: LegalPortalPayload }
+/** One act on the portal; `said` words the line shown after a success (the default is `firmSavedWords`, what happens next for that act). */
+type Act = (payload: Record<string, unknown>, said?: (answer: LegalActAnswer) => LegalActNotice) => Promise<boolean>
 
 const card: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }
 const cap: CSSProperties = { fontSize: 11, color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
@@ -48,25 +51,30 @@ export default function LegalPortal() {
   const [reloadTick, setReloadTick] = useState(0)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [noticeWarn, setNoticeWarn] = useState(false)
 
   /** One POST to submit-legal-portal; reloads the payload on success. */
-  const act = async (payload: Record<string, unknown>): Promise<boolean> => {
+  const act: Act = async (payload, said) => {
     // What customers see (v2.3512): the sample portal saves nothing.
     if (sample) {
       setNotice('Sample — nothing is saved here.')
+      setNoticeWarn(false)
       return true
     }
     setBusy(true)
     setNotice(null)
+    setNoticeWarn(false)
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload }) })
-      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const body = (await res.json().catch(() => null)) as LegalActAnswer | null
       if (!res.ok || !body?.ok) {
         setNotice(body?.error ?? 'Could not save that. Please try again.')
         return false
       }
       setReloadTick((t) => t + 1)
-      setNotice(firmSavedWords(payload))
+      const line = said ? said(body) : { text: firmSavedWords(payload), warn: false }
+      setNotice(line.text)
+      setNoticeWarn(line.warn)
       return true
     } catch {
       setNotice('Could not reach the office. Check your connection and try again.')
@@ -145,7 +153,7 @@ export default function LegalPortal() {
             ))}
           </div>
         ) : null}
-        {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} /> : null}
+        {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /> : null}
         {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} /> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
@@ -206,7 +214,7 @@ export default function LegalPortal() {
 }
 
 /** From the office (#41 PR 3): the office's open asks — a question, or a sign-off on one job — answered here. */
-function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean }) {
+function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: Act; busy: boolean }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const asks = openAsks(matter.entries)
   if (asks.length === 0) return null
@@ -244,7 +252,7 @@ function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: (payl
 }
 
 /** The firm's four acts (PR 4): add a fee or cost, record a step, record a payment received, ask the office. */
-function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
+function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; act: Act; busy: boolean; notice: string | null }) {
   const [feeKind, setFeeKind] = useState<'fee' | 'cost'>('fee')
   const [feeAmount, setFeeAmount] = useState('')
   const [feeNote, setFeeNote] = useState('')
@@ -288,7 +296,7 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
 }
 
 /** The firm runs its own inbox (PR 5): people, one rule each — right away or a weekly digest — and only-my-matters. */
-function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPortalPayload; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
+function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payload: LegalPortalPayload; act: Act; busy: boolean; notice: string | null; noticeWarn: boolean }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('paralegal')
@@ -299,7 +307,9 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
   const rule = (r: LegalPortalRecipient, patch: Record<string, unknown>) => void act({ kind: 'recipient_rules', recipientId: r.id, mode: r.mode, scope: r.scope, digestWeekday: r.digestWeekday, digestTime: r.digestTime, ...patch })
   const onAdd = async (e: FormEvent) => {
     e.preventDefault()
-    if (await act({ kind: 'recipient_add', name, email, role })) {
+    const who = name.trim()
+    const address = email.trim().toLowerCase()
+    if (await act({ kind: 'recipient_add', name, email, role }, (answer) => confirmationNotice(who, address, answer))) {
       setName('')
       setEmail('')
     }
@@ -308,7 +318,7 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
       <div>
         {payload.firmPaused ? <div style={{ ...card, borderColor: PAPER_RED, color: PAPER_RED, marginBottom: 12, fontSize: 13 }}>{payload.company.name} has paused all emails to the firm. The portal still works; ask the office to resume.</div> : null}
-        {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10 }}>{notice}</div> : null}
+        {notice ? <div role={noticeWarn ? 'alert' : 'status'} data-legal-notice={noticeWarn ? 'warn' : 'ok'} style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10, color: noticeWarn ? PAPER_RED : undefined, fontWeight: noticeWarn ? 600 : undefined }}>{notice}</div> : null}
         {payload.recipients.length === 0 ? <div style={card}><b>Nobody at the firm is on the list yet.</b><br /><span style={{ color: MUTED, fontSize: 13 }}>Add the people who should hear from {payload.company.name}. Each gets one confirmation email and nothing else until they click it.</span></div> : null}
         {payload.recipients.map((r) => (
           <div key={r.id} style={{ ...card, marginBottom: 10 }}>
@@ -335,7 +345,7 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              {!r.confirmed ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resend', recipientId: r.id })} style={ghost}>Resend the confirmation</button> : null}
+              {!r.confirmed ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resend', recipientId: r.id }, (answer) => confirmationNotice(r.name, r.email, answer, true))} style={ghost}>Resend the confirmation</button> : null}
               {r.paused ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resume', recipientId: r.id })} style={small}>Turn emails back on</button> : <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_stop', recipientId: r.id })} style={{ ...ghost, color: PAPER_RED, borderColor: PAPER_RED }}>Stop emails to this person</button>}
             </div>
           </div>

@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
-import { buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
+import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
 /**
@@ -112,7 +112,8 @@ serve(async (req) => {
       const hash = await sha256Hex(confirm)
       const { data } = await admin.from('legal_firm_recipients').select('id, name, email, confirmed_at').eq('confirm_token_hash', hash).is('removed_at', null).maybeSingle()
       const r = data as { id: string; name: string; email: string; confirmed_at: string | null } | null
-      if (!r) return json({ kind: 'expired', reason: 'Ask someone at the firm to add you again from the portal.' }, 404)
+      // v2.4624: point at the button that exists (Resend the confirmation), not at adding them again.
+      if (!r) return json({ kind: 'expired', reason: LEGAL_CONFIRM_EXPIRED_REASON }, 404)
       if (!r.confirmed_at) await admin.from('legal_firm_recipients').update({ confirmed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
       return json({ kind: 'confirmed', name: r.name, email: r.email })
     }

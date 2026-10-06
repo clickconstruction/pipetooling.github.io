@@ -49,7 +49,8 @@ export type SpendingDirectory = {
   personById: ReadonlyMap<string, { name: string; accountUserId: string | null }>
 }
 
-export type SpendingBucket = { usd: number; charges: number }
+/** A slice of card spend: its dollars, its charges, and the fuel among them. */
+export type SpendingBucket = { usd: number; charges: number; fuel: number }
 
 export type SpendingJobCell = {
   jobId: string
@@ -190,11 +191,11 @@ function newRow(who: SpendingWho): RowAcc {
     fuel: 0,
     other: 0,
     onJobs: 0,
-    office: { usd: 0, charges: 0 },
-    payroll: { usd: 0, charges: 0 },
+    office: { usd: 0, charges: 0, fuel: 0 },
+    payroll: { usd: 0, charges: 0, fuel: 0 },
     notOnJob: 0,
-    beforeSorting: { usd: 0, charges: 0 },
-    onSupplyInvoices: { usd: 0, charges: 0 },
+    beforeSorting: { usd: 0, charges: 0, fuel: 0 },
+    onSupplyInvoices: { usd: 0, charges: 0, fuel: 0 },
     charges: 0,
     byCardCharges: 0,
     jobs: [],
@@ -205,6 +206,7 @@ function newRow(who: SpendingWho): RowAcc {
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
 const PENNY = 0.005
+const roundBucket = (b: SpendingBucket): SpendingBucket => ({ usd: round2(b.usd), charges: b.charges, fuel: round2(b.fuel) })
 
 function finishRow(acc: RowAcc): SpendingRow {
   const { jobById, ...row } = acc
@@ -214,11 +216,11 @@ function finishRow(acc: RowAcc): SpendingRow {
     fuel: round2(row.fuel),
     other: round2(row.cardSpend - row.fuel),
     onJobs: round2(row.onJobs),
-    office: { usd: round2(row.office.usd), charges: row.office.charges },
-    payroll: { usd: round2(row.payroll.usd), charges: row.payroll.charges },
+    office: roundBucket(row.office),
+    payroll: roundBucket(row.payroll),
     notOnJob: round2(row.notOnJob),
-    beforeSorting: { usd: round2(row.beforeSorting.usd), charges: row.beforeSorting.charges },
-    onSupplyInvoices: { usd: round2(row.onSupplyInvoices.usd), charges: row.onSupplyInvoices.charges },
+    beforeSorting: roundBucket(row.beforeSorting),
+    onSupplyInvoices: roundBucket(row.onSupplyInvoices),
     jobs: [...jobById.values()]
       .map((j) => ({ ...j, spend: round2(j.spend), fuel: round2(j.fuel) }))
       .sort((a, b) => b.spend - a.spend || a.jobId.localeCompare(b.jobId)),
@@ -232,7 +234,7 @@ export function buildSpendingRollup(input: SpendingInput): SpendingRollup {
   const exclusions = cardChargeExclusionsFromRows(input.charges)
   const rows = new Map<string, RowAcc>()
   const byJob = new Map<string, { spend: number; fuel: number }>()
-  const internalTransfers: SpendingBucket = { usd: 0, charges: 0 }
+  const internalTransfers: SpendingBucket = { usd: 0, charges: 0, fuel: 0 }
 
   for (const c of input.charges) {
     const rule = { mercury_transaction_id: c.id, amount: c.amount }
@@ -261,6 +263,7 @@ export function buildSpendingRollup(input: SpendingInput): SpendingRollup {
       row.onJobs += cost
       row.onSupplyInvoices.usd += cost
       row.onSupplyInvoices.charges += 1
+      if (isFuel) row.onSupplyInvoices.fuel += cost
     } else if (c.splits.length > 0) {
       let onSplits = 0
       let onOffice = 0
@@ -296,6 +299,7 @@ export function buildSpendingRollup(input: SpendingInput): SpendingRollup {
       if (onOffice !== 0) {
         row.office.usd += onOffice
         row.office.charges += 1
+        if (isFuel) row.office.fuel += onOffice
       }
       // The writes refuse splits that do not add up to the charge; an old row can still leave a remainder.
       const rest = cost - onSplits
@@ -303,6 +307,7 @@ export function buildSpendingRollup(input: SpendingInput): SpendingRollup {
     } else if (c.payrollMarked) {
       row.payroll.usd += cost
       row.payroll.charges += 1
+      if (isFuel) row.payroll.fuel += cost
     } else {
       notOnJobUsd = cost
     }
@@ -312,6 +317,7 @@ export function buildSpendingRollup(input: SpendingInput): SpendingRollup {
       if (beforeSortingBegan) {
         row.beforeSorting.usd += notOnJobUsd
         row.beforeSorting.charges += 1
+        if (isFuel) row.beforeSorting.fuel += notOnJobUsd
       } else {
         row.notOnJob += notOnJobUsd
       }
@@ -357,9 +363,9 @@ export function buildSpendingRollup(input: SpendingInput): SpendingRollup {
     charges: finished.reduce((s, r) => s + r.charges, 0),
     notOnJobCharges: work.length,
     notOnJobFuel: round2(work.filter((l) => l.fuel).reduce((s, l) => s + l.notOnJobUsd, 0)),
-    untied: { usd: untiedRow?.cardSpend ?? 0, charges: untiedRow?.charges ?? 0 },
+    untied: { usd: untiedRow?.cardSpend ?? 0, charges: untiedRow?.charges ?? 0, fuel: untiedRow?.fuel ?? 0 },
     jobs: byJob.size,
-    internalTransfers: { usd: round2(internalTransfers.usd), charges: internalTransfers.charges },
+    internalTransfers: roundBucket(internalTransfers),
   }
 
   for (const [jobId, j] of byJob) byJob.set(jobId, { spend: round2(j.spend), fuel: round2(j.fuel) })

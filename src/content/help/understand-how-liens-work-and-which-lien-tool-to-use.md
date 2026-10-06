@@ -33,7 +33,7 @@ An instrument is a legal paper.
 3. **The § 53.052 affidavit** is the lien itself. The affidavit is sworn before a notary. The affidavit is filed with the County Clerk in the property's county. The filing is due by the **15th of the fourth month** after the *last* month worked. On a residential job the deadline is the 15th of the third month. The affidavit needs the owner of record and the county and legal description of the property. The legal description is the lot as the county records name it. On sub jobs the affidavit also needs a recorded notice. And the property must not be a **homestead**. A homestead lien needs a contract signed by both spouses and recorded before the work. A homestead lien is attorney territory. A copy must reach the owner and the GC within **5 days** of filing.
 4. **The release**: once the money lands, the customer is owed a release. A release gives up our lien claim for the money paid. A **conditional** release goes out with an unpaid bill and takes effect when the check clears. An **unconditional** one says we have been paid. A recorded affidavit gets a **release of record** filed with the same clerk.
 
-Two related papers point the other way. First come the four Texas **lien waivers** we ask a sub to sign when we pay them. Then there is the **retainage** notice the statute has for money a GC holds back. The Lien desk sends it from **All paper → Retainage**.
+Two related papers point the other way. First come the four Texas **lien waivers** we ask a sub to sign when we pay them. Then there is the **retainage** notice the statute has for money a GC holds back. The Lien desk sends it from **All filings → Retainage**.
 
 ## Which tool does what
 

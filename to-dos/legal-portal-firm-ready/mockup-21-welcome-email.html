@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 21: the welcome email — before / after</title>
+<style>
+  :root { color-scheme: light; } * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; } header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 12px; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .capt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .capt.old { background: #E5E7EB; color: #374151; } .capt.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px; }
+  iframe { width: 100%; border: 1px solid #D1D5DB; border-top: none; background: #fff; border-radius: 0 0 8px 8px; display: block; }
+  pre { font: 12px/1.45 ui-monospace, monospace; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 6px; padding: 10px; white-space: pre-wrap; margin: 10px 0 0; }
+  .dlg { max-width: 560px; border: 1px solid #E5E7EB; border-radius: 10px; padding: 18px; box-shadow: 0 12px 40px rgba(0,0,0,.12); }
+  .dlg h3 { margin: 0 0 6px; font-size: 16px; } .m { color: #6B7280; } .s { font-size: 12px; }
+  .url { font: 12px ui-monospace, monospace; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 5px; padding: 6px 8px; word-break: break-all; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .b { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 12px; font-weight: 500; color: #374151; background: #fff; }
+  .b.p { background: #374151; color: #fff; border-color: #374151; } .b.r { color: #b42318; border-color: #b42318; } .b.g { color: #6B7280; }
+  .send { margin-top: 14px; border-top: 1px solid #E5E7EB; padding-top: 12px; display: grid; gap: 8px; }
+  .cap { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6B7280; }
+  .ck { font-size: 13px; } .in { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid #D1D5DB; border-radius: 4px; width: 100%; }
+  .sent { font-size: 12.5px; color: #067647; background: #ECFDF3; border-radius: 4px; padding: 6px 8px; }
+  .notice { font-size: 12.5px; padding: 6px 10px; background: #f1ece2; border-radius: 4px; margin-bottom: 10px; }
+  .notice.warn { background: #FEF3F2; color: #B42318; }
+  .person { border: 1px solid #ddd6c8; border-radius: 6px; padding: 12px 14px; background: #fdfcf9; }
+  .chip { float: right; font-size: 11.5px; font-weight: 700; color: #b0662f; }
+  ul.notes { margin: 12px 0 0; padding-left: 20px; color: #374151; max-width: 110ch; } ul.notes li { margin: 5px 0; }
+</style></head><body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 21 · mockup</p><h1>The welcome email, and confirmation failures shown</h1>
+<p>Every email below is drawn by the real builders in <code>_shared/legalEmails.ts</code> over the sample firm (<i>Sample &amp; Partner, PLLC</i>). The link card and the portal line are drawn to match the screens.</p></header>
+
+<h2>1. The desk's link card</h2>
+<div class="two">
+  <div><div class="capt old">Before — copy it and send it yourself</div><div class="pane">
+<div class="dlg"><h3>🌐 Sample &amp; Partner, PLLC’s portal link</h3>
+<p class="m">One private link, no sign-in. It opens every account a dev has marked attorney-ready and nothing else. Turning it off is the kill switch; rotating mints a new one.</p>
+<div class="url">https://clicktooling.com/legal?t=3f9c0e7a51b44d2c9a8e6b1f0d7c2a4e8b5d3f1a9c7e6b4d</div>
+<div class="m s">active since 2026-10-05</div>
+<div class="row"><span class="b p">Copy link</span><span class="b">Preview ↗</span><span style="flex:1"></span><span class="b">Rotate</span><span class="b r">Turn off</span></div>
+<p class="m s" style="margin-top:12px"><i>No way to send it from here. The toast after Copy link says “send it to the firm however you like”.</i></p>
+<div class="row" style="justify-content:flex-end;margin-top:12px"><span class="b">Close</span></div></div></div></div>
+  <div><div class="capt new">After — send it from here, and see when it went</div><div class="pane">
+<div class="dlg"><h3>🌐 Sample &amp; Partner, PLLC’s portal link</h3>
+<p class="m">One private link, no sign-in. It opens every account a dev has marked attorney-ready and nothing else. Turning it off is the kill switch; rotating mints a new one.</p>
+<div class="url">https://clicktooling.com/legal?t=3f9c0e7a51b44d2c9a8e6b1f0d7c2a4e8b5d3f1a9c7e6b4d</div>
+<div class="m s">active since 2026-10-05</div>
+<div class="row"><span class="b p">Copy link</span><span class="b">Preview ↗</span><span style="flex:1"></span><span class="b">Rotate</span><span class="b r">Turn off</span></div>
+<div class="send"><div class="cap">Send the firm their link</div>
+<label class="ck"><input type="checkbox" checked> ann@samplepartner.example.com <span class="m">· on file</span></label>
+<input class="in" placeholder="Another address (optional)" value="bo@samplepartner.example.com">
+<textarea class="in" rows="2" placeholder="Add a line to the email (optional)">Good talking with you today. Sample Contracting is the first one; the packet is ready on the portal.</textarea>
+<div class="row"><span class="b p">Send the link</span><span class="m s">From Click Plumbing and Electrical, signed by you; a reply comes to you.</span></div>
+<div class="sent">✓ Sent to ann@samplepartner.example.com and bo@samplepartner.example.com on 2026-10-05 by Will Douglas</div></div>
+<div class="row" style="justify-content:flex-end;margin-top:12px"><span class="b">Close</span></div></div></div></div>
+</div>
+
+<h2>2. What the firm receives</h2>
+<div class="two">
+  <div><div class="capt old">Before — whatever the office wrote by hand, if anything</div><div class="pane"><p class="m">No email from the app. The office pasted the bare link into its own mail. Nothing said what the portal is, that the firm should add its people, or that the link is a key to keep inside the firm. Nothing was filed.</p></div></div>
+  <div><div class="capt new">After — “Your collections portal from Click Plumbing and Electrical” · reply-to will@clickplumbing.com</div><iframe style="height:860px" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;/head&gt;&lt;body style=&quot;margin:0;padding:16px;background:#fff&quot;&gt;&lt;div style=&quot;font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px&quot;&gt;&lt;div style=&quot;border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px&quot;&gt;&lt;b&gt;Click Plumbing and Electrical&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#5a6b7e;font-size:13px&quot;&gt;Collections referred to counsel&lt;/span&gt;&lt;/div&gt;&lt;p style=&quot;margin:0 0 12px&quot;&gt;Hello Ann Sample,&lt;/p&gt;&lt;p style=&quot;margin:0 0 12px&quot;&gt;This is Will Douglas at Click Plumbing and Electrical. We send unpaid accounts to Sample &amp;amp; Partner, PLLC through a private web page, and this email carries your link to it.&lt;/p&gt;&lt;p style=&quot;margin:0 0 12px;padding:8px 12px;background:#f1ece2;border-radius:5px&quot;&gt;Good talking with you today. Sample Contracting is the first one; the packet is ready on the portal.&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://clicktooling.com/legal?t=3f9c0e7a51b44d2c9a8e6b1f0d7c2a4e8b5d3f1a9c7e6b4d&quot; style=&quot;display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none&quot;&gt;Open the portal&lt;/a&gt;&lt;/p&gt;&lt;p style=&quot;margin:0 0 14px;font-size:12px;color:#5a6b7e;word-break:break-all&quot;&gt;https://clicktooling.com/legal?t=3f9c0e7a51b44d2c9a8e6b1f0d7c2a4e8b5d3f1a9c7e6b4d&lt;/p&gt;&lt;p style=&quot;margin:0 0 12px&quot;&gt;One account is waiting for you there now.&lt;/p&gt;&lt;h3 style=&quot;font-size:14px;margin:16px 0 4px&quot;&gt;What to do first&lt;/h3&gt;&lt;ol style=&quot;margin:0 0 12px;padding-left:20px&quot;&gt;&lt;li&gt;Open the portal and choose Notifications.&lt;/li&gt;&lt;li&gt;Add each person at the firm who should hear from us. Each gets one email to confirm their address.&lt;/li&gt;&lt;li&gt;Each person picks right away or a weekly digest, and every account or only their own.&lt;/li&gt;&lt;/ol&gt;&lt;h3 style=&quot;font-size:14px;margin:16px 0 4px&quot;&gt;What you will find there&lt;/h3&gt;&lt;ul style=&quot;margin:0 0 12px;padding-left:20px&quot;&gt;&lt;li&gt;Every account we refer to you, as one packet: the account, the paper, the record of contact, the field evidence, and the fees and steps.&lt;/li&gt;&lt;li&gt;Click Plumbing and Electrical’s particulars for filing.&lt;/li&gt;&lt;li&gt;A place to record your fees, costs and steps, a payment you receive, and a question for us.&lt;/li&gt;&lt;/ul&gt;&lt;p style=&quot;margin:0 0 12px&quot;&gt;The link needs no sign-in. Keep it inside the firm, because anyone holding it can open the portal. If it ever leaks, tell us and we will replace it.&lt;/p&gt;&lt;p style=&quot;margin:0 0 12px&quot;&gt;Questions: reply to this email, or call us at (512) 360-0599.&lt;/p&gt;&lt;p style=&quot;margin:16px 0 0;color:#5a6b7e&quot;&gt;Will Douglas&lt;br&gt;Click Plumbing and Electrical&lt;br&gt;(512) 555-0100&lt;br&gt;will@clickplumbing.com&lt;/p&gt;&lt;p style=&quot;color:#8a97a6;font-size:12px;margin-top:22px&quot;&gt;You get this because Click Plumbing and Electrical sent Sample &amp;amp; Partner, PLLC its portal link. Nothing else is emailed to this address unless someone at the firm adds it on the portal.&lt;/p&gt;&lt;/div&gt;&lt;/body&gt;&lt;/html&gt;"></iframe><div class="pane"><div class="cap">The plain-text part, in full</div><pre>Hello Ann Sample,
+
+This is Will Douglas at Click Plumbing and Electrical. We send unpaid accounts to Sample &amp; Partner, PLLC through a private web page, and this email carries your link to it.
+
+Good talking with you today. Sample Contracting is the first one; the packet is ready on the portal.
+
+Your portal: https://clicktooling.com/legal?t=3f9c0e7a51b44d2c9a8e6b1f0d7c2a4e8b5d3f1a9c7e6b4d
+
+One account is waiting for you there now.
+
+What to do first
+1. Open the portal and choose Notifications.
+2. Add each person at the firm who should hear from us. Each gets one email to confirm their address.
+3. Each person picks right away or a weekly digest, and every account or only their own.
+
+What you will find there
+- Every account we refer to you, as one packet: the account, the paper, the record of contact, the field evidence, and the fees and steps.
+- Click Plumbing and Electrical’s particulars for filing.
+- A place to record your fees, costs and steps, a payment you receive, and a question for us.
+
+The link needs no sign-in. Keep it inside the firm, because anyone holding it can open the portal. If it ever leaks, tell us and we will replace it.
+
+Questions: reply to this email, or call us at (512) 360-0599.
+
+Will Douglas
+Click Plumbing and Electrical
+(512) 555-0100
+will@clickplumbing.com</pre></div></div>
+</div>
+
+<h2>3. The portal, when the confirmation does not go</h2>
+<div class="two">
+  <div><div class="capt old">Before — <code>confirmationSent: false</code> is ignored</div><div class="pane"><div class="notice">Saved — the office sees it on their Needs You list.</div>
+<div class="person"><b>Bo Sample</b> <span class="m">bo@samplepartner.example.com · paralegal</span><span class="chip">waiting for their click</span><div class="row" style="margin-top:8px"><span class="b g">Resend the confirmation</span><span class="b g r">Stop emails to this person</span></div></div></div></div>
+  <div><div class="capt new">After — the line says what happened and what to press</div><div class="pane"><div class="notice warn">Bo Sample is on the list, but the confirmation email to bo@samplepartner.example.com did not go. Press Resend the confirmation next to their name in a minute.</div>
+<div class="person"><b>Bo Sample</b> <span class="m">bo@samplepartner.example.com · paralegal</span><span class="chip">waiting for their click</span><div class="row" style="margin-top:8px"><span class="b g">Resend the confirmation</span><span class="b g r">Stop emails to this person</span></div></div><p class="m s" style="margin-top:10px">A person added and sent: <i>Bo Sample is on the list. A confirmation email went to bo@samplepartner.example.com. Nothing else is sent until they press its button.</i></p></div></div>
+</div>
+
+<h2>4. The confirm page, when the link has expired</h2>
+<div class="two">
+  <div><div class="capt old">Before — sends them back to the start</div><iframe style="height:260px" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;/head&gt;&lt;body style=&quot;margin:0;padding:16px;background:#fff&quot;&gt;&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;&lt;title&gt;Click Plumbing and Electrical&lt;/title&gt;&lt;style&gt;body{font:16px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;background:#f6f3ec;margin:0;padding:40px 20px}main{max-width:520px;margin:0 auto;background:#fdfcf9;border:1px solid #ddd6c8;border-radius:8px;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:8px 0;color:#5a6b7e}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;&lt;h1&gt;That link has expired.&lt;/h1&gt;&lt;p&gt;Ask someone at the firm to add you again from the portal.&lt;/p&gt;&lt;/main&gt;&lt;/body&gt;&lt;/html&gt;&lt;/body&gt;&lt;/html&gt;"></iframe></div>
+  <div><div class="capt new">After — points at the button that exists</div><iframe style="height:260px" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;/head&gt;&lt;body style=&quot;margin:0;padding:16px;background:#fff&quot;&gt;&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;&lt;title&gt;Click Plumbing and Electrical&lt;/title&gt;&lt;style&gt;body{font:16px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;background:#f6f3ec;margin:0;padding:40px 20px}main{max-width:520px;margin:0 auto;background:#fdfcf9;border:1px solid #ddd6c8;border-radius:8px;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:8px 0;color:#5a6b7e}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;main&gt;&lt;h1&gt;That link has expired.&lt;/h1&gt;&lt;p&gt;A newer confirmation email replaced it, or you were taken off the list. Ask whoever added you to press Resend the confirmation next to your name. It is on the portal’s Notifications tab.&lt;/p&gt;&lt;/main&gt;&lt;/body&gt;&lt;/html&gt;&lt;/body&gt;&lt;/html&gt;"></iframe></div>
+</div>
+<p class="m s">For reference, the confirmation email itself (unchanged): <i>Confirm your email for Click Plumbing and Electrical's legal portal</i>.</p>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Should sending the link also put the address on the email list?</b> No. The two guards stay: nothing reaches an address until a person at the firm adds it and clicks the confirmation. The welcome email asks them to do exactly that as step one.</li>
+  <li><b>One address, or several?</b> The firm's address on file is often a shared inbox; the attorney is often the person who reads. The card takes the address on file and typed ones, at most three, in one email (the rest on copy), so the firm sees who else got it.</li>
+  <li><b>Who is it from?</b> From the company, signed by the person who pressed send, with reply-to set to them. A firm that replies reaches a person, not a no-reply box.</li>
+  <li><b>Does it need a stop link?</b> No. It is one email a person sent once. Its footer says nothing else is emailed unless someone at the firm adds the address.</li>
+  <li><b>What happens after Rotate?</b> The emailed link stops opening, so the card's <i>Sent to …</i> line starts over for the new link, and the Rotate toast says to send the new one.</li>
+  <li><b>Where does “Sent to … on …” come from?</b> The filed copy in <code>sent_documents</code> (kind <code>legal_firm_link</code>, under the link it carried). No new column: the record of what went out is the one place it is kept, and the office can open the copy from it.</li>
+  <li><b>Is a passing failure line enough on the portal?</b> For tonight, yes: it replaces a <i>Saved</i> that was untrue. A line that stays against the person until an email gets through is item 26.</li>
+</ul>
+</div></body></html>
