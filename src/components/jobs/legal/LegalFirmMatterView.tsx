@@ -1,13 +1,16 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
+import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNeededWords, firmExhibitTitle, firmFeeKindWords, firmHistoryKindWords, firmJobRecord, firmSaidKindWords, firmSaidRecordedBy } from '../../../lib/legal/legalFirmWords'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import LienTimelineStrip from '../LienTimelineStrip'
 import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
+import { firmVoidProblem, isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
+import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 /**
  * The firm's view of one matter (Legal portal PR 3 → shared in v2.3363): the
@@ -38,6 +41,31 @@ export function PortalTable({ head, rows, empty, numCols = [], subRows = [] }: {
         ])}</tbody>
       </table>
     </div>
+  )
+}
+
+/** #85 item 18: an entry's text, struck through with who undid it and why once it is voided. */
+function VoidableText({ e }: { e: Pick<LegalEntryRow, 'body' | 'voided_at' | 'voided_via_portal' | 'void_reason'> }) {
+  if (!e.voided_at) return <>{e.body}</>
+  return (
+    <span data-legal-voided>
+      <span style={{ textDecoration: 'line-through', color: FAINT }}>{e.body}</span>
+      <span style={{ display: 'block', fontSize: 11.5, color: MUTED }}>undone by {e.voided_via_portal ? 'your firm' : 'the office'} {calendarYmdInAppTzFromIso(e.voided_at)}{e.void_reason ? `: ${e.void_reason}` : ''}</span>
+    </span>
+  )
+}
+
+/** #85 item 18: Undo… opens a reason box; the act stays on the record, struck through, out of every total. */
+function UndoEntry({ entryId, onUndo }: { entryId: string; onUndo: (entryId: string, reason: string) => Promise<boolean> }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  if (!open) return <button type="button" onClick={() => setOpen(true)} style={{ ...portalBtn, padding: '2px 8px', fontSize: 11.5 }}>Undo…</button>
+  return (
+    <span data-legal-undo style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+      <input value={reason} onChange={(ev) => setReason(ev.target.value)} placeholder="Why (both sides see it)" aria-label="Why you are undoing it" style={{ font: 'inherit', fontSize: 12, padding: '3px 6px', border: `1px solid ${HAIR}`, borderRadius: 4, width: 170 }} />
+      <button type="button" disabled={!reason.trim()} onClick={() => void onUndo(entryId, reason.trim()).then((ok) => { if (ok) setOpen(false) })} style={{ ...portalBtn, padding: '2px 8px', fontSize: 11.5, background: COPPER, color: '#fff' }}>Undo it</button>
+      <button type="button" onClick={() => setOpen(false)} style={{ ...portalBtn, padding: '2px 8px', fontSize: 11.5 }}>Cancel</button>
+    </span>
   )
 }
 
@@ -93,7 +121,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
   )
 }
 
-export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode }) {
+export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean> }) {
   const a = packet.account
   const h = portalH
   if (tab === 'account') {
@@ -165,7 +193,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
   return (
     <div>
       <div style={h}>Fees and costs</div>
-      <PortalTable head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, firmFeeKindWords(e.kind), e.body, entryRecordedByWords(e, 'firm'), formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
+      <PortalTable head={['Date', 'Kind', 'Note', 'By', 'Amount', '']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, firmFeeKindWords(e.kind), <VoidableText key="t" e={e} />, entryRecordedByWords(e, 'firm'), <span key="a" style={isVoidedEntry(e) ? { textDecoration: 'line-through', color: FAINT } : undefined}>{formatLegalMoney(Number(e.amount ?? 0))}</span>, onUndo && !firmVoidProblem(e) ? <UndoEntry key="u" entryId={e.id} onUndo={onUndo} /> : ''])} empty="None yet." />
       {fees.length ? <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 18, fontSize: 13.5, padding: '8px 8px 0', fontWeight: 700 }}><span style={{ color: MUTED, fontWeight: 400 }}>Fees and costs in the demand</span><span style={portalNum}>{formatLegalMoney(feesTotal)}</span></div> : null}
       {contingency.length ? <p data-legal-contingency style={{ fontSize: 12.5, color: MUTED, margin: '6px 0 0' }}>Your contingency on recoveries the office applied: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}. It is your share of money collected, so it is not in the demand.</p> : null}
       {acts}
@@ -179,7 +207,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
         </div>
       ) : null}
       <div style={h}>On this matter</div>
-      <PortalTable head={['Date', 'Kind', 'What happened', 'By', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), e.body, entryRecordedByWords(e, 'firm'), firmEntryStatusWords(e)])} empty="No steps recorded." />
+      <PortalTable head={['Date', 'Kind', 'What happened', 'By', 'Status']} rows={steps.map((e) => [e.occurred_on, firmEntryKindWords(e), <span key="t"><VoidableText e={e} />{onUndo && !firmVoidProblem(e) ? <span style={{ marginLeft: 8 }}><UndoEntry entryId={e.id} onUndo={onUndo} /></span> : null}</span>, entryRecordedByWords(e, 'firm'), isVoidedEntry(e) ? 'undone' : firmEntryStatusWords(e)])} empty="No steps recorded." />
       <div style={h}>Account history, oldest first</div>
       <PortalTable head={['Date', 'Job', 'Step', 'What happened']} rows={packet.feesAndSteps.steps.map((s) => [s.ymd ?? '—', s.jobLabel ?? '', firmHistoryKindWords(s.kind), s.text])} empty="No history recorded." />
     </div>
@@ -187,7 +215,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts }: { tab:
 }
 
 /** The matter card (header + tab strip + the tab) and the exhibits card, exactly as the firm's page lays them out. */
-export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint }: {
+export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint, onUndo }: {
   packet: LegalPacket
   matter: FirmMatterLike
   /** The company the firm acts for, from the payload (the desk passes its own) — never a hard-coded brand. */
@@ -197,6 +225,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   /** The firm's acts on Fees & steps — the portal injects them; the desk's preview passes nothing. */
   acts?: ReactNode
   onPrint: () => void
+  /** #85 item 18: the portal passes the firm's undo; the desk's preview does not. */
+  onUndo?: (entryId: string, reason: string) => Promise<boolean>
 }) {
   const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
   // The county and owner line reads the first job's own property (#85 item 6), never the payer's first address.
@@ -231,7 +261,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             </button>
           ))}
         </div>
-        <FirmMatterTab tab={tab} packet={packet} matter={matter} companyName={companyName} acts={acts} />
+        <FirmMatterTab tab={tab} packet={packet} matter={matter} companyName={companyName} acts={acts} onUndo={onUndo} />
       </div>
       <div style={{ ...portalCard, marginTop: 12 }}>
         <div style={portalCap}>Exhibits</div>
