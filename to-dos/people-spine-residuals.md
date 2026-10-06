@@ -1,7 +1,7 @@
 ---
 name: People spine — residuals
 number: 29
-group: residual
+group: ready
 status: >
   open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); 3b, 3c and item 4 open
 summary: >
@@ -11,11 +11,14 @@ summary: >
   moved); in v2.4664, the `as never` cast. Open: `get_archived_user_names()` still serves five
   surfaces, and one fixture account has its twin flag unset in prod.
 next: >
-  After v2.4658's deploy waves: Offsets, Contracts, the Teams member filter and the Hours grid take
-  the view's `is_archived` and the RPC drops (separate PRs, plan first).
+  Step 3b, not before 2026-10-07 08:20Z (a day after v2.4671 went live): one migration that drops
+  `get_archived_user_names()` (the hand-off section below has the file). Before its push, list the
+  pending migrations: a push applies every pending file, and another train may be holding one. Then
+  3c, the types PR (`src/types/database.ts` and the dev-mcp catalog regenerated). Wave C of
+  v2.4658's deploys waits on purpose. Item 4 and one data fix are the owner's.
 size: S
-blocker: none
-ver: v2.3698 · 3700 · 3701 · 3702 · 3705
+blocker: 3b not before 2026-10-07 08:20Z; item 4 and the Training Helper row are the owner's data.
+ver: v2.3698 · 3700 · 3701 · 3702 · 3705 · 4658 · 4664 · 4671
 opinion: do the sweep when the next roster surface is touched anyway; the guardrail that mattered (pay lists) is in.
 mockup: not required — a sweep and a data fix, no screen changes
 ---
@@ -50,3 +53,33 @@ The train: [`docs/recent-features/v2.3698.md`](../docs/recent-features/v2.3698.m
 Read-only on prod through the app's screens: the Hours grid, the crew pickers on Jobs and Schedule, and one email preview must list the same people before and after. The throwaway-Postgres recipe in the memory note *throwaway-postgres-recipe* covers the RPC drop.
 
 For v2.4658 the pickers do not change, so they need no check. The edge half is proven by `src/lib/people/realAccountSenders.run.test.ts` and `realAccountRecipients.run.test.ts`, which run the real handlers on a fake database. Both fail on the pre-sweep code, where a twin gets through. After each deploy wave, an `OPTIONS` probe per function must answer 2xx, not 503. The PR body lists the waves and the probe.
+
+## Hand-off (2026-10-06)
+
+- **3a shipped in v2.4671.** The five People surfaces (Offsets, Contracts, Review, Teams, the
+  Hours grid) read who is archived from the roster view, with a guard so a living person is never
+  hidden behind an archived namesake. Checked read-only on the Hours grid, Due by Team and Review,
+  main against the branch: the same people, except one namesake case, as expected (the data note
+  below).
+- **3b, the file.** Cut from fresh main and numbered from `origin/main`'s newest at cut time: a
+  file minted early can fall behind migrations that merge meanwhile, and `db push` refuses it.
+  `SET lock_timeout = '3s';`, then `REVOKE ALL` on `public.get_archived_user_names()` from PUBLIC,
+  anon, authenticated and service_role (guarded with `to_regprocedure`, so a re-run is clean), then
+  `DROP FUNCTION IF EXISTS public.get_archived_user_names();`. It locks the function only. Nothing
+  depends on it: no view, function or edge function; the repo's other mentions are comments, the
+  baseline, `20260906180000`'s REVOKE and dev-mcp's generated catalog. It ships with its
+  `docs/migrations` page, a release note and a fragment, and is pushed after it merges.
+- **3c.** After the push, gen-types and the dev-mcp catalog regenerate in one types PR.
+- **Wave C.** `ar-returned-checks`, `mercury-webhook` and `submit-sub-portal` carry v2.4658's
+  change only through `_shared`, with no change in behaviour for them (twins are never watchers
+  or office roles). Deploy each when it next deploys for its own reason, after the bundle trace:
+  from a clean checkout of main, `supabase functions download <fn> --use-api` writes the deployed
+  bundle over the checkout, `git diff` reads deployed against main, then `git checkout --
+  supabase/functions` before deploying; probe with an OPTIONS request (200 booted; 503, redeploy
+  the previous version).
+- **Item 4 (the owner).** Twin Estimator 2's `is_digital_twin` flag is unset; until it is set, the
+  twin refusal does not catch that account.
+- **Data (the owner).** An archived login named Training Helper and a separate live roster-only
+  person row with the same name. Before v2.4671 the archived login hid the live row; now the
+  person row shows on the Hours grid, Teams and Review. If it is retired, archive the person half
+  from the person's desk.
