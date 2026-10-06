@@ -104,7 +104,7 @@ export type PeopleContractsTabProps = {
   users: UserRow[]
   /** Archived roster people (page-level state) — grouped into the collapsed Archived section at the bottom (v2.1408). */
   archivedPeople?: Person[]
-  /** Names of archived user accounts (RPC get_archived_user_names) — same Archived section. */
+  /** The names archived roster rows answer to (`archivedRosterNames`, from `roster_people`) — same Archived section. */
   archivedUserNames?: Set<string>
   canDeletePeopleContracts: boolean
   /** The signed-in staff member — the send email's Reply-To and "reach" line (v2.2773). */
