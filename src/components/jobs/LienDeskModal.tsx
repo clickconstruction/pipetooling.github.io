@@ -2116,18 +2116,6 @@ export default function LienDeskModal({
           ) : null}
           {/* § Rules and ☎ sit at the right with Share on a computer (v2.4618, the owner's ask); on a phone they stay in the flow under the title. */}
           {isMobile ? rulesAndCaller : null}
-          {/* An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. */}
-          {office && onOpenOwnerRecords ? (
-            <button
-              type="button"
-              data-testid="lien-owner-records-door"
-              onClick={onOpenOwnerRecords}
-              title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
-            >
-              An owner asked for records ›
-            </button>
-          ) : null}
           {/* Share where the liens stand (v2.4311): the same place on every tab — the end of the title line; beside × on a phone. The title bar's right padding keeps every line clear of the full-screen toggle and × (before v2.4311 it cleared × alone, and § The rules ran under the toggle at 768 px). */}
           <span style={isMobile ? { position: 'absolute', right: '2.9rem', top: '0.35rem' } : { position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
             {isMobile ? null : rulesAndCaller}
@@ -2199,8 +2187,10 @@ export default function LienDeskModal({
               </button>
             )
           }) : null}
+          {/* The right end of the second line (v2.4629): Put a GC on notice, the leader's spoken-word line, and the owner-records door, in one span pushed right. */}
+          <span data-lien-desk-right style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '0.4rem 0.6rem', minWidth: 0 }}>
           {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
-            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+            <div style={{ position: 'relative' }}>
               <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">
                 ⚠ Put a GC on notice…
               </button>
@@ -2246,10 +2236,23 @@ export default function LienDeskModal({
             </div>
           ) : null}
           {leader && wordSent.length > 0 ? (
-            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
               Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
             </span>
           ) : null}
+          {/* An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. At the right of the second line on every view since v2.4629. */}
+          {office && onOpenOwnerRecords ? (
+            <button
+              type="button"
+              data-testid="lien-owner-records-door"
+              onClick={onOpenOwnerRecords}
+              title="An owner asked what we billed and what was paid on their property: the packet for that property, behind four checks"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}
+            >
+              An owner asked for records ›
+            </button>
+          ) : null}
+          </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' || kind === 'calendar' || kind === 'next' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'next' ? (

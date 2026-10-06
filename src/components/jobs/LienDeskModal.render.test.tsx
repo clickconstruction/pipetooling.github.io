@@ -170,6 +170,8 @@ describe('LienDeskModal', () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const door = screen.getByTestId('lien-owner-records-door')
+    // v2.4629: at the right end of the title bar's second line, on every view.
+    expect(door.closest('[data-lien-desk-right]')).toBeTruthy()
     expect(door.textContent).toBe('An owner asked for records ›')
     fireEvent.click(door)
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)

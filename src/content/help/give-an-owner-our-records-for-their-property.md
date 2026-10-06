@@ -11,7 +11,7 @@ The packet is for one owner and one property. It never shows another owner's job
 ## Open it
 
 1. Open the [Lien desk](/jobs?tab=stages&liendesk=1).
-2. Press {{button:outline|An owner asked for records ›}} in the title bar.
+2. Press {{button:outline|An owner asked for records ›}} at the right under the desk's title.
 3. Pick the owner. Type a name, an address or a GC to narrow the list.
 
 The list holds the owners of jobs with a notice on the desk. An owner asks after a notice has reached them.
