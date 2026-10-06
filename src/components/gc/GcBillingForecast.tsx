@@ -11,6 +11,10 @@ import { aboutMoney, billingByMonth, billingForecast, customerShiftWords, weekBi
 import { Card, num, td, th } from './gcUi'
 
 const muted = { color: 'var(--text-muted)', fontSize: '0.875rem' } as const
+/** A header that may wrap, and cells with less room at their sides: on a phone the four columns fit beside each other. */
+const head = { ...th, whiteSpace: 'normal', padding: '0.45rem 0.35rem' } as const
+const cell = { ...td, padding: '0.5rem 0.35rem' } as const
+const cellNum = { ...num, padding: '0.5rem 0.35rem' } as const
 
 /** "−$6,600", "+$6,600", or nothing. */
 function shiftCell(shifts: ForecastShift[], on: string): string {
@@ -25,7 +29,7 @@ export function GcBillingForecastCard({ state, project }: { state: GcState; proj
   const week = f.months.length > 0 ? weekBillingShift(state, project) : []
   const first = f.months[0]
   return (
-    <Card dataTour="gc-billing-forecast">
+    <Card dataTour="gc-billing-forecast" style={{ minWidth: 0 }}>
       <strong style={{ fontSize: '1.05rem' }}>What we expect to bill</strong>
       <div style={{ ...muted, margin: '0.2rem 0 0.6rem' }}>
         As the schedule stands today. Each bar&rsquo;s work counts on the bill day it is done by. When a bar moves, its money moves with it.
@@ -41,10 +45,10 @@ export function GcBillingForecastCard({ state, project }: { state: GcState; proj
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>
               <tr>
-                <th style={th}>Bill day</th>
-                <th style={{ ...th, textAlign: 'right' }}>Done by then</th>
-                <th style={{ ...th, textAlign: 'right' }}>We bill</th>
-                {week.length > 0 && <th style={{ ...th, textAlign: 'right' }}>Moved this week</th>}
+                <th style={head}>Bill day</th>
+                <th style={{ ...head, textAlign: 'right' }}>Done by then</th>
+                <th style={{ ...head, textAlign: 'right' }}>We bill</th>
+                {week.length > 0 && <th style={{ ...head, textAlign: 'right' }}>Moved this week</th>}
               </tr>
             </thead>
             <tbody>
@@ -53,7 +57,7 @@ export function GcBillingForecastCard({ state, project }: { state: GcState; proj
                 return (
                   <Fragment key={m.on}>
                     <tr>
-                      <td style={td}>
+                      <td style={cell}>
                         <button
                           type="button"
                           aria-expanded={shown}
@@ -64,13 +68,13 @@ export function GcBillingForecastCard({ state, project }: { state: GcState; proj
                           <span aria-hidden>{shown ? '▾' : '▸'}</span> {weekdayDate(m.on)}
                         </button>
                       </td>
-                      <td style={num}>{m.pct}%</td>
-                      <td style={{ ...num, fontWeight: 700 }}>{money(m.bill)}</td>
-                      {week.length > 0 && <td style={{ ...num, color: 'var(--text-muted)' }}>{shiftCell(week, m.on)}</td>}
+                      <td style={cellNum}>{m.pct}%</td>
+                      <td style={{ ...cellNum, fontWeight: 700 }}>{money(m.bill)}</td>
+                      {week.length > 0 && <td style={{ ...cellNum, color: 'var(--text-muted)' }}>{shiftCell(week, m.on)}</td>}
                     </tr>
                     {shown && (
                       <tr>
-                        <td colSpan={week.length > 0 ? 4 : 3} style={{ ...td, paddingTop: 0 }}>
+                        <td colSpan={week.length > 0 ? 4 : 3} style={{ ...cell, paddingTop: 0 }}>
                           <div style={{ display: 'flex', gap: '0.3rem 0.9rem', flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--text-600)' }}>
                             {m.byTrade.map((t) => (
                               <span key={t.label} style={{ whiteSpace: 'nowrap' }}>
@@ -112,7 +116,7 @@ export function GcBillingForecastMoney({ state, onOpenBill }: { state: GcState; 
   const all = billingByMonth(state)
   if (all.months.length === 0 && all.noSchedule.length === 0) return null
   return (
-    <Card style={{ padding: 0 }} dataTour="gc-billing-by-month">
+    <Card style={{ padding: 0, minWidth: 0 }} dataTour="gc-billing-by-month">
       <div style={{ padding: '0.75rem 1rem 0.2rem', fontWeight: 700, fontSize: '1rem' }}>What we bill, month by month</div>
       <div style={{ ...muted, padding: '0 1rem 0.5rem' }}>As each job&rsquo;s schedule stands today. A bar that moves moves its money to another month.</div>
       <div style={{ display: 'grid' }}>
