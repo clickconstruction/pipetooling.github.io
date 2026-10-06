@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 2: the Lien grid's rows, stripped — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #D1D5DB; padding: 5px 6px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+  td.k { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; white-space: nowrap; }
+  .leak { background: #FEF2F2; color: #991B1B; }
+  .leak td.k { font-weight: 700; }
+  .keep { color: #374151; }
+  .gone { color: #9CA3AF; text-decoration: line-through; }
+  .grid { font-size: 11.5px; margin-top: 10px; }
+  .grid th { font-size: 9.5px; white-space: nowrap; }
+  .grid td { white-space: nowrap; }
+  .q { color: #B42318; font-weight: 700; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 2 · mockup</p><h1>The Lien grid's rows, stripped</h1>
+<p>The grid itself does not change: by the owner's call (2026-10-05, and before it on punch list #41) the firm sees every billed job with money open and a lien month, as the office's book holds it. What changes is what travels behind each row. Today the function sends whole table rows; the grid draws twelve columns of dates and dollars and the rest rides along unseen.</p></header>
+
+<h2>What the firm sees — unchanged</h2>
+<p class="lede">One row of the grid, before and after. The twelve columns come from `lienGridRows`; a red <span class="q">?</span> is a fact the office has not entered.</p>
+<div class="pane" style="border-top: 1px solid #D1D5DB; border-radius: 8px;">
+<table class="grid"><thead><tr><th>Job</th><th>Address</th><th>Owner of record</th><th>Kind · homestead</th><th>Last on site</th><th>Unpaid months · $</th><th>§ 53.056 per month</th><th>Affidavit by</th><th>Bond</th><th>Paid out to GC</th><th>10 % reserved</th><th>Contract completed</th></tr></thead>
+<tbody><tr><td><b>1042 · Tenant finish-out</b></td><td>200 Sample Pkwy, Suite 200, Kyle</td><td>Sample Holdings LLC</td><td>commercial · no</td><td>2026-05-29</td><td>May · $14,400</td><td>May: not required (original contractor)</td><td>2026-09-15 · missed</td><td class="q">?</td><td class="q">?</td><td class="q">?</td><td class="q">?</td></tr></tbody></table>
+</div>
+
+<h2>What travels behind the row</h2>
+<p class="lede">Red rows are things someone said or a private detail: they go today and will not after. Grey struck rows are harmless columns the grid never reads, dropped so the payload says only what the page draws.</p>
+<div class="two">
+  <div><div class="cap old">Before — `select('*')` on four tables</div><div class="pane">
+    <table><thead><tr><th>Table</th><th>Column</th><th>What it holds</th></tr></thead><tbody>
+      <tr class="leak"><td>job_lien_desk_items</td><td class="k">fields</td><td>the whole draft: the cover letter, <i>skipReason</i>, <i>skippedBy</i>, <i>staleNote</i>, the owner's answers, the leader's word</td></tr>
+      <tr class="leak"><td></td><td class="k">hold_reason · word_note · word_channel</td><td>why the office held a month; what the GC said on the phone</td></tr>
+      <tr class="leak"><td></td><td class="k">drafted_by · approved_by · held_by · printed_by · pulled_back_by</td><td>which office person did each thing</td></tr>
+      <tr class="keep"><td></td><td class="k">id · job_id · kind · status · months · sent_at · sent_filing_id · hold_until · created_at · voided_at</td><td>what the book reads: which months are noticed, held or sent</td></tr>
+      <tr class="leak"><td>job_lien_filings</td><td class="k">document_note · sends · fields · document_url</td><td>the office's note on the copy, every address it was sent to, the printed claim's inputs, the Drive link</td></tr>
+      <tr class="keep"><td></td><td class="k">id · job_id · kind · filed_at · served_at · serve_due · months_covered · county · amount · recording_number · created_at · voided_at</td><td>the public record: what was filed, when, where, for how much</td></tr>
+      <tr class="leak"><td>job_property_owners</td><td class="k">owner_email</td><td>the property owner's email</td></tr>
+      <tr class="keep"><td></td><td class="k">job_id · owner_mode · owner_name · company_name · mailing_address</td><td>the owner of record and where to serve</td></tr>
+      <tr class="leak"><td>customer_addresses</td><td class="k">note</td><td>the office's free-text note on the property</td></tr>
+      <tr class="gone"><td></td><td class="k">county_source · owner_confirmed_at · owner_confirmed_by · parcel_looked_up_at · parcel_source · parcel_tax_year · created_at · updated_at</td><td>bookkeeping on the record</td></tr>
+      <tr class="keep"><td></td><td class="k">id · customer_id · address · county · legal_description · property_kind · homestead · owner_* · parcel_id · is_primary · sequence_order</td><td>the property record</td></tr>
+      <tr class="keep"><td>customers (GCs)</td><td class="k">id · name · lien_notice_policy</td><td>the GC and the office's standing rule for its notices (ask · send · hold); the rule decides which months the book shows as held, so it stays</td></tr>
+    </tbody></table>
+  </div></div>
+  <div><div class="cap new">After — named columns, shaped once more in code</div><div class="pane">
+    <table><thead><tr><th>Table</th><th>Columns sent</th></tr></thead><tbody>
+      <tr><td>job_lien_desk_items</td><td class="k">id, job_id, kind, status, months, sent_at, sent_filing_id, hold_until, created_at, voided_at</td></tr>
+      <tr><td>job_lien_filings</td><td class="k">id, job_id, kind, filed_at, served_at, serve_due, months_covered, county, amount, recording_number, created_at, voided_at</td></tr>
+      <tr><td>job_property_owners</td><td class="k">job_id, owner_mode, owner_name, company_name, mailing_address</td></tr>
+      <tr><td>customer_addresses</td><td class="k">id, customer_id, address, county, legal_description, property_kind, homestead, owner_mode, owner_name, owner_company, owner_mailing_address, parcel_id, is_primary, sequence_order</td></tr>
+      <tr><td>customers (GCs)</td><td class="k">id, name, lien_notice_policy</td></tr>
+      <tr><td>jobs_ledger</td><td class="k">unchanged — the book's own column list</td></tr>
+    </tbody></table>
+    <p style="margin:12px 0 0; color:#374151;">The select names the columns, and <code>shapeLienBookForCounsel</code> (a shared kernel, tested) strips the rows again before they are sent, so a widened select later cannot leak by itself. The page's <i>What you cannot do</i> stops promising that the firm sees nothing of unreleased accounts; it says what the grid is.</p>
+  </div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Why not referred matters only?</b> Asked again on 2026-10-05 and the answer was the whole book, stripped: the grid is counsel's early look at where a lien is about to be lost, and a matter is referred after that point. The firm reads dates and dollars; the office's words stay home.</li>
+  <li><b>Why keep the GC's notice rule?</b> It is a standing rule, not a thing anyone said, and the book's <i>held</i> state depends on it. Without it the grid would show a held month as due.</li>
+  <li><b>Why shape twice?</b> A column list in a select is a promise only until someone adds a column. The kernel is the contract and the test holds it.</li>
+  <li><b>What this does not do:</b> the matter path's own `select('*')` on filings, demand letters and contacts is item 23; the lien book was the one visible to a firm with no matters at all.</li>
+</ul>
+</div></body></html>
