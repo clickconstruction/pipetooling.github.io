@@ -803,7 +803,8 @@ describe('the next weeks of money across every job', () => {
 
   it('keeps retainage on both sides out of the weeks until it has a day, the same totals as the Money tab', () => {
     const state = initialGcState()
-    const a = cashAhead(state)
+    // Every bar at what it reported (G-140): the cash weeks as they counted before the schedule.
+    const a = cashAhead(state, { bars: 'reported' })
     const t = allJobsMoney(state).totals
     const held = (dir: 'in' | 'out') => r(a.noDay.filter((m) => m.dir === dir).reduce((s, m) => s + m.amount, 0))
     expect([held('in'), held('out')]).toEqual([r(t.ownerHolds), r(t.weHold)])
@@ -816,10 +817,10 @@ describe('the next weeks of money across every job', () => {
     const drawId = pkg?.sow?.draws.find((d) => d.status === 'requested')?.id ?? ''
     const ids = { projectId: 'fairoaksd', packageId: pkg?.id ?? '', drawId }
     let state = gcReducer(fresh, { type: 'approveDraw', ...ids })
-    const approved = cashAhead(state).weeks.flatMap((w) => w.moves).find((m) => m.who === 'Iron Horse Fabrication')
+    const approved = cashAhead(state, { bars: 'reported' }).weeks.flatMap((w) => w.moves).find((m) => m.who === 'Iron Horse Fabrication')
     expect([approved?.why, approved?.on]).toEqual(['payBy', '2026-10-12'])
     state = gcReducer(state, { type: 'payDraw', ...ids })
-    const a = cashAhead(state)
+    const a = cashAhead(state, { bars: 'reported' })
     expect(a.weeks.flatMap((w) => w.moves).some((m) => m.who === 'Iron Horse Fabrication')).toBe(false)
     expect(r(a.standingNow)).toBe(80_428 - 79_200)
   })
@@ -1079,7 +1080,8 @@ describe('what we expect, beside what is on the books', () => {
   const r = (n: number) => Math.round(n)
 
   it('counts the bills we send Oct 25 on each customer’s usual pay day, and the trades’ next draws ten days after', () => {
-    const a = cashAhead(initialGcState())
+    // Every bar at what it reported (G-140): the same rule as the schedule's, giving the numbers from before it.
+    const a = cashAhead(initialGcState(), { bars: 'reported' })
     expect([r(a.expected.in), r(a.expected.out)]).toEqual([145_868, 78_408])
     const draws = a.weeks.flatMap((w) => w.moves).filter((m) => m.why === 'nextDraw')
     expect(draws.map((m) => [m.who, r(m.amount), m.on])).toEqual([
@@ -1096,7 +1098,7 @@ describe('what we expect, beside what is on the books', () => {
   })
 
   it('a pay application we sent back counts what we see, as our bill does', () => {
-    const summit = cashAhead(initialGcState()).weeks.flatMap((w) => w.moves).find((m) => m.who === 'Summit Roofing' && m.expected)
+    const summit = cashAhead(initialGcState(), { bars: 'reported' }).weeks.flatMap((w) => w.moves).find((m) => m.who === 'Summit Roofing' && m.expected)
     // They reported 70% of $132,000. On the lines we doubt we see less (the membrane at 50%, they say
     // 100%): $60,000 done, the same our bill uses for them, nothing drawn yet, less the 10% held.
     expect(r(summit?.amount ?? 0)).toBe(r(60_000 * 0.9))
@@ -1106,7 +1108,7 @@ describe('what we expect, beside what is on the books', () => {
     const off = cashAhead(initialGcState(), { countExpected: false })
     expect(off.weeks.flatMap((w) => w.moves).some((m) => m.expected)).toBe(false)
     expect(off.later.some((m) => m.expected)).toBe(false)
-    const on = cashAhead(initialGcState())
+    const on = cashAhead(initialGcState(), { bars: 'reported' })
     expect(on.weeks.flatMap((w) => w.moves).filter((m) => m.who === 'Iron Horse Fabrication' && m.expected)).toEqual([])
   })
 })

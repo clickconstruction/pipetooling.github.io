@@ -993,6 +993,33 @@ third optional argument on the chart's `barNote`.
 Left for Helper 1's counts row: an uninsured running trade as a reason on Follow up and Needs you,
 from `uninsuredBars`, so it lands in the one re-pin.
 
+## Later, the cash weeks follow the bars, as built (2026-10-06)
+
+G-140, built by Helper 4 from `to-dos/gc-mode/mockups/G-140.md`, on the owner's yes. The kernel is
+`gcCashForecast.ts`, and *The next 6 weeks* (`cashAhead`) reads it for what it expects.
+
+- **One rule each side.** Our bills are G-97's forecast, each month's bill on the bill day plus
+  that customer's usual days to pay. Each trade's draws are taken at each bill day, from the
+  percents its bars reach (`sovLinePctAt`, shared with G-97), through its own pay application:
+  `payApplication` with `drawMoney`, the math `tradeSendPayApp` uses. Each is paid 10 days after.
+  A job with no schedule keeps the old rule.
+- **At reported percents it is the old rule, number for number.** Owner Billing's five tests that
+  pin the old numbers pass `{ bars: 'reported' }` and keep every assertion. A test sends Cool
+  Breeze's own pay application at the same percents and gets the $9,720 the weeks expect.
+- **Fair Oaks D, as the schedule stands:** the trades' draws on Wed Nov 4 come to $284,328
+  (Summit Roofing $118,800, Cool Breeze Mechanical $84,240, Pecan Valley Electric $61,200, Hill
+  Country Interiors $14,688, Iron Horse Fabrication $5,400). The week of Nov 2 goes to $323,600
+  carrying, against $117,680 as reported. All $526,492 of the bills it expects come after the six
+  weeks; Cibolo pays in 38 days.
+- **The card says it.** *The next 6 weeks follows the schedule now. Before, it counted only the work
+  reported so far.* Beside it: *$205,920 more goes to the trades in these weeks* and *the bills it
+  expects bring $380,624 more, all of it after these weeks*. Under the headline: *Summit Roofing
+  $118,800 and Cool Breeze Mechanical $84,240 are most of it.* Every expected row names its bill
+  day. *As reported so far* is the way back, one press, remembered per browser.
+
+Left out, as planned: pay-when-paid, a statement-of-work term the data does not carry. Retainage
+growth on both sides stays *no day yet* at today's amounts. Our own crew's cost is payroll's.
+
 ## Later, a schedule while bidding, as built (2026-10-06)
 
 G-45, Helper 2 on `spike/g45`; the mock-up and plan are `mockups/G-45.md`. `gcRoughSchedule.ts`
