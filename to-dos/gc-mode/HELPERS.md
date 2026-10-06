@@ -85,7 +85,7 @@ golden snapshots (the counts) goes last, by one helper, with the owner's OK to r
 
 | Helper | Row |
 |---|---|
-| Helper 2 | G-143 the first draft's site-finish lines after the dry-in gate, not the trade's trims (re-pins the Helotes draw and G-45's pin once) |
+| Helper 2 | G-143 the first draft's site-finish lines after the dry-in gate, not the trade's trims (re-pins G-45's rough pins once; the Helotes draw does not move) |
 | Helper 4 | G-145 their dates to meet only, onto a running job |
 | Helper 1 | G-146 the call list's bar reasons counted on the board row and the badge (re-pins the people readings once) |
 
