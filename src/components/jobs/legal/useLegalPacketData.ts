@@ -22,6 +22,7 @@ import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
 import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
+import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
 
 /**
  * Loads every record behind one account's legal packet and folds them through
@@ -180,15 +181,32 @@ export function useLegalPacketData(
             })
           }, []),
         ])
+      // Property per job (#85 item 6): the record each job names (whoever's it is) and the job's owner override —
+      // the same inputs the firm's function sends, so the desk and the firm resolve the same property.
+      const links = await src<Array<{ id: string; customer_address_id: string | null }>>('job property links', async () =>
+        (await withSupabaseRetry<Array<{ id: string; customer_address_id: string | null }>>(() => db.from('jobs_ledger').select('id, customer_address_id').in('id', jobIds), 'load legal packet job property links')) ?? [], [])
+      const linkOf = new Map(links.map((l) => [l.id, l.customer_address_id] as const))
+      const jobAddressIds = [...new Set(links.map((l) => l.customer_address_id).filter((v): v is string => Boolean(v)))]
+      const [jobAddresses, jobOwners] = await Promise.all([
+        src<CustomerAddressRow[]>('job property records', async () => {
+          if (jobAddressIds.length === 0) return []
+          return ((await withSupabaseRetry<unknown[]>(() => db.from('customer_addresses').select(ADDRESS_COLUMNS).in('id', jobAddressIds), 'load legal packet job property records')) ?? []) as CustomerAddressRow[]
+        }, []),
+        src<LegalJobOwnerRow[]>('job owner overrides', async () =>
+          (await withSupabaseRetry<LegalJobOwnerRow[]>(() => db.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address').in('job_id', jobIds), 'load legal packet job owner overrides')) ?? [], []),
+      ])
+      const linkedAccount: LegalAccountSummary = { ...account, jobs: account.jobs.map((j) => (linkOf.has(j.id) ? { ...j, customer_address_id: linkOf.get(j.id) ?? null } : j)) }
       if (cancelled) return
       setPacket(
         buildLegalPacket({
           todayYmd,
-          account,
+          account: linkedAccount,
           customer,
           contacts,
           contactEntries,
           addresses,
+          jobAddresses,
+          jobOwners,
           contracts,
           signedEstimates: estimates,
           demandLetters,

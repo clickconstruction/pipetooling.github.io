@@ -22,7 +22,8 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
  * `legal_office_can_read()`), and returns every matter the office marked attorney-ready
  * (legal_matters.stage in the with-firm set) with the raw records the packet
  * kernel (src/lib/legal/legalPacket.ts) assembles on the page — jobs, invoices,
- * payments, the customer and property record, agreements (signed PDFs as
+ * payments, the customer, each job's own property record and owner override
+ * (since #85 item 6, no owner email), agreements (signed PDFs as
  * short-lived signed URLs), demand letters, lien filings and (since v2.3797)
  * the § 53.056 notice desk items shaped down to the three sent-notice facts —
  * the owner's call, letter two, the GC's written okay — promises, collection
@@ -217,7 +218,7 @@ serve(async (req) => {
     const customerIds = [...new Set(matters.map((m) => m.customer_id as string | null).filter((x): x is string => Boolean(x)))]
 
     const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, deskItemRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
-      allJobIds.length ? admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, customer_email, customer_phone, gc_customer_id, revenue, payments_made, status, last_bill_date, last_work_date, created_at, lien_contract_ended_on, lien_retainage_held, lien_payment_bond, collections_at, collections_by, collections_note, job_pictures_link, google_drive_link, contract_not_needed_at, contract_not_needed_reason').in('id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, customer_email, customer_phone, gc_customer_id, customer_address_id, revenue, payments_made, status, last_bill_date, last_work_date, created_at, lien_contract_ended_on, lien_retainage_held, lien_payment_bond, collections_at, collections_by, collections_note, job_pictures_link, google_drive_link, contract_not_needed_at, contract_not_needed_reason').in('id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, external_send_channel, stripe_invoice_status, stripe_invoice_id, sequence_order, agreed_write_down_at, agreed_write_down_note, agreed_write_down_previous_amount, created_at').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('customers').select('id, name, address, contact_info, customer_type, payment_terms, payment_terms_note').in('id', customerIds) : Promise.resolve({ data: [] }),
@@ -269,6 +270,17 @@ serve(async (req) => {
       ? await admin.from('jobs_ledger').select('id, hcp_number, click_number, customer_id, gc_customer_id').or(`customer_id.in.(${customerIds.join(',')}),gc_customer_id.in.(${customerIds.join(',')})`).limit(5000)
       : { data: [] }
     const payerJobs = (payerJobRows ?? []) as Row[]
+
+    // Property per job (#85 item 6): the record each job names, whichever customer holds it (on a GC-paid
+    // job the payer's addresses are the GC's offices), and the job's owner override, shaped without the
+    // owner's email. The packet kernel resolves one property per job and runs each job's lien clock from it.
+    const jobAddressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
+    const [jobAddrRes, ownerRes] = await Promise.all([
+      jobAddressIds.length ? admin.from('customer_addresses').select('id, customer_id, address, county, legal_description, owner_mode, owner_name, owner_company, owner_mailing_address, parcel_id, homestead, property_kind').in('id', jobAddressIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+    ])
+    const jobAddressRows = (jobAddrRes.data ?? []) as Row[]
+    const ownerRows = (ownerRes.data ?? []) as Row[]
 
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
@@ -371,6 +383,8 @@ serve(async (req) => {
         contacts: persons.filter((p) => customerId && p.customer_id === customerId).map((p) => ({ name: p.name, email: p.email ?? null, phone: p.phone ?? null, note: p.note ?? null })),
         contactEntries: mContacts,
         addresses: addresses.filter((a) => customerId && a.customer_id === customerId),
+        jobAddresses: jobAddressRows.filter((a) => mJobs.some((j) => j.customer_address_id === a.id)),
+        jobOwners: ownerRows.filter((o) => jobIdSet.has(o.job_id as string)),
         contracts: contracts.filter((c) => jobIdSet.has(c.job_id as string)).map((c) => ({ ...c, signedPdfUrl: contractUrls.get(c.id as string) ?? null, signed_pdf_path: undefined, paper_upload_path: undefined })),
         signedEstimates: estimates.filter((e) => jobIdSet.has(e.job_ledger_id as string)),
         demandLetters: demands.filter((d) => jobIdSet.has(d.job_id as string)),

@@ -16,6 +16,7 @@ import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../jobs/paymentChase'
 import type { LegalDeskItemLike } from './legalLienPaper'
+import type { LegalJobOwnerRow } from './legalProperty'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, type LegalContactLike, type LegalCustomerLike, type LegalFeeModel, type LegalPacket } from './legalPacket'
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
@@ -41,6 +42,10 @@ export type LegalPortalMatter = {
   contacts: LegalContactLike[]
   contactEntries: LegalContactEntryLike[]
   addresses: CustomerAddressRow[]
+  /** The records the matter's jobs name (`customer_address_id`), any customer's (#85 item 6); [] from an older function. */
+  jobAddresses: CustomerAddressRow[]
+  /** The jobs' owner overrides, no email (#85 item 6); [] from an older function. */
+  jobOwners: LegalJobOwnerRow[]
   contracts: LegalPortalContract[]
   signedEstimates: SignedEstimateLike[]
   demandLetters: JobDemandLetterRow[]
@@ -97,6 +102,8 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       contacts: Array.isArray(m.contacts) ? (m.contacts as LegalContactLike[]) : [],
       contactEntries: Array.isArray(m.contactEntries) ? (m.contactEntries as LegalContactEntryLike[]) : [],
       addresses: Array.isArray(m.addresses) ? (m.addresses as CustomerAddressRow[]) : [],
+      jobAddresses: Array.isArray(m.jobAddresses) ? (m.jobAddresses as unknown[]).filter((a): a is CustomerAddressRow => isRecord(a) && typeof a.id === 'string') : [],
+      jobOwners: Array.isArray(m.jobOwners) ? (m.jobOwners as unknown[]).filter((o): o is LegalJobOwnerRow => isRecord(o) && typeof o.job_id === 'string') : [],
       contracts: Array.isArray(m.contracts) ? (m.contracts as LegalPortalContract[]) : [],
       signedEstimates: Array.isArray(m.signedEstimates) ? (m.signedEstimates as SignedEstimateLike[]) : [],
       demandLetters: Array.isArray(m.demandLetters) ? (m.demandLetters as JobDemandLetterRow[]) : [],
@@ -141,6 +148,8 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
     contacts: m.contacts,
     contactEntries: m.contactEntries,
     addresses: m.addresses,
+    jobAddresses: m.jobAddresses,
+    jobOwners: m.jobOwners,
     contracts: m.contracts,
     signedEstimates: m.signedEstimates,
     demandLetters: m.demandLetters,

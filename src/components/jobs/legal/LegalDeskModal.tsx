@@ -30,6 +30,7 @@ import {
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
 import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -770,16 +771,16 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           <span><span style={MUTED}>Balance</span> <b>{formatLegalMoney(a.totals.balance)}</b></span>
         </div>
         <SectionTitle doors={customerDoor('Property record')}>Property record</SectionTitle>
-        <Table head={['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Lien-ready']}
-          rows={a.properties.map((p) => [p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
-          empty="No property record on the customer — county, owner of record and legal description decide whether a lien is on the table." />
+        <Table head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Lien-ready']}
+          rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ ...MUTED }}>· {propertySourceNote(p.source)}</span></span> : (p.address || '—'), p.county || '—', p.owner ? `${p.owner}${p.ownerSource === 'job_override' ? ' (job override)' : ''}` : '—', p.legalDescription || '—', p.parcelId || '—', p.gaps.length ? pill(`missing ${p.gaps.join(', ')}`, 'warn') : pill('complete', 'ok')])}
+          empty="No jobs on this account." />
       </div>
     )
   }
 
   if (tab === 'paper') {
-    const kind = a.properties[0]?.propertyKind
-    const kindWords = kind === 'residential' ? 'residential' : kind ? 'non-residential' : 'property kind unknown'
+    // Each job's own property kind (#85 item 6), the same as the firm's view.
+    const kindWordsOf = (jobId: string) => propertyKindCell(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind)
     const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
     return (
       <div>
@@ -796,7 +797,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>
             <div>
               <button type="button" onClick={() => { const job = jobOf(t.jobId); if (job) props.onOpenLienInstruments(job) }} style={{ ...btn, fontWeight: 700 }}>{t.jobLabel}</button>
-              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWords} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
+              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWordsOf(t.jobId)} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
               {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
             </div>
