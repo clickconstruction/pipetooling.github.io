@@ -17,7 +17,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const records = { id: 'req-1', address: '9703 Lenox Hill, San Antonio, TX', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null }
+const records = { id: 'req-1', address: '9703 Lenox Hill, San Antonio, TX', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null, sent: null }
 
 describe('PortalOwnerRecordsCard', () => {
   it('asks for the name as the county lists it, warns while the letters differ, and signs with the consent words', async () => {
@@ -52,6 +52,20 @@ describe('PortalOwnerRecordsCard', () => {
     for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box)
     fireEvent.click(screen.getByRole('button', { name: 'Sign and send my request' }))
     await waitFor(() => expect(screen.getByText(/Type your name as the county lists it: Umar Khan/)).toBeTruthy())
+  })
+
+  it('sent on the portal: the day and one Download; while the copy is still being kept, say so (shape B)', () => {
+    const signed = { ...records, signed: { on: '2026-10-05', name: 'Umar Khan' } }
+    render(<PortalOwnerRecordsCard records={{ ...signed, sent: { on: '2026-10-07', downloadUrl: 'https://x.test/sent-documents/req-1/Records.pdf?token=t' } }} token="tok-1" companyName="Click Plumbing" phone="" todayYmd="2026-10-08" />)
+    expect(screen.getByText(/The office sent your records on/)).toBeTruthy()
+    const link = document.querySelector('[data-portal-owner-records-download]') as HTMLAnchorElement
+    expect(link.textContent).toBe('Download the records')
+    expect(link.href).toContain('Records.pdf')
+    expect((document.querySelector('[data-portal-owner-records]') as HTMLElement).getAttribute('data-state')).toBe('sent')
+    cleanup()
+    render(<PortalOwnerRecordsCard records={{ ...signed, sent: { on: '2026-10-07', downloadUrl: null } }} token="tok-1" companyName="Click Plumbing" phone="" todayYmd="2026-10-08" />)
+    expect(screen.getByText(/The file is being prepared/)).toBeTruthy()
+    expect(document.querySelector('[data-portal-owner-records-download]')).toBeNull()
   })
 
   it('already signed reads thanks and no form', () => {

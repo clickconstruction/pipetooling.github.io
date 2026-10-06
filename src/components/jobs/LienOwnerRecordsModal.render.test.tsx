@@ -28,7 +28,7 @@ vi.mock('../../lib/jobs/ownerRecordsPdf', async () => {
 vi.mock('../../lib/storageSave', () => ({ saveBlobAs: (blob: Blob, name: string) => io.downloaded.push({ name, type: blob.type }) }))
 vi.mock('../../lib/sent/sentCopiesIo', () => ({
   printAndFile: (html: string, filing: Record<string, unknown>) => (io.printed.push(html), io.filed.push({ ...filing, how: 'print', html }), true),
-  fileSentCopy: async (filing: Record<string, unknown>, body: { html: string }) => (io.filed.push({ ...filing, html: body.html }), true),
+  fileSentCopy: async (filing: Record<string, unknown>, body: { html?: string; contentType?: string }) => (io.filed.push({ ...filing, html: body.html, contentType: body.contentType }), true),
 }))
 
 const jobs: OwnerPacketJobInput[] = [
@@ -216,6 +216,21 @@ describe('LienOwnerRecordsModal', () => {
     expect(step('acknowledgment').textContent).toContain('Signed on their portal')
     expect(step('acknowledgment').textContent).toContain('by Umar Khan, drawn')
     expect(within(step('acknowledgment')).queryByRole('button', { name: 'Change' })).toBeNull()
+  })
+
+  it('On their portal is a way to send once the records were offered there, and files the packet as a PDF (v2.4651)', async () => {
+    io.jobs = jobs
+    io.file = { ...full, offer: { at: '2026-10-06T15:00:00Z', by: 'Taunya', alsoAllowed: '' } }
+    io.filed = []
+    mount()
+    await pick()
+    const how = screen.getByLabelText('How it went to them') as HTMLSelectElement
+    expect([...how.options].map((o) => o.value)).toEqual(['handed', 'email', 'mail', 'portal'])
+    fireEvent.change(how, { target: { value: 'portal' } })
+    fireEvent.click(sendButton())
+    await waitFor(() => expect(io.filed.map((f) => [f.kind, f.how])).toEqual([['owner_records_packet', 'link']]))
+    expect(io.filed[0]!.html).toBeUndefined()
+    expect(io.filed[0]!.contentType).toBe('application/pdf')
   })
 
   it('Download the packet saves the PDF and files it as a download (v2.4619)', async () => {

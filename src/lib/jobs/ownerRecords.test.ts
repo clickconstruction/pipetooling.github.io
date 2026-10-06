@@ -8,6 +8,7 @@ import {
   ownerRecordsProperties,
   ownerRecordsPropertyMatches,
   ownerRecordsAllowedNames,
+  ownerRecordsSentHows,
   ownerRecordsSteps,
   parseOwnerRecords,
   type OwnerPacketJobInput,
@@ -188,5 +189,15 @@ describe('offered and signed on the portal (punch list #86)', () => {
     expect(done[0]!.state).toBe('done')
     expect(done[3]!.words).toBe('Signed on their portal day(2026-10-06) by Umar Khan, typed.')
     expect(ownerRecordsMissing(signed)).toEqual(['the contract check'])
+  })
+})
+
+describe('On their portal as a way to send (punch list #86, PR 2)', () => {
+  it('is offered only once the records were offered on the portal, and parses back', () => {
+    expect(ownerRecordsSentHows(EMPTY_OWNER_RECORDS)).toEqual(['handed', 'email', 'mail'])
+    expect(ownerRecordsSentHows({ offer: { at: '2026-10-06T15:00:00Z', by: 'T', alsoAllowed: '' } })).toEqual(['handed', 'email', 'mail', 'portal'])
+    const f = parseOwnerRecords({ sent: { at: '2026-10-07T15:00:00Z', by: 'T', how: 'portal', total: 12, jobIds: ['a'] } })!
+    expect(f.sent?.how).toBe('portal')
+    expect(ownerRecordsFootWords(f, (y) => y)).toBe('Sent 2026-10-07 by T. On their portal.')
   })
 })

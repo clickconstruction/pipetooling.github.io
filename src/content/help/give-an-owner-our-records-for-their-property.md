@@ -48,6 +48,8 @@ On their portal they see a card for the records. They type their name. It must m
 
 When they sign, checks 1 and 4 turn green on your window. Check 4 names them and how they signed. The office still does check 2 and presses **Record it as sent**. The owner sees nothing of the packet until then.
 
+To send it on their portal, pick **On their portal** as how it went, then press {{button:blue|Record it as sent}}. The owner's card then has one button, **Download the records**. It saves the cover note and the statement as one PDF. Nothing else is listed on their portal.
+
 ## Send it and record it
 
 1. Press {{button:outline|Print the packet}}. It prints the cover note and the statement. To email it or keep a file, press {{button:outline|Download the packet}} instead. It saves the same pages as one PDF.
