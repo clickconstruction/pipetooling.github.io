@@ -3955,6 +3955,10 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPaperDoor:hover, .lienPaperDoor:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px currentColor; text-decoration: underline; text-underline-offset: 2px; outline: none; }
 /* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */
 .lienPaperGap { display: inline-flex; align-items: center; gap: 0.35em; border-bottom: 2px solid #dc2626; color: #991b1b; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 0.82em; padding-bottom: 1px; white-space: nowrap; }
+/* § Rules as a window (v2.4655): a found word, the one Enter stands on, and the rule the window opened at. */
+.lienRulesBody mark[data-find] { background: var(--bg-amber-tint); color: inherit; border-radius: 2px; padding: 0 1px; box-shadow: 0 0 0 1px var(--border-amber); }
+.lienRulesBody mark[data-find-at="yes"] { background: #fbbf24; color: #1a1200; }
+.lienRulesBody [data-rule-opened="yes"] { scroll-margin-top: 0.5rem; box-shadow: inset 3px 0 0 var(--border-blue); padding-left: 0.5rem; }
 .lienPaperGap b { background: #dc2626; color: #fff; border-radius: 999px; width: 1.35em; height: 1.35em; display: inline-grid; place-items: center; font-size: 0.8em; }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
