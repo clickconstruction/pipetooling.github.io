@@ -45,7 +45,7 @@ export default function OwnerAutoConfirmSettingsBlock() {
         <span>
           <span style={{ display: 'block', fontWeight: 600, fontSize: '1rem' }}>Save owners from the appraisal roll automatically</span>
           <span style={{ display: 'block', fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-            Every night, GC jobs with approved hours and no owner get the roll’s answer saved as <em>from the roll · unconfirmed</em>. The Lien desk drafts on it and shows the provenance; a person confirms before <em>Record the run</em>.
+            Every night, GC jobs with no owner get the roll’s answer saved as <em>from the roll · unconfirmed</em>. The Lien desk drafts on it and shows the provenance; a person confirms before <em>Record the run</em>.
           </span>
         </span>
       </label>
