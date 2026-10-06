@@ -28,7 +28,7 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
-import { CONTINGENCY_ENTRY_META, contingencyEntryBody, legalRunningLedger } from '../../../lib/legal/legalMoney'
+import { CONTINGENCY_ENTRY_META, contingencyEntries, contingencyEntryBody, firmFeeEntries, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -866,7 +866,9 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
     )
   }
 
-  const fees = entries.filter((e) => e.kind === 'fee' || e.kind === 'cost')
+  // The firm's fees and costs the debtor owes (item 5): the contingency is the firm's share of a recovery, said on its own line.
+  const fees = firmFeeEntries(entries)
+  const contingency = contingencyEntries(entries)
   const feeTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
   const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost')
   const asksById = new Map(buildLegalAsks(entries).map((a) => [a.id, a] as const))
@@ -876,9 +878,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
       <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
         <Table head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="" />
-      ) : (
+      ) : contingency.length ? null : (
         <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
       )}
+      {contingency.length ? <p data-legal-contingency style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0 0' }}>The firm’s contingency on recoveries you applied, not in the demand: {contingency.map((e) => `${formatLegalMoney(Number(e.amount ?? 0))} on ${e.occurred_on}`).join(', ')}.</p> : null}
       {firmSteps.length ? (
         <>
           <SectionTitle>On the matter{officeActs && firmSteps.some((e) => e.via_portal && !e.acknowledged_at) ? ` · ${firmSteps.filter((e) => e.via_portal && !e.acknowledged_at).length} from the firm waiting on you` : ''}</SectionTitle>

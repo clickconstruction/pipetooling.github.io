@@ -63,10 +63,10 @@ export function contingencyEntries<E extends Pick<LegalEntryRow, 'kind' | 'body'
   return entries.filter((e) => (e.kind === 'fee' || e.kind === 'cost') && isContingencyEntry(e))
 }
 
-/** Balance + the firm's fees and costs = the demand. One sum for the matter card and the print. */
+/** Balance + the firm's fees and costs = the demand, never below 0 (an overpaid account owes nothing; its credit is a ledger line). One sum for the matter card, the desk and the print. */
 export function firmDemand(balance: number, entries: ReadonlyArray<Pick<LegalEntryRow, 'kind' | 'body' | 'meta' | 'via_portal' | 'amount'>>): { feesTotal: number; demand: number } {
   const feesTotal = round2(firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0))
-  return { feesTotal, demand: round2(balance + feesTotal) }
+  return { feesTotal, demand: Math.max(0, round2(balance + feesTotal)) }
 }
 
 // ---------------------------------------------------------------------------

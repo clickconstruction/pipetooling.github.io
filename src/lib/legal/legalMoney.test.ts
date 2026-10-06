@@ -82,14 +82,15 @@ describe('(b) a payment with no bill', () => {
     const j = job({ id: 'j5', revenue: 5_000, payments_made: 1_000, last_bill_date: '2026-06-15', invoices: [], payments: [pay('p5', 1_000, '2026-07-01', null)] })
     const p = packetFor([j])
     expect(p.account.totals.balance).toBe(4_000)
-    expect(p.account.ledger.find((e) => e.kind === 'off_bill')).toEqual(expect.objectContaining({ amount: 5_000, text: 'Job total, not split into bills' }))
+    expect(p.account.ledger.find((e) => e.kind === 'off_bill')).toEqual(expect.objectContaining({ amount: 5_000, text: 'Job total not yet split into bills (difference)' }))
     expectFoots(p)
   })
-  it('anything the rows cannot explain is one row that says so, never a silent gap', () => {
+  it('a refund the payment rule does not spread still reaches the balance, as its own row', () => {
     // An unlinked refund the payment rule does not spread: the statement still reaches the balance.
     const j = job({ id: 'j6', revenue: 2_000, invoices: [bill('i6', 2_000, '2026-06-01')], payments: [pay('p6', -300, '2026-07-01', null)] })
     const p = packetFor([j])
-    expect(p.account.ledger.some((e) => e.kind === 'unexplained' || e.text.startsWith('Refund'))).toBe(true)
+    expect(p.account.ledger.some((e) => e.text.startsWith('Refund'))).toBe(true)
+    expect(p.account.ledger.some((e) => e.kind === 'unexplained')).toBe(false)
     expectFoots(p)
   })
 })
@@ -151,5 +152,40 @@ describe('(e) the sample matter, as the firm reads it', () => {
     expect(p.account.totals.balance).toBe(16_400)
     expect(legalRunningLedger(p.account.ledger).map((e) => e.running)).toEqual([18_400, 14_400, 20_400, 17_900, 16_400])
     expect(firmDemand(p.account.totals.balance, payload.matters[0]!.entries).demand).toBe(17_200)
+  })
+})
+
+describe('integration pass · the no-line path, refunds and credits', () => {
+  it('a written-down bill then paid in full owes nothing', () => {
+    const j = job({ id: 'n1', revenue: 1_000, payments_made: 800, invoices: [bill('n1a', 800, '2026-06-01', { status: 'paid', agreed_write_down_at: '2026-07-01T15:00:00Z', agreed_write_down_previous_amount: 1_000 })], payments: [pay('n1p', 800, '2026-07-10', 'n1a')] })
+    expect(legalJobMoney(j)).toMatchObject({ balance: 0, shell: true, credit: 0 })
+    expectFoots(packetFor([j]))
+  })
+  it('a lone bill marked paid with no payment owes nothing, and says so', () => {
+    const j = job({ id: 'n2', revenue: 500, payments_made: 0, invoices: [bill('n2a', 500, '2026-06-01', { status: 'paid' })], payments: [] })
+    expect(legalJobMoney(j)).toMatchObject({ balance: 0, shell: true })
+    const p = packetFor([j])
+    expect(p.account.ledger.find((e) => e.kind === 'settled')).toEqual(expect.objectContaining({ amount: -500 }))
+    expectFoots(p)
+  })
+  it('a paid bill beside an open one owes only the open one', () => {
+    const j = job({ id: 'n3', revenue: 1_500, payments_made: 0, invoices: [bill('n3a', 500, '2026-06-01', { status: 'paid' }), bill('n3b', 1_000, '2026-07-01')], payments: [] })
+    expect(legalJobMoney(j).balance).toBe(1_000)
+    expectFoots(packetFor([j]))
+  })
+  it('a refund with no bill counts back into the balance, never as a difference the records do not explain', () => {
+    const j = job({ id: 'n4', revenue: 2_000, invoices: [bill('n4a', 2_000, '2026-06-01')], payments: [pay('n4p', 2_000, '2026-07-01', 'n4a'), pay('n4r', -300, '2026-07-15', null)] })
+    expect(legalJobMoney(j).balance).toBe(300)
+    const p = packetFor([j])
+    expect(p.account.ledger.some((e) => e.kind === 'unexplained')).toBe(false)
+    expectFoots(p)
+  })
+  it('an overpaid job shows its credit on its own line, and the demand never goes below 0', () => {
+    const j = job({ id: 'n5', revenue: 1_000, invoices: [bill('n5a', 1_000, '2026-06-01')], payments: [pay('n5p', 1_200, '2026-07-01', 'n5a')] })
+    expect(legalJobMoney(j)).toMatchObject({ balance: -200, credit: 200 })
+    const p = packetFor([j])
+    expect(p.account.ledger.find((e) => e.kind === 'credit')?.text).toMatch(/^Credit to the customer of \$200\.00/)
+    expectFoots(p)
+    expect(firmDemand(p.account.totals.balance, [entry({ kind: 'fee', body: 'Letter', amount: 100 })]).demand).toBe(0)
   })
 })

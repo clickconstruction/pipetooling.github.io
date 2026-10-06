@@ -120,15 +120,14 @@ export type LegalJobMoney = {
   settledShort: Array<{ invoiceId: string; amount: number }>
   /** True when the job has no billed line and owes its job-level remainder. */
   shell: boolean
+  /** Money paid beyond everything owed on the job: a credit to the customer, never a negative demand. 0 when none. */
+  credit: number
 }
 
 export function legalJobMoney(job: JobWithDetails): LegalJobMoney {
   const invoices = job.invoices ?? []
   const payments = job.payments ?? []
   const billed = invoices.filter((i) => i.status === 'billed')
-  if (billed.length === 0) {
-    return { balance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)), openByInvoice: new Map(), offBill: 0, settledShort: [], shell: true }
-  }
   const sent = invoices.filter((i) => isSentBill(i.status))
   const sentIds = new Set(sent.map((i) => i.id))
   // The written-down part of a bill is no longer owed; it is not work on no bill, so the rule gets the job total less it.
@@ -136,6 +135,19 @@ export function legalJobMoney(job: JobWithDetails): LegalJobMoney {
   const jobTotal = job.revenue == null ? null : Number(job.revenue) - writtenDown
   const att = attributeJobPayments(invoices, payments, jobTotal)
   const appliedOf = (id: string) => att.byBill.get(id)?.applied ?? 0
+  // A refund (a negative payment on no bill) is money handed back: the rule skips it, so it is added back here.
+  const refunds = round2(payments.filter((p) => !p.invoice_id && Number(p.amount ?? 0) < 0).reduce((s, p) => s - Number(p.amount ?? 0), 0))
+  // A bill marked paid whose recorded money falls short: no payment covers that part, and nobody owes it.
+  const settledShort = sent
+    .filter((i) => i.status === 'paid')
+    .map((i) => ({ invoiceId: i.id, amount: round2(Number(i.amount ?? 0) - appliedOf(i.id)) }))
+    .filter((x) => x.amount > 0.004)
+  const shortTotal = settledShort.reduce((s, x) => s + x.amount, 0)
+  if (billed.length === 0) {
+    // No open billed line: the job owes its total less what was written down, paid, or marked paid without money.
+    const raw = round2(Number(job.revenue ?? 0) - writtenDown - Number(job.payments_made ?? 0) - shortTotal)
+    return { balance: Math.max(0, raw), openByInvoice: new Map(), offBill: 0, settledShort, shell: true, credit: Math.max(0, round2(-raw)) }
+  }
   const openByInvoice = new Map<string, number>()
   let open = 0
   for (const i of billed) {
@@ -145,11 +157,8 @@ export function legalJobMoney(job: JobWithDetails): LegalJobMoney {
   }
   const overpaid = sent.reduce((s, i) => s + Math.max(0, round2(appliedOf(i.id) - Number(i.amount ?? 0))), 0)
   const linkedElsewhere = payments.filter((p) => p.invoice_id && !sentIds.has(p.invoice_id)).reduce((s, p) => s + Number(p.amount ?? 0), 0)
-  const settledShort = sent
-    .filter((i) => i.status === 'paid')
-    .map((i) => ({ invoiceId: i.id, amount: round2(Number(i.amount ?? 0) - appliedOf(i.id)) }))
-    .filter((x) => x.amount > 0.004)
-  return { balance: round2(open - att.surplus - overpaid), openByInvoice, offBill: round2(att.offBill + linkedElsewhere), settledShort, shell: false }
+  const raw = round2(open - att.surplus - overpaid + refunds)
+  return { balance: raw, openByInvoice, offBill: round2(att.offBill + linkedElsewhere), settledShort, shell: false, credit: Math.max(0, round2(-raw)) }
 }
 
 /** What the account still owes on one job — `legalJobMoney(job).balance`, the one number the desk, the firm and the prints share. */
@@ -296,7 +305,7 @@ export type LegalLedgerEntry = {
    * paid that no payment covers · `unexplained` what is left between the rows and the job's
    * balance (item 5: the rows always reach the Balance, and a gap says so out loud).
    */
-  kind: 'invoice' | 'payment' | 'write_down' | 'off_bill' | 'settled' | 'unexplained'
+  kind: 'invoice' | 'payment' | 'write_down' | 'off_bill' | 'settled' | 'unexplained' | 'credit'
   /** The line's words, without the job number (the views print it in its own column). */
   text: string
   /** Positive for invoices, negative for payments / write-downs. */
@@ -787,15 +796,16 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       const how = paymentHowWords(p.payment_type, p.reference_number)
       push(ymd, 'payment', `${amt < 0 ? 'Refund' : 'Payment'}${how ? ` · ${how}` : ''}`, -amt)
     }
-    if (!money.shell) {
-      if (money.offBill > 0) push(offBillYmd, 'off_bill', 'Work on no bill, covered by the payments on this job', money.offBill)
-      for (const s of money.settledShort) push(billYmd.get(s.invoiceId) ?? null, 'settled', 'Marked paid, no payment recorded for this part', -s.amount)
-    }
-    const gap = round2(money.balance - rows.reduce((s, e) => s + e.amount, 0))
+    if (!money.shell && money.offBill > 0) push(offBillYmd, 'off_bill', 'Work on no bill, covered by the payments on this job', money.offBill)
+    for (const s of money.settledShort) push(billYmd.get(s.invoiceId) ?? null, 'settled', 'Marked paid, no payment recorded for this part', -s.amount)
+    // A shell job's balance is its total less money; a credit is clamped out of it, so the rows foot to 0 there.
+    const target = money.shell ? money.balance - money.credit : money.balance
+    const gap = round2(target - rows.reduce((s, e) => s + e.amount, 0))
     if (Math.abs(gap) >= 0.005) {
-      if (money.shell) push(ymdOfIso(j.last_bill_date), 'off_bill', 'Job total, not split into bills', gap)
+      if (money.shell) push(ymdOfIso(j.last_bill_date), 'off_bill', 'Job total not yet split into bills (difference)', gap)
       else push(null, 'unexplained', 'Difference the records do not explain', gap)
     }
+    if (money.credit > 0) push(null, 'credit', `Credit to the customer of ${formatLegalMoney(money.credit)}: paid beyond every bill on this job, not in the demand`, money.shell ? money.credit : 0)
     ledger.push(...rows)
   }
   ledger.sort((a, b) => (a.ymd ?? '9999').localeCompare(b.ymd ?? '9999'))
