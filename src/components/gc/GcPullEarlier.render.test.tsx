@@ -9,9 +9,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcPullLine, GcPullWindow } from './GcPullEarlier'
 import { GcScheduleWalk } from './GcScheduleWalk'
+import { GcMoveHistory } from './GcScheduleMoves'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { gcReducer } from '../../lib/gcMode/gcReducer'
 import { planPull } from '../../lib/gcMode/gcPullEarlier'
+import { moveBillingShift, planBillingShift, shiftWords } from '../../lib/gcMode/gcBillingForecast'
 import type { GcAction, GcState } from '../../lib/gcMode/gcTypes'
 
 afterEach(cleanup)
@@ -76,6 +78,47 @@ describe('the window a pull is saved from', () => {
     expect(save.disabled).toBe(true)
     fireEvent.click(save)
     expect(dispatch).not.toHaveBeenCalled()
+  })
+})
+
+describe('what the pull moves between bills (G-97)', () => {
+  const press = (s: GcState, note: string) => play(s, { type: 'pullScheduleEarlier', projectId: 'fairoaksd', leaveOut: [], why: { reason: 'early', note, by: 'Robert' } })
+  const billingLine = () => screen.queryByText(/^Billing: /)?.textContent ?? null
+
+  it('the window reads, before the press, the shift the move\'s row reads after it', () => {
+    // TPO membrane moved out to finish Oct 20 pushes Sheet metal across the Oct 25 bill day.
+    // Then its submittal is approved, and Summit finishes TPO today, 18 days early.
+    const tpo = job(initialGcState()).schedule!.activities.find((a) => a.lineId === 'froof-1')!
+    const s = play(
+      initialGcState(),
+      { type: 'setScheduleActivity', projectId: 'fairoaksd', lineId: 'froof-1', start: tpo.start, finish: '2026-10-20', after: tpo.after, why: { reason: 'weather', note: 'Rain all week on the roof.', by: 'Robert' } },
+      { type: 'sendSubmittalToArchitect', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6' },
+      { type: 'answerSubmittal', projectId: 'fairoaksd', submittalId: 'fairoaksd-sub-6', answer: 'approved', note: '' },
+      { type: 'tradeReport', projectId: 'fairoaksd', packageId: 'froof', sovId: 'froof-1', pct: 100 },
+    )
+    const offer = planPull(s, job(s))!
+    expect(offer.pulls.map((p) => [p.lineId, p.from.start, p.to.start])).toEqual([['froof-3', '2026-10-21', '2026-10-03']])
+    const shift = planBillingShift(s, job(s), offer)
+    render(<GcPullWindow state={s} project={job(s)} dispatch={() => undefined} onClose={() => undefined} />)
+    expect(billingLine()).toBe(`Billing: ${shiftWords(shift, 'will')}`)
+    expect(billingLine()).toBe('Billing: $14,301 of the Nov 25 bill moves to Oct 25.')
+    cleanup()
+    const after = press(s, offer.note)
+    expect(moveBillingShift(after, job(after), job(after).schedule!.moves![0]!)).toEqual(shift)
+    render(<GcMoveHistory state={after} project={job(after)} dispatch={() => undefined} />)
+    expect(billingLine()).toBe(`Billing: ${shiftWords(shift, 'did')}`)
+    expect(billingLine()).toBe('Billing: it moved $14,301 of the Nov 25 bill to Oct 25.')
+  })
+
+  it('Top out and Ductwork bring in only the inspection, which carries no dollars: no word on billing, before or after', () => {
+    const s = play(initialGcState(), DUCTWORK_DONE, TOP_OUT_DONE)
+    render(<GcPullWindow state={s} project={job(s)} dispatch={() => undefined} onClose={() => undefined} />)
+    expect(billingLine()).toBeNull()
+    cleanup()
+    const after = press(s, NOTE)
+    expect(moveBillingShift(after, job(after), job(after).schedule!.moves![0]!)).toEqual([])
+    render(<GcMoveHistory state={after} project={job(after)} dispatch={() => undefined} />)
+    expect(billingLine()).toBeNull()
   })
 })
 
