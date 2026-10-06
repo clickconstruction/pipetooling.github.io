@@ -18,6 +18,7 @@ import { withNewBaseline } from './gcBaseline'
 import { actualProblem, withReportedActuals } from './gcActualDates'
 import { crewCountAllowed, crewCountLogWords, crewCountProblem, crewCountsNow } from './gcCrewCounts'
 import { placeChanges, placesLogWords, withPlaces } from './gcPlaces'
+import { theirDatesLogWords, theirDatesRefusal, withTheirDates } from './gcTheirDates'
 import { LATE_REASONS, lateDoor, lateKeepLogWords, lateNoticeLogWords, lateNoticeProblem, lateNoticeState, latePushBackLogWords, lateTarget, nextLateNoticeId } from './gcLateNotices'
 import { planPull, pullCountWords, pullMove } from './gcPullEarlier'
 import { recoveryMove, recoveryOffers } from './gcRecovery'
@@ -3098,6 +3099,17 @@ function reduce(state: GcState, action: GcAction): GcState {
         'office',
         placesLogWords(project, changes),
       )
+    }
+
+    case 'takeTheirDates': {
+      // Their dates to meet from a file (G-145): on a job being built, with no what-if copy open, only
+      // the milestones change. No bar, wait or move: nothing to tell the trades, nothing sent.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const schedule = project?.schedule
+      if (!project || !schedule || theirDatesRefusal(project) || action.dates.length === 0 || !action.file.trim() || !action.from.trim()) return state
+      const milestones = withTheirDates(project, action.dates)
+      if (!milestones) return state
+      return logged(mapProject(state, project.id, (p) => ({ ...p, schedule: { ...schedule, milestones } })), 'office', theirDatesLogWords(project, action.from.trim(), action.file.trim(), action.dates))
     }
   }
 }

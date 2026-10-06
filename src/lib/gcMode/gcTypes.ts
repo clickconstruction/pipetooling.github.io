@@ -1386,6 +1386,8 @@ export type GcAction =
   | { type: 'selfReportPart'; projectId: string; packageId: string; lineId: string; partId: string; pct: number }
   /** The office says where bars' work is (G-83): each line id to its place, or null to take it off. A trade's bars and our own crew's only. */
   | { type: 'setActivityPlaces'; projectId: string; places: Record<string, string | null> }
+  /** Their dates to meet from a file onto a job being built (G-145): each to one of ours by id, or a new one. Only the milestones change. */
+  | { type: 'takeTheirDates'; projectId: string; file: string; from: string; dates: { name: string; on: string; ours: string | null }[]; by: string }
 
 /** One trade on a new project, as the office left it in the New project window. */
 export interface NewTradeDraft {

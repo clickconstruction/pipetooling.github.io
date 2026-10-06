@@ -546,7 +546,7 @@ export function guessPlaces(project: GcProject, reading: ScheduleFileReading): M
 // ---------------------------------------------------------------------------------------------
 
 /** "dry in", "substantial completion": names compared without case or marks. */
-function sameName(a: string, b: string): boolean {
+export function sameName(a: string, b: string): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
   return norm(a) === norm(b)
 }
