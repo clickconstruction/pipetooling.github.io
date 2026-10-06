@@ -5,8 +5,8 @@
  * the chart, every reason under their name, with Follow up's own Call and Follow up on each.
  *
  * - A hired trade, for its bars: an inspection that failed on its work, a bar late, due today or
- *   behind, new dates told and not answered or answered with another day, a first day nobody
- *   confirmed.
+ *   behind, new dates told and not answered or answered with another day, its own word from its
+ *   portal that a bar will be late (G-117), a first day nobody confirmed.
  * - Whoever owes what holds a bar. Every hold on it counts, not only the one the chart's pill shows:
  *   a submittal, an RFI and a wait from their own records, any other kind (G-77's paperwork, one
  *   added later) from the chart's own map. The rule is keyed by the hold's kind and who owes it; a
@@ -23,6 +23,8 @@ import { daysBetween, scheduleMeasures, type ScheduleItem } from './gcBuildingSc
 import { ganttBars, type GanttBar, type GanttHold } from './gcGantt'
 import { submittalHolding, submittalNeededBy, submittalState } from './gcBuildingSubmittals'
 import { notReadyBars, type NotReadyBar } from './gcNotReady'
+import { openLateNotices, type OpenLateNotice } from './gcLateNotices'
+import { moveReasonLabel } from './gcScheduleMoves'
 import { rfiRows, type RfiRow } from './gcBuildingRfis'
 import { waitRows, type WaitRow } from './gcScheduleWaits'
 import { companiesToTell, datesAsksOpen, untoldMoves } from './gcTellTrades'
@@ -67,18 +69,6 @@ export interface CallList {
   /** People with a day passed (a red reason). */
   late: number
   tone: PeopleTone | null
-}
-
-/**
- * A trade's word, from its portal, that a bar will be late (G-117, Helper 4's row). The call list
- * reads it once that row lands: `openLateNotices(project)` goes in `callList`'s last argument.
- */
-export interface LateNotice {
-  partnerId: string
-  lineId: string
-  /** The day they asked for. Null: none given. */
-  day: string | null
-  reason: string | null
 }
 
 const RANK: Record<PeopleTone, number> = { red: 0, amber: 1, grey: 2 }
@@ -186,7 +176,8 @@ class Rows {
       .filter((p) => theirs(p).length > 0)
       .map((p): CallPerson => {
         const merged = [...p.reasons]
-        for (const r of followUp.get(p.key)?.reasons ?? []) if (!merged.some((x) => x.text === r.text)) merged.push(r)
+        // Follow up's copy of a late notice (`code: 'late'`) is said once, by the notice's own line here.
+        for (const r of followUp.get(p.key)?.reasons ?? []) if (r.code !== 'late' && !merged.some((x) => x.text === r.text)) merged.push(r)
         const mine = merged.filter((r) => !r.aside).sort((a, b) => RANK[a.tone] - RANK[b.tone])
         const asides = merged.filter((r) => r.aside)
         const tone = mine.reduce<PeopleTone>((w, r) => (RANK[r.tone] < RANK[w] ? r.tone : w), 'grey')
@@ -429,7 +420,7 @@ function holdsOnBars(state: GcState, project: GcProject, holds: Map<string, Gant
  * (the Schedule tab's `holdsOf`, with G-77's `withNotReady`): a hold kind added to the chart reaches
  * the list with it.
  */
-export function callList(state: GcState, project: GcProject, holds: Map<string, GanttHold>, lateNotices: LateNotice[] = []): CallList {
+export function callList(state: GcState, project: GcProject, holds: Map<string, GanttHold>, lateNotices: OpenLateNotice[] = openLateNotices(project)): CallList {
   if (project.stage !== 'building' || project.closedOn || project.lostOn || !project.schedule || project.schedule.activities.length === 0) return NO_CALLS
   const today = state.today
   const m = scheduleMeasures(state, project)
@@ -442,9 +433,6 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
   })
   const rows = new Rows(state, project, (id) => order.get(id) ?? 998)
   const name = project.name
-  const noticeFor = (partnerId: string, lineId: string) => lateNotices.find((n) => n.partnerId === partnerId && n.lineId === lineId)
-  const noticeWords = (n: LateNotice | undefined) => (n ? ` They told us in their portal it will be ${n.day ? weekdayDate(n.day) : 'later'}${n.reason ? `: “${n.reason}”` : '.'}` : '')
-  const said = new Set<string>()
 
   for (const bar of bars) {
     const item = bar.item
@@ -478,12 +466,10 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
     const work = item.label
     const pct = Math.round(item.actual)
     const planned = Math.round(item.plannedToday)
-    const notice = noticeFor(partner.id, a.lineId)
     const ref = { lineId: a.lineId, packageId: item.pkg.id }
     if (bar.status === 'late') {
-      said.add(`${partner.id}:${a.lineId}`)
       rows.trade(partner, item.pkg.trade, {
-        text: `${work} is ${days(bar.daysLate)} late and ${pct}% done.${tightWords(bar)}${noticeWords(notice)}`,
+        text: `${work} is ${days(bar.daysLate)} late and ${pct}% done.${tightWords(bar)}`,
         tone: 'red',
         lineId: a.lineId,
         code: 'schedule',
@@ -494,12 +480,11 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
         },
       })
     } else if (bar.status === 'behind') {
-      said.add(`${partner.id}:${a.lineId}`)
       const due = a.finish === today
       rows.trade(partner, item.pkg.trade, {
         text: due
-          ? `${work} is due today and ${pct}% done.${tightWords(bar)}${noticeWords(notice)}`
-          : `${work} is behind: ${pct}% done against ${planned}% in the plan. It is due ${weekdayDate(a.finish)}.${tightWords(bar)}${noticeWords(notice)}`,
+          ? `${work} is due today and ${pct}% done.${tightWords(bar)}`
+          : `${work} is behind: ${pct}% done against ${planned}% in the plan. It is due ${weekdayDate(a.finish)}.${tightWords(bar)}`,
         tone: 'amber',
         lineId: a.lineId,
         code: 'schedule',
@@ -528,9 +513,8 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
       const toldDays = -daysUntil(move.toldOn, today)
       const tone: PeopleTone = daysUntil(start, today) <= CONFIRM_WITHIN_DAYS ? 'red' : toldDays >= CONFIRM_WITHIN_DAYS ? 'amber' : 'grey'
       const first = company.lines[0]
-      const notice = first ? noticeFor(company.partner.id, first.lineId) : undefined
       rows.trade(company.partner, tradeOfLine(project, first?.lineId), {
-        text: `New dates for ${said3} went out ${weekdayDate(move.toldOn)}. No answer yet.${noticeWords(notice)}`,
+        text: `New dates for ${said3} went out ${weekdayDate(move.toldOn)}. No answer yet.`,
         tone,
         ...(first ? { lineId: first.lineId } : {}),
         code: 'schedule',
@@ -610,21 +594,28 @@ export function callList(state: GcState, project: GcProject, holds: Map<string, 
     owner(ctx)
   }
 
-  // A trade's word that a bar will be late, on a bar the list says nothing about yet (G-117's slot).
+  // A trade's word from its portal that a bar will be late (G-117): one line each, in the office card's words.
   for (const n of lateNotices) {
-    if (said.has(`${n.partnerId}:${n.lineId}`)) continue
     const item = items.get(n.lineId)
     const partner = partnerById(state, n.partnerId)
     if (!item || !partner || doneIds.has(n.lineId)) continue
+    const a = item.activity
+    const was = n.started ? a.finish : a.start
+    const says = n.started ? `will finish ${weekdayDate(n.day)}, not ${weekdayDate(was)}` : `can start ${weekdayDate(n.day)}, not ${weekdayDate(was)}`
     rows.trade(partner, item.trade, {
-      text: `They told us in their portal that ${item.label} will be late. They gave ${n.day ? weekdayDate(n.day) : 'no day'}.${n.reason ? ` Why: “${n.reason}”` : ''}`,
-      tone: 'amber',
+      text: `${partner.company} says ${item.label} ${says}: ${moveReasonLabel(n.reason).toLowerCase()}.${n.note ? ` “${n.note}”` : ''}`,
+      // Red once the day it changes has passed with no answer from us, as Follow up has it.
+      tone: was < today ? 'red' : 'amber',
       lineId: n.lineId,
       code: 'schedule',
       call: { kind: 'notice', lineId: n.lineId, ...(item.pkg ? { packageId: item.pkg.id } : {}) },
       words: {
-        en: { about: `your ${workWords(item.trade, item.label)} on ${name}`, detail: `You told us it will be late${n.day ? `, ${weekdayDate(n.day)}` : ''}`, ask: 'Can we talk through the new day?' },
-        es: { about: `su trabajo de ${inSentence(item.label)} en ${name}`, detail: `Nos dijo que va a tardar${n.day ? `, hasta el ${pWeekday('es', n.day)}` : ''}`, ask: '¿Podemos hablar del nuevo día?' },
+        en: { about: `your ${workWords(item.trade, item.label)} on ${name}`, detail: `You told us it ${says}`, ask: 'Can we talk through the new day?' },
+        es: {
+          about: `su trabajo de ${inSentence(item.label)} en ${name}`,
+          detail: n.started ? `Nos dijo que termina el ${pWeekday('es', n.day)} y no el ${pWeekday('es', was)}` : `Nos dijo que puede empezar el ${pWeekday('es', n.day)} y no el ${pWeekday('es', was)}`,
+          ask: '¿Podemos hablar del nuevo día?',
+        },
       },
     })
   }
@@ -647,7 +638,7 @@ export function callSheetId(person: ProjectPerson): string {
  * item for each reason from the schedule, ticked when red or amber. `alsoLineId`: an opened bar's
  * company that is not on the list gets a row with that bar, so its Call and Follow up still work.
  */
-export function callListFollowPeople(state: GcState, project: GcProject, holds: Map<string, GanttHold>, alsoLineId?: string | null, lateNotices: LateNotice[] = []): FollowPerson[] {
+export function callListFollowPeople(state: GcState, project: GcProject, holds: Map<string, GanttHold>, alsoLineId?: string | null, lateNotices: OpenLateNotice[] = openLateNotices(project)): FollowPerson[] {
   const list = callList(state, project, holds, lateNotices)
   const jobs = new Map(projectFollowPeople(state, project).map((fp) => [fp.partner.id, fp]))
   const labels = new Map(scheduleMeasures(state, project).items.map((i) => [i.activity.lineId, i.label]))

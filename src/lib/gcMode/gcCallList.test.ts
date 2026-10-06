@@ -10,13 +10,14 @@ import type { GanttHold } from './gcGantt'
 import { rfiRows } from './gcBuildingRfis'
 import { submittalHolding, submittalNeededBy } from './gcBuildingSubmittals'
 import { waitHolds } from './gcScheduleWaits'
+import { withNotReady } from './gcNotReady'
 import { followUpDraft } from './gcFollowUpSheet'
 import { barCaller, callList, callListCallActions, callListFollowPeople, callListTitle, type CallPerson } from './gcCallList'
 
 const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
 
-/** The chart's holds the way the Schedule tab draws them (`holdsOf` in GcBuildingSchedule.tsx). */
+/** The chart's holds the way the Schedule tab draws them (`holdsOf` in GcBuildingSchedule.tsx, then G-77's `withNotReady`). */
 function holdsOf(state: GcState, project: GcProject): Map<string, GanttHold> {
   const holds = new Map<string, GanttHold>()
   for (const r of rfiRows(state, project)) {
@@ -30,7 +31,7 @@ function holdsOf(state: GcState, project: GcProject): Map<string, GanttHold> {
     holds.set(a.lineId, { kind: 'submittal', words: `submittal ${s.number}`, late: needed !== null && needed < state.today })
   }
   for (const [lineId, hold] of waitHolds(state, project)) if (!holds.has(lineId)) holds.set(lineId, hold)
-  return holds
+  return withNotReady(holds, state, project)
 }
 
 const listOf = (state: GcState) => callList(state, job(state), holdsOf(state, job(state)))
@@ -75,6 +76,9 @@ describe('the call list on the fixture (Fair Oaks D, Fri Oct 2)', () => {
       '● red Their insurance ran out Sep 15.',
       '● amber Panels and feeders is due today and 80% done.',
       '● amber Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.',
+      // G-77: a trade whose insurance ran out is not ready to start its next bars.
+      '● amber Fire alarm waits on current insurance.',
+      '● amber Site lighting waits on current insurance.',
       '● amber The unconditional waiver on draw 1 has not come.',
       '○ grey Fire alarm waits on submittal 28 31 11-01. It is with the architect.',
     ])
@@ -121,14 +125,27 @@ describe('the call list on the fixture (Fair Oaks D, Fri Oct 2)', () => {
 })
 
 describe('any hold on a bar reaches whoever owes it', () => {
-  it('a kind the chart adds later goes to the trade doing the bar, worded as the chart words it (G-77)', () => {
+  it('a kind the list does not know goes to the trade doing the bar, worded as the chart words it', () => {
     const s = initialGcState()
     const holds = holdsOf(s, job(s))
     const tab = lineOf(s, 'Test and balance')
-    holds.set(tab, { kind: 'paperwork' as GanttHold['kind'], words: 'current insurance, theirs ran out Sep 15', late: true })
+    holds.set(tab, { kind: 'crane' as GanttHold['kind'], words: 'the crane, booked for Oct 30', late: true })
     const breeze = callList(s, job(s), holds).people.find((p) => p.company === 'Cool Breeze Mechanical')!
     const r = breeze.reasons.find((x) => x.lineId === tab)!
-    expect([r.tone, r.text, r.call?.kind, r.call?.hold]).toEqual(['red', 'Test and balance waits on current insurance, theirs ran out Sep 15.', 'held', 'paperwork'])
+    expect([r.tone, r.text, r.call?.kind, r.call?.hold]).toEqual(['red', 'Test and balance waits on the crane, booked for Oct 30.', 'held', 'crane'])
+  })
+
+  it('G-77’s paperwork names the trade’s papers, and the hold it folds in still reaches its own owner', () => {
+    const s = initialGcState()
+    const fireAlarm = lineOf(s, 'Fire alarm')
+    // The chart folds both into one pill on the bar.
+    expect(holdsOf(s, job(s)).get(fireAlarm)).toEqual({ kind: 'paperwork', words: 'current insurance and submittal 28 31 11-01', late: false })
+    const pecan = person(s, 'Pecan Valley Electric')!
+    expect(pecan.reasons.filter((r) => r.lineId === fireAlarm).map((r) => `${r.aside ? '○' : '●'} ${r.text}`)).toEqual([
+      '● Fire alarm waits on current insurance.',
+      '○ Fire alarm waits on submittal 28 31 11-01. It is with the architect.',
+    ])
+    expect(person(s, 'Marsh & Vale Architects')!.reasons.some((r) => r.lineId === fireAlarm && r.text.startsWith('Submittal 28 31 11-01 holds Fire alarm'))).toBe(true)
   })
 
   it('a late wait under a submittal or an RFI still reaches its owner: the delivery is Cool Breeze’s though RFI-003 has the bar', () => {
@@ -207,6 +224,8 @@ describe('the Follow up sheet walks the same list', () => {
       'schedule* Electrical service inspection · Fair Oaks Shops, Building D',
       'schedule* Panels and feeders · Fair Oaks Shops, Building D',
       'schedule* Lighting · Fair Oaks Shops, Building D',
+      'schedule* Fire alarm · Fair Oaks Shops, Building D',
+      'schedule* Site lighting · Fair Oaks Shops, Building D',
     ])
     const architect = people[4]!
     expect(architect.items.map((i) => `${i.due ? '*' : ''}${i.label}`)).toEqual(['RFI-003 · Fair Oaks Shops, Building D', 'Submittal 28 31 11-01 · Fair Oaks Shops, Building D'])
@@ -303,17 +322,32 @@ describe('the opened bar’s company (pick 1)', () => {
   })
 })
 
-describe('a trade’s word that a bar will be late, once G-117 lands', () => {
-  it('rides on the bar’s own line, or makes one', () => {
-    const s = initialGcState()
-    const notices = [
-      { partnerId: 'summit', lineId: lineOf(s, 'TPO membrane'), day: '2026-10-14', reason: 'Rain all week.' },
-      { partnerId: 'coolbreeze', lineId: lineOf(s, 'Ductwork'), day: '2026-10-19', reason: null },
-    ]
-    const list = callList(s, job(s), holdsOf(s, job(s)), notices)
-    const summit = list.people.find((p) => p.company === 'Summit Roofing')!
-    expect(summit.reasons[0]?.text).toBe('TPO membrane is behind: 50% done against 100% in the plan. It is due Fri Oct 9. They told us in their portal it will be Wed Oct 14: “Rain all week.”')
-    const breeze = list.people.find((p) => p.company === 'Cool Breeze Mechanical')!
-    expect(breeze.reasons.find((r) => r.call?.kind === 'notice')?.text).toBe('They told us in their portal that Ductwork will be late. They gave Mon Oct 19.')
+describe('a trade’s word from its portal that a bar will be late (G-117)', () => {
+  const sayLate = (s: GcState, partnerId: string, label: string, day: string, note: string) =>
+    gcReducer(s, { type: 'tradeSayLate', projectId: ID, partnerId, lineId: lineOf(s, label), day, reason: 'materials', note })
+
+  it('is a line of its own under the company, in the office card’s words, said once', () => {
+    const s = sayLate(initialGcState(), 'summit', 'TPO membrane', '2026-10-14', 'The membrane is backordered.')
+    const summit = person(s, 'Summit Roofing')!
+    const line = summit.reasons.find((r) => r.call?.kind === 'notice')!
+    expect([line.tone, line.text, line.lineId]).toEqual(['amber', 'Summit Roofing says TPO membrane will finish Wed Oct 14, not Fri Oct 9: materials. “The membrane is backordered.”', lineOf(s, 'TPO membrane')])
+    // Follow up has the same notice: not said twice.
+    expect(summit.reasons.filter((r) => r.text.includes('Wed Oct 14')).length).toBe(1)
+    expect(plainWordsFailures(ownWords(line.text))).toEqual([])
+  })
+
+  it('puts a company on the list by itself, with the bar to ask about', () => {
+    // The roof moved a month and Summit said yes: nothing is Summit's to answer, until it says the sheet metal will start late.
+    const { moved, move, summit } = roofMoved()
+    const told = gcReducer(moved, { type: 'tellTradesMoves', projectId: ID, moveIds: [move.id], by: 'Robert' })
+    const yes = gcReducer(told, { type: 'tradeAnswerDates', projectId: ID, partnerId: summit.id, moveId: move.id, ok: true })
+    expect(person(yes, 'Summit Roofing')).toBeUndefined()
+    const start = job(yes).schedule!.activities.find((a) => a.lineId === lineOf(yes, 'Sheet metal and flashing'))!.start
+    const late = sayLate(yes, summit.id, 'Sheet metal and flashing', addDays(start, 4), 'The flashing is backordered.')
+    expect(texts(person(late, 'Summit Roofing'))).toEqual([
+      `● amber Summit Roofing says Sheet metal and flashing can start ${weekdayDate(addDays(start, 4))}, not ${weekdayDate(start)}: materials. “The flashing is backordered.”`,
+      '○ grey Roof curbs waits on RFI-004. It is with us, needed today.',
+      '○ grey Sheet metal and flashing waits on submittal 07 62 00-01. It is with us to review, needed by Fri Oct 30.',
+    ])
   })
 })

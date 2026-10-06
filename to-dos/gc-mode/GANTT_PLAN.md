@@ -633,13 +633,17 @@ G-115, Helper 3 (mock-up `mockups/G-115.md`). `gcCallList.ts` (tested, out of th
   Follow up sheet on *What did they say?*, **Follow up** opens it on a draft, **Work the list** walks
   them all. **Hide** folds it to its first line.
 - **Who is on it.** A hired trade, for an inspection that failed on its work, a bar late, due today
-  or behind, new dates told and not answered or answered with another day, and a first day on site
-  within two weeks nobody confirmed. Whoever owes what holds a bar: the trade for its own submittal or
-  its supplier's delivery, the architect for a submittal or an RFI with them, the customer for a
-  decision. The rule goes by the hold's kind and its owner, and a kind it does not know is the
-  trade's own, worded as the chart words it. So G-77's paperwork hold reaches the trade's row as it
-  is. A hold on us, the city or the utility is a muted aside under the trade, never a row. Then
-  everything else they owe on this job (`projectPeople`) is merged under the name.
+  or behind, new dates told and not answered or answered with another day, its own word from its
+  portal that a bar will be late (G-117: *Summit Roofing says TPO membrane will finish Wed Oct 14,
+  not Fri Oct 9: materials.*), and a first day on site within two weeks nobody confirmed. Whoever
+  owes what holds a bar: the trade for its own submittal, its supplier's delivery or its papers
+  (G-77: *Fire alarm waits on current insurance.*), the architect for a submittal or an RFI with
+  them, the customer for a decision. Every hold on a bar counts, not only the one the chart's pill
+  shows: a submittal, an RFI and a wait come from their own records, any other kind from the chart's
+  map. A kind it does not know is the trade's own, worded as the chart words it. A hold on us, the
+  city or the utility is a muted aside under the trade, never a row. Then everything else they owe
+  on this job (`projectPeople`) is merged under the name, and Follow up's copy of a late notice is
+  said once.
 - **A line about a bar opens it** in the editor above the chart, and the page comes to it. The opened
   bar has its company at its foot: their word on its newest dates, **Call Marcus** and **Follow up**.
   That is picture 2 of `gantt-mockup.html`.
@@ -660,13 +664,15 @@ What the second look changed:
 - **A company that asked for another day is on the list for it.** Follow up already counts it, and
   the office owes it an answer.
 - **A line's name reads with its trade inside a message.** Alone, *your Erection* read badly.
+- **A hold the chart folds into G-77's paperwork still reaches its own owner.** The pill on Fire
+  alarm reads *current insurance and submittal 28 31 11-01*. On the list, the trade is asked for its
+  insurance, and the architect for the submittal.
 
 Not done, on purpose: these reasons are not counted on the board row, Follow up's badge or Needs you.
-That moves the golden walk's people counts, so it is the owner's call. A day given on late work under
-way is only logged with the call: G-117's late notice should be that record. `callList` takes the
-notices as its last argument, ready for `openLateNotices(project)`. The nudge for several things
-still ends *Could you send them this week?*, which is the sheet's own sentence. *A full note* reads
-right.
+That moves the golden walk's people counts, so it is the owner's call. A day given on a call about
+late work under way is only logged: whether the office's call writes G-117's late notice on the
+trade's behalf is the lead's next call. The nudge for several things still ends *Could you send them
+this week?*, which is the sheet's own sentence. *A full note* reads right.
 
 ## Status
 
