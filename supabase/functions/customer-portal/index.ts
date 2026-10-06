@@ -408,26 +408,46 @@ serve(async (req) => {
 
     // Records for an owner, on their portal (punch list #86, PR 1): the request the office offered
     // to this customer that is not yet sent — what to sign, or that they signed. Never the packet.
-    let ownerRecords: { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null } | null = null
+    let ownerRecords: { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null; sent: { on: string; downloadUrl: string | null } | null } | null = null
     {
       const { data: reqRows } = await admin
         .from('lien_owner_record_requests')
         .select('id, owner_name, property_address, file, sent_at, updated_at')
         .eq('customer_id', link.customer_id)
-        .is('sent_at', null)
         .order('updated_at', { ascending: false })
         .limit(10)
-      for (const r of (reqRows ?? []) as Array<{ id: string; owner_name: string; property_address: string; file: Record<string, unknown> | null }>) {
+      for (const r of (reqRows ?? []) as Array<{ id: string; owner_name: string; property_address: string; file: Record<string, unknown> | null; sent_at: string | null }>) {
         const f = (r.file && typeof r.file === 'object' ? r.file : {}) as Record<string, unknown>
         const offer = f.offer as { at?: string } | null | undefined
         if (!offer || typeof offer.at !== 'string') continue
         const ack = f.acknowledgment as { signedOn?: string; printedName?: string } | null | undefined
+        // Sent on their portal (PR 2 / PR 4): the packet's PDF copy, as a signed URL good for an hour. A send by
+        // another way shows nothing here: the owner has the paper.
+        const sentRec = f.sent as { at?: string; how?: string } | null | undefined
+        let sent: { on: string; downloadUrl: string | null } | null = null
+        if (r.sent_at && sentRec && sentRec.how === 'portal') {
+          const { data: copies } = await admin
+            .from('sent_documents')
+            .select('copy_path, copy_type')
+            .eq('kind', 'owner_records_packet')
+            .eq('source_table', 'lien_owner_record_requests')
+            .eq('source_id', r.id)
+            .not('copy_path', 'is', null)
+            .order('sent_at', { ascending: false })
+            .limit(1)
+          const path = ((copies ?? [])[0] as { copy_path: string | null } | undefined)?.copy_path ?? null
+          const { data: signedUrl } = path ? await admin.storage.from('sent-documents').createSignedUrl(path, 3600, { download: true }) : { data: null }
+          sent = { on: (typeof sentRec.at === 'string' ? sentRec.at : r.sent_at).slice(0, 10), downloadUrl: signedUrl?.signedUrl ?? null }
+        } else if (r.sent_at) {
+          continue
+        }
         ownerRecords = {
           id: r.id,
           address: r.property_address,
           ownerName: r.owner_name,
           offeredOn: offer.at.slice(0, 10),
           signed: ack && typeof ack.signedOn === 'string' ? { on: ack.signedOn, name: typeof ack.printedName === 'string' ? ack.printedName : '' } : null,
+          sent,
         }
         break
       }

@@ -303,9 +303,13 @@ describe('ownerRecords (punch list #86)', () => {
     const base = { customerName: 'Umar Khan', company: {}, bills: [] }
     expect(parsePortalPayload(base)!.ownerRecords).toBeNull()
     const open = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null } })!.ownerRecords
-    expect(open).toEqual({ id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null })
+    expect(open).toEqual({ id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null, sent: null })
     const signed = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'UMAR KHAN' } } })!.ownerRecords
     expect(signed?.signed).toEqual({ on: '2026-10-07', name: 'UMAR KHAN' })
     expect(parsePortalPayload({ ...base, ownerRecords: { id: '', offeredOn: '2026-10-06' } })!.ownerRecords).toBeNull()
+    // Sent on the portal (PR 4): the day and the PDF's signed URL; a bad URL reads as none.
+    const sent = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: 'a', ownerName: 'U', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'U' }, sent: { on: '2026-10-08', downloadUrl: 'https://x.supabase.co/storage/v1/object/sign/sent-documents/r1/p.pdf?token=t' } } })!.ownerRecords
+    expect(sent?.sent).toEqual({ on: '2026-10-08', downloadUrl: 'https://x.supabase.co/storage/v1/object/sign/sent-documents/r1/p.pdf?token=t' })
+    expect(parsePortalPayload({ ...base, ownerRecords: { id: 'r1', offeredOn: '2026-10-06', sent: { on: '2026-10-08', downloadUrl: 'javascript:alert(1)' } } })!.ownerRecords?.sent).toEqual({ on: '2026-10-08', downloadUrl: null })
   })
 })

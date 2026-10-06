@@ -2,7 +2,7 @@
 name: "Records for an owner, on their portal: they ask, they sign, they download"
 number: 86
 group: gated
-status: shape B picked 2026-10-06 · PR 1 built the same day (v2.4650) · PR 2 next
+status: built 2026-10-06 — PR 1 v2.4650, PRs 2 and 4 v2.4651 · delete this folder once both have merged and the first real owner has signed
 summary: >
   Today an owner's records request is worked by hand: the office puts their written request on
   file, prints the acknowledgment for them to sign, prints or downloads the packet and hands it
@@ -13,7 +13,7 @@ summary: >
   store and the records window all exist; this plugs them together. Two shapes are drawn: the
   full one (ask → sign → the papers live on the portal) and a shorter one the owner said he would
   accept (sign → download, nothing kept on the portal).
-next: PR 2, Record it as sent to the portal (the fifth way to send), then PR 4, the one Download on the signed card.
+next: Push the migration and deploy `sign-owner-records` and `customer-portal` after the merges. Then the first real owner, on a ZZ TEST request first.
 size: M (shape A, four PRs) · S–M (shape B, two PRs)
 blocker: None. Counsel approved the wording (v2.4627); the owner picked shape B.
 opinion: build shape A — the owner's own act on the portal is their request in writing, so it fills check 1 and check 4 in one sitting; shape B saves one PR and loses the record of what they got.
@@ -79,9 +79,9 @@ Stops 1 to 4 as above. At stop 5 there is no portal card: once the office presse
 ## The plan
 
 1. **PR 1 (S–M): sign on the portal — built v2.4650.** The name kernel + tests; `sign-owner-records`; the portal card's ask and signing stops; the `file` writes; the office window's **Offer it on their portal ›** and the request check's new words. Nothing is shown to the owner after signing but *Thank you. The office sends the records once it has checked our contract.*
-2. **PR 2 (S): the office sends to the portal.** `OwnerRecordsSentHow` gains `portal`; *Record it as sent* files the packet and marks it shown; the Needs you line.
+2. **PR 2 (S): the office sends to the portal — built v2.4651.** `OwnerRecordsSentHow` gains `portal`; *Record it as sent* files the packet and marks it shown; the Needs you line.
 3. **PR 3 (S–M, shape A only): Your papers.** The `owner_records` verb returns the sent packets; the portal lists them with **Download** (signed URL) and **Email it to me**; `send-owner-records-email`.
-4. **PR 4 (S, shape B instead of 3): the one Download.** The signed card shows **Download** once the office has sent.
+4. **PR 4 (S, shape B instead of 3): the one Download — built v2.4651.** The signed card shows **Download** once the office has sent.
 
 Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/EDGE_FUNCTIONS.md` section and the guide edit. The functions deploy after merge.
 
@@ -92,6 +92,8 @@ Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/
 - **Counsel approved the wording** (v2.4627). The portal acknowledgment carries the approved words.
 
 ## Where it stands
+
+**PRs 2 and 4 built 2026-10-06 (v2.4651).** *On their portal* is the fifth way to record it as sent (offered only once the records were offered there); that send files the packet as a PDF, and the owner's card shows **Download the records** with a signed URL to it. Shape B is complete.
 
 **PR 1 built 2026-10-06 (v2.4650).** `_shared/ownerNameMatch.ts`; `sign-owner-records`; `customer-portal`'s `ownerRecords`; `PortalOwnerRecordsCard`; the window's **Offer it on their portal ›** with the second name; `file.offer` and the portal `acknowledgment`; migration `20261006040000` for the consent ledger. The function deploys and the migration pushes after the merge. Not yet: PR 2 (the *On their portal* way to send) and PR 4 (the owner's Download).
 
