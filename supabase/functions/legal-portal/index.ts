@@ -13,6 +13,7 @@ import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
 import { contactGoesWithShare, contactScopeNumbers } from '../_shared/legalContactScope.ts'
 import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
+import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -20,7 +21,8 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
  * column answers only until the hash-only migration empties it; revoked → 404),
  * or, for the office, the firm by id on a signed-in session (`?firm=<id>&preview=1`,
  * `legal_office_can_read()`), and returns every matter the office marked attorney-ready
- * (legal_matters.stage in the with-firm set) with the raw records the packet
+ * (legal_matters.stage in the with-firm set — since #85 item 16 also a firm end
+ * such as settled until the office closes it, `_shared/legalStages.ts`) with the raw records the packet
  * kernel (src/lib/legal/legalPacket.ts) assembles on the page — jobs, invoices,
  * payments, the customer, each job's own property record and owner override
  * (since #85 item 6, no owner email), agreements (signed PDFs as
@@ -52,7 +54,6 @@ const corsHeaders = {
 const privateHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
 
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact the office for a new one.'
-const WITH_FIRM_STAGES = ['referred', 'demand', 'suit', 'judgment']
 /** How long a signed PDF link opens (item 22). The page reloads its payload before this runs out. */
 const SIGNED_PDF_SECONDS = 15 * 60
 
@@ -205,7 +206,7 @@ serve(async (req) => {
     const recipients = ((recRows ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: r.digest_weekday, digestTime: r.digest_time, confirmed: r.confirmed_at != null, paused: r.paused_at != null, addedViaPortal: Boolean(r.added_via_portal), failingSince: typeof r.send_failed_since === 'string' ? todayYmdInAppTz(new Date(r.send_failed_since)) : null }))
     const firmPaused = (firm as Row).paused_at != null
 
-    const { data: matterRows } = await admin.from('legal_matters').select('*').eq('firm_id', link.firm_id).in('stage', WITH_FIRM_STAGES).order('released_at')
+    const { data: matterRows } = await admin.from('legal_matters').select('*').eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
     const matters = (matterRows ?? []) as Row[]
     if (matters.length === 0) {
       return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], lienBook: await readLienBook(admin) })

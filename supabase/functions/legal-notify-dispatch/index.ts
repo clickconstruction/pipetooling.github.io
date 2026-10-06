@@ -6,6 +6,7 @@ import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
+import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 
 /**
  * The firm's emails (Legal portal train, PR 5). Two doors:
@@ -38,7 +39,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
-const WITH_FIRM = ['referred', 'demand', 'suit', 'judgment']
 
 type Row = Record<string, unknown>
 
@@ -187,7 +187,7 @@ serve(async (req) => {
         liveToken = ((linkRow as Row | null)?.token as string | null) ?? null
       }
       const portal = portalLink(liveToken)
-      const { data: matterRows } = await admin.from('legal_matters').select('id, payer_name, stage, handling_name, released_at').eq('firm_id', firm.id).in('stage', WITH_FIRM)
+      const { data: matterRows } = await admin.from('legal_matters').select('id, payer_name, stage, handling_name, released_at').eq('firm_id', firm.id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null)
       const matters = (matterRows ?? []) as Array<{ id: string; payer_name: string; stage: string; handling_name: string; released_at: string | null }>
       const matterById = new Map(matters.map((m) => [m.id, m] as const))
       const canSee = (r: Recipient, matterId: string | null) => r.scope === 'all' || !matterId || (matterById.get(matterId)?.handling_name ?? '').trim().toLowerCase() === r.name.trim().toLowerCase()

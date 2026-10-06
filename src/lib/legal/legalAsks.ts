@@ -133,7 +133,19 @@ export function legalEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal'
     const m = answerMetaOf(e.meta)
     return m.signedOff === true ? 'answer · signed off' : m.signedOff === false ? 'answer · not yet' : 'answer'
   }
+  if (stepProposalOf(e)) return 'step · asks to move the stage back'
   return e.kind.replace('_', ' ')
+}
+
+/**
+ * A firm step that would have moved the stage backward (#85 item 16): recorded,
+ * stage unchanged, waiting on the office. `submit-legal-portal` writes
+ * `meta.proposed = true` with the stage it asked for (`meta.stage`) and the one
+ * it found (`meta.from`). Null on any other entry.
+ */
+export function stepProposalOf(e: Pick<LegalEntryRow, 'kind' | 'meta'>): { stage: string; from: string } | null {
+  if (e.kind !== 'step' || !isRecord(e.meta) || e.meta.proposed !== true) return null
+  return { stage: typeof e.meta.stage === 'string' ? e.meta.stage : '', from: typeof e.meta.from === 'string' ? e.meta.from : '' }
 }
 
 export type LegalSignoffState = { state: 'none' | 'asked' | 'signed_off' | 'declined'; on: string; askId: string | null }

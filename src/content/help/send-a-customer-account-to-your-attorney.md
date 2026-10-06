@@ -58,13 +58,14 @@ On the portal's **Fees & steps**, the firm adds fees and costs. The firm records
 
 - A **question**: you answer it inline, in the desk's conversation table. The answer shows under the question on their portal too. The answer also emails the people who chose right away.
 - A **fee, cost or step**: you press {{button:outline|Acknowledge}}. Steps move the account's stage on the Pipeline row chip.
+- A **step that would move the stage back**: a demand after a judgment, say. The step is recorded, but the stage stays put. Press **Keep** to leave it there.
 - A **payment received**: you apply it on the job with {{button:outline|Mark Paid}}. Then you press {{button:outline|Mark applied}} on the desk. The recovery and the firm's contingency are recorded on the matter.
 
 The firm never marks anything paid, edits a job, or emails the customer through Click.
 
 ## 8. How it ends
 
-- **Settled**: the firm records the step. The matter closes as {{chip:gray|Settled}} the moment the firm records that step.
+- **Settled**: the firm records the step. The matter stays on their portal, so they can record the payment and their last costs. The Pipeline chip reads *settled · close it*. Once the money is applied, press {{button:dark|Close the matter…}} on the desk. It then shows as {{chip:gray|Settled}}.
 - **Written down**: {{button:outline|Write down…}} on the desk records the agreed write-down on the largest open bill line. A write-down is the part of the balance we agree to give up. Write down… then closes the matter as {{chip:gray|Written down}}.
 - **Pulled back**: a dev's {{button:outline|Pull back}} returns the account to review. The account leaves the portal the next time the firm opens it. The firm's email says *Referral withdrawn*. The firm's fees and steps stay on the record.
 

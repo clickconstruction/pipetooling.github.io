@@ -3,8 +3,8 @@
  * words are tested here and the page only picks which to show.
  */
 
-/** What `submit-legal-portal` answers; `confirmationSent` rides the people acts that email a confirmation. */
-export type LegalActAnswer = { ok?: boolean; error?: string; confirmationSent?: boolean }
+/** What `submit-legal-portal` answers; `confirmationSent` rides the people acts that email a confirmation; `notice` says when a step did not move the stage (#85 item 16). */
+export type LegalActAnswer = { ok?: boolean; error?: string; confirmationSent?: boolean; notice?: string }
 
 /**
  * After adding a person (or resending their confirmation): a confirmation that did not go is said,

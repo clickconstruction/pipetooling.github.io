@@ -8,8 +8,10 @@
  */
 import { LEGAL_DEFAULT_FEE, type LegalFeeModel } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { LEGAL_ACTIVE_STAGES, LEGAL_END_STAGES, LEGAL_STAGE_LIST, legalMatterOnPortal } from '../../../supabase/functions/_shared/legalStages'
 
-export const LEGAL_STAGES = ['review', 'referred', 'demand', 'suit', 'judgment', 'settled', 'written_down', 'pulled'] as const
+/** One list with the functions (#85 item 16): `supabase/functions/_shared/legalStages.ts`. */
+export const LEGAL_STAGES = LEGAL_STAGE_LIST
 export type LegalStage = (typeof LEGAL_STAGES)[number]
 
 export type LegalFirmRow = {
@@ -71,27 +73,57 @@ export function legalStageLabel(stage: string | null | undefined): string {
     case 'demand': return 'With the firm · demand sent'
     case 'suit': return 'With the firm · suit filed'
     case 'judgment': return 'With the firm · judgment'
+    case 'post_judgment': return 'With the firm · after judgment'
+    case 'payment_plan': return 'With the firm · payment plan'
     case 'settled': return 'Settled'
+    case 'uncollectible': return 'Uncollectible'
+    case 'dismissed': return 'Dismissed'
     case 'written_down': return 'Written down'
     case 'pulled': return 'Pulled back'
     default: return 'Under review'
   }
 }
 
-/** True while a firm can see the matter (PR 3 reads the same rule server-side). */
+/** The firm is working the stage (referred through a payment plan). The portal's rule adds the open ends: see `matterIsWithFirm`. */
 export function stageIsWithFirm(stage: string | null | undefined): boolean {
-  return stage === 'referred' || stage === 'demand' || stage === 'suit' || stage === 'judgment'
+  return (LEGAL_ACTIVE_STAGES as readonly string[]).includes(stage ?? '')
 }
 
+/** One of the firm's ends: settled · uncollectible · dismissed (#85 item 16). */
+export function stageIsFirmEnd(stage: string | null | undefined): boolean {
+  return (LEGAL_END_STAGES as readonly string[]).includes(stage ?? '')
+}
+
+/**
+ * The firm sees the matter and may act on it: a working stage, or an end the
+ * office has not closed yet (#85 item 16 — a settled matter stays open for the
+ * check and the last costs). The same rule `legal-portal` reads.
+ */
+export function matterIsWithFirm(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return m ? legalMatterOnPortal(m) : false
+}
+
+/** The firm reached an end the office still has to close. */
+export function matterAwaitsClose(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return Boolean(m && stageIsFirmEnd(m.stage) && !m.closed_at)
+}
+
+/** Closed for good: written down, or an end the office closed. */
+export function matterIsClosed(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return Boolean(m && (m.stage === 'written_down' || (stageIsFirmEnd(m.stage) && m.closed_at)))
+}
+
+/** Stage alone, for callers without the row: written down or a firm end. Prefer `matterIsClosed`, which tells an open settlement from a closed one. */
 export function stageIsClosed(stage: string | null | undefined): boolean {
-  return stage === 'written_down' || stage === 'settled'
+  return stage === 'written_down' || stageIsFirmEnd(stage)
 }
 
 /** The row chip on the Pipeline: nothing while an account is simply under review; a chip once the office asked for a dev or the firm has it. */
 export function legalRowChip(matter: LegalMatterRow | null | undefined): { label: string; tone: 'blue' | 'legal' | 'neutral' } | null {
   if (!matter) return null
   if (stageIsWithFirm(matter.stage)) return { label: `⚖ ${legalStageLabel(matter.stage).replace('With the firm · ', '')}`, tone: 'legal' }
-  if (stageIsClosed(matter.stage)) return { label: `⚖ ${legalStageLabel(matter.stage)}`, tone: 'neutral' }
+  if (matterAwaitsClose(matter)) return { label: `⚖ ${legalStageLabel(matter.stage).toLowerCase()} · close it`, tone: 'legal' }
+  if (matterIsClosed(matter)) return { label: `⚖ ${legalStageLabel(matter.stage)}`, tone: 'neutral' }
   if (matter.review_requested_at) return { label: '⚖ review requested', tone: 'blue' }
   return null
 }
@@ -185,9 +217,9 @@ export function buildLegalReview(
   const byKey = new Map(matters.map((m) => [m.payer_key, m] as const))
   const under = accounts.filter((a) => {
     const m = byKey.get(a.key)
-    return !m || (!stageIsWithFirm(m.stage) && !stageIsClosed(m.stage))
+    return !m || (!matterIsWithFirm(m) && !matterIsClosed(m))
   })
-  const withFirm = accounts.filter((a) => stageIsWithFirm(byKey.get(a.key)?.stage)).length
+  const withFirm = accounts.filter((a) => matterIsWithFirm(byKey.get(a.key))).length
   const requested = under
     .filter((a) => byKey.get(a.key)?.review_requested_at)
     .map((a) => {
