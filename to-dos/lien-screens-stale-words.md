@@ -1,22 +1,21 @@
 ---
 name: "Lien screens: the app's own words that are stale"
 number: 87
-group: ready
-status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; N added 2026-10-06 · shipped: E and F v2.4675, I v2.4659, M v2.4679 (waiting for a live look) · of the four held as the owner's decisions, C shipped v2.4661 and D v2.4674, A rides on the legal-portal train's #4637, and B shipped v2.4666 (the owner chose the tick on and the courtesy-copy wording)
+group: gated
+status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; N added 2026-10-06 · shipped: E and F v2.4675, I v2.4659, J v2.4697, N v2.4698, M v2.4679 (waiting for a live look) · of the four held as the owner's decisions, C shipped v2.4661 and D v2.4674, A rides on the legal-portal train's #4637, and B shipped v2.4666 (the owner chose the tick on and the courtesy-copy wording)
 summary: >
-  Nine open places on the lien screens (E to L, and N) where the app's own words promise something the app does not do,
-  name a rule it no longer follows, or lose the leader the office picked. The help guides were patched
-  to say what the app does today; these are the app's side, kept here so they are not lost. E, F and J
-  are wording and N is a small fix; G, H, I and K need the owner's call; L was built as option B (v2.4708). M is fixed and waits for a
-  live look.
+  Three open places on the lien screens (G, H and K) where the app's own words promise something the
+  app does not do or name a rule it no longer follows. The help guides were patched to say what the app
+  does today; these are the app's side, kept here so they are not lost. All three need the owner's call.
+  E, F, I, J and N shipped; L was built as option B (v2.4708); M is fixed and waits for a live look; A
+  rides on the legal-portal train.
 next: >
-  J (one sentence) and N (save the Signs pick with the draft) as small PRs. A lands with #4637.
-  G, H, K and L wait on the owner, L also on counsel. M: confirm it on a
+  G, H, K and L wait on the owner, L also on counsel. A lands with #4637. M: confirm it on a
   waiting waiver live, then delete it. As each lands, the guide sentences held for it are made true
   or rewritten (the guide PRs v2.4614, v2.4617, v2.4620 and v2.4623 list them).
 size: XS each
-blocker: None for J and N. G, H, K and L wait on the owner (L also on counsel); A on #4637.
-opinion: build E, F, J and N — each is small; G, H, I and K are your call.
+blocker: G, H and K wait on the owner; A on #4637; M on a live look.
+opinion: G, H and K are your call — K has a deadline in it, and the earlier date is the safe one.
 mockup: not required — words and one focus on screens that exist
 ---
 
@@ -32,7 +31,7 @@ This card was first numbered #85. The legal-portal train had already named its c
 
 ## Where each item stands (2026-10-06)
 
-- **Shipped:** E and F (v2.4675), I (v2.4659), M (v2.4679, still to be seen live). Of the four
+- **Shipped:** E and F (v2.4675), I (v2.4659), J (v2.4697), N (v2.4698), M (v2.4679, still to be seen live). Of the four
   decisions held in the guide PRs, the owner chose on 2026-10-06 to fix the app for all four:
   C (*Cancel request* unlocks a waiver its own request minted) shipped in v2.4661, D (*Issue
   unconditional* selects every covered bill) in v2.4674, and B (the GC's courtesy PDF from the run)
@@ -40,7 +39,6 @@ This card was first numbered #85. The legal-portal train had already named its c
   copy.
 - **In other hands:** A (a fee or cost the firm adds can be acknowledged) is built into the
   legal-portal train's #4637, which rewrites the Legal desk's fees table.
-- **Ready:** J and N.
 - **The owner's calls:** G, H, K and L (L also counsel's).
 
 ## The items
@@ -86,7 +84,7 @@ This card was first numbered #85. The legal-portal train had already named its c
 - `src/lib/jobs/billedDatesLedger.ts:107` is the hover.
 - `src/lib/jobs/lienPayRunway.ts:266` dates the lien row from the last work month (`lienByForJob(lastWork, …)`).
 - The guide *read the Pipeline's money view* says the pay estimate counts from the bill date since v2.4623 (#4616).
-- Fix: say the pay estimate starts there, not every clock.
+- Fix: say the pay estimate starts there, not every clock. Shipped in v2.4697: the hover reads *the day the pay estimate below counts from*.
 
 **K. With the property kind unset, the runway and the Lien window give different dates.** When a property's kind is not set, the Billed row's lien runway shows the residential date, a month earlier, as an assumption. The job's Lien window shows the commercial dates and says *Commercial dates shown — a residential property is a month earlier.*
 
@@ -115,4 +113,4 @@ This card was first numbered #85. The legal-portal train had already named its c
 - A resumed draft keeps its saved Signed by line, because the prefill rebuild stays off for it (v2.2619). So the line and the pick can name two people.
 - A draft that **Cancel request** turned back keeps the asked leader's `signer_user_id`. v2.4679 seeds the pick only for a waiting request, so that draft reopens on the default too.
 - Fix: save the pick with the draft. Or, on resume, take the leader whose name matches the saved Signed by line. Saving it would not put the draft in a leader's list, because `useLienSignatureLanes` (`src/hooks/useLienSignatureLanes.ts`) reads only waiting and signed rows.
-- Found 2026-10-06 by the second read of v2.4679.
+- Found 2026-10-06 by the second read of v2.4679. Shipped in v2.4698: the draft's autosave saves the Signs pick, a resumed draft opens on it, a saved leader off the list gives way to the default, and on a draft the pick is the signer of record. *give a customer a lien release* and *send a GC our lien waiver* say a draft keeps the leader you picked.
