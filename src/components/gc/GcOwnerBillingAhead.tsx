@@ -122,7 +122,7 @@ export function GcOwnerBillingAhead({ state }: { state: GcState }) {
           <div>
             After {shortDate(lastWeek.end)}:{' '}
             {a.later
-              .map((m) => `${m.dir === 'in' ? `in ${money(m.amount)} from ${m.who}` : `out ${money(m.amount)} to ${m.who}`} ${shortDate(m.on)}${m.expected ? ', expected' : ''}`)
+              .map((m) => `${m.dir === 'in' ? `in ${money(m.amount)} from ${m.who}` : `out ${money(m.amount)} to ${m.who}`} ${shortDate(m.on)}${m.expected ? (m.billOn ? (m.dir === 'in' ? `, the ${billDayWords(m)} bill, expected` : `, for the work by ${billDayWords(m)}, expected`) : ', expected') : ''}`)
               .join('; ')}
             .
           </div>
