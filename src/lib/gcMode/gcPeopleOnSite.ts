@@ -6,8 +6,8 @@
  * - **The plan** counts each trade once on each day one of its bars runs by the plan's own dates
  *   (not G-60's `runsOn`: a late bar not done would otherwise fill every week ahead; the log is what
  *   shows a late bar's crew while it is still there). Each trade's number, in order: its own count
- *   for the week (G-142, the `told` argument, empty until G-142 merges), else the daily log's last
- *   count for it, else ASSUMED_CREW, named on the strip. Our own crew counts like any trade;
+ *   for the week (G-142's `crewCountsNow`, the `told` argument), else the daily log's last count for
+ *   it, else ASSUMED_CREW, named on the strip. Our own crew counts like any trade;
  *   inspections and added activities have no crew.
  * - **The log**: each week's busiest logged day, its total of every crew, with how many days were
  *   logged. Days without a log are not guessed.
@@ -15,6 +15,7 @@
  * Whole job, whatever the chart filters or folds. Its own file, out of the barrel.
  */
 import type { DailyLog, GcProject, GcState, TradePackage } from './gcTypes'
+import type { CrewCountNow } from './gcCrewCounts'
 import { addDays } from './gcBuilding'
 import { mondayOf, scheduleItems } from './gcBuildingSchedule'
 import { partnerById } from './gcLookups'
@@ -24,15 +25,6 @@ import { weekdayDate } from './gcWords'
 export const ASSUMED_CREW = 3
 /** A week is short when its busiest logged day has this many people fewer than the plan's busiest day. */
 export const SHORT_BY = 3
-
-/** G-142's record, by shape: a trade's own count for a week, read from `crewCountsNow(project)` once it merges. */
-export interface TradeCount {
-  packageId: string
-  partnerId: string | null
-  weekOf: string
-  count: number
-  on: string
-}
 
 /** Where a trade's number came from: its own word (G-142), the daily log's last count, or the assumption. */
 export type CountFrom = 'told' | 'log' | 'assumed'
@@ -61,7 +53,7 @@ function companyOf(state: GcState, pkg: TradePackage): string {
 }
 
 /** Every week from the one holding `from` to the one holding `to`, Monday to Sunday: the plan's and the log's busiest day. */
-export function peopleOnSite(state: GcState, project: GcProject, from: string, to: string, told: TradeCount[] = []): PeopleWeek[] {
+export function peopleOnSite(state: GcState, project: GcProject, from: string, to: string, told: CrewCountNow[] = []): PeopleWeek[] {
   if (!project.schedule) return []
   const items = scheduleItems(state, project).filter((it) => it.pkg && !it.activity.inspection && !it.activity.added)
   const logs = [...(project.dailyLogs ?? [])].filter((l) => l.date <= state.today).sort((a, b) => a.date.localeCompare(b.date))
@@ -71,7 +63,8 @@ export function peopleOnSite(state: GcState, project: GcProject, from: string, t
   const out: PeopleWeek[] = []
   for (let week = mondayOf(from); week <= to; week = addDays(week, 7)) {
     const countOf = (packageId: string): { count: number; from: CountFrom } => {
-      const own = told.filter((c) => c.packageId === packageId && c.weekOf === week).sort((a, b) => b.on.localeCompare(a.on))[0]
+      // `crewCountsNow` keeps one count a trade and week, its newest.
+      const own = told.find((c) => c.packageId === packageId && c.weekOf === week)
       if (own) return { count: own.count, from: 'told' }
       const last = lastLog.get(packageId)
       return last !== undefined ? { count: last, from: 'log' } : { count: ASSUMED_CREW, from: 'assumed' }

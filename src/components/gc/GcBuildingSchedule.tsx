@@ -53,6 +53,7 @@ import { lateNoticeTails } from '../../lib/gcMode/gcLateNotices'
 import { logChartGaps, logChartNotes } from '../../lib/gcMode/gcLogVsChart'
 import { uninsuredNotes } from '../../lib/gcMode/gcNotReady'
 import { peopleOnSite } from '../../lib/gcMode/gcPeopleOnSite'
+import { crewCountsNow } from '../../lib/gcMode/gcCrewCounts'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gcMode/gcAddedActivity'
 import { actualProblem, actualWords } from '../../lib/gcMode/gcActualDates'
 import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gcMode/gcBaseline'
@@ -132,8 +133,8 @@ export function GcBuildingScheduleTab({ state, project, dispatch }: GcPaneProps)
   const calls = useMemo(() => (project.stage === 'building' ? callList(state, project, holds) : null), [state, project, holds])
   // The Follow up sheet on that list; `lineId` is an opened bar's, so its company is on it.
   const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean; lineId?: string } | null>(null)
-  // People on site per week (G-84), for the chart's strip. A trade's own count (G-142's crewCountsNow) joins once G-142 merges.
-  const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to), [state, project])
+  // People on site per week (G-84), for the chart's strip. A trade's own count for a week (G-142) comes first.
+  const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to, crewCountsNow(project)), [state, project])
   const planOf = useCallback(
     (lineId: string, start: string, finish: string) => {
       const plan = planMove(project, lineId, start, finish)

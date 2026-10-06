@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { initialGcState } from './gcFixture'
+import { gcReducer } from './gcReducer'
 import { plainWordsFailures } from '../plainWords'
 import type { DailyLog, GcState } from './gcTypes'
-import { ASSUMED_CREW, SHORT_BY, peopleOnSite, type TradeCount } from './gcPeopleOnSite'
+import { crewCountsNow } from './gcCrewCounts'
+import { ASSUMED_CREW, SHORT_BY, peopleOnSite } from './gcPeopleOnSite'
 
 /** Fair Oaks Shops, Building D; the made-up today is Fri Oct 2, and the daily log runs Sep 21 to Oct 1. */
 const fairOaks = (state: GcState) => state.projects.find((p) => p.id === 'fairoaksd')!
-const weeksOf = (state: GcState, from: string, to: string, told?: TradeCount[]) => peopleOnSite(state, fairOaks(state), from, to, told)
+/** Each week as the office's Schedule tab reads it: with every trade's own count G-142 holds. */
+const weeksOf = (state: GcState, from: string, to: string) => peopleOnSite(state, fairOaks(state), from, to, crewCountsNow(fairOaks(state)))
+/** Summit Roofing says, from its portal, how many a day it will have on the roof the week of `weekOf` (G-142). */
+const summitSays = (state: GcState, weekOf: string, count: number) => gcReducer(state, { type: 'tradeSetCrewCount', projectId: 'fairoaksd', partnerId: 'summit', packageId: 'froof', weekOf, count })
 
 describe('people on site per week (G-84)', () => {
   it('reads Fair Oaks D: the plan’s busiest day against the daily log’s, week by week', () => {
@@ -69,14 +74,23 @@ describe('people on site per week (G-84)', () => {
     expect(sep28?.planned.by.map((b) => b.company)).not.toContain('The city')
   })
 
-  it('takes a trade’s own count for its week first, when G-142 gives one', () => {
-    const told: TradeCount[] = [{ packageId: 'froof', partnerId: 'summit', weekOf: '2026-10-05', count: 6, on: '2026-10-02' }]
-    const [oct5, oct12] = weeksOf(initialGcState(), '2026-10-05', '2026-10-12', told)
+  it('takes a trade’s own count for its week over the daily log’s last count (G-142)', () => {
+    // Nobody has given a count on the made-up job: Summit's 4 is the log's, from Thu Oct 1.
+    const [before] = weeksOf(initialGcState(), '2026-10-05', '2026-10-05')
+    expect(before?.planned.count).toBe(12)
+    expect(before?.planned.by.find((b) => b.company === 'Summit Roofing')).toMatchObject({ count: 4, from: 'log' })
+    // Summit says 6 a day for the week of Oct 5, from its portal.
+    const said = summitSays(initialGcState(), '2026-10-05', 6)
+    const [oct5, oct12] = weeksOf(said, '2026-10-05', '2026-10-12')
     expect(oct5?.planned.count).toBe(14)
     expect(oct5?.planned.by.find((b) => b.company === 'Summit Roofing')).toMatchObject({ count: 6, from: 'told' })
+    expect(oct5?.rows.find((r) => r.label === 'Who')?.text).toContain('Summit Roofing 6, its own count')
     expect(oct5?.rows.find((r) => r.label === 'Counts')?.text).toBe("A trade's own count for the week comes first, then the daily log's last count. A trade with no count yet is counted as 3.")
-    // Another week falls back to the log.
+    // Only for its own week: the week after falls back to the log's 4.
     expect(oct12?.planned.by.find((b) => b.company === 'Summit Roofing')).toMatchObject({ count: 4, from: 'log' })
+    // A cut counts as the newest word: down to 2, the week reads 2.
+    const [cut] = weeksOf(summitSays(said, '2026-10-05', 2), '2026-10-05', '2026-10-05')
+    expect(cut?.planned.by.find((b) => b.company === 'Summit Roofing')).toMatchObject({ count: 2, from: 'told' })
   })
 
   it('reads a week short when its busiest logged day falls SHORT_BY or more below the plan', () => {
@@ -91,8 +105,7 @@ describe('people on site per week (G-84)', () => {
   })
 
   it('says every sentence in plain words', () => {
-    const told: TradeCount[] = [{ packageId: 'froof', partnerId: 'summit', weekOf: '2026-10-05', count: 6, on: '2026-10-02' }]
-    const weeks = [...weeksOf(initialGcState(), '2026-07-20', '2026-10-26', told)]
+    const weeks = weeksOf(summitSays(initialGcState(), '2026-10-05', 6), '2026-07-20', '2026-10-26')
     const sentences = weeks.flatMap((w) => w.rows.filter((r) => r.label !== 'Who').map((r) => r.text))
     expect(sentences.length).toBeGreaterThan(30)
     expect(sentences.flatMap(plainWordsFailures)).toEqual([])
