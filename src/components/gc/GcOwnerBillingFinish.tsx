@@ -2,6 +2,7 @@ import { useState, type Dispatch } from 'react'
 import { Btn, Card, Chip, input } from './gcUi'
 import { money, shortDate, type GcAction, type GcProject, type GcState } from '../../lib/gcMode/gcModel'
 import { lateFinish } from '../../lib/gcMode/gcLateFinish'
+import { GcAskForDays } from './GcAskForDays'
 
 /**
  * GC mode design spike: the finish date against the owner contract, on Bill the owner (owner's
@@ -55,6 +56,8 @@ export function GcOwnerBillingFinish({ state, project, dispatch }: { state: GcSt
         )}
         {/* Whose late days they are, and the change orders that moved the contract or would (G-98): the Schedule tab's same lines. */}
         {late.split && <div style={{ color: 'var(--text-red-700)' }}>{late.split}</div>}
+        {/* Ask for the days (G-141): the time extension goes to Change orders below as a draft. */}
+        {late.ask && <GcAskForDays ask={late.ask} where="bill" onAsk={() => dispatch({ type: 'draftTimeExtension', projectId: project.id })} />}
         {late.orderLines.map((w) => (
           <div key={w}>{w}</div>
         ))}

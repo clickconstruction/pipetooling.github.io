@@ -41,6 +41,7 @@ import {
   type OwnerPayAppSent,
 } from '../../lib/gcMode/gcModel'
 import { GcWeeklyReportsForCustomer } from './GcBuildingWeekly'
+import { isTimeExtension, timeExtensionRule } from '../../lib/gcMode/gcTimeExtension'
 
 /** The portal's paper look, the same as the trade's portal: it stays light in both themes. */
 const INK = '#16283c'
@@ -216,9 +217,15 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
                     <strong>Change order {co.number}</strong>
                     <span style={{ flex: 1 }} />
-                    <strong>{`${co.price < 0 ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
+                    {/* A time extension (G-141): days only, and the rule in their words under it. */}
+                    {isTimeExtension(co) ? (
+                      <span style={{ color: 'var(--text-muted)' }}>no change to your price</span>
+                    ) : (
+                      <strong>{`${co.price < 0 ? '−' : '+'}${money(Math.abs(co.price))}`}</strong>
+                    )}
                   </div>
                   <div>{co.description}</div>
+                  {isTimeExtension(co) && <div>{timeExtensionRule(project, co)}</div>}
                   <div style={{ color: 'var(--text-muted)' }}>
                     {CHANGE_ORDER_REASON_WORDS[co.reason]} · {changeOrderScheduleWords(co)}
                   </div>
@@ -229,7 +236,9 @@ export function GcOwnerBillingPortal({ state, project, dispatch }: { state: GcSt
                       </Btn>
                       <Btn onClick={() => dispatch({ type: 'ownerDeclineChangeOrder', projectId: project.id, changeOrderId: co.id })}>Decline</Btn>
                       <span style={{ color: 'var(--text-muted)' }}>
-                        {co.price < 0 ? 'It takes' : 'It adds'} {money(Math.abs(co.price))} {co.price < 0 ? 'off' : 'to'} your price.
+                        {isTimeExtension(co)
+                          ? 'Your price stays the same.'
+                          : `${co.price < 0 ? 'It takes' : 'It adds'} ${money(Math.abs(co.price))} ${co.price < 0 ? 'off' : 'to'} your price.`}
                         {changeOrderDays(co) > 0 && ` It adds ${daysWords(changeOrderDays(co))} to the job.`}
                         {changeOrderDays(co) > 0 && finish && ` Substantial completion moves to ${shortDate(addDays(finish.on, changeOrderDays(co)))}.`}
                       </span>

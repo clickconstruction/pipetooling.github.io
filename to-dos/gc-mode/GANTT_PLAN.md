@@ -1657,6 +1657,53 @@ three actions, and `templateId` on `setRough` and `draftSchedule`.
 
 Left for later: B, days from what really happened (G-55's actual dates), once they are recorded as a
 habit; C, a template's track record, once jobs close.
+## Telling the customer, ask for the days, as built (2026-10-06)
+
+G-141, Helper 3 (mock-up `mockups/G-141.md`). `gcTimeExtension.ts`, tested, out of the barrel,
+`GcAskForDays.tsx`, one field and one action.
+
+- **The press**: *Ask for the days*, under G-98's whose-days line on the Projected finish measure
+  and on Bill the customer's Finish date card, only while some late days are the customer's and
+  their moves are not all asked for. *It drafts a change order on Bill the customer for 5 days, the
+  days their moves put on the finish. Nothing goes to them until you send it.* Never in the what-if
+  copy. The paper prints G-98's lines, never the press.
+- **The days**: every day the customer's moves put on the finish, not only the ones late today (the
+  lead's call). On G-98's late job that is 5, while the whose-days line's late count stays 4. A time
+  extension covers the delay they caused, and the day in hand is ours. A move counts when it stands,
+  its reason is the customer's decision or a change to the plans, it was not made by a change order,
+  and no draft, sent or signed ask holds it. A move with the reason *change order* belongs to that
+  order.
+- **The draft**: the next change order, cost and price 0, no trade, the days, and
+  `ChangeOrder.daysOnChart`, the moves its days come from. The reducer reads the ask from the
+  state (`draftTimeExtension`), so a stale or second press drafts nothing. The description is the
+  customer's: *A time extension for the restroom tile decision we asked you for on Sep 28*, when one
+  decision the customer owes holds every moved bar (the pick). Otherwise it is G-96's words, *A time
+  extension for a decision we were waiting on from you*. The rule says itself on the order: *5 days,
+  the days your decision moved the finish.*
+- **G-98's whose-days line** says where the ask stands. Draft: *All 4 are the customer's: change
+  order 1 asks for 5, the days their moves put on the finish. It is a draft on Bill the customer.*
+  Sent, the same without the last sentence, with G-98's own *would move the contract 5 days* line.
+  Declined, the press comes back. A customer's move since adds *Their moves since then add 3 days,
+  not asked for yet.*, and the press asks for that move alone. With no ask, every line G-98 pinned
+  reads as before.
+- **Signed**: the contract's day moves 5 days, Fri Dec 11 to Wed Dec 16, and the job has a day to
+  spare. The moves leave G-98's count, the way a signed change order's own moves do. **The bars stay
+  where they are.** `changeOrdersOnChart` skips an order with `daysOnChart`, even on a trade's work,
+  so G-76 draws no tail and offers no push. The customer's schedule reads it like any signed order.
+- **On the list and in the portal**: *no change to the price*, the rule, each move with our note, *At
+  the contract's $500 a day, it saves $2,000 and leaves 1 day to spare.*, and the contract's day,
+  with no *% done* once signed. A move undone since says so. The customer's card says *no change to
+  your price*, the rule, and *Your price stays the same.* It is no line on the bill, so the pay
+  application's change order summary, built from those lines, leaves it out too.
+
+What changed from the plan: the days (5, the lead's call, where the plan asked for the late 4); the
+rule sentence on the order, the lead's; G-98 carries the ask itself (`ask`, `asked`), so the press,
+the reducer and the line read one call; the press says the days it asks for.
+
+Not done, on purpose: money with the days (the cost of the longer job is the owner's call); the
+weather's days under the contract's weather clause (another row); editing or throwing away a draft
+(no change order can be, today); marks in the move history for an asked move (the order's row lists
+them).
 
 ## Status
 

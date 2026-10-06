@@ -45,6 +45,7 @@ import { bidSentWeeksWords, keepRough, roughDrawnWords } from './gcRoughSchedule
 import { importRefusal, importedSchedule } from './gcScheduleImport'
 import { cleanTemplateName, templateNameProblem, templateShape, templatesOffered } from './gcScheduleTemplates'
 import { appClaimed, appOpen, changeOrderPrice, OWNER_RETAINAGE_DEFAULT_PCT, ownerCloseout, ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppHasWork, ownerPayAppToSend, ownerRetainageWords } from './gcOwnerBilling'
+import { lateFinish } from './gcLateFinish'
 
 export function gcReducer(state: GcState, action: GcAction): GcState {
   const next = reduce(state, action)
@@ -1349,6 +1350,33 @@ function reduce(state: GcState, action: GcAction): GcState {
         changeOrders: (p.changeOrders ?? []).map((c) => (c.id === co.id ? { ...c, status: 'sent' as const, sentOn: state.today } : c)),
       }))
       return logged(next, 'office', `Sent change order ${co.number} to ${project.owner} for signature: ${money(co.price)}.`)
+    }
+
+    case 'draftTimeExtension': {
+      // Ask for the days (the Gantt, G-141): read from the state, so a stale or second press drafts nothing. Never sent here.
+      const project = state.projects.find((p) => p.id === action.projectId)
+      const ask = project ? lateFinish(state, project).ask : null
+      if (!project || !ask) return state
+      const existing = project.changeOrders ?? []
+      const number = existing.length + 1
+      const co = {
+        id: `co-${number}`,
+        number,
+        description: ask.description,
+        reason: ask.reason,
+        schedule: `+${ask.days} ${ask.days === 1 ? 'day' : 'days'}`,
+        packageId: null,
+        cost: 0,
+        price: 0,
+        status: 'draft' as const,
+        sentOn: null,
+        answeredOn: null,
+        pctDone: 0,
+        days: ask.days,
+        daysOnChart: ask.moves.map((m) => m.id),
+      }
+      const next = mapProject(state, project.id, (p) => ({ ...p, changeOrders: [...existing, co] }))
+      return logged(next, 'office', `Drafted change order ${number} on ${project.name}: ${ask.days} ${ask.days === 1 ? 'day' : 'days'} of time, the days the customer's moves put on the finish. Nothing is sent.`)
     }
 
     case 'ownerSignChangeOrder':

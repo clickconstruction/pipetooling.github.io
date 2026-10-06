@@ -1183,6 +1183,8 @@ export type GcAction =
       days?: number
     }
   | { type: 'sendChangeOrder'; projectId: string; changeOrderId: string }
+  /** Ask for the days (the Gantt, G-141): a time extension drafted for the days the customer's moves put on the finish. Nothing is sent. */
+  | { type: 'draftTimeExtension'; projectId: string }
   /** The owner signs a change order in their portal. */
   | { type: 'ownerSignChangeOrder'; projectId: string; changeOrderId: string }
   /** The owner declines a change order in their portal. */
@@ -1890,6 +1892,12 @@ export interface ChangeOrder {
    * typed by the office. Absent or 0: none. A signed one adds them to the contract time.
    */
   days?: number
+  /**
+   * A time extension for days on the chart already (the Gantt, G-141): the standing moves at the
+   * customer's door its days come from. G-76 never puts its days on the schedule again, and once it
+   * is signed G-98 stops counting those moves as the customer's. Unset: an ordinary change order.
+   */
+  daysOnChart?: string[]
 }
 
 /**

@@ -16,6 +16,7 @@ import { ownerFinishRisk, type OwnerFinishRisk } from './gcOwnerBillingFinish'
 import { changeOrderDays, projectChangeOrders } from './gcOwnerBilling'
 import { CAUSE_OF } from './gcDaysLost'
 import { CUSTOMER_WHY } from './gcCustomerSchedule'
+import { askedMoveIds, isTimeExtension, timeExtensionAsk, type TimeExtensionAsk } from './gcTimeExtension'
 import { money, weekdayDate } from './gcWords'
 
 export interface LateFinishOrder {
@@ -54,6 +55,10 @@ export interface LateFinish {
   words: string[]
   /** The customer's lines, after their finish: whose the days are, in their words. Empty unless late. */
   customerWords: string[]
+  /** Time extensions that ask for the customer's days and are not signed yet (G-141): a draft or a sent one. */
+  asked: { number: number; status: 'draft' | 'sent'; days: number }[]
+  /** Ask for the days (G-141): what the press would draft. Null: none of the late days are the customer's, or their moves are all asked for. */
+  ask: TimeExtensionAsk | null
 }
 
 function days(n: number): string {
@@ -73,8 +78,10 @@ export function lateFinish(state: GcState, project: GcProject): LateFinish {
   const perDay = risk.perDay
 
   // Days the standing moves put on the finish for a reason at the customer's door. A move that put a
-  // signed change order's days on the chart is not counted: the contract already moved for it.
-  const theirs = (project.schedule?.moves ?? []).filter((m) => !m.undoneOn && !m.changeOrderId && CAUSE_OF[m.reason] === 'customer')
+  // signed change order's days on the chart is not counted: the contract already moved for it. Nor is
+  // one a signed time extension asks for (G-141), for the same reason.
+  const signedAsks = askedMoveIds(project, ['signed'])
+  const theirs = (project.schedule?.moves ?? []).filter((m) => !m.undoneOn && !m.changeOrderId && !signedAsks.has(m.id) && CAUSE_OF[m.reason] === 'customer')
   const theirDays = theirs.reduce((sum, m) => sum + daysBetween(m.finishFrom, m.finishTo), 0)
   const customers = late ? Math.max(0, Math.min(theirDays, late)) : 0
   const customerWhy = [...new Set(theirs.filter((m) => daysBetween(m.finishFrom, m.finishTo) > 0).map((m) => CUSTOMER_WHY[m.reason]).filter(Boolean))]
@@ -102,13 +109,20 @@ export function lateFinish(state: GcState, project: GcProject): LateFinish {
         ? `Each day past ${contractDay} costs ${money(perDay)}.`
         : null
   const save = (n: number) => (perDay ? `save ${money(n * perDay)}` : 'move the contract')
+  // Ask for the days (G-141): the time extensions out for them, and what the press would draft.
+  const asked = projectChangeOrders(project).flatMap((co) =>
+    isTimeExtension(co) && (co.status === 'draft' || co.status === 'sent') ? [{ number: co.number, status: co.status, days: changeOrderDays(co) }] : [],
+  )
+  const ask = late && customers > 0 ? timeExtensionAsk(state, project) : null
   const split =
     late && customers > 0
-      ? customers >= late
-        ? late === 1
-          ? `That day is the customer's: a change order for it would ${save(1)}.`
-          : `All ${late} are the customer's: a change order for them would ${save(late)}.`
-        : `${customers} of those days ${customers === 1 ? 'is' : 'are'} the customer's: a change order for ${customers === 1 ? 'it' : 'them'} would ${save(customers)}.`
+      ? asked.length > 0
+        ? askedWords(late, customers, asked, ask)
+        : customers >= late
+          ? late === 1
+            ? `That day is the customer's: a change order for it would ${save(1)}.`
+            : `All ${late} are the customer's: a change order for them would ${save(late)}.`
+          : `${customers} of those days ${customers === 1 ? 'is' : 'are'} the customer's: a change order for ${customers === 1 ? 'it' : 'them'} would ${save(customers)}.`
       : null
 
   const words = [moneyLine, split, ...orderLines].filter((w): w is string => Boolean(w))
@@ -124,5 +138,27 @@ export function lateFinish(state: GcState, project: GcProject): LateFinish {
     if (rest > 0) customerWords.push(rest === late ? `We are working to make up ${late === 1 ? 'the day' : 'the days'}.` : `We are working to make up the other ${rest === 1 ? 'day' : rest}.`)
   }
 
-  return { risk, late, spare, customers, customerWhy, perDay, atRisk, orders, money: moneyLine, split, orderLines, words, customerWords }
+  return { risk, late, spare, customers, customerWhy, perDay, atRisk, orders, money: moneyLine, split, orderLines, words, customerWords, asked, ask }
+}
+
+/**
+ * The whose-days line once a time extension asks for the days (G-141): "All 4 are the customer's:
+ * change order 1 asks for 5, the days their moves put on the finish. It is a draft on Bill the
+ * customer." The days asked can be more than the late ones: it asks for every day their moves cost.
+ */
+function askedWords(late: number, customers: number, asked: LateFinish['asked'], ask: TimeExtensionAsk | null): string {
+  const whose = customers >= late ? (late === 1 ? "That day is the customer's" : `All ${late} are the customer's`) : `${customers} of those days ${customers === 1 ? 'is' : 'are'} the customer's`
+  const total = asked.reduce((sum, a) => sum + a.days, 0)
+  const orders = asked.length === 1 ? `change order ${asked[0]?.number} asks` : `change orders ${andList(asked.map((a) => String(a.number)))} ask`
+  const drafts = asked.filter((a) => a.status === 'draft')
+  const draft =
+    drafts.length === 0
+      ? ''
+      : drafts.length === asked.length
+        ? asked.length === 1
+          ? ' It is a draft on Bill the customer.'
+          : ' They are drafts on Bill the customer.'
+        : ` Change order${drafts.length === 1 ? '' : 's'} ${andList(drafts.map((a) => String(a.number)))} ${drafts.length === 1 ? 'is a draft' : 'are drafts'} on Bill the customer.`
+  const since = ask ? ` Their moves since then add ${days(ask.days)}, not asked for yet.` : ''
+  return `${whose}: ${orders} for ${total}, the days their moves put on the finish.${draft}${since}`
 }
