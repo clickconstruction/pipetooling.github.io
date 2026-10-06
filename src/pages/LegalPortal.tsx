@@ -12,6 +12,7 @@ import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalF
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
+import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
 import { askKindWords, openAsks } from '../lib/legal/legalAsks'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
@@ -98,7 +99,7 @@ export default function LegalPortal() {
           return
         }
         setState({ kind: 'ready', payload })
-        setSelectedId((prev) => prev ?? payload.matters[0]?.id ?? null)
+        // The first matter in the page's order opens by itself (`selected` falls back to it).
       } catch {
         if (!cancelled) setState({ kind: 'error', message: 'We could not open the portal. Please check your connection and try again.' })
       }
@@ -116,7 +117,9 @@ export default function LegalPortal() {
     for (const m of payload.matters) out.set(m.id, buildMatterPacket(m, payload.preparedOn, fee))
     return out
   }, [payload, fee])
-  const selected: LegalPortalMatter | null = payload?.matters.find((m) => m.id === selectedId) ?? payload?.matters[0] ?? null
+  /** Largest balance first, the newest referral breaking a tie; the function's order (oldest referral first) after that (punch list #85, item 11). */
+  const matters = useMemo(() => (payload ? orderFirmMatters(payload.matters, (m) => packets.get(m.id)?.account.totals.balance ?? null) : []), [payload, packets])
+  const selected: LegalPortalMatter | null = matters.find((m) => m.id === selectedId) ?? matters[0] ?? null
   const packet = selected ? (packets.get(selected.id) ?? null) : null
 
   return (
@@ -168,8 +171,8 @@ export default function LegalPortal() {
               />
             </div>
             <div>
-              <div style={cap}>Matters</div>
-              {payload.matters.map((m) => {
+              <div style={cap}>Matters{matters.length > 1 ? ' · largest balance first' : ''}</div>
+              {matters.map((m) => {
                 const p = packets.get(m.id)
                 const on = m.id === selected.id
                 return (

@@ -73,6 +73,29 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).not.toMatch(/Agreements and theory|holds — bill received/)
   })
 
+  it('lists the matters largest balance first and opens the largest (punch list #85 item 11)', async () => {
+    const today = new Date().toISOString().slice(0, 10)
+    const payload = sampleLegalPortalResponse({ name: 'Acme Mechanical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today) as { matters: Array<Record<string, unknown>> }
+    // The function sends the oldest referral first: a small matter referred long ago, then the sample.
+    const small = JSON.parse(JSON.stringify(payload.matters[0])) as { id: string; releasedAt: string; payer: { name: string }; jobs: Array<{ invoices: Array<{ amount: number }>; revenue: number }> }
+    small.id = 'small-matter'
+    small.releasedAt = '2026-01-05'
+    small.payer.name = 'Hill Country Dental'
+    small.jobs[0]!.invoices[0]!.amount = 6_100
+    small.jobs[0]!.revenue = 6_100
+    payload.matters = [small, payload.matters[0]!]
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=sample']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText(/largest balance first/)).toBeTruthy())
+    const listed = [...document.querySelectorAll('button b')].map((b) => b.textContent).filter((t) => t === 'Sample Contracting' || t === 'Hill Country Dental')
+    expect(listed).toEqual(['Sample Contracting', 'Hill Country Dental'])
+    expect(document.body.textContent).toMatch(/total demand · balance \$14,400\.00/)
+  })
+
   it('draws the owner\'s answers under a notice on Paper when the payload carries the desk item that sent it (#41 PR 1b)', async () => {
     const today = new Date().toISOString().slice(0, 10)
     const payload = sampleLegalPortalResponse({ name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', phone: '(512) 555-0100', email: 'office@example.com' } as never, today) as { matters: Array<Record<string, unknown> & { jobs: Array<{ id: string }> }> }
