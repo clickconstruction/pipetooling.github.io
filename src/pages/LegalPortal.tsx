@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { LEGAL_SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
@@ -9,6 +9,7 @@ import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
 import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
+import { PORTAL_QUIET_RELOAD_FAILED, portalPayloadIsStale } from '../lib/legal/legalPortalFreshness'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
@@ -55,6 +56,10 @@ export default function LegalPortal() {
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [noticeWarn, setNoticeWarn] = useState(false)
+  /** When the payload last arrived (item 22): the PDF links in it open for fifteen minutes. */
+  const loadedAtRef = useRef<number | null>(null)
+  /** True while the load in flight is the quiet ten-minute reload: it never swaps the page for the error card. */
+  const quietRef = useRef(false)
 
   /** One POST to submit-legal-portal; reloads the payload on success. */
   const act: Act = async (payload, said) => {
@@ -93,31 +98,76 @@ export default function LegalPortal() {
       return
     }
     let cancelled = false
+    // The quiet reload (item 22) keeps the page it already shows when it fails, and says so on the notice line.
+    const quiet = quietRef.current
+    quietRef.current = false
+    const fail = (message: string) => {
+      if (quiet) {
+        setNotice(PORTAL_QUIET_RELOAD_FAILED)
+        setNoticeWarn(true)
+        return
+      }
+      setState({ kind: 'error', message })
+    }
     void (async () => {
       try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/legal-portal?token=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders() })
+        // `refresh=1`: the quiet reload is not a new visit, so the function writes no page-view row for it.
+        const res = await fetch(`${supabaseUrl}/functions/v1/legal-portal?token=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}${quiet ? '&refresh=1' : ''}`, { headers: await staffAwarePublicHeaders() })
         const body = (await res.json().catch(() => null)) as unknown
         if (cancelled) return
         if (!res.ok) {
           // Item 7 (#85): a 4xx keeps the words written for the firm; an unexpected 5xx reads as one plain sentence.
-          setState({ kind: 'error', message: firmFacingErrorLine(res.status, body) })
+          fail(firmFacingErrorLine(res.status, body))
           return
         }
         const payload = parseLegalPortalPayload(body)
         if (!payload) {
-          setState({ kind: 'error', message: 'The portal answered in a shape this page does not understand. Please contact the office.' })
+          fail('The portal answered in a shape this page does not understand. Please contact the office.')
           return
         }
         setState({ kind: 'ready', payload })
+        loadedAtRef.current = Date.now()
         // The first matter in the page's order opens by itself and stays pinned (the effect below).
       } catch {
-        if (!cancelled) setState({ kind: 'error', message: 'We could not open the portal. Please check your connection and try again.' })
+        if (!cancelled) fail('We could not open the portal. Please check your connection and try again.')
       }
     })()
     return () => {
       cancelled = true
     }
   }, [token, preview, reloadTick])
+
+  // Item 22 (#85): reload quietly before the signed PDF links run out — when the tab comes back into view,
+  // and on a one-minute check while it is in view. The selected matter and tab stay as they are.
+  useEffect(() => {
+    if (sample) return
+    const check = () => {
+      if (document.visibilityState === 'visible' && portalPayloadIsStale(loadedAtRef.current, Date.now())) {
+        loadedAtRef.current = Date.now()
+        quietRef.current = true
+        setReloadTick((t) => t + 1)
+      }
+    }
+    const timer = window.setInterval(check, 60_000)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [sample])
+
+  // Item 22 (#85): the address bar carries the firm's key, so no page this one opens learns it.
+  useEffect(() => {
+    const meta = document.createElement('meta')
+    meta.name = 'referrer'
+    meta.content = 'no-referrer'
+    document.head.appendChild(meta)
+    return () => {
+      meta.remove()
+    }
+  }, [])
 
   const payload = state.kind === 'ready' ? state.payload : null
   const fee = useMemo(() => (payload ? portalFeeModel(payload) : { contingencyPct: 0.33, filingCost: 350 }), [payload])

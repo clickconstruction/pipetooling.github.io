@@ -7,6 +7,7 @@ import { withPreviewFlag } from '../../../lib/publicViewCounting'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import { readEdgeFunctionErrorBody } from '../../../lib/readEdgeFunctionErrorBody'
 import { LEGAL_FIRM_LINK_KIND, legalFirmLinkAddresses, legalFirmLinkSentLine, type LegalFirmLinkSentRow } from '../../../lib/legal/legalFirmLink'
+import { rotateLinkMessage, turnOffLinkMessage } from '../../../lib/legal/legalPortalLinkWords'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -78,6 +79,10 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
   }, [open, load])
 
   const mint = async (rotate: boolean) => {
+    if (rotate) {
+      const ok = await confirmDialog({ title: 'Mint a new link for the firm?', message: rotateLinkMessage(firmName), confirmLabel: 'Mint a new link', danger: true })
+      if (!ok) return
+    }
     setBusy(true)
     try {
       const { data, error } = await db.rpc('mint_legal_portal_link', { p_firm_id: firmId, p_rotate: rotate })
@@ -98,7 +103,7 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
     }
   }
   const revoke = async () => {
-    const ok = await confirmDialog({ title: 'Turn the firm’s portal off?', message: `${firmName} will get "This link is no longer active" until you create a new one. Matters stay marked as they are.`, confirmLabel: 'Turn off', danger: true })
+    const ok = await confirmDialog({ title: 'Turn the firm’s portal off?', message: turnOffLinkMessage(firmName), confirmLabel: 'Turn off', danger: true })
     if (!ok) return
     setBusy(true)
     try {

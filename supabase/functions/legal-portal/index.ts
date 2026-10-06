@@ -39,8 +39,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Item 22 (#85): the payload is one firm's private record. No cache holds it, and no page it links to learns where it came from.
+const privateHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
+
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact the office for a new one.'
 const WITH_FIRM_STAGES = ['referred', 'demand', 'suit', 'judgment']
+/** How long a signed PDF link opens (item 22). The page reloads its payload before this runs out. */
+const SIGNED_PDF_SECONDS = 15 * 60
 
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
@@ -48,7 +53,7 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, ...privateHeaders, 'Content-Type': 'application/json' } })
 }
 
 /**
@@ -121,7 +126,7 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...corsHeaders, ...privateHeaders } })
   try {
     const url = new URL(req.url)
     const rawToken = url.searchParams.get('token')?.trim()
@@ -131,19 +136,19 @@ serve(async (req) => {
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
 
-    let link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', rawToken).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
-    if (!link) {
-      const tokenHash = await sha256Hex(rawToken)
-      link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', tokenHash).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
-    }
+    // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
+    let link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(rawToken)).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
+    if (!link) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', rawToken).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
     if (!link || link.revoked_at) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
     const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').eq('id', link.firm_id).maybeSingle()
     if (!firm || !(firm as Row).active) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
-    // View counting — fire-and-forget; office previews and staff sessions do not count.
+    // View counting — fire-and-forget; office previews and staff sessions do not count, and neither does the
+    // page's own quiet ten-minute reload (`refresh=1`, item 22): it is the same visit, not a new one.
+    const isRefresh = url.searchParams.get('refresh') === '1'
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
-    void admin
+    if (!isRefresh) void admin
       .from('public_page_views')
       .insert({ surface: 'legal_portal', entity_id: link.firm_id, via: 'token', viewer: viewDecision.viewer, viewer_user_id: viewDecision.staffUserId })
       .then(
@@ -240,12 +245,13 @@ serve(async (req) => {
     const { data: userRows } = userIds.size ? await admin.from('users').select('id, name').in('id', [...userIds]) : { data: [] }
     const userName = new Map(((userRows ?? []) as Row[]).map((u) => [u.id as string, (u.name as string | null) ?? null]))
 
-    // Signed contract PDFs as short-lived signed URLs (one hour).
+    // Signed contract PDFs as short-lived signed URLs: fifteen minutes (item 22), so a link copied out of the page,
+    // or the page of a firm whose link was just turned off, stops opening soon. The page mints fresh ones on reload.
     const contractUrls = new Map<string, string>()
     for (const c of contracts) {
       const path = (c.signed_pdf_path as string | null) ?? (c.paper_upload_path as string | null)
       if (!path) continue
-      const { data: signed } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(path, 3600)
+      const { data: signed } = await admin.storage.from(JOB_CONTRACT_BUCKET).createSignedUrl(path, SIGNED_PDF_SECONDS)
       if (signed?.signedUrl) contractUrls.set(c.id as string, signed.signedUrl)
     }
 

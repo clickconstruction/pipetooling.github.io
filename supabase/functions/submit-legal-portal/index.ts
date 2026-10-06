@@ -34,6 +34,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Item 22 (#85): an answer about one firm's matters. No cache holds it, and no page learns where it came from.
+const privateHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
+
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact the office.'
 const WITH_FIRM_STAGES = ['referred', 'demand', 'suit', 'judgment']
 const MAX_PER_HOUR = 30
@@ -41,7 +44,7 @@ const MAX_BODY = 2000
 const MAX_AMOUNT = 1_000_000
 
 function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, ...privateHeaders, 'Content-Type': 'application/json' } })
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -52,11 +55,9 @@ async function sha256Hex(value: string): Promise<string> {
 type Link = { firm_id: string; revoked_at: string | null }
 
 async function resolveLink(admin: SupabaseClient, token: string): Promise<Link | null> {
-  let { data: link } = await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', token).maybeSingle()
-  if (!link) {
-    const hash = await sha256Hex(token)
-    link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', hash).maybeSingle()).data
-  }
+  // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
+  let { data: link } = await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()
+  if (!link) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', token).maybeSingle()).data
   const l = link as Link | null
   return l && !l.revoked_at ? l : null
 }
@@ -64,7 +65,7 @@ async function resolveLink(admin: SupabaseClient, token: string): Promise<Link |
 const str = (v: unknown, max = MAX_BODY): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...corsHeaders, ...privateHeaders } })
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405)
   try {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
