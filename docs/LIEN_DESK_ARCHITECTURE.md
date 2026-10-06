@@ -181,7 +181,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 
 ### J. The run
 
-`runOpen` 314; opened from the header 2123–2127, the ready footer 1839 and `retPane`'s `onOpenRun`. `LienDeskRunModal` 2235–2248 receives `[...buildLienDeskRun(queue.piles.ready, …), ...buildLienRetainageRun(retainage.piles.ready, …)]` **built inline on every render while open**; the source is `piles.ready + piles.printed`, and `onPrinted` stamps `markLienDeskItemsPrinted`. The header button's count and its condition read `counts.ready + retReady` only, so at `mapped_at` a desk with nothing but printed notices had no door back into the run (counted since v2.4568). Extracted and tested (render 8, `lienDeskRun` 20).
+`runOpen` 314; opened from the header 2123–2127, the ready footer 1839 and `retPane`'s `onOpenRun`. `LienDeskRunModal` 2235–2248 receives `[...buildLienDeskRun(queue.piles.ready, …), ...buildLienRetainageRun(retainage.piles.ready, …)]` **built inline on every render while open**; the source is `piles.ready + piles.printed`, and `onPrinted` stamps `markLienDeskItemsPrinted`. The header button's count and its condition read `counts.ready + retReady` only, so at `mapped_at` a desk with nothing but printed notices had no door back into the run (counted since v2.4568). Since v2.4621 every copy row of the run has a *Preview ›* door into `LienRunPreviewOverlay` (z 795 over the run's 790): one entry per copy in packet order, its pages from `runCopyPages` (`lib/jobs/lienDeskRun.ts`), the same pages `runPacketHtml` stacks; arrows walk the packet, Esc closes the preview alone. The run's explainer paragraph sits behind a *?* beside its title. Extracted and tested (render 8, `lienDeskRun` 20).
 
 ---
 
@@ -300,7 +300,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | `LienDeskAffidavitPane` | 417 | 1505–1529 | none (desk smoke) |
 | `LienTimelineStrip` | 530 | 1085 | render 7 (v2.3877: the move pill, the Waiting-on line, the demand node) |
 | `LienDeskRetainagePane` | 316 | 1585–1605 | none (desk smoke) |
-| `LienDeskRunModal` | 334 | 2236–2247 | render 8 |
+| `LienDeskRunModal` | 386 (+ `LienRunPreviewOverlay` 114, v2.4621) | 2236–2247 | render 9 |
 | `LienDeskOwnerPane` | 238 | 1179–1191 | none (desk smoke 338–397) |
 | `LienDeskMonths` | 217 | 1309–1346 | none (desk smoke) |
 | `LienClaimBox` | 175 | 1312–1321 | none (desk smoke 620, 638) |

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runPacketHtml, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runEnvelopeFacesHtml } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runEnvelopeFacesHtml } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -340,5 +340,38 @@ describe('the mailing (v2.4119): the number\u2019s shape, what records, the enve
     expect(html).toContain('Click Plumbing &amp; Electrical<br>1234 Trade St<br>San Antonio, TX 78201')
     expect(html).toContain('Envelope 1 of 3')
     expect(html).not.toContain('Someone')
+  })
+})
+
+describe('the pages one copy prints (v2.4621 — the run preview reads them, the packet stacks them)', () => {
+  it("the owner's copy is the cover page then the form; the GC's copy is the form alone; the pay page and the invoices follow in order", () => {
+    const d = data([approved])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const n0 = run[0]!
+    const [owner, gc] = n0.recipients
+    // The run from this data carries counsel's letter as the cover page; without one the note is the cover page.
+    expect(runCopyPages(n0, owner!)[0]!.label).toBe('Cover letter')
+    expect(runCopyPages(n0, owner!, { j650: ['<p>invoice one</p>'] })[0]!.html).toContain('with invoices')
+    const n = { ...n0, coverLetter: null, coverNote: 'A routine notice.' }
+    const invoices = { j650: ['<p>invoice one</p>', '<p>invoice two</p>'] }
+    const pay = { j650: { owner: '<p>pay codes</p>' } }
+    expect(runCopyPages(n, owner!).map((p) => p.label)).toEqual(['Cover note', '§ 53.056 notice · copy for owner of record'])
+    expect(runCopyPages(n, gc!).map((p) => p.label)).toEqual(['§ 53.056 notice · copy for original contractor'])
+    const full = runCopyPages(n, owner!, invoices, pay)
+    expect(full.map((p) => p.label)).toEqual(['Cover note', '§ 53.056 notice · copy for owner of record', 'Pay codes', 'Unpaid invoice 1 of 2', 'Unpaid invoice 2 of 2'])
+    expect(full[0]!.html).toContain('A routine notice.')
+    expect(full[2]!.html).toBe('<p>pay codes</p>')
+    // The GC's copy carries the invoices but no pay page by default.
+    expect(runCopyPages(n, gc!, invoices, pay).map((p) => p.label)).toEqual(['§ 53.056 notice · copy for original contractor', 'Unpaid invoice 1 of 2', 'Unpaid invoice 2 of 2'])
+    // The packet is those pages, in envelope order, behind the cover sheet.
+    const html = runPacketHtml(run, TODAY, null, invoices, pay)
+    expect(html.split('page-break-after:always').length - 1).toBe(1 + 5 + 3 - 1)
+    expect(html.indexOf('pay codes')).toBeLessThan(html.indexOf('invoice one'))
+  })
+  it('stepRunPreview walks the packet and stops at its ends', () => {
+    expect(stepRunPreview(0, 1, 3)).toBe(1)
+    expect(stepRunPreview(2, 1, 3)).toBe(2)
+    expect(stepRunPreview(0, -1, 3)).toBe(0)
+    expect(stepRunPreview(0, 1, 0)).toBe(0)
   })
 })
