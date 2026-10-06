@@ -145,4 +145,26 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(screen.getByRole('dialog', { name: 'Apply discount' })).toBeTruthy()
     expect(desk()).toBeTruthy()
   })
+
+  it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4704)', async () => {
+    const onClose = await renderDesk({ canMarkReady: true, canEditReview: true })
+    fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
+    const win = screen.getByRole('dialog', { name: 'The collections law firm' })
+    expect(win).toBeTruthy()
+    fireEvent.click(win.parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'The collections law firm' })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(desk()).toBeTruthy()
+  })
+
+  it('with no firm, the header and the release sheet both open the firm’s window (v2.4704)', async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: null, firms: [] }} canMarkReady canEditReview />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'Set up the collections law firm' }).textContent).toBe('No firm yet · Set up the firm…')
+    fireEvent.click(screen.getByRole('button', { name: '⚖ Mark attorney ready…' }))
+    expect(screen.getByText('No firm is set up yet.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Set up the firm…' }))
+    expect(screen.queryByRole('dialog', { name: 'Mark attorney-ready' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'The collections law firm' })).toBeTruthy()
+  })
 })

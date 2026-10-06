@@ -10,7 +10,7 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 
 ## Create and send the link
 
-1. On **Jobs → Pipeline → Collections**, open {{button:outline|⚖ Legal}}. The header shows {{button:outline|🌐 Firm's link}} once a firm is set up. Set one up on Settings → Jobs & billing → Collections law firm.
+1. On **Jobs → Pipeline → Collections**, open {{button:outline|⚖ Legal}}. The header shows {{button:outline|🌐 Firm's link}} once a firm is set up. To set one up, press **Set up the firm…** in that header. Settings → Jobs & billing → Collections law firm holds the same details.
 2. {{button:blue|Create the firm's link}} makes it. {{button:blue|Copy link}} puts it on your clipboard. The app shows the link only when you create or rotate it. {{button:outline|Preview ↗}} opens what the firm sees, without counting as their visit. Preview works any time you are signed in.
 3. Send it from the card. Under **Send the firm their link**, tick the firm's address on file or type one. You can add a line of your own. Press {{button:blue|Send the link}}. The email carries the live link even when the card no longer shows it.
 4. The email comes from the company and is signed by you. A reply comes back to you. It says what the portal is and holds the link. Its first step asks the firm to add the people who should get our emails. The card then shows who it went to and when.
