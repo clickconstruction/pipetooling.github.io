@@ -6,6 +6,8 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
+// Item 9 (#85): a promise is measured against what was billed when it was made, as the desk's RPC does.
+import { billedAtPromise } from '../_shared/legalPromiseBilled.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 // Item 24 (#85): the payer's contact log reaches the firm only about the matter's jobs or the account.
@@ -313,7 +315,6 @@ serve(async (req) => {
         if (j.collections_note && !goes(`note:${j.id}`, noteYmd)) (j as Row).collections_note = null
       }
       // Promise records: the outcome inputs (billed at the promise, dated payments) — the page classifies.
-      const billedTotal = mInvoices.filter((i) => i.status === 'billed' || i.status === 'paid').reduce((s, i) => s + Number(i.amount ?? 0), 0)
       const promiseRecords = mPromises.map((p) => ({
         id: p.id,
         jobId: p.jobId,
@@ -321,7 +322,7 @@ serve(async (req) => {
         promisedYmd: p.promisedYmd,
         createdAt: p.createdAt,
         source: p.source,
-        billedTotal: mInvoices.filter((i) => i.job_id === p.jobId && (i.status === 'billed' || i.status === 'paid')).reduce((s, i) => s + Number(i.amount ?? 0), 0) || billedTotal,
+        billedTotal: billedAtPromise(mInvoices, p.jobId, p.createdAt),
         payments: mPayments.filter((x) => x.job_id === p.jobId && x.paid_on).map((x) => ({ paidOn: ymd(x.paid_on) as string, amount: Number(x.amount ?? 0) })).sort((a, b) => a.paidOn.localeCompare(b.paidOn)),
       }))
       const customer = customers.find((c) => c.id === customerId) ?? null
