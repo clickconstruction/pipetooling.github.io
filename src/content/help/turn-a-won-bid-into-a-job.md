@@ -24,6 +24,8 @@ B398 · Take 5 Seguin goes to Southern Post. Tap Won, then Open the job: New Job
 
 ## The price is offered, not assumed
 
+If the letter carried two options, Edit Bid asks on Won: **Which option did they take?** Pick one. It becomes the active version, so the job and the takeoff follow it. The agreed value is that option's sent value plus any alternate they took. The other option is not marked lost.
+
 The bid may carry a figure: its agreed value, or what the winning GC was sent. Then New Job asks one question before filling anything: **Start the job at $48,200?** {{button:blue|Carry $48,200 over}} puts it on the job as the first line item, *Bid price*. If the bid had no agreed value yet, the figure is recorded there too. {{button:outline|Start at $0}} leaves the Job Total empty. That choice writes nothing on the job or the bid. Either way you can change the number on the job any time.
 
 What does **not** come over: the bid's own line items, schedule blocks, crew, dates.
