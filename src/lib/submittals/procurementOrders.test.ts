@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { orderBySoon, orderSections, rowsToMark, tagsOf, theyWrote } from './procurementOrders'
+import { groupDateWords, orderBySoon, orderSections, rowsToMark, tagsOf, theyWrote } from './procurementOrders'
 import { row, spacexLater as later, spacexToday as today } from './procurementSpacex.fixtures'
 
 describe('orderSections', () => {
@@ -102,6 +102,21 @@ describe('orderSections', () => {
 })
 
 describe('the small words', () => {
+  it('a card says its order’s date in words: how far off an order-by date is, when a PO lands, when the GC must answer, when it landed', () => {
+    const said = (asOf: string) => Object.fromEntries(orderSections(later, asOf).flatMap((sec) => sec.groups).map((g) => [g.title, groupDateWords(g, asOf)]))
+    const on = said('2026-10-26')
+    expect(on['Order by 10/27']).toEqual({ words: 'tomorrow', tone: 'soon' })
+    expect(on['Order by 11/03']).toEqual({ words: 'in 8 days', tone: 'quiet' })
+    expect(on['PO 4480']).toEqual({ words: 'arrives 10/29, 9 days late', tone: 'late' })
+    expect(on['PO 4502']).toEqual({ words: 'arrives 11/03', tone: 'quiet' })
+    expect(on['LAV-1']).toEqual({ words: 'answer by 11/10', tone: 'quiet' })
+    expect(on['UR-1, UR-2']).toEqual({ words: '', tone: 'quiet' })
+    expect(on['PO 4471']).toEqual({ words: '✓ On site 10/15', tone: 'done' })
+    expect(said('2026-10-27')['Order by 10/27']).toEqual({ words: 'today', tone: 'soon' })
+    expect(said('2026-10-30')['Order by 10/27']).toEqual({ words: '3 days ago', tone: 'past' })
+    expect(groupDateWords({ kind: 'to_place', rows: [row('a', 'released')], right: '', rightTone: 'quiet', tone: 'quiet' }, '2026-10-26')).toEqual({ words: '', tone: 'quiet' })
+  })
+
   it('tags are named up to three, then counted', () => {
     expect(tagsOf([row('FCO', 'awaiting'), row('FD', 'awaiting'), row('HB-3', 'awaiting'), row('X', 'awaiting'), row('Y', 'awaiting')])).toBe('FCO, FD, HB-3 +2')
     expect(tagsOf([row('a', 'awaiting', { tag: null, product: 'Lift station' })])).toBe('Lift station')

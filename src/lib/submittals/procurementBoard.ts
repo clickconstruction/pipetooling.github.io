@@ -1,5 +1,5 @@
 /**
- * The top of the procurement log (punch list #82, PR 1): where every part stands, as four steps
+ * The top of the procurement log (the procurement log redraw, PR 1; its card was PR #4527): where every part stands, as four steps
  * that count each line once, the one sentence that says what to do next, and what the lines
  * share. Pure: the panel draws these, `procurementLog.ts` keeps the rows.
  */

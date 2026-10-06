@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupJourneyStages, stageGate, SUBMITTAL_STAGE_GROUPS, submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
+import { groupJourneyStages, showNextRevisionLoop, stageGate, SUBMITTAL_STAGE_GROUPS, submittalJourney, type SubmittalJourneyInput } from './submittalJourney'
 
 const base: SubmittalJourneyInput = { scheduleTags: 12, picks: 14, rev: null, room: null, decisions: null }
 const draft = (o: Partial<NonNullable<SubmittalJourneyInput['rev']>> = {}) => ({ number: 1, status: 'draft', isNewest: true, rows: 14, owesReason: 0, sheetsNeeded: 0, packageBuilt: false, ...o })
@@ -97,6 +97,11 @@ describe('submittalJourney', () => {
     expect(submittalJourney(bp375).next).toEqual({ kind: 'next', text: 'structura sent 4 rows back. 10 rows still have no answer. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.', action: 'resubmit', actionLabel: 'Start a Rev 2 draft…' })
     // Step 7's button is past building once the GC has answered.
     expect(stageGate(submittalJourney(bp375).stages, 'resubmit')).toEqual({ on: true, why: null })
+    // Punch list #84 · the Next revision loop shows while Resubmit is the live step on the newest revision, and only then.
+    expect(showNextRevisionLoop(submittalJourney(bp375).stages, true)).toBe(true)
+    expect(showNextRevisionLoop(submittalJourney(bp375).stages, false)).toBe(false)
+    expect(showNextRevisionLoop(submittalJourney({ ...base, rev: draft({ number: 1, rows: 14 }) }).stages, true)).toBe(false)
+    expect(showNextRevisionLoop([], true)).toBe(false)
     // 2026-10-05 · step 6 counts the sink with no product apart from the nine waiting on the reviewer; so does this line.
     const apart = submittalJourney({ ...bp375, decisions: { ...bp375.decisions, noProduct: 1 } }).next
     expect(apart.text).toBe('structura sent 4 rows back. 9 rows still have no answer. 1 row has no product yet. Start a Rev 2 draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.')

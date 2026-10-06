@@ -43,7 +43,7 @@ import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
-import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
+import { showNextRevisionLoop, submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
 import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
@@ -2207,7 +2207,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         </label>
       ) : null}
       {!loading ? (
-        <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
+        <div className="submittal-road" data-testid="submittal-road">
+          {/* The loop the button on step 7 starts (punch list #84): back to step 2 as the next revision, then 3 to 6 again. Decoration: the button and its line say it in words. */}
+          {showNextRevisionLoop(journey.stages, isNewest) ? (
+            <div className="submittal-road-loop" data-testid="next-revision-loop" aria-hidden="true">
+              <span className="submittal-road-loop__label">Next revision</span>
+              <span className="submittal-road-loop__head" />
+            </div>
+          ) : null}
           {/* 1 · Sources (Where the rows come from) — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} about={SUBMITTAL_STAGE_ABOUT[1]} onHelp={() => startWalkThrough(1)} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} onJump={() => jumpToSection('picks')} anchor="submittals-schedule"
             summaryWhenOpen={false}

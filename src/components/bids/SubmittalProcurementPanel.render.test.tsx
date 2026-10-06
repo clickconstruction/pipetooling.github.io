@@ -767,4 +767,53 @@ describe('SubmittalProcurementPanel', () => {
       localStorage.removeItem('submittals_procure_lens')
     }
   })
+
+  it('v2.4600 · on a phone To order is cards: an order with its name, count and note, its date in words under them, no table and no calendar; a part is a short card under its order', async () => {
+    localStorage.setItem('submittals_procure_lens', 'to_order')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-01T18:00:00Z'))
+    state.updates = []
+    state.records = [{ id: 'p1', bid_id: 'b1', tag: 'BFP-1', label: '', lead_time_days: null, stage: null, ordered_on: '2026-09-25', po_ref: '119', expected_on: '2026-10-20', delivered_on: null, note: '', sort_order: 0, created_at: '', updated_at: '' }]
+    const real = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: q.includes('640'), media: q, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    try {
+      const onAnswerItem = vi.fn()
+      renderWithProviders(<SubmittalProcurementPanel bidId="b1" bidLabel="B482 Shipley" companyName="Click" items={[...items, { tag: 'S-3', product: 'Elkay sink', supplyHouse: null, leadTimeDays: 7, decision: null, shared: true, itemId: 'row-s3' }]} reviewerNames={[]} currentUser={{ id: 'u', name: 'Wendi' }} onAnswerItem={onAnswerItem} />)
+      // The job's stage dates land a moment after the rows: wait for the order's date before reading the cards.
+      await screen.findByText(/Order by 10\/06/)
+      const groups = screen.getAllByTestId('procurement-group')
+      expect(document.querySelector('table')).toBeNull()
+      expect(screen.queryByTestId('procurement-cal')).toBeNull()
+      // The calendar's words stay with the calendar: a phone is told neither that there are no dates nor what the marks mean.
+      expect(screen.queryByTestId('procurement-key')).toBeNull()
+      expect(screen.queryByTestId('procurement-shared')).toBeNull()
+      expect(screen.getAllByTestId('procurement-section').map((x) => [x.tagName, x.textContent])).toEqual([['DIV', 'Order now · no house yet11 order to place, by date · set a house to order'], ['DIV', 'On order11 late'], ['DIV', 'Waiting on their answer11 fixture · not ordered until they approve']])
+      // An order to place: how far off its date is rides in its name; Mark ordered… sits under the note.
+      expect(within(groups[0]!).getByTestId('procurement-group-fold').textContent).toBe('Order by 10/06 · in 5 days1')
+      expect(within(groups[0]!).getByTestId('procurement-group-note').textContent).toBe('WH-1 · Trim Set, needed 11/17 · 6 wk lead')
+      expect(within(groups[0]!).getByTestId('procurement-group-right').textContent).toBe('Mark ordered…')
+      // An order placed: the day it lands, in words, in place of its bar.
+      expect(within(groups[1]!).getByTestId('procurement-group-fold').textContent).toBe('PO 1191')
+      expect(within(groups[1]!).getByTestId('procurement-group-date').textContent).toBe('arrives 10/20, 14 days late')
+      // A fixture that waits: its one door.
+      expect(within(groups[2]!).getByTestId('procurement-group-right').textContent).toBe('Their answer…')
+      fireEvent.click(within(groups[2]!).getByTestId('procurement-fixture-answer'))
+      expect(onAnswerItem).toHaveBeenLastCalledWith({ itemId: 'row-s3', partKey: null })
+      // The first order is open: its part is a short card, with the quantity when there is one and Dates… to open the editor.
+      const cards = screen.getAllByTestId('procurement-row')
+      expect(cards.map((c) => c.tagName)).toEqual(['DIV'])
+      expect(cards[0]!.textContent).toBe('A.O. Smith BTH-199Dates…')
+      openDates('WH-1')
+      expect(screen.getByTestId('procurement-editor').tagName).toBe('DIV')
+      // Mark ordered… opens its form under the card.
+      fireEvent.click(within(groups[0]!).getByTestId('procurement-mark-open'))
+      expect(screen.getByTestId('procurement-mark-form').tagName).toBe('DIV')
+      expect(screen.getByTestId('procurement-mark-form').textContent).toContain('Mark 1 part ordered')
+    } finally {
+      window.matchMedia = real
+      vi.useRealTimers()
+      state.records = []
+      localStorage.removeItem('submittals_procure_lens')
+    }
+  })
 })

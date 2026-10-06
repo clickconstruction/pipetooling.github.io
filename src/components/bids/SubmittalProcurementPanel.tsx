@@ -29,8 +29,6 @@ import {
   procurementUpdateText,
   lineStatus,
   logDateRead,
-  foldByHouse,
-  houseFoldNote,
   logIsDraft,
   orderBlockers,
   rowsForBlocker,
@@ -54,7 +52,7 @@ import {
 } from '../../lib/submittals/procurementLog'
 import { blockersPress, procurementNextLine, procurementSteps, rowsForStep, sendUpdateLabel, sharedHouse, stepOnlyWords, stepShares, type ProcurementStepKey, type ProcurementStepTone } from '../../lib/submittals/procurementBoard'
 import { calendarAxis, groupMark, type CalendarAxis, type CalendarMark } from '../../lib/submittals/procurementCalendar'
-import { orderSections, rowsToMark, theyWrote, type OrderGroup, type OrderTone } from '../../lib/submittals/procurementOrders'
+import { groupDateWords, orderSections, rowsToMark, theyWrote, type OrderGroup, type OrderTone } from '../../lib/submittals/procurementOrders'
 import { loadProcurementRecords, loadProcurementUpdates, loadStageDatesForBid, loadTagStagesForBid, type ProcurementUpdate } from '../../lib/submittals/procurementLogIo'
 
 type Props = {
@@ -253,7 +251,6 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const [ticked, setTicked] = useState<Set<string>>(() => new Set())
   // 2026-10-02 · lines whose dates are open under them; houses opened in To order's fold; a card per part on a phone.
   const [openLines, setOpenLines] = useState<Set<string>>(() => new Set())
-  const [openHouses, setOpenHouses] = useState<Set<string>>(() => new Set())
   const narrowScreen = useNarrowViewport640()
   // Cards whenever the log itself is narrower than its table needs: a phone, a tablet, a side pane.
   const [rootWidth, setRootWidth] = useState<number | null>(null)
@@ -353,7 +350,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   const shown = useMemo(() => (stepPicked ? { rows: rowsForStep(rows, stepPicked), only: null as BlockerKind | null } : rowsForBlocker(rows, blockers, onlyPicked)), [rows, blockers, onlyPicked, stepPicked])
   const steps = useMemo(() => procurementSteps(rows), [rows])
   const only = shown.only
-  const sections = useMemo(() => procurementSections(shown.rows, lens), [shown, lens])
+  // To order draws orders (`orderSections`); the other two lenses group lines.
+  const sections = useMemo(() => (lens === 'to_order' ? [] : procurementSections(shown.rows, lens)), [shown, lens])
   const lastUpdate = updates[0] ?? null
   const changes = useMemo(() => diffProcurementLog(lastUpdate ? lastUpdate.rows : null, gcRows), [lastUpdate, gcRows])
   const hasStageDates = Object.keys(stageDates).length > 0
@@ -364,7 +362,9 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
   // v2.4592 · the line of weeks, from every line (a step or a missing fact picked does not move it); null with nothing to place.
   const axis = useMemo(() => calendarAxis(rows, stageDates, today), [rows, stageDates, today])
   // The orders, and so the calendar, draw on a wide screen's To order lens.
-  const ordersView = lens === 'to_order' && !narrow && rows.length > 0
+  const ordersView = lens === 'to_order' && rows.length > 0
+  // The calendar, its key and its *No dates* line belong to the wide table: a card says its date in words (v2.4600).
+  const calendarView = ordersView && !narrow
   useEffect(() => {
     if (!loaded || !onCounts) return
     const c = procurementCounts(rows)
@@ -767,7 +767,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
     const part = (
       <>
         <span style={{ display: 'flex', gap: '0 0.4rem', alignItems: 'baseline', minWidth: 0, flexWrap: narrow ? 'wrap' : undefined }}>
-          {(order && !narrow ? !order.showTag : underTag && r.partKey) ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: narrow ? '100%' : '45%' }}>{r.tag}</b>}
+          {(order ? !order.showTag : underTag && r.partKey) ? null : <b style={{ ...itemTag, flexShrink: 0, maxWidth: narrow ? '100%' : '45%' }}>{r.tag}</b>}
           <b className="procure-item-name" style={{ fontWeight: 600, color: 'var(--text-strong)', flexShrink: 0, maxWidth: '100%', overflowWrap: narrow ? 'anywhere' : undefined }}>{head}</b>
           {words ? <span style={{ ...smallMuted, fontSize: '0.78rem', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere', minWidth: 0 }}>{words}</span> : null}
         </span>
@@ -881,7 +881,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               </div>
     )
     const lineBackground = ticked.has(r.key) ? 'var(--bg-blue-tint)' : undefined
-    if (order && !narrow) {
+    if (order) {
       // v2.4587 · a part inside an order: the product, the quantity, and one quiet door at the right.
       const leadWords = describeLeadTime(r.leadTimeDays)
       const noProduct = !r.partKey && (r.noProduct || r.product === '(no product)')
@@ -901,12 +901,8 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
       ) : (
         <button type="button" aria-expanded={open} aria-label={`${name}${r.partKey ? ` ${head}` : ''} dates`} onClick={toggle} style={{ ...link, color: 'var(--text-muted)' }} data-testid="procurement-status" data-tone={status.tone}>{open ? 'Close' : 'Dates…'}</button>
       )
-      return (
-        <Fragment key={r.key}>
-          <tr data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ background: lineBackground, opacity: r.orderOnly ? 0.72 : undefined }}>
-            <td style={{ ...td, width: 28, textAlign: 'center' }}>{tick}</td>
-            <td style={{ ...itemTd, paddingLeft: '2.2rem' }} data-testid="procurement-item" title={r.product}>
-              {item}
+      const under = (
+        <>
               {r.isHand ? (
                 <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>{stage}{lead}{remove}</span>
               ) : order.facts ? (
@@ -915,6 +911,34 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   {leadWords ? ` · ${leadWords} lead` : ''}
                 </span>
               ) : null}
+        </>
+      )
+      if (narrow) {
+        // v2.4600 · on a phone the part is a short card under its order: the product, then the quantity and its one door.
+        return (
+          <Fragment key={r.key}>
+            <div data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.45rem 0.35rem 0.45rem 1.2rem', borderBottom: '1px solid var(--bg-muted)', background: lineBackground, opacity: r.orderOnly ? 0.72 : undefined }}>
+              <span style={{ paddingTop: '0.15rem' }}>{tick}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', minWidth: 0 }}>
+                <div data-testid="procurement-item" title={r.product} style={{ lineHeight: 1.35, minWidth: 0 }}>{item}</div>
+                {under}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.6rem', alignItems: 'baseline', fontSize: '0.8rem' }}>
+                  {r.quantity != null ? <span style={smallMuted}>Qty <b style={{ color: 'var(--text-strong)' }} data-testid="procurement-qty">{qty}</b></span> : null}
+                  {right}
+                </div>
+              </div>
+            </div>
+            {open ? <div data-testid="procurement-editor" style={{ background: 'var(--bg-blue-tint)', padding: '0.55rem 0.6rem 0.65rem', borderBottom: '1px solid var(--bg-muted)' }}>{editor}</div> : null}
+          </Fragment>
+        )
+      }
+      return (
+        <Fragment key={r.key}>
+          <tr data-testid="procurement-row" data-part={r.partKey ? 'true' : undefined} data-order-only={r.orderOnly ? 'true' : undefined} style={{ background: lineBackground, opacity: r.orderOnly ? 0.72 : undefined }}>
+            <td style={{ ...td, width: 28, textAlign: 'center' }}>{tick}</td>
+            <td style={{ ...itemTd, paddingLeft: '2.2rem' }} data-testid="procurement-item" title={r.product}>
+              {item}
+              {under}
             </td>
             <td style={{ ...tdCenter, fontWeight: 600 }} data-testid="procurement-qty">{qty}</td>
             {/* A part carries no mark of its own; one sent back uses the calendar's width for its note and doors. */}
@@ -1175,10 +1199,10 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
             </button>
           ))}
         </div>
-        {loaded && (sharedHouse(rows) || (ordersView && !axis)) ? (
+        {loaded && (sharedHouse(rows) || (calendarView && !axis)) ? (
           <span style={smallMuted} data-testid="procurement-shared">
             {sharedHouse(rows) ? `Every part comes from ${sharedHouse(rows)}.` : ''}
-            {ordersView && !axis ? `${sharedHouse(rows) ? ' ' : ''}No dates to draw yet.` : ''}
+            {calendarView && !axis ? `${sharedHouse(rows) ? ' ' : ''}No dates to draw yet.` : ''}
           </span>
         ) : null}
       </div>
@@ -1285,12 +1309,95 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               if (g.noProduct) return onOpenItem && first?.itemId ? <button type="button" onClick={() => onOpenItem({ itemId: first.itemId!, partKey: null })} style={link}>Open it</button> : null
               return (
                 <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', justifyContent: 'flex-end' }}>
-                  {g.right ? <span style={smallMuted}>{g.right}</span> : null}
+                  {g.right && !narrow ? <span style={smallMuted}>{g.right}</span> : null}
                   {onAnswerItem && g.answerItemId && !first?.isHand && g.rows.some((r) => answerDoor(r) === 'enter') ? <button type="button" disabled={busy} onClick={() => onAnswerItem({ itemId: g.answerItemId!, partKey: null })} title="Record what they said about this fixture. Nobody is emailed." aria-label={`Their answer for the fixture ${g.title}`} style={link} data-testid="procurement-fixture-answer">Their answer…</button> : null}
                 </span>
               )
             }
-            return g.right ? <span style={{ fontWeight: 600, color: g.rightTone === 'quiet' ? 'var(--text-strong)' : ORDER_TONE_COLOR[g.rightTone] }}>{g.right}</span> : null
+            // On a card the date words say this already.
+            return g.right && !narrow ? <span style={{ fontWeight: 600, color: g.rightTone === 'quiet' ? 'var(--text-strong)' : ORDER_TONE_COLOR[g.rightTone] }}>{g.right}</span> : null
+          }
+          const markForm = (g: OrderGroup, n: number) => (
+            <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.7rem', alignItems: 'center' }}>
+              <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>Mark {n} part{n === 1 ? '' : 's'} ordered</b>
+              <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                Ordered
+                <input type="text" aria-label="Ordered on" value={markOn} onChange={(e) => setMarkOn(e.target.value)} style={{ ...inp, width: '4.6rem', textAlign: 'center' }} />
+              </label>
+              <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
+                PO
+                <input type="text" aria-label="PO" placeholder="PO number" value={markPo} onChange={(e) => setMarkPo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void markGroup(g) }} maxLength={60} style={{ ...inp, width: '8rem' }} />
+              </label>
+              <button type="button" disabled={disabled} onClick={() => void markGroup(g)} style={btnPrimary} data-testid="procurement-mark-save">Mark {n} ordered</button>
+              <button type="button" onClick={() => setMarking(null)} style={link}>Cancel</button>
+              <span style={smallMuted}>{n < g.count ? 'Only the ticked parts are marked.' : 'Tick parts first to order only some of them.'}</span>
+            </span>
+          )
+          if (narrow) {
+            // v2.4600 · on a phone an order is a card: its name, count and note, then its right-hand words under them. No calendar: the date is said in words.
+            const head: CSSProperties = { display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr)', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.45rem 0.35rem', borderBottom: '1px solid var(--bg-muted)' }
+            return (
+              <div data-testid="procurement-rows" style={{ borderTop: '1px solid var(--border)' }}>
+                {orders.map((sec) => {
+                  const secOpen = isOpen(sec.key, true)
+                  const keys = [...sec.rows, ...sec.groups.flatMap((g) => g.rows)].map((r) => r.key)
+                  return (
+                    <Fragment key={sec.key}>
+                      <div data-testid="procurement-section" data-kind={sec.kind} style={{ ...head, background: 'var(--bg-subtle)', alignItems: 'center' }}>
+                        <span>{tickAll(keys, `Pick every line under ${sec.title}`)}</span>
+                        <button type="button" className="procure-fold" aria-expanded={secOpen} onClick={() => flip(sec.key, true)} data-testid="procurement-section-fold">
+                          <Chevron open={secOpen} />
+                          <b style={{ color: 'var(--text-strong)' }}>{sec.title}</b>
+                          {pill(sec.count, sec.tone)}
+                          <span style={{ ...smallMuted, ...(sec.tone === 'late' ? { color: 'var(--text-red-700)', fontWeight: 600 } : null) }}>{sec.note}</span>
+                        </button>
+                      </div>
+                      {secOpen
+                        ? sec.groups.map((g) => {
+                            const n = rowsToMark(g, ticked).length
+                            const open = isOpen(g.key, g.openByDefault)
+                            const said = groupDateWords(g, today)
+                            const right = groupRight(g)
+                            return (
+                              <Fragment key={g.key}>
+                                <div data-testid="procurement-group" data-kind={g.kind} style={head}>
+                                  <span style={{ paddingTop: '0.45rem' }}>{tickAll(g.rows.map((r) => r.key), `Pick every part under ${g.title}`)}</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
+                                    <button type="button" className="procure-fold" aria-expanded={open} onClick={() => flip(g.key, g.openByDefault)} data-testid="procurement-group-fold">
+                                      <Chevron open={open} />
+                                      <b style={{ color: g.kind === 'to_place' ? ORDER_TONE_COLOR[g.tone === 'quiet' ? 'go' : g.tone] : 'var(--text-strong)' }}>{g.title}{g.kind === 'to_place' && said.words ? ` · ${said.words}` : ''}</b>
+                                      {pill(g.count, g.kind === 'to_place' ? g.tone : 'quiet')}
+                                      {g.isNew ? <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'white', background: '#2563eb', borderRadius: 999, padding: '0.05rem 0.45rem' }} data-testid="procurement-new">new</span> : null}
+                                      {g.warn ? <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-amber-100)', borderRadius: 999, padding: '0.05rem 0.5rem' }} data-testid="procurement-section-warn">{g.warn}</span> : null}
+                                    </button>
+                                    {g.noProduct ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, fontSize: '0.8rem', paddingLeft: '0.3rem' }}>no product yet</span> : g.note ? <span style={{ ...smallMuted, paddingLeft: '0.3rem', overflowWrap: 'anywhere' }} data-testid="procurement-group-note">{g.note}</span> : null}
+                                    {(said.words && g.kind !== 'to_place') || right ? (
+                                      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.75rem', alignItems: 'center', paddingLeft: '0.3rem', fontSize: '0.8125rem' }} data-testid="procurement-group-right">
+                                        {said.words && g.kind !== 'to_place' ? <span style={{ fontWeight: 600, color: said.tone === 'quiet' ? 'var(--text-strong)' : ORDER_TONE_COLOR[said.tone] }} data-testid="procurement-group-date">{said.words}</span> : null}
+                                        {right}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </div>
+                                {marking === g.key ? <div data-testid="procurement-mark-form" style={{ padding: '0.5rem 0.6rem', background: 'var(--bg-blue-tint)', borderBottom: '1px solid var(--bg-muted)' }}>{markForm(g, n)}</div> : null}
+                                {open
+                                  ? g.rows.map((r, i) => (
+                                      <Fragment key={r.key}>
+                                        {g.orderOnlyFrom != null && i === g.orderOnlyFrom ? <div data-testid="procurement-order-only-divider" style={{ padding: '0.3rem 0.35rem 0.3rem 2.2rem', borderBottom: '1px solid var(--bg-muted)', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Ordered, not on the GC’s copy · {g.rows.length - g.orderOnlyFrom} part{g.rows.length - g.orderOnlyFrom === 1 ? '' : 's'}</div> : null}
+                                        {renderRow(r, g.kind === 'fixture', undefined, { showTag: g.showTag, facts: g.showFacts })}
+                                      </Fragment>
+                                    ))
+                                  : null}
+                              </Fragment>
+                            )
+                          })
+                        : null}
+                      {secOpen ? sec.rows.map((r) => renderRow(r, false, undefined, { showTag: true, facts: false })) : null}
+                    </Fragment>
+                  )
+                })}
+              </div>
+            )
           }
           const groupRows = (g: OrderGroup) => {
             const n = rowsToMark(g, ticked).length
@@ -1317,20 +1424,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                   <tr data-testid="procurement-mark-form">
                     <td style={{ ...td, background: 'var(--bg-blue-tint)' }} />
                     <td colSpan={cols - 1} style={{ ...td, background: 'var(--bg-blue-tint)', padding: '0.45rem 0.6rem 0.5rem 0.9rem' }}>
-                      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.7rem', alignItems: 'center' }}>
-                        <b style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)' }}>Mark {n} part{n === 1 ? '' : 's'} ordered</b>
-                        <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
-                          Ordered
-                          <input type="text" aria-label="Ordered on" value={markOn} onChange={(e) => setMarkOn(e.target.value)} style={{ ...inp, width: '4.6rem', textAlign: 'center' }} />
-                        </label>
-                        <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', fontSize: '0.8rem' }}>
-                          PO
-                          <input type="text" aria-label="PO" placeholder="PO number" value={markPo} onChange={(e) => setMarkPo(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void markGroup(g) }} maxLength={60} style={{ ...inp, width: '8rem' }} />
-                        </label>
-                        <button type="button" disabled={disabled} onClick={() => void markGroup(g)} style={btnPrimary} data-testid="procurement-mark-save">Mark {n} ordered</button>
-                        <button type="button" onClick={() => setMarking(null)} style={link}>Cancel</button>
-                        <span style={smallMuted}>{n < g.count ? 'Only the ticked parts are marked.' : 'Tick parts first to order only some of them.'}</span>
-                      </span>
+                      {markForm(g, n)}
                     </td>
                   </tr>
                 ) : null}
@@ -1391,8 +1485,6 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
               // By tag, a tag with one line needs no heading of its own.
               const heading = lens !== 'by_tag' || sec.rows.length > 1 || (sec.rows[0]?.isHand ?? false)
               const keys = sec.rows.map((r) => r.key)
-              // 2026-10-02 · To order folds the lines waiting on the GC to one line per house; a blocker's short list is never folded.
-              const folds = lens === 'to_order' && sec.key === 'waiting' && !only && !stepPicked ? foldByHouse(sec.rows) : null
               // By tag, a fixture's lines as a tree: its parts one step in, an assembly's own step only when it mixes (v2.4384).
               const tree = lens === 'by_tag' && heading ? tagBlock(sec.rows) : null
               return (
@@ -1421,26 +1513,6 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
                               ? treeRow(`${l.row.key}:oo`, 'procurement-order-only-divider', l.guides, true, { padding: '0.25rem 0.4rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }, <>Ordered, not on the GC’s copy · {l.orderOnlyCount} part{l.orderOnlyCount === 1 ? '' : 's'}</>)
                               : null}
                             {renderRow(l.row, true, l.guides)}
-                          </Fragment>
-                        )
-                      })
-                    : folds
-                    ? folds.map((f) => {
-                        const fopen = openHouses.has(f.key)
-                        const fkeys = f.rows.map((r) => r.key)
-                        return (
-                          <Fragment key={f.key}>
-                            {block(f.key, 'procurement-house-fold', {}, (
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: narrow ? 0 : '1.2rem' }}>
-                                {tickAll(fkeys, `Pick every line at ${f.house ?? 'no house yet'}`)}
-                                <button type="button" className="procure-fold" aria-expanded={fopen} onClick={() => setOpenHouses((cur) => { const next = new Set(cur); if (next.has(f.key)) next.delete(f.key); else next.add(f.key); return next })}>
-                                  <b style={{ color: f.house ? 'var(--text-strong)' : 'var(--text-amber-700)' }}>{f.house ?? 'No house yet'}</b>
-                                  <span style={smallMuted}>{houseFoldNote(f)}</span>
-                                  <span aria-hidden="true" style={{ ...smallMuted, marginLeft: 'auto' }}>{fopen ? 'Hide' : 'Show'}</span>
-                                </button>
-                              </span>
-                            ))}
-                            {fopen ? f.rows.map((r) => renderRow(r, false)) : null}
                           </Fragment>
                         )
                       })
@@ -1479,7 +1551,7 @@ export function SubmittalProcurementPanel({ bidId, bidLabel, companyName, items,
           </div>
         )
       })()}
-      {ordersView ? (
+      {ordersView && narrow ? null : calendarView ? (
         axis ? (
           // v2.4592 · the calendar's key, one line.
           <div style={{ ...smallMuted, display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1.1rem', alignItems: 'center' }} data-testid="procurement-key">
