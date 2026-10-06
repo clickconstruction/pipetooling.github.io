@@ -65,6 +65,11 @@ function days(n: number): string {
   return `${n} ${n === 1 ? 'day' : 'days'}`
 }
 
+/** Every late day the customer's: "That day is the customer's", "Both are the customer's", "All 4 are the customer's". */
+function allTheirs(late: number): string {
+  return late === 1 ? "That day is the customer's" : late === 2 ? "Both are the customer's" : `All ${late} are the customer's`
+}
+
 function andList(words: string[]): string {
   if (words.length <= 1) return words[0] ?? ''
   return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
@@ -120,8 +125,8 @@ export function lateFinish(state: GcState, project: GcProject): LateFinish {
         ? askedWords(late, customers, asked, ask)
         : customers >= late
           ? late === 1
-            ? `That day is the customer's: a change order for it would ${save(1)}.`
-            : `All ${late} are the customer's: a change order for them would ${save(late)}.`
+            ? `${allTheirs(1)}: a change order for it would ${save(1)}.`
+            : `${allTheirs(late)}: a change order for them would ${save(late)}.`
           : `${customers} of those days ${customers === 1 ? 'is' : 'are'} the customer's: a change order for ${customers === 1 ? 'it' : 'them'} would ${save(customers)}.`
       : null
 
@@ -147,7 +152,7 @@ export function lateFinish(state: GcState, project: GcProject): LateFinish {
  * customer." The days asked can be more than the late ones: it asks for every day their moves cost.
  */
 function askedWords(late: number, customers: number, asked: LateFinish['asked'], ask: TimeExtensionAsk | null): string {
-  const whose = customers >= late ? (late === 1 ? "That day is the customer's" : `All ${late} are the customer's`) : `${customers} of those days ${customers === 1 ? 'is' : 'are'} the customer's`
+  const whose = customers >= late ? allTheirs(late) : `${customers} of those days ${customers === 1 ? 'is' : 'are'} the customer's`
   const total = asked.reduce((sum, a) => sum + a.days, 0)
   const orders = asked.length === 1 ? `change order ${asked[0]?.number} asks` : `change orders ${andList(asked.map((a) => String(a.number)))} ask`
   const drafts = asked.filter((a) => a.status === 'draft')
