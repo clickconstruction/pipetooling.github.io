@@ -84,7 +84,7 @@ describe('jobs without a linked record', () => {
 
 describe('the firm\'s payload', () => {
   const company = { name: 'Click Plumbing and Electrical', cityLine: 'Kyle, TX', licenseLine: '', phone: '(512) 555-0100', email: 'office@example.com' }
-  it('an older function\'s payload (no new fields) parses and builds, each job falling back to its address', () => {
+  it('an older function\'s payload (no new fields) parses and builds, each job matched to the payer\'s record by its address, never linked', () => {
     const raw = sampleLegalPortalResponse(company, TODAY) as { matters: Array<Record<string, unknown>> }
     const m = { ...raw.matters[0], jobs: (raw.matters[0]!.jobs as Array<Record<string, unknown>>).map((j) => ({ ...j, customer_address_id: 'gone' })) }
     delete (m as Record<string, unknown>).jobAddresses
@@ -93,7 +93,7 @@ describe('the firm\'s payload', () => {
     expect(payload.matters[0]?.jobOwners).toEqual([])
     const p = buildMatterPacket(payload.matters[0]!, TODAY, portalFeeModel(payload))!
     expect(p.account.properties).toHaveLength(1)
-    expect(p.account.properties[0]?.source).toBe('job_address')
+    expect(p.account.properties[0]?.source).toBe('matched')
   })
   it('a new function\'s records reach the packet: the job\'s own record and override', () => {
     const raw = sampleLegalPortalResponse(company, TODAY) as { matters: Array<Record<string, unknown>> }
