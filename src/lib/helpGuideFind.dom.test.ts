@@ -20,7 +20,7 @@ function page(): HTMLDivElement {
   return root
 }
 
-describe('helpGuideFind (v2.4634)', () => {
+describe('helpGuideFind (v2.4655)', () => {
   it('marks every match, case-insensitive, and clears back to the same text', () => {
     const root = page()
     expect(markFindMatches(root, 'month')).toBe(5)

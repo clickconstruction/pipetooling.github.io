@@ -7,7 +7,7 @@ import { LIEN_RULE_CITES, LIEN_RULES_GUIDE_SLUG, lienRuleHref, type LienRuleCite
 import { useIsMobile } from '../../hooks/useIsMobile'
 
 /**
- * § Rules as a window (v2.4634, the owner's ask: *not a new page but a searchable modal*): the
+ * § Rules as a window (v2.4655, the owner's ask: *not a new page but a searchable modal*): the
  * guide *read the Texas lien rules the app follows*, drawn over the desk or the Lien window
  * at the rule for what is on screen, with a find box at the top. Typing marks every match on
  * the page and narrows the guide to the rules that hold one; Enter walks the matches; Esc

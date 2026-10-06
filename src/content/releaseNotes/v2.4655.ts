@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4634',
+  version: 'v2.4655',
   date: '2026-10-06',
   title: 'Lien desk: § Rules opens the rules in a window you can search',
   kind: 'feature',
