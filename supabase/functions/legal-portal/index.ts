@@ -6,6 +6,7 @@ import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
+import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/legalLienBookShape.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -68,9 +69,12 @@ type Row = Record<string, unknown>
  * and release filings — exactly what `useLienTimelineBook` reads for the
  * office. The page folds them with `assembleLienBookInput` + `buildLienTimelineBook`,
  * so counsel's grid on the portal is the office's book, live. Covers every
- * billed job with money open and a lien month (owner call: the whole book, not
- * only referred matters — dates and dollars, nothing anyone said). Null on any
- * failure so the portal still opens.
+ * billed job with money open and a lien month (owner call, 2026-09-24 and again
+ * 2026-10-05: the whole book, not only referred matters — dates and dollars,
+ * nothing anyone said). Since v2.4616 the selects name their columns and
+ * `shapeLienBookForCounsel` cuts every row again before it is sent: no desk
+ * item `fields`, hold reason or spoken word, no filing note, sends or link, no
+ * owner email, no address note. Null on any failure so the portal still opens.
  */
 const LIEN_BOOK_WINDOW_DAYS = 400
 // deno-lint-ignore no-explicit-any
@@ -87,18 +91,18 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
     if (jobIds.length === 0) return { rows, affidavitRows, items: [], filings: [], jobs: [], gcs: [], addresses: [], owners: [] }
     const [jobsRes, itemsRes, filingsRes, ownersRes] = await Promise.all([
       admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on').in('id', jobIds),
-      admin.from('job_lien_desk_items').select('*').in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
-      admin.from('job_lien_filings').select('*').in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
-      admin.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address, owner_email').in('job_id', jobIds),
+      admin.from('job_lien_desk_items').select(LIEN_BOOK_COUNSEL_SELECT.deskItems).in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
+      admin.from('job_lien_filings').select(LIEN_BOOK_COUNSEL_SELECT.filings).in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
+      admin.from('job_property_owners').select(LIEN_BOOK_COUNSEL_SELECT.owners).in('job_id', jobIds),
     ])
     const jobs = (jobsRes.data ?? []) as Row[]
     const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id as string | null).filter((v): v is string => Boolean(v)))]
     const addressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
     const [gcRes, addrRes] = await Promise.all([
-      gcIds.length ? admin.from('customers').select('id, name, lien_notice_policy').in('id', gcIds) : Promise.resolve({ data: [] }),
-      addressIds.length ? admin.from('customer_addresses').select('*').in('id', addressIds) : Promise.resolve({ data: [] }),
+      gcIds.length ? admin.from('customers').select(LIEN_BOOK_COUNSEL_SELECT.gcs).in('id', gcIds) : Promise.resolve({ data: [] }),
+      addressIds.length ? admin.from('customer_addresses').select(LIEN_BOOK_COUNSEL_SELECT.addresses).in('id', addressIds) : Promise.resolve({ data: [] }),
     ])
-    return {
+    return shapeLienBookForCounsel({
       rows,
       affidavitRows,
       items: itemsRes.data ?? [],
@@ -107,7 +111,7 @@ async function readLienBook(admin: any): Promise<Record<string, unknown> | null>
       gcs: gcRes.data ?? [],
       addresses: addrRes.data ?? [],
       owners: ownersRes.data ?? [],
-    }
+    })
   } catch (e) {
     console.error('legal-portal: lien book unreadable', e)
     return null

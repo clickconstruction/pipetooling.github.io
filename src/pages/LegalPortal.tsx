@@ -194,7 +194,7 @@ export default function LegalPortal() {
               </div>
               <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
                 <b style={{ color: INK }}>What you get</b><br />The account, every agreement and notice, Click’s contact history with the customer, their promises, the field evidence, and the steps so far — as one lettered packet. Print packet is the PDF.<br /><br />
-                <b style={{ color: INK }}>What you can do</b><br />On Fees &amp; steps: add fees and costs, record a step (demand · suit · judgment · settled), record a payment you received, ask the office. Each lands on the office's Needs You list.<br /><br /><b style={{ color: INK }}>What you cannot do</b><br />Mark anything paid, edit a job, email the customer through Click, or see any account not released to you.
+                <b style={{ color: INK }}>What you can do</b><br />On Fees &amp; steps: add fees and costs, record a step (demand · suit · judgment · settled), record a payment you received, ask the office. Each lands on the office's Needs You list.<br /><br /><b style={{ color: INK }}>What you cannot do</b><br />Mark anything paid, edit a job, or email the customer through Click. Only accounts released to you are here; the Lien grid shows dates and dollars for every job with a lien month, and nothing anyone said.
               </div>
             </div>
           </div>
