@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4684',
+  version: 'v2.4694',
   date: '2026-10-06',
   title: 'GC mode: the New Project kernels from the October rounds move into the app',
   kind: 'infra',
