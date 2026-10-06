@@ -86,7 +86,7 @@ The steps are these:
 
 Each step wears a mark. {{chip:green|✓}} means done. {{chip:yellow|!}} means due, and it turns red inside a week. {{chip:red|✗}} means missed. A grey dash means blocked. A dashed ring is a step the app cannot date yet, with a door to set the date.
 
-**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band turns red and says so plainly. The lien is gone, and the money is still owed in Collections.
+**Next on the path** sits in a tinted band above the steps. It names the one thing to do and how many days are left. **Waiting on** sits in the same band. When every window closed with nothing sent, the band says what is left. While the affidavit window is still open, it says to send the notice late and then file. Once that window closes too, it turns red. The lien is gone, and the money is still owed in Collections.
 
 Under each step still to come, a small word says whose move it is. {{chip:blue|ours}} marks the notices, the retainage notice, the affidavit and the serve. {{chip:purple|the GC}} or {{chip:yellow|the owner}} marks the release until it is paid. {{chip:yellow|the owner}} also marks the owner's hold. {{chip:gray|counsel}} marks the year to sue, which the firm takes. **Waiting on** says who we wait on and for what.
 
@@ -152,7 +152,7 @@ A window that closes with nothing recorded is never silent. The Dashboard's lien
 
 Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. The lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 

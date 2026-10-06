@@ -32,6 +32,7 @@ describe('affidavit gates and piles', () => {
   it('a sub job needs owner, legal description, a recorded notice, and no homestead; a direct job skips the notice', () => {
     const sub = affidavitGates(row({ job_id: 'a', noticed: false }))
     expect(sub.map((g) => [g.key, g.ok])).toEqual([['owner', true], ['legal', true], ['notice', false], ['homestead', true]])
+    expect(sub.find((g) => g.key === 'notice')?.label).toContain('a late one counts while this window is open')
     const direct = affidavitGates(row({ job_id: 'b', is_sub: false, noticed: false, gc_customer_id: null }))
     expect(direct.find((g) => g.key === 'notice')?.ok).toBe(true)
     expect(affidavitGates(row({ job_id: 'c', homestead: true })).find((g) => g.key === 'homestead')?.ok).toBe(false)

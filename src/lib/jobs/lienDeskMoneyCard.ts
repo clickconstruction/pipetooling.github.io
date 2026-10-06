@@ -98,7 +98,7 @@ export function buildLienDeskMoneyCard(summary: LienDeskNeedsYou | null | undefi
     // own — so the count is never the part a narrow card cuts off ("15 noti…").
     const when = closed ? `closed ${day}` : soon === 0 ? 'today' : soon === 1 ? 'tomorrow' : `by ${day} · in ${soon} days`
     const label = many ? `${many} ${when}` : when
-    const hover = `${parts[0] ?? ''}${closed ? ' — the notice goes out as information; the lien right on that work is gone' : day ? ` — mail by ${day} or the lien right on that work is gone` : ''}`
+    const hover = `${parts[0] ?? ''}${closed ? ' — the window closed; a late notice can still carry the affidavit while its own window is open' : day ? ` — mail by ${day} or the lien right on that work is gone` : ''}`
     deadline = { label, who: who || null, tone, hover, pile: leaderFirst ? 'awaiting' : 'to_draft' }
   }
   return { claim, why, count, tone, title, piles, deadline }
