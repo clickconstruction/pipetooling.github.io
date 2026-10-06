@@ -33,20 +33,23 @@ export async function fetchLienSharePeople(): Promise<LienSharePerson[]> {
     .sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name))
 }
 
-/** The firm's live portal link (one active firm, one live link), or null when there is none yet. */
-export async function fetchFirmPortalUrl(origin: string): Promise<{ firmName: string; url: string } | null> {
+/**
+ * The firm's live portal link (one active firm, one live link), or null when there is none yet. Hash-only at
+ * rest (punch list #85, item 22): once the office can no longer read the token, a live link comes back with
+ * `url: null`, and the share panel says to send it from the Legal desk instead of going quiet.
+ */
+export async function fetchFirmPortalUrl(origin: string): Promise<{ firmName: string; url: string | null } | null> {
   const { data: firm, error: firmErr } = await db.from('legal_firms').select('id, name').eq('active', true).order('created_at').limit(1).maybeSingle()
   if (firmErr || !firm) return null
-  const { data: links, error } = await db
-    .from('legal_portal_links')
-    .select('token, revoked_at, created_at')
-    .eq('firm_id', (firm as { id: string }).id)
-    .is('revoked_at', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-  const token = (links as Array<{ token: string | null }> | null)?.[0]?.token
-  if (error || !token) return null
-  return { firmName: ((firm as { name: string | null }).name ?? '').trim() || 'the firm', url: `${origin}/legal?t=${token}` }
+  const firmId = (firm as { id: string }).id
+  const live = (cols: string) => db.from('legal_portal_links').select(cols).eq('firm_id', firmId).is('revoked_at', null).order('created_at', { ascending: false }).limit(1)
+  // The raw token while the table still gives it to the office; else only that a link is live.
+  let res: { data: unknown; error: unknown } = await live('id, token, created_at')
+  if (res.error) res = await live('id, created_at')
+  const row = (res.data as Array<{ token?: string | null }> | null)?.[0]
+  if (res.error || !row) return null
+  const firmName = ((firm as { name: string | null }).name ?? '').trim() || 'the firm'
+  return { firmName, url: row.token ? `${origin}/legal?t=${row.token}` : null }
 }
 
 async function fnErrorMessage(e: unknown, fallback: string): Promise<string> {

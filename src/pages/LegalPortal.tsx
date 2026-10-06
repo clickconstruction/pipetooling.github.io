@@ -48,6 +48,8 @@ export default function LegalPortal() {
   const token = params.get('t') || params.get('token') || ''
   const sample = sampleStateFromToken(token)
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  /** The office's preview by firm id (item 22): signed in, no key; nothing the page does is saved. */
+  const officeFirm = !token ? (params.get('firm') ?? '').trim() : ''
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<FirmTab>('account')
@@ -70,6 +72,10 @@ export default function LegalPortal() {
       setNotice('Sample — nothing is saved here.')
       setNoticeWarn(false)
       return true
+    }
+    if (officeFirm) {
+      setNotice('Office preview: the firm’s acts are not saved from here.')
+      return false
     }
     setBusy(true)
     setNotice(null)
@@ -95,7 +101,7 @@ export default function LegalPortal() {
   }
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !officeFirm) {
       setState({ kind: 'error', message: 'This link is missing its key. Please use the exact link the office sent you.' })
       return
     }
@@ -113,7 +119,8 @@ export default function LegalPortal() {
     void (async () => {
       try {
         // `refresh=1`: the quiet reload is not a new visit, so the function writes no page-view row for it.
-        const res = await fetch(`${supabaseUrl}/functions/v1/legal-portal?token=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}${quiet ? '&refresh=1' : ''}`, { headers: await staffAwarePublicHeaders() })
+        const query = officeFirm ? `firm=${encodeURIComponent(officeFirm)}&${PUBLIC_PREVIEW_PARAM}=1` : `token=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`
+        const res = await fetch(`${supabaseUrl}/functions/v1/legal-portal?${query}${quiet ? '&refresh=1' : ''}`, { headers: await staffAwarePublicHeaders() })
         const body = (await res.json().catch(() => null)) as unknown
         if (cancelled) return
         if (!res.ok) {
@@ -137,7 +144,7 @@ export default function LegalPortal() {
     return () => {
       cancelled = true
     }
-  }, [token, preview, reloadTick])
+  }, [token, preview, reloadTick, officeFirm])
 
   // Item 22 (#85): reload quietly before the signed PDF links run out — when the tab comes back into view,
   // and on a one-minute check while it is in view. The selected matter and tab stay as they are.
@@ -194,6 +201,7 @@ export default function LegalPortal() {
     <div data-theme="light" className="legalPortalPage" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT }}>
       <div style={{ maxWidth: 1040, margin: '0 auto' }}>
         {sample ? <SampleModeBanner text={LEGAL_SAMPLE_BANNER_TEXT} /> : null}
+        {officeFirm ? <div data-legal-office-preview style={{ ...card, marginBottom: 14, fontSize: 13, color: MUTED }}><b style={{ color: INK }}>Office preview.</b> This is the firm’s portal as the firm sees it. Nothing you do here is saved, and it does not count as the firm’s visit.</div> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${COPPER}`, paddingBottom: 10, marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Legal portal'}</div>

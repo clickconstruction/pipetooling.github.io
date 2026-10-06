@@ -178,8 +178,15 @@ serve(async (req) => {
         continue
       }
       if (digestRecipients.length === 0) await admin.from('legal_notification_queue').update({ digested_at: stamp }).eq('firm_id', firm.id).is('digested_at', null)
-      const { data: linkRow } = await admin.from('legal_portal_links').select('token').eq('firm_id', firm.id).is('revoked_at', null).maybeSingle()
-      const portal = portalLink(((linkRow as Row | null)?.token as string | null) ?? null)
+      // Item 22 (#85): the live link's raw token sits in Vault once the table is hash-only; the service-role RPC
+      // reads it. Before that migration the RPC does not exist and the raw column still answers.
+      const { data: vaultToken, error: vaultErr } = await admin.rpc('legal_portal_link_token', { p_firm_id: firm.id })
+      let liveToken = !vaultErr && typeof vaultToken === 'string' && vaultToken ? vaultToken : null
+      if (!liveToken) {
+        const { data: linkRow } = await admin.from('legal_portal_links').select('token').eq('firm_id', firm.id).is('revoked_at', null).maybeSingle()
+        liveToken = ((linkRow as Row | null)?.token as string | null) ?? null
+      }
+      const portal = portalLink(liveToken)
       const { data: matterRows } = await admin.from('legal_matters').select('id, payer_name, stage, handling_name, released_at').eq('firm_id', firm.id).in('stage', WITH_FIRM)
       const matters = (matterRows ?? []) as Array<{ id: string; payer_name: string; stage: string; handling_name: string; released_at: string | null }>
       const matterById = new Map(matters.map((m) => [m.id, m] as const))

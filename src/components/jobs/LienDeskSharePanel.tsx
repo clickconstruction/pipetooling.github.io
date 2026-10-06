@@ -87,8 +87,8 @@ export type LienDeskSharePanelProps = {
   onSend: () => void
   onCopy: () => void
   onEmail: () => void
-  /** The firm's live portal link, when the office has made one. */
-  firm: { firmName: string; url: string } | null
+  /** The firm's live portal link, when the office has made one; `url` null when its address is no longer readable (item 22). */
+  firm: { firmName: string; url: string | null } | null
   onCopyFirm: () => void
   onClose: () => void
 }
@@ -162,9 +162,13 @@ export default function LienDeskSharePanel(p: LienDeskSharePanelProps) {
           {p.firm ? (
             <div data-lien-share-firm style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
               Counsel already sees every lien, live, on the firm’s portal.{' '}
-              <button type="button" onClick={p.onCopyFirm} style={{ ...linkBtn, fontSize: '0.72rem', padding: 0 }}>
-                Copy the firm’s link ›
-              </button>
+              {p.firm.url ? (
+                <button type="button" onClick={p.onCopyFirm} style={{ ...linkBtn, fontSize: '0.72rem', padding: 0 }}>
+                  Copy the firm’s link ›
+                </button>
+              ) : (
+                <span data-lien-share-firm-desk>To send the firm its link, use Send the link on the Legal desk’s Firm’s link card.</span>
+              )}
             </div>
           ) : null}
         </div>

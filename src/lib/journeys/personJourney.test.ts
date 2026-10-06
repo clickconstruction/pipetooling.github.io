@@ -287,6 +287,11 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.summary).toBe('2 recipients · 1 confirmed · portal link made')
   })
 
+  it('the firm: a live link with no token (hash-only at rest, #85 item 22) still counts, and opens as the office preview', () => {
+    const j = firmJourney({ kind: 'firm', id: 'f1', name: 'Sample & Partner' }, { portalLinks: [{ token: null, revoked_at: null, created_at: '2026-09-11T00:00:00Z' }], recipients: [], queue: [] }, NOW)
+    expect(j.steps['firm-portal']).toMatchObject({ state: 'sent', link: '/legal?firm=f1&preview=1' })
+  })
+
   it('every step of every applicable journey gets an answer, for every subject kind', () => {
     const all = customerJourneys()
     const cases = [

@@ -4,7 +4,7 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 // Item 7 (#85): a thrown error is logged; the firm reads one plain sentence.
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
-import { publicViewDecision } from '../_shared/publicViewCounting.ts'
+import { publicViewDecision, userBearerToken } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
@@ -14,8 +14,10 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
- * firm's capability token (raw lookup + sha256 fallback in legal_portal_links,
- * revoked → 404) and returns every matter the office marked attorney-ready
+ * firm's capability token by its sha256 in legal_portal_links (item 22: the raw
+ * column answers only until the hash-only migration empties it; revoked → 404),
+ * or, for the office, the firm by id on a signed-in session (`?firm=<id>&preview=1`,
+ * `legal_office_can_read()`), and returns every matter the office marked attorney-ready
  * (legal_matters.stage in the with-firm set) with the raw records the packet
  * kernel (src/lib/legal/legalPacket.ts) assembles on the page — jobs, invoices,
  * payments, the customer and property record, agreements (signed PDFs as
@@ -33,7 +35,8 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
  * one dated on or after it goes unless held_overrides says true. Timeline keys:
  * contact:<id> · promise:<id> · call:<id> · note:<job id>.
  *
- * No auth: the link is the capability. Same shape as customer-portal / sub-portal.
+ * No auth for the firm: the link is the capability. Same shape as customer-portal /
+ * sub-portal. The office's preview by firm id is the one signed-in door.
  */
 
 const corsHeaders = {
@@ -54,6 +57,22 @@ async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+
+/**
+ * The office's preview by firm (item 22): once the token is hash-only at rest the office no longer holds the
+ * firm's key, so its Preview asks by firm id, signed in. The caller's own session must pass
+ * `legal_office_can_read()` (the four office roles that read every legal table already). Null otherwise.
+ */
+async function officePreviewFirm(req: Request, firmId: string): Promise<string | null> {
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  const jwt = userBearerToken(req.headers.get('Authorization'), anonKey)
+  if (!jwt || !anonKey) return null
+  const asUser = createClient(Deno.env.get('SUPABASE_URL')!, anonKey, { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${jwt}` } } })
+  const { data, error } = await asUser.rpc('legal_office_can_read')
+  return !error && data === true ? firmId : null
+}
+
+const OFFICE_PREVIEW_MSG = 'Sign in to the office app to preview the firm’s portal.'
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, ...privateHeaders, 'Content-Type': 'application/json' } })
@@ -135,13 +154,18 @@ serve(async (req) => {
     const rawToken = url.searchParams.get('token')?.trim()
     // What customers see (v2.3512): the sample token answers with the sample firm's empty portal — no link lookup, no view row, never a real matter.
     if (sampleStateFromToken(rawToken)) return jsonResponse(sampleLegalPortalResponse(PORTAL_COMPANY, todayYmdInAppTz()))
-    if (!rawToken || rawToken.length < 16 || rawToken.length > 128) return jsonResponse({ error: 'Missing token' }, 400)
+    // The office's preview by firm id (item 22): `?firm=<id>&preview=1`, a signed-in office session, no key.
+    const firmParam = (url.searchParams.get('firm') ?? '').trim()
+    const officeFirmId = !rawToken && /^[0-9a-f-]{36}$/i.test(firmParam) ? await officePreviewFirm(req, firmParam) : null
+    if (!rawToken && firmParam && !officeFirmId) return jsonResponse({ error: OFFICE_PREVIEW_MSG }, 401)
+    if (!officeFirmId && (!rawToken || rawToken.length < 16 || rawToken.length > 128)) return jsonResponse({ error: 'Missing token' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
 
     // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
-    let link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(rawToken)).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
-    if (!link) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', rawToken).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
+    let link: { firm_id: string; revoked_at: string | null } | null = officeFirmId ? { firm_id: officeFirmId, revoked_at: null } : null
+    if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(rawToken)).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
+    if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', rawToken).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
     if (!link || link.revoked_at) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
     const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').eq('id', link.firm_id).maybeSingle()

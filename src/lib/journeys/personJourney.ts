@@ -572,9 +572,10 @@ export function firmJourney(subject: Extract<PersonSubject, { kind: 'firm' }>, r
     ? { state: confirmed.length ? 'signed' : 'sent', headline: `${plural(confirmed.length, 'address')} confirmed${waiting.length ? ` · ${waiting.length} waiting` : ''}${paused.length ? ` · ${paused.length} paused` : ''}`, detail: recipients.map((r) => r.name ?? r.email ?? '').filter(Boolean).join(', '), at: latestBy(recipients, (r) => r.confirmed_at)?.confirmed_at ?? null, link: null, action: waiting.length ? firmAction : null }
     : never('No recipients yet', firmAction)
   steps['firm-confirmed-page'] = confirmed.length ? { state: 'signed', headline: `Confirmed ${dayWord(latestBy(confirmed, (r) => r.confirmed_at)?.confirmed_at, now)}`, at: null, link: null, action: null } : never('—')
-  const link = rows.portalLinks.find((l) => !l.revoked_at && l.token) ?? null
-  steps['firm-portal'] = link?.token
-    ? { state: 'sent', headline: `Link made ${dayWord(link.created_at, now)}`, at: link.created_at, link: `/legal?t=${encodeURIComponent(link.token)}`, action: null }
+  // A live link, token or not (#85 item 22: hash-only at rest, so the office opens the portal by firm id, signed in).
+  const link = rows.portalLinks.find((l) => !l.revoked_at) ?? null
+  steps['firm-portal'] = link
+    ? { state: 'sent', headline: `Link made ${dayWord(link.created_at, now)}`, at: link.created_at, link: link.token ? `/legal?t=${encodeURIComponent(link.token)}` : `/legal?firm=${encodeURIComponent(subject.id)}&preview=1`, action: null }
     : never('No portal link yet', { label: 'Share their portal', to: '/customers' })
   const nowSends = rows.queue.filter((q) => q.sent_now_at)
   const lastNow = latestBy(nowSends, (q) => q.sent_now_at)
