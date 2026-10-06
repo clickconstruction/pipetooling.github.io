@@ -17,6 +17,8 @@ import {
 import type { GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input } from './gcUi'
 import { GcWeeklyReportCard } from './GcBuildingWeekly'
+import { GcLogVsChart } from './GcLogVsChart'
+import { logChartGaps } from '../../lib/gcMode/gcLogVsChart'
 
 /**
  * GC mode design spike: the superintendent's daily log (Building lane, owner 2026-10-04). Today's
@@ -128,6 +130,9 @@ export function GcBuildingLogTab({ state, project, dispatch }: GcPaneProps) {
               setEditing(false)
             }}
           />
+
+          {/* A crew on site this week with none of its bars running (G-60): asked where the log is written. The rest is on the Schedule tab. */}
+          <GcLogVsChart project={project} gaps={logChartGaps(state, project).filter((g) => g.kind === 'noBar')} dispatch={dispatch} />
 
           {earlier.length > 0 && (
             <Card>
