@@ -13,7 +13,9 @@ import {
   proposePropertyRecord,
   titleCaseUpperWords,
   type ParcelRecord,
-  type PropertyRecordFields,, countySourceLabel } from './propertyRecord'
+  type PropertyRecordFields,
+  countySourceLabel,
+} from './propertyRecord'
 import { proposalFromLookupPayload } from './propertyLookupClient'
 import { setExtraTxCountyMappings } from '../txCountyLookup'
 
