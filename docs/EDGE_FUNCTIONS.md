@@ -3956,6 +3956,8 @@ interface RecordStripeInvoiceOobBody {
    * the classic Billed-only guard.
    */
   allow_app_paid?: boolean
+  /** v2.4847: apply this existing row instead of writing a new one (its amount, date, type and reference win). */
+  payment_id?: string
 }
 ```
 
@@ -3966,6 +3968,8 @@ interface RecordStripeInvoiceOobBody {
 - **`That is more than the open balance on the Stripe invoice`** — **`amount_dollars`** (compared in cents) exceeds Stripe **`amount_remaining`**; **`That is more than what ClickTooling shows open on this bill`** — exceeds `invoice.amount − applied` in the ledger (v2.3695). Before v2.3695 any amount other than the full balance was rejected.
 
 **Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
+
+> **v2.4847 — `payment_id` (apply an existing payment)**: a `jobs_ledger_payments` row the app already counts toward the bill (recorded before the Stripe bill existed, or matched in Accounts Receivable) that Stripe never heard of. The row supplies the amount, date, type and reference (`amount_dollars` / `paid_on` / `payment_type` in the body are ignored); the function refuses a row with a credit note already, on another job, pinned to another bill, with no received date, or at/over Stripe's `amount_remaining` (*Mark the bill paid instead*). Under the balance it writes the v2.3695 credit note and **updates** the row (`invoice_id` = the bill, `stripe_credit_note_id`) instead of inserting one — the row is left out of the "already applied" sum. Answers `applied_existing: true`. The Bill tab's **Apply it to the Stripe bill** (payment line ⋯) is the caller; Undo part payment reverses it.
 
 > **v2.4801 — a check holds the close**: Mark Paid · **Check** at the whole open balance no longer calls this function; the window records the row with `mark_invoice_paid` and the daily [`close-held-stripe-marks`](#close-held-stripe-marks) sweep pays the Stripe invoice out of band seven days later with the same `pt_*` metadata. Cash, wire, ACH, card and every part payment still come here.
 

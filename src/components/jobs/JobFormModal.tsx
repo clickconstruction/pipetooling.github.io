@@ -157,6 +157,7 @@ import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenFor
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import UndoStripePartPaymentModal from './UndoStripePartPaymentModal'
+import ApplyPaymentToStripeBillModal from './ApplyPaymentToStripeBillModal'
 import UnwindStripeOobPaymentModal from './UnwindStripeOobPaymentModal'
 import { CHECK_DID_NOT_CLEAR_REASON, oobUnwindDoneWords } from '../../lib/jobs/stripeOobSendBack'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
@@ -1045,6 +1046,8 @@ export default function JobFormModal({
    */
   /** v2.3695: the locked Stripe row whose part payment is being undone. */
   const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
+  // v2.4847: Apply it to the Stripe bill — the row and the bill it is drawn under.
+  const [applyToStripeTarget, setApplyToStripeTarget] = useState<{ row: PaymentRow; bill: JobsLedgerInvoiceRow } | null>(null)
   // v2.4082: "Check didn't clear…" on a whole-bill out-of-band mark — opens the Undo window with the send-back on.
   const [checkDidNotClearRow, setCheckDidNotClearRow] = useState<PaymentRow | null>(null)
   // v2.4293: what the bank synced about the deposits behind bank-linked rows — the
@@ -1106,6 +1109,7 @@ export default function JobFormModal({
     unlinkMercuryConfirmRowId != null ||
     recordPaymentTarget != null ||
     undoPartPaymentRow != null ||
+    applyToStripeTarget != null ||
     checkDidNotClearRow != null ||
     paymentMoveRow != null ||
     deleteJobConfirmOpen ||
@@ -3017,6 +3021,7 @@ export default function JobFormModal({
                   setBillViewInvoice,
                   requestUndoPartPayment: (row) => setUndoPartPaymentRow(row),
                   requestCheckDidNotClear: (row) => setCheckDidNotClearRow(row),
+                  requestApplyToStripe: (row, bill) => setApplyToStripeTarget({ row, bill }),
                 }}
                 drawLabelByInvoiceId={drawLabelByInvoiceId}
                 canApplyAgreedWriteDown={canApplyAgreedWriteDown}
@@ -3059,6 +3064,7 @@ export default function JobFormModal({
               onRecordPaymentOnBill={(inv, o) => setRecordPaymentTarget({ inv, amount: o.amount, draftRowId: o.draftRowId })}
               requestUndoPartPayment={(row) => setUndoPartPaymentRow(row)}
               requestCheckDidNotClear={(row) => setCheckDidNotClearRow(row)}
+              requestApplyToStripe={(row, bill) => setApplyToStripeTarget({ row, bill })}
             />
             </div>
             {checkDidNotClearRow && editing ? (
@@ -3083,6 +3089,28 @@ export default function JobFormModal({
                     showToast(oobUnwindDoneWords(r.sentBack), 'success')
                   }
                   onSavedRef.current?.()
+                }}
+              />
+            ) : null}
+            {applyToStripeTarget && editing ? (
+              <ApplyPaymentToStripeBillModal
+                payment={applyToStripeTarget.row}
+                invoice={applyToStripeTarget.bill}
+                invoices={editing.invoices ?? []}
+                payments={payments}
+                jobRevenue={editing.revenue}
+                stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+                zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+                onClose={() => setApplyToStripeTarget(null)}
+                onSuccess={async () => {
+                  setApplyToStripeTarget(null)
+                  const found = await fetchJobWithDetailsById(editing.id)
+                  if (found) {
+                    setEditing(found)
+                    setPayments(paymentRowsFromJob(found))
+                    hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
+                  }
+                  showToast('Applied. The Stripe pay link now asks for the rest.', 'success')
                 }}
               />
             ) : null}

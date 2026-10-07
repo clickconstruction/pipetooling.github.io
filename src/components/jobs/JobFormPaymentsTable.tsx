@@ -98,6 +98,8 @@ type JobFormPaymentsTableProps = {
    * reversed in Stripe, the payment comes off and the job can be billed again.
    */
   requestCheckDidNotClear?: (row: PaymentRow) => void
+  /** v2.4847: Apply it to the Stripe bill on a row Stripe never heard of. */
+  requestApplyToStripe?: PaymentLineActions['requestApplyToStripe']
 }
 
 /**
@@ -124,6 +126,7 @@ export function JobFormPaymentsTable({
   onRecordPaymentOnBill,
   requestUndoPartPayment,
   requestCheckDidNotClear,
+  requestApplyToStripe,
 }: JobFormPaymentsTableProps) {
   // v2.3576: the grey trace lines under the list — what left this job and what arrived.
   const trace = useJobPaymentTrace(editing?.id ?? null, editing)
@@ -136,6 +139,7 @@ export function JobFormPaymentsTable({
     setBillViewInvoice,
     requestUndoPartPayment,
     requestCheckDidNotClear,
+    requestApplyToStripe,
   }
 
   // Consolidated start: blank manual draft rows (the seeded empty row) stay
