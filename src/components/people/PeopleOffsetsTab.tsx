@@ -7,11 +7,12 @@ import { buildSettleUpBoard, type StubPaymentLike } from '../../lib/people/perso
 import { fetchLaborPayConfigMap } from '../../utils/teamLabor'
 import PersonMoneyLedgerModal from './PersonMoneyLedgerModal'
 import { localCalendarDayKey } from '../../utils/dateUtils'
+import { isArchivedRosterRef, NO_ARCHIVED_ROSTER, personIdByName, type ArchivedRoster } from '../../lib/people/rosterPeople'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
 
-type PersonOffset = { id: string; person_name: string; type: string; amount: number; description: string | null; occurred_date: string; pay_stub_id: string | null; created_at: string | null }
+type PersonOffset = { id: string; person_name: string; person_id?: string | null; type: string; amount: number; description: string | null; occurred_date: string; pay_stub_id: string | null; created_at: string | null }
 
 type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
 type UserRow = { id: string; email: string | null; name: string; role: string; notes: string | null; phone: string | null }
@@ -22,13 +23,11 @@ export type PeopleOffsetsTabProps = {
   users: UserRow[]
   payStubs: PayStubRow[]
   loadPayStubs: () => Promise<unknown>
-  /** The names archived roster rows answer to (`archivedRosterNames`, from `roster_people`) — fold into the Archived users section. */
-  archivedUserNames?: ReadonlySet<string>
-  /** Archived roster people (people.archived_at set) — same treatment. */
-  archivedPeople?: Person[]
+  /** Who is archived (`buildArchivedRoster`, from `roster_people`): their rows fold into the Archived users section. */
+  archived?: ArchivedRoster
 }
 
-export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs, archivedUserNames, archivedPeople }: PeopleOffsetsTabProps) {
+export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs, archived = NO_ARCHIVED_ROSTER }: PeopleOffsetsTabProps) {
   const confirmDialog = useConfirmDialog()
   const [offsets, setOffsets] = useState<PersonOffset[]>([])
   const [offsetsLoading, setOffsetsLoading] = useState(false)
@@ -42,7 +41,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
   const [offsetsTabSearch, setOffsetsTabSearch] = useState('')
   const [ledgerPersonName, setLedgerPersonName] = useState<string | null>(null)
   const [allStubPayments, setAllStubPayments] = useState<StubPaymentLike[]>([])
-  const [allDayHours, setAllDayHours] = useState<Array<{ personName: string; workDate: string; hours: number }>>([])
+  const [allDayHours, setAllDayHours] = useState<Array<{ personName: string; personId: string | null; workDate: string; hours: number }>>([])
   const [wageMap, setWageMap] = useState<Record<string, { hourly_wage: number; is_salary: boolean }>>({})
   const [boardLoading, setBoardLoading] = useState(true)
 
@@ -60,21 +59,21 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
       // Recorded payments + approved day hours + wages feed the settle-up
       // columns. people_hours crosses PostgREST's 1000-row cap — page it.
       const PAGE = 1000
-      const hours: Array<{ personName: string; workDate: string; hours: number }> = []
+      const hours: Array<{ personName: string; personId: string | null; workDate: string; hours: number }> = []
       const twoYearsAgo = new Date()
       twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
       const startDate = localCalendarDayKey(twoYearsAgo)
       for (let from = 0; ; from += PAGE) {
         const { data, error } = await supabase
           .from('people_hours')
-          .select('person_name, work_date, hours')
+          .select('person_name, person_id, work_date, hours')
           .gte('work_date', startDate)
           .order('work_date')
           .order('person_name')
           .range(from, from + PAGE - 1)
         if (error) throw error
-        const rows = (data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
-        hours.push(...rows.map((r) => ({ personName: r.person_name, workDate: r.work_date, hours: r.hours })))
+        const rows = (data ?? []) as Array<{ person_name: string; person_id: string | null; work_date: string; hours: number }>
+        hours.push(...rows.map((r) => ({ personName: r.person_name, personId: r.person_id ?? null, workDate: r.work_date, hours: r.hours })))
         if (rows.length < PAGE) break
       }
       const payments: StubPaymentLike[] = []
@@ -173,23 +172,26 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     return settleRows.filter((b) => b.personName.toLowerCase().includes(q))
   }, [settleRows, offsetsTabSearch])
 
-  const archivedNameSet = useMemo(() => {
-    const set = new Set<string>()
-    for (const n of archivedUserNames ?? []) set.add(n.trim().toLowerCase())
-    for (const p of archivedPeople ?? []) {
-      const n = (p.name ?? '').trim().toLowerCase()
-      if (n) set.add(n)
-    }
-    return set
-  }, [archivedUserNames, archivedPeople])
+  /** Board rows are by name: the one `person_id` a name's offsets and hours carry decides first (#29 item 3, v2.4865). */
+  const archivedBoardNames = useMemo(() => {
+    const ids = personIdByName([
+      ...offsets.map((o) => ({ name: o.person_name, person_id: o.person_id })),
+      ...allDayHours.map((d) => ({ name: d.personName, person_id: d.personId })),
+    ])
+    return new Set(
+      settleRows
+        .map((b) => b.personName)
+        .filter((name) => isArchivedRosterRef(archived, { name, person_id: ids.get(name.trim().toLowerCase()) })),
+    )
+  }, [offsets, allDayHours, settleRows, archived])
 
   const activeSettleRows = useMemo(
-    () => filteredSettleRows.filter((b) => !archivedNameSet.has(b.personName.trim().toLowerCase())),
-    [filteredSettleRows, archivedNameSet],
+    () => filteredSettleRows.filter((b) => !archivedBoardNames.has(b.personName)),
+    [filteredSettleRows, archivedBoardNames],
   )
   const archivedSettleRows = useMemo(
-    () => filteredSettleRows.filter((b) => archivedNameSet.has(b.personName.trim().toLowerCase())),
-    [filteredSettleRows, archivedNameSet],
+    () => filteredSettleRows.filter((b) => archivedBoardNames.has(b.personName)),
+    [filteredSettleRows, archivedBoardNames],
   )
   const [archivedOpen, setArchivedOpen] = useState(false)
   const [offsetsTableOpen, setOffsetsTableOpen] = useState(false)
