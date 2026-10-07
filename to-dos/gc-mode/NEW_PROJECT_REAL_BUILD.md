@@ -373,8 +373,8 @@ specs from the set items; `GcPlansWindow.tsx` opens the Drive link, no stand-in 
 `read-the-plans-of-a-gc-project`), merged as v2.4774 (clickconstruction/pipetooling.github.io#4791). Its
 check passed on prod 2026-10-07: the permit set reads back with S-101 under *Taken out*, S-102 new,
 and S-102 listing the Concrete lines that read from it. Step 8 is cut in two: 8a,
-v2.4779 (#4794, renumbered twice as main moved), is the record behind the window (migration
-`20261007150000_gc_plan_questions_rpcs`:
+v2.4779 (#4794, renumbered twice as main moved), merged, its migration applied 2026-10-07 and the
+types in #4809, is the record behind the window (migration `20261007150000_gc_plan_questions_rpcs`:
 `asked_by_name`, `gc_record_question`, `gc_answer_question`, the closing day, and
 `gc_issue_plan_set` carrying the answers in a set; the kernel `questions.ts`); 8b, v2.4780, is the
 questions window (`GcQuestions.tsx`), the edge function `gc-plan-question-email` (Reply-To the PM)
