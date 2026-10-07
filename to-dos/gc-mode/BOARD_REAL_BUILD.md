@@ -506,6 +506,7 @@ Other lanes call these or key to them. Change one only with the lanes that read 
 | `gc_invites`, `gc_quotes`, `gc_company_contacts` | An ask's line carries the ask's own company (a composite key). A quote day is `promised_by` on an ask's line. The quotes and the call log are append only for `authenticated`. | The Portal (P1 reads asks; P2 writes quotes, the quote day and declines through its own functions) |
 | `gc_sows`, `gc_sow_lines` (B6) | `gc_sow_lines(id, sow_id, scope_item_id, change_order_id, …)`: `SovLine.id` is `scope_item_id`, except on a change order's line. | Building (draw lines, reports), the schedule (a bar's percent by line) |
 | `gc_project_money` (B5) | Our number's three inputs, behind the money predicate. | Owner Billing, New project's `gc_create_project` |
+| `theirSov.ts` (B6) | `SOV_STAGES`, `stageReached` / `StageReached` and `theirSovGap`, lifted from `gcTheirSov.ts` beside `gc_sows` and `gc_sow_lines`, since a quote's own schedule of values is copied onto the statement of work at award. | The Portal (`portalSovStart`, `portalSovCheck`, `portalSovReached`, which lift right after B6) |
 
 ## The owner's calls this plan raises
 
@@ -572,3 +573,17 @@ Names that differ from this plan's first draft: the form's `reference_list` (`re
 reserved), `contacted_on`, `due_on` and `source`. The lead pushes it first in the 2026-10-08 evening
 batch, before Building's U1. B6's two live-table changes get their own review of every reader
 before B6 is cut, and the standalone `gc_sows` alternative stays open until then.
+
+**2026-10-08, day 2.**
+- **B1** (#4853) is merged and applied, and verified in six steps (the migration doc's *Status*, docs PR #4878). Its types are in #4876.
+- **B2-i** (#4862, v2.4845) is merged, with its spike follow-up (cf5edab1e).
+- **B2-ii** (#4885, v2.4858) was rebuilt over U2 and O2a. Its eight lists are the latest config's list with B2-ii's fields after, so the generator writes main's test data byte for byte with LIFTS through `owner-billing-o2a` plus `--with board-b2-ii` (config on spike/board-b2-ii-config, 0d7a098f0). It is in the queue. One push from another checkout, a hand-merged `types.ts` and `testState.ts`, was dequeued and replaced.
+- **The drive** reads a company's and a job's points when the app has them (b8c246d29), the towns standing in.
+- **B3-a** is built and walked live as a dev on prod's test project, at a desk width and at 375 px. It opens when B2-ii merges.
+  - `boardRows.ts` maps the company record, the asks, quotes, call log and promises to the kernels' shapes.
+  - `GcBoard.tsx` draws the stages, the strip, the rows and a read-only price card, dev only above door 1's list.
+  - The guide is `see-where-every-gc-project-stands`.
+- **Left for B2b:** the call list and counts, a customer's activity, documents and money, and By customer.
+- **Moved to B5:** `gcStale`.
+- **Moved to B6:** `gcTheirSov`, at the Portal's ask.
+
