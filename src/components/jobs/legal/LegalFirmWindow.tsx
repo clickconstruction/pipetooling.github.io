@@ -4,6 +4,8 @@ import { supabase } from '../../../lib/supabase'
 import LegalFirmSettingsBlock from '../../settings/LegalFirmSettingsBlock'
 import LegalFirmReplacePanel from './LegalFirmReplacePanel'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
+import { legalOfficeContactPrintLines, legalOfficeContactsGap, type LegalOfficeContacts } from '../../../lib/legal/legalOfficeContacts'
+import { readLegalOfficeContacts } from '../../../lib/legal/legalOfficeContactsIo'
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
 const db = supabase as unknown as SupabaseClient
@@ -63,6 +65,21 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
     return () => window.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
+  // Who the firm's page tells the firm to call (v2.4755), and the gap when it cannot name a controller.
+  const [officeContacts, setOfficeContacts] = useState<LegalOfficeContacts | null>(null)
+  useEffect(() => {
+    let alive = true
+    void readLegalOfficeContacts(db).then((c) => { if (alive) setOfficeContacts(c) })
+    return () => { alive = false }
+  }, [])
+  const reachGap = officeContacts ? legalOfficeContactsGap(officeContacts) : null
+  const reachLine = officeContacts ? (
+    <div data-legal-firm-reach style={{ fontSize: '0.8rem', flexBasis: '100%' }}>
+      <span style={{ color: 'var(--text-muted)' }}>The firm's page says to call: </span>
+      {legalOfficeContactPrintLines(officeContacts).map((l) => l.replace(/^Reach the office: /, '')).join(' · ') || 'nobody — no office number'}
+      {reachGap ? <div style={{ color: 'var(--text-amber-700)', marginTop: 2 }}>{reachGap} A phone goes on their person on Settings → People.</div> : null}
+    </div>
+  ) : null
   const facts = firm ? legalFirmFacts(firm.id, matters, recipients, linkLive) : null
   const factsLine = facts ? (
     <div data-legal-firm-facts style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }}>
@@ -70,6 +87,7 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
       {legalFirmFactsWords(facts).map((w) => (
         <span key={w} style={chip}>{w}</span>
       ))}
+      {reachLine}
     </div>
   ) : null
 

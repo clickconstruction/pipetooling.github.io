@@ -120,6 +120,15 @@ describe('LegalPortal — the sample matter', () => {
     expect(block.textContent).toContain('Confirm with the clerk before filing.')
   })
 
+  it('tells the firm who to call, on every view (v2.4755)', async () => {
+    await openSample()
+    const strip = document.querySelector('[data-legal-reach-strip]')!
+    expect(strip.textContent).toContain('ask for Robin or Dana')
+    expect(strip.textContent).toContain('Morgan Ellis')
+    fireEvent.click(screen.getByRole('button', { name: 'Lien grid' }))
+    expect(document.querySelector('[data-legal-reach-strip]')).not.toBeNull()
+  })
+
   it('opens the Lien grid on Upcoming, with the matter’s own job beside the other two', async () => {
     await openSample()
     fireEvent.click(screen.getByRole('button', { name: 'Lien grid' }))
