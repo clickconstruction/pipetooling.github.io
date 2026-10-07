@@ -109,3 +109,23 @@ Nothing reads these tables yet. Going back is a new migration that drops them wi
 ## Status
 
 Written 2026-10-07 for the Building lane's U1; not applied. Its stamp sorts after B1's `20261008020000`, door 1's `20261008003000` and O1's `20261008010000`, the claims outstanding when it was cut. The lead pushes it after B1 and records here what steps 1 to 6 of *Verify after the push* said.
+
+Applied to prod 2026-10-07 with `supabase db push` from a clean checkout of main, after B1's `20261008020000` in the same batch (the ledger holds it; `npm run check:migration-drift` read 782 of 782; types in #4876). What *Verify after the push* said:
+
+- **Steps 1 to 3, and step 4's first check** (the lead, through the management API's query endpoint, every write rolled back):
+  - Step 1: all ten tables read RLS on, one `_dev` policy, 3 read-only blocks, 3 twin fences and 1 statement trigger, and `anon` has no SELECT.
+  - Step 2: all ten are empty.
+  - Step 3: the training-mode user's insert into `gc_daily_logs` got `Read-only (training) mode: changes are blocked.`
+  - Step 4: a dev's log written before its day was refused by `gc_daily_logs_written_after`, and a dev's UPDATE on `gc_weekly_reports` got `permission denied for table gc_weekly_reports`.
+- **The rest of step 4, and steps 5 and 6** (Helper 4, from the app on `127.0.0.1:5304`, signed in as the dev account through the page's `supabase` client). Each insert named a project, package or submittal id that matches nothing, so a check refused it first, or the foreign key did after, and nothing was written:
+  - An RFI answered by the architect with no day sent: `gc_rfis_architect_was_asked`.
+  - A cost answer with a cost and days of 0, and a no-change answer with a cost of $100: both `gc_rfis_cost_answer`.
+  - An answered day with no answer: `gc_rfis_answer_whole`.
+  - A submittal round answered *revise* with no note: `gc_submittal_rounds_revise_says_why`. One answered before it went to the architect: `gc_submittal_rounds_answered_after_sent`.
+  - A submittal with a blank title: `gc_submittals_titled`.
+  - A weekly report for the week of Tue Oct 6: `gc_weekly_reports_week_is_monday`.
+  - A punch item checked before it was fixed: `gc_punch_items_checked_once_fixed`.
+  - A valid RFI on a project that does not exist passed every check and was refused only by `gc_rfis_project_id_fkey` (409).
+  - Step 5's DELETE on `gc_weekly_reports`: `403 permission denied for table gc_weekly_reports`.
+  - Step 6, signed out with the anon key: `401 permission denied` on `gc_daily_logs`, `gc_rfis` and `gc_weekly_reports`.
+  - Afterwards the dev read all six record tables it wrote to as empty.
