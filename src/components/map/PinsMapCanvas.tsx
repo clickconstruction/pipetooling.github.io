@@ -13,15 +13,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { LeafletOfficeAnchor } from './LeafletOfficeAnchor'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { leafletScrollWheelZoom } from '../../lib/map/scrollZoomGate'
 import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
 import {
-  MAP_CANVAS_ANCHOR_COLOR,
   MAP_CANVAS_SELECTED_COLOR,
-  METERS_PER_MILE,
   mapCanvasFitPoints,
   type MapCanvasAnchor,
   type MapCanvasPin,
@@ -133,13 +132,6 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   })
 }
 
-const ANCHOR_ICON = L.divIcon({
-  className: 'pins-map-anchor',
-  html: `<div style="width:12px;height:12px;transform:rotate(45deg);background:${MAP_CANVAS_ANCHOR_COLOR};border:2px solid var(--surface);box-shadow:0 0 0 1px ${MAP_CANVAS_ANCHOR_COLOR}"></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-})
-
 export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
@@ -160,24 +152,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
       {scrollZoomAfterClick && !isMobile ? <ScrollZoomGate wheelZooms={wheelZooms} onMapClick={markMapClicked} /> : null}
       <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
       {cluster ? <ZoomTracker onZoom={setZoom} /> : null}
-      {anchor ? (
-        <>
-          {(anchor.ringMiles ?? []).map((mi) => (
-            <Circle
-              key={mi}
-              center={[anchor.lat, anchor.lng]}
-              radius={mi * METERS_PER_MILE}
-              interactive={false}
-              pathOptions={{ color: MAP_CANVAS_SELECTED_COLOR, weight: 1, opacity: 0.5, dashArray: '5 5', fillOpacity: 0 }}
-            />
-          ))}
-          <Marker position={[anchor.lat, anchor.lng]} icon={ANCHOR_ICON} title={anchor.label} interactive={false}>
-            <Tooltip permanent direction="right" offset={[8, 0]}>
-              {anchor.label}
-            </Tooltip>
-          </Marker>
-        </>
-      ) : null}
+      {anchor ? <LeafletOfficeAnchor anchor={anchor} /> : null}
       {pulse ? (
         // Keyed on the mark so a new target mounts a fresh path — Leaflet applies `className` only at creation.
         <CircleMarker

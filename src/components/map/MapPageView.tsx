@@ -50,6 +50,12 @@ import { insertCourtArea, listCourtAreas, retireCourtArea, updateCourtArea } fro
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
+import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
+import { LeafletOfficeAnchor } from './LeafletOfficeAnchor'
+import { BID_BOARD_MAP_RING_MILES } from '../../lib/bids/bidBoardMap'
+import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
+import type { MapCanvasAnchor } from '../../lib/map/mapCanvasTypes'
+import { farFromOfficeLine, farFromOfficePlaces, farMilesWords, farPlaceCountWords, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
 
 const openLinkLikeStyle: CSSProperties = {
   color: 'var(--text-link)',
@@ -241,18 +247,32 @@ const headerToolbarButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-function FitBoundsToEntities({ points }: { points: [number, number][] }) {
+function fitMapTo(map: L.Map, points: readonly MapPoint[]): void {
+  const b = mapPointsBounds(points)
+  if (!b) return
+  map.fitBounds(L.latLngBounds([b.south, b.west], [b.north, b.east]), { padding: [28, 28], maxZoom: 15 })
+}
+
+/**
+ * The first view and Fit all (v2.4791). The home fit frames the office, its 50 mile ring and the
+ * pins inside it, and re-frames only when those bounds change (the anchor arriving, in practice);
+ * `fitAllSignal` frames every near pin and the office on demand. Pins far from the office are in
+ * neither — see `mapPageFirstView.ts`.
+ */
+function MapFit({ homePoints, allPoints, fitAllSignal }: { homePoints: MapPoint[]; allPoints: MapPoint[]; fitAllSignal: number }) {
   const map = useMap()
-  const doneRef = useRef(false)
+  const home = mapPointsBounds(homePoints)
+  const homeKey = home ? `${home.south},${home.west},${home.north},${home.east}` : ''
   useEffect(() => {
-    if (points.length === 0) return
-    const b = L.latLngBounds(points.map(([lat, lng]) => L.latLng(lat, lng)))
-    if (!b.isValid()) return
-    if (!doneRef.current) {
-      map.fitBounds(b, { padding: [32, 32], maxZoom: 12 })
-      doneRef.current = true
-    }
-  }, [map, points])
+    if (homeKey) fitMapTo(map, homePoints)
+    // homeKey captures the bounds
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, homeKey])
+  useEffect(() => {
+    if (fitAllSignal > 0) fitMapTo(map, allPoints)
+    // on the signal only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, fitAllSignal])
   return null
 }
 
@@ -298,9 +318,21 @@ function GeomanDraw({
     const m = map as L.Map & {
       pm: { addControls: (o: Record<string, unknown>) => void; removeControls: () => void }
     }
+    // Only the polygon tool: the area filter and the Court areas mode both draw polygons (v2.4791).
     m.pm.addControls({
       position: 'topleft',
       oneBlock: true,
+      drawMarker: false,
+      drawCircleMarker: false,
+      drawPolyline: false,
+      drawRectangle: false,
+      drawCircle: false,
+      drawText: false,
+      editMode: false,
+      dragMode: false,
+      cutPolygon: false,
+      removalMode: false,
+      rotateMode: false,
     })
 
     const onCreate = (ev: { layer: L.Layer }) => {
@@ -753,7 +785,20 @@ export function MapPageView() {
     () => searchFiltered.filter((e) => e.lat != null && e.lng != null),
     [searchFiltered]
   )
-  const points = useMemo((): [number, number][] => withCoords.map((e) => [e.lat!, e.lng!]), [withCoords])
+  // The first view (v2.4791): the office and its rings; pins far from the office are drawn but
+  // never fitted, and listed under the map to have their addresses checked.
+  const officeAnchor = useOfficeAnchor(true)
+  const anchorPoint = useMemo(() => (officeAnchor ? { lat: officeAnchor.lat, lng: officeAnchor.lng } : null), [officeAnchor])
+  const canvasAnchor = useMemo(
+    (): MapCanvasAnchor | null => (anchorPoint ? { ...anchorPoint, label: 'Office', ringMiles: BID_BOARD_MAP_RING_MILES } : null),
+    [anchorPoint],
+  )
+  const placed = useMemo(() => withCoords.map((e) => ({ ...e, lat: e.lat!, lng: e.lng! })), [withCoords])
+  const nearAndFar = useMemo(() => splitFarFromOffice(placed, anchorPoint), [placed, anchorPoint])
+  const farPlaces = useMemo(() => farFromOfficePlaces(nearAndFar.far), [nearAndFar.far])
+  const homeFitPoints = useMemo(() => mapPageHomeFitPoints(nearAndFar.near, anchorPoint), [nearAndFar.near, anchorPoint])
+  const fitAllPoints = useMemo(() => mapPageFitAllPoints(nearAndFar.near, anchorPoint), [nearAndFar.near, anchorPoint])
+  const [fitAllSignal, setFitAllSignal] = useState(0)
   const courtCover = useMemo(() => courtCoverage(withCoords.map((e) => ({ label: e.tableLabel, lat: e.lat, lng: e.lng })), courtAreas), [withCoords, courtAreas])
   const tableRows = useMemo(
     () => filterEntitiesByPolygon(searchFiltered, filterPoly),
@@ -858,6 +903,19 @@ export function MapPageView() {
               Court areas{courtAreas.length ? ` · ${courtAreas.length}` : ''}
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => setFitAllSignal((c) => c + 1)}
+            disabled={fitAllPoints.length === 0}
+            title="Frame every pin and the office"
+            style={{
+              ...headerToolbarButtonStyle,
+              opacity: fitAllPoints.length === 0 ? 0.45 : 1,
+              cursor: fitAllPoints.length === 0 ? 'default' : 'pointer',
+            }}
+          >
+            Fit all
+          </button>
           <button
             type="button"
             onClick={() => setClearDraw((c) => c + 1)}
@@ -1004,7 +1062,8 @@ export function MapPageView() {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
-            {points.length > 0 ? <FitBoundsToEntities points={points} /> : null}
+            <MapFit homePoints={homeFitPoints} allPoints={fitAllPoints} fitAllSignal={fitAllSignal} />
+            {canvasAnchor ? <LeafletOfficeAnchor anchor={canvasAnchor} /> : null}
             <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
             {courtMode || courtAreas.length ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
             {withCoords.map((e) => (
@@ -1047,6 +1106,29 @@ export function MapPageView() {
           <MapLegend show={{ job: showJobs, bid: showBids, estimate: showEst }} />
         </div>
         <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
+          {farPlaces.length > 0 ? (
+            <div data-far-from-office style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              <div style={{ fontWeight: 600 }}>{farFromOfficeLine(farPlaces.length)}</div>
+              <ul style={{ margin: '0.25rem 0 0', padding: '0 0 0 1.1rem' }}>
+                {farPlaces.map((p) => (
+                  <li key={p.addressKey}>
+                    {`${p.addressLabel} · ${farPlaceCountWords(p.items)} · ${farMilesWords(p.miles)} `}
+                    <button type="button" onClick={() => setMapFlyTo({ lat: p.lat, lng: p.lng })} style={openLinkLikeStyle}>
+                      Show
+                    </button>
+                    {p.items.length === 1 ? (
+                      <>
+                        {' · '}
+                        <button type="button" onClick={() => openEntity(p.items[0]!)} style={openLinkLikeStyle}>
+                          Open
+                        </button>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {courtMode ? (
             <div style={{ marginBottom: '0.75rem' }}>
               <CourtAreasPanel areas={courtAreas} coverage={courtCover} pending={courtPending !== null} busy={courtBusy} error={courtError} onSave={saveCourtArea} onCancelPending={discardCourtShape} onRename={renameCourtArea} onRemove={removeCourtArea} onFocus={focusCourtArea} onClassify={classifyNow} classifyWords={classifyWords} />
