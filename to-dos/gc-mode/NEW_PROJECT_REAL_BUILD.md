@@ -89,7 +89,7 @@ joins the two into `sizeNote` and reads the number back with `sqFtInText`).
 counts as real once that bid is priced; `selfPerform.priced`). The Board adds its own columns in
 its own PR: `carried_invite_id` and `carried_plug`, `awarded_invite_id` and `awarded_by` (the taken
 alternates stay on the quote, `taken_alternates`). Vetting sits on the Board's company record
-(`gc_companies.vetting_*`; `gc_partners` until the Board's plan named it, 2026-10-07), not per project, and promises in one `gc_trade_promises` table keyed to
+(`gc_partners.vetting_*`), not per project, and promises in one `gc_trade_promises` table keyed to
 the company (Board lane, 2026-10-04).
 
 **`gc_scope_items`**, one row per scope line: `package_id`, `position`, `label`, `sheets` (text[],
@@ -123,8 +123,10 @@ changes both is one list.
 `text`, `sheets` (text[]), `asked_on`, `sent_to_architect_on`, `answered_on`, `answer`,
 `answer_sent_to` (company ids), `in_set_id` (the set that carried the answer).
 
-**Sends** are not a table of their own: each set email and answer email is logged in the existing
-`email_send_log` (Resend), with `email_type` `gc_plan_set` or `gc_plan_answer`. Which companies a
+**Sends** are not a table of their own: each set email and answer email goes through the Portal
+lane's one sender to a trade company, `gc-trade-email` (P3; kinds `plans` and `answer`), which logs
+it in the existing `email_send_log` and keeps the message in `gc_trade_messages` (amended
+2026-10-07, Helper 6 with Helper 3; see step 7). Which companies a
 set reached, and whether it changed their trade, goes in **`gc_plan_set_sends`** (`set_id`,
 `company_id`, `touched`, `email_send_log_id`), because the portal and the Board read it
 (`PlanSet.sentTo`).
@@ -284,15 +286,19 @@ screen on, its help guide. "Check" is how the reviewer sees it work.
    the set's Drive link with its check, the pasted index and table of contents compared with ours, take out and rename, lines left behind tied to
    new sheets, trades brought, **Checked by** from the team. No email yet. *Check:* the prototype's
    walk, a permit set that takes C-201 out and renames C-101, on a real project.
-7. **The set email**, through the Portal lane's `gc-trade-email` with kind `plans` (amended
-   2026-10-07, `PORTAL_REAL_BUILD.md`; no `gc-plan-set-email` of its own): once per company on each
-   touched trade while we bid, only the one on it once ours, through Resend with the project
-   manager as Reply-To, logged in `email_send_log` and `gc_trade_messages`. Step 7 writes its own
-   `gc_plan_set_sends` rows from the ids the sender returns. Needs the invitations (B1) and P3.
-   *Check:* a test company's inbox gets the touched-trade email naming its lines.
+7. **The set email**, through the Portal lane's `gc-trade-email` (P3) with kind `plans`, not a
+   function of its own (amended 2026-10-07, Helper 6 with Helper 3): once per company on each
+   touched trade while we bid, only the one on it once ours. The screen builds the subject and lines
+   with the prototype's words; `gc-trade-email` finds the recipients from the company record, adds
+   the company's portal link, sends through Resend with the project manager as Reply-To, files the
+   sent copy and keeps the message in `gc_trade_messages`. It returns `{ companyId, messageId,
+   emailSendLogId }` per company, and this step writes its own `gc_plan_set_sends` rows from them.
+   Needs the company record (B1) and P3. *Check:* a test company's inbox gets the touched-trade
+   email naming its lines, and its `gc_plan_set_sends` row carries the log id.
 8. **Questions about the plans on real data**: recording one, sending it to the architect (edge
-   function `gc-plan-question-email`), the answer to every company quoting the trade, carried in
-   the next set. *Check:* the prototype's Pad B question, end to end, on a real project.
+   function `gc-plan-question-email`, which stays: the architect is a customer, not a trade
+   company), the answer to every company quoting the trade (through `gc-trade-email`, kind
+   `answer`, once P3 lands), carried in the next set. *Check:* the prototype's Pad B question, end to end, on a real project.
 9. **The plans window on real data**: the sheets and the manual as they stand at each set, what each
    set took out, the scope that reads from a sheet or a section. *Check:* the permit set's C-201 is
    under Taken out, and C-101 lists Clearing and grading.
@@ -306,7 +312,7 @@ company's closed GC jobs as they close.
 ## Docs each PR touches
 
 `docs/migrations/<version>_<slug>.md` for PRs 2 and 3; `docs/EDGE_FUNCTIONS.md` for PRs 5 (with
-`gc-drive-access`) and 8 (step 7 sends through the Portal lane's `gc-trade-email`);
+`gc-drive-access`) and 8 (`gc-plan-question-email`); step 7 adds no function of its own;
 `docs/ACCESS_CONTROL.md` when the page and its roles are set (PR 4), and again if decision 2 widens;
 `docs/twins/APP_DIRECTORY.md` and `PROJECT_DOCUMENTATION.md` when the page is added (PR 4);
 `GLOSSARY.md` for GC project, plan set, bid set, pricing set, permit set, addendum, bulletin,
