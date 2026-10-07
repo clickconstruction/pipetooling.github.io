@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
+import type { LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { CARD, COPPER, FAINT, HAIR } from '../../../lib/portal/portalTheme'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import type { LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
-import type { LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 
 /** Constants and styles shared by the firm's matter view (`LegalFirmMatterView.tsx`) and its callers — kept out of the component file so fast refresh stays whole. */
 
