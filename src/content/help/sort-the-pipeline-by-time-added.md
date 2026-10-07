@@ -25,5 +25,5 @@ The choice is remembered on your device, so the board opens the way you left it.
 
 The **Sort** group holds four orders. Two more sit beside the ones above:
 
-- ***Next scheduled first*** puts the next booked visit first and finished rows last. The Working header's **⇅ Next first** button turns it on too. Its chip reads *Sorted: next first ×*, and your device remembers it.
+- ***Next scheduled first*** puts the next booked visit first and finished rows last. The Working header's **⇅ Next first** button turns it on too. This order's chip reads *Sorted: next first ×*, and your device remembers it.
 - ***Percent complete (0 → 100)*** is in the menu, and clicking the **Progress & payment** column title switches to it too. See *sort the pipeline by percent complete*. The percent order is a quick look and is never remembered.

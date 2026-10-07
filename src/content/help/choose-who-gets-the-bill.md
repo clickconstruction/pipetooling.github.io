@@ -34,7 +34,7 @@ If the GC has no billing email yet, the window asks for it right there. It saves
 
 ## Make a GC pay by default
 
-Some builders always pay. Done Right Foundation pays for every pretest. A pretest is the water test that checks the pipes for leaks before the foundation is leveled. Say it once on the builder instead of on each job. Open the GC on **Customers → Edit customer** and tick **Pays as GC by default**. From then on, picking them as the GC switches a job on *This customer* to **Bills go to: GC**. That holds for a job already on the books too. Ticking the box changes no job by itself. Change it on a job and it stays changed.
+Some builders always pay. Done Right Foundation pays for every pretest. A pretest is the water test that checks the pipes for leaks before the foundation is leveled. Say it once on the builder instead of on each job. Open the GC on **Customers → Edit customer** and tick **Pays as GC by default**. From then on, picking them as the GC switches a job on *This customer* to **Bills go to: GC**. The switch holds for a job already on the books too. Ticking the box changes no job by itself. Change it on a job and it stays changed.
 
 ## Split a job by line
 
@@ -54,9 +54,9 @@ On a **Split by line** job, use {{button:outline|Bill to ▾}} on the draft's ro
 ## Good to know
 
 - A job's customer and GC are never the same party. Pick a builder as the GC and it comes off the customer row. The bills go to the GC. Pick it as the customer and it comes off GC. A job with a GC and no customer is a **GC job**. Its Customer row reads *none · GC job — Done Right Foundation is the party*. **Bills go to** offers only the GC. Every bill, statement and portal treats the GC as the payer.
-- Changing **Bills go to** never changes an email, PDF or Stripe bill that already went out. An open bill with no payer of its own follows the new rule. Its balance moves to the other party's GC Review row and portal.
+- Changing **Bills go to** never changes an email, PDF or Stripe bill that already went out. An open bill with no payer of its own follows the new rule. That bill's balance moves to the other party's GC Review row and portal.
 - **GC Review and the weekly statement** list only what each GC pays. A job whose GC is not the payer sits in the **Not billed to a GC** bucket.
-- **The portals** follow it too. A portal is each customer's or GC's own web page of open bills and payments. It opens from a private link, with no sign-in. A GC's balance is what the GC owes. An owner's balance is what the owner owes. A bill the other party does not pay is **not** on their statement unless you shared it. See the next section.
+- **The portals** follow it too. A portal is each customer's or GC's own web page of open bills and payments. Each portal opens from a private link, with no sign-in. A GC's balance is what the GC owes. An owner's balance is what the owner owes. A bill the other party does not pay is **not** on their statement unless you shared it. See the next section.
 
 ## Show the other party a bill they don't pay
 

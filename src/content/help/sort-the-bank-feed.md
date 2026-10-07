@@ -42,4 +42,4 @@ Sorted charges are job costs on the job window's **Costs** tab and in the weekly
 
 ## Who can open Banking
 
-Banking is controller-and-above work. {{chip:blue|dev}}, {{chip:blue|Leader}} and {{chip:blue|controller}} open it. Assistants do not see the Banking link or the "bank-label suggestions have waited" card. Assistants sort their own purchases in **Job Parts Tally**. They match bank deposits to bills in **Accounts Receivable**, from the Pipeline's section tools. An assistant never sees the bank feed itself. If a bank-label backlog needs clearing, it is the controller's queue.
+Banking is controller-and-above work. {{chip:blue|dev}}, {{chip:blue|Leader}} and {{chip:blue|controller}} open it. Assistants do not see the Banking link or the "bank-label suggestions have waited" card. Assistants sort their own purchases in **Job Parts Tally**. Assistants match bank deposits to bills in **Accounts Receivable**, from the Pipeline's section tools. An assistant never sees the bank feed itself. If a bank-label backlog needs clearing, it is the controller's queue.
