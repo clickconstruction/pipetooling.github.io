@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'On the Lien grid, Homestead and No homestead under Residential are now smaller text on one line.',
-    'The rail’s No GC entry shows only while a job with no GC is in view, or while it is the chosen one.',
+    'A rail entry with no job in view is left off, the No GC one included. If the one you chose empties when you switch the view, the grid goes back to All GCs.',
   ],
 }
 

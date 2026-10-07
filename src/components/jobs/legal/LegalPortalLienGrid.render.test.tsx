@@ -86,15 +86,15 @@ describe('LegalPortalLienGrid', () => {
     expect(screen.queryByText('300 · Reliant Health')).toBeNull()
   })
 
-  it('the rail follows Something due / All and keeps a chosen GC listed at 0 jobs', () => {
+  it('the rail follows Something due / All, and a chosen GC that empties falls back to All GCs', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
     fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
     fireEvent.click(screen.getByRole('button', { name: /Something due/ }))
-    // Reliant's one month is due Nov 16, outside the desk's lead — the view empties, the choice stays visible.
-    expect(rail.getByRole('button', { name: /EPC Sparti/ }).textContent).toContain('0 jobs')
-    expect(screen.getByText(/Nothing on the grid for EPC Sparti/)).toBeTruthy()
-    fireEvent.click(rail.getByRole('button', { name: /All GCs/ }))
-    expect(screen.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
+    // Reliant's one month is due Nov 16, outside the desk's lead — the entry is left off and the grid shows every due job.
+    expect(rail.queryByRole('button', { name: /EPC Sparti/ })).toBeNull()
+    expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('273 · Dudley (Lennox)')).toBeTruthy()
+    expect(screen.queryByText(/Nothing on the grid/)).toBeNull()
   })
 })
