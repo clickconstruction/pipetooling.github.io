@@ -149,6 +149,7 @@ when_to_read:
    - [property-lookup](#property-lookup)
    - [lien-pay-offer](#lien-pay-offer)
    - [owner-confirm-nightly](#owner-confirm-nightly)
+   - [court-precinct-nightly](#court-precinct-nightly)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -2232,6 +2233,12 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`); the row's `stripe_mode` picks the key.
 
 **Implementation**: [`supabase/functions/lien-pay-offer/index.ts`](../supabase/functions/lien-pay-offer/index.ts); the pure part — the cents, the state of a bill's offer, what the page reads, the write-down, which credits expire — in [`_shared/lienPayOffer.ts`](../supabase/functions/_shared/lienPayOffer.ts), re-exported by [`src/lib/jobs/lienPayOfferShared.ts`](../src/lib/jobs/lienPayOfferShared.ts) and tested from `src/lib/jobs/lienPayOfferShared.test.ts`; the desk's call in [`src/lib/jobs/lienDeskRunIo.ts`](../src/lib/jobs/lienDeskRunIo.ts). **Deploy**: `supabase functions deploy lien-pay-offer`.
+
+### court-precinct-nightly
+
+**Purpose** (v2.4770, which court, step 4): put every property record (`customer_addresses`) in its justice precinct from the office's own court map (`court_areas`, migration `20261007110000`), using the point the geocode cache (`address_geocodes`) already holds for its address. One rule with the Map page: [`_shared/courtAreasClassify.ts`](../supabase/functions/_shared/courtAreasClassify.ts) over the dependency-free geometry in [`_shared/courtGeometry.ts`](../supabase/functions/_shared/courtGeometry.ts). A record typed by hand (`jp_precinct_source = 'hand'`) is never touched; every other record with a point is classified against the active areas of its own county and written only when the precinct or the on-the-line note changed (`jp_precinct`, `jp_precinct_note`, `jp_precinct_source = 'map'`, `jp_precinct_at`). Outside every area clears the precinct; no point in the cache is skipped (owner-confirm-nightly and the Map page fill the cache). Reads up to 5,000 records, 200 at a time.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `court-precinct-nightly`, 06:20 UTC, migration `20261007120000`), or a signed-in office user — the function checks `is_office_staff()` under the caller's JWT, which is how the Map page's **Classify now** calls it (`supabase.functions.invoke`). `verify_jwt = false` in `config.toml`. **Body**: `{ dry_run?: boolean }`. **Answer**: `{ ok, dryRun, areas, rows, placed, outside, onLine, noPoint, written }`. **Deploy**: `supabase functions deploy court-precinct-nightly` after the two migrations are pushed.
 
 ### owner-confirm-nightly
 
