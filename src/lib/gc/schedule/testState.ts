@@ -2614,13 +2614,6 @@ const DATA: GcState = {
       promisesKept: 0,
     },
   ],
-    { id: 'cibolo', name: 'Cibolo Creek Partners' },
-    { id: 'raman', name: 'Dr. Priya Raman' },
-    { id: 'marshvale', name: 'Marsh & Vale Architects' },
-    { id: 'ocotillo', name: 'Studio Ocotillo' },
-    { id: 'hollis', name: 'Hollis Family Pharmacy' },
-    { id: 'mesquite', name: 'Mesquite Design Studio' },
-  ],
 }
 
 /** A fresh copy each call, like the prototype's `initialGcState`, so a test may change what it gets. */

@@ -421,12 +421,6 @@ export interface GcCustomer {
   portalOn: boolean
 }
 
-/** What we have billed the owner on a project we are building, and what they have paid. */
-export interface OwnerBilling {
-  /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
-  payApps?: OwnerPayAppSent[]
-}
-
 export interface GcProject {
   id: string
   name: string
@@ -631,13 +625,6 @@ export interface DrawPayApp {
   signedBy: string
   signedTitle: string
   signedOn: string
-}
-
-export interface OwnerPayAppSent {
-  /** The day the owner paid it. Null until they do. */
-  paidOn: string | null
-  /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
-  final?: boolean
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
