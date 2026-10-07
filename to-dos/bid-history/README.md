@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751 · left: PR 0b, PR 0c, and PRs 2–5 (the History view, Put back) after the owner's calls
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage built (v2.4861, migration 20261008070000) · left: PR 0b, and PRs 2–5 (the History view, Put back) after the owner's calls
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -188,7 +188,7 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 |---|---|---|
 | 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid — **live v2.4737** (three columns on `bids`, in the ledger's list) | S |
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
-| 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) | XS (migration) |
+| 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) — **built v2.4861** (migration `20261008070000`, all three grouped under the bid) | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
 | 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **live v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left for PR 2's reader) | S |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
@@ -256,3 +256,5 @@ not pushed. What the build settled, beyond the decision above (the migration doc
   the app's writes made inside a person's request (the labor minted on send, the copies).
 
 Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right loss gets fixed.
+
+**PR 0c built 2026-10-07 as v2.4861**: the archive trigger on the three tables, grouped under `bid_id`; the restore needed no change (tested on stubs: a removed count row, then the bid, then a full restore). Push `20261008070000` after it merges.
