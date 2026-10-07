@@ -74,6 +74,27 @@ describe('LegalDeskModal', () => {
     expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
   })
 
+  it("on Paper, a stop's title opens the window on the stop as evidence — the record, the rule, the Lien window door (v2.4800)", async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
+    await settle()
+    fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
+    await waitFor(() => expect(document.querySelector('[data-legal-job-timeline] [data-lien-timeline-stop-door]')).toBeTruthy())
+    const doors = [...document.querySelectorAll('[data-legal-job-timeline] [data-lien-timeline-stop-door]')] as HTMLButtonElement[]
+    const suit = doors.find((d) => d.dataset.lienTimelineStopDoor === 'suit')!
+    fireEvent.click(suit)
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('Suit to foreclose the lien')
+    // The filing checklist: an original contractor owes no § 53.056 notice, so row A reads not needed; the affidavit is not on file.
+    expect(screen.getByTestId('lien-stop-paper-checklist')).toBeTruthy()
+    expect(screen.getAllByTestId('lien-stop-paper-check').map((n) => n.getAttribute('data-status')).slice(0, 2)).toEqual(['not_needed', 'not_on_file'])
+    expect(screen.getByTestId('lien-stop-paper-rule-words').textContent).toContain('§ 53.158')
+    expect(screen.getByTestId('lien-stop-paper-rail-venue').textContent).toContain('district court')
+    expect(screen.getByTestId('lien-stop-paper-move').textContent).toBe('COUNSEL')
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open the job’s Lien window ›')
+    expect(screen.getByTestId('lien-stop-paper-second-act').textContent).toBe('Copy the record as text')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+  })
+
   it('renders an empty state when nothing is in Collections', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[]} {...baseProps} />)
     await settle()

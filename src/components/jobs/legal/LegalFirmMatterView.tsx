@@ -9,6 +9,8 @@ import { conversationRows, conversationStateWords, conversationWho, entryRecorde
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
+import LienStopPaperWindow from '../LienStopPaperWindow'
+import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
 import { firmVoidProblem, isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
@@ -101,6 +103,16 @@ function JobRecordCell({ job }: { job: LegalPacket['account']['jobs'][number] })
 /** Where each job stands (#41 PR 1): the job's rail and its next line, the desk's own kernel on the firm's paper. */
 function JobTimelines({ packet }: { packet: LegalPacket }) {
   const a = packet.account
+  // A stop as evidence (v2.4800): the stop whose window is open, per job; the copy button's label while the record is on the clipboard.
+  const [stop, setStop] = useState<{ jobId: string; index: number } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const copy = (text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) }).catch(() => {})
+  }
+  const reach = () => {
+    setStop(null)
+    document.querySelector('[data-legal-reach-strip]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
   if (packet.paper.timelines.length === 0) return <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>No jobs.</p>
   // Each job's own property kind (#85 item 6): two jobs of one matter can stand on a house and a store.
   const kindWordsOf = (jobId: string) => propertyKindCell(a.jobs.find((j) => j.jobId === jobId)?.property?.propertyKind)
@@ -115,7 +127,17 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
             <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
             {t.retainageWords ? <div style={{ color: MUTED, fontSize: 11.5 }}>{t.retainageWords}</div> : null}
           </div>
-          <LienTimelineStrip timeline={t.timeline} voice="firm" />
+          <LienTimelineStrip timeline={t.timeline} voice="firm" onOpenStep={(s) => setStop({ jobId: t.jobId, index: Math.max(0, t.timeline.steps.findIndex((x) => x.key === s.key)) })} />
+          {stop && stop.jobId === t.jobId ? (
+            <LienStopPaperWindow
+              steps={t.timeline.steps}
+              index={stop.index}
+              onIndex={(i) => setStop({ jobId: t.jobId, index: i })}
+              onClose={() => setStop(null)}
+              jobLabel={t.jobLabel}
+              paperFor={(step) => lienStopCounselPaper({ step, steps: t.timeline.steps, packet, jobId: t.jobId, voice: 'firm', act: typeof document !== 'undefined' && document.querySelector('[data-legal-reach-strip]') ? { label: 'Reach the office ›', onPress: reach } : null, onCopy: copy, copyLabel: copied ? 'Copied' : 'Copy the record as text' })}
+            />
+          ) : null}
         </div>
       ))}
     </div>
