@@ -12537,6 +12537,9 @@ export type Database = {
           show_bills_to_other_party: boolean
           standing_discount_waived_at: string | null
           status: string
+          uncollectible_at: string | null
+          uncollectible_by: string | null
+          uncollectible_reason: string | null
           updated_at: string | null
         }
         Insert: {
@@ -12598,6 +12601,9 @@ export type Database = {
           show_bills_to_other_party?: boolean
           standing_discount_waived_at?: string | null
           status?: string
+          uncollectible_at?: string | null
+          uncollectible_by?: string | null
+          uncollectible_reason?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -12659,6 +12665,9 @@ export type Database = {
           show_bills_to_other_party?: boolean
           standing_discount_waived_at?: string | null
           status?: string
+          uncollectible_at?: string | null
+          uncollectible_by?: string | null
+          uncollectible_reason?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -12765,6 +12774,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_uncollectible_by_fkey"
+            columns: ["uncollectible_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -27699,6 +27715,10 @@ export type Database = {
       }
       set_job_promised_pay_date: {
         Args: { p_date: string; p_job_id: string }
+        Returns: Json
+      }
+      set_job_uncollectible: {
+        Args: { p_flagged: boolean; p_job_id: string; p_reason?: string }
         Returns: Json
       }
       set_material_po_generator_stated_need: {
