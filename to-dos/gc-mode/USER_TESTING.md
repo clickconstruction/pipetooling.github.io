@@ -69,6 +69,35 @@ can act on, for example "4 of 6 left at stop 4".
 | Date | Tester | Lane | Note | State | Helper |
 |---|---|---|---|---|---|
 
+## Notes sent
+
+The note the lead posts to testers each evening: what is new on prod that day, in plain words
+(`src/lib/plainWords.ts`), under 150 words, with the guides' share links
+(`https://clicktooling.com/g/<slug>/`, which open the guide in the app; `/help/<slug>` has no route
+and lands on the home page). Replies come to the lead or Grace and land in *The notes* above.
+
+### 2026-10-07, evening: GC mode opens (door 1)
+
+Drafted by Helper 6 for the lead to read to Grace. 129 words without the links; every line passes
+`plainWordsFailures`. Send the *New here?* line only if #4863 is on prod by then. Otherwise drop it
+and add it to the next evening's note.
+
+> GC mode is open for the office and estimators. On the Bids page, press GC beside the trades. Press Trades to go back.
+>
+> What you can do today, with a guide for each:
+>
+> - Start a GC project from its plans: https://clicktooling.com/g/start-a-gc-project/
+> - Put a new set of plans on a project: https://clicktooling.com/g/issue-a-new-set-of-plans/
+> - Read the plans of a project: https://clicktooling.com/g/read-the-plans-of-a-gc-project/
+> - Ask the architect about the plans: https://clicktooling.com/g/ask-the-architect-about-the-plans/
+> - Keep the scope book: https://clicktooling.com/g/use-the-scope-book/
+>
+> The first time you open GC projects, New here? walks you through the page.
+>
+> Leave the project named "GC test project, delete me" alone. We use it for our own checks.
+>
+> Found something odd or confusing? Reply to this note. Say what you pressed and what you saw. We log each reply and tell you when it is fixed.
+
 ## The morning triage
 
 Each morning Helper 7 reads every *New* row, names a lane and a helper for each, sets it *Routed*,
