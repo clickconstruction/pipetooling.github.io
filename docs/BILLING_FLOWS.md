@@ -326,7 +326,7 @@ All routes render inside the authed layout in `src/App.tsx`. Billing-relevant:
 
 ### Delete flows
 
-- **Draft/billed invoice rows**: RPC-only (`delete_ready_to_bill_invoice`, `delete_billed_invoice_on_send_back` — bodies in the baseline migration; see Send-backs for gates and payment blocks).
+- **Draft/billed invoice rows**: RPC-only (`delete_ready_to_bill_invoice`, `delete_billed_invoice_on_send_back` — bodies in the baseline migration; see Send-backs for gates and payment blocks). A row in status `paid` that no payment references and no Stripe invoice backs ("marked paid · no payment on record") goes through `delete_marked_paid_invoice_without_payment` (v2.4839), the Bill tab's **Remove bill** under the row's ⋯; the same roles and job gate as the send-back.
 - **Job**: Edit Job → Delete ("Delete job from Billing?" confirm; button hidden for `primary`, otherwise RLS-gated) → direct `from('jobs_ledger').delete()` in `src/components/jobs/JobFormModal.tsx`. Alternative: migrate-and-delete (`migrate_job_ledger_costs_and_delete`, blocks on payments unless `p_allow_billed=true`, which the modal passes).
 - **Customer**: Edit Customer type-the-name-to-confirm → direct `from('customers').delete()` (`src/components/EditCustomerForm.tsx`, also `src/pages/CustomerForm.tsx`); RLS-gated. `merge_customers` RPC deletes the victim row.
 

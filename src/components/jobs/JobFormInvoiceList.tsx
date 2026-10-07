@@ -23,6 +23,8 @@ import {
   stripeModeForBillingFromRole,
 } from '../../lib/voidStripeInvoiceForRevert'
 import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
+import { postJobThreadNoteBody } from '../../lib/jobs/postJobThreadNote'
+import { markedPaidRemoveMenu, markedPaidRemovedNoteBody } from '../../lib/jobs/markedPaidInvoiceRemoval'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { useAuth } from '../../hooks/useAuth'
 import type { JobBillingContext } from '../../lib/jobBillingContext'
@@ -140,7 +142,7 @@ export function JobFormInvoiceList({
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
-  const { role: authRole, profileName } = useAuth()
+  const { role: authRole, profileName, user: authUser } = useAuth()
   const billCustomer = useBillCustomerModal()
   // Lien waivers per bill (v2.4275): the job's release rows, read here so each bill's cell can say
   // what the GC holds and what we owe; the cell's door is the Release of Lien window on that bill.
@@ -168,11 +170,14 @@ export function JobFormInvoiceList({
   const showWaiverCells = Boolean(editing?.gc_customer_id) || waiverRows.some((r) => !r.voided_at)
   const [confirmDeleteInvoice, setConfirmDeleteInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
   const [deletingDraft, setDeletingDraft] = useState(false)
+  // v2.4839: a bill stamped paid with no payment behind it — the only row the two delete RPCs refuse.
+  const [confirmRemoveMarkedPaid, setConfirmRemoveMarkedPaid] = useState<JobsLedgerInvoiceRow | null>(null)
+  const [removingMarkedPaid, setRemovingMarkedPaid] = useState(false)
   const [confirmSendBackInvoice, setConfirmSendBackInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
   const [sendBackAcknowledged, setSendBackAcknowledged] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
   const [convertInvoice, setConvertInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
-  const dialogOpen = confirmDeleteInvoice != null || confirmSendBackInvoice != null || convertInvoice != null
+  const dialogOpen = confirmDeleteInvoice != null || confirmRemoveMarkedPaid != null || confirmSendBackInvoice != null || convertInvoice != null
   useEffect(() => {
     onOverlayOpenChange?.(dialogOpen)
     return () => onOverlayOpenChange?.(false)
@@ -317,6 +322,44 @@ export function JobFormInvoiceList({
       showToast(e instanceof Error ? e.message : 'Failed to delete draft invoice', 'error')
     } finally {
       setDeletingDraft(false)
+    }
+  }
+
+  /**
+   * Remove a bill stamped paid with no payment on record (v2.4839, job 258's $8,900). The RPC
+   * takes only that row — status paid, no payment referencing it, no Stripe invoice — so the
+   * money never changes: the sum line and the tiles already counted it as nothing. A thread
+   * note keeps the trace, best effort.
+   */
+  async function removeMarkedPaidInvoice(inv: JobsLedgerInvoiceRow) {
+    setRemovingMarkedPaid(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () => await supabase.rpc('delete_marked_paid_invoice_without_payment', { p_invoice_id: inv.id }),
+        'delete_marked_paid_invoice_without_payment',
+      )
+      const result = data as { ok?: boolean; deleted?: boolean; error?: string } | null
+      if (!result?.ok) {
+        showToast(result?.error ?? 'Could not remove the bill', 'error')
+        return
+      }
+      onInvoiceDeleted(inv.id)
+      if (authUser?.id) {
+        try {
+          await postJobThreadNoteBody(editing.id, authUser.id, markedPaidRemovedNoteBody(Number(inv.amount ?? 0)))
+        } catch {
+          /* the bill is gone; the note is a courtesy */
+        }
+      }
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) setEditing(found)
+      onSavedRef.current?.()
+      showToast('Bill removed. No payment changed.', 'success')
+      setConfirmRemoveMarkedPaid(null)
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Could not remove the bill', 'error')
+    } finally {
+      setRemovingMarkedPaid(false)
     }
   }
 
@@ -575,6 +618,7 @@ export function JobFormInvoiceList({
         const shownToText = shownToChipText(shownTo, { customer: editing.customer_name, gc: gcName })
         const writeDownRoom = row.amount - row.paid
         const sendBackBlocked = !isDraft && sendBackBlockedByPayments(inv.id, payments)
+        const markedPaidRemove = isPaid ? markedPaidRemoveMenu({ paid: row.paid, stripeInvoiceId: inv.stripe_invoice_id }) : null
         const convertElig = !isDraft && !inv.stripe_invoice_id && inv.external_send_channel !== 'stripe' && inv.status === 'billed' ? convertToStripeEligibility(inv, payments, editing) : null
         const menuOpen = menuFor === inv.id
         const menuId = `invoice-menu-${inv.id}`
@@ -677,6 +721,20 @@ export function JobFormInvoiceList({
                 {isDraft && !inv.is_primary_rtb_bundle ? (
                   <button type="button" role="menuitem" aria-label={`Delete draft invoice for $${formatCurrency(row.amount)}`} onClick={() => { setMenuFor(null); setConfirmDeleteInvoice(inv) }} style={menuItem({ danger: true, top: true })}>
                     Delete draft
+                  </button>
+                ) : null}
+                {markedPaidRemove ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    data-testid="invoice-remove-marked-paid"
+                    disabled={!markedPaidRemove.enabled}
+                    aria-disabled={!markedPaidRemove.enabled}
+                    title={markedPaidRemove.title}
+                    onClick={() => { setMenuFor(null); setConfirmRemoveMarkedPaid(inv) }}
+                    style={menuItem({ danger: true, top: true, disabled: !markedPaidRemove.enabled })}
+                  >
+                    Remove bill{menuSub('marked paid, no payment')}
                   </button>
                 ) : null}
                 {!isDraft && !isPaid ? (
@@ -950,6 +1008,65 @@ export function JobFormInvoiceList({
                 style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', fontWeight: 600, background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: 6, cursor: deletingDraft ? 'default' : 'pointer', opacity: deletingDraft ? 0.7 : 1 }}
               >
                 {deletingDraft ? 'Deleting…' : 'Delete draft'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+      {confirmRemoveMarkedPaid ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: nestedOverlayZIndex,
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !removingMarkedPaid) setConfirmRemoveMarkedPaid(null)
+          }}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Remove bill"
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 8,
+              padding: '1.25rem',
+              maxWidth: 400,
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}
+          >
+            <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-strong)' }}>Remove this bill?</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+              The <strong>${formatCurrency(Number(confirmRemoveMarkedPaid.amount ?? 0))}</strong> bill is marked paid, but no payment is
+              recorded on it. Removing it changes no payment and no balance owed. Its amount goes back to unbilled.
+              Remove it only if it was never a real bill.
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setConfirmRemoveMarkedPaid(null)}
+                disabled={removingMarkedPaid}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void removeMarkedPaidInvoice(confirmRemoveMarkedPaid)}
+                disabled={removingMarkedPaid}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', fontWeight: 600, background: '#dc2626', color: '#ffffff', border: 'none', borderRadius: 6, cursor: removingMarkedPaid ? 'default' : 'pointer', opacity: removingMarkedPaid ? 0.7 : 1 }}
+              >
+                {removingMarkedPaid ? 'Removing…' : 'Remove bill'}
               </button>
             </div>
           </div>
