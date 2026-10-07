@@ -225,6 +225,28 @@ describe('LienDeskModal', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
   })
 
+  it("on Affidavits, a stop's title opens the window with this pane's affidavit and the Lien window door (v2.4793)", async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data(J650)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const door = document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement
+    expect(door?.tagName).toBe('BUTTON')
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
+    expect(screen.getByTestId('lien-stop-paper-page').textContent).toMatch(/AFFIDAVIT/i)
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open it in the Lien window ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+    // A notice stop from this side points at Notices, where the pages are.
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door^="notice:"]') as HTMLButtonElement)
+    expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toMatch(/§ 53.056/)
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open it on Notices ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
   it('a printed notice has a footer: the run to record the mailing, and Back to ready; the header counts it (v2.4568)', async () => {
     clearPrintedMock.mockReset()
     clearPrintedMock.mockResolvedValue(undefined)

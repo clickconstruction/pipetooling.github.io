@@ -54,6 +54,11 @@ import { lienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
+import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
+import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -155,6 +160,11 @@ export default function LienInstrumentsModal({
   const { showToast } = useToastContext()
   const [activeTab, setActiveTab] = useState<'demand' | 'notice' | 'affidavit' | 'release_record'>('demand')
   const [filings, setFilings] = useState<JobLienFilingRow[]>([])
+  // A stop's paper (v2.4793): the timeline stop whose window is open; null when closed, and closed with the window.
+  const [stopOpen, setStopOpen] = useState<number | null>(null)
+  useEffect(() => {
+    if (!open) setStopOpen(null)
+  }, [open])
   const [linkedAddress, setLinkedAddress] = useState<CustomerAddressRow | null>(null)
   const [jobOwnerRow, setJobOwnerRow] = useState<JobPropertyOwnerLike>(null)
   const [gcEmail, setGcEmail] = useState('')
@@ -664,6 +674,47 @@ export default function LienInstrumentsModal({
         : null,
     [job, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows],
   )
+
+  // A stop's paper (v2.4793): what the window shows for each stop, from the job's Lien window — a filing's own snapshot once it
+  // went out, else the tab here that prints it; the notice and the retainage notice are drafted and sent on the Lien desk.
+  const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
+    const none: LienStopPaper = { pages: [], envelope: null, before: [], record: null, act: null }
+    if (!job) return none
+    const live = filings.filter((f) => !f.voided_at)
+    const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
+    const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
+      const page = filingSnapshotPage(f, { issuer, jobNumber })
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+    }
+    const tab = (t: 'notice' | 'affidavit' | 'release_record', label: string) => ({ label, onPress: () => { setStopOpen(null); setActiveTab(t) } })
+    const kind = lienStopPaperKind(step)
+    if (kind === 'notice') {
+      const sent = step.monthKey ? live.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
+      if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`)
+      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      return { ...none, act: tab('notice', 'Open the Notice tab ›'), note: 'The notice is drafted, approved and sent on the Lien desk. The Notice tab here prints it and records a mailing by hand.' }
+    }
+    if (kind === 'retainage') {
+      const sent = live.find((f) => f.kind === 'retainage_53_057')
+      if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`)
+      return { ...none, act: onOpenLienDesk ? { label: 'Open it on the Lien desk ›', onPress: () => { setStopOpen(null); onOpenLienDesk(job.id, 'retainage') } } : null, note: 'The § 53.057 retainage notice is drafted and sent on the Lien desk, under Retainage.' }
+    }
+    if (kind === 'affidavit' || kind === 'serve') {
+      const filed = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0]
+      if (filed) {
+        const words = kind === 'serve' ? (filed.served_at ? `Served ${when(filed.served_at, filed.created_at)}` : `Filed ${formatYmdMonthDay(filed.filed_at!)} · a copy to the owner and the GC is still owed`) : `Filed ${formatYmdMonthDay(filed.filed_at!)}${filed.recording_number ? ` · ${filed.recording_number}` : ''}`
+        return asSent(filed, words, { envelope: kind === 'serve' ? 'A copy of the filed affidavit to the owner and the GC' : null })
+      }
+      return { ...none, act: tab('affidavit', 'Open the Affidavit tab ›'), note: kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope, within five days of filing.' : 'The Affidavit tab here draws the affidavit as it would file today, prints it for notarization and records the filing.' }
+    }
+    if (kind === 'release') {
+      const filed = live.find((f) => f.kind === 'release_of_record')
+      if (filed) return asSent(filed, `Released ${when(filed.filed_at, filed.created_at)}`)
+      return { ...none, act: tab('release_record', 'Open the Release tab ›'), note: 'The release of record is made once the job is paid.' }
+    }
+    if (kind === 'demand') return { ...none, act: { label: 'Open the Demand letter tab ›', onPress: () => { setStopOpen(null); setActiveTab('demand') } }, note: 'The demand letter is sent from this window; its reply day is on the strip.' }
+    return none
+  }
   const originalContractorName = isSub
     ? (job?.gcCustomer?.name ?? '').trim() || (job?.customer_name ?? '').trim()
     : (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical'
@@ -987,7 +1038,8 @@ export default function LienInstrumentsModal({
               </>
             ) : (
               <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
-                <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} onChangeLastWork={canSetLastWork && !lastWorkOpen ? () => setLastWorkOpen(true) : undefined} />
+                <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} onChangeLastWork={canSetLastWork && !lastWorkOpen ? () => setLastWorkOpen(true) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
+                {stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`} paperFor={stopPaperFor} /> : null}
               </div>
             )
           ) : null}

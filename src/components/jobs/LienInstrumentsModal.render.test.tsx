@@ -355,4 +355,18 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(debtor.textContent).toContain('Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima')
     expect(debtor.textContent).not.toContain('§ 53.056')
   })
+
+  it("a stop's title on the timeline opens the window on what that stop sends; Esc closes it alone (v2.4793)", async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline] [data-lien-timeline-stop-door]')).toBeTruthy())
+    const door = document.querySelector('[data-lien-window-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-stop-paper')).toBeTruthy()
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
+    // Nothing filed yet: the act opens the Affidavit tab here.
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open the Affidavit tab ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+    expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy()
+  })
 })

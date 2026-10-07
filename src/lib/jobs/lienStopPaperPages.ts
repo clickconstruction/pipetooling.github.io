@@ -1,6 +1,8 @@
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
-import { buildLienAffidavitBlocks, buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../jobsDocuments/lienFilingDocuments'
+import { buildLienAffidavitBlocks, buildLienNoticeBlocks, buildLienRetainageNoticeBlocks, buildReleaseOfRecordBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../jobsDocuments/lienFilingDocuments'
+import type { JobLienFilingRow } from './lienDeadlines'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienProperty'
@@ -105,4 +107,30 @@ export function retainageStopPages({ data, jobId, issuer, signerNameFor, signerP
     { key: 'cover', label: 'Page 1 of 2 · cover letter', html: coverHtml },
     { key: 'retainage', label: 'Page 2 of 2 · the § 53.057 notice', html: docHtml },
   ]
+}
+
+const SEND_METHOD_WORDS: Record<string, string> = { certified_mail: 'certified mail, return receipt', traceable_courier: 'traceable courier', email: 'email', hand: 'hand delivery' }
+
+/**
+ * A filing's paper as it went out (v2.4793): the row stores the fields it printed with (`fields`) and
+ * the sends it recorded, so the page is rebuilt from the record, not from today's job — the Lien
+ * window's *View* on a recorded filing does the same. Null when the row stores no snapshot.
+ */
+export function filingSnapshotPage(f: JobLienFilingRow, { issuer, jobNumber }: { issuer: PhysicalInvoiceIssuer | null; jobNumber: string }): LienStopPaperPage | null {
+  const snap = f.fields as unknown
+  if (!snap || typeof snap !== 'object') return null
+  const sends = Array.isArray(f.sends) ? (f.sends as { recipient?: string; method?: string; tracking?: string; sent_on?: string }[]) : []
+  const extras: FilingDocExtras = {
+    letterhead: filingLetterheadFromIssuer(issuer),
+    refItems: [`Job #${jobNumber}`, ...((f.months_covered ?? []).length > 0 ? [`Work month ${(f.months_covered ?? []).join(', ')}`] : []), demandDate(calendarYmdInAppTzFromIso(f.created_at ?? ''))],
+    deliveryLines: sends.map((s) => `${s.recipient === 'owner' ? 'Owner of record' : 'Original contractor'} — ${SEND_METHOD_WORDS[s.method ?? ''] ?? s.method ?? '—'}${s.tracking ? ` · ${s.tracking}` : ''}${s.sent_on ? ` · ${demandDate(s.sent_on)}` : ''}`),
+  }
+  let blocks: FilingDocBlock[] | null = null
+  let label = 'the notice'
+  if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields, extras)
+  else if (f.kind === 'retainage_53_057') { blocks = buildLienNoticeBlocks(snap as LienNoticeFields, extras, { instrument: 'retainage_53_057' }); label = 'the § 53.057 notice' }
+  else if (f.kind === 'affidavit') { blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, extras); label = 'the affidavit' }
+  else if (f.kind === 'release_of_record') { blocks = buildReleaseOfRecordBlocks(snap as ReleaseOfRecordFields, extras); label = 'the release of record' }
+  if (!blocks) return null
+  return { key: `filing:${f.id}`, label: `As it went out · ${label}`, html: filingDocHtml(blocks) }
 }

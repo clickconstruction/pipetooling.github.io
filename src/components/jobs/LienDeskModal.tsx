@@ -73,9 +73,10 @@ import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
-import { affidavitStopPages, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { affidavitStopPages, filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -1622,10 +1623,16 @@ export default function LienDeskModal({
     const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail${gc?.email ? ` · courtesy PDF to ${gc.email}` : ''}`
     const before = gates.filter((g) => g.tone !== 'ok').map((g) => ({ key: g.key, words: `${g.label}: ${g.value}` }))
     const go = (k: 'affidavit' | 'retainage', label: string) => ({ label, onPress: () => { setStopOpen(null); setKind(k) } })
+    const jobNo = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''
+    // A stop that went out shows the paper as it went out — the filing's own snapshot — and its stored document.
+    const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
+      const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+    }
     const kind = lienStopPaperKind(step)
     if (kind === 'notice') {
       const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && !f.voided_at && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
-      if (sent) return { ...none, record: { words: filedWords('Mailed', sent.filed_at, sent.created_at), href: sent.document_url || null }, envelope }
+      if (sent) return asSent(sent, filedWords('Mailed', sent.filed_at, sent.created_at), { envelope })
       if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
       const onDraft = step.monthKey ? months.has(step.monthKey) : false
       if (!onDraft) return { ...none, note: `${workMonthLabel(step.monthKey ?? '')} is not on the notice being drafted. Tick it under Months on this job and it joins the paper.` }
@@ -1639,7 +1646,7 @@ export default function LienDeskModal({
     }
     if (kind === 'retainage') {
       const sent = filings.find((f) => f.kind === 'retainage_53_057' && !f.voided_at)
-      if (sent) return { ...none, record: { words: filedWords('Mailed', sent.filed_at, sent.created_at), href: sent.document_url || null }, envelope }
+      if (sent) return asSent(sent, filedWords('Mailed', sent.filed_at, sent.created_at), { envelope })
       const pages = retainageStopPages({ data, jobId, issuer, signerNameFor, signerPhoneFor, todayYmd }) ?? []
       return { pages, envelope: pages.length ? envelope : null, before: [], record: null, act: pages.length ? go('retainage', 'Open it on Retainage ›') : null, note: pages.length ? null : 'No retainage is recorded on this job, so there is no § 53.057 notice to show.' }
     }
@@ -1647,14 +1654,14 @@ export default function LienDeskModal({
       const filed = filings.filter((f) => f.kind === 'affidavit' && !f.voided_at && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0]
       if (filed) {
         const words = kind === 'serve' ? (filed.served_at ? filedWords('Served', filed.served_at, filed.created_at) : `Filed ${formatYmdMonthDay(filed.filed_at!)} · a copy to the owner and the GC is still owed`) : `${filedWords('Filed', filed.filed_at, filed.created_at)}${filed.recording_number ? ` · ${filed.recording_number}` : ''}`
-        return { ...none, record: { words, href: filed.document_url || null }, envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}` : null }
+        return asSent(filed, words, { envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}` : null })
       }
       const pages = affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYmd }) ?? []
       return { pages, envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing` : null, before: [], record: null, act: pages.length ? go('affidavit', 'Open it on Affidavits ›') : null, note: pages.length ? (kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope.' : null) : 'The affidavit window has not opened on this job yet.' }
     }
     if (kind === 'release') {
       const filed = filings.find((f) => f.kind === 'release_of_record' && !f.voided_at)
-      if (filed) return { ...none, record: { words: filedWords('Released', filed.filed_at, filed.created_at), href: filed.document_url || null } }
+      if (filed) return asSent(filed, filedWords('Released', filed.filed_at, filed.created_at))
       return { ...none, note: 'The release of record is made in the Release of Lien window once the job is paid.' }
     }
     if (kind === 'demand') return { ...none, note: 'The demand letter is sent from the job’s Lien window; its reply day is on the strip.' }
