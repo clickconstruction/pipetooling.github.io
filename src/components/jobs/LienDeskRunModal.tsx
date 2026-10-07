@@ -6,7 +6,9 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { RUN_SEND_METHODS, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runNoticeProblems, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { demandDate } from '../../lib/jobsDocuments/demandLetter'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
@@ -56,8 +58,11 @@ export default function LienDeskRunModal({
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
-  // The mailing (v2.4119): when the packet printed in this sitting, and the day the envelopes went out.
-  const [printedAt, setPrintedAt] = useState<string | null>(null)
+  // The mailing (v2.4119): when the packet printed — in this sitting, or before it when every notice
+  // handed in is already printed (v2.4823: the run then opens on recording, not on printing again) — and the day the envelopes went out.
+  const opening = useMemo(() => runOpening(initial), [initial])
+  const recording = opening.step === 'record'
+  const [printedAt, setPrintedAt] = useState<string | null>(opening.printedAt)
   const [mailedOn, setMailedOn] = useState(todayYmd)
   // One notice per property (#35 PR 3): off until the office ticks it — the form's claim changes when jobs combine.
   const [combine, setCombine] = useState(false)
@@ -210,7 +215,7 @@ export default function LienDeskRunModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Send the run"
+      aria-label={recording ? 'Record the mailing' : 'Send the run'}
       style={{ position: 'fixed', inset: 0, paddingTop: 'var(--app-top-chrome, 0px)', background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 790 }}
       onClick={(e) => {
         // The Lien desk and Put a GC on notice draw the run inside their own backdrop: a click
@@ -223,7 +228,7 @@ export default function LienDeskRunModal({
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{recording ? 'Record the mailing' : 'Send the run'} · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
               <button
                 type="button"
                 aria-label="What the packet is"
@@ -239,7 +244,7 @@ export default function LienDeskRunModal({
             </div>
             {explainerOpen ? (
               <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-                One packet with every approved notice: a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order. The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+                One packet with every approved notice: a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order. The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
               </p>
             ) : null}
           </div>
@@ -257,7 +262,7 @@ export default function LienDeskRunModal({
         <div data-testid="run-steps" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', padding: '0.45rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
           <span style={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Steps</span>
           {[
-            ['1 · Print the packet', printedAt != null],
+            [printedAt ? `1 · Printed ${demandDate(calendarYmdInAppTzFromIso(printedAt))}` : '1 · Print the packet', printedAt != null],
             ['2 · Mail them', false],
             ['3 · Record the mailing', false],
           ].map(([label, done], i) => (
@@ -388,8 +393,8 @@ export default function LienDeskRunModal({
           <button type="button" onClick={printEnvelopes} disabled={envelopes.length === 0} title="One page per envelope — the return address, the certified line, a blank for the article number, and the recipient as the notice names it" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
             Envelope faces
           </button>
-          <button type="button" onClick={printPacket} disabled={notices.length === 0} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
-            Print the packet · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
+          <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
+            {printedAt ? 'Print it again' : 'Print the packet'} · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
           </button>
           <span className="lienRunFootHint" style={{ fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
             {blocked ? 'Fix the recipients marked in red before recording.' : split.partial ? `${split.waiting.length} ${split.waiting.length === 1 ? 'envelope has' : 'envelopes have'} no number yet — ${split.waiting.length === 1 ? 'it stays' : 'they stay'} in the mail pile.` : printedAt ? 'Type each envelope’s number; a number can also be added later from the Sent row.' : 'Tracking numbers can be typed now, or added later from the Sent row.'}

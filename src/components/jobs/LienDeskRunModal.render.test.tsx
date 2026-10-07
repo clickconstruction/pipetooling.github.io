@@ -245,6 +245,37 @@ describe('LienDeskRunModal — the mailing (v2.4119)', () => {
   })
 })
 
+describe('LienDeskRunModal · a run of printed notices opens on recording (v2.4823)', () => {
+  it('every notice printed: the title and step 1 say so with the day, step 3 is current, printing is a second-time act, and the record still goes', async () => {
+    recordMock.mockClear()
+    const two = [notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: '2026-09-15T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] })]
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByRole('dialog', { name: 'Record the mailing' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /^Record the mailing · 2 notices/ })).toBeTruthy()
+    const steps = screen.getByTestId('run-steps')
+    // The newest print names the day; the current step is the third.
+    expect(steps.textContent).toContain('1 · Printed September 15, 2026 ✓')
+    const chips = Array.from(steps.querySelectorAll('span > span:last-child')).filter((el) => /^[123] · /.test(el.textContent ?? '')) as HTMLElement[]
+    expect(chips[0]!.style.background).toBe('var(--bg-green-tint)')
+    expect(chips[2]!.style.background).toBe('var(--bg-blue-tint)')
+    expect(screen.getByText(/Back from the post office\? Type each envelope/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Print it again · 3 envelopes/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Print the packet/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /^Record the run/ }))
+    await settle()
+    expect(recordMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('one notice not yet printed: the run opens on printing as before', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice({ printedAt: '2026-09-14T16:00:00Z' }), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
+    expect(screen.getByTestId('run-steps').textContent).toContain('1 · Print the packet')
+    expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
+  })
+})
+
 describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
   it('Preview on a copy row opens the pages that copy prints, the arrows walk the packet, Esc closes only the preview', async () => {
     const onClose = vi.fn()
