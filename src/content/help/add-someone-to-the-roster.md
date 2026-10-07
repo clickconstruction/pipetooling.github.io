@@ -19,7 +19,7 @@ Every row reads the same way, left to right:
 - {{chip:gray|login}} or {{chip:gray|no login}} says whether they have an app account. A person with no login still has everything else: a portal for subs, paperwork, pay, a truck. A sub is a subcontractor.
 - Contact, then the **status column**. On a wide screen it is three small cells under a ***Hours · Paper · Acct*** header. The clock shows how many sessions wait for approval. The document shows how many paperwork items need you: unsent, expiring, expired or unsigned. That cell goes red when something has expired. The person is for the account: no roster row, no login, no push, portal on. Hover a cell for the words. Tap the clock to open **Hours approvals** pinned to that person, ready to approve. Tap the document or the person to open their desk at that section. Empty cells stay faint so the columns line up.
 - On a phone the same facts fold into two controls. One is the clock counter. The other is a {{chip:yellow|Needs you · 2}} pill or **Clear**. Tap the pill and the row unfolds one line per item. Each line has a button that opens the right desk section. The buttons are {{button:blue|Send ›}}, {{button:blue|Create roster row ›}}, {{button:outline|How to enable ›}}.
-- The **⋯** menu holds Open desk, Edit, Invite as user, Link account, Combine and Archive, depending on the row.
+- The **⋯** menu holds Open desk, Edit, Link account, Combine and Archive, depending on the row. A dev also sees **Invite as user** on a row with no login.
 
 Groups are still by kind. Each header says how many have a login, for example *Subcontractors 16 · 2 with a login*. Long groups fold the roster-only rows behind **+ N more without a login**. Searching or the **No login** filter opens every fold.
 

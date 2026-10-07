@@ -328,7 +328,8 @@ export function PeopleUsersTab({
     }
     const person = item as Person
     const owner = person.master_user_id === authUserId || isDev
-    if (!isAlreadyUser(person.email)) {
+    // Only a dev may make a login (`invite-user` refuses anyone else, ACCESS_CONTROL → Create users), so only a dev is offered it (v2.4877).
+    if (isDev && !isAlreadyUser(person.email)) {
       out.push({
         key: 'invite',
         label: invitingId === person.id ? 'Sending…' : 'Invite as user',

@@ -72,6 +72,14 @@ describe('resolvePersonKey', () => {
     expect(describePersonGap('pay_name_mismatch', k).action).toBe('Reconcile to "Michael A"')
   })
 
+  it('v2.4877: No login offers the invite to a dev and asks anyone else to ask a dev', () => {
+    const k = resolvePersonKey({ user: null, person: person(), payConfigNames: ['Isiah'] })
+    expect(describePersonGap('no_login', k).action).toBe('Invite as user')
+    expect(describePersonGap('no_login', k, { canInvite: true }).action).toBe('Invite as user')
+    expect(describePersonGap('no_login', k, { canInvite: false }).action).toBe('Ask a dev to invite')
+    expect(describePersonGap('no_login', k, { canInvite: false }).detail).toContain('Only a dev can send the invite.')
+  })
+
   it('a primary never gets a pay-config gap; an unreadable pay table raises none either', () => {
     expect(resolvePersonKey({ user: user({ role: 'primary', name: 'Bryan' }), person: null, payConfigNames: [] }).gaps).toEqual(['no_roster_row'])
     expect(resolvePersonKey({ user: user(), person: person(), payConfigNames: null }).gaps).toEqual([])
