@@ -1,7 +1,7 @@
 ---
 name: "GC mode: pick it up here"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · **2026-10-06: the Gantt is done on the prototype**, its last rows in four rounds of helper sessions (HELPERS.md; GANTT_FEATURES.md's status says what stands Have), and PUNCHLIST.md is closed for it · the schedule's real build is SCHEDULE_REAL_BUILD.md, waiting on the owner (call 11) · the prototype is done enough to judge · every open question in README.md is answered · **the owner said "the shape is settled" on 2026-10-06**, which starts the real build (section 4, from `main`) · on main: New project's real build so far (NEW_PROJECT_REAL_BUILD.md → Status)
+status: handed off 2026-10-05 by the Board lane at the owner's ask · the prototype is done (the Gantt's last rows 2026-10-06; PUNCHLIST.md is closed) · the owner said "the shape is settled" on 2026-10-06 and the real build started from `main` · **paused 2026-10-07 at the owner's word** with New project built but step 7 and the schedule through its PR 3 · start at *Pick up the real build*
 summary: >
   What is left in GC mode and where to start, for someone new. The prototype plays the whole loop
   on made-up data (branch spike/gc-mode, page /bids/gc). Left: a short list of the owner's calls,
@@ -23,9 +23,10 @@ what is left, gathered from every lane on 2026-10-05.
   `README.md` → *What the prototype has* walks every screen. The schedule is a whole Gantt: four
   rounds of helper sessions landed its last rows on 2026-10-06 (`HELPERS.md` says how they worked).
 - **Every open question is answered** (`README.md` → *Open questions*, all 29).
-- **The real build has started with New project** on main: its kernels, its tables and
-  `gc_create_project` (`NEW_PROJECT_REAL_BUILD.md` → *Status*). The next phase's plan is the
-  schedule's, `SCHEDULE_REAL_BUILD.md`, waiting on the owner (call 11). No email, no file storage.
+- **The real build is paused (2026-10-07).** New project's real build is on `main` but step 7. The
+  schedule's kernels and its first two migrations are on `main` and applied, and its PR 4 is open
+  and held. *Pick up the real build* below has what was in flight, the test rows on prod and how
+  the work was driven. `BUILD_MAP.md` is the plan for every lane and who builds what.
 - **The branch must never merge.** It holds the fixture in the client, and it touches nine files of
   the app outside GC mode: `src/App.tsx` (the route), `src/pages/Bids.tsx` (the switch, dev only),
   `src/components/SpotlightTour.tsx` (walkthrough features, and `onStep` for the walk's tabs) with
@@ -38,8 +39,9 @@ what is left, gathered from every lane on 2026-10-05.
 ## Start here
 
 1. **Read**, in this order: this file; `README.md` (*The ask*, *The model, in one paragraph*,
-   *What the prototype has*, *Decided by the owner*); `NEW_PROJECT_REAL_BUILD.md` and
-   `SCHEDULE_REAL_BUILD.md` (the real build's plans written out). `REMAINING.md` is the history of
+   *What the prototype has*, *Decided by the owner*); *Pick up the real build* below; `BUILD_MAP.md` (the whole real
+   build: the lanes, their order, who builds what); `NEW_PROJECT_REAL_BUILD.md` and
+   `SCHEDULE_REAL_BUILD.md` (the two plans under way, each with its *Status*). `REMAINING.md` is the history of
    what each lane built, round by round.
 2. **Run it**: check out `spike/gc-mode`, `npm install`, `npm run dev`, open
    `http://localhost:<port>/dev-login?as=1&to=/bids/gc`. **Start over** (top right) resets the
@@ -52,6 +54,73 @@ what is left, gathered from every lane on 2026-10-05.
    - `node scripts/theme-tokenize.mjs --check src/components/gc`
 5. **Keep the rules** in `README.md` → *Working in parallel*: the golden test, shared files take
    additions only, new logic in a new file for its area.
+
+## Pick up the real build (paused 2026-10-07)
+
+The owner paused the build on 2026-10-07 and asked for this page so someone else can pick it up.
+`BUILD_MAP.md` is the plan for every lane, and its section 1 says what is on `main`. This section
+is what was in flight, what is on prod for the checks, and how the work was driven.
+
+### In flight
+
+| What | State at the pause | To finish |
+|---|---|---|
+| Schedule PR 4, clickconstruction/pipetooling.github.io#4835 (v2.4816, migration `20261007235500_gc_schedule_what_if_and_before`) | Open, its CI passed, auto-merge off since the pause. Its SQL is byte for byte the approved plan, and `mockups/schedule-pr4.md` → *Status* says where it stopped. Its stamp skips three claims not merged at the pause (`20261007230000`, `20261007234000`, `20261007235000`). | First hold its stamp against `main`'s newest migration and any claim since. If a later stamp has been pushed, `db push` would refuse this one as out of order, so renumber it from a clean commit. Then re-arm it with `gh pr merge 4835 --auto`. Once it merges, push its migration after PR 3's, run its doc's five verify steps and open the types PR (*How the work was driven*). |
+| The types PR for schedule PR 3, #4833 | In the queue with auto-merge on. It also records both schedule migrations' verify results in their docs. | Nothing, unless a check fails. |
+| New project step 8b's check on prod | One question recorded on the test project ("Test Concrete Co, delete me", about S-102), not sent and not answered. The test architect, "GC Test Architects", has no email on record, so nothing can be sent yet. | Put an address the owner names on the test architect and get the owner's yes to send one email. Then press *Email it to GC Test Architects*, *Record the answer*, and issue a set that carries it (*Answers to carry in this set*). |
+| Schedule PR 5, the RPCs | Not started. | Plan it in PR 2's shape. It must word two refusals before the tables refuse them: a template with no lines (`templateShape` has no guard) and a template whose weeks come out under one. |
+| New project step 7, the set email | Waits on the company record (the Board lane's B1) and the portal's emails (P3). | Build it once both land. |
+
+Helper 1, the only helper that ran in the real build, was told to stop at the pause and to say in
+`mockups/schedule-pr4.md`'s *Status* exactly where it stopped. Helpers 2 to 5 were never opened for
+the real build; their rows in `BUILD_MAP.md` section 3 are their briefs.
+
+### Test rows on prod
+
+Each is named so a sweep finds it, and none touches a real job:
+
+- The project "GC test project, delete me" (`ef8905d1-039a-4cbc-9d69-9468cfea50e0`), with its
+  customer, its architect "GC Test Architects", two sets of plans (Bid set and "Permit set, delete
+  me"), five trades with their scope lines, and the test question.
+- Its folder in the PipeTooling Jobs Shared Drive, with Plans and Team only inside.
+- A scope set saved to the scope book from its Concrete scope.
+
+No `gc_schedule_*` table holds a row: the schedule's checks rolled back or deleted what they wrote.
+Whether to keep the test rows for the next checks or delete them is call 13.
+
+### How the work was driven
+
+- **Helpers.** A helper writes its plan on the spike (`mockups/<name>.md`, ending with "is this the
+  best we can do?"). The lead gives the go, the helper cuts the PR from `main` and arms auto-merge,
+  and the lead reviews it. For a migration the lead compares the PR's SQL with the plan's, byte for
+  byte. After a lift merges, the helper writes the spike's follow-up commit, which deletes what moved
+  and re-exports it from `main`. `HELPERS.md` is the brief, and `BUILD_MAP.md` section 5 has the rules.
+- **Claim at the cut.** Run `npm run claim -- --branch <branch>` and
+  `npm run claim -- --migration <file>` when the PR is cut, past `main`'s newest and past any claim
+  not merged yet. A merge-conflict watcher session renumbers or rebases a PR that clashes in the
+  queue and messages its owner. Take its force-push before committing more on that branch.
+- **Push a migration** only once its PR is on `main`. Make a clean detached checkout
+  (`git worktree add --detach <dir> origin/main`), copy `.env.local` in, symlink `node_modules`, and
+  run `bash scripts/db-push.sh`. It pushes, regenerates `src/types/database.ts` and the dev-mcp
+  catalog, and runs the drift check. Remove the symlink, commit the two generated files on a
+  `claude/types-…` branch, and open the types PR with auto-merge. The next PR that calls the new
+  names waits for it.
+- **Verify a migration** with its doc's steps. Steps 1 and 3 went through the management API's query
+  endpoint, the way `scripts/check-migration-drift.mjs` calls it: the policy catalog read only, and a
+  training-mode user's insert inside a transaction that never commits. Steps 2, 4 and 5 ran from the
+  app signed in as a dev, through the page's `supabase` client, against an id that matches nothing.
+  Write what each step said in the migration doc's *Status*.
+- **Deploy an edge function** with `supabase functions deploy <name> --project-ref
+  yewfzhbofbbyvkvtaatw`, the management token as `SUPABASE_ACCESS_TOKEN`. Retry on a
+  `TransportError`.
+- **An email that leaves the company** needs more than its function, or CI fails as it did on
+  #4815. It needs `file:` on `sendEmailViaResend` (the sent copy), an entry in `CUSTOMER_SURFACES`
+  (`src/lib/customerSurfaceRegistry.ts`), a journey step with a sample email (`customerJourneys.ts`
+  and `customerSampleEmails.ts`, both reading one builder in `supabase/functions/_shared/`), and an
+  answer in `src/lib/journeys/personJourney.ts`.
+- **Access at the pause.** The management token in `.env.local` covers the db push, the deploys and
+  the verify queries; never print it or commit it. The dev-mcp read seat's key was revoked (it
+  answers "Unknown or revoked dev key"), and the Supabase MCP needs authorizing.
 
 ## What is left
 
@@ -71,7 +140,9 @@ Nothing in the real build starts before the first one.
 | 8 | **The Board's and the Portal's defaults**: a change request or a back-charge reads late after 7 days; a paper's day picks 3 days, a week or two weeks; a bench is deep at 3 companies that answer; a company should open the plans within 3 days. A trade has 5 days to answer a back-charge (`BACK_CHARGE_ANSWER_DAYS`), and one comes off an approved draw not paid yet. | Board, Portal | Defaults in the code. |
 | 9 | **The portal's Spanish** read by a native speaker before it ships. | Portal | Someone he names, at production. The list is at the end of `PORTAL_SPANISH.md`. |
 | 10 | **Two portal ideas offered and not picked**: "Your record with Click" and "Get paid early". | Portal | Open if he wants them. |
-| 11 | **The schedule's real build**: the ten decisions in `SCHEDULE_REAL_BUILD.md`, each with a default, for the Gantt's three real-build rows (G-132 the tables, G-133 who may move a bar, G-134 two people on one schedule). | The Gantt | Waiting on the owner's word. Nothing else on the Gantt waits on the owner. |
+| 11 | **The schedule's real build**: the ten decisions in `SCHEDULE_REAL_BUILD.md`, each with a default, for the Gantt's three real-build rows (G-132 the tables, G-133 who may move a bar, G-134 two people on one schedule). | The Gantt | Taken at their defaults on 2026-10-07 while the build was driven, without asking the owner one by one. PRs 2 to 4 follow them. He can overrule any before PR 5 writes the RPCs. |
+| 12 | **The GC entity's name**: `src/lib/gc/company.ts` carries the prototype's "Click Construction" and "Click" until the owner names it. The Pipeline's `GC_STATEMENT_COMPANY_NAME` is the plumbing company, not this one. | The schedule (PR 1b) | Open. A late notice's words read it. |
+| 13 | **The test rows on prod**: keep them for the next checks or delete them (*Pick up the real build* → *Test rows on prod*). | The real build | Open. |
 
 ### 2. Prototype work still open
 
@@ -138,7 +209,8 @@ The real build has to make each of these real, or decide not to.
 
 `README.md` → *The plan* has the order and *Where it plugs into the app that exists* says what to
 reuse; do not build a second system for any of them. Each step ships alone with its release note,
-docs fragment and help guide (`CLAUDE.md`).
+docs fragment and help guide (`CLAUDE.md`). `BUILD_MAP.md` maps the steps onto helpers, and its
+section 1 says what is on `main`.
 
 1. **Schema from the model.** `gcTypes.ts` is the first sketch of the tables. New Project's tables
    and RPCs are written out in `NEW_PROJECT_REAL_BUILD.md` (its five decisions taken). Building's:
@@ -272,7 +344,7 @@ Tell the owner before changing one of these; another area reads it.
 
 ## Status
 
-Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), its last rows in rounds one to four of the helper sessions (`HELPERS.md` says how), with the Ask window, Follow up's two views and a company's address. `PUNCHLIST.md` is closed for the Gantt. The next phase is the schedule's real build, `SCHEDULE_REAL_BUILD.md`, once the owner says yes to its decisions (call 11).
+Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), its last rows in rounds one to four of the helper sessions (`HELPERS.md` says how), with the Ask window, Follow up's two views and a company's address. `PUNCHLIST.md` is closed for the Gantt. The real build started on 2026-10-06 and paused on 2026-10-07 at the owner's word (*Pick up the real build*).
 
 Handed off 2026-10-05. Pick it up by reading *Start here*, then take section 1 to the owner. Each
 real-build plan keeps its own status; drop a session card when a real-build PR starts

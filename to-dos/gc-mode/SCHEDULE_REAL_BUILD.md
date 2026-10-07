@@ -709,6 +709,13 @@ v2.4781 #4796), and the spike reads them from main through re-exports (the lift 
 `20261007210000_gc_schedule_tables`), was applied to prod the same day and verified from the app:
 every table empty, a dev's insert in and its `finish < start` refused, the changes table refusing a
 dev's update and delete, anon refused (the doc's status has the words). The types are in #4826.
-PR 3, the moves and the records, is #4827 (v2.4809, migration
-`20261007220000_gc_schedule_moves_records`), with *The tables* amended to match; it is not applied
-yet.
+PR 3, the moves and the records, merged as v2.4809 (#4827, migration
+`20261007220000_gc_schedule_moves_records`) with *The tables* amended to match. It was applied the
+same day and passed all five verify steps, its two doors included; its doc's status has the words,
+and PR 2's now has its steps 1 and 3 too. The types are in #4833. PR 4, what if and before the job,
+is #4835 (v2.4816, migration `20261007235500_gc_schedule_what_if_and_before`), its SQL byte for
+byte the approved plan. It was held unmerged at the pause, with auto-merge off.
+
+Paused 2026-10-07 at the owner's word. PR 5, the RPCs, is next, and its plan must word two refusals
+before the tables refuse them: a template with no lines (`templateShape` has no guard) and a
+template whose weeks come out under one. `HANDOFF.md` → *Pick up the real build* has the rest.

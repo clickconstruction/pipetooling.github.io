@@ -8,12 +8,12 @@ PRs, nothing built), and the four plans the helpers write first (section 3). `HA
 4 is the order this map follows; `README.md` → *Where it plugs into the app that exists* is the
 list of what is reused, never rebuilt.
 
-## 1. Where it stands on main (2026-10-06, night)
+## 1. Where it stands on main (paused 2026-10-07)
 
 | Lane | On main | In flight |
 |---|---|---|
-| New project | Kernels (PR 1, 1b), the tables (PR 2, 3), `gc_create_project` and the window (4a, 4b), the scope book page (4b-second), `gc_issue_plan_set` (6a). | Drive (step 5, #4776 in the queue); 6b (v2.4773, #4789), 9 (v2.4774, #4791) and 8a (v2.4779, #4794, migration applied) merged; 8b (v2.4799, #4815) is in the queue; step 7 waits on the company record. |
-| Schedule | PRs 1a, 1b-i and 1b-ii: every kernel lifted word for word (v2.4772 #4788, v2.4777 #4792, v2.4781 #4796); the spike reads them from main. PR 2, the nine tables (v2.4798 #4814), applied to prod and verified. | Helper 1 is cutting PR 3 (moves and the records) from its approved plan; the types PR #4826 is in the queue. |
+| New project | Kernels (PR 1, 1b), the tables (PR 2, 3), `gc_create_project` and the window (4a, 4b), the scope book page (4b-second), Drive (step 5, v2.4754 #4776), `gc_issue_plan_set` (6a), and 6b, 9, 8a and 8b (v2.4773 #4789, v2.4774 #4791, v2.4779 #4794, v2.4799 #4815). Both edge functions are deployed. | Step 7 waits on the company record. 8b's prod check is half run (`HANDOFF.md` → *Pick up the real build*). |
+| Schedule | PRs 1a, 1b-i and 1b-ii: every kernel lifted word for word (v2.4772 #4788, v2.4777 #4792, v2.4781 #4796); the spike reads them from main. PR 2, the nine tables (v2.4798 #4814), and PR 3, the eleven for moves and the records (v2.4809 #4827), both applied and verified. | PR 4 (#4835, v2.4816) is open and was held at the pause. The types PR #4833 is in the queue. Next is PR 5, the RPCs. |
 | Board | Nothing (the prototype only). | |
 | Portal | Nothing. | |
 | Building | Nothing. | |
@@ -127,9 +127,10 @@ sitting and a lane without can ship several.
 From `HANDOFF.md` section 1: Quo (call 4); the roughly thirty unconfirmed defaults (call 5) and the
 lanes' timings (6, 7, 8), each a constant and changed freely; the Spanish read (9); the two portal
 ideas not picked (10); the schedule's ten decisions (11), taken as defaults while Helper 1 drives.
-The schedule.s PR 1b adds one: the GC entity.s name and short name (`src/lib/gc/company.ts` carries the prototype.s "Click Construction" until the owner names it; the Pipeline.s `GC_STATEMENT_COMPANY_NAME` is the plumbing company, not this). Each lane's plan adds its own short list, and the lead brings them in one message.
+The real build adds two: the GC entity's name (call 12) and the test rows on prod (call 13). Each lane's plan adds its own short list, and the lead brings them in one message.
 
 ## Status
 
-Written 2026-10-06. New project's stack is landing; Helper 1 is on the schedule's PR 1a; the
-other four lanes wait on their helpers being opened and their plans written.
+Written 2026-10-06. Paused 2026-10-07 at the owner's word, with New project built but step 7 and
+the schedule through its PR 3 (section 1). The other four lanes wait on their helpers being opened
+and their plans written. `HANDOFF.md` → *Pick up the real build* is where to start again.
