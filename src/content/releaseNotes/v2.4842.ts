@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.4834',
+  version: 'v2.4842',
   date: '2026-10-07',
   title: 'GC mode: the billing rules move to the real app',
   kind: 'infra',
