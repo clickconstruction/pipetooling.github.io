@@ -232,6 +232,8 @@ uploads work through the "PipeTooling Jobs" Shared Drive since 2026-08-29
 - **Spanish**: *cotización* and *orden de trabajo* are feminine, *contrato maestro* masculine
   (fírmela, fírmelo); the office's typed notes go in as typed. After any word change, redraw the
   native speaker's list with `to-dos/gc-mode/portal-spanish-list.ts` (how to run it is at its top).
+  One word for each thing (*orden de cambio*, *documento para aprobación*, *cronograma*, usted
+  throughout) is pinned by `gcSpanishVoice.test.ts`; change a word there, never around it.
 - **Kernels moved to main live in `src/lib/gc/`.** Edit them there, never a copy in `gcMode/`.
 - **The quote's due day** (`quotesWantedOn`) is the day questions close (`questionsCloseOn`), and
   the portal's `portalQuoteDue` follows it.

@@ -1096,7 +1096,7 @@ describe('the trade’s own schedule of values', () => {
     expect(words).toMatch(/^Billed \$[\d,]+ to date: /)
     expect(portalSovReached(lines, 0)).toBe('Nothing billed yet.')
     expect(portalSovReached([{ label: 'Rough-in', amount: 50_000 }, { label: 'Top out', amount: 50_000 }], 60_000, 'es')).toBe(
-      'Cobrado $60,000 a la fecha: completo hasta Rough-in, 20% de Top out.',
+      'Facturado $60,000 a la fecha: completo hasta Rough-in, 20% de Top out.',
     )
   })
 

@@ -23,7 +23,9 @@ speaker should read it before anything ships (README, question 25).
 
 ## The shared words
 
-Use these so a company reads one word for one thing across the portal.
+Use these so a company reads one word for one thing across the portal. The words a test pins (the
+master agreement, the statement of work, a draw, a pay application, a change order, a trade and
+more) are drawn from the code at the end of this page, under *One word for each thing*.
 
 | English | Spanish |
 |---|---|
@@ -32,18 +34,12 @@ Use these so a company reads one word for one thing across the portal.
 | our bid (ours, to the owner) | nuestra propuesta |
 | schedule of values (the trade's own) | desglose por etapas |
 | Rough-in · Top out · Trim (its stages; please check) | Obra negra · Antes de cerrar muros · Acabados |
-| statement of work | orden de trabajo |
-| master agreement | contrato maestro |
-| change order | orden de cambio |
-| pay application | solicitud de pago |
-| draw (Draw 2) | pago (Pago 2) |
 | retainage, held | retención, retenido |
 | conditional / unconditional waiver | renuncia condicional / incondicional |
 | conditional / unconditional final release of lien | liberación final de gravamen condicional / incondicional |
 | line (of scope, of the schedule of values) | partida |
 | plans, plan set, sheet | planos, juego de planos, hoja |
 | bid tab | tabla de precios |
-| trade (the work) | especialidad |
 | trade partner | subcontratista |
 | the owner (of the property) | el dueño |
 | the customer (whoever hires and pays us; owner, 2026-10-04) | el cliente |
@@ -120,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 985 in all, drawn from the code on 2026-10-05.
+Every Spanish string the trade's portal shows, 985 in all, drawn from the code on 2026-10-06.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs. After any change to the words, redraw the tables below from the code with
@@ -249,7 +245,7 @@ they were written in. The portal does not translate them.
 | {what}, {amount} per {unit} if it comes up | {what}, {amount} por {unit} si se necesita |
 | Your schedule of values | Su desglose por etapas |
 | How your quote splits by stage. It is optional. Rename, add or take out lines. They must add up to your quote. | Cómo se divide su cotización por etapa. Es opcional. Puede cambiar, agregar o quitar partidas. Deben sumar su cotización. |
-| How your price splits by stage, so {gc} reads your billing on your own lines. It must add up to {amount}. | Cómo se divide su precio por etapa, para que {gc} lea su cobro en sus propias partidas. Debe sumar {amount}. |
+| How your price splits by stage, so {gc} reads your billing on your own lines. It must add up to {amount}. | Cómo se divide su precio por etapa, para que {gc} lea su facturación en sus propias partidas. Debe sumar {amount}. |
 | Rough-in | Obra negra |
 | Top out | Antes de cerrar muros |
 | Trim | Acabados |
@@ -261,9 +257,9 @@ they were written in. The portal does not translate them.
 | Your lines add up to {sum}. That is {gap} too much. | Sus partidas suman {sum}. Sobran {gap}. |
 | Make your schedule of values add up, or clear its amounts. | Haga que su desglose sume bien, o borre los montos. |
 | Send your schedule of values | Enviar su desglose por etapas |
-| Nothing billed yet. | Todavía no hay nada cobrado. |
-| Billed {amount} to date: every line of your schedule. | Cobrado {amount} a la fecha: todas las partidas de su desglose. |
-| Billed {amount} to date: {where}. | Cobrado {amount} a la fecha: {where}. |
+| Nothing billed yet. | Todavía no hay nada facturado. |
+| Billed {amount} to date: every line of your schedule. | Facturado {amount} a la fecha: todas las partidas de su desglose. |
+| Billed {amount} to date: {where}. | Facturado {amount} a la fecha: {where}. |
 | through {list} | completo hasta {list} |
 | {pct}% into {label} | {pct}% de {label} |
 | Known exclusions | Exclusiones conocidas |
@@ -417,7 +413,7 @@ they were written in. The portal does not translate them.
 | {gc} sends it when they pick your quote | {gc} lo envía cuando elige su cotización |
 | Insurance certificate | Certificado de seguro |
 | Send a newer one | Enviar uno más reciente |
-| Send your certificate | Enviar su certificado |
+| Send your certificate | Enviar su certificado de seguro |
 | W-9 | W-9 |
 | on file | en archivo |
 | none on file | no tenemos |
@@ -428,7 +424,7 @@ they were written in. The portal does not translate them.
 | runs out today | vence hoy |
 | Fill in your W-9 | Llenar su W-9 |
 | You sign the master agreement once. Each job after that is a short statement of work. | El contrato maestro se firma una sola vez. Después, cada trabajo es una orden de trabajo corta. |
-| A photo or PDF of the certificate | Una foto o PDF del certificado |
+| A photo or PDF of the certificate | Una foto o PDF del certificado de seguro |
 | The day the policy runs out | El día que vence la póliza |
 | Send it to {gc} | Enviarlo a {gc} |
 | Not now | Ahora no |
@@ -458,7 +454,7 @@ they were written in. The portal does not translate them.
 | The plans | Los planos |
 | Your quote is based on one set of plans. When a new set changes your trade, {gc} tells you. You confirm your quote or send a new one. | Su cotización se basa en un juego de planos. Cuando un juego nuevo cambia su especialidad, {gc} le avisa. Usted confirma su cotización o manda una nueva. |
 | Changes | Cambios |
-| Work outside the statement of work needs a change in writing first. {gc} adds it to the statement of work before you start it. | El trabajo fuera de la orden de trabajo necesita primero un cambio por escrito. {gc} lo agrega a la orden de trabajo antes de que usted empiece. |
+| Work outside the statement of work needs a change in writing first. {gc} adds it to the statement of work before you start it. | El trabajo fuera de la orden de trabajo necesita primero una orden de cambio por escrito. {gc} lo agrega a la orden de trabajo antes de que usted empiece. |
 | Your paperwork | Sus documentos |
 | Keep your insurance current and a W-9 on file. {gc} cannot send a statement of work or pay a draw without them. | Mantenga su seguro vigente y su W-9 en archivo. Sin ellos, {gc} no puede enviar una orden de trabajo ni pagar. |
 | Getting paid | Cómo se le paga |
@@ -609,7 +605,7 @@ they were written in. The portal does not translate them.
 | English | Español |
 |---|---|
 | Your next three weeks | Sus próximas tres semanas |
-| {gc} plans these from the schedule. At the end of each week, mark each one done or not done. | {gc} las planea con el calendario de obra. Al final de cada semana, marque cada una como hecha o no hecha. |
+| {gc} plans these from the schedule. At the end of each week, mark each one done or not done. | {gc} las planea con el cronograma. Al final de cada semana, marque cada una como hecha o no hecha. |
 | Last week · {date} | Semana pasada · {date} |
 | This week · {date} | Esta semana · {date} |
 | Next week · {date} | La próxima semana · {date} |
@@ -630,9 +626,9 @@ they were written in. The portal does not translate them.
 | not done | no hecho |
 | Nothing planned for you this week. | No hay nada planeado para usted esta semana. |
 | weather | clima |
-| the trade before | el oficio anterior |
+| the trade before | la especialidad anterior |
 | materials | materiales |
-| crew | personal |
+| crew | cuadrilla |
 | other | otro |
 
 #### Their messages
@@ -746,7 +742,7 @@ they were written in. The portal does not translate them.
 | Your {trade} work on {project} was to start {date}, and nobody has been on site: {work}. | Su trabajo de {trade} en {project} debía comenzar el {date}, y nadie ha estado en la obra: {work}. |
 | Before then, this must be in place: | Antes de eso, esto debe estar listo: |
 | Everything is in place on our side. | Todo está listo de nuestro lado. |
-| Your submittal {number}, {title}: {state}. The work cannot start until it is approved. | Su submittal {number}, {title}: {state}. El trabajo no puede comenzar hasta que esté aprobado. |
+| Your submittal {number}, {title}: {state}. The work cannot start until it is approved. | Su documento para aprobación {number}, {title}: {state}. El trabajo no puede comenzar hasta que esté aprobado. |
 | not sent yet | aún no enviado |
 | with us | con nosotros |
 | with the architect | con el arquitecto |
@@ -948,7 +944,7 @@ they were written in. The portal does not translate them.
 | This week · {date} | Esta semana · {date} |
 | Next week · {date} | La próxima semana · {date} |
 | Week of {date} | Semana del {date} |
-| Nothing of yours on the schedule this week. | Nada suyo en el programa esta semana. |
+| Nothing of yours on the schedule this week. | Nada suyo en el cronograma esta semana. |
 | {from} to {to} | del {from} al {to} |
 | {day} | el {day} |
 | first day on this job | primer día en esta obra |
@@ -1061,7 +1057,7 @@ they were written in. The portal does not translate them.
 | Fire pump | Bomba contra incendio |
 | Backflow preventer | Válvula antirretorno |
 | Insulation | Aislamiento |
-| Blocking for others | Bloqueo para otros oficios |
+| Blocking for others | Bloqueo para otras especialidades |
 | Level 5 finish | Acabado nivel 5 |
 | Exterior paint | Pintura exterior |
 | Special coatings | Recubrimientos especiales |
@@ -1103,7 +1099,7 @@ they were written in. The portal does not translate them.
 | It adds {amount}. | Suma {amount}. |
 | It takes {amount} off. | Resta {amount}. |
 | Time: {schedule}. | Tiempo: {schedule}. |
-| Sign the change | Firmar el cambio |
+| Sign the change | Firmar la orden de cambio |
 | Sign the master agreement first. | Primero firme el contrato maestro. |
 
 #### The door: asking for a draw
@@ -1306,7 +1302,7 @@ they were written in. The portal does not translate them.
 |---|---|
 | Submittals {gc} needs from you | Documentos para aprobación que {gc} necesita de usted |
 | Needed by {date}. | Se necesita para el {date}. |
-| {n} days late. | {n} días de retraso. |
+| {n} days late. | {n} días de atraso. |
 | The architect sent it back {date}. | El arquitecto lo devolvió el {date}. |
 | The file you send | El archivo que envía |
 | A note for {gc} | Una nota para {gc} |
@@ -1404,3 +1400,28 @@ Each row is one whole message, subject first, then the body, with `/` for a new 
 | Subscribed and sworn to before me this ___ day of ___, 20___. | Suscrito y jurado ante mí este ___ día de ___ de 20___. |
 | Notary public: ___ | Notario público: ___ |
 | My commission expires: ___ | Mi comisión vence: ___ |
+
+### One word for each thing (`SPANISH_TERMS` in `gcSpanishVoice.ts`, pinned by its test)
+
+A company reads one word for each of these, everywhere in the portal. `gcSpanishVoice.test.ts` scans every string above for the retired words, the words kept out and the *tú* forms, as whole words, ignoring case and accents. To change a word, change it here in the code and in the strings, then redraw this page.
+
+| Thing | The one word | Retired 2026-10-06 | Kept out |
+|---|---|---|---|
+| master agreement | **contrato maestro** |  | *acuerdo maestro*, *convenio maestro*, *contrato marco* |
+| statement of work | **orden de trabajo** |  | *declaración de trabajo* |
+| insurance certificate | **certificado de seguro** (certificado once seguro is named in the same string or message) |  | *constancia de seguro*, *comprobante de seguro* |
+| a draw | **pago** (Pago 2) |  | *desembolso*, *anticipo*, *estimación* |
+| a pay application | **solicitud de pago** (solicitud once named) |  | *aplicación de pago*, *factura* |
+| a change order | **orden de cambio** (cambio alone stays for a change a trade asks for, and in the headings) |  | *orden de modificación* |
+| a submittal | **documento para aprobación** | *submittal* |  |
+| an RFI | **pregunta** (preguntas sobre los planos) |  | *solicitud de información*, *RFI* |
+| the daily log | **registro diario** |  | *bitácora*, *reporte diario*, *diario de obra* |
+| the look-ahead | **las próximas tres semanas** |  | *vista anticipada*, *look-ahead* |
+| late, a late notice | **atraso** (atrasarse, atrasado) | *retraso* | *demora* |
+| a crew count | **personas al día** |  | *trabajadores al día* |
+| the dates to meet | **fechas a cumplir** (kept for when it comes) |  | *hito* |
+| the form of address | **usted** |  | *tú*, *tu*, *tus*, *te*, *ti*, *contigo*, *tuyo*, *tuya*, *tuyos*, *tuyas*, *puedes*, *tienes*, *debes*, *necesitas*, *quieres*, *eres*, *sabes*, *vas* |
+| the schedule | **cronograma** | *calendario de obra*, *programa* |  |
+| a trade | **especialidad** | *oficio* |  |
+| billed | **facturado** (cobre stays for "get paid") | *cobrado*, *cobro* |  |
+| a crew | **cuadrilla** |  |  |

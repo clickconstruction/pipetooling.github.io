@@ -2,7 +2,7 @@
 name: "The Spanish voice: one word for each thing, across every string a trade reads"
 rows: the Portal's Spanish (PORTAL_SPANISH.md, 985 strings), round five
 branch: spike/spanish-voice (from origin/spike/gc-mode at 7fe31975f)
-status: mockup 2026-10-06 by Helper 1, for the lead's go. No code yet.
+status: built 2026-10-06 on spike/spanish-voice with the lead's go on picks 1 and 2 (Helper 1). The fifteen strings changed as below, no English. The pin is gcSpanishVoice.test.ts, and the list is redrawn by the script (985 strings). As built, six rows left the hand table, not five, since a trade is pinned too. The tú possessives (tuyo, tuya, tuyos, tuyas) joined the markers.
 ---
 
 # The Spanish voice
@@ -125,6 +125,8 @@ The golden test does not move. It reads no Spanish.
 - **No English sentence changes**, and nothing the office typed is translated.
 - **Words outside these things**, like *fecha* beside *día* for "day", read naturally both ways.
   They are the native speaker's to judge.
+- **A test that the list is current** (pick 3) stays out, by the lead's word, because it would fail
+  other lanes' pieces in flight.
 
 ## Is this the best we can do?
 

@@ -49,7 +49,7 @@ describe('start reminders (G-114)', () => {
     const pkg = project.packages.find((k) => k.id === 'fhvac')!
     // Cool Breeze's controls drawings are not sent yet and hold its controls line; its insurance and statement of work are fine.
     expect(startNeeds(state, 'coolbreeze', project, pkg, '2026-11-02', 'en')).toEqual(['Your submittal 23 09 23-01, Controls: not sent yet. The work cannot start until it is approved.'])
-    expect(startNeeds(state, 'coolbreeze', project, pkg, '2026-11-02', 'es')).toEqual(['Su submittal 23 09 23-01, Controls: aún no enviado. El trabajo no puede comenzar hasta que esté aprobado.'])
+    expect(startNeeds(state, 'coolbreeze', project, pkg, '2026-11-02', 'es')).toEqual(['Su documento para aprobación 23 09 23-01, Controls: aún no enviado. El trabajo no puede comenzar hasta que esté aprobado.'])
     // Pecan Valley's insurance ran out Sep 15, already past today: it says ran out (G-139), as the office's gap does.
     const felec = project.packages.find((k) => k.id === 'felec')!
     expect(startNeeds(state, 'pecanvalley', project, felec, '2026-10-19', 'en')).toContain('Your insurance certificate ran out Tue Sep 15. Send a current one.')

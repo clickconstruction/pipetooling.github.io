@@ -15,7 +15,7 @@ const W = {
   changeAdds: { en: 'It adds {amount}.', es: 'Suma {amount}.' },
   changeTakes: { en: 'It takes {amount} off.', es: 'Resta {amount}.' },
   changeTime: { en: 'Time: {schedule}.', es: 'Tiempo: {schedule}.' },
-  signChange: { en: 'Sign the change', es: 'Firmar el cambio' },
+  signChange: { en: 'Sign the change', es: 'Firmar la orden de cambio' },
   signMsaFirst: { en: 'Sign the master agreement first.', es: 'Primero firme el contrato maestro.' },
 
   // The door: asking for a draw
@@ -218,7 +218,7 @@ const W = {
   // Submittals in the trade's portal (2026-10-04)
   subHead: { en: 'Submittals {gc} needs from you', es: 'Documentos para aprobación que {gc} necesita de usted' },
   subNeeded: { en: 'Needed by {date}.', es: 'Se necesita para el {date}.' },
-  subLate: { en: '{n} days late.', es: '{n} días de retraso.' },
+  subLate: { en: '{n} days late.', es: '{n} días de atraso.' },
   subBack: { en: 'The architect sent it back {date}.', es: 'El arquitecto lo devolvió el {date}.' },
   subFile: { en: 'The file you send', es: 'El archivo que envía' },
   subNote: { en: 'A note for {gc}', es: 'Una nota para {gc}' },
