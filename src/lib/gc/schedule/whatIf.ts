@@ -8,7 +8,8 @@
 import { moveActivityName, moveWhyProblem } from './moves'
 import { withBaselineKept } from './schedule'
 import type { ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWhatIf, WhatIfBase } from './types'
-import type { GcProject } from '../types'
+import type { GcProject, GcState } from '../types'
+import { companiesToTell } from './tellTrades'
 
 /** The stand-in kept on a move tried with no reason, so the copy's history has it. Keep asks for a real one. */
 export const WHAT_IF_NO_WHY: { reason: ScheduleMoveReason; note: string } = { reason: 'other', note: 'No reason yet. Keep asks for one.' }
@@ -124,4 +125,12 @@ export function keepWhatIf(project: GcProject, whys: Record<string, { reason: Sc
   const base = withBaselineKept(project, real)
   // Moves are kept newest first, so the copy's newest is the real schedule's newest and Undo takes it first.
   return { schedule: { ...base, activities, moves: [...[...kept].reverse(), ...(real.moves ?? [])] }, kept }
+}
+
+/** "2 moves kept from the what-if. Summit Roofing and Cool Breeze Mechanical have not been told." Null: every kept move's companies were told, or none has any. */
+export function whatIfKeptWords(state: GcState, project: GcProject): { words: string; companies: string[] } | null {
+  const kept = (project.schedule?.moves ?? []).filter((m) => m.fromWhatIf && !m.undoneOn && !m.toldOn)
+  const companies = companiesToTell(state, project, kept).map((c) => c.partner.company)
+  if (kept.length === 0 || companies.length === 0) return null
+  return { words: `${kept.length === 1 ? '1 move' : `${kept.length} moves`} kept from the what-if. ${andList(companies)} ${companies.length === 1 ? 'has' : 'have'} not been told.`, companies }
 }

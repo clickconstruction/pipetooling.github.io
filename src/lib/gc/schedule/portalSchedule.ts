@@ -1,0 +1,54 @@
+/**
+ * GC mode, the real build, the schedule's PR 1b: the trade's chart (G-110), moved word for word from the GC mode prototype
+ * (branch spike/gc-mode, `gcPortalSchedule.ts`).
+ */
+import type { ScheduleRow } from './schedule'
+import { daysBetween, scheduleRows } from './schedule'
+import type { GcProject, GcState } from '../types'
+
+export interface PortalScheduleBar {
+  lineId: string
+  label: string
+  /** The company doing it, for the rows that are not theirs. */
+  company: string
+  start: string
+  finish: string
+  pct: number
+  /** Days its finish sits past where the plan at Start had it. */
+  slipDays: number
+  mine: boolean
+}
+
+export interface PortalSchedule {
+  before: PortalScheduleBar[]
+  mine: PortalScheduleBar[]
+  after: PortalScheduleBar[]
+  /** The span drawn: a few days before the first bar to a few after the last. */
+  first: string
+  last: string
+}
+
+function barOf(row: ScheduleRow, mine: boolean): PortalScheduleBar {
+  return { lineId: row.activity.lineId, label: row.label, company: row.company, start: row.activity.start, finish: row.activity.finish, pct: row.actual, slipDays: Math.max(0, row.slipDays), mine }
+}
+
+/** The company's schedule on one job. Null: no schedule, or nothing of theirs on it. */
+export function portalSchedule(state: GcState, partnerId: string, project: GcProject): PortalSchedule | null {
+  const rows = scheduleRows(state, project)
+  const theirs = rows.filter((r) => r.pkg.invites.some((i) => i.id === r.pkg.awardedInviteId && i.partnerId === partnerId))
+  if (theirs.length === 0) return null
+  const mineIds = new Set(theirs.map((r) => r.activity.lineId))
+  const waitsOn = new Set(theirs.flatMap((r) => r.activity.after))
+  const before = rows.filter((r) => waitsOn.has(r.activity.lineId) && !mineIds.has(r.activity.lineId))
+  const after = rows.filter((r) => !mineIds.has(r.activity.lineId) && r.activity.after.some((id) => mineIds.has(id)))
+  const all = [...before, ...theirs, ...after]
+  const first = all.reduce((a, r) => (r.activity.start < a ? r.activity.start : a), all[0]?.activity.start ?? state.today)
+  const last = all.reduce((a, r) => (r.activity.finish > a ? r.activity.finish : a), all[0]?.activity.finish ?? state.today)
+  return { before: before.map((r) => barOf(r, false)), mine: theirs.map((r) => barOf(r, true)), after: after.map((r) => barOf(r, false)), first, last }
+}
+
+/** Where a day falls across the span, as a percent of the width. */
+export function portalScheduleX(schedule: PortalSchedule, on: string): number {
+  const days = Math.max(1, daysBetween(schedule.first, schedule.last) + 1)
+  return (Math.max(0, Math.min(days, daysBetween(schedule.first, on))) / days) * 100
+}
