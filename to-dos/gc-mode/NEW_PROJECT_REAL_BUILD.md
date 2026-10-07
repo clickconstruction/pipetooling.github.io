@@ -338,3 +338,11 @@ row mapper `src/lib/gc/projectRows.ts`; 4b, v2.4708 (branch `claude/gc-real-buil
 is the window ported with its first four steps, `src/lib/gc/gcIo.ts`, the dev-only page at `/gc`
 and the guide `start-a-gc-project`. Step 5, Who to ask, stays on this branch until the company
 record exists. The scope book page (4b-second) and the Drive check (PR 5) are next.
+
+Amended 2026-10-06, late: step 4 landed. 4a, `gc_create_project` and the row mapper, merged as
+v2.4716 (clickconstruction/pipetooling.github.io#4718, migration `20261007030000_gc_create_project`,
+applied; types in #4751). 4b, the window on real data behind the dev door at `/gc`, merged as
+v2.4748 (#4764). The plan's check passed on prod: a test project ("GC test project, delete me",
+with a new customer and architect) was made from the window in one press and read back with its
+set, 7 sheets, 3 sections, 5 trades with their budgets, 20 scope lines with their sheets and
+sections, and the gaps. Next: 4b-second (the scope book page), then step 5 (Drive).
