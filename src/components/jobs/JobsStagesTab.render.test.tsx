@@ -573,7 +573,7 @@ describe('JobsStagesTab render smoke', () => {
       expect(stamp.textContent).toContain('$7,502 given up on')
       expect(document.querySelectorAll('tr[data-stages-row-stamped]')).toHaveLength(1)
       // The stamped row keeps Mark Paid and offers the way back; the chased row offers the door.
-      expect(screen.getByRole('button', { name: 'Put it back in Collections' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Put back' })).toBeTruthy()
       expect(screen.getByRole('button', { name: 'Uncollectible…' })).toBeTruthy()
     })
 
@@ -593,7 +593,7 @@ describe('JobsStagesTab render smoke', () => {
       })
       expect(uncollectibleRpc.calls).toEqual([[jobs[3]!.id, true, 'Refused the bill, will not answer, not worth a suit.']])
       expect(screen.queryByRole('dialog', { name: 'Mark the job Uncollectible' })).toBeNull()
-      fireEvent.click(screen.getByRole('button', { name: 'Put it back in Collections' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Put back' }))
       const back = screen.getByRole('dialog', { name: 'Put the job back in Collections' })
       await act(async () => {
         fireEvent.click(within(back).getByRole('button', { name: 'Put it back' }))

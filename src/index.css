@@ -5216,6 +5216,8 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 
 /* Uncollectible (punch list #94, v2.4792): a Collections row the office gave up on wears faint
    stripes under its cells; the red stamp in the money cell says why. */
-tr[data-stages-row-stamped] > td {
+tr[data-stages-row-stamped] {
+  /* v2.4818: one pattern across the whole row. On each cell the stripes restarted at every column edge;
+     the row paints its background once, so they run straight through (the cells set none of their own). */
   background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgba(127, 127, 127, 0.07) 14px 28px);
 }

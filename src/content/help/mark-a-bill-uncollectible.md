@@ -35,7 +35,7 @@ The row moves into the **Uncollectible** band at the bottom of Collections. A re
 
 ## Put it back
 
-Press {{button:outline|Put it back in Collections}} under the stamped row and confirm. The stamp comes off, the job counts in Collections again and goes back on its lien clock.
+Press {{button:outline|Put back}} under the stamped row and confirm. The stamp comes off, the job counts in Collections again and goes back on its lien clock.
 
 ## The accountant's list
 
