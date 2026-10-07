@@ -2005,6 +2005,35 @@ that points at *Walk me through this job* itself, which lives only inside a proj
   and four new in `SpotlightTour.render.test.tsx`. Every pin was broken on purpose and caught. The
   golden test did not move.
 
+## G-13, one company's work, as built (2026-10-07)
+
+G-13, Helper 7 (mock-up `mockups/G-13.md`). The kernel is on main, `src/lib/gc/schedule/gantt.ts`
+(v2.4837, clickconstruction/pipetooling.github.io#4859), and the spike's `gcGantt.ts` re-exports it.
+
+- **Every company** is a picker at the end of the *Show only* row, the shape of a pill. Its list is
+  By company's groups in By company's order, the most late work first, each with its late count:
+  *Pecan Valley Electric · 2 late*. *The city* is the inspections. It shows only when the chart has
+  more than one company.
+- **Pick one** and only its bars draw. The picker turns blue like a pill that is on. The five pills
+  count only that company's work, so the row is its summary, and a pill at 0 is dimmed. The pills
+  still combine with it. *Showing n of m* follows, and **Show all** clears the company and the
+  pills together.
+- **The call list's Their work.** Grouped by company, each person in the call list whose company
+  has bars on the chart has a quiet *Their work* link. It picks that company. The schedule tab
+  holds the company, so the chart's picker and the link share it.
+- **Print or PDF**: our team's copy prints only that company's bars and says *Only Pecan Valley
+  Electric's work shows.* The customer's copies never read it, and the export is always the whole
+  schedule.
+- **The tour**: *The chart* stop gains *Pick one company to see only their work.*
+- **Kernel**: `ganttCompanyBars`, `ganttCompanies`, and an optional company on `ganttFilter`,
+  `ganttCounts` and the print's input. `GanttFilters` and `NO_FILTERS` did not change. That differs
+  from the mock-up, which put the company in `GanttFilters`: there it would have changed what
+  `keyof GanttFilters` holds, and a moved test's pill names with it.
+- **Tests**: `gantt.direct.test.ts` and `ganttPrint.direct.test.ts` on main. `GcGantt.render.test.tsx`
+  has the picker, the counts and Show all, and the tab holding the company. `GcCallList.render.test.tsx`
+  has *Their work*, only for a company with bars. The golden test did not move.
+- **The owner's list**: the two defaults are `HANDOFF.md` → *The owner's calls*, row 14.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

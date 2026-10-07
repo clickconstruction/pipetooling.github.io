@@ -142,6 +142,7 @@ Nothing in the real build starts before the first one.
 | 11 | **The schedule's real build**: the ten decisions in `SCHEDULE_REAL_BUILD.md`, each with a default, for the Gantt's three real-build rows (G-132 the tables, G-133 who may move a bar, G-134 two people on one schedule). | The Gantt | Taken at their defaults on 2026-10-07 while the build was driven, without asking the owner one by one. PRs 2 to 4 follow them. He can overrule any before PR 5 writes the RPCs. |
 | 12 | **The GC entity's name**: `src/lib/gc/company.ts` carries the prototype's "Click Construction" and "Click" until the owner names it. The Pipeline's `GC_STATEMENT_COMPANY_NAME` is the plumbing company, not this one. | The schedule (PR 1b) | Open. A late notice's words read it. |
 | 13 | **The test rows on prod**: keep them for the next checks or delete them (*Pick up the real build* → *Test rows on prod*). | The real build | Open. |
+| 14 | **G-13's two defaults**: with one company picked, the pills count only that company's work; *The city* (the inspections) is in the company list, as By company names it. | The Gantt | Defaults in the code (`src/lib/gc/schedule/gantt.ts`, v2.4837). |
 
 ### 2. Prototype work still open
 

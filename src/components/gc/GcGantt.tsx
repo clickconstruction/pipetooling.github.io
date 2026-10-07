@@ -14,6 +14,7 @@ import {
   ZOOM_PX,
   ganttAxis,
   ganttBars,
+  ganttCompanies,
   ganttCounts,
   ganttFilter,
   ganttGroups,
@@ -162,6 +163,8 @@ export function GcGantt({
   real,
   toolbarExtra,
   onMovePart,
+  company: companyFromTab,
+  onCompany,
 }: {
   items: ScheduleItem[]
   float: Map<string, number>
@@ -209,6 +212,9 @@ export function GcGantt({
   toolbarExtra?: ReactNode
   /** A split line's part dropped after a drag (G-39): the tab asks why, then saves. Unset: parts do not drag. */
   onMovePart?: (lineId: string, partId: string, start: string, finish: string) => void
+  /** One company's work (G-13), held by the tab so the call list's Their work can pick it. With onCompany unset, the chart holds its own. */
+  company?: string | undefined
+  onCompany?: (company: string | undefined) => void
 }) {
   const [zoom, setZoom] = useState<GanttZoom>('weeks')
   const [by, setBy] = useState<GanttGroupBy>('trade')
@@ -222,6 +228,10 @@ export function GcGantt({
     if (el && el.clientHeight > 0) setWin({ top: el.scrollTop, height: el.clientHeight })
   }, [])
   const [filters, setFilters] = useState<GanttFilters>(NO_FILTERS)
+  // One company's work only (G-13): its name as By company groups it, or none for every company. The tab holds it when it passes onCompany.
+  const [ownCompany, setOwnCompany] = useState<string | undefined>(undefined)
+  const company = onCompany ? companyFromTab : ownCompany
+  const setCompany = onCompany ?? setOwnCompany
   const [showLinks, setShowLinks] = useState(true)
   // Spare days as a faint tail after each bar (G-08), on request; held like the links, while the chart is open.
   const [showSpare, setShowSpare] = useState(false)
@@ -258,8 +268,11 @@ export function GcGantt({
   const phoneName = (fontSize: string, lineHeight: number): CSSProperties => ({ fontSize, lineHeight, justifySelf: 'stretch' })
 
   const all = useMemo(() => ganttBars(items, float, holds, today, building, tails), [items, float, holds, today, building, tails])
-  const counts = useMemo(() => ganttCounts(all), [all])
-  const shown = useMemo(() => ganttFilter(all, filters), [all, filters])
+  const companies = useMemo(() => ganttCompanies(all), [all])
+  // A company picked whose bars are gone from the chart is no longer picked.
+  const oneCompany = company !== undefined && companies.some((c) => c.company === company) ? company : undefined
+  const counts = useMemo(() => ganttCounts(all, oneCompany), [all, oneCompany])
+  const shown = useMemo(() => ganttFilter(all, filters, oneCompany), [all, filters, oneCompany])
   const groups = useMemo(() => ganttGroups(shown, by), [shown, by])
   const axis = useMemo(() => ganttAxis(all, milestones, today, zoom), [all, milestones, today, zoom])
   const people = useMemo(() => (showPeople && peopleOf ? peopleOf(axis.first, addDays(axis.first, axis.days - 1)) : []), [showPeople, peopleOf, axis.first, axis.days])
@@ -404,11 +417,13 @@ export function GcGantt({
             ...(earlier ? { earlier } : {}),
             // People on site per week under the last page's rows while the strip is on (G-144): our team's copy draws it.
             ...(showPeople && peopleOf ? { peopleOf } : {}),
+            // One company picked (G-13): our team's copy prints its work only and says so.
+            ...(oneCompany !== undefined ? { company: oneCompany } : {}),
           }
         : null,
-    [print, all, filters, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier, showPeople, peopleOf],
+    [print, all, filters, oneCompany, by, folded, showLinks, showSpare, milestones, waitList, lost, today, building, lateSaid, logNotes, uninsured, earlier, showPeople, peopleOf],
   )
-  const anyFilter = Object.values(filters).some(Boolean)
+  const anyFilter = Object.values(filters).some(Boolean) || oneCompany !== undefined
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
   const anyFolded = groups.some((g) => folded.has(g.key))
   const hovered = hover ? byId.get(hover.id) : undefined
@@ -913,12 +928,46 @@ export function GcGantt({
               </button>
             )
           })}
+          {/* One company's work (G-13): the pills above then count only theirs. By company's order, the most late work first. */}
+          {companies.length > 1 && (
+            <select
+              aria-label="One company"
+              title="Show one company's work, and count only theirs."
+              value={oneCompany ?? ''}
+              onChange={(e) => setCompany(e.target.value === '' ? undefined : e.target.value)}
+              style={{
+                border: `1px solid ${oneCompany !== undefined ? 'transparent' : 'var(--border)'}`,
+                borderRadius: 999,
+                padding: '0.2rem 0.5rem',
+                fontSize: '0.78rem',
+                maxWidth: '100%',
+                minWidth: 0,
+                fontWeight: oneCompany !== undefined ? 600 : 400,
+                background: oneCompany !== undefined ? 'var(--bg-blue-200)' : 'var(--surface)',
+                color: oneCompany !== undefined ? 'var(--text-blue-800)' : 'var(--text-base)',
+              }}
+            >
+              <option value="">Every company</option>
+              {companies.map((c) => (
+                <option key={c.company} value={c.company}>
+                  {c.late > 0 ? `${c.company} · ${c.late} late` : c.company}
+                </option>
+              ))}
+            </select>
+          )}
           {anyFilter && (
             <>
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                 Showing {shown.length} of {all.length}
               </span>
-              <button type="button" style={{ ...quietBtn, border: 'none', color: 'var(--text-link)', padding: '0.2rem 0.2rem' }} onClick={() => setFilters(NO_FILTERS)}>
+              <button
+                type="button"
+                style={{ ...quietBtn, border: 'none', color: 'var(--text-link)', padding: '0.2rem 0.2rem' }}
+                onClick={() => {
+                  setFilters(NO_FILTERS)
+                  setCompany(undefined)
+                }}
+              >
                 Show all
               </button>
             </>

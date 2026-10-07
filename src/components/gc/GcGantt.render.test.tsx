@@ -57,6 +57,45 @@ describe('the Gantt', () => {
     expect(bars()).toBe(all)
   })
 
+  it('shows one company’s work, the pills counting only theirs, and Show all brings everyone back (G-13)', () => {
+    const { bars, m } = chart()
+    fireEvent.click(screen.getByText('Open all'))
+    const theirs = m.items.filter((i) => i.company === 'Pecan Valley Electric').length
+    const late = () => Number(screen.getByText('Late or behind').closest('button')?.querySelector('b')?.textContent)
+    const lateAll = late()
+    const picker = screen.getByRole('combobox', { name: 'One company' }) as HTMLSelectElement
+    expect(picker.value).toBe('')
+    // By company's order: the most late work first.
+    expect(picker.options[1]?.textContent).toBe('Pecan Valley Electric · 2 late')
+    fireEvent.change(picker, { target: { value: 'Pecan Valley Electric' } })
+    expect(bars()).toBe(theirs)
+    expect(late()).toBe(2)
+    expect(late()).toBeLessThan(lateAll)
+    expect(screen.getByText(`Showing ${theirs} of ${m.items.length}`)).toBeTruthy()
+    // A pill at 0 for this company is dimmed and cannot be pressed.
+    expect(screen.getByText('Moved since Start').closest('button')?.disabled).toBe(true)
+    fireEvent.click(screen.getByText('Late or behind').closest('button')!)
+    expect(bars()).toBe(2)
+    fireEvent.click(screen.getByText('Show all'))
+    expect(picker.value).toBe('')
+    expect(bars()).toBe(m.items.length)
+  })
+
+  it('takes its one company from the tab when the tab holds it: the call list’s Their work (G-13)', () => {
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
+    const m = scheduleMeasures(state, project)
+    const onCompany = vi.fn()
+    const view = render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={new Map()} today={state.today} building picked={null} onPick={vi.fn()} company="Summit Roofing" onCompany={onCompany} />)
+    if (screen.queryByText('Open all')) fireEvent.click(screen.getByText('Open all'))
+    expect(view.container.querySelectorAll('[data-gantt-bar]').length).toBe(m.items.filter((i) => i.company === 'Summit Roofing').length)
+    expect((screen.getByRole('combobox', { name: 'One company' }) as HTMLSelectElement).value).toBe('Summit Roofing')
+    fireEvent.change(screen.getByRole('combobox', { name: 'One company' }), { target: { value: 'Pecan Valley Electric' } })
+    expect(onCompany).toHaveBeenLastCalledWith('Pecan Valley Electric')
+    fireEvent.click(screen.getByText('Show all'))
+    expect(onCompany).toHaveBeenLastCalledWith(undefined)
+  })
+
   it('draws the call list under the toolbar only while grouped by company (G-115)', () => {
     const state = initialGcState()
     const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!

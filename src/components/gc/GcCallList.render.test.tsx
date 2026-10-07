@@ -41,6 +41,20 @@ function list(onFollowUp = vi.fn(), onWorkList = vi.fn(), onReason = vi.fn()) {
 }
 
 describe('the call list', () => {
+  it('Their work shows a trade’s company on the chart, only for a company the chart has bars for (G-13)', () => {
+    const state = initialGcState()
+    const calls = callList(state, job(state), new Map())
+    const onChart = new Set(scheduleMeasures(state, job(state)).items.map((i) => i.company))
+    const picked = vi.fn()
+    render(<GcCallList list={calls} onFollowUp={vi.fn()} onWorkList={vi.fn()} onReason={vi.fn()} theirWork={(p) => (onChart.has(p.company) ? () => picked(p.company) : null)} />)
+    const withWork = calls.people.filter((p) => onChart.has(p.company))
+    expect(withWork.length).toBeGreaterThan(0)
+    const links = screen.getAllByText('Their work')
+    expect(links.length).toBe(withWork.length)
+    fireEvent.click(links[0]!)
+    expect(picked).toHaveBeenCalledWith(withWork[0]!.company)
+  })
+
   it('has a row per person, each with Call and Follow up', () => {
     const { container, calls } = list()
     expect(screen.getByText(`${calls.count} to call about the schedule`)).toBeTruthy()

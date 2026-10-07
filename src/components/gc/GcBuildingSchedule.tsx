@@ -164,6 +164,9 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
   const calls = useMemo(() => (project.stage === 'building' ? callList(state, project, holds) : null), [state, project, holds])
   // The Follow up sheet on that list; `lineId` is an opened bar's, so its company is on it.
   const [sheet, setSheet] = useState<{ partnerId?: string; calling?: boolean; lineId?: string } | null>(null)
+  // The chart's one company (G-13): its picker and the call list's Their work share it.
+  const [chartCompany, setChartCompany] = useState<string | undefined>(undefined)
+  const chartCompanies = useMemo(() => new Set(m.items.map((i) => i.company)), [m.items])
   // People on site per week (G-84), for the chart's strip. A trade's own count for a week (G-142) comes first.
   const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to, crewCountsNow(project)), [state, project])
   const planOf = useCallback(
@@ -340,6 +343,8 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           {...(printJob && !inCopy ? { print: printJob } : {})}
           earlier={earlier}
           {...(inCopy ? { real: realGhosts } : {})}
+          company={chartCompany}
+          onCompany={setChartCompany}
           toolbarExtra={<GcWhatIfButton project={realProject} shown={inCopy} dispatch={realDispatch} onShow={setCopyShown} />}
           items={m.items}
           float={m.float}
@@ -367,7 +372,13 @@ export function GcBuildingScheduleTab({ state, project: realProject, dispatch: r
           }}
           callList={
             calls && !inCopy ? (
-              <GcCallList list={calls} onFollowUp={(person, calling) => setSheet({ partnerId: callSheetId(person), calling })} onWorkList={() => setSheet({})} onReason={openBar} />
+              <GcCallList
+                list={calls}
+                onFollowUp={(person, calling) => setSheet({ partnerId: callSheetId(person), calling })}
+                onWorkList={() => setSheet({})}
+                onReason={openBar}
+                theirWork={(person) => (chartCompanies.has(person.company) ? () => setChartCompany(person.company) : null)}
+              />
             ) : undefined
           }
         />
