@@ -121,12 +121,14 @@ export function parseClaimRefs(listing: string): RemoteClaim[] {
   const out: RemoteClaim[] = []
   for (const line of listing.split('\n')) {
     const m = line.trim().match(/^([0-9a-f]{40})\s+(refs\/claims\/(\S+))$/)
-    if (!m) continue
-    const [, sha, ref, leaf] = m
+    const sha = m?.[1]
+    const ref = m?.[2]
+    const leaf = m?.[3]
+    if (sha == null || ref == null || leaf == null) continue
     const v = leaf.match(/^v2\.(\d+)$/)
     const mig = leaf.match(/^migration-(\d{14})$/)
-    if (v) out.push({ ref, sha, version: Number(v[1]) })
-    else if (mig) out.push({ ref, sha, migration: mig[1] })
+    if (v?.[1] != null) out.push({ ref, sha, version: Number(v[1]) })
+    else if (mig?.[1] != null) out.push({ ref, sha, migration: mig[1] })
   }
   return out
 }
@@ -188,6 +190,7 @@ export function findVersionCollisions(
       continue
     }
     const pr = list[0]
+    if (pr == null) continue
     const holder = claimFor.get(version)
     if (holder == null) out.push({ version, kind: 'unclaimed', detail: `#${pr.number} (${pr.branch})` })
     else if (holder !== pr.branch)
