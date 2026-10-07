@@ -110,6 +110,22 @@ describe('jobsMapJobs', () => {
     expect(jobs[1]!.owedDollars).toBe(0)
     expect(jobsMapOwedLine(jobs[1]!)).toBeNull()
   })
+
+  it('a bill the office gave up on (Uncollectible) keeps its pin and ring but has nothing to collect', () => {
+    const bill = { invoices: [{ id: 'i1', status: 'billed', amount: 7502 }] as unknown as JobWithDetails['invoices'] }
+    const { jobs } = jobsMapJobs([
+      job({ id: 'chased', status: 'billed', collections_at: '2026-08-01T00:00:00Z', ...bill }),
+      job({ id: 'given', status: 'billed', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T19:00:00Z', ...bill } as Partial<JobWithDetails> & { id: string }),
+      job({ id: 'stray', status: 'billed', uncollectible_at: '2026-10-07T19:00:00Z', ...bill } as Partial<JobWithDetails> & { id: string }),
+    ])
+    expect(jobs.map((j) => [j.id, j.section, j.inCollections, j.uncollectible, j.owedDollars])).toEqual([
+      ['chased', 'billed', true, false, 7502],
+      ['given', 'billed', true, true, 0],
+      ['stray', 'billed', false, false, 7502],
+    ])
+    expect(jobsMapOwedLine(jobs[1]!)).toBeNull()
+    expect(jobsMapStatusLine(jobs[1]!)).toBe('Billed · Collections · Uncollectible')
+  })
 })
 
 describe('pins, legend and visibility', () => {

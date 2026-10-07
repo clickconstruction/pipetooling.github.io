@@ -7,15 +7,17 @@
  * search, GC / development / account-man / contract filters and sort — never a
  * filter on it. Pins are colored by Pipeline section in the board's own dot
  * colors (`jobsLedgerStatusDotColor`); a job in Collections keeps Billed's
- * color and wears a red ring. Paid starts off — hundreds of paid pins would
- * bury the live ones — and the Paid rows only exist once the board's Paid
- * section has loaded, so the chip says so until then.
+ * color and wears a red ring; one the office gave up on (Uncollectible) keeps
+ * the pin but has nothing to collect and is never on the ask list. Paid starts
+ * off — hundreds of paid pins would bury the live ones — and the Paid rows
+ * only exist once the board's Paid section has loaded, so the chip says so
+ * until then.
  *
  * Distance is the straight line from the office anchor (jobs record no routed
  * miles); the 25 / 50 mile rings are the same yardstick.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { jobOpenBillingRemainderDollars } from '../jobsStagesBoard'
+import { jobOpenBillingRemainderDollars, jobUncollectible } from '../jobsStagesBoard'
 import { stagesSectionKeyForJobRow } from './stagesJobNumberJump'
 import { jobsLedgerStatusDotColor } from '../jobsLedgerStatusPipeline'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -75,6 +77,8 @@ export type JobsMapJob = {
   addressKey: string
   section: JobsMapSection
   inCollections: boolean
+  /** Given up on (Uncollectible, punch list #94): still pinned, but nothing to collect and never on the ask list. */
+  uncollectible: boolean
   pctComplete: number | null
   /** Open bills (ready-to-bill drafts + billed remainders) minus payments applied — the Pipeline's own number. */
   owedDollars: number
@@ -129,6 +133,7 @@ export function jobsMapJobs(rows: readonly JobWithDetails[], now: Date = new Dat
     seen.add(row.id)
     const bucket = sectionOf(row)
     if (!bucket) continue
+    const uncollectible = bucket.inCollections && jobUncollectible(row)
     const address = (row.job_address ?? '').trim()
     const addressKey = normalizeAddressForGeocodeKey(address)
     const numberLabel = effectiveJobLedgerNumber(row.hcp_number, row.click_number) || '—'
@@ -143,8 +148,9 @@ export function jobsMapJobs(rows: readonly JobWithDetails[], now: Date = new Dat
       addressKey,
       section: bucket.section,
       inCollections: bucket.inCollections,
+      uncollectible,
       pctComplete: row.pct_complete != null && Number.isFinite(Number(row.pct_complete)) ? Number(row.pct_complete) : null,
-      owedDollars: bucket.section === 'billed' || bucket.section === 'readyToBill' ? jobOpenBillingRemainderDollars(row) : 0,
+      owedDollars: !uncollectible && (bucket.section === 'billed' || bucket.section === 'readyToBill') ? jobOpenBillingRemainderDollars(row) : 0,
       billedAgeDays: bucket.section === 'billed' ? jobBilledAgeDays(row, now) : null,
       row,
     }
@@ -181,10 +187,11 @@ export function jobsMapVisiblePins(pins: readonly JobsMapPin[], show: JobsMapSec
   return pins.filter((p) => show[p.section])
 }
 
-/** `Working · 60%` · `Billed · Collections` · `Waiting`. */
-export function jobsMapStatusLine(job: Pick<JobsMapJob, 'section' | 'inCollections' | 'pctComplete'>): string {
+/** `Working · 60%` · `Billed · Collections` · `Billed · Collections · Uncollectible` · `Waiting`. */
+export function jobsMapStatusLine(job: Pick<JobsMapJob, 'section' | 'inCollections' | 'pctComplete'> & { uncollectible?: boolean }): string {
   const parts: string[] = [JOBS_MAP_SECTION_LABEL[job.section]]
   if (job.inCollections) parts.push('Collections')
+  if (job.uncollectible) parts.push('Uncollectible')
   if (job.pctComplete != null && (job.section === 'working' || job.section === 'waiting')) parts.push(`${Math.round(job.pctComplete)}%`)
   return parts.join(' · ')
 }

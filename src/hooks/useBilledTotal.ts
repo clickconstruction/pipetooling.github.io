@@ -7,7 +7,8 @@ import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderSta
 // Intentionally ALL billed jobs, including those flagged into Collections — this total means
 // "billed and unpaid" = the bill-truth kernel's Owed (billed + collections), the same figure the
 // Pipeline strip, the AR card (ar + Collections) and Quickfill read. Bills on paid or deleted jobs
-// are excluded by the kernel (they used to pad this pin).
+// are excluded by the kernel (they used to pad this pin). A job the office gave up on (Uncollectible)
+// leaves Owed in the kernel, which needs `uncollectible_at` to see it.
 export function useBilledTotal(
   enabled: boolean,
   refreshKey?: number
@@ -36,7 +37,7 @@ export function useBilledTotal(
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, status, revenue, payments_made, collections_at')
+                .select('id, status, revenue, payments_made, collections_at, uncollectible_at')
                 // the spine's cohort — a billed invoice on a working/waiting job is owed too
                 .or(`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`),
             'useBilledTotal jobs',

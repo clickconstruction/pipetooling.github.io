@@ -72,7 +72,7 @@ export default function UncollectibleListSettingsBlock() {
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
                 <span>
-                  <strong>{report.count}</strong> bill{report.count === 1 ? '' : 's'} · <strong>{`$${formatUsdNoCents(report.total)}`}</strong> given up on, all years
+                  <strong>{report.count}</strong> bill{report.count === 1 ? '' : 's'} · <strong>{formatUsdNoCents(report.total)}</strong> given up on, all years
                 </span>
                 <button type="button" onClick={download} style={{ padding: '0.3rem 0.8rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
                   Download CSV
@@ -81,7 +81,7 @@ export default function UncollectibleListSettingsBlock() {
               {report.years.map((y) => (
                 <div key={y.year} style={{ marginBottom: '0.75rem' }}>
                   <div style={{ fontWeight: 600, fontSize: '0.9rem', margin: '0.5rem 0 0.25rem' }}>
-                    {`${y.year} · ${y.count} bill${y.count === 1 ? '' : 's'} · $${formatUsdNoCents(y.total)}`}
+                    {`${y.year} · ${y.count} bill${y.count === 1 ? '' : 's'} · ${formatUsdNoCents(y.total)}`}
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                     <thead>
@@ -99,7 +99,7 @@ export default function UncollectibleListSettingsBlock() {
                           <td style={{ padding: '0.3rem 0.5rem 0.3rem 0', whiteSpace: 'nowrap' }}>{l.ymd ? uncollectibleDayWords(l.ymd) : '—'}</td>
                           <td style={{ padding: '0.3rem 0.5rem' }}>{`${l.number} · ${l.job}`}</td>
                           <td style={{ padding: '0.3rem 0.5rem' }}>{l.customer}</td>
-                          <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{`$${formatUsdNoCents(l.open)}`}</td>
+                          <td style={{ padding: '0.3rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatUsdNoCents(l.open)}</td>
                           <td style={{ padding: '0.3rem 0 0.3rem 0.5rem', color: 'var(--text-red-700)', fontStyle: 'italic' }}>{l.reason || '—'}</td>
                         </tr>
                       ))}

@@ -19,7 +19,7 @@ type CollectionsJobRow = {
 
 /**
  * The dev's "Collections accounts await your review" card (Legal portal PR 2):
- * every Collections account not yet with a firm or closed, the ones the office
+ * every Collections account not yet with a firm or closed (a given-up job is not one), the ones the office
  * asked a dev about first, and how long the oldest has sat. Refetches on window
  * focus like the neighbouring nudges; fail-soft (a checkout ahead of the
  * migration renders nothing).
@@ -38,6 +38,8 @@ export function useLegalReviewNudge(enabled: boolean): { review: LegalReviewSumm
         .select('id, customer_id, customer_name, gc_customer_id, collections_at, revenue, payments_made')
         .eq('status', 'billed')
         .not('collections_at', 'is', null)
+        // A job the office gave up on (Uncollectible) is not for the firm; the desk lists it under Given up on.
+        .is('uncollectible_at', null)
         .limit(500)
       if (jobsRes.error) {
         setReview(null)

@@ -25,7 +25,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
       const [jobsRes, contractsRes, estimatesRes, floorCents] = await Promise.all([
         supabase
           .from('jobs_ledger')
-          .select('id, bid_id, status, revenue, collections_at, contract_not_needed_at, contract_not_needed_reason')
+          .select('id, bid_id, status, revenue, collections_at, uncollectible_at, contract_not_needed_at, contract_not_needed_reason')
           .in('status', [...CONTRACT_NUDGE_STATUSES]),
         supabase
           .from('job_contracts')

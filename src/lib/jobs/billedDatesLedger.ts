@@ -85,6 +85,8 @@ export type BilledDatesLedgerInput = {
   /** The job's lien runway (`buildLienPayRunway`); null while the clocks load. */
   runway: LienPayRunway | null
   inCollections: boolean
+  /** Given up on (Uncollectible, punch list #94): no money row — nobody expects the money, and a promise line would contradict "not owed". */
+  uncollectible?: boolean
 }
 
 const dWord = (n: number) => `${n}d`
@@ -97,7 +99,7 @@ function farWords(days: number, ahead: 'in' | 'bare'): string {
   return ahead === 'in' ? `in ${dWord(days)}` : dWord(days)
 }
 
-export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, inCollections }: BilledDatesLedgerInput): BilledDatesLedger {
+export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, inCollections, uncollectible = false }: BilledDatesLedgerInput): BilledDatesLedger {
   const rows: LedgerRow[] = []
 
   // The bill
@@ -107,9 +109,9 @@ export function buildBilledDatesLedger({ todayYmd, row, data, promise, runway, i
     rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day the pay estimate below counts from`, sub: '' })
   }
 
-  // The money — their word if they gave one, else the estimate from their pay history
-  const stat = row ? billedExpectedPayModel(row, data, todayYmd, null) : null
-  const promised = row && promise ? billedExpectedPayModel(row, data, todayYmd, promise) : null
+  // The money — their word if they gave one, else the estimate from their pay history; none on a bill the office gave up on
+  const stat = row && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, null) : null
+  const promised = row && promise && !uncollectible ? billedExpectedPayModel(row, data, todayYmd, promise) : null
   const moneyYmd = promised?.expectedYmd ?? stat?.expectedYmd ?? null
   const moneyTo = moneyYmd ? (daysBetweenYmd(todayYmd, moneyYmd) ?? 0) : null
   const moneyPast = moneyTo != null && moneyTo < 0

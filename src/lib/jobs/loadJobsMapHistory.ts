@@ -28,6 +28,7 @@ type JobRow = {
   status: string | null
   created_at: string
   collections_at: string | null
+  uncollectible_at: string | null
   customer_id: string | null
   customer_name: string | null
   gc_customer_id: string | null
@@ -62,7 +63,7 @@ async function read(): Promise<JobsMapHistory> {
       (from, to) =>
         supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, click_number, job_name, job_address, status, created_at, collections_at, customer_id, customer_name, gc_customer_id, bill_to_party, gc_customer:gc_customer_id(name)')
+          .select('id, hcp_number, click_number, job_name, job_address, status, created_at, collections_at, uncollectible_at, customer_id, customer_name, gc_customer_id, bill_to_party, gc_customer:gc_customer_id(name)')
           .order('id')
           .range(from, to),
       'jobs map history jobs',
@@ -99,6 +100,7 @@ async function read(): Promise<JobsMapHistory> {
       status: r.status,
       created_ymd: ymdOf(r.created_at) ?? '0000-00-00',
       collections_ymd: ymdOf(r.collections_at),
+      uncollectible_ymd: ymdOf(r.uncollectible_at),
       customer_id: r.customer_id,
       customer_name: r.customer_name,
       gc_customer_id: r.gc_customer_id,
