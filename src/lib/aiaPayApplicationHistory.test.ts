@@ -5,6 +5,7 @@ import {
   isPayApplicationCopy,
   parsePayApplicationSnapshot,
   payApplicationDeletedWords,
+  payApplicationRestoreTakenWords,
   payApplicationSnapshot,
   payApplicationFileName,
   payApplicationHistory,
@@ -213,5 +214,7 @@ describe('deleted applications', () => {
     expect(payApplicationDeletedWords(gone[0]!, day)).toBe('Deleted 2026-09-03 by Robert')
     expect(payApplicationDeletedWords({ deletedAt: '2026-09-03T15:00:00Z', deletedByName: '' }, day)).toBe('Deleted 2026-09-03')
     expect(payApplicationDeletedWords(live[0]!, day)).toBe('')
+    // Put it back refused (#92): the words name the number and what to do first.
+    expect(payApplicationRestoreTakenWords(1)).toBe('Another application 1 is live on this job. Delete it, or open it and give it another number, then put this one back.')
   })
 })

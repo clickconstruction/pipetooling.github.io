@@ -55,12 +55,20 @@ const saveSpy = vi.fn((write: PayApplicationWrite, id: string | null): Promise<S
 const deleteSpy = vi.fn((_id: string) => Promise.resolve())
 // The applications taken off the job (v2.4715): a list the tests set; Delete reads it again.
 let deletedOnJob: SavedPayApplication[] = []
+// Put it back (#92): refused when a live application holds the number, else the row moves back to the live list.
+const restoreSpy = vi.fn((app: SavedPayApplication) => {
+  if (onJob.some((a) => a.applicationNumber === app.applicationNumber)) return Promise.reject(new TakenError(app.applicationNumber))
+  deletedOnJob = deletedOnJob.filter((a) => a.id !== app.id)
+  onJob = [...onJob, { ...app, deletedAt: null, deletedByName: '' }]
+  return Promise.resolve()
+})
 vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   PayApplicationNumberTaken: TakenError,
   loadPayApplications: () => Promise.resolve(onJob),
   loadDeletedPayApplications: () => Promise.resolve(deletedOnJob),
   savePayApplication: (write: PayApplicationWrite, id: string | null) => saveSpy(write, id),
   deletePayApplication: (id: string) => deleteSpy(id),
+  restorePayApplication: (app: SavedPayApplication) => restoreSpy(app),
 }))
 // Sent copies (v2.4575): the workbook that was downloaded is filed; the stub keeps what was filed.
 // The history (v2.4710) reads the job's copies back and opens a kept workbook.
@@ -668,6 +676,54 @@ describe('AiaG702G703Modal', () => {
     // The standing and the next number come from the live application alone.
     expect(screen.getByTestId('aia-history-pane').textContent).toContain('1 saved · $17,460.00 certified · 40% complete')
     expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
+  })
+
+  it('Put it back returns a deleted application to the job: a live line again, and the next number moves (#92)', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    deletedOnJob = [{ ...savedTwo(), id: 'app-2-old', deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await screen.findByTestId('aia-history-pane')
+    fireEvent.click(screen.getByRole('button', { name: 'Put application 2 back' }))
+    expect(await screen.findByText('Application 2 is back on the job.')).toBeTruthy()
+    expect(restoreSpy).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'app-2-old', applicationNumber: 2 }))
+    expect(screen.getAllByTestId('aia-history-line')).toHaveLength(2)
+    expect(screen.queryByTestId('aia-history-deleted')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open application 2' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'New application · 3' })).toBeTruthy()
+  })
+
+  it('deleting the last application lands on the history, where Put it back undoes it (#92)', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openSaved(1)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const buttons = await screen.findAllByRole('button', { name: 'Delete' })
+    deletedOnJob = [{ ...savedOne(), deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    onJob = []
+    fireEvent.click(buttons[buttons.length - 1]!)
+    await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith('app-1'))
+    expect(await screen.findByTestId('aia-history-deleted')).toBeTruthy()
+    expect(screen.getByTestId('aia-history-pane').textContent).toContain('Nothing is saved on this job yet.')
+    expect(screen.getByRole('button', { name: 'New application · 1' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Put application 1 back' }))
+    expect(await screen.findByText('Application 1 is back on the job.')).toBeTruthy()
+    expect(screen.getAllByTestId('aia-history-line')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'New application · 2' })).toBeTruthy()
+  })
+
+  it('Put it back onto a number another application now holds says what to do and changes nothing (#92)', async () => {
+    setWide(true)
+    onJob = [savedOne(), savedTwo()]
+    deletedOnJob = [{ ...savedTwo(), id: 'app-2-old', deletedAt: '2026-11-06T15:00:00Z', deletedByName: 'Robert' }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await screen.findByTestId('aia-history-pane')
+    fireEvent.click(screen.getByRole('button', { name: 'Put application 2 back' }))
+    expect(await screen.findByText('Another application 2 is live on this job. Delete it, or open it and give it another number, then put this one back.')).toBeTruthy()
+    expect(screen.getAllByTestId('aia-history-line')).toHaveLength(2)
+    expect(screen.getByTestId('aia-history-deleted')).toBeTruthy()
   })
 
   it('takes a percent done for a line and works out this period, and the other way round', async () => {
