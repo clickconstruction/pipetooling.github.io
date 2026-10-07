@@ -11,7 +11,7 @@ A warning pill appears when something needs a decision.
 
 ## Which projects you see
 
-Office accounts see every project. Those are dev, leader, assistant and controller. A **superintendent sees only the projects they are assigned to**. The same rule covers the project's Workflow page, its step line items, and its sub work orders. To give a superintendent a project, you open its Workflow page. You add them under **Assigned Superintendents**. The project appears on their list right away.
+Office accounts see every project. Those are dev, leader, assistant and controller. A **superintendent sees only the projects they are assigned to**. The same rule covers the project's Workflow page, its step line items, and its sub work orders. To give a superintendent a project, you open its Workflow page. You add them under **Superintendents:**. The project appears on their list right away.
 
 :::example A superintendent's Projects list
 The company has three projects. Sam is assigned to one of them, so Sam's list shows one row — the other two are not Sam's to see.
