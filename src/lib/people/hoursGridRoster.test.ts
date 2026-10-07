@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildHoursGridRoster, payConfigRowsForRoster } from './hoursGridRoster'
-import { buildPayRosterIndex, type RosterPerson } from './rosterPeople'
+import { buildArchivedRoster, buildPayRosterIndex, NO_ARCHIVED_ROSTER, type RosterPerson } from './rosterPeople'
 
 function person(pay_name: string, over: Partial<RosterPerson> = {}): RosterPerson {
   return {
@@ -33,13 +33,15 @@ function person(pay_name: string, over: Partial<RosterPerson> = {}): RosterPerso
 }
 
 const rows = (names: string[]) => names.map((n) => ({ person_name: n, person_id: null }))
-const none = new Set<string>()
+const none = NO_ARCHIVED_ROSTER
+/** An archived roster that knows names only (no ids): the fallback rule on its own. */
+const byName = (names: string[]) => ({ ...NO_ARCHIVED_ROSTER, names: new Set(names) })
 
 describe('buildHoursGridRoster', () => {
   it('drops archived accounts (trimmed match), orders by display sequence, then alphabetically for the unordered', () => {
     const out = buildHoursGridRoster({
       payConfigRows: rows(['Zed Quinn', 'Ana Ruiz', ' Old Helper ', 'Bo Lee', 'Cy Park']),
-      archivedUserNames: new Set(['Old Helper']),
+      archived: byName(['Old Helper']),
       payRoster: null,
       displayOrder: { 'Cy Park': 1, 'Zed Quinn': 2 },
     })
@@ -55,7 +57,7 @@ describe('buildHoursGridRoster', () => {
     ])
     const out = buildHoursGridRoster({
       payConfigRows: rows(['Training Helper', 'Ana Ruiz', 'Twin Estimator 1', 'Robert']),
-      archivedUserNames: none,
+      archived: none,
       payRoster,
       displayOrder: {},
     })
@@ -65,23 +67,45 @@ describe('buildHoursGridRoster', () => {
 
   it('the archived-name rule holds on its own while the view has not loaded (the client can deploy before the push)', () => {
     const payConfigRows = rows(['Ana Ruiz', 'Archived One', 'Archived Two'])
-    const archived = new Set(['Archived One', 'Archived Two'])
-    const owner = buildHoursGridRoster({ payConfigRows, archivedUserNames: archived, payRoster: null, displayOrder: {} })
-    const assistant = buildHoursGridRoster({ payConfigRows, archivedUserNames: archived, payRoster: null, displayOrder: {} })
+    const archived = byName(['Archived One', 'Archived Two'])
+    const owner = buildHoursGridRoster({ payConfigRows, archived, payRoster: null, displayOrder: {} })
+    const assistant = buildHoursGridRoster({ payConfigRows, archived, payRoster: null, displayOrder: {} })
     expect(assistant).toEqual(owner)
     expect(owner).toEqual(['Ana Ruiz'])
     // J7-6: an archived set that never loaded shows every archived row as a zero-hour line.
-    expect(buildHoursGridRoster({ payConfigRows, archivedUserNames: none, payRoster: null, displayOrder: {} })).toHaveLength(3)
+    expect(buildHoursGridRoster({ payConfigRows, archived: none, payRoster: null, displayOrder: {} })).toHaveLength(3)
   })
 
   it('an archived roster row (no account) drops only through the view', () => {
     const payRoster = buildPayRosterIndex([person('Gone Sub', { account_kind: 'external', has_login: false, person_archived_at: '2026-08-01', is_archived: true, is_pay_roster: false, is_active_roster: false })])
-    expect(buildHoursGridRoster({ payConfigRows: rows(['Gone Sub']), archivedUserNames: none, payRoster: null, displayOrder: {} })).toEqual(['Gone Sub'])
-    expect(buildHoursGridRoster({ payConfigRows: rows(['Gone Sub']), archivedUserNames: none, payRoster, displayOrder: {} })).toEqual([])
+    expect(buildHoursGridRoster({ payConfigRows: rows(['Gone Sub']), archived: none, payRoster: null, displayOrder: {} })).toEqual(['Gone Sub'])
+    expect(buildHoursGridRoster({ payConfigRows: rows(['Gone Sub']), archived: none, payRoster, displayOrder: {} })).toEqual([])
+  })
+
+  it('the id decides before the name (#29 item 3): a renamed pay row still drops, a stale name never hides a living person', () => {
+    const archived = buildArchivedRoster([
+      person('Dana Whitfield', { person_id: 'p-dana', person_archived_at: '2026-09-01', is_archived: true, is_pay_roster: false, is_active_roster: false }),
+      person('Sam Ortiz', { person_id: 'p-sam' }),
+      person('Old Sam', { user_id: 'u-old-sam', user_archived_at: '2025-12-01', is_archived: true, is_pay_roster: false, is_active_roster: false }),
+    ])
+    const out = buildHoursGridRoster({
+      payConfigRows: [
+        // Pay row still under Dana's old name: no name matches, the id does.
+        { person_name: 'Dana W.', person_id: 'p-dana' },
+        // Sam's pay row kept the name of an archived account: the id says Sam is living.
+        { person_name: 'Old Sam', person_id: 'p-sam' },
+        // No id: the name decides.
+        { person_name: 'Old Sam', person_id: null },
+      ],
+      archived,
+      payRoster: null,
+      displayOrder: {},
+    })
+    expect(out).toEqual(['Old Sam'])
   })
 
   it('returns an empty roster when nobody has a pay-config row', () => {
-    expect(buildHoursGridRoster({ payConfigRows: [], archivedUserNames: none, payRoster: buildPayRosterIndex([]), displayOrder: {} })).toEqual([])
+    expect(buildHoursGridRoster({ payConfigRows: [], archived: none, payRoster: buildPayRosterIndex([]), displayOrder: {} })).toEqual([])
   })
 
   it("payConfigRowsForRoster carries each row's person_id so the id can decide before the name", () => {

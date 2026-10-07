@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { archivedRosterNames, buildPayRosterIndex, isPayRosterRow, payRosterNames, type RosterPerson } from './rosterPeople'
+import {
+  archivedRosterNames,
+  buildArchivedRoster,
+  buildPayRosterIndex,
+  isArchivedRosterRef,
+  isPayRosterRow,
+  NO_ARCHIVED_ROSTER,
+  payRosterNames,
+  type RosterPerson,
+} from './rosterPeople'
 
 function row(over: Partial<RosterPerson> & { pay_name: string }): RosterPerson {
   return {
@@ -118,5 +127,55 @@ describe('archived names from the roster view (punch list #29)', () => {
   it('blank names are not names; no rows, no set', () => {
     expect(archivedRosterNames([row({ pay_name: '  ', account_name: '', roster_name: null, ...archived })]).size).toBe(0)
     expect(archivedRosterNames([]).size).toBe(0)
+  })
+})
+
+describe('who is archived, id first (punch list #29, item 3)', () => {
+  const archived = { is_archived: true, is_pay_roster: false, is_active_roster: false }
+  const roster = buildArchivedRoster([
+    // A linked pair: its account archived, so both ids answer archived.
+    row({ pay_name: 'Dana Whitfield', user_id: 'u-dana', person_id: 'p-dana', user_archived_at: '2026-09-01', ...archived }),
+    row({ pay_name: 'Sam Ortiz', user_id: 'u-sam', person_id: 'p-sam' }),
+    // An archived account with no roster row, and a living roster-only namesake.
+    row({ pay_name: 'Jordan Lee', user_id: 'u-jordan-old', user_archived_at: '2025-12-01', ...archived }),
+    row({ pay_name: 'Jordan Lee', person_id: 'p-jordan', has_login: false, account_kind: 'external' }),
+    row({ pay_name: 'Pat Moore', user_id: 'u-pat', user_archived_at: '2026-01-01', ...archived }),
+  ])
+
+  it('a renamed row still folds: the id matches, no name does', () => {
+    expect(isArchivedRosterRef(roster, { name: 'Dana W.', person_id: 'p-dana' })).toBe(true)
+    expect(isArchivedRosterRef(roster, { name: 'Dana W.', user_id: 'u-dana' })).toBe(true)
+    expect(isArchivedRosterRef(roster, { name: 'Dana W.' })).toBe(false)
+  })
+
+  it('the id wins when the name says otherwise', () => {
+    // A living person whose row carries an archived person's name.
+    expect(isArchivedRosterRef(roster, { name: 'Pat Moore', person_id: 'p-sam' })).toBe(false)
+    expect(isArchivedRosterRef(roster, { name: 'Pat Moore', user_id: 'u-sam' })).toBe(false)
+    // An archived person whose row carries a living person's name.
+    expect(isArchivedRosterRef(roster, { name: 'Sam Ortiz', person_id: 'p-dana' })).toBe(true)
+  })
+
+  it('namesakes are told apart by id; by name a living namesake keeps the name', () => {
+    expect(isArchivedRosterRef(roster, { name: 'Jordan Lee', user_id: 'u-jordan-old' })).toBe(true)
+    expect(isArchivedRosterRef(roster, { name: 'Jordan Lee', person_id: 'p-jordan' })).toBe(false)
+    expect(isArchivedRosterRef(roster, { name: 'Jordan Lee' })).toBe(false)
+  })
+
+  it('a row with no id, or an id the roster does not know, falls back to the name, trimmed and without case', () => {
+    expect(isArchivedRosterRef(roster, { name: ' Pat Moore ' })).toBe(true)
+    expect(isArchivedRosterRef(roster, { name: 'pat moore' })).toBe(true)
+    expect(isArchivedRosterRef(roster, { name: 'Pat Moore', person_id: 'p-unknown', user_id: null })).toBe(true)
+    expect(isArchivedRosterRef(roster, { name: 'Sam Ortiz', person_id: null })).toBe(false)
+  })
+
+  it('the person id is asked before the user id', () => {
+    expect(isArchivedRosterRef(roster, { name: 'x', person_id: 'p-sam', user_id: 'u-dana' })).toBe(false)
+    expect(isArchivedRosterRef(roster, { name: 'x', person_id: 'p-dana', user_id: 'u-sam' })).toBe(true)
+  })
+
+  it('carries the archived names as they were, and knows no one before the read lands', () => {
+    expect([...roster.names].sort()).toEqual(['Dana Whitfield', 'Pat Moore'])
+    expect(isArchivedRosterRef(NO_ARCHIVED_ROSTER, { name: 'Pat Moore', person_id: 'p-dana', user_id: 'u-pat' })).toBe(false)
   })
 })
