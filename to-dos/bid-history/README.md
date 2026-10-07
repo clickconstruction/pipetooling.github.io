@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: PR 1 (capture) built 2026-10-05 as #4583; its full-schema bed ran green 2026-10-06 (33 checks, Docker started under the sessions' account), rebased onto main, migrations renumbered 20261007040000 / 20261007041000, auto-merge armed · PR 1b (the request tag) built 2026-10-06 as v2.4736, stacked on #4583 · planned 2026-09-30 (the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up) · PR 0 waits for Wendi's answer
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751 · left: PR 0b, PR 0c, and PRs 2–5 (the History view, Put back) after the owner's calls
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -13,16 +13,15 @@ summary: >
   from CountTooling"); and Put back, per value and per removed row, so an estimator recovers her
   own work without a dev. Three small fixes stop the losses at the source and can ship first.
 next: >
-  When #4583 merges, `supabase db push` its two migrations (list the pending set first: a push
-  applies every pending file; stamps 20261007040000 / 20261007041000 are above main's newest, so no
-  --include-all unless a later stamp lands first). The deploy note is in the triggers migration's
-  doc. PR 1b (v2.4736, the request tag on the import, Clear all, the labor sync, fill from the
-  book and the robot's paste) follows it; the margin brush and a book switch's copy stay untagged
-  until PR 2's reader shows how they group by time. Then PRs 2 to 5. The owner's four calls (who sees whose edits; how long
-  to keep; may a non-dev put a row back; which bid columns are shown) come before PRs 2 to 4. PR
-  0's three loss fixes are independent; 0c is now archive coverage alone (the key shipped in v2.4413).
+  The owner answers the four calls (who sees whose edits; how long to keep — three years is
+  planned; may a non-dev put a row back — planned yes, for whoever can edit the bid; which bid
+  columns the pane shows by default) and one raised on 2026-10-06: when a bid is adopted into a
+  package its history stays under the old bid id — should the pane follow the adopt and show both?
+  Then PR 2 (the read-only pane), PR 3 (the pill and the under-cell lines), PR 4 (Put back), PR 5.
+  Meanwhile PR 0b (the Labor sync keeps typed hours through a rename) and PR 0c (archive coverage
+  for three tables) need no answer.
 size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
-blocker: None for PR 1 — the bed ran green on 2026-10-06 (Docker Desktop started with `open -a Docker` from the sessions' account). PR 0 waits for Wendi's answer; PRs 2–4 for the owner's four calls.
+blocker: PRs 2–4 wait on the owner's four calls (and the adopt question). None for 0b and 0c.
 ---
 
 # Bid history: every value anyone entered on a bid, and a way to put one back
@@ -187,11 +186,11 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 
 | PR | What | Size |
 |---|---|---|
-| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid — **built v2.4737** (three columns on `bids`, in the ledger's list) | S |
+| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid — **live v2.4737** (three columns on `bids`, in the ledger's list) | S |
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
 | 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
-| 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **built v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left) | S |
+| 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **live v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left for PR 2's reader) | S |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
 | 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) | M |
 | 4 | Put back: `put_back_bid_change` for a value, `restore_deleted_record` for a row | S–M |
