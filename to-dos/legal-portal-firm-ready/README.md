@@ -41,7 +41,7 @@ Each item: a mockup file beside this card (`mockup-<n>-<slug>.html`), then its P
 5. ~~**Money that foots.**~~ (v2.4677) Invoice rows at original amount with the write-down beneath; unlinked payments reduce the balance; contingency rows out of the firm's total demand; one formatter so `$-4,000.00` cannot appear.
 6. ~~**Property per job.**~~ (v2.4678) The project address from the job's address and owner override, not the payer's address list; the lien clock from that.
 7. ~~**Generic error messages**~~ (v2.4646) from both functions.
-8. ~~**Phone layout**~~ (v2.4639) at 375px: one column, stacked forms, tables that scroll inside their card.
+8. ~~**Phone layout**~~ (v2.4639) at 375px: one column, stacked forms; since v2.4808 every table and the Lien grid fold into labelled cards when their box is narrow, and small type reads 12px on a phone.
 9. ~~**A consistent sample matter**~~ (v2.4638) (a GC, a property record, a dated payment, a demand letter, lien paper). Needs a `legal-portal` redeploy.
 10. **Fill the particulars** in Settings (license, registered agent, custodian, affiant). The owner's.
 11. ~~**"Largest first"**~~ (v2.4635, largest balance first) in the guide vs release-date order on the page. Pick one.

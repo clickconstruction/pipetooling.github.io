@@ -198,4 +198,33 @@ describe('LegalPortal — the sample matter', () => {
     expect(forms).toHaveLength(4)
     for (const f of forms) expect(f.style.gridTemplateColumns).toBe('')
   })
+
+  it('folds every matter table into cards on a narrow box: each cell names its column, the first leads, money is bold, an empty cell drops (v2.4808)', async () => {
+    await openSample()
+    const tables = [...document.querySelectorAll('table.legalCardTable')] as HTMLTableElement[]
+    expect(tables.length).toBeGreaterThanOrEqual(3)
+    for (const t of tables) {
+      expect(t.closest('.legalCardWrap')).toBeTruthy()
+      expect(t.getAttribute('role')).toBe('table')
+      const head = [...t.querySelectorAll('thead th')].map((th) => th.textContent)
+      for (const row of t.querySelectorAll('tbody > tr:not([data-card-sub])')) {
+        const cells = [...row.children] as HTMLElement[]
+        expect(cells.map((c) => c.getAttribute('data-label'))).toEqual(head)
+        expect(cells[0]?.hasAttribute('data-card-title')).toBe(true)
+        for (const c of cells) expect(c.firstElementChild?.className).toBe('legalCardVal')
+      }
+    }
+    // Account: the ledger's Amount and Balance are the card's bold money lines.
+    const ledger = tables.find((t) => t.querySelector('thead th')?.textContent === 'Date')!
+    const first = ledger.querySelector('tbody > tr')!
+    expect([...first.querySelectorAll('[data-card-num]')].map((c) => c.getAttribute('data-label'))).toEqual(['Amount', 'Balance'])
+    // Paper: the Agreements PDF column has no name, so it spans the card, and drops when there is no PDF.
+    fireEvent.click(screen.getByRole('button', { name: 'Paper' }))
+    const agreements = ([...document.querySelectorAll('table.legalCardTable')] as HTMLTableElement[]).find((t) => [...t.querySelectorAll('thead th')].map((th) => th.textContent).join('|') === 'Job|Agreement|')!
+    for (const row of agreements.querySelectorAll('tbody > tr')) {
+      const pdf = row.children[2] as HTMLElement
+      expect(pdf.getAttribute('data-label')).toBe('')
+      expect(pdf.hasAttribute('data-card-drop')).toBe(!pdf.querySelector('a'))
+    }
+  })
 })
