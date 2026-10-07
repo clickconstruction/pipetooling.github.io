@@ -20,7 +20,7 @@
 
 ## Verify after the push
 
-1. **The catalog, read only.** Each of the twelve tables has exactly one policy, `<table>_team`, `FOR ALL TO authenticated`, both expressions `(SELECT gc_office_team() AS gc_office_team)`, and no `<table>_dev`. `has_table_privilege('anon', …)` is false for all twelve. `projects` has *GC team sees GC projects* and its four other policies unchanged. `gc_create_project`: `prosecdef` true, `proconfig` `{search_path=public}`, no `PUBLIC` or `anon` in `proacl`, one `jsonb` argument. The other four RPCs: `prosecdef` still false. `gc_office_team()` executable by `authenticated`, not by `anon`.
+1. **The catalog, read only.** Each of the twelve tables has exactly one policy, `<table>_team`, `FOR ALL TO authenticated`, both expressions `(SELECT gc_office_team() AS gc_office_team)`, and no `<table>_dev`. `has_table_privilege('anon', …)` is false for all twelve. `projects` has *GC team sees GC projects* and its other policies unchanged (ten on prod). `gc_create_project`: `prosecdef` true, `proconfig` `{search_path=public}`, no `PUBLIC` or `anon` in `proacl`, one `jsonb` argument. The other four RPCs: `prosecdef` still false. `gc_office_team()` executable by `authenticated`, not by `anon`.
 2. **An estimator and an assistant make a project, rolled back.** `BEGIN; SET LOCAL ROLE authenticated;` with `request.jwt.claims` naming an active estimator; `gc_create_project` with a new customer and a new architect (*Door 1 check, delete me*), one trade and one sheet. It returns an id; both new customers carry `company_owner_user_id()` as master; the estimator reads the project back from `projects`, `gc_projects` and `gc_plan_sets`. `ROLLBACK`. The same as an assistant. A rolled-back call uses one `project_number`; the gap is harmless.
 3. **Who is refused, rolled back.** A training account: *A training account cannot make a project.*, and its insert into `gc_scope_sets` is refused by the read-only blocks. A digital twin: *A digital twin cannot make a GC project.*, and its insert into `gc_scope_sets` is refused by the fence. A primary and a superintendent: `gc_projects` reads no rows, and `gc_create_project` says *GC projects are for the office and estimators.*
 4. **The page, as an estimator.** Gear → **View as…** → the sample estimator. Bids shows the **Trades | GC** switch; **GC** opens `/gc` with the test project, its two sets, its trades and the recorded question; **The plans**, **Questions about the plans** and **Open the scope book** open. Save nothing: a sample's writes are real rows. As the sample primary: no switch, and `/gc` lands on the Dashboard.
@@ -32,4 +32,23 @@ A one-off migration: drop the twelve `_team` policies and re-create the `_dev` o
 
 ## Applied
 
-With `supabase db push` after the PR merged, in the evening batch. Idempotent.
+With `supabase db push` after the PR merged (#4852, v2.4832), in the evening batch of 2026-10-07 by the lead session; migration drift 782 of 782. `gc-plan-question-email` and `gc-drive-access` redeployed the same evening. Types: #4876.
+
+## Status
+
+Verified 2026-10-07, the evening of the push.
+
+1. **The catalog** (the lead, through the management API's query endpoint, read only): each of the twelve tables reads one `_team` policy and no `_dev`, both expressions `( SELECT gc_office_team() AS gc_office_team)`; `anon` has no SELECT on them. `projects` has *GC team sees GC projects* beside its ten others. `gc_create_project` reads `prosecdef` true and is not executable by `anon`; the other four RPCs read `prosecdef` false. `gc_office_team()` is executable by `authenticated`, not by `anon`. **Passed.**
+2. **An estimator and an assistant make a project, rolled back:** **not run.** The app has no rolled-back path, so from the app it would be a real project on prod. It waits on call 13 (the test rows) and the first real project. Step 4 showed the read half for the sample estimator.
+3. **Who is refused** (the lead, rolled back): a training-mode user calling `gc_create_project` got *A training account cannot make a project.* **Passed.** The twin's and the primary's refusals were not run separately: the twin is covered by the gate's own line and the fence, and the primary by step 4.
+4. **The page** (Helper 6, the app on main at 9983e258f, a dev imitating through View as):
+   - *Sample estimator*: Bids shows the **Trades | GC** switch, with Trades pressed. **GC** opens `/gc`, which lists *GC test project, delete me* with its 2 sets (newest *Permit set, delete me*), 7 sheets, 3 sections, its trades and *Questions about the plans · 1 open*. The project's name reads from its `projects` row, which is the new policy at work. **The plans**, **Questions about the plans** and **Open the scope book** each open on the project's data and close with Esc; nothing was saved.
+   - *Sample primary*: Bids shows no switch, and `/gc` lands on the Dashboard.
+
+   **Passed.**
+5. **The functions** (Helper 6, after the redeploy):
+   - As the sample estimator, **Check again** on the newest set called `gc-drive-access`, which answered 200 with `{"success":true,"access":"restricted","seen":true,"checked_on":"2026-10-07","recorded":true}`. The card still reads *Only some people can open it*, as it should.
+   - A bare `POST` to `gc-plan-question-email` with no token answered `401 {"error":"Sign in first."}`.
+   - The question's email itself waits on step 8b and the owner's yes.
+
+   **Passed.**
