@@ -691,3 +691,12 @@ two other kinds of link G-35 names, if the owner wants them.
 First draft 2026-10-06, written by Helper 1 at the lead's ask on `spike/schedule-plan`, from
 `gcTypes.ts` as it stands on `spike/gc-mode` at 1e2d27249, and checked against `main` at 18c06f4d2.
 Nothing is built. It waits on the lead's review, then the owner's word on the ten decisions.
+
+Amended 2026-10-07, the day the build started: the kernels are on main, word for word, in three PRs
+by Helper 1 (1a v2.4772 clickconstruction/pipetooling.github.io#4788, 1b-i v2.4777 #4792, 1b-ii
+v2.4781 #4796), and the spike reads them from main through re-exports (the lift scripts are in
+`to-dos/gc-mode/scripts/`). PR 2, the nine tables, merged as v2.4798 (#4814, migration
+`20261007210000_gc_schedule_tables`), was applied to prod the same day and verified from the app:
+every table empty, a dev's insert in and its `finish < start` refused, the changes table refusing a
+dev's update and delete, anon refused (the doc's status has the words). The types are in #4826.
+PR 3's plan (`mockups/schedule-pr3.md`) is approved and being cut.
