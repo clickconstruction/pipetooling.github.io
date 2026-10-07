@@ -1,0 +1,296 @@
+{
+  "about": "The Board's B2-i (to-dos/gc-mode/BOARD_REAL_BUILD.md, B2): what the trade portal's P1 and the board row read first, lifted to src/lib/gc word for word on a spike that reads the schedule's lifts from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b2-i.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcBids",
+      "to": "bids.ts",
+      "append": true,
+      "moves": "all"
+    },
+    {
+      "from": "gcFollowUp",
+      "to": "followUp.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2: asks and the word a company gave, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcFollowUp.ts`).\n */"
+    },
+    {
+      "from": "gcReliability",
+      "to": "reliability.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2: how a company answers when asked, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcReliability.ts`).\n */"
+    },
+    {
+      "from": "gcVetting",
+      "to": "vetting.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2: vetting a company new to us and the award gate (question 3), moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcVetting.ts`).\n */"
+    },
+    {
+      "from": "gcDecline",
+      "to": "decline.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2: why a company is out of an ask, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcDecline.ts`).\n */"
+    },
+    {
+      "from": "gcLost",
+      "to": "lost.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2: a bid we lost, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcLost.ts`).\n */"
+    },
+    {
+      "from": "gcPromises",
+      "to": "promises.ts",
+      "append": true,
+      "moves": "all",
+      "stays": [
+        "promisesKeptBy",
+        "keepPromisesOn"
+      ]
+    },
+    {
+      "from": "gcPaperSend",
+      "to": "paperSend.ts",
+      "moves": "all",
+      "stays": [
+        "paperSendMessages"
+      ],
+      "header": "/**\n * GC mode, the real build, the Board's B2: papers sent to a trade from its company window, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcPaperSend.ts`). The emails themselves (`paperSendMessages`) read the portal's words and move\n * with the Portal lane's P3.\n */"
+    },
+    {
+      "from": "gcPriceStanding",
+      "to": "priceStanding.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2: where each trade's price stands, for the board row's price card, moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcPriceStanding.ts`; built by the Building lane on the Board's row).\n */"
+    },
+    {
+      "from": "gcPlans",
+      "to": "preBid.ts",
+      "moves": [
+        "preBidInvited"
+      ],
+      "header": "/**\n * GC mode, the real build, the Board's B2: who is asked to the pre-bid meeting, read from the asks, moved word for word from the\n * GC mode prototype (branch spike/gc-mode, `gcPlans.ts`).\n */"
+    },
+    {
+      "from": "gcExclusions",
+      "to": "exclusions.ts",
+      "append": true,
+      "moves": [
+        "uncoveredExclusions",
+        "exclusionListWords"
+      ]
+    },
+    {
+      "from": "gcWords",
+      "to": "words.ts",
+      "append": true,
+      "moves": [
+        "money"
+      ]
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "whole": true,
+      "append": true,
+      "names": [
+        "InviteStatus",
+        "AskContact",
+        "DeclineReason",
+        "DeclineReasonNote",
+        "PartnerVettingForm",
+        "PartnerVetting",
+        "PromiseKind",
+        "PaperKind",
+        "PaperSend",
+        "TradePromise",
+        "ProjectContact",
+        "GcLostWhy"
+      ]
+    },
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "The shapes main's lifts trimmed, written again with B2-i's fields added (each field word for word), and PlanSet new. They replace main's in types.ts.",
+      "fields": {
+        "ScopeItem": [
+          "id",
+          "label"
+        ],
+        "SubBid": [
+          "amount",
+          "basedOnRev",
+          "submittedOn",
+          "includes",
+          "plugs",
+          "goodForDays",
+          "alternates",
+          "takenAlternates",
+          "exclusions",
+          "exclusionCovers"
+        ],
+        "QuoteExclusion": "all",
+        "Invite": [
+          "id",
+          "partnerId",
+          "status",
+          "invitedOn",
+          "bid",
+          "declinedWhy",
+          "declineReason",
+          "contacts"
+        ],
+        "SovLine": [
+          "id",
+          "label",
+          "amount",
+          "pctReported",
+          "pctBilled"
+        ],
+        "Draw": [
+          "number",
+          "retainage",
+          "net",
+          "status",
+          "waiver"
+        ],
+        "Sow": [
+          "status",
+          "price",
+          "sov",
+          "draws",
+          "sentBack",
+          "sentOn"
+        ],
+        "Partner": [
+          "id",
+          "company",
+          "contact",
+          "trades",
+          "msa",
+          "msaSignedOn",
+          "coiExpires",
+          "w9",
+          "invited",
+          "bids",
+          "promisesMade",
+          "promisesKept",
+          "msaSentOn",
+          "vetting",
+          "phone",
+          "email"
+        ],
+        "PlanSet": [
+          "rev",
+          "touches"
+        ],
+        "GcProject": [
+          "id",
+          "name",
+          "address",
+          "town",
+          "ourBidSentOn",
+          "rough",
+          "startedOn",
+          "customerId",
+          "owner",
+          "customerRole",
+          "changeOrders",
+          "stage",
+          "bidDue",
+          "planSets",
+          "packages",
+          "generalConditions",
+          "contingencyPct",
+          "feePct",
+          "closedOn",
+          "schedule",
+          "team",
+          "lostOn",
+          "lostWhy",
+          "wonBy",
+          "dailyLogs",
+          "waits",
+          "scheduleSends",
+          "whatIf",
+          "crewCounts"
+        ],
+        "GcState": [
+          "today",
+          "customers",
+          "projects",
+          "partners",
+          "tradePromises",
+          "paperSends",
+          "scheduleTemplates"
+        ]
+      },
+      "names": [
+        "ScopeItem",
+        "SubBid",
+        "QuoteExclusion",
+        "Invite",
+        "SovLine",
+        "Draw",
+        "Sow",
+        "Partner",
+        "PlanSet",
+        "GcProject",
+        "GcState"
+      ]
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Includes": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#BidAlternate": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DrawSentBack": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ChangeOrder": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DailyLog": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcCustomer": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#CustomerRole": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ScopeExclusion": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PlanSheet": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#SpecSection": "types.ts"
+  },
+  "tests": [
+    {
+      "from": "gcDecline.test.ts",
+      "to": "decline.test.ts",
+      "header": "/**\n * The tests of `gcDecline.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcPaperSend.test.ts",
+      "to": "paperSend.test.ts",
+      "header": "/**\n * The tests of `gcPaperSend.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcPriceStanding.test.ts",
+      "to": "priceStanding.test.ts",
+      "header": "/**\n * The tests of `gcPriceStanding.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcVettingPromises.test.ts",
+      "to": "vettingPromises.test.ts",
+      "header": "/**\n * The tests of `gcVettingPromises.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    }
+  ],
+  "slice": {
+    "about": "What B2-i adds to the cut the schedule lifts describe: the plan sets, cut to the fields these kernels read. The promises, paper sends, team, vetting and an ask's contacts are whole shapes, kept whole.",
+    "nested": {
+      "GcProject": {
+        "planSets": "PlanSet"
+      }
+    }
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "outside": {
+    "src/lib/plainWords.ts": "src/lib/plainWords.ts"
+  }
+}

@@ -211,6 +211,14 @@ for (const e of config.files) {
   fs.writeFileSync(dest, text)
   written.push(`${out}${e.append ? ' (append)' : ''}: ${stmts.length} declarations from ${e.from}, ${e._moves.length} exported`)
 }
+// Two types entries may write one file (B2-i: shapes whole and shapes trimmed, both into types.ts):
+// the second adds to what the first wrote this run instead of replacing it.
+const typesWritten = new Set()
+function writeTypes(dest, text) {
+  if (typesWritten.has(dest)) fs.appendFileSync(dest, '\n' + text)
+  else fs.writeFileSync(dest, text)
+  typesWritten.add(dest)
+}
 // The types placed whole, word for word, in the order the spike's file has them.
 for (const t of config.types || []) {
   if (!t.whole) continue
@@ -229,7 +237,7 @@ for (const t of config.types || []) {
   // `append`: only what is added to the file main has (its imports to merge at the top by hand).
   const dest = path.join(outDir, out + (t.append ? '.append' : ''))
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  fs.writeFileSync(dest, t.append ? `${lines.length ? `// Imports for the top of the file:\n${lines.join('\n')}\n\n` : ''}${body}\n` : `${(t.header ?? '').trim()}\n${lines.length ? lines.join('\n') + '\n' : ''}\n${body}\n`)
+  writeTypes(dest, t.append ? `${lines.length ? `// Imports for the top of the file:\n${lines.join('\n')}\n\n` : ''}${body}\n` : `${(t.header ?? '').trim()}\n${lines.length ? lines.join('\n') + '\n' : ''}\n${body}\n`)
   written.push(`${out}${t.append ? ' (append)' : ''}: ${stmts.length} types, whole`)
 }
 // The types placed trimmed: the prototype's name with only the listed fields, each with its own
@@ -275,7 +283,7 @@ for (const t of config.types || []) {
   const lines = [...usesOf.entries()].map(([to, names]) => `import type { ${[...names].sort().join(', ')} } from '${rel(out, path.join(mainBase, to))}'`)
   const dest = path.join(outDir, out + (t.append ? '.append' : ''))
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  fs.writeFileSync(dest, `${lines.length ? `// Imports for the top of the file:\n${lines.join('\n')}\n\n` : ''}${(t.header ?? '').trim()}\n\n${blocks.join('\n\n')}\n`)
+  writeTypes(dest, `${lines.length ? `// Imports for the top of the file:\n${lines.join('\n')}\n\n` : ''}${(t.header ?? '').trim()}\n\n${blocks.join('\n\n')}\n`)
   written.push(`${out}${t.append ? ' (append)' : ''}: ${blocks.length} types, trimmed`)
 }
 // The tests: from each spike test file, the tests that reach only what this lift places (or a
