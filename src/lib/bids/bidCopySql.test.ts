@@ -106,9 +106,22 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
    * a bid is copied or adopted before it is sent. A new table goes here only with a decision.
    */
   const NOT_CARRIED_YET = ['bid_submittal_takeoff_choices']
-  const hangingOffCountRows = [...tableColumns].filter(([, cols]) => cols.includes('count_row_id') && cols.includes('bid_id')).map(([t]) => t).sort()
+  /**
+   * Not a row on a count row at all, so never copied, re-keyed or moved: `bid_changes` is the bid
+   * history ledger (punch list #73, v2.4598). It carries count_row_id and bid_id to find a
+   * fixture's past, with no key to either. A copy keeps no one else's history; the trigger records
+   * the copy's own new rows as the new bid's first changes. An adopt leaves the old bid's history
+   * under the old bid id, where it was written.
+   */
+  const NOT_A_COUNT_ROW_CHILD = ['bid_changes']
+  const hangingOffCountRows = [...tableColumns]
+    .filter(([t, cols]) => cols.includes('count_row_id') && cols.includes('bid_id') && !NOT_A_COUNT_ROW_CHILD.includes(t))
+    .map(([t]) => t)
+    .sort()
 
   it('knows the tables', () => {
+    // The ledger is in the types with both columns; the exemption above is what keeps it out.
+    expect(tableColumns.get('bid_changes')).toEqual(expect.arrayContaining(['count_row_id', 'bid_id']))
     expect(hangingOffCountRows).toEqual([
       'bid_count_row_custom_costs',
       'bid_count_row_custom_prices',

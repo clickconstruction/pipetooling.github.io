@@ -2,11 +2,9 @@ import { useId, useMemo, type CSSProperties } from 'react'
 import { demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import {
-  LIEN_OFFER_COUNSEL_NOTE,
   LIEN_OFFER_DEFAULT_DAYS,
   LIEN_OFFER_DEFAULT_PCT,
   LIEN_OFFER_PCTS,
-  LIEN_OFFER_WORDING_READ_BY_COUNSEL,
   lienOfferCost,
   lienOfferDayProblem,
   lienOfferDefaultDay,
@@ -34,6 +32,13 @@ type Props = {
   /** On an approved notice: a Save button that writes now. */
   onSave?: () => void
   saving?: boolean
+  /** On an approved notice: it already carries an offer, so switching it off offers Save. */
+  saved?: boolean
+  /**
+   * v2.4745 (the owner's ask): the desk draws the switch in the footer's bottom row (`switch`) and the
+   * details above that row only while it is on (`details`). Omitted, both parts render together.
+   */
+  part?: 'switch' | 'details'
 }
 
 const small: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -50,7 +55,7 @@ const pill = (on: boolean, disabled: boolean): CSSProperties => ({
   opacity: disabled ? 0.6 : 1,
 })
 
-export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn, amounts, disabled = false, onSave, saving = false }: Props) {
+export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn, amounts, disabled = false, onSave, saving = false, saved = false, part }: Props) {
   const id = useId()
   const on = offer != null
   const pct = offer?.pct ?? LIEN_OFFER_DEFAULT_PCT
@@ -62,25 +67,29 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
   const set = (next: Partial<LienPayOffer>) => onChange({ pct, by, ...next })
   const dayPick: 'default' | 'latest' | 'own' = by === defaultDay ? 'default' : latest && by === latest ? 'latest' : 'own'
 
+  const toggle = (
+    <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', cursor: disabled ? 'default' : 'pointer', fontSize: '0.8125rem' }}>
+      <input
+        type="checkbox"
+        checked={on}
+        disabled={disabled}
+        data-testid="lien-offer-switch"
+        onChange={(e) => onChange(e.target.checked ? { pct: LIEN_OFFER_DEFAULT_PCT, by: defaultDay } : null)}
+      />
+      <strong>Offer a discount if a bill is paid in full by a day</strong>
+    </label>
+  )
+  if (part === 'switch') return toggle
+  // Off, the details hold nothing but the Save that takes an approved notice's offer away.
+  const offSave = !on && onSave && !disabled && (part !== 'details' || saved)
+  if (part === 'details' && !on && !offSave) return null
+
   return (
     <div data-testid="lien-offer-box" data-on={on ? 'yes' : 'no'} data-problem={problem ? 'yes' : undefined} style={{ display: 'grid', gap: 8, padding: '0.6rem 0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
-      <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: disabled ? 'default' : 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={on}
-          disabled={disabled}
-          data-testid="lien-offer-switch"
-          onChange={(e) => onChange(e.target.checked ? { pct: LIEN_OFFER_DEFAULT_PCT, by: defaultDay } : null)}
-          style={{ marginTop: 3 }}
-        />
-        <span>
-          <strong>Offer a discount if a bill is paid in full by a day</strong>
-          <br />
-          <span style={small}>Printed on the owner's pay page, never on the notice form. The claim stays the full amount.</span>
-        </span>
-      </label>
+      {part === 'details' ? null : toggle}
+      {on ? <span style={small}>Printed on the owner's pay page, never on the notice form. The claim stays the full amount.</span> : null}
       {on ? (
-        <div style={{ display: 'grid', gap: 8, paddingLeft: 24 }}>
+        <div style={{ display: 'grid', gap: 8, paddingLeft: part === 'details' ? 0 : 24 }}>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <span>Off the bill</span>
             <span role="group" aria-label="Percent off" style={{ display: 'inline-flex', gap: 4 }}>
@@ -138,11 +147,6 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
             <span style={{ ...small, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: '0.68rem' }}>Prints on the pay page as</span>
             <div>{lienOfferSentence({ pct, by })}</div>
           </div>
-          {!LIEN_OFFER_WORDING_READ_BY_COUNSEL ? (
-            <span data-testid="lien-offer-counsel" style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem' }}>
-              {LIEN_OFFER_COUNSEL_NOTE} It is a settlement offer, not a waiver of the claim; the notice form is untouched.
-            </span>
-          ) : null}
           {onSave ? (
             <div>
               <button type="button" onClick={onSave} disabled={disabled || saving || Boolean(problem)} data-testid="lien-offer-save" style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
@@ -151,8 +155,8 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
             </div>
           ) : null}
         </div>
-      ) : onSave && !disabled ? (
-        <div style={{ paddingLeft: 24 }}>
+      ) : offSave ? (
+        <div style={{ paddingLeft: part === 'details' ? 0 : 24 }}>
           <button type="button" onClick={onSave} disabled={saving} data-testid="lien-offer-save" style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
             {saving ? 'Saving…' : 'Save'}
           </button>

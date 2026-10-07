@@ -56,7 +56,7 @@ The button left of the × makes the desk full screen. The same button sits on Pu
 
 ## Find a job on the list
 
-A find box sits under {{button:blue|Send the run · N}} on every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
+A find box sits at the top of every list. Type a job number, a name, a GC, a street or an owner's name. The list narrows as you type. Each pile keeps its title with a count, like 2 of 12. A pile with no match turns grey. A match on the street or the owner is written into the row, because the row does not show those. One match opens its own pane. Press **/** to jump to the box. Press **Esc** or **×** to clear it. When nothing matches, the list says what to try. A notice already sent is under the Sent pile, or ask ☎ Someone's calling.
 
 ## The piles
 
@@ -120,7 +120,7 @@ The **Timeline** tab is the book. It lists every billed job with money open and 
 Pick the row. The pane first shows what must be true before the notice can go. Then comes **Months on this job**, a grid with months down and papers across. Above the grid, one line names the last day of work and where it came from. It reads from clock hours, or from the job's creation when there are none. Press **Change ›** to set the day by hand. {{button:blue|Save the day}} opens a window before anything is written. It says how far the day sits from the clock hours, in words. A table shows the dates that move with it, today beside the new day. A changed row is lit. A day earlier than the hours is refused there, and so is a day after today. A day far past the hours asks for a second look. The reason is typed in the window, and it is required. Press **Set the day** to write it. The months follow the day you set. Clock hours and pay are not changed. The same line sits in Edit Job, under Our contract on this job. The Lien window has it too. Press **change ›** under **Last work** on its timeline, and the line opens there. On **Deadlines**, the date where a row's bar starts opens the same thing. A day set in either place moves the row to its new group.
 
 - Each row is one month worked, oldest first, with its hours and crew. A job nobody clocked in on has one row, the month it was created.
-- Each row shows its window, with the day to mail by and the days left. A closed month says it was not noted, with {{button:outline|Note it as missed}}. A skipped month says who skipped it and why.
+- Each row shows its window, with the day to mail by and the days left. A closed month says it was not noted, with {{button:outline|Note it as missed}}. A month skipped before the Skip button left says who skipped it and why.
 - Each column is a § 53.056 notice already sent on the job, lettered A, B and on. A ✓ marks each month the paper names. Its header says when it was sent and links the saved copy.
 - The last column is this notice. Every open month is ticked, because one notice may carry several months. It must beat the earliest deadline.
 
@@ -148,15 +148,15 @@ Type when it went out, how and to whom. Type the claim and the months as they we
 
 The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
 
-## Skipping a month
+## A month nobody sends
 
-**Skip** gives up the lien right on a month, on purpose. The reason stays on the record. Its confirm line names the cost, like giving up the lien right on July 2026. It refuses without a reason, because a skip cannot be undone.
+There is no button to give up a month. If the notice should wait, the master can hold it. If a month will never go out, let its window close and note it as missed.
 
 A window that closes with nothing recorded is never silent. The Dashboard's lien card adds a quiet line with the count, the money and a link to note them. That link opens the desk's **Missed** lens. That month's row under **Months on this job** turns red, with {{button:outline|Note it as missed}}.
 
-Noting a month is not a skip. It records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
+Noting a month records that a person saw the loss, with a name and a date. Then the Dashboard stops naming it. The money is still owed, and it rides on the notice for the open months.
 
-A skipped or missed month stays as a row in the **Months** grid. A skipped month reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
+A skipped or missed month stays as a row in the **Months** grid. A month skipped in the past reads {{chip:yellow|skipped}}, with who skipped it and why. A month whose window closed unsent reads {{chip:red|closed}} with its date. Beside it the row says who noted it, or {{chip:yellow|not noted}}. A missed month's row keeps two things apart. While the affidavit window is open, a late notice can still claim that month. The row says so, and the tick reads late. Once that window closes too, the lien is gone for that month's work. The money is still owed, and the notice claims it with the whole balance.
 
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
@@ -165,6 +165,22 @@ Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it
 :::
 
 ## Reading the notice before it goes
+
+The pane is five sections tall. Each one has a thin title row that stays pinned as you scroll. The rows you have passed stack at the top. The rows still to come stack at the bottom. The one you are in has a blue bar. Press any row to jump to its section.
+
+Each row ends with its fact.
+
+- **Where this notice is**. The next step and its days.
+- **The four gates**. How many are clear.
+- **Supply houses**. The houses and their money. This row shows only when the job bought from a house.
+- **Months on this job**. The months and the claim.
+- **In the envelope**. The pages in the envelope.
+
+:::example the rows halfway down a job
+Where this notice is · Draft the Jul + Aug notice — 9 days
+The four gates · ✓ Ready to go out · All 4 clear
+Supply houses · 1 house owed · $6,258
+:::
 
 The pane shows what goes in the envelope, page by page.
 
@@ -223,9 +239,9 @@ The desk shows the master only what needs a decision. He sees what is open with 
 
 ## A discount if they pay before the lien
 
-The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The box sits above the footer when he approves a notice.
+The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The tick box sits in the bottom row beside the buttons when he approves a notice.
 
-- Tick **Offer a discount if a bill is paid in full by a day**.
+- Tick **Offer a discount if a bill is paid in full by a day**. Its choices open above the bottom row.
 - Pick the percent. The default is 10.
 - Pick the day. The default is 14 days from today. The offer never runs later than a week before the affidavit must be filed. So the affidavit can still go out on time if they do not pay.
 
@@ -235,11 +251,11 @@ The pay page says it in one boxed sentence under its title. Every bill's row sho
 
 On the desk an approved notice reads {{chip:blue|Offer 10% by Nov 15}}. Its step card says the same on the Approve rung. The leader can change or remove the offer until the run goes out. Press **Save the offer** on the ready footer.
 
-A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance. Counsel has not read the offer's words yet. The box says so in amber until they have.
+A bill paid in full by the day is written down by the percent once the money lands. A bill still open after the day goes back to its full amount. An affidavit always swears the full balance.
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} sits at the left under the desk's title, on every view. It opens the run.
+Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the three views. It opens the run.
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
@@ -304,7 +320,7 @@ Once the job's balance is paid, the footer says there is nothing more to send. O
 
 Every owner letter asks the owner to call. The desk turns that call into a guided conversation. The whole call is in [answer an owner who calls about a lien letter](/help/answer-an-owner-who-calls-about-a-lien-letter).
 
-1. **Find them.** Press the {{button:blue|☎}} button in the desk's title bar. Its hint reads *Someone's calling*. Type what the caller gives you, like a job number, a street, the owner's name or the GC's name. A row with a letter sent opens the call sheet on that notice. A row with no letter mailed yet opens the job on the desk. {{button:blue|▶ Practice call}} opens the sheet on a made up letter and saves nothing. On a sent job's footer, {{button:outline|Record the owner’s call…}} opens the same sheet.
+1. **Find them.** Press the {{button:blue|☎}} button in the desk's title bar. Its hint reads *An owner is calling*. It opens counsel's words for the call at once. To find the letter they hold, type what they give you in the list's find box. Letters older than thirty days show under **Also sent**, and each opens the call sheet. **Take a practice call ›** opens the sheet on a made up letter and saves nothing. On a sent job's footer, {{button:outline|Record the owner’s call…}} opens the same sheet.
 2. **Read and tap.** The letter they hold sits at the top. Each card is one line to say, with the owner's likely replies. Tap what they say, and the next card opens.
 3. **Let the facts collect.** The sheet asks whether they still owe the GC, whether the 10% stayed with them and when the GC finished. {{button:blue|Save the call}} writes the answers onto the sent notice.
 
@@ -371,7 +387,7 @@ The offer lasts while Put a GC on notice stays open. It ends once the run is rec
 
 ## Who can do what
 
-- **Draft, send for approval, send on the leader's word and skip:** a dev, an assistant or a controller. A master can draft and approve his own.
+- **Draft, send for approval and send on the leader's word:** a dev, an assistant or a controller. A master can draft and approve his own.
 - **Approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 

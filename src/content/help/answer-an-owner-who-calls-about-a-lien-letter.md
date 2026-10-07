@@ -35,7 +35,7 @@ When a job is picked on the desk, the top line shows the letter in their hand. I
 
 ## Find the letter they are holding
 
-The find box sits under {{button:blue|Send the run · N}} on the list. Type whatever they give you. That can be the **job number** printed at the top of the notice. It can be the **street**, the **owner's name** or the **GC's name**. The piles narrow as you type.
+The find box sits at the top of the list. Type whatever they give you. That can be the **job number** printed at the top of the notice. It can be the **street**, the **owner's name** or the **GC's name**. The piles narrow as you type.
 
 A letter older than thirty days is not on the piles. The box still finds it. Those appear under **Also sent**, below the piles, each with the day it mailed. Press one and the call sheet opens on that notice.
 
