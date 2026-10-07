@@ -1,45 +1,17 @@
-/**
- * GC mode — design spike. Words and dates: money, thousands and the date formats. Imports nothing.
- * Split out of gcModel.ts verbatim; import from `./gcModel`, which re-exports every file.
- */
-
-// ---------------------------------------------------------------------------------------------
-// Words and dates
-// ---------------------------------------------------------------------------------------------
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+export { shortDate, weekdayDate } from '../gc/words'
 
 export function money(n: number): string {
   return `$${Math.round(n).toLocaleString('en-US')}`
 }
-
 /** An amount in whole thousands, for a glance: 178400 reads "178", 1027746 reads "1,028". The K is drawn beside it. */
 export function thousands(n: number): string {
   return Math.round(n / 1000).toLocaleString('en-US')
 }
-
-export function shortDate(iso: string | null): string {
-  if (!iso) return ''
-  const [, m, d] = iso.split('-')
-  const month = MONTHS[Number(m) - 1]
-  return month ? `${month} ${Number(d)}` : iso
-}
-
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-/** "Wed Oct 8": the day of the week with the date, for a due date an estimator plans a week around. */
-export function weekdayDate(iso: string | null): string {
-  if (!iso) return ''
-  const [y, m, d] = iso.split('-').map(Number)
-  const day = WEEKDAYS[new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()]
-  return `${day} ${shortDate(iso)}`
-}
-
 function utcDay(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number)
   return Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1) / 86_400_000
 }
-
 export function daysUntil(iso: string, today: string): number {
   return Math.round(utcDay(iso) - utcDay(today))
 }

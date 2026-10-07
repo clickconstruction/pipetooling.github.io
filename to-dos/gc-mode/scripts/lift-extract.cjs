@@ -119,6 +119,13 @@ function place(cfg) {
 // An earlier lift (`after`) is on main already: what it placed counts as placed, and nothing of it is written again.
 for (const prior of config.after || []) place(JSON.parse(fs.readFileSync(path.join(path.dirname(configPath), prior), 'utf8')))
 place(config)
+// `LIFT_PLACEMENTS=<file>`: write this lift's placements for lift-reexport.cjs (the spike's follow-up).
+if (process.env.LIFT_PLACEMENTS) {
+  const moved = {}
+  for (const e of config.files) for (const k of e._want) moved[path.relative(root, k)] = { to: path.join(mainBase, e.to), type: !!(decls.get(k) && decls.get(k).type) }
+  for (const t of config.types || []) if (t.whole) for (const n of t.names) moved[path.relative(root, `${spikePath(t.from ?? 'gcTypes')}#${n}`)] = { to: path.join(mainBase, t.to), type: true }
+  fs.writeFileSync(process.env.LIFT_PLACEMENTS, JSON.stringify(moved, null, 1))
+}
 
 // Everything a placed declaration uses must be placed too, or on main already.
 const missing = new Set()

@@ -8,6 +8,8 @@
  */
 import type { GcState, Invite, Partner, QuoteExclusion, SubBid, TradePackage } from './gcTypes'
 import { money } from './gcWords'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+export { exclusionCoversTotal } from '../gc/exclusions'
 
 /** Exclusions any trade's quote may list, and each trade's own. The portal's form offers these as ticks. */
 export const COMMON_EXCLUSIONS: { all: string[]; byTrade: Record<string, string[]> } = {
@@ -27,7 +29,6 @@ export const COMMON_EXCLUSIONS: { all: string[]; byTrade: Record<string, string[
     Landscaping: ['Irrigation sleeves under paving', 'Maintenance after planting'],
   },
 }
-
 /** Words people write for the same thing, folded onto one name. */
 const SAME_AS: Record<string, string> = {
   permit: 'Permits and fees',
@@ -50,11 +51,9 @@ const SAME_AS: Record<string, string> = {
   'temp power': 'Temporary power and water',
   'temporary power': 'Temporary power and water',
 }
-
 function fold(words: string): string {
   return words.toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()
 }
-
 /**
  * The exclusions a trade's form offers: its own first, then the ones every trade may have, each
  * once. With the scope book's exclusion names (`scopeBookExclusions`, New Project), the ones the
@@ -64,7 +63,6 @@ export function exclusionsFor(trade: string, book?: { trade: string; name: strin
   const fromBook = (book ?? []).filter((x) => x.trade === trade).map((x) => x.name)
   return [...new Set([...fromBook, ...(COMMON_EXCLUSIONS.byTrade[trade] ?? []), ...COMMON_EXCLUSIONS.all])]
 }
-
 /** The shared name for what someone wrote: "permits" and "Permit fees" are both "Permits and fees". */
 export function exclusionName(said: string): string {
   const key = fold(said)
@@ -75,27 +73,22 @@ export function exclusionName(said: string): string {
   const t = said.trim()
   return t.charAt(0).toUpperCase() + t.slice(1)
 }
-
 /** Where one company stands on one exclusion. */
 export type ExclusionCell = 'excluded' | 'included' | 'unsaid' | 'expected'
-
 export interface ExclusionRow {
   name: string
   /** The trade's Known exclusion it matches, with who does it instead. Null: not a known exclusion. */
   known: { by: string } | null
   cells: { invite: Invite; state: ExclusionCell; exclusion: QuoteExclusion | null; cover: number | null }[]
 }
-
 function inList(list: QuoteExclusion[] | undefined, name: string): QuoteExclusion | null {
   return (list ?? []).find((e) => fold(e.name) === fold(name)) ?? null
 }
-
 /** A company's answer on one exclusion: in their list, answered and not in it, or not said. */
 function cellFor(bid: SubBid, name: string): ExclusionCell {
   if (inList(bid.exclusions, name)) return 'excluded'
   return (bid.exclusionsAnswered ?? []).some((n) => fold(n) === fold(name)) ? 'included' : 'unsaid'
 }
-
 /**
  * Compare quotes' rows: every exclusion any company quoting names, and the trade's Known
  * exclusions (expected for everyone, no cover needed), each with every quoting company's answer.
@@ -122,13 +115,6 @@ export function exclusionRows(pkg: TradePackage): ExclusionRow[] {
     }
   })
 }
-
-/** The cost to cover what a quote leaves out beyond the trade's Known exclusions: it goes into the all-in number. */
-export function exclusionCoversTotal(pkg: TradePackage, bid: SubBid): number {
-  const known = new Set((pkg.excludes ?? []).map((k) => fold(k.label)))
-  return (bid.exclusions ?? []).filter((e) => !known.has(fold(e.name))).reduce((t, e) => t + (bid.exclusionCovers?.[e.name] ?? 0), 0)
-}
-
 /**
  * What a quote leaves out that has no cover yet (and is not a Known exclusion): its all-in is not
  * known while any is left. One with a unit price ("rock at $38 per cy if found") is a price for if it
@@ -138,26 +124,22 @@ export function uncoveredExclusions(pkg: TradePackage, bid: SubBid): QuoteExclus
   const known = new Set((pkg.excludes ?? []).map((k) => fold(k.label)))
   return (bid.exclusions ?? []).filter((e) => !known.has(fold(e.name)) && !e.unitPrice && !((bid.exclusionCovers?.[e.name] ?? 0) > 0))
 }
-
 /** "permits and fees and rock excavation ($38 per cy if it comes up)" for a sentence. */
 export function exclusionListWords(list: QuoteExclusion[]): string {
   const words = list.map((e) => `${e.name.toLowerCase()}${e.unitPrice ? ` (${unitPriceWords(e.unitPrice)} if it comes up)` : ''}`)
   if (words.length <= 1) return words[0] ?? ''
   return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 }
-
 /** "$38 per cy" */
 export function unitPriceWords(u: { amount: number; unit: string }): string {
   return `${money(u.amount)} per ${u.unit}`
 }
-
 export interface PartnerExclusionHabit {
   name: string
   /** Quotes that left it out, of the quotes that answered about it or left it out. */
   excluded: number
   of: number
 }
-
 /**
  * A company's record across its quotes: what it usually leaves out ("Permits and fees, 5 of 6").
  * Counts every quote of theirs with an exclusion list, on any job; the most often first.
@@ -182,7 +164,6 @@ export function partnerExclusionHabits(state: GcState, partner: Partner): Partne
   }
   return [...counts.values()].map((h) => ({ ...h, of: quotes })).sort((a, b) => b.excluded - a.excluded || a.name.localeCompare(b.name))
 }
-
 /**
  * What the statement of work says they will not do, from the quote awarded: each exclusion, with
  * who does it instead when it is one of the trade's Known exclusions.

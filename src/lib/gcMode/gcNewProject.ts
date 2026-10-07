@@ -4,7 +4,7 @@
  * starts from its usual scope. A later set of plans uses the same guess, and can bring a trade
  * the job did not have. Every guess here is a starting point the office changes.
  */
-import type { GcAction, GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScopeItem, SpecSection, TemplateLine, TradePackage } from './gcTypes'
+import type { GcAction, GcCustomer, GcProject, GcState, NewProjectDraft, NewTradeDraft, PlanSheet, ScheduleActivity, ScheduleMilestone, ScopeItem, SpecSection, TradePackage } from './gcTypes'
 import { sheetsAtRev } from './gcPlans'
 import {
   BUDGET_PER_SQ_FT,
@@ -21,6 +21,13 @@ import {
   tradesForSheets,
   type ScopeGap,
 } from '../gc/plans'
+import { currentRev } from './gcLookups'
+import { townFromAddress, tradeLineup } from './gcMap'
+import { BENCH_WANTED } from './gcBench'
+import { carriedAmount, isGuess } from './gcBids'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { SCHEDULE_STAGES, lineStage, stageChain } from '../gc/schedule/draft'
+export { INSPECTION_DAYS, SCHEDULE_STAGES, lineStage, scheduleDraft, stageChain, templateKey } from '../gc/schedule/draft'
 
 // The pure plan kernels live in the real build's library now (to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md,
 // PR 1); they are re-exported here so the barrel and every lane keep reading them as before.
@@ -47,19 +54,12 @@ export {
   specsInText,
 } from '../gc/plans'
 export type { TradeTemplate, SheetIndexReading, TradeGuess, ScopeGap, SpecIndexReading, PlansTradeGuess } from '../gc/plans'
-import { currentRev } from './gcLookups'
-import { townFromAddress, tradeLineup } from './gcMap'
-import { BENCH_WANTED } from './gcBench'
-import { carriedAmount, isGuess } from './gcBids'
-
-
 /** What a trade really cost on one of our jobs, per square foot of that job. */
 export interface PastTradeCost {
   projectId: string
   name: string
   perSqFt: number
 }
-
 /**
  * What a trade really cost on our other jobs, per square foot: a signed contract, the quote we
  * carried or awarded, or our own priced bid, over the job's size. Our own budget guesses (plugs)
@@ -79,7 +79,6 @@ export function tradeCostHistory(state: GcState, trade: string, except: string |
   }
   return out
 }
-
 /** A trade's budget from its size, and where the rate came from: our past jobs (their middle rate) or a rough rate. */
 export interface SizedBudget {
   amount: number
@@ -87,7 +86,6 @@ export interface SizedBudget {
   /** How many past jobs the rate came from. 0: the rough rate. */
   jobs: number
 }
-
 /**
  * A trade's budget for a job of this size, to the nearest $500: the middle of what the trade cost
  * on our past jobs per square foot, or the rough rate when we have no past job for it. Null for a
@@ -100,7 +98,6 @@ export function budgetForSize(state: GcState, trade: string, sqFt: number): Size
   if (perSqFt === null) return null
   return { amount: Math.round((perSqFt * sqFt) / 500) * 500, perSqFt, jobs: rates.length }
 }
-
 /** A company new to us, added on Who to ask (the owner, 2026-10-04, question 3): anyone can quote. */
 export interface StrangerAsk {
   trade: string
@@ -108,7 +105,6 @@ export interface StrangerAsk {
   /** How to reach them: an email or a phone, as the office has it. */
   contact: string
 }
-
 /**
  * The actions that add each company new to us and ask it to quote, in order: the Board's
  * addPartner with known false (so it comes in not vetted, and award waits for the office's
@@ -128,15 +124,11 @@ export function strangerActions(state: GcState, project: GcProject, strangers: S
   }
   return out
 }
-
 /** The trades the company does with its own crews. Their number comes from our own bid in Trades mode. */
 export const OUR_TRADES = ['Plumbing']
-
 /** What a new project starts with on Our number. The office changes them there. */
 export const NEW_PROJECT_CONTINGENCY_PCT = 3
 export const NEW_PROJECT_FEE_PCT = 8
-
-
 /**
  * The trades on a project that a later set's sheets most likely change. The sheets' titles come
  * from the project's index, or from the set itself for a sheet it adds.
@@ -147,8 +139,6 @@ export function packagesForSheets(project: GcProject, sheets: string[], added: P
   const trades = new Set(tradesForSheets(named).map((g) => g.trade))
   return project.packages.filter((p) => trades.has(p.trade)).map((p) => p.id)
 }
-
-
 /** The sheets of the newest set that suggest a trade, with their titles, and any a set is adding. */
 export function tradeSheets(project: GcProject, trade: string, added: PlanSheet[] = []): PlanSheet[] {
   const live = sheetsAtRev(project, currentRev(project))
@@ -156,13 +146,11 @@ export function tradeSheets(project: GcProject, trade: string, added: PlanSheet[
   const from = tradesForSheets(index).find((g) => g.trade === trade)?.from ?? []
   return index.filter((s) => from.includes(s.id))
 }
-
 /** The sheets one scope line reads from: what the office said, or the guess when it said nothing. */
 export function lineSheets(project: GcProject, pkg: TradePackage, item: ScopeItem, added: PlanSheet[] = []): { sheets: string[]; guessed: boolean } {
   if (item.sheets) return { sheets: item.sheets, guessed: false }
   return { sheets: guessLineSheets(item.label, tradeSheets(project, pkg.trade, added)), guessed: true }
 }
-
 /**
  * Every sheet one scope line reads from. A line that names no sheet stands for the whole trade,
  * so it reads every sheet of its trade (`wholeTrade`). The owner, 2026-10-02: count those lines
@@ -178,7 +166,6 @@ export function lineReads(
   if (said.sheets.length > 0) return { ...said, wholeTrade: false }
   return { sheets: tradeSheets(project, pkg.trade, added).map((s) => s.id), guessed: said.guessed, wholeTrade: true }
 }
-
 /**
  * The scope lines of a trade that read from any of these sheets, a line that names no sheet
  * included. `added`: sheets a set is adding, so a line's guess and its whole trade can read them.
@@ -186,14 +173,10 @@ export function lineReads(
 export function linesOnSheets(project: GcProject, pkg: TradePackage, sheetIds: string[], added: PlanSheet[] = []): ScopeItem[] {
   return pkg.scope.filter((item) => lineReads(project, pkg, item, added).sheets.some((id) => sheetIds.includes(id)))
 }
-
-
 /** The gaps between a project's trades, read from its packages. */
 export function projectScopeGaps(project: GcProject): ScopeGap[] {
   return scopeGaps(project.packages.map((p) => ({ trade: p.trade, scope: p.scope.map((l) => l.label), excludes: p.excludes })))
 }
-
-
 function slug(text: string): string {
   return text
     .toLowerCase()
@@ -201,7 +184,6 @@ function slug(text: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
 }
-
 function freeId(base: string, taken: string[]): string {
   const root = base || 'new'
   if (!taken.includes(root)) return root
@@ -209,7 +191,6 @@ function freeId(base: string, taken: string[]): string {
   while (taken.includes(`${root}-${n}`)) n += 1
   return `${root}-${n}`
 }
-
 /** A company the office named for the first time: a customer record with nothing known yet. */
 function newCustomer(id: string, name: string, kind: string): GcCustomer {
   return {
@@ -232,7 +213,6 @@ function newCustomer(id: string, name: string, kind: string): GcCustomer {
     tradesNote: null,
   }
 }
-
 /** Trade packages made from the office's drafts, ids kept clear of the ones already taken. */
 export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], taken: string[] = []): TradePackage[] {
   const used = [...taken]
@@ -266,7 +246,6 @@ export function packagesFromDrafts(projectId: string, drafts: NewTradeDraft[], t
       }
     })
 }
-
 /**
  * Scope lines a new set adds to trades already on the job, put at the end of each trade's scope.
  * A quote that came in before never answered them, so Compare quotes reads them as not clear until
@@ -292,12 +271,10 @@ export function withNewLines(
   })
   return { project: { ...project, packages }, added }
 }
-
 /** The set that added a scope line to the job, when a later set added it. */
 export function setThatAddedLine(project: GcProject, scopeId: string): string | null {
   return project.planSets.find((s) => s.addedLines?.some((l) => l.scopeId === scopeId))?.label ?? null
 }
-
 /** The project's trades with new ones put in the list's order. The trades already there keep their order. */
 export function withTradesInOrder(existing: TradePackage[], added: TradePackage[]): TradePackage[] {
   const out = [...existing]
@@ -308,7 +285,6 @@ export function withTradesInOrder(existing: TradePackage[], added: TradePackage[
   }
   return out
 }
-
 /**
  * Who to ask first on a new project's trade: the companies in range in the map's own order
  * (`tradeLineup`: the most reliable first, then the shorter drive), up to a deep bench
@@ -323,12 +299,10 @@ export function defaultAsks(state: GcState, project: GcProject, pkg: TradePackag
     .slice(0, BENCH_WANTED)
     .map((r) => r.partner.id)
 }
-
 /** The id the project will get. The window reads it to open the project once it is made. */
 export function newProjectId(state: GcState, draft: NewProjectDraft): string {
   return freeId(slug(draft.name), state.projects.map((p) => p.id))
 }
-
 /**
  * The project the draft makes, and any customer records it names for the first time. It starts
  * in Bidding to the owner with its first set of plans and its trades. Nobody is asked yet.
@@ -400,7 +374,6 @@ export function buildNewProject(state: GcState, draft: NewProjectDraft): { proje
   }
   return { project, customers }
 }
-
 /** A made-up sheet index to try the window with, as a cover sheet lists it. */
 export const SAMPLE_SHEET_INDEX = [
   'SHEET INDEX',
@@ -431,285 +404,10 @@ export const SAMPLE_SHEET_INDEX = [
   'E-301  PANEL SCHEDULES',
   'FP-101 FIRE SPRINKLER PLAN',
 ].join('\n')
-
-// ---------------------------------------------------------------------------------------------
-// The schedule's first draft: what waits on what, from the stages of the job
-// ---------------------------------------------------------------------------------------------
-
-/**
- * The stages a job goes through, in the order they are drawn. Each waits on the stage named in
- * `after` (or the nearest earlier one the job has). Site finish waits only on dry-in, so paving
- * and site lighting run beside the work inside (G-143: inside a trade too, see `stageChain`).
- * `days` is a first-draft length; `lag` is days between the stage before and this one. The
- * rough-in and final inspections are activities of their own (the owner, 2026-10-03), drawn by
- * `scheduleDraft`, not waits on a link.
- */
-export const SCHEDULE_STAGES: { key: string; label: string; after: string | null; days: number; lag?: number }[] = [
-  { key: 'sitePrep', label: 'Site prep', after: null, days: 10 },
-  { key: 'foundations', label: 'Foundations', after: 'sitePrep', days: 10 },
-  { key: 'underground', label: 'Underground', after: 'foundations', days: 5 },
-  { key: 'slab', label: 'Slab', after: 'underground', days: 5 },
-  { key: 'structure', label: 'Structure', after: 'slab', days: 15 },
-  { key: 'dryIn', label: 'Dry-in', after: 'structure', days: 10 },
-  { key: 'framing', label: 'Framing', after: 'dryIn', days: 10 },
-  { key: 'roughIn', label: 'Rough-in', after: 'framing', days: 15 },
-  { key: 'closeIn', label: 'Close-in', after: 'roughIn', days: 10 },
-  { key: 'finishes', label: 'Finishes', after: 'closeIn', days: 10 },
-  { key: 'trim', label: 'Trim', after: 'finishes', days: 7 },
-  { key: 'siteFinish', label: 'Site finish', after: 'dryIn', days: 10 },
-  { key: 'closeout', label: 'Closeout', after: 'trim', days: 5 },
-]
-
-/**
- * A stage and every stage it comes after, along `after` (G-143). Inside a trade, a line waits on
- * the trade's line before it among these stages only, so a crew does its lines one after another
- * on each stage's own path. Every stage but two comes right after the one listed before it, so its
- * chain is every stage listed before it. Site finish comes after dry-in: a site line waits on the
- * trade's earlier site line, or its last line before dry-in, never its framing, rough-ins,
- * close-in, finishes or trims. Closeout comes after trim, so a closeout line never waits on a site
- * line.
- */
-export function stageChain(key: string): Set<string> {
-  const chain = new Set<string>()
-  let at: string | null = key
-  while (at && !chain.has(at)) {
-    chain.add(at)
-    at = SCHEDULE_STAGES.find((st) => st.key === at)?.after ?? null
-  }
-  return chain
-}
-
-/** How long an inspection runs in the first draft, in days. The office changes it. */
-export const INSPECTION_DAYS = 2
-
-/** Words in a line's name that put it in a stage, the most telling first ("rooftop units" is rough-in, not roofing). */
-const STAGE_WORDS: [string, string[]][] = [
-  ['closeout', ['test and balance', 'commissioning', 'start-up']],
-  ['siteFinish', ['site lighting', 'sidewalk', 'striping', 'paving', 'drive-through', 'parking', 'planting', 'irrigation', 'sod', 'seed', 'landscap']],
-  ['trim', ['heads and trim', 'trim', 'lighting', 'devices', 'fire alarm', 'fixtures', 'controls']],
-  ['roughIn', ['rooftop unit', 'split system', 'rough', 'top out', 'duct', 'mains', 'branch line', 'service and gear', 'panels', 'feeders', 'equipment', 'low voltage']],
-  ['underground', ['underground', 'utilities']],
-  ['sitePrep', ['clearing', 'grading', 'demolition', 'excavation', 'design and permit']],
-  ['foundations', ['foundation', 'footing', 'rebar']],
-  ['slab', ['slab']],
-  ['structure', ['structural steel', 'joist', 'deck', 'erection', 'block wall', 'brick', 'grout', 'masonry']],
-  ['dryIn', ['membrane', 'roof', 'sheet metal', 'flashing', 'storefront', 'glass', 'sealant', 'window', 'insulation']],
-  ['framing', ['framing', 'frames']],
-  ['closeIn', ['hang and tape', 'drywall', 'gypsum', 'ceiling']],
-  ['finishes', ['paint', 'tile', 'carpet', 'vinyl', 'base', 'cabinet', 'countertop', 'casework', 'millwork', 'desk', 'doors', 'hardware', 'install', 'flooring']],
-]
-
-/** The stage a trade's work falls in when a line's name does not say. */
-const TRADE_STAGE: Record<string, string> = {
-  Sitework: 'sitePrep',
-  Landscaping: 'siteFinish',
-  Concrete: 'foundations',
-  Masonry: 'structure',
-  'Structural steel': 'structure',
-  'Framing and drywall': 'framing',
-  Roofing: 'dryIn',
-  'Doors and hardware': 'finishes',
-  'Glass and storefront': 'dryIn',
-  Painting: 'finishes',
-  Flooring: 'finishes',
-  Millwork: 'finishes',
-  'Fire sprinkler': 'roughIn',
-  Plumbing: 'roughIn',
-  HVAC: 'roughIn',
-  Electrical: 'roughIn',
-}
-
-/** The stage of the job one line belongs to: from its name, or from its trade when the name does not say. */
-export function lineStage(trade: string, label: string): string {
-  const name = label.toLowerCase()
-  for (const [stage, words] of STAGE_WORDS) if (words.some((w) => name.includes(w))) return stage
-  return TRADE_STAGE[trade] ?? 'finishes'
-}
-
 function plusDays(iso: string, days: number): string {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
 }
-
-/** A line's key in a template (G-44): its trade and its name, the name matched whatever the case and spacing. An inspection's trade is empty. */
-export function templateKey(trade: string, label: string): string {
-  return `${trade}|${label.trim().replace(/\s+/g, ' ').toLowerCase()}`
-}
-
-/** The lines a trade's activities are drawn from: its schedule of values, or its scope (our own crew, or before one). */
-function draftLines(pkg: TradePackage): { lineId: string; label: string }[] {
-  if (pkg.sow && !pkg.selfPerform) return pkg.sow.sov.map((l) => ({ lineId: l.id, label: l.label }))
-  return pkg.scope.map((l) => ({ lineId: l.id, label: l.label }))
-}
-
-/**
- * The schedule's first draft, from the stages of the job: every line of every trade, each in its
- * stage. A stage starts when the stage before it is done, so the trades' rough-ins run side by
- * side after framing, close-in waits on all of them and the inspection, and the trims come after
- * the finishes. Inside a trade, its lines run one after another along each stage's own path
- * (`stageChain`), so its site lines run beside its inside work, and its lines in
- * one stage share that stage's days (at least two each). Two inspections are activities of their
- * own, with no trade (packageId ''): the rough-in inspection after every rough-in, which close-in
- * and anything else after the rough-ins wait on, and the final inspection after all the work.
- * Milestones: dry-in (the last dry-in line), the rough-in inspection (on its finish) and
- * substantial completion (three days after the final inspection). The office changes every date.
- *
- * `like`, a template's lines (G-44): a line of the same trade and name runs as it ran on the template's
- * job. It takes its days, the template's waits this job has (with their gaps), and its offset: as many
- * days after the last of them as it started there. A line with nothing to wait on starts its offset after
- * the first day. The two inspections follow the template's the same way, and the rough-in inspection
- * still waits on every rough-in the template does not cover. A covered line also keeps the place the
- * office kept there (G-83) and its parts (G-39), with no percent done. Every other line is drawn as
- * above. With no `like`, nothing here runs differently.
- */
-export function scheduleDraft(project: GcProject, start: string, stageDays?: Partial<Record<string, number>>, like?: TemplateLine[]): ProjectSchedule {
-  const order = new Map(SCHEDULE_STAGES.map((st, i) => [st.key, i]))
-  type Line = { lineId: string; packageId: string; trade: string; label: string; stage: string; index: number }
-  const lines: Line[] = project.packages.flatMap((pkg) =>
-    draftLines(pkg).map((l, index) => ({ lineId: l.lineId, packageId: pkg.id, trade: pkg.trade, label: l.label, stage: lineStage(pkg.trade, l.label), index })),
-  )
-  // A template's lines by trade and name (G-44), and what this job has drawn by the same keys.
-  const likeOf = new Map((like ?? []).map((t) => [templateKey(t.trade, t.label), t]))
-  const keyOfLine = (l: Line) => templateKey(l.trade, l.label)
-  const drawnByKey = new Map<string, ScheduleActivity>()
-  /**
-   * Where a covered line goes: after the last of the template's waits this job has drawn, by its
-   * offset, and never before a gap set on one of them. With nothing to wait on, its offset after the
-   * first day. Null: it waited on lines this job has none of, so the stage rules place it.
-   */
-  const placeLike = (t: TemplateLine): { from: string; after: string[]; lag?: Record<string, number> } | null => {
-    const waits = t.after.flatMap((w) => {
-      const a = drawnByKey.get(templateKey(w.trade, w.label))
-      return a ? [{ a, gap: w.gap ?? 0 }] : []
-    })
-    if (t.after.length > 0 && waits.length === 0) return null
-    if (waits.length === 0) return { from: plusDays(start, Math.max(0, t.offset)), after: [] }
-    const last = waits.reduce((m, w) => (w.a.finish > m ? w.a.finish : m), '')
-    const from = [start, plusDays(last, 1 + t.offset), ...waits.map((w) => plusDays(w.a.finish, 1 + w.gap))].reduce((m, d) => (d > m ? d : m))
-    const gaps = waits.filter((w) => w.gap !== 0)
-    return { from, after: [...new Set(waits.map((w) => w.a.lineId))], ...(gaps.length > 0 ? { lag: Object.fromEntries(gaps.map((w) => [w.a.lineId, w.gap])) } : {}) }
-  }
-  /** What a covered line keeps besides its dates (G-44): the place kept there (G-83) and its parts (G-39), none of them done. */
-  const keepsOf = (lineId: string, t: TemplateLine): Pick<ScheduleActivity, 'place' | 'parts'> => ({
-    ...(t.place ? { place: t.place } : {}),
-    ...(t.parts && t.parts.length > 0 ? { parts: t.parts.map((x, i) => ({ id: `${lineId}-p${i + 1}`, name: x.name, from: x.from, days: x.days, share: x.share, pct: 0 })) } : {}),
-  })
-  /** A stage's lines as drawn: as listed, except a covered line comes after the lines of its stage it waits on. */
-  const inWaitOrder = (stageLines: Line[]): Line[] => {
-    if (likeOf.size === 0) return stageLines
-    const left = [...stageLines]
-    const out: Line[] = []
-    while (left.length > 0) {
-      const ready = left.findIndex((l) => !(likeOf.get(keyOfLine(l))?.after ?? []).some((w) => left.some((o) => o !== l && keyOfLine(o) === templateKey(w.trade, w.label))))
-      // Waits that loop: the first as listed goes, and the rest follow.
-      out.push(...left.splice(ready < 0 ? 0 : ready, 1))
-    }
-    return out
-  }
-  const byStage = (key: string) => lines.filter((l) => l.stage === key)
-  /** The nearest stage before this one, along `after`, that the job has lines in. */
-  const gateOf = (key: string): string | null => {
-    let at = SCHEDULE_STAGES.find((st) => st.key === key)?.after ?? null
-    while (at && byStage(at).length === 0) at = SCHEDULE_STAGES.find((st) => st.key === at)?.after ?? null
-    return at
-  }
-  const done = new Map<string, ScheduleActivity>()
-  const activities: ScheduleActivity[] = []
-  /** The rough-in inspection, once the rough-ins are drawn. Whatever waits on the rough-ins waits on it. */
-  let roughInspection: ScheduleActivity | null = null
-  for (const stage of SCHEDULE_STAGES) {
-    const gate = gateOf(stage.key)
-    const gateActs =
-      gate === 'roughIn' && roughInspection
-        ? [roughInspection]
-        : gate
-          ? byStage(gate).map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a)
-          : []
-    const gateDay = gateActs.reduce<string | null>((m, a) => (m === null || a.finish > m ? a.finish : m), null)
-    for (const line of inWaitOrder(byStage(stage.key))) {
-      // A line the template covers (G-44) runs as it ran there.
-      const t = likeOf.get(keyOfLine(line))
-      const at = t ? placeLike(t) : null
-      if (t && at) {
-        // Its place is written as kept, not as a guess: the office kept it once on purpose (the lead, 2026-10-06).
-        const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: at.from, finish: plusDays(at.from, t.days - 1), after: at.after, ...(at.lag ? { lag: at.lag } : {}), ...keepsOf(line.lineId, t) }
-        done.set(line.lineId, a)
-        drawnByKey.set(keyOfLine(line), a)
-        activities.push(a)
-        continue
-      }
-      // The line before it in its own trade, along its stage's own path (G-143): a crew does its lines
-      // one after another, and a site line never waits on the trade's inside work.
-      const chain = stageChain(line.stage)
-      const own = lines
-        .filter((l) => l.packageId === line.packageId && chain.has(l.stage))
-        .sort((a, b) => (order.get(a.stage) ?? 0) - (order.get(b.stage) ?? 0) || a.index - b.index)
-      const before = own[own.indexOf(line) - 1]
-      const prev = before ? done.get(before.lineId) : undefined
-      const from = [
-        start,
-        gateDay ? plusDays(gateDay, 1 + (stage.lag ?? 0)) : start,
-        prev ? plusDays(prev.finish, 1) : start,
-      ].reduce((m, d) => (d > m ? d : m))
-      const after = [...new Set([...gateActs.map((a) => a.lineId), ...(prev ? [prev.lineId] : [])])]
-      // A trade's lines in one stage share the stage's days: roofing's four lines take about ten days, not forty.
-      const shares = own.filter((l) => l.stage === stage.key).length
-      // A rough schedule may set this job's own stage lengths (G-45); every other caller draws the usual ones.
-      // A covered line whose waits this job has none of keeps the template's days (G-44).
-      const days = t ? t.days : Math.max(2, Math.ceil((stageDays?.[stage.key] ?? stage.days) / Math.max(1, shares)))
-      const a: ScheduleActivity = { lineId: line.lineId, packageId: line.packageId, start: from, finish: plusDays(from, days - 1), after, ...(t ? keepsOf(line.lineId, t) : {}) }
-      done.set(line.lineId, a)
-      drawnByKey.set(keyOfLine(line), a)
-      activities.push(a)
-    }
-    if (stage.key === 'roughIn' && byStage('roughIn').length > 0) {
-      const roughs = byStage('roughIn').map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a)
-      // The template's rough-in inspection (G-44): as it ran there, and still after every rough-in here it does not cover.
-      const t = likeOf.get(templateKey('', 'Rough-in inspection'))
-      const at = t ? placeLike(t) : null
-      const others = at ? byStage('roughIn').filter((l) => !likeOf.has(keyOfLine(l))).map((l) => done.get(l.lineId)).filter((a): a is ScheduleActivity => !!a) : []
-      const from = at ? others.reduce((m, a) => (plusDays(a.finish, 1) > m ? plusDays(a.finish, 1) : m), at.from) : plusDays(roughs.reduce((m, a) => (a.finish > m ? a.finish : m), start), 1)
-      roughInspection = {
-        lineId: `${project.id}-insp-roughin`,
-        packageId: '',
-        start: from,
-        finish: plusDays(from, (t && at ? t.days : INSPECTION_DAYS) - 1),
-        after: at ? [...new Set([...at.after, ...others.map((a) => a.lineId)])] : roughs.map((a) => a.lineId),
-        ...(at?.lag ? { lag: at.lag } : {}),
-        inspection: { label: 'Rough-in inspection' },
-      }
-      drawnByKey.set(templateKey('', 'Rough-in inspection'), roughInspection)
-      activities.push(roughInspection)
-    }
-  }
-  // The final inspection waits on all the work; substantial completion follows it.
-  const workEnd = activities.reduce((m, a) => (a.finish > m ? a.finish : m), start)
-  // The template's final inspection (G-44): its offset after the last of the work, and its days.
-  const lastLike = likeOf.get(templateKey('', 'Final inspection'))
-  const finalFrom = plusDays(workEnd, 1 + (lastLike ? Math.max(0, lastLike.offset) : 0))
-  const finalInspection: ScheduleActivity = {
-    lineId: `${project.id}-insp-final`,
-    packageId: '',
-    start: finalFrom,
-    finish: plusDays(finalFrom, (lastLike ? lastLike.days : INSPECTION_DAYS) - 1),
-    after: activities.map((a) => a.lineId).filter((id) => !activities.some((b) => b.after.includes(id))),
-    inspection: { label: 'Final inspection' },
-  }
-  activities.push(finalInspection)
-  const lastOf = (key: string) => byStage(key).reduce((m, l) => {
-    const f = done.get(l.lineId)?.finish ?? ''
-    return f > m ? f : m
-  }, '')
-  const dryIn = lastOf('dryIn')
-  const roof = project.packages.find((k) => k.trade === 'Roofing') ?? null
-  const milestones: ScheduleMilestone[] = [
-    ...(dryIn ? [{ id: `${project.id}-dryin`, label: 'Dry-in', planned: dryIn, packageId: roof?.id ?? null, metOn: null }] : []),
-    ...(roughInspection ? [{ id: `${project.id}-roughin`, label: 'Rough-in inspection', planned: roughInspection.finish, packageId: null, metOn: null }] : []),
-    { id: `${project.id}-substantial`, label: 'Substantial completion', planned: plusDays(finalInspection.finish, 3), packageId: null, metOn: null },
-  ]
-  return { activities, milestones, baseline: null, lookAhead: [] }
-}
-
 // ---------------------------------------------------------------------------------------------
 // A set issued once the job has a schedule: the activities it touches, and the days it adds
 // ---------------------------------------------------------------------------------------------
@@ -738,7 +436,6 @@ export function dryInMilestoneFor(
   const roof = project.packages.find((k) => k.trade === 'Roofing') ?? null
   return { id: `${project.id}-dryin`, label: 'Dry-in', planned, packageId: roof?.id ?? null, metOn: null }
 }
-
 /**
  * Work a set brings onto a schedule already drawn: a new trade's lines, or lines added to a trade.
  * Each is placed the way the first draft places it (`scheduleDraft`): in its stage, after what
@@ -820,7 +517,6 @@ export function scheduleSetLines(
   }
   return out
 }
-
 /**
  * The scheduled activities a set's changed sheets and sections reach: the scope lines they touch,
  * found on the schedule by line id (a statement of work keeps its scope line ids). Empty with no
@@ -838,7 +534,6 @@ export function activitiesTouched(
   const ids = new Set(project.packages.flatMap((pkg) => linesOnPlans(project, pkg, sheetIds, specIds, addedSpecs, addedSheets).map((l) => l.id)))
   return schedule.activities.filter((a) => ids.has(a.lineId))
 }
-
 /** What a push does: every activity's new dates, the ones that moved, and the job's last day before and after. */
 export interface SchedulePush {
   activities: ScheduleActivity[]
@@ -846,12 +541,10 @@ export interface SchedulePush {
   lastBefore: string
   lastAfter: string
 }
-
 function dayIndex(iso: string): number {
   const [y, m, d] = iso.split('-').map(Number)
   return Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1) / 86_400_000
 }
-
 /**
  * Add days to activities a set changes: each one's finish moves out by its days (the work takes
  * longer), and everything waiting on it moves out as far as it must to start the day after, never
@@ -890,7 +583,6 @@ export function pushSchedule(activities: ScheduleActivity[], pushes: Record<stri
   const last = (list: ScheduleActivity[]) => list.reduce((m, a) => (a.finish > m ? a.finish : m), '')
   return { activities: next, moved, lastBefore: last(activities), lastAfter: last(next) }
 }
-
 // ---------------------------------------------------------------------------------------------
 // A set that changes a job we have won starts its change orders to the owner
 // ---------------------------------------------------------------------------------------------
@@ -899,7 +591,6 @@ function wordsAnd(words: string[]): string {
   if (words.length <= 1) return words[0] ?? ''
   return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 }
-
 /**
  * The words a change order to the owner starts with when a set of plans changes a trade on a job
  * we have won: what the set does to the trade, "per" its sheets, and the time it adds to the job.
@@ -930,7 +621,6 @@ export function changeOrderFromSet(
     days: jobDays > 0 ? Math.round(jobDays) : 0,
   }
 }
-
 /**
  * Which of a set's change orders carries the days it adds to the job: the first one going out
  * (ticked, with a cost and words) whose trade caused them. One only, so the signed change orders'
@@ -943,7 +633,6 @@ export function changeOrderTakingTheDays(
   if (jobDays <= 0) return null
   return rows.find((r) => r.on && r.cost !== 0 && r.description.trim() !== '' && r.cause)?.id ?? null
 }
-
 // ---------------------------------------------------------------------------------------------
 // The specs: the project manual's sections, the trades they point at, the lines that read them
 // ---------------------------------------------------------------------------------------------
@@ -957,12 +646,10 @@ export interface SpecInSet extends SpecSection {
   /** The title before the newest set that renamed it. */
   was?: string
 }
-
 /** A section a set took out, as it was titled when it went. */
 export interface SpecGone extends SpecSection {
   goneInRev: number
 }
-
 function walkSpecs(project: GcProject, rev: number): { live: SpecInSet[]; gone: SpecGone[] } {
   const out = new Map<string, SpecInSet>()
   const gone = new Map<string, SpecGone>()
@@ -989,7 +676,6 @@ function walkSpecs(project: GcProject, rev: number): { live: SpecInSet[]; gone: 
   const byId = (a: { id: string }, b: { id: string }) => a.id.localeCompare(b.id)
   return { live: [...out.values()].sort(byId), gone: [...gone.values()].sort(byId) }
 }
-
 /**
  * The manual as it stands at one set: the sections the project began with plus what each set
  * revised, renamed or added, in number order. A section a set took out is not in it.
@@ -997,12 +683,10 @@ function walkSpecs(project: GcProject, rev: number): { live: SpecInSet[]; gone: 
 export function specsAtRev(project: GcProject, rev: number): SpecInSet[] {
   return walkSpecs(project, rev).live
 }
-
 /** The sections taken out by the sets up to this one. */
 export function specsGoneAtRev(project: GcProject, rev: number): SpecGone[] {
   return walkSpecs(project, rev).gone
 }
-
 /** A scope line a set leaves with nothing to read: every sheet it read, or every section, goes. */
 export interface LineLeftBehind {
   packageId: string
@@ -1012,7 +696,6 @@ export interface LineLeftBehind {
   /** Its sections all go. */
   specs: string[]
 }
-
 /**
  * The scope lines a set leaves behind: lines that read from sheets or sections, and every one of
  * them is taken out. A line that names none reads its trade as a whole, so it is never left.
@@ -1031,7 +714,6 @@ export function linesLeftBehind(project: GcProject, goneSheets: string[], goneSp
   }
   return out
 }
-
 /** Scope lines a set ties to new sheets or sections, because what they read is gone. */
 export function withRetiedLines(
   project: GcProject,
@@ -1054,7 +736,6 @@ export function withRetiedLines(
     }),
   }
 }
-
 /**
  * A made-up reissued index for trying a whole new set on any project: the second sheet of the
  * first discipline with two goes (folded into the first, which is renamed for it), and two
@@ -1079,7 +760,6 @@ export function sampleReissue(sheets: PlanSheet[]): string {
   lines.push(`${free('A', 601)}  INTERIOR DETAILS`, `${free('E', 401)}  FIRE ALARM PLAN`)
   return ['SHEET INDEX', ...lines].join('\n')
 }
-
 /** A made-up reissued table of contents: one section of the first division with two goes, and ceramic tiling comes in. */
 export function sampleReissueSpecs(specs: SpecSection[]): string {
   const counts = new Map<string, number>()
@@ -1089,26 +769,22 @@ export function sampleReissueSpecs(specs: SpecSection[]): string {
   if (!specs.some((x) => x.id === '09 30 13')) lines.push('09 30 13  CERAMIC TILING')
   return ['TABLE OF CONTENTS', ...lines.sort()].join('\n')
 }
-
 /** The trades on a project that a set's sections change: each section's trade, read from its number. */
 export function packagesForSpecs(project: GcProject, specIds: string[]): string[] {
   const trades = new Set(specIds.map(tradeForSpec).filter((t): t is string => t !== null))
   return project.packages.filter((p) => trades.has(p.trade)).map((p) => p.id)
 }
-
 /** The sections of the newest manual that point at a trade, with any a set is adding. */
 export function tradeSpecs(project: GcProject, trade: string, added: SpecSection[] = []): SpecSection[] {
   const manual = specsAtRev(project, currentRev(project))
   const all = [...manual, ...added.filter((a) => !manual.some((x) => x.id === a.id))]
   return all.filter((x) => tradeForSpec(x.id) === trade)
 }
-
 /** The sections one scope line reads from: what the office said, or the guess when it said nothing. */
 export function lineSpecs(project: GcProject, pkg: TradePackage, item: ScopeItem, added: SpecSection[] = []): { specs: string[]; guessed: boolean } {
   if (item.specs) return { specs: item.specs, guessed: false }
   return { specs: guessLineSpecs(item.label, tradeSpecs(project, pkg.trade, added)), guessed: true }
 }
-
 /**
  * Whether a line reads from a section. A line that names no section stands for the whole trade,
  * so any section of its trade counts, the rule the owner set for sheets (2026-10-02).
@@ -1117,12 +793,10 @@ export function lineReadsSpec(project: GcProject, pkg: TradePackage, item: Scope
   const said = lineSpecs(project, pkg, item, added).specs
   return said.length > 0 ? said.includes(specId) : tradeForSpec(specId) === pkg.trade
 }
-
 /** The scope lines of a trade that read from any of these sections, a line that names none included. */
 export function linesOnSpecs(project: GcProject, pkg: TradePackage, specIds: string[], added: SpecSection[] = []): ScopeItem[] {
   return pkg.scope.filter((item) => specIds.some((id) => lineReadsSpec(project, pkg, item, id, added)))
 }
-
 /**
  * The scope lines a set names to a trade, read the way the trade's portal reads them (the owner,
  * 2026-10-03: a trade sees only the sheets the office set; 2026-10-04: the email follows the
@@ -1145,7 +819,6 @@ export function linesATradeHears(
     return reads.some((id) => sheetIds.includes(id)) || onSpecs.has(item.id)
   })
 }
-
 /** The scope lines a set reaches through its sheets or its sections, in the scope's order. */
 export function linesOnPlans(
   project: GcProject,
@@ -1159,7 +832,6 @@ export function linesOnPlans(
   const onSpecs = new Set(linesOnSpecs(project, pkg, specIds, added).map((l) => l.id))
   return pkg.scope.filter((item) => onSheets.has(item.id) || onSpecs.has(item.id))
 }
-
 // ---------------------------------------------------------------------------------------------
 // The plans live in Google Drive (the owner, 2026-10-04: "I want to always have it go to a Google
 // Drive link where there is a notification that says this link is accessible by anyone, this
@@ -1170,7 +842,6 @@ export function linesOnPlans(
 export const SAMPLE_DRIVE_OPEN = 'https://drive.google.com/drive/folders/1HcBidSetAnyoneWithTheLink'
 /** A made-up file only some people can open. */
 export const SAMPLE_DRIVE_RESTRICTED = 'https://drive.google.com/file/d/1HcPlansOnlySomePeople/view'
-
 /** A Google Drive file or folder link, read: what it points at and its id. Null: not a Drive link. */
 export function driveLink(url: string): { kind: 'file' | 'folder'; id: string } | null {
   const u = url.trim().replace(/^(?!https?:\/\/)(?=drive\.google\.com)/, 'https://')
@@ -1180,7 +851,6 @@ export function driveLink(url: string): { kind: 'file' | 'folder'; id: string } 
   if (folder?.[1]) return { kind: 'folder', id: folder[1] }
   return null
 }
-
 /**
  * Who can open a Drive link: the prototype's stand-in for the real check. The real one is the
  * owner's: a helper opens the link with no Google sign-in, and a sign-in page or "You need access"
@@ -1195,7 +865,6 @@ export function driveAccessStandIn(url: string, fixedInDrive = false): { access:
   if (link.id === driveLink(SAMPLE_DRIVE_OPEN)?.id) return { access: 'anyone', assumed: false }
   return { access: 'anyone', assumed: true }
 }
-
 /**
  * What stops a set's Drive link, for a window's footer. Null: the link is fine. A link only some
  * people can open is a warning, not a stop (the owner, 2026-10-04: "When the link is blocked and our
@@ -1206,7 +875,6 @@ export function driveLinkProblem(url: string): string | null {
   if (!driveLink(url)) return 'The plans link is not a Google Drive link.'
   return null
 }
-
 // ---------------------------------------------------------------------------------------------
 // What the kinds of plan sets are (the owner, 2026-10-04: "I think it's important that we explain
 // to a user what these different kinds of plans are." He wrote the facts; these are his, made short.)
@@ -1221,7 +889,6 @@ export interface SetKindHelp {
   inIt: string
   forWhat: string
 }
-
 /** The three kinds on New project's step 2, in the chips' order. */
 export const SET_KIND_HELP: SetKindHelp[] = [
   {
@@ -1249,7 +916,6 @@ export const SET_KIND_HELP: SetKindHelp[] = [
     forWhat: 'Code approval. Plan reviewers send comments, and the drawings get revised until approved. The approved, stamped set has to be kept on the job site.',
   },
 ]
-
 // ---------------------------------------------------------------------------------------------
 // The budgets against the size (the owner, 2026-10-04: "show the amount of square feet added at
 // the prior page and then the cost per square foot, broken down by trade, and the total")
@@ -1259,7 +925,6 @@ export const SET_KIND_HELP: SetKindHelp[] = [
 export function perSqFtWords(perSqFt: number): string {
   return `$${perSqFt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/sq ft`
 }
-
 /** One trade's budget and what it comes to a square foot (null: no size given). */
 export interface BudgetLine {
   trade: string
@@ -1267,7 +932,6 @@ export interface BudgetLine {
   ours: boolean
   perSqFt: number | null
 }
-
 /** Each ticked trade's budget over the project's size, and the total. No size: amounts only. */
 export function budgetBySize(
   lines: { trade: string; amount: number; ours: boolean }[],
@@ -1277,7 +941,6 @@ export function budgetBySize(
   const total = lines.reduce((n, l) => n + l.amount, 0)
   return { lines: lines.map((l) => ({ ...l, perSqFt: per(l.amount) })), total, totalPerSqFt: per(total) }
 }
-
 // ---------------------------------------------------------------------------------------------
 // The sheet index as a table: rows from a plan PDF, a paste or typing (the owner, 2026-10-04:
 // "build 1, 4 and 5 for the sheet index")
@@ -1285,12 +948,10 @@ export function budgetBySize(
 
 /** The disciplines a sheet can be put in when its number's letters do not say. */
 export const SHEET_DISCIPLINES = ['General', 'Civil', 'Landscape', 'Architectural', 'Interiors', 'Structural', 'Fire protection', 'Plumbing', 'Mechanical', 'Electrical', 'Technology']
-
 /** A sheet's discipline: the office's pick, else read from its number's letters. */
 export function disciplineOf(sheet: PlanSheet): string {
   return sheet.discipline ?? sheetDiscipline(sheet.id)
 }
-
 /**
  * The trades the sheets suggest, with each sheet the office put in a discipline its letters do not
  * say added to that discipline's trades. `guesses` is what `tradesForPlans` or `tradesForSheets` said.
@@ -1309,7 +970,6 @@ export function withPickedDisciplines<T extends { trade: string; from: string[] 
   }
   return [...out.values()].sort((a, b) => tradeOrder(a.trade) - tradeOrder(b.trade))
 }
-
 /** One row of the sheet table while the office works on it. */
 export interface SheetIndexRow {
   key: string
@@ -1321,7 +981,6 @@ export interface SheetIndexRow {
   /** Why the row could not be read, for a page of a PDF: shown until the office fixes it. */
   problem?: string
 }
-
 /** What is wrong with each row, by key: no number yet, or a number another row has. */
 export function rowProblems(rows: SheetIndexRow[]): Record<string, string> {
   const out: Record<string, string> = {}
@@ -1334,7 +993,6 @@ export function rowProblems(rows: SheetIndexRow[]): Record<string, string> {
   }
   return out
 }
-
 /** The sheets the table holds: each row with a number, the first of any repeated number. */
 export function sheetsOfRows(rows: SheetIndexRow[]): PlanSheet[] {
   const problems = rowProblems(rows)
@@ -1347,7 +1005,6 @@ export function sheetsOfRows(rows: SheetIndexRow[]): PlanSheet[] {
       ...(r.page ? { page: r.page } : {}),
     }))
 }
-
 /** The number after this one, for + Add sheet: A-101 gives A-102, A1.01 gives A1.02, E-9 gives E-10. */
 export function nextSheetNumber(id: string): string {
   const m = id.trim().toUpperCase().match(/^(.*?)(\d+)[A-Z]?$/)
@@ -1356,16 +1013,13 @@ export function nextSheetNumber(id: string): string {
   const next = String(Number(digits) + 1).padStart(digits.length, '0')
   return `${m[1] ?? ''}${next}`
 }
-
 /** One pasted line, read or skipped with why. */
 export interface PastedLine {
   line: string
   sheet: PlanSheet | null
   why: string | null
 }
-
 const SHEET_NUMBER_AT_END = /^(.*?[A-Za-z].*?)[\s.\-–—:]+([A-Za-z]{1,2}(?:-\d{1,3}(?:\.\d{1,3})?|-?\d\.\d{2}|\d{3})[A-Za-z]?)\s*$/
-
 /**
  * A pasted sheet list read line by line (any layout: tabs, dot leaders, dashes, capitals, the
  * number before the title or after it). Each line is read, or skipped with why, so nothing goes
@@ -1406,7 +1060,6 @@ export function readSheetLines(text: string, already: string[] = []): PastedLine
   }
   return out
 }
-
 /** One piece of text on a PDF page: where it sits (from the bottom-left, in points) and how big it is. */
 export interface PdfTextItem {
   str: string
@@ -1414,7 +1067,6 @@ export interface PdfTextItem {
   y: number
   size: number
 }
-
 /** A page's text with the pieces of one line of words joined ("FIRST" and "FLOOR PLAN" read as one title). */
 function textRuns(items: PdfTextItem[]): PdfTextItem[] {
   const pieces = items.map((i) => ({ ...i, str: i.str.replace(/\s+/g, ' ') })).filter((i) => i.str.trim() !== '')
@@ -1432,10 +1084,8 @@ function textRuns(items: PdfTextItem[]): PdfTextItem[] {
   }
   return runs.map(({ end: _end, ...r }) => ({ ...r, str: r.str.trim() }))
 }
-
 const LONE_SHEET_NUMBER = /^[A-Za-z]{1,2}(?:-\d{1,3}(?:\.\d{1,3})?|-?\d\.\d{2}|\d{3})[A-Za-z]?$/
 const BLOCK_LABEL = /^(sheet(\s*(title|no\.?|number|name))?|title|drawing( title)?|project|issued?|date|scale|drawn( by)?|checked( by)?|revisions?|job( no\.?)?)\s*:?$/i
-
 /**
  * A sheet's number and title read from its page's title block. The number is the biggest lone sheet
  * number in the bottom-right of the page (anywhere, if the corner has none). The title is the text
@@ -1467,7 +1117,6 @@ export function readTitleBlock(items: PdfTextItem[], width: number, height: numb
   const title = lines.map((i) => i.str).join(' ')
   return sheetIndexInText(`${number.str}  ${title}`).sheets[0] ?? { id: number.str.toUpperCase(), title }
 }
-
 /** A made-up table of contents for the made-up clinic, as a project manual prints it. */
 export const SAMPLE_SPEC_INDEX = [
   'PROJECT MANUAL, TABLE OF CONTENTS',

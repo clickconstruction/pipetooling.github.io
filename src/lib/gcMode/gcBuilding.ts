@@ -14,13 +14,15 @@ import { GC_COMPANY } from './gcFixture'
 import { punchCounts, punchWords } from './gcBuildingPunch'
 import type { PayAppParties } from './gcPayAppFile'
 import { stageReached } from './gcTheirSov'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { addDays, crewStages } from '../gc/building'
+export { CREW_STAGE_WEIGHTS, addDays, crewStages, sentBackOpen } from '../gc/building'
 
 /**
  * The general contractor's name on the "To" line. It reads the one company record in the fixture
  * (`GC_COMPANY`), so a later company changes it there (owner, 2026-10-02: one record).
  */
 export const GC_COMPANY_NAME = GC_COMPANY.name
-
 /** What only the trade can say on a pay application. Everything else comes from the job. */
 export interface PayAppInput {
   /** Percent done per line of the statement of work. A line left out keeps what they reported. */
@@ -41,7 +43,6 @@ export interface PayAppInput {
    */
   stored?: Record<string, number>
 }
-
 /** One row of the G703. Letters are the AIA columns. */
 export interface PayAppLine {
   item: number
@@ -67,7 +68,6 @@ export interface PayAppLine {
   /** I: retainage held on G. */
   retainage: number
 }
-
 /** The G702's numbered lines. */
 export interface PayAppSummary {
   /** 1 */
@@ -90,7 +90,6 @@ export interface PayAppSummary {
   /** 9 */
   balanceToFinish: number
 }
-
 export interface PayApplication {
   number: number
   /** The retainage release: every line at 100%, nothing held, line 8 is what was held. */
@@ -100,7 +99,6 @@ export interface PayApplication {
   totals: Omit<PayAppLine, 'item' | 'sovId' | 'label' | 'pct'> & { pct: number }
   summary: PayAppSummary
 }
-
 /** A line's percent billed before application `number`: the highest any earlier draw took it to. */
 function pctBefore(sow: Sow, sovId: string, number: number): number {
   let pct = 0
@@ -111,7 +109,6 @@ function pctBefore(sow: Sow, sovId: string, number: number): number {
   }
   return pct
 }
-
 /**
  * The G702 and G703 for application `number` on a statement of work. Earlier applications come
  * from the draws before it; `toPct` is what this one claims per line (a past draw passes its own
@@ -180,30 +177,25 @@ export function payApplication(sow: Sow, number: number, toPct: Record<string, n
     },
   }
 }
-
 /** A new application starts from what the trade last reported on each line. */
 export function payAppDraftPcts(sow: Sow): Record<string, number> {
   return Object.fromEntries(sow.sov.map((l) => [l.id, l.pctReported]))
 }
-
 /** A past draw's application, rebuilt from the draws: what the office opens from the Draws tab. */
 export function payApplicationForDraw(sow: Sow, draw: Draw): PayApplication {
   // The form is what the trade sent: a draw approved for less keeps what they asked in `asked`.
   const lines = draw.asked?.lines ?? draw.lines
   return payApplication(sow, draw.number, Object.fromEntries(lines.map((l) => [l.sovId, l.toPct])), draw.final === true, storedOf(lines))
 }
-
 /** A draw's stored materials by line. */
 export function storedOf(lines: { sovId: string; stored?: number }[]): Record<string, number> {
   return Object.fromEntries(lines.filter((l) => (l.stored ?? 0) > 0).map((l) => [l.sovId, l.stored ?? 0]))
 }
-
 /** What was stored on site on the application before `number`: F is a balance, so only the last one counts. */
 export function storedBefore(sow: Sow, number: number): number {
   const prev = [...sow.draws].filter((d) => d.number < number).sort((a, b) => b.number - a.number)[0]
   return prev ? prev.lines.reduce((s, l) => s + (l.stored ?? 0), 0) : 0
 }
-
 /**
  * A draw's money from its application: the work this period plus the change in what is stored
  * on site, less retainage on it. Stored that gets built comes out of F as it goes into E, so it is
@@ -214,12 +206,10 @@ export function drawMoney(sow: Sow, app: PayApplication): { gross: number; retai
   const retainage = (gross * sow.retainagePct) / 100
   return { gross, retainage, net: gross - retainage }
 }
-
 /** The lines a draw keeps: each with work this period or materials stored. */
 export function drawLinesOf(app: PayApplication): { sovId: string; toPct: number; stored?: number }[] {
   return app.lines.filter((l) => l.thisPeriod > 0 || l.stored > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct, ...(l.stored > 0 ? { stored: l.stored } : {}) }))
 }
-
 /**
  * A draw approved for less (owner, 2026-10-02): the percent we approve on each line, never above
  * what they asked nor below what was billed before. It pays now; the rest stays theirs to ask for.
@@ -230,21 +220,17 @@ export function drawApprovedLess(sow: Sow, draw: Draw, weApprove: Record<string,
   const app = payApplication(sow, draw.number, toPct, false, storedOf(draw.lines))
   return { lines: drawLinesOf(app), ...drawMoney(sow, app) }
 }
-
 /** The final pay application a trade can send now: the next number, every line at 100%. */
 export function finalPayApplication(sow: Sow): PayApplication {
   return payApplication(sow, sow.draws.length + 1, {}, true)
 }
-
 /** The four steps on the pay application's rail. The paper beside them marks what each one fills. */
 export type PayAppStepKey = 'work' | 'details' | 'sign' | 'send'
-
 export interface PayAppStep {
   n: number
   key: PayAppStepKey
   state: 'done' | 'now' | 'wait'
 }
-
 export function payAppSteps(app: PayApplication, input: PayAppInput): { steps: PayAppStep[]; ready: boolean } {
   const done: Record<PayAppStepKey, boolean> = {
     work: app.summary.currentDue > 0,
@@ -261,12 +247,10 @@ export function payAppSteps(app: PayApplication, input: PayAppInput): { steps: P
     ready,
   }
 }
-
 /** What the trade's company already has on file for the pay application. */
 export function payAppKnown(partner: Partner): { address: string; license: string; signedBy: string } {
   return { address: partner.address ?? '', license: partner.license ?? '', signedBy: partner.contact }
 }
-
 /** A new pay application: the percents they reported, what their company has on file, the rest blank. */
 export function newPayAppDraft(sow: Sow, partner: Partner): PayAppInput {
   const known = payAppKnown(partner)
@@ -281,7 +265,6 @@ export function newPayAppDraft(sow: Sow, partner: Partner): PayAppInput {
     stored: {},
   }
 }
-
 // ---------------------------------------------------------------------------------------------
 // Our own crew: a trade we do ourselves, built on the Pipeline
 // ---------------------------------------------------------------------------------------------
@@ -301,7 +284,6 @@ export function ownCrewWork(pkg: TradePackage): OwnCrewWork | null {
   const exact = byLine ? crewPctFromStages(pkg, byLine) : (self.pctDone ?? 0)
   return { pct: Math.round(exact), worth: self.value, done: (self.value * exact) / 100, ref: self.ref, stages, byStage: Boolean(byLine) }
 }
-
 export interface OwnCrewWork {
   /** The whole trade, as a whole percent. */
   pct: number
@@ -314,44 +296,14 @@ export interface OwnCrewWork {
   /** True once our crew reports by stage. */
   byStage: boolean
 }
-
-/**
- * How much of a trade each stage is worth, by its name (my default, owner unconfirmed): rough in
- * carries the most. A stage with another name gets an even share. The shares are scaled to 100.
- */
-export const CREW_STAGE_WEIGHTS: Record<string, number> = { Underground: 20, 'Rough in': 35, 'Top out': 25, Trim: 20 }
-
-export function crewStages(pkg: TradePackage): { lineId: string; label: string; weight: number }[] {
-  const raw = pkg.scope.map((item) => ({ lineId: item.id, label: item.label, weight: CREW_STAGE_WEIGHTS[item.label] ?? 25 }))
-  const total = raw.reduce((s, r) => s + r.weight, 0)
-  return raw.map((r) => ({ ...r, weight: total === 0 ? 0 : (r.weight / total) * 100 }))
-}
-
 /** The whole-trade percent our crew's stages come to, weighed by each stage's share. */
 export function crewPctFromStages(pkg: TradePackage, byLine: Record<string, number>): number {
   return crewStages(pkg).reduce((s, st) => s + (st.weight * (byLine[st.lineId] ?? 0)) / 100, 0)
 }
-
-// ---------------------------------------------------------------------------------------------
-// The office sends a pay application back
-// ---------------------------------------------------------------------------------------------
-
-/** The pay application we sent back that the trade has not sent again yet. Null: none waiting. */
-export function sentBackOpen(sow: Sow): DrawSentBack | null {
-  const next = sow.draws.length + 1
-  const list = sow.sentBack ?? []
-  for (let i = list.length - 1; i >= 0; i--) {
-    const back = list[i]
-    if (back && back.draw.number === next) return back
-  }
-  return null
-}
-
 /** How many times pay application `number` went back to the trade. 0: never. */
 export function timesSentBack(sow: Sow, number: number): number {
   return (sow.sentBack ?? []).filter((b) => b.draw.number === number).length
 }
-
 /**
  * The resend starts from what they asked for, with the percent we see on each line we flagged,
  * and what they typed last time. They sign again: a new amount needs a new waiver.
@@ -372,7 +324,6 @@ export function resendPayAppDraft(sow: Sow, partner: Partner, back: DrawSentBack
     stored: storedOf(back.draw.lines),
   }
 }
-
 // ---------------------------------------------------------------------------------------------
 // Closeout: retainage release and the final waivers
 // ---------------------------------------------------------------------------------------------
@@ -386,23 +337,13 @@ export function retainageHeldNow(sow: Sow): number {
   const released = sow.draws.filter((d) => d.final && d.status === 'paid').reduce((s, d) => s + d.net, 0)
   return held - released
 }
-
 /** Every line billed at 100% and approved: the work is all paid for except the retainage. */
 export function workAllBilled(sow: Sow): boolean {
   return sow.sov.length > 0 && sow.sov.every((l) => l.pctBilled >= 100)
 }
-
 export type CloseoutKey = 'billed' | 'accepted' | 'finalApp' | 'ownerReleased' | 'released' | 'finalWaiver'
-
 /** We pay a trade its retainage this many days after the owner pays us ours (owner, 2026-10-02). */
 export const TRADE_RETAINAGE_WAIT_DAYS = 10
-
-/** The day after `days` days, as YYYY-MM-DD (UTC, so no time zone moves it). */
-export function addDays(iso: string, days: number): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days)).toISOString().slice(0, 10)
-}
-
 /**
  * The day the owner paid us the retainage they held: the day they paid our final pay application
  * on Bill the owner. The same record Owner Billing's `ownerReleasedRetainage` reads (that file
@@ -411,13 +352,11 @@ export function addDays(iso: string, days: number): string {
 export function ownerRetainagePaidOn(project: GcProject): string | null {
   return project.ownerBilling?.payApps?.find((a) => a.final === true && a.paidOn !== null)?.paidOn ?? null
 }
-
 /** The first day we may pay a trade its retainage: 10 days after the owner pays us ours. Null: not paid yet. */
 export function tradeRetainageOpensOn(project: GcProject): string | null {
   const paidOn = ownerRetainagePaidOn(project)
   return paidOn ? addDays(paidOn, TRADE_RETAINAGE_WAIT_DAYS) : null
 }
-
 export interface CloseoutStep {
   key: CloseoutKey
   label: string
@@ -426,7 +365,6 @@ export interface CloseoutStep {
   done: boolean
   detail: string
 }
-
 export interface TradeCloseout {
   steps: CloseoutStep[]
   /** The first step not done. Null once the trade is closed out. */
@@ -442,7 +380,6 @@ export interface TradeCloseout {
   /** The first day we may pay it, once the owner has paid us. Null: the owner has not yet. */
   opensOn: string | null
 }
-
 /**
  * A trade's closeout, in order (owner, 2026-10-02): every line billed; we accept the work (the
  * punch list is done); their final pay application with a conditional final release of lien, the
@@ -545,13 +482,11 @@ export function tradeCloseout(sow: Sow, project?: GcProject, today?: string): Tr
     opensOn,
   }
 }
-
 export interface CloseoutRow {
   pkg: TradePackage
   partner: Partner | undefined
   closeout: TradeCloseout
 }
-
 /** The Closeout tab: every trade with a statement of work, what we still hold, what we have paid back. */
 export function projectCloseout(state: GcState, project: GcProject) {
   const rows: CloseoutRow[] = project.packages
@@ -571,7 +506,6 @@ export function projectCloseout(state: GcState, project: GcProject) {
     closed: rows.filter((r) => r.closeout.closed).length,
   }
 }
-
 /**
  * Can we close the job? Every trade we hire is closed out, our own crew is done, and the owner
  * has paid our final pay application. Says what is left, in words, until it can (owner, 2026-10-02: a
@@ -595,7 +529,6 @@ export function jobCloseout(state: GcState, project: GcProject): { ready: boolea
   if (!ownerRetainagePaidOn(project)) left.push('The customer has not paid our final pay application.')
   return { ready: left.length === 0 && !project.closedOn, left, closedOn: project.closedOn ?? null }
 }
-
 // ---------------------------------------------------------------------------------------------
 // Change orders, the trade's side (Owner Billing builds the owner's side)
 // ---------------------------------------------------------------------------------------------
@@ -604,7 +537,6 @@ export function jobCloseout(state: GcState, project: GcProject): { ready: boolea
 export function changeOrderLines(sow: Sow): SovLine[] {
   return sow.sov.filter((l) => l.changeOrderId !== undefined)
 }
-
 /**
  * What a pay application claims to date on the original contract, read against the trade's own
  * schedule of values (the owner, 2026-10-04, question 4): the work in place on our lines. Change
@@ -614,7 +546,6 @@ export function payAppClaimedToDate(sow: Sow, app: PayApplication): number {
   const original = new Set(sow.sov.filter((l) => !l.changeOrderId).map((l) => l.id))
   return app.lines.filter((l) => original.has(l.sovId)).reduce((t, l) => t + l.toDate - l.stored, 0)
 }
-
 /** "Their schedule: through Rough-in, 40% into Top out." Where a draw lands on theirs. Null: they gave none. */
 export function drawOnTheirSov(sow: Sow, draw: Draw): string | null {
   const theirs = sow.theirSov ?? []
@@ -625,7 +556,6 @@ export function drawOnTheirSov(sow: Sow, draw: Draw): string | null {
   const parts = [r.through.length > 0 ? `through ${r.through.join(', ')}` : '', r.into ? `${r.into.pct}% into ${r.into.label}` : ''].filter(Boolean)
   return parts.length === 0 ? 'Their schedule: nothing reached yet.' : `Their schedule: ${parts.join(', ')}.`
 }
-
 /**
  * Who and what a trade's pay application is for, beside its numbers (question 12): the trade to us,
  * its dates, and the change orders on it, each with whether the trade signed it since its last
@@ -662,7 +592,6 @@ export function tradePayAppParties(
     changeOrders,
   }
 }
-
 /**
  * The contract with the trade to date: the original price plus the signed changes. The original
  * price (`sow.price`) never moves, since it is what we carry in our number to the owner; the owner's
@@ -671,15 +600,12 @@ export function tradePayAppParties(
 export function sowContractSum(sow: Sow): number {
   return sow.price + changeOrderLines(sow).reduce((s, l) => s + l.amount, 0)
 }
-
 /** Where a change order stands on the trade's side: with the owner, ours to send, waiting on the trade, signed. */
 export type TradeChangeState = 'owner' | 'toSend' | 'sent' | 'signed'
-
 export interface TradeChange {
   co: ChangeOrder
   state: TradeChangeState
 }
-
 /**
  * The change orders that belong to a trade we hire with a signed statement of work, and where each
  * stands. A declined one is left out. Our own crew's and our own work's have no trade side.
@@ -693,7 +619,6 @@ export function tradeChangesFor(project: GcProject, pkg: TradePackage): TradeCha
       state: co.status !== 'signed' ? 'owner' : !co.tradeChange ? 'toSend' : co.tradeChange.status === 'sent' ? 'sent' : 'signed',
     }))
 }
-
 /**
  * How far the trade says a change order's work is: its line's reported percent, once the trade has
  * signed the change. Null before that. For Owner Billing's bill, the way it reads ownCrewWork.

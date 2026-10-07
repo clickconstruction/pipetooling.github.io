@@ -1,21 +1,27 @@
 /**
  * Writes main's test data for the schedule's kernels (`src/lib/gc/schedule/testState.ts`, the schedule's
  * PR 1a): the prototype's made-up data, `initialGcState()`, cut to the fields main's kernels read, as
- * `schedule-pr1a.lift.json` lists them (its `types` fields and its `slice`). Run it on the spike:
+ * the lifts in `LIFTS` list them (their `types` fields and their `slice`). Run it on the spike:
  *
- *   VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vite-node to-dos/gc-mode/scripts/schedule-test-state.ts <out.ts>
+ *   VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vite-node to-dos/gc-mode/scripts/schedule-test-state.ts --out <out.ts>
  *
- * `sliceOf` is exported, so the spike's test can hold main's copy equal to the fixture.
+ * `testStateSource` is exported, so the spike's test holds main's file to exactly what this writes
+ * (`gcScheduleTestState.test.ts`). Imported there, it writes nothing: only `--out` writes.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { initialGcState } from '../../../src/lib/gcMode/gcFixture'
 
 type Lift = {
   types: { to: string; fields?: Record<string, string[] | 'all'> }[]
-  slice: { root: string; nested: Record<string, Record<string, string>> }
+  slice?: { root: string; nested: Record<string, Record<string, string>> }
 }
-const lift = JSON.parse(readFileSync(new URL('./schedule-pr1a.lift.json', import.meta.url), 'utf8')) as Lift
-const fields = Object.assign({}, ...lift.types.map((t) => t.fields ?? {})) as Record<string, string[] | 'all'>
+/** The lifts whose fields main's test data carries, oldest first. A later lift's list for a shape replaces an earlier one's. */
+const LIFTS = ['schedule-pr1a.lift.json']
+const lifts = LIFTS.map((f) => JSON.parse(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8')) as Lift)
+const fields = Object.assign({}, ...lifts.flatMap((l) => l.types.map((t) => t.fields ?? {}))) as Record<string, string[] | 'all'>
+const nestedOf: Record<string, Record<string, string>> = {}
+for (const l of lifts) for (const [shape, map] of Object.entries(l.slice?.nested ?? {})) nestedOf[shape] = { ...(nestedOf[shape] ?? {}), ...map }
+const rootShape = lifts.find((l) => l.slice)?.slice?.root ?? 'GcState'
 
 /** A value cut to a named shape's fields; a field holding another named shape is cut to it in turn. */
 function cut(value: unknown, shape: string): unknown {
@@ -23,7 +29,7 @@ function cut(value: unknown, shape: string): unknown {
   if (Array.isArray(value)) return value.map((v) => cut(v, shape))
   const keep = fields[shape]
   if (!keep || keep === 'all' || typeof value !== 'object') return value
-  const nested = lift.slice.nested[shape] ?? {}
+  const nested = nestedOf[shape] ?? {}
   const out: Record<string, unknown> = {}
   for (const f of keep) {
     const v = (value as Record<string, unknown>)[f]
@@ -35,7 +41,7 @@ function cut(value: unknown, shape: string): unknown {
 
 /** The made-up data as main's kernels read it. */
 export function sliceOf(state = initialGcState()): unknown {
-  return cut(state, lift.slice.root)
+  return cut(state, rootShape)
 }
 
 const key = (k: string) => (/^[A-Za-z_$][\w$]*$/.test(k) ? k : `'${k}'`)
@@ -62,11 +68,9 @@ function literal(v: unknown, indent = ''): string {
   return `{\n${entries.map(([k, x]) => `${next}${key(k)}: ${literal(x, next)}`).join(',\n')},\n${indent}}`
 }
 
-const out = process.argv[2]
-if (out) {
-  writeFileSync(
-    out,
-    `/**
+/** The whole of main's `testState.ts`, as this script writes it. */
+export function testStateSource(state = initialGcState()): string {
+  return `/**
  * Test data only: the app never reads it. It is the GC mode prototype's made-up data
  * (\`initialGcState\` in \`gcFixture.ts\`, branch spike/gc-mode), cut to the fields main's GC kernels
  * read (\`../types.ts\` and \`./types.ts\`). Written by to-dos/gc-mode/scripts/schedule-test-state.ts on
@@ -74,13 +78,18 @@ if (out) {
  */
 import type { GcState } from '../types'
 
-const DATA: GcState = ${literal(sliceOf())}
+const DATA: GcState = ${literal(sliceOf(state))}
 
 /** A fresh copy each call, like the prototype's \`initialGcState\`, so a test may change what it gets. */
 export function initialGcState(): GcState {
   return structuredClone(DATA)
 }
-`,
-  )
+`
+}
+
+const outAt = process.argv.indexOf('--out')
+const out = outAt > 0 ? process.argv[outAt + 1] : undefined
+if (out) {
+  writeFileSync(out, testStateSource())
   console.log(`wrote ${out}`)
 }

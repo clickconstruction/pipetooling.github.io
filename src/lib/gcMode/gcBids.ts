@@ -8,12 +8,9 @@ import { ownBidPriced, partnerById } from './gcLookups'
 import { pDate, type PortalLang } from './gcPortalI18n'
 import { GC_COMPANY } from './gcFixture'
 import { exclusionCoversTotal, exclusionListWords, uncoveredExclusions } from './gcExclusions'
-
-/** What the alternates the office took add to the number (negative: take off). 0 when none. */
-export function takenAlternatesTotal(bid: SubBid): number {
-  const taken = new Set(bid.takenAlternates ?? [])
-  return (bid.alternates ?? []).filter((a) => taken.has(a.label)).reduce((sum, a) => sum + a.amount, 0)
-}
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { carriedAmount, leveledTotal, takenAlternatesTotal } from '../gc/bids'
+export { carriedAmount, leveledTotal, takenAlternatesTotal } from '../gc/bids'
 
 /**
  * A number past the day it holds to (question 14, the Board lane's call, 2026-10-04): it stops
@@ -23,18 +20,6 @@ export function takenAlternatesTotal(bid: SubBid): number {
 export function quoteRanOut(bid: SubBid, today: string): boolean {
   return bid.goodForDays !== undefined && bid.goodForDays > 0 && daysUntil(today, bid.submittedOn) > bid.goodForDays
 }
-
-/** The bid plus the office's plug for every scope item it does not clearly include, and any alternate it took. */
-export function leveledTotal(pkg: TradePackage, invite: Invite): number | null {
-  const bid = invite.bid
-  if (!bid) return null
-  const plugs = pkg.scope.reduce((sum, item) => {
-    return bid.includes[item.id] === 'yes' ? sum : sum + (bid.plugs[item.id] ?? 0)
-  }, 0)
-  // A cover cost on what their quote excludes (the owner, 2026-10-04) counts like a plug.
-  return bid.amount + plugs + takenAlternatesTotal(bid) + exclusionCoversTotal(pkg, bid)
-}
-
 /**
  * The work a quote does not clearly include and has no cost set for. While any is left, the
  * quote's all-in number is not known: `leveledTotal` counts it as $0, so every screen that shows
@@ -45,7 +30,6 @@ export function uncostedLines(pkg: TradePackage, invite: Invite): ScopeItem[] {
   if (!bid) return []
   return pkg.scope.filter((item) => bid.includes[item.id] !== 'yes' && !((bid.plugs[item.id] ?? 0) > 0))
 }
-
 /**
  * The work with no cost in the quote we carry (or awarded) on a trade. Empty for our own bid, our
  * budget, a statement of work (its price is the contract) and a trade with nothing carried.
@@ -55,38 +39,32 @@ export function carriedUncosted(pkg: TradePackage): ScopeItem[] {
   const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
   return invite ? uncostedLines(pkg, invite) : []
 }
-
 /** The trades whose carried quote is missing a cost: our price to the owner is not known while any is. */
 export function proposalUncosted(project: GcProject): TradePackage[] {
   return project.packages.filter((pkg) => carriedUncosted(pkg).length > 0)
 }
-
 /** Our price's gap named trade by trade: "In Roofing, 1 line has no cost yet: roof curbs." */
 export function proposalUncostedWords(project: GcProject): string {
   return proposalUncosted(project)
     .map((pkg) => `In ${pkg.trade}, ${uncostedWords(carriedUncosted(pkg))}`)
     .join(' ')
 }
-
 /** "1 line has no cost yet: roof curbs." Said beside a "+ ?" so the number's gap is named. */
 export function uncostedWords(items: ScopeItem[]): string {
   if (items.length === 0) return ''
   const names = listWords(items.map((i) => i.label.toLowerCase()))
   return items.length === 1 ? `1 line has no cost yet: ${names}.` : `${items.length} lines have no cost yet: ${names}.`
 }
-
 /** A bid is stale when a plan set newer than its basis changed this package's scope. */
 export function bidIsStale(project: GcProject, pkg: TradePackage, invite: Invite): boolean {
   const bid = invite.bid
   if (!bid) return false
   return project.planSets.some((s) => s.rev > bid.basedOnRev && s.touches.includes(pkg.id))
 }
-
 function listWords(words: string[]): string {
   if (words.length <= 1) return words[0] ?? ''
   return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
 }
-
 /** One bid read for the comparison: what it leaves out, what covering that costs, where it lands. */
 export interface CompareLine {
   inviteId: string
@@ -97,13 +75,11 @@ export interface CompareLine {
   /** False while something it leaves out has no cost set: the all-in number is not known yet. */
   complete: boolean
 }
-
 export interface BidComparison {
   lines: CompareLine[]
   conclusion: string
   complete: boolean
 }
-
 /**
  * The bids on a trade compared for the same work, said in sentences. A bid that leaves work out
  * is not cheaper until the cost of that work is added back. That adding back is all "leveling" is.
@@ -163,11 +139,9 @@ export function compareBids(state: GcState, project: GcProject, pkg: TradePackag
   }
   return { lines, conclusion, complete }
 }
-
 export function bidsIn(pkg: TradePackage): Invite[] {
   return pkg.invites.filter((i) => i.bid !== null)
 }
-
 export function lowLeveled(pkg: TradePackage): { invite: Invite; total: number } | null {
   let best: { invite: Invite; total: number } | null = null
   for (const invite of bidsIn(pkg)) {
@@ -176,10 +150,8 @@ export function lowLeveled(pkg: TradePackage): { invite: Invite; total: number }
   }
   return best
 }
-
 /** 'self-unpriced': our own Trades mode bid is started but not priced yet (`ownBidPriced`). */
 export type Coverage = 'self' | 'self-unpriced' | 'awarded' | 'carried' | 'plug' | 'bids' | 'waiting' | 'empty'
-
 export function packageCoverage(pkg: TradePackage): Coverage {
   if (pkg.selfPerform) return ownBidPriced(pkg) ? 'self' : 'self-unpriced'
   if (pkg.awardedInviteId) return 'awarded'
@@ -189,21 +161,10 @@ export function packageCoverage(pkg: TradePackage): Coverage {
   if (pkg.invites.some((i) => i.status !== 'declined')) return 'waiting'
   return 'empty'
 }
-
 /** The trade's number in our price is our own budget, not anyone's quote. */
 export function isGuess(pkg: TradePackage): boolean {
   return !pkg.selfPerform && !pkg.awardedInviteId && !pkg.sow && pkg.carried === 'plug'
 }
-
-export function carriedAmount(pkg: TradePackage): number | null {
-  // Our own bid counts once it is priced (the owner, 2026-10-02): until then its value is our guess, a hole.
-  if (pkg.selfPerform) return ownBidPriced(pkg) ? pkg.selfPerform.value : null
-  if (pkg.sow) return pkg.sow.price
-  if (pkg.carried === 'plug') return pkg.budget
-  const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
-  return invite ? leveledTotal(pkg, invite) : null
-}
-
 export interface ProposalTotals {
   trades: number
   holes: TradePackage[]
@@ -213,7 +174,6 @@ export interface ProposalTotals {
   fee: number
   price: number
 }
-
 export function proposalTotals(project: GcProject): ProposalTotals {
   let trades = 0
   const holes: TradePackage[] = []
@@ -237,7 +197,6 @@ export function proposalTotals(project: GcProject): ProposalTotals {
     price: cost + contingency + fee,
   }
 }
-
 export function sowMoney(sow: Sow): { billed: number; retainageHeld: number; paid: number; ready: number } {
   const billed = sow.sov.reduce((s, l) => s + (l.amount * l.pctBilled) / 100, 0)
   const ready = sow.sov.reduce((s, l) => s + (l.amount * Math.max(0, l.pctReported - l.pctBilled)) / 100, 0)
@@ -245,7 +204,6 @@ export function sowMoney(sow: Sow): { billed: number; retainageHeld: number; pai
   const retainageHeld = sow.draws.filter((d) => d.status !== 'requested').reduce((s, d) => s + d.retainage, 0)
   return { billed, retainageHeld, paid, ready }
 }
-
 export interface BidTabRow {
   partnerId: string
   company: string
@@ -255,7 +213,6 @@ export interface BidTabRow {
   overLowPct: number
   awarded: boolean
 }
-
 /** The quotes on a trade as each company sent them, low to high. Our own plugs stay out of it. */
 export function bidTabRows(state: GcState, pkg: TradePackage): BidTabRow[] {
   const rows = bidsIn(pkg)
@@ -271,17 +228,14 @@ export function bidTabRows(state: GcState, pkg: TradePackage): BidTabRow[] {
     awarded: pkg.awardedInviteId === invite.id,
   }))
 }
-
 /** Bid tabs open once our own bid is in: before that, a tab would show one company another's price. */
 export function bidTabsOpen(project: GcProject): boolean {
   return project.ourBidSentOn !== null || project.stage !== 'pursuing'
 }
-
 /** A tab needs two quotes to say anything. */
 export function packageHasTab(pkg: TradePackage): boolean {
   return !pkg.selfPerform && bidsIn(pkg).length >= 2
 }
-
 /** What a company that quoted is told about how it came out. */
 /**
  * The line beside a company's bid tab: where the project stands for them. In the portal's language
@@ -308,6 +262,5 @@ export function bidTabResult(project: GcProject, pkg: TradePackage, partnerId: s
   if (winner?.partnerId === partnerId) return es ? `${gc} ganó el proyecto. Esta especialidad es suya.` : `${gc} won the project. This trade is yours.`
   return es ? `${gc} ganó el proyecto. Esta especialidad fue para otra empresa.` : `${gc} won the project. This trade went to another company.`
 }
-
 /** The least quotes we want on a trade, from different companies, before we trust the number. */
 export const BIDS_WANTED = 2
