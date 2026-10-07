@@ -1907,6 +1907,66 @@ browser check (`gcTheirDatesSample.ts`, Cibolo Creek Partners' master schedule f
 - The Milestones card's lines are keyed by their day too: a date changed from the file draws its
   line again, so the card's Save never holds a stale day to put back.
 
+## Later, the call list's bar reasons on the count, as built (2026-10-06)
+
+G-146, built by Helper 1 from `mockups/G-146.md` with the lead's go and pick 3. *To call* now means
+the whole call list, plus what Follow up already had.
+
+- **The bar reasons counted** come from the call list's own read and words, recoded so nothing
+  clashes:
+  - `failed`: an inspection failed on their work. Red.
+  - `overdue`: a bar past its finish. Red. It is not G-117's `late`, a trade's own word.
+  - `dueToday`: a bar due today and not done. Amber.
+  - `behind`: a bar behind the plan. Amber.
+  - `held`: a bar held by what someone owes, under whoever owes the hold. That can be the trade's
+    submittal, the architect's RFI or submittal, a delivery's company, or the customer's decision.
+- **Asides never count**, since they wait on us, the city or the utility. G-77's paperwork holds
+  are not counted again: they are the counts' `notReady`, one per company.
+- **Once per person.** A bar reason goes under a row already there, after the reasons the count
+  had before. So on a tie of tones, a trade's own word still reads first: Summit's late notice comes
+  before *behind*. A company only on the call list gets a row. The architect and the customer are
+  people too, and the architect carries only the holds that are theirs, never a bar.
+- **On the made-up data:**
+  - Fair Oaks D says *6 to call*, 3 late. In order: Pecan Valley Electric red, Cool Breeze
+    Mechanical red, Cibolo Creek Partners red, Iron Horse Fabrication amber, Summit Roofing amber,
+    Marsh & Vale Architects grey.
+  - The badge says 11, 6 late.
+  - Needs you says *11 to follow up on in GC mode*, with the same three names, then *and 8 more*.
+  - By company stays 5. It is the call list itself, and Cibolo's bill does not move the chart.
+- **A call about the work is not a paper owed.** Each person's reasons show in two groups, *On the
+  schedule* and *Owed to us*, from one tested rule, `reasonGroup(code)`. The groups show on the
+  board row's card, Follow up's *By people* and By company. Needs you's phrase names the work, such
+  as *Summit Roofing is behind on TPO membrane* or *Cool Breeze Mechanical holds up Rooftop units*.
+  A message drafted from the sheet asks about the work in the call list's words: *When will it be
+  done?*
+- **The board row's sheet carries what the row counts**, `boardFollowPeople`. That is the call
+  list's people with their items, then Follow up's other people on the job. **This is a fix as much
+  as a row.** The counts built a trade's sheet items only from Follow up's known asks and the plans.
+  So a company on the row only for its dates or its crew had no item, and the sheet left it out.
+  G-77's paperwork holds are asked once, by the paper's own item. *Work the list* reads the same
+  list.
+- **A bar reason on the card opens its bar** (pick 3). Pressing *Lighting is behind* opens the job's
+  Schedule tab at Lighting, through the tab's new `openLineId`.
+- **"Make them match" is the union, not the sum.** The owner asked on 2026-10-04 that the counts
+  match. The badge counts each person once across every job, since one call covers every job, and
+  each board row counts its own job's share. Before, no one was on two jobs' rows, so the rows added
+  up to the badge. Now Cool Breeze and the architect are on Boerne's row and Fair Oaks D's, so the
+  rows add to 13 and the badge says 11. `gcNeedsYou.test.ts` now holds the union.
+- **The split first, its own commit**: `callList` became `callRows` (the call list's own lines,
+  before Follow up's merge) plus the merge, so the people kernel never calls itself. Every test
+  stood untouched. `CALL_LIST_SAYS` gains the five codes, so By company says each once.
+- **The re-pin** moved the people readings only, on the tree merged with G-143 and G-145:
+  - `projects.fairoaksd.people` before any step, 2 to 6, and at step 92, where the job closes.
+  - `allPeople`, 9 to 11 and late 5 to 6, and `needsYou`'s title, at the start and steps 02 to 54.
+    Those carry the 2 more while Fair Oaks D is open. At steps 08 and 09 the old count changes go,
+    since Iron Horse was counted already.
+  - Helotes did not move: its held lines are the new plans' papers.
+  - No ring card or bench moved. From step 92 on, every reading is as before.
+- **Tests that read the new numbers by design**: the counts' own, the people kernel's, Needs you's,
+  G-117's (Summit was already on Follow up, so its notice adds a reason, not a person), and the
+  company people (the schedule items go to the job's contact, never the bookkeeper). Both of the
+  lead's pins were broken on purpose and caught: *due today* left out, and the RFI sent to the trade.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

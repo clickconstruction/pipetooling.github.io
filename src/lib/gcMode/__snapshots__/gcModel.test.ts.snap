@@ -46,8 +46,8 @@ exports[`GC mode golden walk > a payment reminder on Cibolo's late pay applicati
 exports[`GC mode golden walk > before any step 1`] = `
 {
   "allPeople": {
-    "count": 9,
-    "late": 5,
+    "count": 11,
+    "late": 6,
   },
   "assistantRules": [
     {
@@ -518,7 +518,7 @@ exports[`GC mode golden walk > before any step 1`] = `
     },
   ],
   "lastLog": null,
-  "needsYou": "9 to follow up on in GC mode",
+  "needsYou": "11 to follow up on in GC mode",
   "projects": {
     "boerne": {
       "people": {
@@ -1674,15 +1674,26 @@ exports[`GC mode golden walk > before any step 1`] = `
     },
     "fairoaksd": {
       "people": {
-        "count": 2,
-        "late": 2,
+        "count": 6,
+        "late": 3,
         "people": [
           {
             "key": "partner:pecanvalley",
             "reasons": [
               "insurance:red",
+              "failed:red",
               "waiver:amber",
               "notReady:amber",
+              "dueToday:amber",
+              "behind:amber",
+            ],
+            "tone": "red",
+          },
+          {
+            "key": "partner:coolbreeze",
+            "reasons": [
+              "held:red",
+              "held:grey",
             ],
             "tone": "red",
           },
@@ -1692,6 +1703,28 @@ exports[`GC mode golden walk > before any step 1`] = `
               "pay:3:red",
             ],
             "tone": "red",
+          },
+          {
+            "key": "partner:ironhorse",
+            "reasons": [
+              "dueToday:amber",
+            ],
+            "tone": "amber",
+          },
+          {
+            "key": "partner:summit",
+            "reasons": [
+              "behind:amber",
+            ],
+            "tone": "amber",
+          },
+          {
+            "key": "customer:marshvale",
+            "reasons": [
+              "held:grey",
+              "held:grey",
+            ],
+            "tone": "grey",
           },
         ],
       },
@@ -4197,8 +4230,8 @@ exports[`GC mode golden walk > step 01: Concrete: a cost to cover Alamo’s uncl
 exports[`GC mode golden walk > step 02: Structural steel: Bexar cannot do it 1`] = `
 {
   "changed": {
-    "allPeople.count": 8,
-    "allPeople.late": 4,
+    "allPeople.count": 10,
+    "allPeople.late": 5,
     "assistantRules[2].items": "[]",
     "assistantRules[2].now": "14 of 14 asks are opened or still inside 3 days.",
     "assistantRules[2].ok": true,
@@ -4212,7 +4245,7 @@ exports[`GC mode golden walk > step 02: Structural steel: Bexar cannot do it 1`]
     "lastLog.id": 1,
     "lastLog.text": "Bexar Steel Erectors cannot do Structural steel. Offer it to the next company.",
     "lastLog.who": "office",
-    "needsYou": "8 to follow up on in GC mode",
+    "needsYou": "10 to follow up on in GC mode",
     "projects.boerne.people.count": 5,
     "projects.boerne.people.late": 2,
     "projects.boerne.people.people[1].key": "partner:voltage",
@@ -4399,7 +4432,7 @@ exports[`GC mode golden walk > step 04: Structural steel: nudge Iron Horse 1`] =
 exports[`GC mode golden walk > step 05: Sitework: Hillside promises a day on a call 1`] = `
 {
   "changed": {
-    "allPeople.late": 3,
+    "allPeople.late": 4,
     "assistantRules[5].items": "[]",
     "assistantRules[5].now": "3 of 3 promises on live asks are still good.",
     "assistantRules[5].ok": true,
@@ -4466,7 +4499,6 @@ exports[`GC mode golden walk > step 07: Roofing: Bluebonnet promises in the port
 exports[`GC mode golden walk > step 08: Structural steel: Iron Horse opens the plans 1`] = `
 {
   "changed": {
-    "allPeople.count": 9,
     "followUps[1].invite": "«invite steel-ironhorse»",
     "followUps[1].order": 300,
     "followUps[1].partner": "«partner ironhorse»",
@@ -4487,7 +4519,6 @@ exports[`GC mode golden walk > step 08: Structural steel: Iron Horse opens the p
     "followUps[3].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 7,
     "lastLog.text": "Iron Horse Fabrication opened Addendum 1.",
-    "needsYou": "9 to follow up on in GC mode",
     "projects.boerne.people.count": 6,
     "projects.boerne.people.people[2].key": "partner:ironhorse",
     "projects.boerne.people.people[2].reasons[0]": "ask:amber",
@@ -4511,7 +4542,6 @@ exports[`GC mode golden walk > step 08: Structural steel: Iron Horse opens the p
 exports[`GC mode golden walk > step 09: Structural steel: Iron Horse bids 1`] = `
 {
   "changed": {
-    "allPeople.count": 8,
     "assistantRules[1].items[0].action.kind": "ask",
     "assistantRules[1].items[0].action.packageId": "fire",
     "assistantRules[1].items[0].action.partnerIds[0]": "redline",
@@ -4537,7 +4567,6 @@ exports[`GC mode golden walk > step 09: Structural steel: Iron Horse bids 1`] = 
     "followUps[2].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 8,
     "lastLog.text": "Iron Horse Fabrication quoted $158,000 on Structural steel.",
-    "needsYou": "8 to follow up on in GC mode",
     "projects.boerne.people.count": 5,
     "projects.boerne.people.people[2].key": "partner:hillside",
     "projects.boerne.people.people[2].reasons[0]": "plans:amber",
@@ -4674,7 +4703,7 @@ exports[`GC mode golden walk > step 10: Structural steel: Iron Horse revises 1`]
 exports[`GC mode golden walk > step 11: Electrical: Tejas passes 1`] = `
 {
   "changed": {
-    "allPeople.count": 7,
+    "allPeople.count": 9,
     "assistantRules[2].now": "14 of 14 asks are opened or still inside 3 days.",
     "assistantRules[3].now": "9 of 14 companies we are asking have all three.",
     "assistantRules[5].now": "2 of 2 promises on live asks are still good.",
@@ -4691,7 +4720,7 @@ exports[`GC mode golden walk > step 11: Electrical: Tejas passes 1`] = `
     "followUps[1].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 10,
     "lastLog.text": "Tejas Power passed on Electrical.",
-    "needsYou": "7 to follow up on in GC mode",
+    "needsYou": "9 to follow up on in GC mode",
     "projects.boerne.people.count": 4,
     "projects.boerne.people.people[1].key": "partner:hillside",
     "projects.boerne.people.people[1].reasons[0]": "plans:amber",
@@ -5085,14 +5114,14 @@ exports[`GC mode golden walk > step 24: Lonestar opens the bid tab 1`] = `
 exports[`GC mode golden walk > step 25: We won Boerne Retail Shell 1`] = `
 {
   "changed": {
-    "allPeople.count": 5,
+    "allPeople.count": 8,
     "customers.cibolo.inFront": 153090,
     "customers.cibolo.underContract": 2600494.56,
     "customers.cibolo.won": 4,
     "lastLog.id": 22,
     "lastLog.text": "We won Boerne Retail Shell. Buyout starts: award each trade.",
     "lastLog.who": "office",
-    "needsYou": "5 to follow up on in GC mode",
+    "needsYou": "8 to follow up on in GC mode",
     "projects.boerne.people.count": 1,
     "projects.boerne.people.late": 0,
     "projects.boerne.people.people[0].key": "customer:marshvale",
@@ -5423,7 +5452,7 @@ exports[`GC mode golden walk > step 25: We won Boerne Retail Shell 1`] = `
 exports[`GC mode golden walk > step 26: Award Sitework to Lonestar 1`] = `
 {
   "changed": {
-    "allPeople.count": 6,
+    "allPeople.count": 9,
     "assistantRules[1].now": "4 of 9 open asks have 2 quotes.",
     "assistantRules[2].now": "11 of 11 asks are opened or still inside 3 days.",
     "assistantRules[3].items[0].action": null,
@@ -5449,7 +5478,7 @@ exports[`GC mode golden walk > step 26: Award Sitework to Lonestar 1`] = `
     "followUps[0].words": "Promised a quote by Tue Oct 6, in 4 days.",
     "lastLog.id": 23,
     "lastLog.text": "Awarded Sitework to Lonestar Earthworks. A statement of work is drafted from their quote.",
-    "needsYou": "6 to follow up on in GC mode",
+    "needsYou": "9 to follow up on in GC mode",
     "projects.boerne.people.count": 2,
     "projects.boerne.people.people[1].key": "partner:lonestar",
     "projects.boerne.people.people[1].reasons[0]": "plans:grey",
@@ -5684,11 +5713,11 @@ exports[`GC mode golden walk > step 32: Kendall signs the master agreement 1`] =
 exports[`GC mode golden walk > step 33: Send the HVAC statement of work 1`] = `
 {
   "changed": {
-    "allPeople.count": 7,
+    "allPeople.count": 10,
     "lastLog.id": 30,
     "lastLog.text": "Sent the HVAC statement of work to Kendall Air.",
     "lastLog.who": "office",
-    "needsYou": "7 to follow up on in GC mode",
+    "needsYou": "10 to follow up on in GC mode",
     "projects.helotes.people.count": 2,
     "projects.helotes.people.people[1].key": "partner:kendall",
     "projects.helotes.people.people[1].reasons[0]": "sow:amber",
@@ -5705,11 +5734,11 @@ exports[`GC mode golden walk > step 33: Send the HVAC statement of work 1`] = `
 exports[`GC mode golden walk > step 34: Kendall signs it 1`] = `
 {
   "changed": {
-    "allPeople.count": 6,
+    "allPeople.count": 9,
     "lastLog.id": 31,
     "lastLog.text": "Kendall Air signed the HVAC statement of work.",
     "lastLog.who": "trade",
-    "needsYou": "6 to follow up on in GC mode",
+    "needsYou": "9 to follow up on in GC mode",
     "projects.helotes.people.count": 1,
     "projects.helotes.stageProgress.center": "16/25",
     "projects.helotes.stageProgress.groups[6].items[2].detail": "signed Oct 2",
@@ -5735,10 +5764,10 @@ exports[`GC mode golden walk > step 34: Kendall signs it 1`] = `
 exports[`GC mode golden walk > step 35: Brightline signs the Electrical statement of work 1`] = `
 {
   "changed": {
-    "allPeople.count": 5,
+    "allPeople.count": 8,
     "lastLog.id": 32,
     "lastLog.text": "Brightline Electric signed the Electrical statement of work.",
-    "needsYou": "5 to follow up on in GC mode",
+    "needsYou": "8 to follow up on in GC mode",
     "projects.helotes.people.count": 0,
     "projects.helotes.people.people": "[]",
     "projects.helotes.stageProgress.center": "17/25",
@@ -5859,11 +5888,11 @@ exports[`GC mode golden walk > step 38: Cedar & Pine signs it 1`] = `
 exports[`GC mode golden walk > step 39: Send the Millwork statement of work 1`] = `
 {
   "changed": {
-    "allPeople.count": 6,
+    "allPeople.count": 9,
     "lastLog.id": 36,
     "lastLog.text": "Sent the Millwork statement of work to Cedar & Pine Millwork.",
     "lastLog.who": "office",
-    "needsYou": "6 to follow up on in GC mode",
+    "needsYou": "9 to follow up on in GC mode",
     "projects.helotes.people.count": 1,
     "projects.helotes.people.people[0].key": "partner:cedar",
     "projects.helotes.people.people[0].reasons[0]": "sow:amber",
@@ -5882,11 +5911,11 @@ exports[`GC mode golden walk > step 39: Send the Millwork statement of work 1`] 
 exports[`GC mode golden walk > step 40: Cedar & Pine signs it 1`] = `
 {
   "changed": {
-    "allPeople.count": 5,
+    "allPeople.count": 8,
     "lastLog.id": 37,
     "lastLog.text": "Cedar & Pine Millwork signed the Millwork statement of work.",
     "lastLog.who": "trade",
-    "needsYou": "5 to follow up on in GC mode",
+    "needsYou": "8 to follow up on in GC mode",
     "projects.helotes.people.count": 0,
     "projects.helotes.people.people": "[]",
     "projects.helotes.stageProgress.center": "22/25",
@@ -6206,10 +6235,10 @@ exports[`GC mode golden walk > step 51: Approve draw 2 1`] = `
 exports[`GC mode golden walk > step 52: Pay draw 2 1`] = `
 {
   "changed": {
-    "allPeople.count": 6,
+    "allPeople.count": 9,
     "lastLog.id": 48,
     "lastLog.text": "Paid draw 2 on Framing and drywall: $31,230.",
-    "needsYou": "6 to follow up on in GC mode",
+    "needsYou": "9 to follow up on in GC mode",
     "projects.helotes.people.count": 1,
     "projects.helotes.people.people[0].key": "partner:hillcountry",
     "projects.helotes.people.people[0].reasons[0]": "waiver:amber",
@@ -6225,11 +6254,11 @@ exports[`GC mode golden walk > step 52: Pay draw 2 1`] = `
 exports[`GC mode golden walk > step 53: Hill Country signs the unconditional waiver 1`] = `
 {
   "changed": {
-    "allPeople.count": 5,
+    "allPeople.count": 8,
     "lastLog.id": 49,
     "lastLog.text": "Hill Country Interiors signed the unconditional waiver for draw 2.",
     "lastLog.who": "trade",
-    "needsYou": "5 to follow up on in GC mode",
+    "needsYou": "8 to follow up on in GC mode",
     "projects.helotes.people.count": 0,
     "projects.helotes.people.people": "[]",
   },
@@ -6245,13 +6274,13 @@ exports[`GC mode golden walk > step 53: Hill Country signs the unconditional wai
 exports[`GC mode golden walk > step 54: A new set of plans after Start 1`] = `
 {
   "changed": {
-    "allPeople.count": 9,
+    "allPeople.count": 12,
     "customers.ocotillo.addenda": 1,
     "customers.ocotillo.sets": 2,
     "lastLog.id": 50,
     "lastLog.text": "Issued Addendum 1 on Helotes Dental Office and emailed 4 companies. 1 were told it changes their trade.",
     "lastLog.who": "office",
-    "needsYou": "9 to follow up on in GC mode",
+    "needsYou": "12 to follow up on in GC mode",
     "projects.helotes.people.count": 4,
     "projects.helotes.people.people[0].key": "partner:hillcountry",
     "projects.helotes.people.people[0].reasons[0]": "plans:grey",
@@ -7569,9 +7598,26 @@ exports[`GC mode golden walk > step 92: Close Fair Oaks D with work still open (
     "projects.fairoaksd.people.people[0].reasons[0]",
     "projects.fairoaksd.people.people[0].reasons[1]",
     "projects.fairoaksd.people.people[0].reasons[2]",
+    "projects.fairoaksd.people.people[0].reasons[3]",
+    "projects.fairoaksd.people.people[0].reasons[4]",
+    "projects.fairoaksd.people.people[0].reasons[5]",
     "projects.fairoaksd.people.people[1].key",
     "projects.fairoaksd.people.people[1].tone",
     "projects.fairoaksd.people.people[1].reasons[0]",
+    "projects.fairoaksd.people.people[1].reasons[1]",
+    "projects.fairoaksd.people.people[2].key",
+    "projects.fairoaksd.people.people[2].tone",
+    "projects.fairoaksd.people.people[2].reasons[0]",
+    "projects.fairoaksd.people.people[3].key",
+    "projects.fairoaksd.people.people[3].tone",
+    "projects.fairoaksd.people.people[3].reasons[0]",
+    "projects.fairoaksd.people.people[4].key",
+    "projects.fairoaksd.people.people[4].tone",
+    "projects.fairoaksd.people.people[4].reasons[0]",
+    "projects.fairoaksd.people.people[5].key",
+    "projects.fairoaksd.people.people[5].tone",
+    "projects.fairoaksd.people.people[5].reasons[0]",
+    "projects.fairoaksd.people.people[5].reasons[1]",
   ],
 }
 `;
