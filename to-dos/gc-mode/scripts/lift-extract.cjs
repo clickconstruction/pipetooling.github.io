@@ -420,10 +420,12 @@ for (const t of config.tests || []) {
     if (types.size) lines.push(`import type { ${[...types].sort().join(', ')} } from '${from}'`)
     if (values.size) lines.push(`import { ${[...values].sort().join(', ')} } from '${from}'`)
   }
+  // The test file's own environment (`// @vitest-environment jsdom`) comes along, first, where vitest reads it.
+  const env = sf.text.slice(0, sf.statements.length ? sf.statements[0].getStart() : sf.text.length).match(/^[ \t]*\/\/ *@vitest-environment +\S+/m)
   if (kept.length) {
     const dest = path.join(outDir, out)
     fs.mkdirSync(path.dirname(dest), { recursive: true })
-    fs.writeFileSync(dest, `${(t.header ?? '').trim()}\n${lines.join('\n')}\n\n${body.text}\n`)
+    fs.writeFileSync(dest, `${env ? `${env[0].trim()}\n` : ''}${(t.header ?? '').trim()}\n${lines.join('\n')}\n\n${body.text}\n`)
   }
   written.push(`${kept.length ? out : '(nothing written)'}: ${kept.length} tests kept from ${t.from}, ${left.length} stay`)
   if (process.env.LIFT_VERBOSE) for (const l of left) written.push(`  stays: ${l}`)
