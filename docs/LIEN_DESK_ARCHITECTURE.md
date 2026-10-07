@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-06
+last_updated: 2026-10-07
 ---
 
 > **Line numbers are as of `f423bd6e5`** (the `mapped_at` commit; re-anchored 2026-10-05 from `a05cef4c4` through the file's diff, 2,002 → 2,251 lines) and drift with every edit — search the symbol named beside each range. The file is 3,026 lines at `142739c17` (v2.4731), so ranges after the first few hundred lines sit several hundred lines lower now. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is one of the busiest components (62 commits in 90 days); re-check ranges before any move. The dated notes below say what each version added; the regions under them carry the same facts by line.
@@ -97,7 +97,7 @@ last_updated: 2026-10-06
 | G. Affidavit kind | `affVisible`… 833–836 · `affList` 1447–1502 · `affPane` 1503–1532 · chips 2055–2066 | ~100 | low — own pile/selection/footer slot; `onShowNotices` writes C | low | pane **extracted** → `LienDeskAffidavitPane` (417) | smokes 326, 399–437, 797, 1071; `lienDeskAffidavits` 5 |
 | H. Retainage kind | 837–841 · `retList` 1535–1582 · `retPane` 1583–1608 · chips 2043–2054 | ~90 | low — as G, plus `onOpenRun` | low | pane **extracted** → `LienDeskRetainagePane` (316) | smokes 739–791, 797; `lienDeskRetainage` 5 |
 | I. Timeline kind | `bookOpened` 340 + effect 349–351 · `useLienTimelineBook` 352 · `openBookRow` 992–1006 · render 2135–2168 | ~45 | low — `openBookRow` writes `kind` + both selections | low | tab **extracted** → `LienDeskTimelineTab` (134) | own render 2 (the job-number door, v2.4535); **the desk smoke never opens the kind**; `useLienTimelineBook` none; `lienTimelineBook` 8 |
-| J. The run | `runOpen` 314 · header button 2123–2127 · ready footer 1839 · `LienDeskRunModal` 2235–2248 | ~20 | low | med (certified-mail packet) | **extracted** → `LienDeskRunModal` (334) | own render 8; `lienDeskRun` 20 |
+| J. The run | `runOpen` 314 · header button 2123–2127 (`runDoorWords` since v2.4823: *Record the mailing · N* when only printed notices wait) · ready footer 1839 · `LienDeskRunModal` 2235–2248 (opens on step 3 when every notice carries `printedAt`, `runOpening`) | ~20 | low | med (certified-mail packet) | **extracted** → `LienDeskRunModal` (334) | own render 10; `lienDeskRun` 23 |
 | K. Calendar kind (v2.4101) | `calendarJobFilter` 396 · `supplierMarks` 387–394 · render 2135–2156 | ~25 | low — the tab's `onDraft` writes `calendarJobFilter`, `pile` and `kind`; rows come from the parent | low | tab **extracted** → `LienDeskCalendarTab` (940) | own render 25; the desk smoke never opens the kind; `lienCalendar`, `lienCalendarBuckets`, `lienCalendarAxis`, `lienCalendarMarks` kernels |
 
 Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskModal.render.test.tsx) (1,228 lines) — **50 `it` blocks** (51 cases; one loops over affidavit/retainage), mocks `useAuth`, `supabase`, `propertyLookupClient`, `lienClaimCorrectionIo`, `useNoticePayPage`, `useLienJobSuppliers`, `lienSupplierWordIo`, `propertyKindWrite`, `lienDeskIo` (importActual + spies), `ownerConfirmWrite`. No e2e spec names the desk.

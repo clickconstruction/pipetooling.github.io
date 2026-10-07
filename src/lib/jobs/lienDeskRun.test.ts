@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -509,5 +509,29 @@ describe('the conditional release in the envelope (v2.4729)', () => {
     expect(runCopyPages(n, n.recipients[0]!).map((p) => p.label)).toEqual(['Cover letter', '§ 53.056 notice · copy for owner of record'])
     const plain = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert Douglas', TODAY)[0]!
     expect(plain.release).toBeNull()
+  })
+})
+
+describe('where the run opens and what the door says (v2.4823)', () => {
+  it('opens on printing while any notice has not printed, and on recording with the newest print once all have', () => {
+    expect(runOpening([])).toEqual({ step: 'print', printedAt: null })
+    expect(runOpening([{ printedAt: '2026-09-14T16:00:00Z' }, { printedAt: null }])).toEqual({ step: 'print', printedAt: null })
+    expect(runOpening([{ printedAt: '2026-09-14T16:00:00Z' }, {}])).toEqual({ step: 'print', printedAt: null })
+    expect(runOpening([{ printedAt: '2026-09-14T16:00:00Z' }, { printedAt: '2026-09-16T09:00:00Z' }, { printedAt: '2026-09-15T16:00:00Z' }])).toEqual({ step: 'record', printedAt: '2026-09-16T09:00:00Z' })
+  })
+
+  it('the title bar says Send the run while anything approved is still to print, and Record the mailing when only printed notices wait', () => {
+    expect(runDoorWords({ ready: 2, printed: 0, retReady: 0 })).toEqual({ label: 'Send the run', count: 2 })
+    expect(runDoorWords({ ready: 1, printed: 8, retReady: 0 })).toEqual({ label: 'Send the run', count: 9 })
+    expect(runDoorWords({ ready: 0, printed: 8, retReady: 1 })).toEqual({ label: 'Send the run', count: 9 })
+    expect(runDoorWords({ ready: 0, printed: 8, retReady: 0 })).toEqual({ label: 'Record the mailing', count: 8 })
+    expect(runDoorWords({ ready: 0, printed: 0, retReady: 0 })).toEqual({ label: 'Send the run', count: 0 })
+  })
+
+  it('the notice builder carries the item\u2019s printed stamp into the run', () => {
+    const d = data([{ ...approved, printed_at: '2026-09-14T16:00:00Z' } as typeof approved])
+    const run = buildLienDeskRun(d.queue.piles.printed, d, null, () => 'Robert', TODAY)
+    expect(run.map((n) => n.printedAt)).toEqual(['2026-09-14T16:00:00Z'])
+    expect(buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert', TODAY)[0]!.printedAt).toBeNull()
   })
 })
