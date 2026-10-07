@@ -32,14 +32,14 @@ export function GcWhatIfButton({ project, shown, dispatch, onShow }: { project: 
   const violet: CSSProperties = { ...toolBtn, border: '1px solid var(--text-violet-800)', color: 'var(--text-violet-800)' }
   if (shown) {
     return (
-      <button type="button" style={violet} onClick={() => onShow(false)} title="The copy stays open. Come back to it from here.">
+      <button type="button" data-tour="gc-what-if" style={violet} onClick={() => onShow(false)} title="The copy stays open. Come back to it from here.">
         See the real schedule
       </button>
     )
   }
   if (project.whatIf) {
     return (
-      <button type="button" style={violet} onClick={() => onShow(true)} title="The what-if copy, with the moves tried on it.">
+      <button type="button" data-tour="gc-what-if" style={violet} onClick={() => onShow(true)} title="The what-if copy, with the moves tried on it.">
         What if · {whatIfTried(project).length}
       </button>
     )
@@ -47,6 +47,8 @@ export function GcWhatIfButton({ project, shown, dispatch, onShow }: { project: 
   return (
     <button
       type="button"
+      // The tour's round five lights this door, in each of its three looks.
+      data-tour="gc-what-if"
       style={toolBtn}
       onClick={() => {
         dispatch({ type: 'startWhatIf', projectId: project.id, by: me })

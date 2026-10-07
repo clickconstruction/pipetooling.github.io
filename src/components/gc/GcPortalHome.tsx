@@ -125,7 +125,7 @@ export function GcPortalHome({
       )}
 
       {home.jobs.length > 0 && (
-        <PortalBlock title={`${tr('yourJobs')} · ${home.jobs.length}`}>
+        <PortalBlock title={`${tr('yourJobs')} · ${home.jobs.length}`} dataTour="gc-portal-jobs">
           <div style={{ display: 'grid' }}>
             {home.jobs.map(({ ask, money: m }, i) => (
               <Row key={ask.invite.id} first={i === 0} onClick={() => onOpenProject(ask.project.id)}>

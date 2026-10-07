@@ -74,7 +74,8 @@ import {
   type GcState,
 } from '../lib/gcMode/gcModel'
 import { boardFollowPeople, pastContract as pastContractOf } from '../lib/gcMode/gcCounts'
-import { GC_PROJECT_TOUR_STEPS, GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
+import { GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
+import { GcProjectTour } from '../components/gc/GcProjectTour'
 import { GcStageHealth } from '../components/gc/GcStageHealth'
 
 /**
@@ -331,7 +332,8 @@ export default function GcMode() {
       </div>
 
       {tourOpen && <SpotlightTour steps={GC_TOUR_STEPS} onClose={() => setTourOpen(false)} />}
-      {projectTourOpen && <SpotlightTour steps={GC_PROJECT_TOUR_STEPS} onClose={() => setProjectTourOpen(false)} />}
+      {/* The walk for the job's stage, opening each stop's tab on the way (the tour's round five). */}
+      {projectTourOpen && project && <GcProjectTour stage={project.stage} from={tab} onTab={setTab} onClose={() => setProjectTourOpen(false)} />}
 
       {customer && !plansFor && (
         <GcCustomerWindow

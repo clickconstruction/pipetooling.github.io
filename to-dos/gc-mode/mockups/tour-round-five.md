@@ -2,7 +2,7 @@
 name: "The tour, round five: a stop at each door a first-timer would miss"
 rows: G-77, G-138, G-115, G-21, G-136, G-81, G-08, G-84, G-82, G-141, G-83, G-118, G-60, G-44, G-145, G-45, G-117, G-142 (all Have; this is their door in the tour)
 branch: spike/tour (from origin/spike/gc-mode at 2590c3046)
-status: mockup 2026-10-06 by Helper 1, for the lead's go. No code yet.
+status: built 2026-10-06 on spike/tour with the lead's go on picks 1 and 2 (Helper 1). As built in GANTT_PLAN.md, "The tour, round five". At the lead's word each new stop was cut to three sentences, so the built words in gcTour.ts are shorter than the ones below. Helotes walks 20 stops, not 21, because the call list is built for a job being built only.
 ---
 
 # The tour, round five

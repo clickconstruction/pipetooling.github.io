@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { placeTourCard, spotlightHole, type TourRect } from '../lib/spotlightTourPlacement'
@@ -129,7 +129,18 @@ type SpotlightTourProps = {
   guideLabel?: string
   /** The stop to open on (v2.4125): a `?` on a page section starts the tour at that section's stop. */
   startIndex?: number
+  /**
+   * The page hears each stop just before it shows (GC mode, the tour's round five): on open, and
+   * from Next, Back and the arrow keys, so a page can open the tab a stop's anchor is on and both
+   * draw together. A tour with it also looks again for a missing anchor for about a second before
+   * it says Missing, for a tab that draws a moment late. Without it, a tour behaves as before.
+   */
+  onStep?: (index: number) => void
 }
+
+/** A tour with `onStep` looks again for a missing anchor this many times, this far apart, before Missing. */
+const ANCHOR_LOOKS = 8
+const ANCHOR_LOOK_MS = 120
 
 const CARD_WIDTH = 400
 const CARD_EST_HEIGHT = 170
@@ -148,13 +159,31 @@ const CARD_EST_HEIGHT = 170
  * locked, the anchor's scrollIntoView could not move the page and every stop
  * below the fold was out of reach, and the wheel did nothing.
  */
-export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startIndex = 0 }: SpotlightTourProps) {
+export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startIndex = 0, onStep }: SpotlightTourProps) {
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(steps.length - 1, 0)))
   const [anchorRect, setAnchorRect] = useState<TourRect | null>(null)
   const [anchorMissing, setAnchorMissing] = useState(false)
   const [cardHeight, setCardHeight] = useState(CARD_EST_HEIGHT)
+  // How many times this stop has looked again for its anchor: a tour with onStep only, so 0 for every other tour.
+  const [looks, setLooks] = useState(0)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const step = steps[index]
+
+  /** Go to a stop. The page hears it first (onStep), so a tab it opens draws with the stop. */
+  const go = useCallback(
+    (next: number) => {
+      onStep?.(next)
+      setLooks(0)
+      setIndex(next)
+    },
+    [onStep],
+  )
+
+  // The page hears the stop the tour opens on, too.
+  useEffect(() => {
+    onStep?.(index)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Follow the anchor: scroll it into view, then re-measure on a short cadence
   // (covers the smooth scroll settling, sticky headers, and viewport resizes).
@@ -163,6 +192,13 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
     const el = document.querySelector(`[data-tour="${step.anchor}"]`)
     if (!(el instanceof HTMLElement)) {
       setAnchorRect(null)
+      // A tour that opens tabs on the way (onStep) looks again before it says Missing: the tab the
+      // page just opened may draw a moment after the stop.
+      if (onStep && looks < ANCHOR_LOOKS) {
+        setAnchorMissing(false)
+        const again = window.setTimeout(() => setLooks((n) => n + 1), ANCHOR_LOOK_MS)
+        return () => window.clearTimeout(again)
+      }
       setAnchorMissing(true)
       return
     }
@@ -196,7 +232,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
       window.removeEventListener('resize', measure)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step?.anchor])
+  }, [step?.anchor, looks])
 
   useLayoutEffect(() => {
     if (cardRef.current) setCardHeight(cardRef.current.offsetHeight)
@@ -205,12 +241,12 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      else if (e.key === 'ArrowRight' && index < steps.length - 1) setIndex(index + 1)
-      else if (e.key === 'ArrowLeft' && index > 0) setIndex(index - 1)
+      else if (e.key === 'ArrowRight' && index < steps.length - 1) go(index + 1)
+      else if (e.key === 'ArrowLeft' && index > 0) go(index - 1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [index, steps.length, onClose])
+  }, [index, steps.length, onClose, go])
 
   useEffect(() => {
     // preventScroll: a plain focus() scrolls the focused element into view,
@@ -304,7 +340,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
           </button>
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             {index > 0 ? (
-              <button type="button" onClick={() => setIndex(index - 1)} style={navBtn}>
+              <button type="button" onClick={() => go(index - 1)} style={navBtn}>
                 ← Back
               </button>
             ) : null}
@@ -313,7 +349,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
                 Done
               </button>
             ) : (
-              <button type="button" onClick={() => setIndex(index + 1)} style={{ ...navBtn, background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }}>
+              <button type="button" onClick={() => go(index + 1)} style={{ ...navBtn, background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }}>
                 Next →
               </button>
             )}

@@ -1967,6 +1967,44 @@ the whole call list, plus what Follow up already had.
   company people (the schedule items go to the job's contact, never the bookkeeper). Both of the
   lead's pins were broken on purpose and caught: *due today* left out, and the RFI sent to the trade.
 
+## The tour, round five, as built (2026-10-06)
+
+Built by Helper 1 from `mockups/tour-round-five.md` with the lead's go on both picks. *Walk me
+through this job* gains a stop at each door this week's rows put inside a tab. *New here?* gains one
+that points at *Walk me through this job* itself, which lives only inside a project.
+
+- **The stops** (`gcTour.ts`): each is three sentences, what this is, what you tap, what happens
+  after, and every sentence of both walks passes `plainWordsFailures`.
+  - The Schedule tab: A rough schedule while we bid (G-45), Bars held up, and bars not covered
+    (G-77, G-138, marked *Held* and *No insurance* on the chart), A call list from the chart
+    (G-115), Spare days and people on site (G-08, G-84), Print it or send the file (G-21, G-136),
+    Try moves on a copy (G-81), Where the work is (G-83), A job running late (G-82, G-141), Their
+    dates to meet (G-145) and Save the job as a template (G-44).
+  - The Daily log tab: Who should be on site (G-118, with G-138's word at the gate) and The log
+    against the chart (G-60).
+  - The trade's portal: The trade's own dates (G-117, G-142), lit at *Your jobs*, one press before
+    *We will be late* and *People a day on site*.
+  - *New here?*: A walk through one job, just before Try it.
+- **The walk opens each stop's tab.** A stop names its tab. `SpotlightTour` takes an optional
+  `onStep`, which Next, Back and the arrow keys call just before the stop changes, so the tab and
+  the stop draw together. A tour with it looks again for a missing anchor for about a second before
+  it says Missing. Done or Skip tour puts back the tab the walk started from (`GcProjectTour.tsx`).
+  A tour without `onStep` draws exactly as before: three snapshots recorded on the old tour pin it.
+- **Each job walks the stops for its stage** (`projectTourSteps`): 16 while bidding (Boerne), 20 in
+  buyout (Helotes), 30 while building (Fair Oaks D). Buyout has the chart's doors but not the call
+  list, which is built for a job being built only, so Helotes walks 20, not the mock-up's 21.
+- **The anchors.** Three spans on the chart's toolbar (`gc-gantt-group`, `gc-gantt-shows`,
+  `gc-gantt-files`), each holding its buttons as one item so nothing moves. The first held bar and
+  the first bar at work uninsured among the rows drawn (`gc-held-bar`, `gc-uninsured-bar`). What
+  if… (`gc-what-if`), Bring in their dates… (`gc-their-dates`), and the portal's Your jobs
+  (`gc-portal-jobs`, through `PortalBlock`'s new `dataTour`). The rest were there.
+- **Missing** says where a door appears on a day that does not show it: a late job's cards, the log
+  against the chart, a held bar.
+- Tests: `gcTour.test.ts` (5), `GcTour.render.test.tsx` (18: each stop's anchor on its tab, drawn
+  for a day that shows it, with the controls it names inside), `GcProjectTour.render.test.tsx` (3)
+  and four new in `SpotlightTour.render.test.tsx`. Every pin was broken on purpose and caught. The
+  golden test did not move.
+
 ## Status
 
 Planned 2026-10-05. Phases 1 and 2 (finished 2026-10-06: an added activity, actuals, a new baseline, redo)

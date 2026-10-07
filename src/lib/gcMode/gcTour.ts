@@ -7,6 +7,18 @@
  * semicolons or parentheses inside a sentence.
  */
 import type { SpotlightTourStep } from '../../components/SpotlightTour'
+import type { GcStage } from './gcTypes'
+
+/** The project tabs the walk opens on the way (the tour's round five): the page's own tab keys. */
+export type GcTourTab = 'schedule' | 'log'
+
+/**
+ * A stop of *Walk me through this job* (the tour's round five, `to-dos/gc-mode/mockups/tour-round-five.md`).
+ * `tab`: the project tab its anchor is on, which the walk opens just before the stop shows.
+ * `stages`: the job stages it belongs to, so each job walks only what it can show. Unset: every tab,
+ * or every stage. A new stop is three sentences: what this is, what you do, what happens after.
+ */
+export type GcTourStep = SpotlightTourStep & { tab?: GcTourTab; stages?: GcStage[] }
 
 export const GC_TOUR_STEPS: SpotlightTourStep[] = [
   {
@@ -117,6 +129,13 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'Trade partners lists every company we use, by trade. Press a company’s name to open its window. Press a paperwork chip to see that paper. It also holds the scope book. The book keeps the scope lines we use for each trade. On step 4 of a new project, you pull lines from it. It warns you about lines we missed on past jobs.',
   },
   {
+    // The tour's round five: the door to every project's own walk, which lives only inside a project.
+    anchor: 'gc-row-building',
+    title: 'A walk through one job',
+    body: 'Inside a project, Walk me through this job shows each tab and card. Open any project and tap Walk me through this job above its tabs. It opens each tab for you, in the order a job goes.',
+    missingBody: 'Open any project. Walk me through this job is above its tabs.',
+  },
+  {
     anchor: 'gc-new-here',
     title: 'Try it',
     body: 'Open Boerne Retail Shell and start on Trades. Tap See what the trade sees to watch the trade partner’s side. Tap Start over at any time to put the made-up projects back. Tap New here? to see this again.',
@@ -127,8 +146,12 @@ export const GC_TOUR_STEPS: SpotlightTourStep[] = [
  * The walkthrough inside one project (the big list, Board item 8): a stop on each tab, in the
  * order a job goes, from asking the trades to closing out. The anchors are the tab buttons
  * (`gc-ptab-<key>`), so every stop is on the page whichever tab is open.
+ *
+ * Round five adds a stop at each door a first-timer would miss inside a tab. Those stops name
+ * their tab, which the walk opens on the way, and their stages; `projectTourSteps` gives a job the
+ * stops for its stage.
  */
-export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
+export const GC_PROJECT_TOUR_STEPS: GcTourStep[] = [
   {
     anchor: 'gc-project-header',
     title: 'One project',
@@ -180,27 +203,145 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
     body: 'The dates for each trade and what waits on what. Start locks it as the plan we measure against.',
   },
   {
+    anchor: 'gc-rough',
+    title: 'A rough schedule while we bid',
+    body: 'A job still bidding gets a rough schedule, drawn from the job’s stages. Tap Draw a rough schedule to count the weeks it takes to build. Our number then shows those weeks beside our price.',
+    missingBody: 'It is on the Schedule tab of a job still bidding.',
+    tab: 'schedule',
+    stages: ['pursuing'],
+  },
+  {
     anchor: 'gc-gantt-toolbar',
     title: 'The chart',
     body: 'Each bar is one piece of a trade’s work. Zoom with Days, Weeks or Months. Group it by trade, by stage or by company. The pills count what is late, held or tight, and filter the chart. Drag a bar to move it. Every move asks why.',
     missingBody: 'Open the Schedule tab on a job with a schedule drawn and the chart is here.',
+    tab: 'schedule',
+    stages: ['buyout', 'building'],
+  },
+  {
+    // G-77 and G-138: the first held bar drawn, with both kinds marked on the chart.
+    anchor: 'gc-held-bar',
+    title: 'Bars held up, and bars not covered',
+    body: 'A note beside a bar says what holds it up, or that its company has no insurance. Tap the bar to see the paper it needs and how to ask for it. The note goes once that paper comes in.',
+    missingBody: 'Nothing on this job is held or uncovered today. A held bar is striped, and an uncovered one has a red note.',
+    marks: [
+      { anchor: 'gc-held-bar', label: 'Held' },
+      { anchor: 'gc-uninsured-bar', label: 'No insurance' },
+    ],
+    tab: 'schedule',
+    stages: ['buyout', 'building'],
+  },
+  {
+    // G-115: the call list is built for a job being built only.
+    anchor: 'gc-gantt-group',
+    title: 'A call list from the chart',
+    body: 'By company turns the chart into a call list. Tap By company to list everyone whose answer moves the chart. Each one has Call and Follow up beside it.',
+    missingBody: 'It is on the chart’s toolbar, on the Schedule tab.',
+    tab: 'schedule',
+    stages: ['building'],
+  },
+  {
+    // G-08 and G-84.
+    anchor: 'gc-gantt-shows',
+    title: 'Spare days and people on site',
+    body: 'Two buttons add a layer to the chart. Tap Show spare days or Show people on site. The chart then shows each bar’s spare days, or each week’s people beside the daily log’s count.',
+    missingBody: 'It is on the chart’s toolbar, on the Schedule tab.',
+    tab: 'schedule',
+    stages: ['buyout', 'building'],
+  },
+  {
+    // G-21 and G-136.
+    anchor: 'gc-gantt-files',
+    title: 'Print it or send the file',
+    body: 'The chart can go out on paper or as a file. Tap Print or PDF for landscape pages, or Export for a spreadsheet and the Microsoft Project file. Each one asks if the copy is for our team or the customer.',
+    missingBody: 'It is on the chart’s toolbar, on the Schedule tab.',
+    tab: 'schedule',
+    stages: ['buyout', 'building'],
+  },
+  {
+    // G-81.
+    anchor: 'gc-what-if',
+    title: 'Try moves on a copy',
+    body: 'What if… makes a copy of the schedule to try moves on. Tap What if…, try your moves, then tap Keep or Throw it away. Keep puts each move on the real schedule with its reason.',
+    missingBody: 'It is on the chart’s toolbar, on the Schedule tab.',
+    tab: 'schedule',
+    stages: ['buyout', 'building'],
   },
   {
     anchor: 'gc-walk-line',
     title: 'Update the week',
     body: 'A chart is only true on the day someone checked it. This line says when the schedule was last walked. Tap Update the week to go through every bar that should have moved, one at a time.',
     missingBody: 'It sits over the chart on a job being built.',
+    tab: 'schedule',
+    stages: ['building'],
   },
   {
     anchor: 'gc-tell-trades',
     title: 'Tell the trades',
     body: 'Every move is kept under the chart with who made it and why. When dates moved, tap Tell the trades. Each company gets one email with its old and new days. It answers from its portal.',
     missingBody: 'It shows under the chart once a move changed a company’s days.',
+    tab: 'schedule',
+    stages: ['building'],
+  },
+  {
+    // G-83.
+    anchor: 'gc-places',
+    title: 'Where the work is',
+    body: 'Each bar can have a place, like Roof or Inside. Tap Look at the places to keep the guesses or change them. The chart then flags a day with three trades or more in one place.',
+    missingBody: 'It is on the Schedule tab of a job being built.',
+    tab: 'schedule',
+    stages: ['building'],
+  },
+  {
+    // G-82 and G-141: only a job past its contract shows them, so the made-up job today says where.
+    anchor: 'gc-days-back',
+    title: 'A job running late',
+    body: 'On a late job, Days back lists work that could run side by side or take a second crew. Tap Look at it to see that move before anything is saved. If the customer’s moves made it late, Ask for the days drafts a time extension for them.',
+    missingBody: 'This job is on time, so neither shows today. They appear under Projected finish when the finish runs past the contract.',
+    marks: [{ anchor: 'gc-ask-for-days', label: 'Ask for the days' }],
+    tab: 'schedule',
+    stages: ['building'],
+  },
+  {
+    // G-145.
+    anchor: 'gc-their-dates',
+    title: 'Their dates to meet',
+    body: 'The Milestones card holds the dates the job must meet. When the customer sends new dates, tap Bring in their dates… on this card. Only the dates you tick change, never a bar.',
+    missingBody: 'It is on the Milestones card of a job being built.',
+    tab: 'schedule',
+    stages: ['building'],
+  },
+  {
+    // G-44.
+    anchor: 'gc-templates',
+    title: 'Save the job as a template',
+    body: 'A template keeps this job’s shape for the next job like it. Type a name and tap Save as a template. A new job can start from it, with each line’s days and waits but no dates.',
+    missingBody: 'It is on the Schedule tab of a job being built.',
+    tab: 'schedule',
+    stages: ['building'],
   },
   {
     anchor: 'gc-ptab-log',
     title: 'Daily log',
     body: 'The superintendent writes one log each work day. It says the weather, which trades were on site and how many workers. It also says what got done and what held work up. A day with no log shows on the ring.',
+  },
+  {
+    // G-118, with G-138's word at the gate.
+    anchor: 'gc-morning-list',
+    title: 'Who should be on site',
+    body: 'Above the log, Who should be on site lists each company with work running today. Tap a day at its top to see another day. A company with no insurance says so there, before its crew starts.',
+    missingBody: 'It is on the Daily log tab of a job being built.',
+    tab: 'log',
+    stages: ['building'],
+  },
+  {
+    // G-60: only a week where the log and the chart disagree shows it, so the made-up job today says where.
+    anchor: 'gc-log-vs-chart',
+    title: 'The log against the chart',
+    body: 'When the daily log and the chart disagree, a card says so with what to do. If a crew began before its bar, tap It started to record the day. The bar then shows the day it really started.',
+    missingBody: 'They match this week, so no card shows. It shows here and under the chart when they do not.',
+    tab: 'log',
+    stages: ['building'],
   },
   {
     anchor: 'gc-ptab-draws',
@@ -222,4 +363,17 @@ export const GC_PROJECT_TOUR_STEPS: SpotlightTourStep[] = [
     title: 'What the trade sees',
     body: 'Tap here to watch a trade partner’s portal beside the office. A press on either side shows on the other.',
   },
+  {
+    // G-117 and G-142: both sit on the job's page in the portal, one press past Your jobs, so the stop lights that door.
+    anchor: 'gc-portal-jobs',
+    title: 'The trade’s own dates',
+    body: 'In its portal, a trade opens a job to see its own schedule. It taps We will be late on a bar, or fills in People a day on site. The office sees both on the Schedule tab and in the morning list.',
+    missingBody: 'Tap See what the trade sees. Pick a company and open its job.',
+    stages: ['building'],
+  },
 ]
+
+/** The walk for a job at this stage: every stop that belongs to it, in order (the tour's round five). */
+export function projectTourSteps(stage: GcStage): GcTourStep[] {
+  return GC_PROJECT_TOUR_STEPS.filter((s) => !s.stages || s.stages.includes(stage))
+}

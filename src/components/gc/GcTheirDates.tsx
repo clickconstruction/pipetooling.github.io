@@ -26,9 +26,12 @@ export function GcTheirDatesDoor({ state, project, dispatch, by }: { state: GcSt
   }
   return (
     <>
-      <Btn kind="quiet" onClick={() => setOpen(true)}>
-        Bring in their dates…
-      </Btn>
+      {/* The tour's round five lights this door; the span holds the button as one item, so nothing moves. */}
+      <span data-tour="gc-their-dates" style={{ display: 'inline-flex' }}>
+        <Btn kind="quiet" onClick={() => setOpen(true)}>
+          Bring in their dates…
+        </Btn>
+      </span>
       {open && <GcTheirDatesWindow state={state} project={project} dispatch={dispatch} by={by} onClose={() => setOpen(false)} />}
     </>
   )

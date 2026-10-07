@@ -294,6 +294,22 @@ export function GcGantt({
     return { at, waitAt, entries, height: y }
   }, [groups, folded, waitList, waitsH, crowdH, partsFolded])
   const drawn = useMemo(() => rowsInView(layout.entries, win.top, win.height), [layout, win])
+  // The tour's round five: the first held bar drawn, and the first at work with its insurance run out, each as its note says (G-77, G-138).
+  const tourBars = useMemo(() => {
+    let held: string | undefined
+    let bare: string | undefined
+    for (const g of groups) {
+      if (folded.has(g.key)) continue
+      for (const b of g.bars) {
+        if (!drawn.has(b.id)) continue
+        const note = barNote(b, logNotes?.get(b.id), uninsured?.get(b.id))
+        if (!note) continue
+        if (!held && b.hold && note.words.startsWith('waits on')) held = b.id
+        if (!bare && note.words === uninsured?.get(b.id)?.note) bare = b.id
+      }
+    }
+    return { held, bare }
+  }, [groups, folded, drawn, logNotes, uninsured])
   const links = useMemo(() => (showLinks ? ganttLinks(shown).filter((l) => layout.at.has(l.from) && layout.at.has(l.to)) : []), [showLinks, shown, layout])
   const byId = useMemo(() => new Map(all.map((b) => [b.id, b])), [all])
   /** Where a dragged bar would sit: its dates with the drag applied, an end never crossing the other. */
@@ -474,7 +490,11 @@ export function GcGantt({
     const split = (a.parts ?? []).length > 0
     const partsShut = partsFolded.has(b.id)
     return (
-      <div key={b.id} style={{ display: 'flex', height: ROW_H, borderTop: '1px solid var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}>
+      <div
+        key={b.id}
+        data-tour={b.id === tourBars.held ? 'gc-held-bar' : b.id === tourBars.bare ? 'gc-uninsured-bar' : undefined}
+        style={{ display: 'flex', height: ROW_H, borderTop: '1px solid var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}
+      >
         <div style={{ ...label, background: rowBg, paddingLeft: split ? '0.35rem' : '1.55rem' }}>
           {split && (
             <button
@@ -807,7 +827,10 @@ export function GcGantt({
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {seg(view, [{ key: 'chart', label: 'Chart' }, { key: 'list', label: 'List' }], setView, 'Chart or list')}
           {view === 'chart' && seg(zoom, [{ key: 'days', label: 'Days' }, { key: 'weeks', label: 'Weeks' }, { key: 'months', label: 'Months' }], setZoom, 'How close to look')}
-          {seg(by, [{ key: 'trade', label: 'By trade' }, { key: 'stage', label: 'By stage' }, { key: 'company', label: 'By company' }], regroup, 'Group the chart')}
+          {/* The tour's anchors on the toolbar (round five) are spans that hold their buttons as one flex item, so nothing moves. */}
+          <span data-tour="gc-gantt-group" style={{ display: 'inline-flex' }}>
+            {seg(by, [{ key: 'trade', label: 'By trade' }, { key: 'stage', label: 'By stage' }, { key: 'company', label: 'By company' }], regroup, 'Group the chart')}
+          </span>
           <span style={{ flex: 1 }} />
           <button type="button" style={quietBtn} onClick={toToday}>
             Today
@@ -815,38 +838,40 @@ export function GcGantt({
           <button type="button" style={quietBtn} aria-pressed={showLinks} onClick={() => setShowLinks((v) => !v)} title="The lines from each activity to the ones that wait on it">
             {showLinks ? 'Hide the links' : 'Show the links'}
           </button>
-          <button type="button" style={quietBtn} aria-pressed={showSpare} onClick={() => setShowSpare((v) => !v)} title="A faint tail after each bar, out to the last day it can finish before the job finishes later. The work that sets the finish has none.">
-            {showSpare ? 'Hide spare days' : 'Show spare days'}
-          </button>
-          {peopleOf && (
-            <button type="button" style={quietBtn} aria-pressed={showPeople} onClick={() => setShowPeople((v) => !v)} title="A strip under the rows: each week, the plan's busiest day against the daily log's.">
-              {showPeople ? 'Hide people on site' : 'Show people on site'}
+          <span data-tour="gc-gantt-shows" style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" style={quietBtn} aria-pressed={showSpare} onClick={() => setShowSpare((v) => !v)} title="A faint tail after each bar, out to the last day it can finish before the job finishes later. The work that sets the finish has none.">
+              {showSpare ? 'Hide spare days' : 'Show spare days'}
             </button>
-          )}
+            {peopleOf && (
+              <button type="button" style={quietBtn} aria-pressed={showPeople} onClick={() => setShowPeople((v) => !v)} title="A strip under the rows: each week, the plan's busiest day against the daily log's.">
+                {showPeople ? 'Hide people on site' : 'Show people on site'}
+              </button>
+            )}
+          </span>
           <button type="button" style={quietBtn} onClick={() => setFolded(anyFolded ? new Set() : new Set(groups.map((g) => g.key)))}>
             {anyFolded ? 'Open all' : 'Fold all'}
           </button>
           {print && (
-            <button
-              type="button"
-              style={{ ...quietBtn, ...(shown.length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) }}
-              disabled={shown.length === 0}
-              onClick={() => setPrinting(true)}
-              title={shown.length === 0 ? 'Nothing passes these filters, so there is nothing to print.' : 'Opens the chart as you see it on landscape pages, to print or save as a PDF.'}
-            >
-              Print or PDF
-            </button>
-          )}
-          {print && (
-            <button
-              type="button"
-              style={{ ...quietBtn, ...(all.length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) }}
-              disabled={all.length === 0}
-              onClick={() => setExporting(true)}
-              title="Saves the whole schedule as a spreadsheet, or as the file Microsoft Project and Primavera open. The filters do not change it."
-            >
-              Export
-            </button>
+            <span data-tour="gc-gantt-files" style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                style={{ ...quietBtn, ...(shown.length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) }}
+                disabled={shown.length === 0}
+                onClick={() => setPrinting(true)}
+                title={shown.length === 0 ? 'Nothing passes these filters, so there is nothing to print.' : 'Opens the chart as you see it on landscape pages, to print or save as a PDF.'}
+              >
+                Print or PDF
+              </button>
+              <button
+                type="button"
+                style={{ ...quietBtn, ...(all.length === 0 ? { opacity: 0.55, cursor: 'default' } : {}) }}
+                disabled={all.length === 0}
+                onClick={() => setExporting(true)}
+                title="Saves the whole schedule as a spreadsheet, or as the file Microsoft Project and Primavera open. The filters do not change it."
+              >
+                Export
+              </button>
+            </span>
           )}
           {toolbarExtra}
         </div>

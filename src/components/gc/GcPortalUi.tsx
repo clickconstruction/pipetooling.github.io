@@ -30,10 +30,10 @@ export function PortalTag({ tone, children }: { tone: keyof typeof TAG_TONES; ch
   )
 }
 
-/** One titled block of the portal. */
-export function PortalBlock({ title, children }: { title: string; children: ReactNode }) {
+/** One titled block of the portal. `dataTour`: an anchor for the office's walk (the tour's round five). */
+export function PortalBlock({ title, children, dataTour }: { title: string; children: ReactNode; dataTour?: string }) {
   return (
-    <section style={{ background: 'var(--surface)', border: `1px solid ${RULE}`, borderRadius: 8, padding: '0.75rem 0.85rem' }}>
+    <section data-tour={dataTour} style={{ background: 'var(--surface)', border: `1px solid ${RULE}`, borderRadius: 8, padding: '0.75rem 0.85rem' }}>
       <div style={{ fontSize: '0.7rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: COPPER, fontWeight: 700, marginBottom: '0.4rem' }}>
         {title}
       </div>
