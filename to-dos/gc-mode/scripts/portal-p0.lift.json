@@ -1,0 +1,287 @@
+{
+  "about": "The Portal lane's P0 (to-dos/gc-mode/PORTAL_REAL_BUILD.md): the trade partner portal's words and the kernels whose callees are on main, lifted to src/lib/gc word for word, no database. Rebuilt over the Board's B2-i (board-b2-i.lift.json): what B2-i placed whole counts as existing, and each shape both trim lists the union of both lifts' fields. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p0.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcPortalI18n",
+      "to": "portalI18n.ts",
+      "moves": "all",
+      "append": true
+    },
+    {
+      "from": "gcPortal",
+      "to": "portal.ts",
+      "moves": [
+        "PortalPlanNews",
+        "portalPlanNews",
+        "PortalPaperLine",
+        "COI_WARN_DAYS",
+        "portalInsurance",
+        "unclearLines",
+        "aYearFrom",
+        "PortalAskKind",
+        "PortalJobMoney",
+        "PortalTodo",
+        "portalClosedWords",
+        "portalLeavesOut",
+        "portalOnSite",
+        "PortalVettingState",
+        "PortalPromiseRow",
+        "PortalPaperOpen",
+        "PortalPaper",
+        "PortalPreBid",
+        "portalExclusionWords",
+        "portalSowExcluded",
+        "portalLink",
+        "PortalMessage",
+        "PORTAL_MAIL_GROUPS",
+        "contactGets",
+        "everyMailGroupCovered",
+        "mailRecipients",
+        "portalMailGroup",
+        "portalFirstVisit",
+        "PortalLine",
+        "PortalSpec",
+        "GOOD_FOR_DAYS",
+        "bidGoodUntil",
+        "alternateWords",
+        "PortalWeekWhen",
+        "PortalLookAheadItem",
+        "PortalLookAheadWeek",
+        "portalLookAhead",
+        "lookAheadOwed",
+        "PAY_WITHIN_DAYS",
+        "PortalPayState",
+        "PortalPayRow",
+        "PortalPayJob",
+        "portalContacts",
+        "ChangeRequestState",
+        "changeRequestState",
+        "openChangeRequests",
+        "portalCanAskChange",
+        "PORTAL_CHANGE_WHY",
+        "PortalChangeRow",
+        "portalChangeRequests",
+        "BACK_CHARGE_ANSWER_DAYS",
+        "BackChargeState",
+        "backChargeState",
+        "backChargeCanTake",
+        "backChargeDraws",
+        "backChargesToAct",
+        "PortalBackChargeRow",
+        "portalBackCharges",
+        "PORTAL_WEEKS_AHEAD",
+        "PortalWeekItem",
+        "PortalWeek",
+        "portalWeeks"
+      ],
+      "header": "/**\n * GC mode, the real build, the Portal lane's P0: the trade partner's portal, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcPortal.ts`). What one company reads about its own asks. The readers that need the Board's,\n * Building's or the schedule's kernels wait for those lifts (to-dos/gc-mode/PORTAL_REAL_BUILD.md, Kernels that move).\n */"
+    },
+    {
+      "from": "gcLookups",
+      "to": "lookups.ts",
+      "moves": [
+        "currentRev"
+      ],
+      "append": true
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "whole": true,
+      "append": true,
+      "names": [
+        "PortalMailGroup",
+        "PartnerPerson",
+        "BackCharge",
+        "ChangeOrderReason",
+        "TradeChangeRequest"
+      ]
+    },
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "The shapes the schedule's lifts and the Board's B2-i trimmed, written again with P0's fields added (each field word for word), the union of both lifts' lists. They replace those in types.ts.",
+      "fields": {
+        "SubBid": [
+          "amount",
+          "basedOnRev",
+          "submittedOn",
+          "includes",
+          "plugs",
+          "goodForDays",
+          "alternates",
+          "takenAlternates",
+          "exclusions",
+          "exclusionCovers"
+        ],
+        "QuoteExclusion": "all",
+        "Invite": [
+          "id",
+          "partnerId",
+          "status",
+          "invitedOn",
+          "seenRev",
+          "bid",
+          "declinedWhy",
+          "declineReason",
+          "contacts"
+        ],
+        "Draw": [
+          "id",
+          "number",
+          "retainage",
+          "net",
+          "status",
+          "waiver"
+        ],
+        "Sow": [
+          "status",
+          "price",
+          "sov",
+          "draws",
+          "sentBack",
+          "sentOn",
+          "backCharges",
+          "excluded"
+        ],
+        "Partner": [
+          "id",
+          "company",
+          "contact",
+          "trades",
+          "msa",
+          "msaSignedOn",
+          "coiExpires",
+          "w9",
+          "invited",
+          "bids",
+          "promisesMade",
+          "promisesKept",
+          "portalOpenedOn",
+          "msaSentOn",
+          "vetting",
+          "phone",
+          "email",
+          "people",
+          "contactGets"
+        ],
+        "PlanSet": [
+          "rev",
+          "label",
+          "touches"
+        ],
+        "GcProject": [
+          "id",
+          "name",
+          "address",
+          "town",
+          "ourBidSentOn",
+          "rough",
+          "startedOn",
+          "customerId",
+          "owner",
+          "customerRole",
+          "changeOrders",
+          "stage",
+          "bidDue",
+          "planSets",
+          "packages",
+          "generalConditions",
+          "contingencyPct",
+          "feePct",
+          "team",
+          "changeRequests",
+          "closedOn",
+          "schedule",
+          "lostOn",
+          "lostWhy",
+          "wonBy",
+          "dailyLogs",
+          "waits",
+          "scheduleSends",
+          "whatIf",
+          "crewCounts"
+        ],
+        "ChangeOrder": [
+          "id",
+          "number",
+          "description",
+          "packageId",
+          "cost",
+          "status",
+          "sentOn",
+          "answeredOn",
+          "days",
+          "daysOnChart",
+          "tradeChange"
+        ]
+      },
+      "names": [
+        "SubBid",
+        "QuoteExclusion",
+        "Invite",
+        "Draw",
+        "Sow",
+        "Partner",
+        "PlanSet",
+        "GcProject",
+        "ChangeOrder"
+      ]
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ScopeItem": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#BidAlternate": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DailyLog": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ScopeExclusion": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Includes": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#SovLine": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DrawSentBack": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcCustomer": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#CustomerRole": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#InviteStatus": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#AskContact": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DeclineReason": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DeclineReasonNote": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PartnerVettingForm": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PartnerVetting": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PromiseKind": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PaperKind": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PaperSend": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePromise": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ProjectContact": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcLostWhy": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcWords.ts#money": "words.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "outside": {
+    "src/lib/plainWords.ts": "src/lib/plainWords.ts"
+  },
+  "tests": [
+    {
+      "from": "gcPortalI18n.test.ts",
+      "to": "portalI18n.test.ts"
+    },
+    {
+      "from": "gcPortal.test.ts",
+      "to": "portal.test.ts"
+    }
+  ],
+  "slice": {
+    "about": "What P0 adds to the cut the schedule's lifts and B2-i describe: the plan sets keep their label. The people, the change requests, the back-charges and the contacts are whole shapes, kept whole.",
+    "nested": {
+      "GcProject": {
+        "planSets": "PlanSet"
+      }
+    }
+  }
+}
