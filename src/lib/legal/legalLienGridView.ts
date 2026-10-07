@@ -1,6 +1,7 @@
 import { filterLienTimelineBook, lienGridRows, type LienBookShow, type LienTimelineBook, type LienTimelineBookRow } from '../jobs/lienTimelineBook'
 import { workMonthShort } from '../jobs/forecastWorkMonths'
 import { formatUsdNoCents } from '../jobs/jobFormatting'
+import { addressLines } from '../bidDocuments/htmlDoc'
 
 /**
  * How the firm's Lien grid reads on the portal (v2.4749, the owner's ask of
@@ -23,6 +24,9 @@ export interface LegalLienGridCell {
   jobId: string
   job: string
   address: string
+  /** The address as the cell draws it (v2.4753): the street, then the city, state, zip and anything after — `addressLines`, split at the first comma. */
+  street: string
+  cityLine: string
   owner: string
   /** `Commercial` | `Residential` */
   kind: string
@@ -61,10 +65,13 @@ export function legalLienGridCells(rows: ReadonlyArray<LienTimelineBookRow>, tod
       .filter((s) => s.state !== 'missed')
       .map((s) => ({ month: workMonthShort(s.monthKey!), date: s.dateWords, sent: s.state === 'done' }))
     const openMonths = r.months.filter((m) => m.outcome !== 'sent').map((m) => workMonthShort(m.key))
+    const [street = '', cityLine = ''] = addressLines(g.address)
     return {
       jobId: r.jobId,
       job: g.job,
       address: g.address,
+      street,
+      cityLine,
       owner: g.owner,
       kind: residential ? 'Residential' : 'Commercial',
       kindUnknown: !kindKnown,

@@ -27,7 +27,7 @@ const raw: LienBookRaw = {
   items: [],
   filings: [],
   jobs: [
-    { id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dudley (Lennox)', job_address: '9703 Lenox Hl', gc_customer_id: 'gc-1', customer_address_id: null, revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'unknown', lien_contract_ended_on: null },
+    { id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dudley (Lennox)', job_address: '9703 Lenox Hl, Kyle, TX 78640', gc_customer_id: 'gc-1', customer_address_id: null, revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'unknown', lien_contract_ended_on: null },
     { id: 'job-300', hcp_number: '300', click_number: null, job_name: 'Reliant Health', job_address: '150 E Sonterra Blvd', gc_customer_id: 'gc-2', customer_address_id: null, revenue: 4800, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: 'no', lien_contract_ended_on: null },
     { id: 'job-310', hcp_number: '310', click_number: null, job_name: 'Whitfield repipe', job_address: '7 Willow Ct', gc_customer_id: null, customer_address_id: null, revenue: 1795, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: null, lien_contract_ended_on: null },
   ],
@@ -45,7 +45,7 @@ describe('LegalPortalLienGrid', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     expect(screen.getByText('Lien grid')).toBeTruthy()
     const dudley = screen.getByText('273 · Dudley (Lennox)').closest('td')!
-    expect(dudley.textContent).toContain('9703 Lenox Hl')
+    expect(within(dudley).getByText('9703 Lenox Hl').nextElementSibling?.textContent).toBe('Kyle, TX 78640')
     const row = dudley.closest('tr')!
     expect(row.textContent).toContain('Residential')
     expect(row.textContent).toContain('No homestead')
@@ -57,9 +57,17 @@ describe('LegalPortalLienGrid', () => {
     expect(row.textContent).not.toContain('MISSED')
     expect(screen.getByText('Owner of record')).toBeTruthy()
     expect(screen.queryByText('Address')).toBeNull()
-    expect(screen.getAllByTitle('A fact the office has not entered yet').length).toBeGreaterThan(0)
+    expect(screen.getByText('Amount due').textContent).toBe('Amount dueFor work in')
+    expect(screen.queryByText(/Unpaid/)).toBeNull()
+    expect(screen.getByRole('button', { name: /^Upcoming · 3$/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /^Due in 30 days · \d+$/ })).toBeTruthy()
+    const marks = screen.getAllByTitle('A fact the office has not entered yet')
+    expect(marks.length).toBeGreaterThan(0)
+    for (const m of marks) expect(m.closest('td')!.style.textAlign).toBe('center')
     expect(screen.getByText('300 · Reliant Health').closest('tr')!.textContent).toContain('Commercial')
-    expect(screen.getByText('310 · Whitfield repipe').closest('tr')!.textContent).toContain('none needed (with the owner)')
+    const owner = screen.getByText('none needed')
+    expect(owner.nextElementSibling?.textContent).toBe('(with the owner)')
+    expect(owner.closest('tr')!.textContent).toContain('310 · Whitfield repipe')
     fireEvent.click(screen.getByRole('button', { name: /Print the grid/ }))
     expect(openHtmlPrintWindow).toHaveBeenCalledTimes(1)
     expect(String(vi.mocked(openHtmlPrintWindow).mock.calls[0]?.[0])).toContain('Lien grid — all GCs')
@@ -86,11 +94,11 @@ describe('LegalPortalLienGrid', () => {
     expect(screen.queryByText('300 · Reliant Health')).toBeNull()
   })
 
-  it('the rail follows Something due / All, and a chosen GC that empties falls back to All GCs', () => {
+  it('the rail follows Due in 30 days / Upcoming, and a chosen GC that empties falls back to All GCs', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
     fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Something due/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Due in 30 days/ }))
     // Reliant's one month is due Nov 16, outside the desk's lead — the entry is left off and the grid shows every due job.
     expect(rail.queryByRole('button', { name: /EPC Sparti/ })).toBeNull()
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
