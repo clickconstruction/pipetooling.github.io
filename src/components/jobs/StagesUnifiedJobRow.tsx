@@ -5,6 +5,7 @@
  * `t` context once per render from its post-default props and its helpers. The key the
  * table gives it is `stagesUnifiedRowKey` (lib), unchanged from before the split.
  */
+import { StagesUncollectibleStamp } from './StagesUncollectibleStamp'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import type { StageRow } from '../../lib/jobsStagesBoard'
@@ -32,6 +33,7 @@ export type StagesUnifiedJobRowKind = Extract<StageRow, { kind: 'job' | 'job_wit
 
 export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; t: StagesUnifiedRowContext }) {
   const billLine = t.billedBillLine?.(row) ?? null
+  const stamp = t.rowStamp?.(row.job) ?? null
   const {
     actionLabel,
     onJobAction,
@@ -50,6 +52,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
     lienReleaseJobIds,
     demandOutJobIds,
     onJobMoveToCollections,
+    onJobMarkUncollectible,
     stagesJobFlashId,
     stagesEditMode,
     renderStagesOpenDetailJobName,
@@ -100,6 +103,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
     <tr
       data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
       data-stages-job-id={j.id}
+      data-stages-row-stamped={stamp ? '' : undefined}
       aria-expanded={expandedJobThreadId === j.id}
       style={{
         borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid var(--border-job-row)',
@@ -201,6 +205,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
               {t.billedLienRunway?.(row)}
               {billLine?.extras}
               {renderJobNoteLine(j)}
+              {stamp ? <StagesUncollectibleStamp facts={stamp} /> : null}
             </>
           ) : (
             <>
@@ -229,6 +234,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
               {t.billedLienRunway?.(row)}
               {billLine?.extras}
               {renderJobNoteLine(j)}
+              {stamp ? <StagesUncollectibleStamp facts={stamp} /> : null}
             </>
           )}
         </div>
@@ -374,7 +380,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
             </StagesRowIcons>
             {/* v2.4147 (owner): Send back and Collections live under the icons, stacked
                 full width — off the Progress cell, where they sat under the lien runway. */}
-            {((sendBackBelowRemaining && (bundleInv ? bundleInvWithJob != null : onJobSendBack != null)) || onJobMoveToCollections) ? (
+            {((sendBackBelowRemaining && (bundleInv ? bundleInvWithJob != null : onJobSendBack != null)) || onJobMoveToCollections || onJobMarkUncollectible) ? (
               <div style={stagesActionMoveStackStyle}>
                 {sendBackBelowRemaining && !bundleInv && onJobSendBack ? (
                   <button
@@ -405,6 +411,16 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                     style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Collections
+                  </button>
+                ) : null}
+                {onJobMarkUncollectible ? (
+                  <button
+                    type="button"
+                    onClick={() => onJobMarkUncollectible(j)}
+                    title="Give up on collecting this job: it stays in Collections, stamped with your reason, and leaves every total and the Lien desk"
+                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: '#b91c1c', border: '1px solid #b91c1c', fontWeight: 600 }}
+                  >
+                    Uncollectible…
                   </button>
                 ) : null}
               </div>

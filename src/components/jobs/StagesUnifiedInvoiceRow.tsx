@@ -4,6 +4,7 @@
  * doors. Moved verbatim out of `JobsStagesUnifiedTable.tsx`, which builds the `t` context
  * once per render from its post-default props and its helpers.
  */
+import { StagesUncollectibleStamp } from './StagesUncollectibleStamp'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
 import type { StageRow } from '../../lib/jobsStagesBoard'
@@ -31,6 +32,7 @@ export type StagesUnifiedInvoiceRowKind = Extract<StageRow, { kind: 'invoice' }>
 
 export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceRowKind; t: StagesUnifiedRowContext }) {
   const billLine = t.billedBillLine?.(row) ?? null
+  const stamp = t.rowStamp?.(row.job) ?? null
   const {
     actionLabel,
     onInvoiceAction,
@@ -45,6 +47,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
     lienReleaseJobIds,
     demandOutJobIds,
     onJobMoveToCollections,
+    onJobMarkUncollectible,
     stagesJobFlashId,
     stagesHamMode,
     stagesEditMode,
@@ -94,6 +97,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
     <tr
       data-stages-invoice-id={inv.id}
       data-stages-job-id={job.id}
+      data-stages-row-stamped={stamp ? '' : undefined}
       aria-expanded={expandedJobThreadId === job.id}
       style={{
         borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid var(--border-job-row)',
@@ -269,6 +273,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
           {t.billedLienRunway?.(row)}
           {billLine?.extras}
           {renderJobNoteLine(job)}
+          {stamp ? <StagesUncollectibleStamp facts={stamp} /> : null}
         </div>
       </td>
       <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
@@ -341,7 +346,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
             {showAiaG702G703(authRole, job, inv) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(job)} /> : null}
             </StagesRowIcons>
             {/* v2.4147 (owner): Send back and Collections live under the icons, stacked full width. */}
-            {(sendBackBelowRemaining || onJobMoveToCollections) ? (
+            {(sendBackBelowRemaining || onJobMoveToCollections || onJobMarkUncollectible) ? (
               <div style={stagesActionMoveStackStyle}>
                 {sendBackBelowRemaining ? (
                   <button
@@ -361,6 +366,16 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
                     style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                   >
                     Collections
+                  </button>
+                ) : null}
+                {onJobMarkUncollectible ? (
+                  <button
+                    type="button"
+                    onClick={() => onJobMarkUncollectible(job)}
+                    title="Give up on collecting this job: it stays in Collections, stamped with your reason, and leaves every total and the Lien desk"
+                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: '#b91c1c', border: '1px solid #b91c1c', fontWeight: 600 }}
+                  >
+                    Uncollectible…
                   </button>
                 ) : null}
               </div>

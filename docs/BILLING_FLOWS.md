@@ -301,6 +301,7 @@ The company migrated off HouseCall Pro; **this app is the system of record for a
 | Paid → billed | Pipeline Paid section send-back; automatic via payment unlink / OOB unwind | `update_job_status('billed')` |
 | Paid (out-of-band mark) → ready_to_bill | Undo out-of-band payment with *send back* ticked (default, v2.4082), or Edit Job ③ **Check didn't clear…** on the Stripe-held row | `reverse-stripe-invoice-out-of-band-payment` (credit note, payments off, invoice billed) then `sendBackStripeBilledLine` (the void function finds the note, deletes the row, job → RTB). Stripe never reopens a paid invoice, so collecting again means Bill Customer. |
 | Collections ↔ Billed | "Move to Collections" / "Send back to Billed" | `set_job_collections_flag` only — not a status transition |
+| Collections ↔ Uncollectible (v2.4792) | "Uncollectible…" with a required reason / "Put it back in Collections" | `set_job_uncollectible` only — a sub-state of the flag; then `mark-stripe-invoice-uncollectible` per Stripe bill |
 | Field send-back | Collect Payment step 3 | `invokeVoidStripeInvoiceForCollectPaymentSendBack` → same edge with flow verification (service-role path) |
 
 **What blocks a send-back**: recorded payments on the invoice; money in Stripe (`amount_paid > 0` or a charge — a `paid` status with nothing paid through Stripe is our own mark and is reversed, v2.4082); un-voidable Stripe status; role/access gates; stale from-status (client resyncs).

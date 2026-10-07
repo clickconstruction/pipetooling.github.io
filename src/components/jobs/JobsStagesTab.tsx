@@ -261,6 +261,7 @@ import { ownerRecordsFromDesk } from '../../lib/jobs/ownerRecordsDesk'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
+import { StagesUncollectibleConfirmModal } from './StagesUncollectibleConfirmModal'
 import { StagesSendBackInvoiceModal } from './StagesSendBackInvoiceModal'
 import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
@@ -294,6 +295,9 @@ import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/job
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
+import { setJobUncollectible } from '../../lib/setJobUncollectible'
+import { invokeMarkStripeInvoiceUncollectible } from '../../lib/markStripeInvoiceUncollectible'
+import { uncollectibleFactsFor, uncollectiblePhoneLine } from '../../lib/jobs/uncollectible'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
   parseStagesIncludeScheduleTimePref,
@@ -1198,6 +1202,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [collectionsConfirm, setCollectionsConfirm] = useState<{ job: JobWithDetails; direction: 'to' | 'from' } | null>(null)
   const [collectionsNoteDraft, setCollectionsNoteDraft] = useState('')
   const [collectionsSaving, setCollectionsSaving] = useState(false)
+  // Uncollectible (punch list #94, v2.4792): 'mark' = Collections → the band, with a required reason; 'unmark' = back.
+  const [uncollectibleConfirm, setUncollectibleConfirm] = useState<{ job: JobWithDetails; direction: 'mark' | 'unmark' } | null>(null)
+  const [uncollectibleReasonDraft, setUncollectibleReasonDraft] = useState('')
+  const [uncollectibleSaving, setUncollectibleSaving] = useState(false)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-ham-mode') === 'true'
@@ -2510,6 +2518,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       crew,
       // v2.4760: a Billed / Collections bill row reads the bill's own day, not the latest event.
       billDisplay: phoneBillWords({ stage, inv, detail: bDetail, todayYmd: phoneTodayYmd }),
+      // v2.4792: a job the office gave up on reads its reason and wears the UNCOLLECTIBLE chip.
+      uncollectible: (() => {
+        const facts = stage === 'collections' ? uncollectibleFactsFor(job) : null
+        return facts ? { line: uncollectiblePhoneLine(facts) } : null
+      })(),
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
       lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
@@ -2702,6 +2715,32 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       invoiceBundleActionLabel: 'Send back to Billed',
       invoiceStandaloneActionLabel: 'Send back to Billed',
       jobNoteLine: collectionsNoteLine,
+      // v2.4792 (punch list #94): give up on the job — the typed confirm with a required reason.
+      onJobMarkUncollectible: stagesGates.canManageCollections(authRole)
+        ? (j) => {
+            setUncollectibleReasonDraft('')
+            setUncollectibleConfirm({ job: j, direction: 'mark' })
+          }
+        : undefined,
+    } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
+    // The Uncollectible band under Collections (v2.4792): Mark Paid and View Bill still work, no lien door,
+    // the stamp in place of the note line, and one way back.
+    uncollectible: {
+      actionLabel: 'Mark Paid',
+      onJobAction: (j) => setMarkPaidJob(j),
+      onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
+      onViewBill: (inv) => setViewBillInvoice(inv),
+      showClickTooling: false,
+      onJobSendBack: stagesGates.canManageCollections(authRole) ? (j) => setUncollectibleConfirm({ job: j, direction: 'unmark' }) : undefined,
+      onInvoiceSendBack: (inv) => setUncollectibleConfirm({ job: inv.job, direction: 'unmark' }),
+      showRemaining: true,
+      showTimeOpen: false,
+      sendBackBelowRemaining: true,
+      showCreatePartialInvoice: false,
+      jobSendBackLabel: 'Put it back in Collections',
+      invoiceBundleActionLabel: 'Put it back in Collections',
+      invoiceStandaloneActionLabel: 'Put it back in Collections',
+      rowStamp: uncollectibleFactsFor,
     } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
   }
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
@@ -2870,6 +2909,48 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       }
     } finally {
       setCollectionsSaving(false)
+    }
+  }
+  const closeUncollectibleConfirm = () => {
+    setUncollectibleConfirm(null)
+    setUncollectibleReasonDraft('')
+  }
+  /** Uncollectible (punch list #94, v2.4792): the RPC, then Stripe's own mark (the owner's call), the toast, the reload. */
+  const confirmUncollectible = async () => {
+    if (!uncollectibleConfirm || uncollectibleSaving) return
+    const { job, direction } = uncollectibleConfirm
+    setUncollectibleSaving(true)
+    try {
+      const res = await setJobUncollectible(job.id, direction === 'mark', direction === 'mark' ? uncollectibleReasonDraft : undefined)
+      if (!res.ok) {
+        showToast(res.error ?? 'Could not update Uncollectible.', 'error')
+        return
+      }
+      setUncollectibleConfirm(null)
+      setUncollectibleReasonDraft('')
+      showToast(direction === 'mark' ? 'Marked Uncollectible. It stays in Collections, stamped, and leaves every total.' : 'Put back in Collections.', 'success')
+      if (direction === 'mark') {
+        // Stripe's invoice is marked uncollectible too; a failure there never undoes the mark here.
+        const stripeInvoices = (job.invoices ?? []).filter((i) => i.status === 'billed' && (i.stripe_invoice_id ?? '').trim() !== '')
+        if (stripeInvoices.length > 0) {
+          const token = await getAccessTokenForEdgeFunctions()
+          if (!token) showToast('Marked here, but not in Stripe: not signed in for the Stripe call.', 'error')
+          else {
+            for (const inv of stripeInvoices) {
+              const r = await invokeMarkStripeInvoiceUncollectible({ invoiceId: inv.id, stripeModeForBilling: stripeModeForBillingFromRole(authRole), accessToken: token })
+              if (!r.ok) showToast(`Marked here, but Stripe could not be marked: ${r.message}`, 'error')
+            }
+          }
+        }
+      }
+      await loadJobs()
+      if (stagesFollowMoves) {
+        setStagesSectionOpen((prev) => ({ ...prev, collections: true }))
+        setPendingStagesJobFocusId(job.id)
+        setStagesJobFlashId(job.id)
+      }
+    } finally {
+      setUncollectibleSaving(false)
     }
   }
 
@@ -3334,7 +3415,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             if (stagesRecentViewOpen) {
               return <JobsRecentlyAddedList onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })} />
             }
-            const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows } = stagesBoardLists
+            const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows, uncollectibleRows } = stagesBoardLists
 
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -3389,7 +3470,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ? waiting.map((job) => ({ job, row: null }))
                 : phoneActiveStage === 'working'
                   ? working.map((job) => ({ job, row: null }))
-                  : (phoneActiveStage === 'readyToBill' ? readyToBillRows : phoneActiveStage === 'billed' ? billedListRows : collectionsRows).map((row) => ({ job: row.job, row }))
+                  : (phoneActiveStage === 'readyToBill' ? readyToBillRows : phoneActiveStage === 'billed' ? billedListRows : [...collectionsRows, ...uncollectibleRows]).map((row) => ({ job: row.job, row }))
             const phoneNexts: JobNextLine[] = phoneStageRows.map(({ job, row }) => jobNextLine(phoneNextInput(job, row, phoneStageOf[phoneActiveStage])))
             const phoneFilterCounts = { all: phoneNexts.length, needs: phoneNexts.filter((n) => n.needsMe).length, today: phoneNexts.filter((n) => n.today).length }
             const phoneStageLine = !phoneBoard
@@ -3865,23 +3946,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   ) : null}
                 </div>
                 {sectionShown('collections') && !stagesSearchActive && !sectionMerged('collections') && sectionBodyLoading('Collections')}
-                {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (collectionsRows.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
-                    No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
-                  </p>
-                ) : (
-                  <StagesUnifiedSectionList
-                    {...stagesUnifiedTableShared}
-                    rows={collectionsRows}
-                    phoneRows={phoneRowsFor('collections')}
-                    onToggleProgressSort={onToggleProgressSort}
-                    // B6 / J4-10's shell pill ("In Collections N days · no bill line") lives in this
-                    // renderer; until v2.4758 only the Billed site wired it, where no Collections shell sits.
-                    billedBillLine={billedBillLineRenderer}
-                    {...stagesSectionActionProps.collections}
-                    openNewReportForJob={openNewReportForJob}
-                  />
-                ))}
+                {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (
+                  <>
+                    {collectionsRows.length === 0 && uncollectibleRows.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+                        No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
+                      </p>
+                    ) : collectionsRows.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+                        Nothing still chased in Collections. The jobs below are the ones the office gave up on.
+                      </p>
+                    ) : (
+                      <StagesUnifiedSectionList
+                        {...stagesUnifiedTableShared}
+                        rows={collectionsRows}
+                        phoneRows={phoneRowsFor('collections')}
+                        onToggleProgressSort={onToggleProgressSort}
+                        // B6 / J4-10's shell pill ("In Collections N days · no bill line") lives in this
+                        // renderer; until v2.4758 only the Billed site wired it, where no Collections shell sits.
+                        billedBillLine={billedBillLineRenderer}
+                        {...stagesSectionActionProps.collections}
+                        openNewReportForJob={openNewReportForJob}
+                      />
+                    )}
+                    {uncollectibleRows.length > 0 ? (
+                      <>
+                        {/* Uncollectible (punch list #94, v2.4792): the band under Collections — its own count and dollars, in no total. */}
+                        <div
+                          data-stages-uncollectible-band
+                          className="stagesSectionBand"
+                          style={{ ...(stageColorVar('collections') as CSSProperties), margin: '1rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', opacity: 0.92 }}
+                        >
+                          <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>Uncollectible</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>{uncollectibleRows.length}</span>
+                          <span style={{ fontWeight: 700 }}>{`$${formatCurrencyNoCents(billedRowsRemainingTotal(uncollectibleRows))}`}</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>given up on — in no total, on no lien clock, still on the books</span>
+                        </div>
+                        <StagesUnifiedSectionList
+                          {...stagesUnifiedTableShared}
+                          rows={uncollectibleRows}
+                          phoneRows={phoneRowsFor('collections')}
+                          onToggleProgressSort={onToggleProgressSort}
+                          {...stagesSectionActionProps.uncollectible}
+                          openNewReportForJob={openNewReportForJob}
+                        />
+                      </>
+                    ) : null}
+                  </>
+                )}
 
                 {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
                 <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('paid')} style={{ ...(stageColorVar('paid') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
@@ -4803,6 +4915,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           saving={collectionsSaving}
           onCancel={closeCollectionsConfirm}
           onConfirm={confirmCollectionsMove}
+        />
+      )}
+      {uncollectibleConfirm && (
+        <StagesUncollectibleConfirmModal
+          confirm={uncollectibleConfirm}
+          reasonDraft={uncollectibleReasonDraft}
+          onReasonDraftChange={setUncollectibleReasonDraft}
+          saving={uncollectibleSaving}
+          onCancel={closeUncollectibleConfirm}
+          onConfirm={confirmUncollectible}
         />
       )}
       {quickAssignJob ? (

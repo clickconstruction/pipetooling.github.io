@@ -36,6 +36,18 @@ vi.mock('../../contexts/JobsListCacheContext', async () => {
   }
 })
 
+const uncollectibleRpc = vi.hoisted(() => ({ calls: [] as unknown[][] }))
+vi.mock('../../lib/setJobUncollectible', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/setJobUncollectible')>('../../lib/setJobUncollectible')
+  return {
+    ...actual,
+    setJobUncollectible: async (...args: unknown[]) => {
+      uncollectibleRpc.calls.push(args)
+      return { ok: true }
+    },
+  }
+})
+
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -543,6 +555,51 @@ describe('JobsStagesTab render smoke', () => {
       window.matchMedia = realMatchMedia
       localStorage.removeItem('jobs-stages-mobile-cards')
     }
+  })
+
+  describe('Uncollectible (punch list #94, v2.4792)', () => {
+    const chased = () => makeJob({ job_name: 'Still Chased', status: 'billed', revenue: 350, payments_made: 0, collections_at: '2026-08-01T00:00:00Z', invoices: [] })
+    const givenUp = () =>
+      makeJob({ job_name: 'Given Up', status: 'billed', revenue: 7502, payments_made: 0, collections_at: '2026-04-13T00:00:00Z', uncollectible_at: '2026-10-07T03:30:00Z', uncollectible_reason: 'Customer is engaging in theft of service.', invoices: [] })
+
+    it('the band under Collections carries the given-up job with its stamp; the Collections header counts only what is still chased', async () => {
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: [...boardJobs(), chased(), givenUp()] })} />)
+      await settle()
+      expect(sectionHeader('Collections', 1)).toBeTruthy()
+      const band = document.querySelector('[data-stages-uncollectible-band]')!
+      expect(band.textContent).toContain('Uncollectible')
+      expect(band.textContent).toContain('$7,502')
+      const stamp = screen.getByRole('note', { name: /^Uncollectible\. Customer is engaging in theft of service\. Oct 6, 2026/ })
+      expect(stamp.textContent).toContain('$7,502 given up on')
+      expect(document.querySelectorAll('tr[data-stages-row-stamped]')).toHaveLength(1)
+      // The stamped row keeps Mark Paid and offers the way back; the chased row offers the door.
+      expect(screen.getByRole('button', { name: 'Put it back in Collections' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Uncollectible…' })).toBeTruthy()
+    })
+
+    it('Uncollectible… asks for a reason and writes it; Put it back asks and unmarks', async () => {
+      uncollectibleRpc.calls = []
+      const jobs = [...boardJobs(), chased(), givenUp()]
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs })} />)
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: 'Uncollectible…' }))
+      const dialog = screen.getByRole('dialog', { name: 'Mark the job Uncollectible' })
+      const confirmBtn = within(dialog).getByRole('button', { name: 'Mark Uncollectible' })
+      expect((confirmBtn as HTMLButtonElement).disabled).toBe(true)
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Refused the bill, will not answer, not worth a suit.' } })
+      expect((confirmBtn as HTMLButtonElement).disabled).toBe(false)
+      await act(async () => {
+        fireEvent.click(confirmBtn)
+      })
+      expect(uncollectibleRpc.calls).toEqual([[jobs[3]!.id, true, 'Refused the bill, will not answer, not worth a suit.']])
+      expect(screen.queryByRole('dialog', { name: 'Mark the job Uncollectible' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Put it back in Collections' }))
+      const back = screen.getByRole('dialog', { name: 'Put the job back in Collections' })
+      await act(async () => {
+        fireEvent.click(within(back).getByRole('button', { name: 'Put it back' }))
+      })
+      expect(uncollectibleRpc.calls[1]).toEqual([jobs[4]!.id, false, undefined])
+    })
   })
 
   describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {

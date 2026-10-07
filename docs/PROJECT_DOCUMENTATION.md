@@ -1494,6 +1494,7 @@ The jobs pipeline postdates the schema sections above; its column semantics are 
 - `hcp_number` and `click_number` combine into the effective job number (HCP wins when both are set).
 - `last_work_date` is trigger-maintained from approved clock sessions; the manual `last_bill_date` column was retired in v2.1154 (nothing reads or writes it).
 - `collections_at` / `collections_by` / `collections_note` — the Collections flag on a `billed` job (not a status): set and cleared by `set_job_collections_flag`, cleared by trigger when the job pays; the rules in [BILLING_FLOWS.md](./BILLING_FLOWS.md) → *Collections*, the term in [GLOSSARY.md](./GLOSSARY.md) → *Collections*.
+- `uncollectible_at` / `uncollectible_by` / `uncollectible_reason` (v2.4782) — the Uncollectible mark on a Collections job: `set_job_uncollectible` with a required reason; in no owed total (v2.4784), off the Lien desk (v2.4788), the stamped band under Collections (v2.4792); the term in [GLOSSARY.md](./GLOSSARY.md) → *Collections*.
 - FKs: `customer_id` (required before billing), `gc_customer_id` (optional GC link), `development_id` (optional job grouping), `project_id` (job's `master_user_id` synced to project owner), `service_type_id`. The two `customers` FKs make bare embeds ambiguous — always name the FK (PGRST201).
 - Link columns: `google_drive_link` (customer files), `job_pictures_link`, `job_plans_link`.
 
