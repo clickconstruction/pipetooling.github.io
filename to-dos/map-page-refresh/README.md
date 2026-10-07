@@ -4,7 +4,7 @@ number: 96
 group: ready
 size: 5 PRs, each small
 blocker: none
-status: claude/map-refresh-2b-status — PRs 1 (v2.4791), 2 (v2.4796) and 2b (v2.4802, status colors, chips, Cluster) built 2026-10-07; PRs 3–5 next, in order.
+status: claude/map-refresh-3-places — PRs 1 (v2.4791), 2 (v2.4796), 2b (v2.4802) and 3 (v2.4804, places and the rail) built 2026-10-07; PRs 4 and 5 next.
 summary: >
   The Map page plots every job, bid and estimate but opened on open ocean (two wrong geocodes
   dragged the fit), drew every job the same blue whether working or paid, showed nine drawing tools
@@ -13,8 +13,8 @@ summary: >
   clusters, popups with Directions, the phone bar — and gives it a rail of places in place of the
   table, an address sheet for the records the map cannot place, and the court areas as a layer.
 next: >
-  PR 3: places (one pin per address with a count badge) and the rail — the selected place's card,
-  the distance bands, the nearest list with hover pulse; the table retired; the phone layout.
+  PR 4: the sheet for the records the map cannot place (no address, not found) and the far-away
+  ones with the Google re-check; the geocode progress list leaves the header; Debug removed.
 ---
 
 # Map page refresh
@@ -56,7 +56,7 @@ Stays as it is: OpenStreetMap on this page (drawing and the precinct layer are L
 
 1. **The first view** (v2.4791): office anchor + rings, home fit, Fit all, far pins out of the fit and listed, the toolbar cut to the polygon. Kernel `src/lib/map/mapPageFirstView.ts`; `LeafletOfficeAnchor` lifted out of the canvas.
 2. **The shared canvas** (v2.4796): `PinsMapCanvas` gains a `children` slot (Leaflet only) so the page mounts `GeomanDraw`, `CourtAreasLayer` and its fly-to inside it; popups with Open / Directions, the phone bar, the scroll gate; the page's own `MapContainer` and its default-view read go. Kernel `src/lib/map/mapPagePins.ts`. **2b** (v2.4802): pins by status (jobs by Pipeline section with the Collections ring, bids by board section with the due ring, estimates violet), the chips as key and switches with counts, Paid / Lost / Estimates off by default, the Cluster toggle. Kernel `src/lib/map/mapPageSections.ts`.
-3. **Places and the rail**: a places kernel (records grouped by address key, the badge count, the card's rows), `JobsMapRail`'s pattern for the bands and the nearest list, hover pulse; the table retired; the phone layout.
+3. **Places and the rail** (v2.4804): `mapPagePlaces.ts` (records grouped by address key, the badge count, the liveliest record's color, the most urgent ring, the bands, the nearest list, the totals), `MapPageRail.tsx` with `PlaceCard` (also the popup), hover pulse; the table retired; the drawn area filters the map; the phone stacks the rail under the map.
 4. **No location and wrong location**: the address sheet for jobs, bids and estimates (the Bid Board's generalized), the far-away section with the Google re-check, Debug removed; the geocode progress list leaves the header.
 5. **Precincts as a layer**: a Precincts chip draws the court areas without the mode; the place card names county and precinct; guide updated.
 
@@ -66,4 +66,4 @@ Dev login, `/map`. PR 1: the map opens on the office ring with the diamond and t
 
 ## Where it stands
 
-PRs 1 (v2.4791), 2 (v2.4796) and 2b (v2.4802) built 2026-10-07. The two wrong geocodes are the office's to fix by hand on the job records; nothing here changes data.
+PRs 1 (v2.4791), 2 (v2.4796), 2b (v2.4802) and 3 (v2.4804) built 2026-10-07. The two wrong geocodes are the office's to fix by hand on the job records; nothing here changes data.

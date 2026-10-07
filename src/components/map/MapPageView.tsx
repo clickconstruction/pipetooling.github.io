@@ -7,9 +7,8 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 // Leaflet / react-leaflet / Geoman: import only from this file (and the lazy pins canvas) so they stay in the lazy Map route chunk.
 import { useMap } from 'react-leaflet'
 import { booleanPointInPolygon, point } from '@turf/turf'
@@ -43,9 +42,13 @@ import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { BID_BOARD_MAP_RING_MILES } from '../../lib/bids/bidBoardMap'
 import type { MapCanvasAnchor } from '../../lib/map/mapCanvasTypes'
-import { mapPageDirectionsUrl, mapPageEntitiesByPinId, mapPagePinId, mapPagePins } from '../../lib/map/mapPagePins'
+import { mapPageDirectionsUrl } from '../../lib/map/mapPagePins'
+import { mapPageBands, mapPageNearest, mapPagePlacePins, mapPagePlaces, mapPageTotalsLine, placesInBands, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/map/mapPagePlaces'
+import { DEFAULT_DISTANCE_BUCKETS } from '../../lib/bids/bidBoardMapRail'
+import { MapPageRail, PlaceCard, type MapPagePlaceOfEntity } from './MapPageRail'
 import {
   BID_BOARD_MAP_DUE_RING_COLOR,
+  BID_STAGE_META,
   JOBS_MAP_COLLECTIONS_RING_COLOR,
   JOBS_MAP_SECTIONS,
   JOBS_MAP_SECTION_COLOR,
@@ -75,19 +78,6 @@ const openLinkLikeStyle: CSSProperties = {
   font: 'inherit',
 }
 
-
-/** Bid stage chips; keys and meanings match the Bid Board sections (submissionSections kernel). */
-const BID_STAGE_META: { key: SubmissionSectionKey; label: string; title: string }[] = [
-  { key: 'unsent', label: 'Unsent', title: 'Unsent / Working Bids' },
-  { key: 'pending', label: 'Pending', title: 'Not yet won or lost' },
-  { key: 'won', label: 'Won', title: 'Won' },
-  { key: 'startedOrComplete', label: 'Started', title: 'Started or Complete' },
-  { key: 'lost', label: 'Lost', title: 'Lost' },
-]
-
-const BID_STAGE_TITLE: Record<SubmissionSectionKey, string> = Object.fromEntries(
-  BID_STAGE_META.map((m) => [m.key, m.title])
-) as Record<SubmissionSectionKey, string>
 
 /**
  * One chip over the map (v2.4802): the key and the switch for a job section, a bid stage or the
@@ -356,147 +346,6 @@ function GeocodeProgressList({
   )
 }
 
-const POPUP_BUTTON_STYLE: CSSProperties = {
-  padding: '0.25rem 0.6rem',
-  fontSize: '0.8125rem',
-  cursor: 'pointer',
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  background: 'var(--surface)',
-  color: 'var(--text-700)',
-}
-
-const PHONE_ACTION_STYLE: CSSProperties = { ...POPUP_BUTTON_STYLE, flex: 1, minHeight: 44, fontSize: '0.9375rem' }
-
-/** The popup body (desktop) and the bar under the map (phone, v2.4796): the record, its kind and stage, the address, Open and Directions. */
-function MapPinBody({ entity, phone, onOpen, onDirections }: { entity: MapPageEntity; phone: boolean; onOpen: (e: MapPageEntity) => void; onDirections: (e: MapPageEntity) => void }) {
-  const stage = entity.kind === 'bid' && entity.bidSection ? BID_STAGE_TITLE[entity.bidSection] : entity.meta
-  return (
-    <div style={{ fontSize: phone ? '0.875rem' : '0.8125rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 6, minWidth: phone ? 0 : 200, maxWidth: phone ? undefined : 300, color: 'var(--text-base)' }}>
-      <div style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: phone ? '0.9375rem' : undefined }}>
-        {entity.tableLabel}
-        {entity.sublabel.trim() ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{` · ${entity.sublabel.trim()}`}</span> : null}
-      </div>
-      <div style={{ color: 'var(--text-muted)' }}>
-        <span style={{ textTransform: 'capitalize' }}>{entity.kind}</span>
-        {stage ? ` · ${stage}` : ''}
-      </div>
-      <div style={{ color: 'var(--text-muted)' }}>{entity.addressLabel}</div>
-      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-        <button type="button" onClick={() => onOpen(entity)} style={phone ? PHONE_ACTION_STYLE : POPUP_BUTTON_STYLE}>
-          Open
-        </button>
-        <button type="button" onClick={() => onDirections(entity)} style={phone ? PHONE_ACTION_STYLE : POPUP_BUTTON_STYLE}>
-          Directions
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function MapEntityTable({
-  rows,
-  title,
-  titleRight,
-  emptyHint,
-  onOpenJob,
-}: {
-  rows: MapPageEntity[]
-  title: string
-  /** e.g. filter search — shown to the right of the title on wide viewports. */
-  titleRight?: ReactNode
-  emptyHint: string
-  /** When set, job rows open Edit Job in place instead of navigating to Jobs. */
-  onOpenJob?: (jobId: string) => void
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '0.5rem',
-        }}
-      >
-        <h2 style={{ fontSize: '1rem', margin: 0, flex: '1 1 auto', minWidth: 0 }}>{title}</h2>
-        {titleRight != null ? (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '0.5rem',
-              justifyContent: 'flex-end',
-              flex: '1 1 200px',
-              minWidth: 0,
-            }}
-          >
-            {titleRight}
-          </div>
-        ) : null}
-      </div>
-      <div
-        style={{
-          border: '1px solid var(--border)',
-          borderRadius: 4,
-          maxHeight: 'min(50vh, 360px)',
-          overflow: 'auto',
-        }}
-      >
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            fontSize: '0.8125rem',
-          }}
-        >
-          <thead>
-            <tr style={{ background: 'var(--bg-subtle)' }}>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Kind</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Name</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Address</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Info</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Open</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                  {emptyHint}
-                </td>
-              </tr>
-            ) : (
-              rows.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '0.35rem 0.5rem', textTransform: 'capitalize' }}>{r.kind}</td>
-                  <td style={{ padding: '0.35rem 0.5rem' }}>{r.tableLabel}</td>
-                  <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-700)' }}>{r.addressLabel}</td>
-                  <td style={{ padding: '0.35rem 0.5rem' }}>{r.meta || '—'}</td>
-                  <td style={{ padding: '0.35rem 0.5rem' }}>
-                    {r.kind === 'job' && onOpenJob ? (
-                      <button type="button" onClick={() => onOpenJob(r.id)} style={openLinkLikeStyle}>
-                        Open
-                      </button>
-                    ) : (
-                      <Link to={r.linkTo} style={{ color: 'var(--text-link)' }}>
-                        Open
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 export function MapPageView() {
   const navigate = useNavigate()
   const { loading, error, entities, geocodeAddressRows, geocodeInProgress, reload } = useMapPageData(true)
@@ -512,8 +361,11 @@ export function MapPageView() {
   const [mapFlyTo, setMapFlyTo] = useState<{ lat: number; lng: number } | null>(null)
   const clearMapFlyTo = useCallback(() => setMapFlyTo(null), [])
   const [geocodeChooserMatches, setGeocodeChooserMatches] = useState<MapPageEntity[] | null>(null)
-  // The pin the office clicked (v2.4796): its popup on a desktop, the bar under the map on a phone.
+  // The place the office clicked (v2.4796; places v2.4804): its popup on a desktop, the card in the rail.
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
+  const [bandsOn, setBandsOn] = useState<DistanceBucketVisibility>(DEFAULT_DISTANCE_BUCKETS)
+  const toggleBand = useCallback((key: DistanceBucketKey) => setBandsOn((prev) => ({ ...prev, [key]: !prev[key] })), [])
   const openEntity = useCallback(
     (e: MapPageEntity) => {
       if (e.kind === 'job' && jobFormModal) {
@@ -523,12 +375,16 @@ export function MapPageView() {
       }
       if (e.lat != null && e.lng != null) {
         setMapFlyTo({ lat: e.lat, lng: e.lng })
-        setSelectedId(mapPagePinId(e))
+        setSelectedId(e.addressKey)
       }
     },
     [jobFormModal, navigate, openJobOnMap]
   )
-  const directionsTo = useCallback((e: MapPageEntity) => openInExternalBrowser(mapPageDirectionsUrl(e.addressLabel)), [])
+  const directionsTo = useCallback((place: { addressLabel: string }) => openInExternalBrowser(mapPageDirectionsUrl(place.addressLabel)), [])
+  const pickPlace = useCallback((place: MapPagePlaceOfEntity) => {
+    setSelectedId(place.key)
+    setMapFlyTo({ lat: place.lat, lng: place.lng })
+  }, [])
   const onGeocodeAddressOpen = useCallback(
     (addressNormalized: string) => {
       const matches = entities.filter((en) => en.addressKey === addressNormalized)
@@ -691,9 +547,11 @@ export function MapPageView() {
     return visible.filter((e) => mapEntityMatchesSearch(mapSearchTrim, e))
   }, [visible, mapSearchTrim])
 
+  // The drawn area (v2.4804) narrows the map and the rail, not a table.
+  const inArea = useMemo(() => filterEntitiesByPolygon(searchFiltered, filterPoly), [searchFiltered, filterPoly])
   const withCoords = useMemo(
-    () => searchFiltered.filter((e) => e.lat != null && e.lng != null),
-    [searchFiltered]
+    () => inArea.filter((e) => e.lat != null && e.lng != null),
+    [inArea]
   )
   // The first view (v2.4791): the office and its rings; pins far from the office are drawn but
   // never fitted, and listed under the map to have their addresses checked.
@@ -706,51 +564,44 @@ export function MapPageView() {
   const placed = useMemo(() => withCoords.map((e) => ({ ...e, lat: e.lat!, lng: e.lng! })), [withCoords])
   const nearAndFar = useMemo(() => splitFarFromOffice(placed, anchorPoint), [placed, anchorPoint])
   const farPlaces = useMemo(() => farFromOfficePlaces(nearAndFar.far), [nearAndFar.far])
-  const homeFitPoints = useMemo(() => mapPageHomeFitPoints(nearAndFar.near, anchorPoint), [nearAndFar.near, anchorPoint])
-  const fitAllPoints = useMemo(() => mapPageFitAllPoints(nearAndFar.near, anchorPoint), [nearAndFar.near, anchorPoint])
+  // Places (v2.4804): one pin per address; the bands from the office double as filters.
+  const placesAll = useMemo(() => mapPagePlaces(placed), [placed])
+  const bands = useMemo(() => mapPageBands(placesAll, anchorPoint), [placesAll, anchorPoint])
+  const places = useMemo(() => placesInBands(placesAll, anchorPoint, bandsOn), [placesAll, anchorPoint, bandsOn])
+  const nearPlaces = useMemo(() => splitFarFromOffice(places, anchorPoint).near, [places, anchorPoint])
+  const homeFitPoints = useMemo(() => mapPageHomeFitPoints(nearPlaces, anchorPoint), [nearPlaces, anchorPoint])
+  const fitAllPoints = useMemo(() => mapPageFitAllPoints(nearPlaces, anchorPoint), [nearPlaces, anchorPoint])
   // The map opens on the home fit; Fit all widens to every near pin and stays wide (the Bid Board map's rule).
   const [fitAll, setFitAll] = useState(false)
   const [fitSignal, setFitSignal] = useState(0)
   const fitPoints = fitAll ? fitAllPoints : homeFitPoints
   const pins = useMemo(
-    () => mapPagePins(placed, { builderFocus: !!builderFocusId, focusSection: focusSectionOf }),
-    [placed, builderFocusId, focusSectionOf],
+    () => mapPagePlacePins(places, { builderFocus: !!builderFocusId, focusSection: focusSectionOf }),
+    [places, builderFocusId, focusSectionOf],
   )
-  const byPinId = useMemo(() => mapPageEntitiesByPinId(placed), [placed])
-  const selected = selectedId ? (byPinId.get(selectedId) ?? null) : null
+  const byKey = useMemo(() => new Map(places.map((p) => [p.key, p])), [places])
+  const selected = selectedId ? (byKey.get(selectedId) ?? null) : null
   useEffect(() => {
-    if (selectedId && !byPinId.has(selectedId)) setSelectedId(null)
-  }, [byPinId, selectedId])
+    if (selectedId && !byKey.has(selectedId)) setSelectedId(null)
+  }, [byKey, selectedId])
   const renderPopup = useCallback(
     (id: string) => {
-      const e = byPinId.get(id)
-      return e ? <MapPinBody entity={e} phone={false} onOpen={openEntity} onDirections={directionsTo} /> : null
+      const place = byKey.get(id)
+      return place ? <PlaceCard place={place} anchor={anchorPoint} compact isMobile={false} focusSection={focusSectionOf} onOpen={openEntity} onDirections={directionsTo} /> : null
     },
-    [byPinId, openEntity, directionsTo],
+    [byKey, anchorPoint, focusSectionOf, openEntity, directionsTo],
   )
+  const nearest = useMemo(() => mapPageNearest(places, anchorPoint), [places, anchorPoint])
+  const totalsLine = useMemo(() => mapPageTotalsLine(places), [places])
   const courtCover = useMemo(() => courtCoverage(withCoords.map((e) => ({ label: e.tableLabel, lat: e.lat, lng: e.lng })), courtAreas), [withCoords, courtAreas])
-  const tableRows = useMemo(
-    () => filterEntitiesByPolygon(searchFiltered, filterPoly),
-    [searchFiltered, filterPoly]
-  )
-
-  const tableTitle = useMemo(() => {
-    if (mapSearchTrim.length > 0) return 'Search results'
-    if (filterPoly) return 'In drawn area'
-    return 'All visible layers'
-  }, [mapSearchTrim, filterPoly])
-
-  const tableEmptyHint = useMemo(() => {
-    if (mapSearchTrim.length > 0 && searchFiltered.length === 0) {
-      return visible.length > 0
-        ? 'No matches for this search.'
-        : 'No items in the selected layers.'
-    }
-    if (filterPoly) {
-      return 'No pins in this area. Clear the draw or pick another region.'
-    }
-    return 'No rows with a geocoded address. Use Reload after geocoding finishes, or add addresses to jobs/bids/estimates.'
-  }, [mapSearchTrim, searchFiltered.length, visible.length, filterPoly])
+  const emptyHint = useMemo(() => {
+    if (places.length > 0) return null
+    if (mapSearchTrim.length > 0) return visible.length > 0 ? 'No matches for this search.' : 'Every chip is off — tap one above to show its pins.'
+    if (filterPoly) return 'No pins in the drawn area. Clear the draw or draw another.'
+    if (visible.length === 0 && entities.length > 0) return 'Every chip is off — tap one above to show its pins.'
+    if (placesAll.length > 0) return 'Every band is off — tap a box below to show its places.'
+    return loading ? 'Loading…' : 'Nothing has a map location yet. Add addresses to jobs, bids and estimates.'
+  }, [places.length, mapSearchTrim, visible.length, filterPoly, entities.length, placesAll.length, loading])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
@@ -989,14 +840,9 @@ export function MapPageView() {
       {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          flex: 1,
-          minHeight: 420,
-          minWidth: 0,
-        }}
+        style={narrow
+          ? { display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }
+          : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.75rem', alignItems: 'start', minWidth: 0 }}
       >
         {/* isolation contains Leaflet's internal z-indexes (panes 200-700, controls 1000) so they can't paint over header dropdowns */}
         <div style={{ position: 'relative', flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', isolation: 'isolate' }}>
@@ -1013,7 +859,8 @@ export function MapPageView() {
               fitPoints={fitPoints}
               cluster={clustered}
               clusterRingPriority={MAP_PAGE_CLUSTER_RING_PRIORITY}
-              clusterNoun="records"
+              clusterNoun="places"
+              pulseId={narrow ? null : hoverKey}
               // The map sits above the table: the wheel scrolls the page until the map is clicked once
               scrollZoomAfterClick
               // Leaflet ignores a height change after mount — remount when the form flips
@@ -1025,12 +872,26 @@ export function MapPageView() {
             </PinsMapCanvas>
           </Suspense>
         </div>
-        {narrow && selected ? (
-          <div data-map-phone-bar style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 10, padding: '0.625rem 0.75rem' }}>
-            <MapPinBody entity={selected} phone onOpen={openEntity} onDirections={directionsTo} />
-          </div>
-        ) : null}
-        <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
+        <MapPageRail
+          selected={selected}
+          anchor={anchorPoint}
+          bands={bands}
+          bandsOn={bandsOn}
+          onToggleBand={toggleBand}
+          nearest={nearest}
+          onPickPlace={pickPlace}
+          onHoverPlace={setHoverKey}
+          focusSection={focusSectionOf}
+          onOpen={openEntity}
+          onDirections={directionsTo}
+          search={mapSearchQuery}
+          onSearch={setMapSearchQuery}
+          totalsLine={totalsLine}
+          emptyHint={emptyHint}
+          isMobile={narrow}
+        />
+      </div>
+      <div style={{ minWidth: 0, width: '100%' }}>
           {farPlaces.length > 0 ? (
             <div data-far-from-office style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
               <div style={{ fontWeight: 600 }}>{farFromOfficeLine(farPlaces.length)}</div>
@@ -1059,48 +920,6 @@ export function MapPageView() {
               <CourtAreasPanel areas={courtAreas} coverage={courtCover} pending={courtPending !== null} busy={courtBusy} error={courtError} onSave={saveCourtArea} onCancelPending={discardCourtShape} onRename={renameCourtArea} onRemove={removeCourtArea} onFocus={focusCourtArea} onClassify={classifyNow} classifyWords={classifyWords} />
             </div>
           ) : null}
-          <MapEntityTable
-            rows={tableRows}
-            title={tableTitle}
-            titleRight={
-              <>
-                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                  Filter
-                </label>
-                <input
-                  id="map-page-search"
-                  type="search"
-                  name="map-page-search"
-                  value={mapSearchQuery}
-                  onChange={(e) => setMapSearchQuery(e.target.value)}
-                  autoComplete="off"
-                  placeholder="Filter by name, address, number…"
-                  aria-label="Filter map and list"
-                  style={{
-                    flex: '1 1 200px',
-                    minWidth: 0,
-                    maxWidth: '100%',
-                    padding: '0.35rem 0.5rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                  }}
-                />
-                {mapSearchTrim ? (
-                  <button
-                    type="button"
-                    onClick={() => setMapSearchQuery('')}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </>
-            }
-            emptyHint={tableEmptyHint}
-            onOpenJob={jobFormModal ? openJobOnMap : undefined}
-          />
-        </div>
       </div>
 
       <details
