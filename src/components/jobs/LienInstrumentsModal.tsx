@@ -36,6 +36,7 @@ import { buildDemandLetterPacket, exhibitKind, exhibitLabels, type DemandExhibit
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRuleHref } from '../../lib/jobs/lienRuleCites'
+import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
 import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
 import { noticeInvoiceDocs } from '../../lib/jobs/noticeInvoiceEnclosure'
@@ -978,6 +979,9 @@ export default function LienInstrumentsModal({
   // A foot button on a phone: half the row, its name on up to two lines.
   const phoneFootButton: CSSProperties = isMobile ? { padding: '0.35rem 0.5rem', fontSize: '0.8125rem', lineHeight: 1.25, minHeight: 44 } : {}
   const rulesWhere = activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'
+  // v2.4829: the § Rules window names this job with its two dates and lights its month — the clock's month, or the day set by hand (v2.4676).
+  const rulesLastWork = (lastWorkJob?.lien_last_work_on ?? lastWorkJob?.last_work_date ?? '').slice(0, 7)
+  const rulesJob = job ? lienRulesJobFrom({ label: `${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`, propertyKind, isSub, months: rulesLastWork ? [{ key: rulesLastWork }] : [], earliestDeadline: clock.noticeDeadline || null }, todayYmdLocal()) : null
 
   return (
     <div
@@ -1037,7 +1041,7 @@ export default function LienInstrumentsModal({
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
                 Liens on job {jobNumber}
               </h2>
-              <LienRulesDoor where={rulesWhere} style={{ minHeight: 34, padding: '0 0.65rem' }} />
+              <LienRulesDoor where={rulesWhere} job={rulesJob} todayYmd={todayYmdLocal()} style={{ minHeight: 34, padding: '0 0.65rem' }} />
               <button type="button" onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 44, height: 44, marginRight: '-0.6rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
             </div>
           ) : (
@@ -1185,7 +1189,7 @@ export default function LienInstrumentsModal({
               {label}
             </button>
           ))}
-          <LienRulesDoor where={rulesWhere} style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8125rem' }} />
+          <LienRulesDoor where={rulesWhere} job={rulesJob} todayYmd={todayYmdLocal()} style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8125rem' }} />
         </div>
         )}
 
