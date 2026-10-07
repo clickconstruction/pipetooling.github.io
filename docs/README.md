@@ -39,7 +39,7 @@
 | [`WORKFLOW_FEATURES.md`](./WORKFLOW_FEATURES.md) | Workflow page: stage management, line items, financials. |
 | [`PRIVATE_NOTES_SETUP.md`](./PRIVATE_NOTES_SETUP.md) | Notes-for-Office + line items + projections on workflow steps. |
 | [`E2E_SMOKE.md`](./E2E_SMOKE.md) | Playwright Tier-1 smoke suite: coverage, auth, extension rules (read-only, structural, non-gating). |
-| [`SESSIONS.md`](./SESSIONS.md) | Advisory parallel-session ledger: claim `v2.NNNN`/migrations (`npm run claim`), session cards, `npm run sessions` board. |
+| [`SESSIONS.md`](./SESSIONS.md) | Advisory parallel-session ledger on GitHub (`refs/claims/*`): claim `v2.NNNN`/migrations (`npm run claim`), session cards, `npm run sessions` board with collisions, `--brief` for agents on other machines. |
 | [`HELP_MEDIA_PLAN.md`](./HELP_MEDIA_PLAN.md) | Help-guide screen recordings: the standing conventions + the shortlist with capture scripts. |
 | [`HELP_SHARE_CARDS.md`](./HELP_SHARE_CARDS.md) | Help-guide share pages and cards (`/g/<slug>/`): what a texted link shows, what the author gets right, how to check. |
 | [`TEAM_FEEDBACK_RETIRED_QUESTIONS.md`](./TEAM_FEEDBACK_RETIRED_QUESTIONS.md) | The scripted questions the Team Feedback wizard asked before the crew deck replaced it; kept so the wording is never lost. |
