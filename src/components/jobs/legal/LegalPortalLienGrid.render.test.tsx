@@ -57,6 +57,10 @@ describe('LegalPortalLienGrid', () => {
     expect(row.textContent).not.toContain('MISSED')
     expect(screen.getByText('Owner of record')).toBeTruthy()
     expect(screen.queryByText('Address')).toBeNull()
+    expect(screen.getByText('Amount due').textContent).toBe('Amount dueFor work in')
+    expect(screen.queryByText(/Unpaid/)).toBeNull()
+    expect(screen.getByRole('button', { name: /^Upcoming · 3$/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /^Due in 30 days · \d+$/ })).toBeTruthy()
     expect(screen.getAllByTitle('A fact the office has not entered yet').length).toBeGreaterThan(0)
     expect(screen.getByText('300 · Reliant Health').closest('tr')!.textContent).toContain('Commercial')
     expect(screen.getByText('310 · Whitfield repipe').closest('tr')!.textContent).toContain('none needed (with the owner)')
@@ -86,11 +90,11 @@ describe('LegalPortalLienGrid', () => {
     expect(screen.queryByText('300 · Reliant Health')).toBeNull()
   })
 
-  it('the rail follows Something due / All, and a chosen GC that empties falls back to All GCs', () => {
+  it('the rail follows Due in 30 days / Upcoming, and a chosen GC that empties falls back to All GCs', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
     fireEvent.click(rail.getByRole('button', { name: /EPC Sparti/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Something due/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Due in 30 days/ }))
     // Reliant's one month is due Nov 16, outside the desk's lead — the entry is left off and the grid shows every due job.
     expect(rail.queryByRole('button', { name: /EPC Sparti/ })).toBeNull()
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')

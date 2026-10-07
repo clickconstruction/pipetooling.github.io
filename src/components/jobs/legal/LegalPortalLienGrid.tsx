@@ -10,7 +10,7 @@ import { portalBtn, portalCap, portalCard, portalTd, portalTh } from './legalFir
 /**
  * Counsel's grid on the firm's portal (punch list #41, PR 2): the Lien desk's
  * Timeline book — every billed job with money open and a lien month — as
- * *Something due / All*, per GC, and *Print the grid* (`lienGridHtml`, the
+ * *Due in 30 days / Upcoming*, per GC, and *Print the grid* (`lienGridHtml`, the
  * memo's twelve columns, the same page the desk prints). One fold of the
  * same rows the office reads (`assembleLienBookInput` +
  * `buildLienTimelineBook`), so the grid the firm sees is the office's book,
@@ -49,8 +49,8 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, fontSize: 12.5 }}>
             <span style={{ color: MUTED }}>Show</span>
             <div role="group" aria-label="Show" style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 6, overflow: 'hidden' }}>
-              <button type="button" aria-pressed={show === 'due'} style={seg(show === 'due')} onClick={() => setShow('due')}>Something due · {book.counts.due}</button>
-              <button type="button" aria-pressed={show === 'all'} style={{ ...seg(show === 'all'), borderLeft: `1px solid ${HAIR}` }} onClick={() => setShow('all')}>All · {book.counts.all}</button>
+              <button type="button" aria-pressed={show === 'due'} style={seg(show === 'due')} onClick={() => setShow('due')}>Due in 30 days · {book.counts.due}</button>
+              <button type="button" aria-pressed={show === 'all'} style={{ ...seg(show === 'all'), borderLeft: `1px solid ${HAIR}` }} onClick={() => setShow('all')}>Upcoming · {book.counts.all}</button>
             </div>
           </div>
         </div>
@@ -85,11 +85,11 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
           </div>
         </nav>
         {cells.length === 0 ? (
-          <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>Nothing on the grid{gc ? ` for ${gc.name}` : ''}{show === 'due' ? ' with something due — switch to All for the whole book' : ''}.</p>
+          <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>Nothing on the grid{gc ? ` for ${gc.name}` : ''}{show === 'due' ? ' due in 30 days — switch to Upcoming for the whole book' : ''}.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5, minWidth: 960 }}>
-              <thead><tr>{COLUMNS.map((c) => <th key={c.key} style={{ ...portalTh, fontSize: 10, whiteSpace: 'nowrap' }}>{c.label}</th>)}</tr></thead>
+              <thead><tr>{COLUMNS.map((c) => <th key={c.key} style={{ ...portalTh, fontSize: 10, whiteSpace: 'nowrap' }}>{c.key === 'unpaid' ? <>Amount due<span style={{ display: 'block', fontWeight: 500 }}>For work in</span></> : c.label}</th>)}</tr></thead>
               <tbody>
                 {cells.map((c) => (
                   <tr key={c.jobId}>
@@ -143,7 +143,8 @@ const COLUMNS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'owner', label: 'Owner of record' },
   { key: 'kind', label: 'Property' },
   { key: 'lastOnSite', label: 'Last on site' },
-  { key: 'unpaid', label: 'Unpaid · months' },
+  /** Drawn as two lines, one over each line of the cell (v2.4752): *Amount due* / *For work in*. */
+  { key: 'unpaid', label: 'Amount due · for work in' },
   { key: 'notices', label: '§ 53.056 per month' },
   { key: 'affidavit', label: 'Affidavit by' },
   { key: 'bond', label: 'Bond' },
