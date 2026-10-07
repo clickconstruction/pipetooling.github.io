@@ -9,6 +9,8 @@ A GC project starts the day its plans come in. The New project window takes you 
 
 GC mode is the part of the app where we are the general contractor. The GC projects page lists every GC project and holds the {{button:blue|New project}} button. The office and estimators see the page.
 
+Press {{button:outline|New here?}} at the top of GC projects for a short walk through the page. The walk opens by itself the first time you visit.
+
 ## Step 1, the project
 
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:blue|New project}}.
