@@ -257,6 +257,21 @@ it word for word.
 | `submit-gc-trade-portal` | P2b, then a case per kind | `POST {token, kind, …}`. Service role, honeypot, token length check, and 10 free-text writes a link an hour (`tooMany`). Resolves the link to its company, then calls that kind's `gc_trade_<verb>(company_id, …)`. A sample token answers `ok` and writes nothing. |
 | `gc-trade-email` | P3 | `POST {companyId, kind, key, projectId, subject, lines, lang}` with a staff JWT (office roles, dev until the door). Recipients from the company record by the kind's group, the link, the frame, Resend with the PM as Reply-To, `file:` for the sent copy, and a `gc_trade_messages` row. Returns `{companyId, messageId, emailSendLogId}`. |
 
+**`gc-trade-email`'s contract** (agreed with Helper 6 for step 7, 2026-10-08):
+
+- **Request:** `POST {companyId, kind, key, projectId | null, lang, subject, lines: string[]}` with a staff JWT.
+  - `lines` are plain-text paragraphs without the greeting. The server writes "Hello Dana," or "Hello Marcus and Dana," from the recipients it picks. It adds the portal link as a button.
+  - `key` is the prototype's message key and the dedupe key, unique per company. A plan set's is `${projectId}:plans:${rev}`.
+  - `lang` comes from `tradeMailLang(company.lang)` in `portal.ts`. That returns `en` while Spanish is held (decision 8), and the server refuses `es` then.
+  - The words are built with `pt()` exactly as `portalMessages` builds that kind.
+- **Calls:** one company a call, any number in parallel.
+- **Response:** `200 {companyId, messageId, emailSendLogId, to}`.
+  - A repeated key returns the first send's ids and `already: true`, and sends nothing.
+  - No email for anyone in the group or the main contact: `422 noEmail`, no row.
+- **Errors:** `{error: key, detail?}`. They are `400 badRequest`/`spanishHeld`, `401 signIn`, `403 officeOnly`/`readOnly` (read-only users and digital twins too), `404 notFound`, `409 notOnProject`, `422 noEmail` and `502 sendFailed`.
+- **A Resend failure** writes no `gc_trade_messages` row. `email_send_log` keeps it.
+- **One frame builder**, `_shared/gcTradeEmail.ts` (`buildGcTradeEmail`), is read by the function and by What customers see's sample. Every kind shares one journey step.
+
 **SQL functions** (`gc_trade_*` are service-role only; the office's are dev-only until the door):
 
 | Function | Owner | PR |
