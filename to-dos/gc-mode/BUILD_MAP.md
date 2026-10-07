@@ -13,7 +13,7 @@ list of what is reused, never rebuilt.
 | Lane | On main | In flight |
 |---|---|---|
 | New project | Kernels (PR 1, 1b), the tables (PR 2, 3), `gc_create_project` and the window (4a, 4b), the scope book page (4b-second), Drive (step 5, v2.4754 #4776), `gc_issue_plan_set` (6a), and 6b, 9, 8a and 8b (v2.4773 #4789, v2.4774 #4791, v2.4779 #4794, v2.4799 #4815). Both edge functions are deployed. | Step 7 waits on the company record. 8b's prod check is half run (`HANDOFF.md` → *Pick up the real build*). |
-| Schedule | PRs 1a, 1b-i and 1b-ii: every kernel lifted word for word (v2.4772 #4788, v2.4777 #4792, v2.4781 #4796); the spike reads them from main. PR 2, the nine tables (v2.4798 #4814), and PR 3, the eleven for moves and the records (v2.4809 #4827), both applied and verified. | PR 4 (#4835, v2.4816) is open and was held at the pause. The types PR #4833 is in the queue. Next is PR 5, the RPCs. |
+| Schedule | PRs 1a, 1b-i and 1b-ii: every kernel lifted word for word (v2.4772 #4788, v2.4777 #4792, v2.4781 #4796); the spike reads them from main. PR 2, the nine tables (v2.4798 #4814), and PR 3, the eleven for moves and the records (v2.4809 #4827), both applied and verified. | PR 4 (#4835, v2.4816) is open and held as a draft. PR 3's types merged in #4833. Next is PR 5, the RPCs. |
 | Board | Nothing (the prototype only). | |
 | Portal | Nothing. | |
 | Building | Nothing. | |
