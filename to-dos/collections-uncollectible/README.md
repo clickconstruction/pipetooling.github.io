@@ -2,7 +2,7 @@
 name: "Collections: a bill the office has given up on — stamped, out of every total, off the Lien desk"
 number: 94
 group: ready
-status: the owner answered the four calls 2026-10-07 (Uncollectible · any office staff · Stripe marked too · the payment-terms nudge); PR 1 v2.4782 (the columns, the RPC, the trigger) cut; PRs 2–6 follow in order
+status: the owner answered the four calls 2026-10-07 (Uncollectible · any office staff · Stripe marked too · the payment-terms nudge); PR 1 v2.4782 (the columns, the RPC, the trigger), PR 2 v2.4784 (bill truth) and PR 4 v2.4788 (the Lien desk) cut; PR 3 (the board, the stamp, Stripe's mark) waits on the types regeneration after PR 1's push; then 5 and 6
 summary: >
   Some bills will never be collected. Today they sit in Collections forever, counted in the Collections
   total, the Pipeline's In collections tile, the Dashboard's Collections section, the Lien desk's queues

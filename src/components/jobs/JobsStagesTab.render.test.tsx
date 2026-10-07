@@ -456,8 +456,12 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
     // The scope lands: the billed job is on the board and the Calendar counts it.
     cache.merged = ['working', 'billed_all']
-    view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })]} />)
-    expect(await screen.findByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
+    // v2.4788 (punch list #94): the job the office gave up on is billed and open, and on no clock.
+    // A Collections job still chased stays on its clock (the control); the one given up on does not.
+    const parked = makeJob({ job_name: 'Parked', status: 'billed', revenue: 500, collections_at: '2026-08-01T00:00:00Z' })
+    const givenUp = makeJob({ job_name: 'Given Up', status: 'billed', revenue: 2000, collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })
+    view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' }), parked, givenUp]} />)
+    expect(await screen.findByRole('button', { name: 'All · 2 jobs · $1,500' })).toBeTruthy()
     expect(screen.queryByText('Reading the board…')).toBeNull()
     localStorage.removeItem('pipetooling_jobs_map_hidden')
   })

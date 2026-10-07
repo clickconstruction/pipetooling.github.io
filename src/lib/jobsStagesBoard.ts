@@ -530,6 +530,15 @@ export function jobInCollections(j: Pick<JobWithDetails, 'status' | 'collections
   return ((j.status ?? 'working') as string) === 'billed' && j.collections_at != null
 }
 
+/**
+ * Uncollectible (punch list #94, v2.4788) = in Collections AND marked by the office (`uncollectible_at`,
+ * `set_job_uncollectible`). Mirrors `jobIsUncollectible` in the bill-truth kernel. The field is optional
+ * here so a caller typed ahead of the generated columns still compiles; a job without it is never marked.
+ */
+export function jobUncollectible(j: Pick<JobWithDetails, 'status' | 'collections_at'> & { uncollectible_at?: string | null }): boolean {
+  return jobInCollections(j) && j.uncollectible_at != null
+}
+
 function jobHasReadyToBillInvoice(j: JobWithDetails): boolean {
   return (j.invoices ?? []).some((i) => i.status === 'ready_to_bill')
 }
