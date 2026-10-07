@@ -4,27 +4,6 @@
  * board's Lost section once `lostOn` is set; nobody is chased on it. The reasons are Trades mode's
  * loss reasons (`bidLossCategories.ts`) in the words that fit us bidding to an owner.
  */
-import type { GcLostWhy, GcProject } from './gcTypes'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+export { LOST_WHY, isLost, lostWhyLabel, lostWords } from '../gc/lost'
 
-export const LOST_WHY: { key: GcLostWhy; label: string }[] = [
-  { key: 'price', label: 'Price too high' },
-  { key: 'other_builder', label: 'Went with another builder' },
-  { key: 'project_died', label: 'Project died or on hold' },
-  { key: 'no_bid', label: 'We never finished our bid' },
-  { key: 'no_answer', label: 'No answer from the customer' },
-]
-
-export function lostWhyLabel(why: GcLostWhy | null | undefined): string | null {
-  return LOST_WHY.find((w) => w.key === why)?.label ?? null
-}
-
-export function isLost(project: GcProject): boolean {
-  return Boolean(project.lostOn)
-}
-
-/** "Price too high · Hill Country Builders won it", for the row and the project header. */
-export function lostWords(project: GcProject): string {
-  const parts = [lostWhyLabel(project.lostWhy) ?? 'Lost']
-  if (project.wonBy) parts.push(`${project.wonBy} won it`)
-  return parts.join(' · ')
-}

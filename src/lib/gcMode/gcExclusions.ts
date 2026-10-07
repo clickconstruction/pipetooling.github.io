@@ -7,8 +7,9 @@
  * company keeps a record across its quotes, and the statement of work says what they will not do.
  */
 import type { GcState, Invite, Partner, QuoteExclusion, SubBid, TradePackage } from './gcTypes'
-import { money } from './gcWords'
 // What moved to main (the real build) is re-exported from there, so there is one copy.
+export { exclusionListWords, uncoveredExclusions, unitPriceWords } from '../gc/exclusions'
+
 export { exclusionCoversTotal } from '../gc/exclusions'
 
 /** Exclusions any trade's quote may list, and each trade's own. The portal's form offers these as ticks. */
@@ -114,25 +115,6 @@ export function exclusionRows(pkg: TradePackage): ExclusionRow[] {
       }),
     }
   })
-}
-/**
- * What a quote leaves out that has no cover yet (and is not a Known exclusion): its all-in is not
- * known while any is left. One with a unit price ("rock at $38 per cy if found") is a price for if it
- * comes up, not a hole, so it does not count here.
- */
-export function uncoveredExclusions(pkg: TradePackage, bid: SubBid): QuoteExclusion[] {
-  const known = new Set((pkg.excludes ?? []).map((k) => fold(k.label)))
-  return (bid.exclusions ?? []).filter((e) => !known.has(fold(e.name)) && !e.unitPrice && !((bid.exclusionCovers?.[e.name] ?? 0) > 0))
-}
-/** "permits and fees and rock excavation ($38 per cy if it comes up)" for a sentence. */
-export function exclusionListWords(list: QuoteExclusion[]): string {
-  const words = list.map((e) => `${e.name.toLowerCase()}${e.unitPrice ? ` (${unitPriceWords(e.unitPrice)} if it comes up)` : ''}`)
-  if (words.length <= 1) return words[0] ?? ''
-  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
-}
-/** "$38 per cy" */
-export function unitPriceWords(u: { amount: number; unit: string }): string {
-  return `${money(u.amount)} per ${u.unit}`
 }
 export interface PartnerExclusionHabit {
   name: string

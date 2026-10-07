@@ -2,6 +2,9 @@
 import type { LookAheadReason, ProjectSchedule, ScheduleMilestone, ScheduleMoveReason, ScheduleWhatIf } from '../gc/schedule/types'
 import type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
 import type { RoughSchedule, ScheduleImport, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
+import type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
+export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
+
 export type { RoughSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
 
 export type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
@@ -14,7 +17,6 @@ export type { ActivityPart, InspectionFailure, LateNotice, LookAheadMark, LookAh
  */
 
 export type GcStage = 'pursuing' | 'buyout' | 'building'
-export type InviteStatus = 'invited' | 'opened' | 'bid' | 'declined'
 export type Includes = 'yes' | 'no' | 'unclear'
 export interface PlanSet {
   rev: number
@@ -139,18 +141,6 @@ export interface BidAlternate {
   /** Added to the number when plus, taken off when minus. */
   amount: number
 }
-/**
- * One line of the story with a company on one ask: a call, a text, an email, a nudge, or what
- * they said in their portal. A line can carry their word: the day they said the quote will come.
- */
-export interface AskContact {
-  on: string
-  by: string
-  how: 'call' | 'text' | 'email' | 'nudge' | 'portal'
-  note: string
-  /** Their promise: the quote by this day. The newest one on the ask is the one that counts. */
-  promisedBy?: string
-}
 export interface Invite {
   id: string
   partnerId: string
@@ -167,14 +157,6 @@ export interface Invite {
   declineReason?: DeclineReasonNote
   /** Every contact on this ask, newest first. Lines are added, never changed. */
   contacts?: AskContact[]
-}
-/** Quick picks for why a company is out of an ask (gcDecline.ts has the words). */
-export type DeclineReason = 'busy' | 'far' | 'size' | 'scope' | 'terms' | 'other'
-export interface DeclineReasonNote {
-  reason: DeclineReason
-  /** Their words, as the office took them. Optional unless the reason is 'other'. */
-  note: string
-  on: string
 }
 export interface SovLine {
   id: string
@@ -355,36 +337,6 @@ export interface PartnerPerson {
   role: string
   gets: PortalMailGroup[]
 }
-/** What a new company tells us about itself in its portal (question 3). */
-export interface PartnerVettingForm {
-  license: string
-  /** Their insurance company and the policy's limits, as they wrote it. */
-  insurance: string
-  yearsInBusiness: number
-  /** Two or three people we can call, as they wrote them. */
-  references: string
-  /** Jobs like ours they did, as they wrote them. */
-  pastJobs: string
-  sentOn: string
-}
-/**
- * Where a company stands with us (the owner, 2026-10-04, question 3): anyone can quote, and award
- * stays locked until the office approves them. A known company has no record and counts as approved.
- */
-export interface PartnerVetting {
-  status: 'new' | 'approved' | 'declined'
-  /** Approved up to this many dollars on one award. Unset: no limit. */
-  limit?: number
-  /** The day the office decided, and who. */
-  decidedOn?: string
-  decidedBy?: string
-  /** Why we declined, or a note on the approval. */
-  note?: string
-  /** Their form. Unset: not sent yet. */
-  form?: PartnerVettingForm
-}
-/** Promises other than a quote date (question 8). Each lane keeps its own kinds; see gcPromises.ts. */
-export type PromiseKind = 'insurance' | 'w9' | 'sow' | 'start' | 'submittals' | 'delivery' | 'payApp' | 'punch' | 'closeout' | 'msa'
 /**
  * A paper sent to a customer from its window (the owner, 2026-10-04): our contract to sign in their
  * portal (the first send, then reminders), or a reminder on a change order waiting on their signature.
@@ -402,47 +354,6 @@ export interface CustomerSend {
   /** The day we asked them to sign by. */
   by: string
   note: string
-}
-/** A paper the office sends a trade from its company window (the owner, 2026-10-04): to sign, or to send us. */
-export type PaperKind = 'msa' | 'sow' | 'insurance' | 'w9' | 'waiver'
-/** One send of a paper from the company window: the first one, or a reminder. Each sets the day it is due. */
-export interface PaperSend {
-  id: string
-  partnerId: string
-  paper: PaperKind
-  projectId?: string
-  packageId?: string
-  on: string
-  /** The day it is due: sign by, or send by. Follow up chases it after. */
-  by: string
-  /** A line of the office's own, added to the email. */
-  note: string
-  /** The first send of a master agreement or a statement of work: the same send the Contracts tab makes. */
-  first: boolean
-  /** A lien waiver's draws, by number. */
-  draws?: number[]
-}
-/**
- * A date a company gave us for something other than a quote (the owner, 2026-10-04, question 8).
- * It is kept when the thing happens (`promisesKeptBy` in gcPromises.ts) or when the office marks it.
- */
-export interface TradePromise {
-  id: string
-  partnerId: string
-  kind: PromiseKind
-  /** The job and trade it is for. Unset: about the company itself (insurance, a W-9). */
-  projectId?: string
-  packageId?: string
-  /** What they promised, in a few words: "the renewed insurance certificate". */
-  what: string
-  by: string
-  madeOn: string
-  /** Who wrote it down: the office (they said it on the phone) or the trade (in its portal). */
-  from: 'office' | 'trade'
-  /** Earlier dates they gave for the same thing, newest first: a day that passed before it moved counts against them. */
-  moved?: { by: string; on: string }[]
-  /** The day it came. Unset: not yet. */
-  keptOn?: string
 }
 /** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
 export interface PlanQuestion {
@@ -511,13 +422,6 @@ export interface GcCustomer {
   past: { name: string; year: number; outcome: 'built' | 'lost'; value: number; note: string }[]
   /** What Trades mode knows about the same company. */
   tradesNote: string | null
-}
-/** One of our people on a project, for a trade to call: the superintendent on site, the project manager. */
-export interface ProjectContact {
-  role: 'superintendent' | 'projectManager'
-  name: string
-  phone: string
-  email?: string
 }
 /**
  * A pre-bid meeting or site walk before our bid is due (the owner, 2026-10-04: "Let's build the
@@ -748,8 +652,6 @@ export interface PunchItem {
   /** Checked and not fixed: sent back to the trade, how many times, with the last note. */
   sentBack?: { times: number; note: string; on: string }
 }
-/** Why a bid to an owner was lost: Trades mode's loss reasons, in GC words (gcLost.ts). */
-export type GcLostWhy = 'price' | 'other_builder' | 'project_died' | 'no_bid' | 'no_answer'
 export interface LogEntry {
   id: number
   who: 'office' | 'trade'

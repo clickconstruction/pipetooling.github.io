@@ -24,4 +24,5 @@ declare module '../gc/types' {
   interface DrawSentBack extends Spike.DrawSentBack {}
   interface ChangeOrder extends Spike.ChangeOrder {}
   interface Partner extends Spike.Partner {}
+  interface PlanSet extends Spike.PlanSet {}
 }

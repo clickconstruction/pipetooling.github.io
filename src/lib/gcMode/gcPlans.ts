@@ -5,6 +5,9 @@
 import type { GcProject, GcState, Invite, Partner, PlanQuestion, PlanSheet, SpecSection, TradePackage } from './gcTypes'
 import { weekdayDate } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { preBidInvited } from '../gc/preBid'
+export { preBidInvited } from '../gc/preBid'
 
 // The pure sheet kernels live in the real build's library now (NEW_PROJECT_REAL_BUILD.md, PR 1).
 export { bareId, indexDiff, sheetDiscipline, sheetsInText, takenOutInText } from '../gc/plans'
@@ -13,7 +16,6 @@ export type { IndexDiff } from '../gc/plans'
 // ---------------------------------------------------------------------------------------------
 // Selectors
 // ---------------------------------------------------------------------------------------------
-
 
 export interface SheetInSet extends PlanSheet {
   /** The newest set, up to the one being read, that changed this sheet. Null: as first issued. */
@@ -74,7 +76,6 @@ export function sheetsAtRev(project: GcProject, rev: number): SheetInSet[] {
 export function sheetsGoneAtRev(project: GcProject, rev: number): SheetGone[] {
   return walkSheets(project, rev).gone
 }
-
 
 /**
  * A sheet number as the project's index writes it: "A101" in the notes is "A-101" in a set that
@@ -290,23 +291,6 @@ export function timeWords(at: string): string {
   const half = h >= 12 ? 'PM' : 'AM'
   const h12 = h % 12 === 0 ? 12 : h % 12
   return mins === '00' ? `${h12} ${half}` : `${h12}:${mins} ${half}`
-}
-
-/** The companies asked to the pre-bid meeting: every company still quoting a trade, each once, with its trades. */
-export function preBidInvited(state: GcState, project: GcProject): { partner: Partner; trades: string[] }[] {
-  const out = new Map<string, { partner: Partner; trades: string[] }>()
-  for (const pkg of project.packages) {
-    if (pkg.selfPerform) continue
-    for (const inv of pkg.invites) {
-      if (inv.status === 'declined') continue
-      const partner = partnerById(state, inv.partnerId)
-      if (!partner) continue
-      const row = out.get(partner.id) ?? { partner, trades: [] }
-      if (!row.trades.includes(pkg.trade)) row.trades.push(pkg.trade)
-      out.set(partner.id, row)
-    }
-  }
-  return [...out.values()].sort((a, b) => a.partner.company.localeCompare(b.partner.company))
 }
 
 /** The meeting has been held: who came is recorded. */
