@@ -42,3 +42,14 @@ describe('customerTermsWarning', () => {
     expect(stop.detail).toMatch(/2 bills open past promise/)
   })
 })
+
+describe('customerTermsWarning — the Uncollectible nudge (punch list #94, v2.4795)', () => {
+  it('a customer the office gave up on once gets the amber nudge on standard terms; Deposit required already set stays as it is; a stop still wins', () => {
+    const std = { terms: 'standard' as const, note: null, setByName: null, setAt: null }
+    expect(customerTermsWarning(std, record({ openBroken: 0 }), { count: 1, total: 7502 })).toMatchObject({ severity: 'warn', headline: 'The office gave up on 1 bill from this customer ($7,502) — set Deposit required?' })
+    expect(customerTermsWarning(std, null, { count: 2, total: 7752.4 })!.headline).toBe('The office gave up on 2 bills from this customer ($7,752) — set Deposit required?')
+    expect(customerTermsWarning({ ...std, terms: 'deposit_required' }, null, { count: 1, total: 500 })!.headline).toBe('Deposit required before work starts')
+    expect(customerTermsWarning({ ...std, terms: 'winding_down' }, null, { count: 1, total: 500 })!.severity).toBe('stop')
+    expect(customerTermsWarning(std, null, { count: 0, total: 0 })).toBeNull()
+  })
+})
