@@ -47,6 +47,7 @@ import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/us
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
 import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
@@ -74,9 +75,9 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  * Opens from the ⚖ Legal button in the Collections header tier (mirrors the
  * Accounts Receivable button: modal in place, `?legal=<payer key>` deep link).
  */
-const TABS = ['account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
+const TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
 type Tab = (typeof TABS)[number]
-const TAB_LABELS: Record<Tab, string> = { account: 'Account', paper: 'Paper', their_word: 'Their word', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+const TAB_LABELS: Record<Tab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Their word', evidence: 'Evidence', fees_steps: 'Fees & steps' }
 
 export type LegalDeskModalProps = {
   open: boolean
@@ -345,6 +346,24 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       p_request_review: args.requestReview ?? null,
       p_review_note: args.note ?? null,
     })
+  /** The narrative for the firm (v2.4812): saved on the matter, which is made first when the account has none. */
+  const saveNarrative = (markdown: string) => run('Narrative', async () => {
+    let matterId = matter?.id ?? null
+    if (!matterId) {
+      const made = await legalRpcData('legal_matter_save_review', { p_payer_key: selected?.key, p_customer_id: selected?.customerId, p_payer_name: selected?.name, p_job_ids: jobIds, p_held_overrides: null, p_request_review: null, p_review_note: null })
+      if (made.error) return made.error
+      matterId = typeof made.data?.matter_id === 'string' ? made.data.matter_id : null
+      if (!matterId) return 'The matter could not be made'
+    }
+    return legalRpc('legal_set_narrative', { p_matter_id: matterId, p_markdown: markdown })
+  })
+  const narrativeDesk: NarrativeDesk = {
+    markdown: matter?.narrative_md ?? '',
+    updatedOn: matter?.narrative_updated_at ? calendarYmdInAppTzFromIso(matter.narrative_updated_at) : '',
+    updatedByName: (matter?.narrative_updated_by ? users.find((u) => u.id === matter.narrative_updated_by)?.name : null) ?? '',
+    canEdit: stored && canEditReview,
+    save: async (markdown) => Boolean(await saveNarrative(markdown)),
+  }
   /** #85 item 29: everything goes to counsel; the office holds one entry back, with a reason, or shares it again. */
   const holdBack = async (key: string, reason: string) => {
     if (!reason.trim()) return
@@ -677,7 +696,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
-                    documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null} />
+                    documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
+                    narrative={narrativeDesk} busy={busy} />
                 ) : null}
               </>
             )}
@@ -746,7 +766,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null, settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -851,7 +871,7 @@ type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: 
 /** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
 type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
 
-function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs, documents = null }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel }) {
+function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs, documents = null, narrative = null, busy = false }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -863,6 +883,8 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   }
   const customerDoor = (label = 'Edit customer') => <Door label={selected.customerId ? label : 'Link a customer'} onClick={openEditCustomer} title={selected.customerId ? 'Opens Edit customer; the desk refreshes when it saves' : 'The payer is a name only — link the job to a customer record'} />
 
+  // The narrative for the firm (v2.4812), after the hooks above.
+  if (tab === 'narrative') return narrative ? <LegalNarrativeEditor narrative={narrative} busy={busy} /> : null
   if (tab === 'account') {
     return (
       <div>

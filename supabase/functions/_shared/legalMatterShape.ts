@@ -21,6 +21,7 @@
  */
 import { LIEN_BOOK_ADDRESS_COLUMNS, LIEN_BOOK_OWNER_COLUMNS } from './legalLienBookShape.ts'
 import { MATTER_DOCUMENT_PAYLOAD_KEYS } from './legalMatterDocuments.ts'
+import { NARRATIVE_PAYLOAD_KEYS } from './legalNarrative.ts'
 
 type Row = Record<string, unknown>
 
@@ -154,5 +155,7 @@ export function shapeMatterForCounsel(matter: Row): Row {
   if ('entries' in matter) out.entries = rows(matter.entries).map((e) => pick(e, MATTER_ENTRY_COLUMNS))
   // Documents from the office (v2.4810): the title, the line, the kind, the size, the day, who added it, the link. Never the storage path or a hold reason.
   if ('documents' in matter) out.documents = rows(matter.documents).map((d) => pick(d, MATTER_DOCUMENT_PAYLOAD_KEYS))
+  // The narrative (v2.4812): the office's own words for the firm, who saved them and when; nothing else.
+  if ('narrative' in matter) out.narrative = isRecord(matter.narrative) ? pick(matter.narrative, NARRATIVE_PAYLOAD_KEYS) : null
   return out
 }

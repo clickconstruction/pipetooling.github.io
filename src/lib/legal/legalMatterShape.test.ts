@@ -136,3 +136,11 @@ describe('documents from the office (v2.4810)', () => {
     expect(out.documents).toEqual([{ id: 'd', title: 'Billing report', shows: 'x', mime: 'application/pdf', sizeBytes: 1, addedOn: '2026-10-07', addedByName: 'R', url: 'https://x' }])
   })
 })
+
+describe('the narrative (v2.4812)', () => {
+  it('travels as the words, the day and who, nothing else', () => {
+    const out = shapeMatterForCounsel({ jobs: [], narrative: { markdown: '## A', updatedOn: '2026-10-07', updatedByName: 'R', narrative_updated_by: 'u-1' } })
+    expect(out.narrative).toEqual({ markdown: '## A', updatedOn: '2026-10-07', updatedByName: 'R' })
+    expect(shapeMatterForCounsel({ jobs: [], narrative: null }).narrative).toBeNull()
+  })
+})

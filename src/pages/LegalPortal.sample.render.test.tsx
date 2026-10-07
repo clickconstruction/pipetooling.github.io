@@ -66,6 +66,8 @@ describe('LegalPortal — the sample matter', () => {
 
   it('lists the facts on file for each job, never a theory or the office’s credit terms (punch list #85 item 4)', async () => {
     await openSample()
+    // The sample opens on its Narrative (v2.4812); these read the Account tab.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
     const record = document.querySelector('[data-legal-job-record]')
     expect(record?.textContent).toMatch(/^signed agreement \d{4}-\d{2}-\d{2} by Pat Holloway, bill sent, field record with a GPS location, no dispute logged$/)
     expect(document.body.textContent).not.toMatch(/theory|Basis|sworn account|Terms with/i)
@@ -87,6 +89,8 @@ describe('LegalPortal — the sample matter', () => {
 
   it('fills the property record and the company’s particulars with sample values', async () => {
     await openSample()
+    // The sample opens on its Narrative (v2.4812); these read the Account tab.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
     expect(document.body.textContent).toMatch(/Lot 4, Block B, Creekside Commerce Park/)
     expect(screen.getByText('Master Plumber M-41207 (sample)')).toBeTruthy()
     expect(screen.getByText('Robin Ortega, office manager (sample)')).toBeTruthy()
@@ -111,6 +115,8 @@ describe('LegalPortal — the sample matter', () => {
 
   it('says where to file: the cap, both venue bases, the lien line (v2.4764)', async () => {
     await openSample()
+    // The sample opens on its Narrative (v2.4812); these read the Account tab.
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
     const block = document.querySelector('[data-legal-where-to-file]')!
     expect(block.textContent).toContain('is within the justice court limit')
     expect(block.textContent).toContain('Where the work was done')
@@ -139,6 +145,17 @@ describe('LegalPortal — the sample matter', () => {
     expect(docs.textContent).toContain('The office’s itemization of both bills')
     expect(docs.textContent).toContain("on the firm's link")
     expect(docs.textContent).toContain('The office held back 1 document.')
+  })
+
+  it('opens on the Narrative: the office’s account, labelled, with its table (v2.4812)', async () => {
+    await openSample()
+    const n = document.querySelector('[data-legal-firm-narrative]')!
+    expect(n.textContent).toContain("The office's account of this matter, written by Robin Ortega")
+    expect(n.querySelector('h2')!.textContent).toBe('The parties')
+    expect(n.querySelector('table')!.textContent).toContain('The final walk with the GC’s super found no punch items')
+    expect(screen.getByRole('button', { name: 'Narrative' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    expect(document.querySelector('[data-legal-firm-narrative]')).toBeNull()
   })
 
   it('opens the Lien grid on Upcoming, with the matter’s own job beside the other two', async () => {
@@ -212,6 +229,7 @@ describe('LegalPortal — the sample matter', () => {
 
   it('folds every matter table into cards on a narrow box: each cell names its column, the first leads, money is bold, an empty cell drops (v2.4808)', async () => {
     await openSample()
+    fireEvent.click(screen.getByRole('button', { name: 'Account' })) // the sample opens on its Narrative (v2.4812)
     const tables = [...document.querySelectorAll('table.legalCardTable')] as HTMLTableElement[]
     expect(tables.length).toBeGreaterThanOrEqual(3)
     for (const t of tables) {
