@@ -22,8 +22,10 @@ import {
   paymentRowLinkedToInvoice,
   stripeBillInvoiceForPaymentRow,
   stripeHoldsPaymentReason,
+  stripeOwnsPaymentRow,
   unlinkLeavesStripeBillUntouched,
 } from '../../lib/jobs/jobFormPaymentPredicates'
+import { heldStripeMarkLineWords, paymentRowOnHeldStripeMark } from '../../lib/jobs/heldStripeMark'
 import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersCheckDidNotClear } from '../../lib/jobs/stripeOobSendBack'
 import { paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { autoApplyInvoiceId } from '../../lib/jobs/paymentInvoiceLinking'
@@ -133,7 +135,9 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
   const moveShown = moveBlock !== 'unsaved' && moveBlock !== 'stripe'
   const moveDisabled = moveBlock === 'sent-bill'
   const moveBill = moveDisabled && row.invoice_id ? (job?.invoices ?? []).find((i) => i.id === row.invoice_id) ?? null : null
-  const canRemove = canRemovePaymentRowFromForm(row, job) || Boolean(job && persisted && paymentRowLinkedToInvoice(row) && !stripeInv)
+  // v2.4801: a saved row on a bill comes off through the remove RPC unless Stripe holds it.
+  const canRemove = canRemovePaymentRowFromForm(row, job) || Boolean(job && persisted && paymentRowLinkedToInvoice(row) && !stripeOwnsPaymentRow(row, job))
+  const heldMark = paymentRowOnHeldStripeMark(row, job)
   const unlinkShown = source.kind === 'bank' && canUnlinkMercuryPayment(authRole) && !mercuryUnlinkBlockedByStripeHostedInvoice(row, job)
   const undoShown = Boolean(stripeInv && row.stripe_credit_note_id && actions.requestUndoPartPayment && stripeInv.status === 'billed')
   const checkDidNotClearShown = Boolean(
@@ -148,6 +152,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
   if (words.checkDated) sub.push(<span key="dated">{words.checkDated}</span>)
   if (words.detail) sub.push(<span key="detail">{words.detail}</span>)
   if (futureReceived) sub.push(<span key="future" className="warn">The received date is in the future.</span>)
+  if (heldMark) sub.push(<span key="held" data-testid="held-stripe-mark-line">{heldStripeMarkLineWords(row.paid_on ? String(row.paid_on).slice(0, 10) : null, todayYmd)}</span>)
 
   return (
     <div className="jobPaymentLine" data-testid="payment-line" data-payment-id={row.id} data-source={source.kind}>

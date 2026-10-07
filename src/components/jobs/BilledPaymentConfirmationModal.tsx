@@ -19,6 +19,7 @@ import {
   stripePaymentButtonLabel,
   stripePaymentPlan,
 } from '../../lib/jobs/stripePartPayment'
+import { heldStripeMarkNote, markPaidHoldsStripeClose } from '../../lib/jobs/heldStripeMark'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -169,6 +170,8 @@ export default function BilledPaymentConfirmationModal({
     stripePlan && stripePlan.kind === 'part'
       ? stripeCreditLineText(paymentType, paidOn.trim(), stripePlan.amount, referenceNumber)
       : null
+  // v2.4801: a check at the whole balance is a ledger row only; Stripe closes once it has cleared.
+  const holdsStripeClose = markPaidHoldsStripeClose({ stripeHosted: Boolean(stripeInvoicePath), paymentType, planKind: stripePlan?.kind ?? null })
 
   useEffect(() => {
     if (!open) return
@@ -250,7 +253,7 @@ export default function BilledPaymentConfirmationModal({
     }
     try {
       if (mode === 'invoice' && inv) {
-        if (stripeInvoicePath) {
+        if (stripeInvoicePath && !holdsStripeClose) {
           const plan = stripePaymentPlan(amountStr, invoiceRemaining)
           const blocker = stripePaymentBlocker(plan)
           if (blocker || plan.kind === 'empty' || plan.kind === 'over') {
@@ -303,6 +306,8 @@ export default function BilledPaymentConfirmationModal({
             }
           }
         } else {
+          // A non-Stripe bill, or (v2.4801) a check on a Stripe bill: the row only. The sweep
+          // closes the Stripe invoice CHECK_CLEAR_DAYS after the check's date.
           const data = await withSupabaseRetry(
             async () =>
               supabase.rpc('mark_invoice_paid', {
@@ -426,7 +431,12 @@ export default function BilledPaymentConfirmationModal({
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
               </div>
-              {stripeInvoicePath && stripePlan?.kind !== 'part' && (
+              {holdsStripeClose ? (
+                <p data-testid="held-stripe-mark-note" style={{ margin: '0.35rem 0 0', color: 'var(--text-700)', fontSize: '0.8125rem', lineHeight: 1.4 }}>
+                  {heldStripeMarkNote(paidOn.trim())}
+                </p>
+              ) : null}
+              {stripeInvoicePath && !holdsStripeClose && stripePlan?.kind !== 'part' && (
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                   Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
                   received outside Stripe (check, cash, etc.), so the pay link stops working and no reminder goes out.

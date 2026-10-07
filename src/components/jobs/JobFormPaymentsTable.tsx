@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
 import { formatCurrency, formatPaymentDateForDisplay } from '../../lib/jobs/jobFormMoney'
-import { mercuryLinkedPaymentRow, stripeBillInvoiceForPaymentRow } from '../../lib/jobs/jobFormPaymentPredicates'
+import { mercuryLinkedPaymentRow, stripeOwnsPaymentRow } from '../../lib/jobs/jobFormPaymentPredicates'
 import { jobPaymentTraceLines } from '../../lib/jobs/jobPaymentMove'
 import { useJobPaymentTrace } from '../../hooks/useJobPaymentTrace'
 import { openStripeBills, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
@@ -159,7 +159,7 @@ export function JobFormPaymentsTable({
     // save path only persists rows with amount > 0).
     (row: PaymentRow) =>
       !persistedLedgerPaymentIds.has(row.id) &&
-      !stripeBillInvoiceForPaymentRow(row, editing) &&
+      !stripeOwnsPaymentRow(row, editing) &&
       !mercuryLinkedPaymentRow(row) &&
       !(Number(row.amount) > 0) &&
       !(row.note ?? '').trim() &&
@@ -183,7 +183,7 @@ export function JobFormPaymentsTable({
   // compact chip, so a legacy backlog doesn't drown the list in amber.
   const unappliedPayments = visiblePayments.filter(
     (r) =>
-      !stripeBillInvoiceForPaymentRow(r, editing) &&
+      !stripeOwnsPaymentRow(r, editing) &&
       !mercuryLinkedPaymentRow(r) &&
       paymentRowNeedsInvoiceLink(r, invoices),
   )
@@ -314,7 +314,7 @@ export function JobFormPaymentsTable({
       {visiblePayments.length > 0 && (
         <div className="jobPaymentsList" data-testid="payments-on-no-bill">
           {visiblePayments.map((row) => {
-            const locked = Boolean(stripeBillInvoiceForPaymentRow(row, editing)) || mercuryLinkedPaymentRow(row)
+            const locked = Boolean(stripeOwnsPaymentRow(row, editing)) || mercuryLinkedPaymentRow(row)
             const needsInvoiceLink = !locked && paymentRowNeedsInvoiceLink(row, invoices)
             const stripeHandoff = !locked && !row.invoice_id && Number(row.amount) > 0 && stripeHandoffBills.length > 0
             return (

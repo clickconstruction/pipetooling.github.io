@@ -177,6 +177,6 @@ On the Pipeline the money card reads *2 checks came back*. The job's Billed Awai
 
 ### On a Stripe bill
 
-This works on a Stripe bill too. A deposit matched here is only a row in the app. Stripe never learned of it. So there is nothing on Stripe's side to undo. The two payments Stripe does hold keep their own doors. A part payment recorded as a credit note has **Undo part payment** on its row. A bill marked paid by check through Mark Paid has **Check didn't clear…** on its row. That opens the Undo out-of-band payment window. It also sends the bill back so it can be billed again. See *bill a customer and get paid*.
+This works on a Stripe bill too. A deposit matched here is only a row in the app. Stripe never learned of it. So there is nothing on Stripe's side to undo. The two payments Stripe does hold keep their own doors. A part payment recorded as a credit note has **Undo part payment** on its row. A bill marked paid by check through Mark Paid is an ordinary row for seven days. After that it has **Check didn't clear…** on its row. That opens the Undo out-of-band payment window. It also sends the bill back so it can be billed again. See *bill a customer and get paid*.
 
 You can still take one payment off by hand. Open the job, then ③ Payments received. Press {{button:outline|Unlink and remove}} on the row. The confirm says the bank sent the check back. Every removal is kept on the job's payment record. That holds the amount, the bill it was on, who removed it and why.
