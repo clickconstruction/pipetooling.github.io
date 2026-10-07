@@ -1401,7 +1401,7 @@ The overhead allocation Job Summary charges from (`app_settings.overhead_allocat
 
 ## Legal desk and legal matters (v2.3293, v2.3313)
 
-The ⚖ Legal desk on the Pipeline's Collections tier is visible to the Collections managers — **dev, master_technician, assistant, controller** (`canManageCollections`; the same pool `set_job_collections_flag` gates). The `legal_*` tables are office-read through `legal_office_can_read()` (the same four roles) and never readable by anon; the firm's portal (PR 3) reads them through the service role.
+The ⚖ Legal desk on the Pipeline's Collections tier is visible to the Collections managers — **dev, master_technician, assistant, controller** (`canManageCollections`; the same pool `set_job_collections_flag` and, since v2.4782, `set_job_uncollectible` gate — the Uncollectible mark on a Collections job, punch list #94). The `legal_*` tables are office-read through `legal_office_can_read()` (the same four roles) and never readable by anon; the firm's portal (PR 3) reads them through the service role.
 
 | Act | Who | Entry point |
 |---|---|---|
