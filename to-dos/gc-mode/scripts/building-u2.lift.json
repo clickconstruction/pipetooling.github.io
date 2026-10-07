@@ -86,14 +86,6 @@
    "append": true
   },
   {
-   "from": "gcWords",
-   "to": "words.ts",
-   "moves": [
-    "money"
-   ],
-   "append": true
-  },
-  {
    "from": "gcPortal",
    "to": "portal.ts",
    "moves": [
@@ -113,7 +105,9 @@
      "projects",
      "partners",
      "customers",
-     "scheduleTemplates"
+     "scheduleTemplates",
+     "tradePromises",
+     "paperSends"
     ],
     "GcProject": [
      "id",
@@ -141,7 +135,16 @@
      "submittals",
      "rfis",
      "weeklyReports",
-     "ownerBilling"
+     "ownerBilling",
+     "ourBidSentOn",
+     "bidDue",
+     "planSets",
+     "generalConditions",
+     "contingencyPct",
+     "feePct",
+     "team",
+     "lostWhy",
+     "wonBy"
     ],
     "Sow": [
      "status",
@@ -150,7 +153,8 @@
      "sov",
      "draws",
      "acceptedOn",
-     "sentBack"
+     "sentBack",
+     "sentOn"
     ],
     "SovLine": "all",
     "Draw": [
@@ -191,7 +195,16 @@
      "phone",
      "trades",
      "address",
-     "license"
+     "license",
+     "msa",
+     "msaSignedOn",
+     "w9",
+     "invited",
+     "bids",
+     "promisesMade",
+     "promisesKept",
+     "msaSentOn",
+     "vetting"
     ],
     "DailyLog": "all",
     "OwnerBilling": [
@@ -210,9 +223,7 @@
     "RfiImpact": "all",
     "WeatherSky": "all",
     "WeeklyReportSent": "all",
-    "DrawPayApp": "all",
-    "TradePromise": "all",
-    "PromiseKind": "all"
+    "DrawPayApp": "all"
    },
    "names": [
     "GcState",
@@ -235,9 +246,7 @@
     "RfiImpact",
     "WeatherSky",
     "WeeklyReportSent",
-    "DrawPayApp",
-    "TradePromise",
-    "PromiseKind"
+    "DrawPayApp"
    ]
   }
  ],
@@ -248,7 +257,15 @@
   "src/lib/gcMode/gcTypes.ts#ScopeItem": "types.ts",
   "src/lib/gcMode/gcTypes.ts#Invite": "types.ts",
   "src/lib/gcMode/gcTypes.ts#CustomerRole": "types.ts",
-  "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts"
+  "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#TradePromise": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#PromiseKind": "types.ts",
+  "src/lib/gcMode/gcWords.ts#money": "words.ts",
+  "src/lib/gcMode/gcTypes.ts#PartnerVetting": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#PlanSet": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#ProjectContact": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#GcLostWhy": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#PaperSend": "types.ts"
  },
  "standIns": {
   "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
