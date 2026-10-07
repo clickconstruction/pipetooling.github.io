@@ -93,14 +93,16 @@ export async function loadGcProjects(): Promise<GcProjectView[]> {
   const gcRows = taken(await supabase.from('gc_projects').select('*').order('created_at', { ascending: false }), 'load the GC projects')
   if (gcRows.length === 0) return []
   const ids = gcRows.map((g) => g.project_id)
-  const [projects, packages, sets] = await Promise.all([
+  const [projects, packages, sets, questions] = await Promise.all([
     supabase.from('projects').select('id, name, address, customer_id, plans_link').in('id', ids),
     supabase.from('gc_trade_packages').select('*').in('project_id', ids).order('position'),
     supabase.from('gc_plan_sets').select('*').in('project_id', ids).order('rev'),
+    supabase.from('gc_plan_questions').select('*').in('project_id', ids).order('asked_on'),
   ])
   const projectRows = taken(projects, 'load the GC projects')
   const packageRows = taken(packages, 'load the trades')
   const setRows = taken(sets, 'load the plan sets')
+  const questionRows = taken(questions, 'load the questions about the plans')
   const packageIds = packageRows.map((p) => p.id)
   const setIds = setRows.map((s) => s.id)
   const [items, exclusions, setItems] = await Promise.all([
@@ -128,6 +130,10 @@ export async function loadGcProjects(): Promise<GcProjectView[]> {
       exclusions: exclusionRows.filter((x) => mineIds.has(x.package_id)),
       sets: mySets,
       setItems: setItemRows.filter((i) => mySetIds.has(i.set_id)),
+      // asked_by_name lands with this step's migration; the generated row type learns it on the next regen.
+      questions: questionRows
+        .filter((q) => q.project_id === gc.project_id)
+        .map((q) => ({ ...q, asked_by_name: (q as { asked_by_name?: string | null }).asked_by_name ?? '' })),
     }
     out.push(gcProjectFromRows(rows))
   }
