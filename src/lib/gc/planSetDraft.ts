@@ -31,6 +31,8 @@ export interface IssuePlanSetDraft {
   newLines: { packageId: string; label: string; sheets: string[]; specs?: string[] }[]
   /** Scope lines whose sheets or sections all go, tied to new ones. An empty list: the trade as a whole. */
   retiedLines: { packageId: string; scopeId: string; sheets?: string[]; specs?: string[] }[]
+  /** Answered questions this set carries in its note (step 8). */
+  questionIds?: string[]
 }
 
 /** The draft as `gc_issue_plan_set` reads it. */
@@ -61,5 +63,6 @@ export function issueDraftForRpc(d: IssuePlanSetDraft): Record<string, unknown> 
     })),
     newLines: d.newLines,
     retiedLines: d.retiedLines,
+    questionIds: d.questionIds ?? [],
   }
 }

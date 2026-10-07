@@ -72,8 +72,10 @@ is every scope line we keep by trade: edit, add, fold duplicates, save a project
 **A new set of plans came in** (`?set=<project id>`) puts an addendum, a bulletin or a whole new set on the
 project through `gc_issue_plan_set`. **The plans** (`?plans=<project id>`) is the plans window: the sheets and
 the manual as they stood at each set, what each set changed and took out, and the scope that reads from a sheet.
+**Questions about the plans** (`?questions=<project id>`) records a company's question, emails it to the architect
+(`gc-plan-question-email`) and records the answer; the next set carries it.
 Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=issue-a-new-set-of-plans`,
-`/help?g=read-the-plans-of-a-gc-project`.
+`/help?g=read-the-plans-of-a-gc-project`, `/help?g=ask-the-architect-about-the-plans`.
 Roles: dev only.
 
 ### /bids — Bids (the estimating hub)

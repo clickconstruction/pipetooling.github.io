@@ -14,6 +14,8 @@ import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
+import { GcQuestionsWindow } from '../components/gc/GcQuestions'
+import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
 import {
   checkDriveAccess,
@@ -21,6 +23,10 @@ import {
   editScopeBookLine,
   issuePlanSet,
   loadGcTeam,
+  answerQuestion,
+  markQuestionSent,
+  recordQuestion,
+  sendQuestionToArchitect,
   loadGcPickerCustomers,
   loadGcProjects,
   loadScopeBookStore,
@@ -68,6 +74,10 @@ export default function GcProjects() {
   /** The new-plans window: `set=<projectId>`. The plans window: `plans=<projectId>`. */
   const setProjectId = params.get('set')
   const plansProjectId = params.get('plans')
+  /** The questions window: `questions=<projectId>`. */
+  const questionsProjectId = params.get('questions')
+  const [questionBusy, setQuestionBusy] = useState<string | null>(null)
+  const [questionProblem, setQuestionProblem] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [issueProblem, setIssueProblem] = useState<string | null>(null)
 
@@ -114,6 +124,23 @@ export default function GcProjects() {
   const bookProject = bookProjectId ? (loaded?.projects.find((p) => p.id === bookProjectId) ?? null) : null
   const setProject = setProjectId ? (loaded?.projects.find((p) => p.id === setProjectId) ?? null) : null
   const plansProject = plansProjectId ? (loaded?.projects.find((p) => p.id === plansProjectId) ?? null) : null
+  const questionsProject = questionsProjectId ? (loaded?.projects.find((p) => p.id === questionsProjectId) ?? null) : null
+  const setQuestionsWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('questions', projectId)
+    else next.delete('questions')
+    setParams(next, { replace: true })
+    setQuestionProblem(null)
+  }
+  /** A question write: run it, reload, and say the problem in the window if there is one. */
+  const questionWrite = (id: string | null, work: Promise<unknown>, failed: string) => {
+    setQuestionBusy(id ?? 'new')
+    setQuestionProblem(null)
+    void work
+      .then(() => load())
+      .catch((e) => setQuestionProblem(formatErrorMessage(e, failed)))
+      .finally(() => setQuestionBusy(null))
+  }
   const setPlansWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('plans', projectId)
@@ -167,6 +194,9 @@ export default function GcProjects() {
               {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
               <Btn kind="quiet" onClick={() => setPlansWindow(p.id)}>
                 The plans
+              </Btn>
+              <Btn kind="quiet" onClick={() => setQuestionsWindow(p.id)}>
+                Questions about the plans{openQuestions(p).length > 0 ? ` · ${openQuestions(p).length} open` : ''}
               </Btn>
               {!p.lostOn && (
                 <Btn kind="quiet" onClick={() => setSetWindow(p.id)}>
@@ -279,6 +309,28 @@ export default function GcProjects() {
       })}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+
+      {questionsProject && loaded && (
+        <GcQuestionsWindow
+          project={questionsProject}
+          architectName={loaded.customers.find((c) => c.id === questionsProject.architectId)?.name ?? null}
+          today={today}
+          busy={questionBusy}
+          problem={questionProblem}
+          onClose={() => setQuestionsWindow(null)}
+          writes={{
+            onRecord: (q) => questionWrite(null, recordQuestion({ projectId: questionsProject.id, ...q }), 'The question was not recorded.'),
+            onSendToArchitect: (id) =>
+              questionWrite(
+                id,
+                sendQuestionToArchitect(id).then((r) => showToast(`Sent to ${r.to}.`, 'success')),
+                'The question was not sent.',
+              ),
+            onMarkSent: (id) => questionWrite(id, markQuestionSent(id, today), 'The question was not marked sent.'),
+            onAnswer: (id, answer) => questionWrite(id, answerQuestion(id, answer), 'The answer was not recorded.'),
+          }}
+        />
+      )}
 
       {setProject && loaded && (
         <GcNewPlansWindow

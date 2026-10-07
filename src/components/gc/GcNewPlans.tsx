@@ -18,6 +18,7 @@ import {
 import { rowProblems, sheetsOfRows, type SheetIndexRow } from '../../lib/gc/sheets'
 import { SET_KINDS, defaultSetKind, nextSetLabel } from '../../lib/gc/setKinds'
 import { driveLinkProblem } from '../../lib/gc/drive'
+import { answeredNotInSet, questionInNote } from '../../lib/gc/questions'
 import { linesLeftBehind, linesOnSheets, linesOnSpecs, packagesForSheets, packagesForSpecs, sheetAsIndexed } from '../../lib/gc/lineReach'
 import type { ScopeBookLine } from '../../lib/gc/scopeBook'
 import type { GcProjectView } from '../../lib/gc/projectRows'
@@ -143,6 +144,13 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
   /** Scope lines this set adds, by trade (package id). */
   const [newLines, setNewLines] = useState<Record<string, string[]>>({})
   const [lineFor, setLineFor] = useState<string | null>(null)
+  /** Answered questions kept out of this set's note, by id. The rest ride in it. */
+  const [skipQ, setSkipQ] = useState<string[]>([])
+  const answers = answeredNotInSet(project)
+  const carriedQs = answers.filter((q) => !skipQ.includes(q.id))
+  const tradeOf = (packageId: string | null) => project.trades.find((p) => p.id === packageId)?.trade ?? null
+  /** What the set says changed: the office's words, then each answer it carries. */
+  const fullNote = [note.trim(), ...carriedQs.map((q) => questionInNote(q, tradeOf(q.packageId)))].filter(Boolean).join('\n')
 
   const index = project.sheets
   const manual = project.specs
@@ -266,7 +274,7 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
   const compared = diff !== null || specDiff !== null
   const driveStop = driveUrl.trim() === '' ? (whole || sheets.length > 0 ? driveLinkProblem('') : null) : driveLinkProblem(driveUrl)
   const missing =
-    note.trim() === '' && !compared
+    fullNote === '' && !compared
       ? 'Say what changed first.'
       : indexRowsToFix > 0
         ? `Fix or take out the ${indexRowsToFix === 1 ? 'sheet row' : `${indexRowsToFix} sheet rows`} marked in the new set's sheets.`
@@ -288,8 +296,9 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
       projectId: project.id,
       label,
       kind,
-      note: note.trim(),
+      note: fullNote,
       checkedByUserId: checker,
+      questionIds: carriedQs.map((q) => q.id),
       ...(driveUrl.trim() !== '' ? { drive: { url: driveUrl.trim(), access: null, checkedOn: null } } : {}),
       sheets,
       addedSheets: added,
@@ -401,6 +410,18 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
               placeholder={'For example:\nE-201: two more floor boxes in bay 2.\nM-101: RTU-3 moved 6 ft north. Curb detail changed on A-401.\nSection 09 91 23: low-VOC paint throughout.\nC-201 is taken out.'}
               style={{ ...field, fontFamily: 'inherit', resize: 'vertical' }}
             />
+            {answers.length > 0 && (
+              <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.7rem', borderRadius: 8, border: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.35rem', fontSize: '0.875rem' }}>
+                <strong>Answers to carry in this set</strong>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>An answered question goes out with the next set, in its note. Untick one to keep it out.</span>
+                {answers.map((q) => (
+                  <label key={q.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!skipQ.includes(q.id)} onChange={(e) => setSkipQ((all) => (e.target.checked ? all.filter((x) => x !== q.id) : [...all, q.id]))} style={{ marginTop: '0.2rem' }} />
+                    <span>{questionInNote(q, tradeOf(q.packageId))}</span>
+                  </label>
+                ))}
+              </div>
+            )}
             {whole && (
               <div style={{ marginTop: '0.6rem', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.4rem', fontSize: '0.875rem' }}>
                 <strong>The new set's sheets</strong>
