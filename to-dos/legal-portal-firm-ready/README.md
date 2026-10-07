@@ -2,7 +2,7 @@
 name: "Legal portal: ready for the firm"
 number: 85
 group: waiting
-status: 24 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door) and v2.4712 (replace the firm, migration 20261006234500), all live; 12–15 and 19 wait for the firm; 10 is the owner's
+status: 23 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door) and v2.4712 (replace the firm, migration 20261006234500), all live; 12–15 and 19 wait for the firm; 10 is the owner's
 summary: >
   The portal's data model and two-way channel are a real selling point, but the firm-facing
   surface still speaks the office's language, the print packet hands the firm the office's own
@@ -53,7 +53,7 @@ Each item: a mockup file beside this card (`mockup-<n>-<slug>.html`), then its P
 14. **Contract terms and interest.** Rate, fees clause, venue; the Prompt Payment interest and fee clock the demand letter already computes.
 15. **Proof of delivery** per invoice: sent, delivered, opened.
 16. ~~**Lifecycle.**~~ (v2.4681, v2.4645) Settled stays visible until the office closes it; payment plan, uncollectible, dismissed, post-judgment; no silent backward moves; a pulled-back matter stays readable with the reason.
-17. ~~**Threaded conversation.**~~ (v2.4626; PR 2 v2.4649 queued, migration held) Return the acknowledged stamp; link answers to questions; close withdrawn asks; email the firm on every event.
+17. ~~**Threaded conversation.**~~ (v2.4626, v2.4649 with its migration) Return the acknowledged stamp; link answers to questions; close withdrawn asks; email the firm on every event.
 18. ~~**Acts a firm can trust.**~~ (v2.4640, v2.4648) Void with reason on both sides; *recorded by* from the recipient list; a date the firm sets; idempotency; a per-matter limit.
 19. **A dispute block** with amount, what was disputed and resolution.
 20. ~~**Settlement authority**~~ (v2.4643) as a threshold the firm can see, and an ask below it.
