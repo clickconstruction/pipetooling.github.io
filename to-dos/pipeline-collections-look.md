@@ -2,7 +2,7 @@
 name: "Pipeline → Collections: a look at the section (2026-10-06)"
 number: 93
 group: ready
-status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day); nothing built
+status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · A shipped v2.4758
 summary: >
   The Collections section does what the guides say — a flag on a billed job, the typed confirm, the note
   under the money, the self-clearing flag, ⚖ Legal and Lien desk on the header. Three things do not match
@@ -10,7 +10,7 @@ summary: >
   "billed" for a resend, and a Billed count that reads one number on the phone strip and another on the
   desktop header. The docs side (the term, the three columns, the archived migrations) landed with this card.
 next: >
-  A: one prop and a smoke. B and C: a read first, then the owner's word on the wording. D is a question.
+  A shipped. B and C: a read first, then the owner's word on the wording. D is a question.
 size: XS (A) · S (B, C) · a question (D)
 blocker: None for A. B, C and D want the owner's call on the words once the reads are in.
 mockup: not required — A changes no screen a Billed row does not already show; B, C and D are words and a count
@@ -22,7 +22,7 @@ The look read `JobsStagesTab.tsx` §4's Collections site, the row renderers, `se
 the three guides that mention the section and the Dashboard's AR split, then opened the Pipeline on the
 dev account on a computer and on a phone. What matches its words is not listed. What does not:
 
-## A. The Collections-shell pill has never rendered — XS, ready
+## A. The Collections-shell pill has never rendered — shipped v2.4758
 
 Punch list B6 / J4-10 (v2.2913) wrote a pill for a Collections job with no bill line: *In Collections
 N days · no bill line*, the flag day in its title, and the *They said…* door beside it, so the shell ages

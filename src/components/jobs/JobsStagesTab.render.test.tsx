@@ -492,6 +492,21 @@ describe('JobsStagesTab render smoke', () => {
     expect(within(screen.getByRole('dialog', { name: 'Lien desk' })).getByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
   })
 
+  it('a Collections job with no bill line wears the shell pill — In Collections N days · no bill line (B6 / J4-10, wired in v2.4758)', async () => {
+    const flaggedDaysAgo = 12
+    const flaggedAt = new Date(Date.now() - flaggedDaysAgo * 86_400_000).toISOString()
+    const jobs = [
+      makeJob({ job_name: 'Parked Shell', status: 'billed', revenue: 1200, payments_made: 0, collections_at: flaggedAt, invoices: [] }),
+      makeJob({ job_name: 'Billed Shell', status: 'billed', revenue: 800, payments_made: 0, invoices: [] }),
+    ]
+    renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs })} />)
+    await settle()
+    // The Collections shell ages from the flag day; the Billed shell keeps its plain pill.
+    const parked = screen.getByText(new RegExp(`^In Collections ${flaggedDaysAgo} days · no bill line$`))
+    expect(parked.getAttribute('title')).toMatch(/^Flagged difficult to collect \d{4}-\d{2}-\d{2}\./)
+    expect(screen.getByText('No bill line')).toBeTruthy()
+  })
+
   describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {
     function moveJobs() {
       return [
