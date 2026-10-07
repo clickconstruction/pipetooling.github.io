@@ -9,7 +9,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 import { PeopleUsersTab } from './PeopleUsersTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { UsersTabTagsApi } from '../../hooks/useUsersTabTags'
-import type { UserRow } from '../../hooks/usePeopleRoster'
+import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -59,7 +59,10 @@ const USERS: UserRow[] = [
 
 const TAGS = { showUsersTabTags: false, showUsersTabTagOrgSignals: false } as unknown as UsersTabTagsApi
 
-function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void } = {}) {
+/** A roster row with an email and no login: the one row the ⋯ menu offers Invite as user on. */
+const ROSTER_ONLY: Person = { id: 'p1', master_user_id: 'u2', kind: 'helper', name: 'Rio Vance', email: 'rio@example.com', phone: null, notes: null, account_user_id: null }
+
+function renderTab(extra: { setTrainingMode?: (userId: string, on: boolean) => void; isDev?: boolean; people?: Person[] } = {}) {
   return renderWithProviders(
     <PeopleUsersTab
       isDev={false}
@@ -123,5 +126,19 @@ describe('PeopleUsersTab', () => {
     // The Supervision column says it, so the row's own chip steps aside.
     expect(within(kaiRow).queryByText('needs supervision')).toBeNull()
     expect(within(kaiRow).getByText('needs')).toBeTruthy()
+  })
+
+  // v2.4877: `invite-user` refuses anyone but a dev, so the ⋯ menu offers Invite as user to a dev alone.
+  it.each([
+    ['a dev', true],
+    ['a leader', false],
+    ['an assistant', false],
+    ['a controller', false],
+  ])('a roster row with no login: %s %s offered Invite as user', async (_who, isDev) => {
+    renderTab({ isDev, people: [ROSTER_ONLY] })
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Actions for Rio Vance' }))[0]!)
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getByText('Edit')).toBeTruthy()
+    expect(within(menu).queryByText('Invite as user') !== null).toBe(isDev)
   })
 })

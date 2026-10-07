@@ -195,7 +195,12 @@ export function PersonDeskHeader({
       } else if (gap === 'no_pay_config') {
         showToast('Pay setup lives on People → Payroll → pay config until the Pay section ships (PR 2).', 'info')
       } else if (gap === 'no_login') {
-        showToast('Invite from the Users row: find them under their kind and tap "Invite as user".', 'info')
+        showToast(
+          viewer.isDev
+            ? 'Invite from the Users row: find them under their kind and tap "Invite as user".'
+            : 'Only a dev can send the invite. Ask a dev to invite them from the Users row.',
+          'info',
+        )
       }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'That did not save', 'error')
@@ -256,7 +261,7 @@ export function PersonDeskHeader({
         {personKey && personKey.gaps.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', marginTop: '0.45rem' }}>
             {personKey.gaps.map((gap) => {
-              const d = describePersonGap(gap, personKey)
+              const d = describePersonGap(gap, personKey, { canInvite: viewer.isDev })
               const actionable = !viewer.readOnly && (gap === 'unlinked_email_match' || gap === 'pay_name_mismatch' || gap === 'no_roster_row')
               return (
                 <div key={gap} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', background: 'var(--bg-amber-tint)', border: '1px solid #f59e0b', borderRadius: 4, padding: '0.3rem 0.5rem', fontSize: '0.75rem' }}>

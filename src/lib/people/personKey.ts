@@ -117,8 +117,15 @@ export function resolvePersonKey(input: ResolvePersonKeyInput): PersonKey {
   }
 }
 
-/** What the header says for each gap and what its button does. */
-export function describePersonGap(gap: PersonGap, key: Pick<PersonKey, 'displayName' | 'rosterName' | 'emailMatchedPersonName' | 'payName'>): {
+/**
+ * What the header says for each gap and what its button does. `canInvite` is false for anyone but a
+ * dev (v2.4877): only a dev can make a login, so their No login button asks a dev instead.
+ */
+export function describePersonGap(
+  gap: PersonGap,
+  key: Pick<PersonKey, 'displayName' | 'rosterName' | 'emailMatchedPersonName' | 'payName'>,
+  opts: { canInvite?: boolean } = {},
+): {
   label: string
   action: string
   detail: string
@@ -131,11 +138,17 @@ export function describePersonGap(gap: PersonGap, key: Pick<PersonKey, 'displayN
         detail: 'Without one there is no HR file, portal, paperwork or employment dates. Creating it asks for the kind and does nothing else.',
       }
     case 'no_login':
-      return {
-        label: 'No login',
-        action: 'Invite as user',
-        detail: 'Without an account there are no clock sessions, schedule, team lead, vehicle or housing. Invite from the Users row.',
-      }
+      return opts.canInvite === false
+        ? {
+            label: 'No login',
+            action: 'Ask a dev to invite',
+            detail: 'Without an account there are no clock sessions, schedule, team lead, vehicle or housing. Only a dev can send the invite.',
+          }
+        : {
+            label: 'No login',
+            action: 'Invite as user',
+            detail: 'Without an account there are no clock sessions, schedule, team lead, vehicle or housing. Invite from the Users row.',
+          }
     case 'unlinked_email_match':
       return {
         label: `Roster row "${key.emailMatchedPersonName ?? '?'}" shares this email but is not linked`,
