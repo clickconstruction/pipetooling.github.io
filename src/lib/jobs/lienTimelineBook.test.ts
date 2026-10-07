@@ -101,6 +101,16 @@ describe('the grid', () => {
     expect(html).toContain('Blank columns are facts the app does not hold')
     expect(html).toContain('Click Plumbing')
   })
+  it('draws a band before each run of rows when given sections, the firm\'s grid by court (v2.4825)', () => {
+    const rows = filterLienTimelineBook(book, { gcId: 'gc1', show: 'all' })
+    const sections = [{ title: 'Hays County · Justice Court, Precinct 2 · 2 jobs · $1', rows: rows.slice(0, 2) }, { title: 'County not on the record · 1 job · $2', rows: rows.slice(2) }]
+    const html = lienGridHtml(rows, { title: 'every court', todayYmd: TODAY, companyName: 'Click Plumbing', sections })
+    expect(html.match(/<tr class="sect">/g)).toHaveLength(2)
+    expect(html).toContain('<tr class="sect"><th colspan="12">Hays County · Justice Court, Precinct 2 · 2 jobs · $1</th></tr>')
+    expect(html.indexOf('Hays County')).toBeLessThan(html.indexOf('County not on the record'))
+    expect(html).toContain('3 jobs · $43,599 open')
+    expect(lienGridHtml(rows, { title: 'Loberg Contracting', todayYmd: TODAY, companyName: 'Click Plumbing' })).not.toContain('class="sect"')
+  })
 })
 
 describe('the lien clock on a book row (v2.3786)', () => {

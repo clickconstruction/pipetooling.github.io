@@ -205,14 +205,17 @@ export const LIEN_GRID_COLUMNS: ReadonlyArray<{ key: keyof LienGridRow; label: s
   { key: 'contractCompleted', label: 'Contract completed' },
 ]
 
-/** The printable grid (letter, landscape): one row per job, counsel's twelve columns, blanks where the app has no fact yet. */
-export function lienGridHtml(rows: ReadonlyArray<LienTimelineBookRow>, opts: { title: string; todayYmd: string; companyName: string }): string {
-  const grid = lienGridRows(rows, opts.todayYmd)
+/**
+ * The printable grid (letter, landscape): one row per job, counsel's twelve columns, blanks where the app has no fact yet.
+ * `sections` (the firm's grid by court, v2.4825) draws a band before each run of rows; without them it prints as before.
+ */
+export function lienGridHtml(rows: ReadonlyArray<LienTimelineBookRow>, opts: { title: string; todayYmd: string; companyName: string; sections?: ReadonlyArray<{ title: string; rows: ReadonlyArray<LienTimelineBookRow> }> }): string {
   const open = rows.reduce((s, r) => s + r.job.openBalance, 0)
   const head = LIEN_GRID_COLUMNS.map((c) => `<th>${esc(c.label)}</th>`).join('')
-  const body = grid
-    .map((g) => `<tr>${LIEN_GRID_COLUMNS.map((c) => `<td${g[c.key] ? '' : ' class="blank"'}>${g[c.key] ? esc(g[c.key]) : '—'}</td>`).join('')}</tr>`)
-    .join('\n')
+  const rowHtml = (g: LienGridRow) => `<tr>${LIEN_GRID_COLUMNS.map((c) => `<td${g[c.key] ? '' : ' class="blank"'}>${g[c.key] ? esc(g[c.key]) : '—'}</td>`).join('')}</tr>`
+  const body = opts.sections?.length
+    ? opts.sections.map((sec) => [`<tr class="sect"><th colspan="${LIEN_GRID_COLUMNS.length}">${esc(sec.title)}</th></tr>`, ...lienGridRows(sec.rows, opts.todayYmd).map(rowHtml)].join('\n')).join('\n')
+    : lienGridRows(rows, opts.todayYmd).map(rowHtml).join('\n')
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Lien grid — ${esc(opts.title)}</title>
 <style>
@@ -224,6 +227,7 @@ export function lienGridHtml(rows: ReadonlyArray<LienTimelineBookRow>, opts: { t
   th, td { border: 1px solid #CBD5E1; padding: 3px 5px; text-align: left; vertical-align: top; }
   th { background: #F3F4F6; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
   td.blank { color: #9CA3AF; }
+  tr.sect th { background: #E5E7EB; font-size: 10.5px; text-transform: none; letter-spacing: 0; }
   p.foot { margin: 8px 0 0; color: #6B7280; font-size: 9.5px; }
 </style></head><body>
 <h1>Lien grid — ${esc(opts.title)} · ${rows.length} ${rows.length === 1 ? 'job' : 'jobs'} · ${esc(formatUsdNoCents(open))} open</h1>

@@ -99,6 +99,7 @@ Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating
 **The session's door** (2026-10-07; mockup `mockup-documents-and-narrative.html`): v2.4814 (migration `20261007235000`) gives dev-mcp `plan_matter_narrative` / `apply_matter_narrative` over `legal_set_narrative`, and `scripts/legal-file-documents.ts` files a folder of documents (and the narrative) onto a matter from a manifest, dry run unless `--write`. The mockup's base64 document verb was not built: the files are on the session's disk, so the script reads them there.
 
 **Who the firm calls** (2026-10-06, v2.4755): a strip under the letterhead with the office number and the assistants to ask for, the controller's own number, and what each is for; the same two lines on the printed packet; the desk's firm window flags a controller with no phone. Mockup: `mockup-reach-the-office.html`. Needs `supabase functions deploy legal-portal`.
+**The Lien grid by court** (2026-10-07, the owner's ask; mockup `mockup-lien-grid-by-court.html`): v2.4825 lets the rail read by court. Each county lists its justice precincts with their jobs and dollars, a job over the justice limit sits under its county, and with every court shown a band names each court above its rows, on the screen and the print.
 
 
 Found by the reviews and left for later:
