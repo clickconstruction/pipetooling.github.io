@@ -231,10 +231,12 @@ export type LienTimelineStripProps = {
   nextDoor?: ReactNode
   /** The last day of work's door (v2.4735): *change ›* under the LAST WORK stop; the Lien window opens its last-day line. */
   onChangeLastWork?: () => void
+  /** A stop's paper (v2.4793): with it, every stop's title is a door, and a press hands the step over — the host opens `LienStopPaperWindow`. */
+  onOpenStep?: (step: LienTimelineStep) => void
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, onOpenStep, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
@@ -245,6 +247,15 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
   // Which folded node is fanned open (v2.4111); the mini row never fans.
   const [openFold, setOpenFold] = useState<string | null>(null)
   const openFoldStep = steps.find((s) => s.key === openFold && s.fold) ?? null
+  // The stop's title (v2.4793): a door to its paper when the host opens one, else the plain label.
+  const stopLabel = (s: LienTimelineStep, labelStyle: CSSProperties) =>
+    onOpenStep ? (
+      <button type="button" className="lienStopDoor" data-lien-timeline-stop-door={s.key} onClick={() => onOpenStep(s)} title={`What this stop sends — ${s.label}`} style={labelStyle}>
+        {s.label}
+      </button>
+    ) : (
+      <span style={labelStyle}>{s.label}</span>
+    )
   const foldDoor = (s: LienTimelineStep) =>
     s.fold ? (
       <button
@@ -323,7 +334,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
               <Node s={s} size={16} />
               <div style={{ minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.3 }}>
                 {s.move ? <MovePill move={s.move} voice={voice} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{s.label}</span>
+                {stopLabel(s, { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' })}
                 <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
                 {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{keepDatesWhole(s.opensWords)} ·</span> : null}
                 <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}</span>
@@ -364,7 +375,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
           {steps.map((s) => (
             <div key={s.key} data-lien-timeline-step={s.key} title={s.fold ? foldTitle(s, timeline.todayYmd) : `${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
               <Node s={s} size={nodeSize} />
-              {mini ? null : <span style={{ marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.label}</span>}
+              {mini ? null : stopLabel(s, { marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' })}
               {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{keepDatesWhole(s.opensWords)}</span> : null}
               <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
               {mini ? null : (

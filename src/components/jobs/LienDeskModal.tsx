@@ -72,6 +72,11 @@ import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPape
 import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import LienPaperGcWindow from './LienPaperGcWindow'
 import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaperPreviewOverlay'
+import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
+import { affidavitStopPages, filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import type { JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
@@ -543,6 +548,7 @@ export default function LienDeskModal({
   }, [open, initialJobId, visible.map((e) => e.jobId).join('|')])
 
   const selected = visible.find((e) => e.jobId === selectedJobId) ?? entries.find((e) => e.jobId === selectedJobId) ?? null
+  useEffect(() => setStopOpen(null), [selectedJobId])
   const job = selected ? data?.jobsById[selected.jobId] : undefined
   const gc = selected?.gcCustomerId ? data?.gcsById[selected.gcCustomerId] : undefined
   const address = job?.customer_address_id ? data?.addressesById[job.customer_address_id] ?? null : null
@@ -583,6 +589,8 @@ export default function LienDeskModal({
   }, [data, authRole, todayYmd])
   // The paper behind a Do now chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
+  // A stop's paper (v2.4793): the index of the timeline stop whose window is open on the notice pane; null when closed.
+  const [stopOpen, setStopOpen] = useState<number | null>(null)
   const paperRows = useMemo(() => nextUpRows.filter((r) => r.jobId && r.kind !== 'retainage'), [nextUpRows])
   // Fix it from the paper (v2.4719): the window stacked over the paper, and the blanks the row had when it opened.
   const [paperFix, setPaperFix] = useState<{ index: number; window: LienPaperFixWindow; gap: LienPaperGap } | null>(null)
@@ -1604,6 +1612,62 @@ export default function LienDeskModal({
         })
       : null
 
+  // A stop's paper (v2.4793): what the window shows for each stop of the selected job's timeline. The notice's pages are the pane's
+  // own (the draft as it stands); the affidavit's and the retainage notice's come from the same builders their panes print with.
+  const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
+    const none: LienStopPaper = { pages: [], envelope: null, before: [], record: null, act: null }
+    if (!selected || !data) return none
+    const jobId = selected.jobId
+    const filings = data.filingsByJob[jobId] ?? []
+    const filedWords = (verb: string, ymd: string | null, iso: string) => `${verb} ${formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))}`
+    const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail${gc?.email ? ` · courtesy PDF to ${gc.email}` : ''}`
+    const before = gates.filter((g) => g.tone !== 'ok').map((g) => ({ key: g.key, words: `${g.label}: ${g.value}` }))
+    const go = (k: 'affidavit' | 'retainage', label: string) => ({ label, onPress: () => { setStopOpen(null); setKind(k) } })
+    const jobNo = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''
+    // A stop that went out shows the paper as it went out — the filing's own snapshot — and its stored document.
+    const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
+      const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+    }
+    const kind = lienStopPaperKind(step)
+    if (kind === 'notice') {
+      const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && !f.voided_at && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
+      if (sent) return asSent(sent, filedWords('Mailed', sent.filed_at, sent.created_at), { envelope })
+      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      const onDraft = step.monthKey ? months.has(step.monthKey) : false
+      if (!onDraft) return { ...none, note: `${workMonthLabel(step.monthKey ?? '')} is not on the notice being drafted. Tick it under Months on this job and it joins the paper.` }
+      const pages = [
+        ...(coverHtml ? [{ key: 'cover', label: `Page 1 of ${pageTotal} · cover letter`, html: coverHtml }] : []),
+        ...(releaseHtml ? [{ key: 'release', label: `Page ${coverHtml ? 2 : 1} of ${pageTotal} · conditional release`, html: releaseHtml }] : []),
+        { key: 'notice', label: `Page ${noticePageNumber} of ${pageTotal} · the notice`, html: docHtml },
+        ...(payHtml ? [{ key: 'pay', label: `Page ${pageTotal} of ${pageTotal} · pay codes`, html: payHtml }] : []),
+      ]
+      return { pages, envelope, before, record: null, noticeMonths: [...months], act: { label: 'Go to the paper on the desk ▾', onPress: () => { setStopOpen(null); scrollToPage('notice', pageKeys.indexOf('notice')) } } }
+    }
+    if (kind === 'retainage') {
+      const sent = filings.find((f) => f.kind === 'retainage_53_057' && !f.voided_at)
+      if (sent) return asSent(sent, filedWords('Mailed', sent.filed_at, sent.created_at), { envelope })
+      const pages = retainageStopPages({ data, jobId, issuer, signerNameFor, signerPhoneFor, todayYmd }) ?? []
+      return { pages, envelope: pages.length ? envelope : null, before: [], record: null, act: pages.length ? go('retainage', 'Open it on Retainage ›') : null, note: pages.length ? null : 'No retainage is recorded on this job, so there is no § 53.057 notice to show.' }
+    }
+    if (kind === 'affidavit' || kind === 'serve') {
+      const filed = filings.filter((f) => f.kind === 'affidavit' && !f.voided_at && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0]
+      if (filed) {
+        const words = kind === 'serve' ? (filed.served_at ? filedWords('Served', filed.served_at, filed.created_at) : `Filed ${formatYmdMonthDay(filed.filed_at!)} · a copy to the owner and the GC is still owed`) : `${filedWords('Filed', filed.filed_at, filed.created_at)}${filed.recording_number ? ` · ${filed.recording_number}` : ''}`
+        return asSent(filed, words, { envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}` : null })
+      }
+      const pages = affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYmd }) ?? []
+      return { pages, envelope: kind === 'serve' ? `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing` : null, before: [], record: null, act: pages.length ? go('affidavit', 'Open it on Affidavits ›') : null, note: pages.length ? (kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope.' : null) : 'The affidavit window has not opened on this job yet.' }
+    }
+    if (kind === 'release') {
+      const filed = filings.find((f) => f.kind === 'release_of_record' && !f.voided_at)
+      if (filed) return asSent(filed, filedWords('Released', filed.filed_at, filed.created_at))
+      return { ...none, note: 'The release of record is made in the Release of Lien window once the job is paid.' }
+    }
+    if (kind === 'demand') return { ...none, note: 'The demand letter is sent from the job’s Lien window; its reply day is on the strip.' }
+    return none
+  }
+
   // The pane's stacked heads (v2.4733): the five sections' title rows, pinned like the list's pile heads — passed ones under the strip, coming ones at the bottom, the one the reader is in lit.
   const paneHeads = selected
     ? lienPaneSections({
@@ -1726,9 +1790,10 @@ export default function LienDeskModal({
       <div data-lien-pane-body="path" style={{ display: 'grid', gap: '0.6rem' }}>
       {timeline ? (
         <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
-          <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} />
+          <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
         </div>
       ) : null}
+      {timeline && stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={jobLabel(job, selected.jobId)} paperFor={stopPaperFor} /> : null}
 
       {leader && selected.pile === 'awaiting' ? (
         <div style={boxStyle}>

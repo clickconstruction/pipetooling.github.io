@@ -203,6 +203,51 @@ describe('LienDeskModal', () => {
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
   })
 
+  it("a stop's title on the timeline opens the window on what that stop sends; Esc closes it alone (v2.4793)", async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    const door = document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="notice:2026-06"]') as HTMLButtonElement
+    expect(door?.tagName).toBe('BUTTON')
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-stop-paper')).toBeTruthy()
+    expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toBe('§ 53.056 · Jun')
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toMatch(/^The .*notice$/)
+    // The gates that are not clear read under Before it can go — the owner of record is missing on this job.
+    expect(screen.getAllByTestId('lien-stop-paper-before').map((n) => n.textContent).join(' ')).toMatch(/[Oo]wner/)
+    fireEvent.click(screen.getByRole('button', { name: 'Next stop' }))
+    expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toBe('§ 53.056 · Jul')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    // The affidavit stop shows the affidavit as the Affidavits pane prints it.
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement)
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
+    expect(screen.getByTestId('lien-stop-paper-rule').textContent).toBe('§ 53.052 · The affidavit ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
+  it("on Affidavits, a stop's title opens the window with this pane's affidavit and the Lien window door (v2.4793)", async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data(J650)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    const door = document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement
+    expect(door?.tagName).toBe('BUTTON')
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
+    expect(screen.getByTestId('lien-stop-paper-page').textContent).toMatch(/AFFIDAVIT/i)
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open it in the Lien window ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+    // A notice stop from this side points at Notices, where the pages are.
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door^="notice:"]') as HTMLButtonElement)
+    expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toMatch(/§ 53.056/)
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open it on Notices ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
   it('a printed notice has a footer: the run to record the mailing, and Back to ready; the header counts it (v2.4568)', async () => {
     clearPrintedMock.mockReset()
     clearPrintedMock.mockResolvedValue(undefined)

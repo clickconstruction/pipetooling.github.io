@@ -4,7 +4,7 @@
  * green first-day line — and the corner switch draws the same path as windows, remembered in
  * this browser. The mini row has no switch.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import LienTimelineStrip from './LienTimelineStrip'
 import { buildLienTimeline } from '../../lib/jobs/lienTimeline'
@@ -262,5 +262,19 @@ describe('LienTimelineStrip — the late notice (v2.4708): job 890 read Oct 6, t
     expect(container.querySelector('[data-lien-timeline-window="notice:2026-07"]')?.getAttribute('data-lien-timeline-window-kind')).toBe('closed')
     expect(container.querySelector('[data-lien-timeline-windows-after]')?.textContent).toMatch(/^After a filing:/)
     expect(container.querySelector('[data-lien-timeline-windows-legend]')!.textContent).toContain('┄ opens when the notice is mailed')
+  })
+
+  it('with onOpenStep every stop title is a door that hands the step over; without it the titles are plain (v2.4793)', () => {
+    const onOpenStep = vi.fn()
+    const { unmount } = render(<LienTimelineStrip timeline={timeline} layout="row" onOpenStep={onOpenStep} />)
+    const door = document.querySelector('[data-lien-timeline-stop-door="notice:2026-07"]') as HTMLButtonElement
+    expect(door.tagName).toBe('BUTTON')
+    expect(door.textContent).toBe('§ 53.056 · Jul')
+    fireEvent.click(door)
+    expect(onOpenStep).toHaveBeenCalledTimes(1)
+    expect(onOpenStep.mock.calls[0]![0].key).toBe('notice:2026-07')
+    unmount()
+    render(<LienTimelineStrip timeline={timeline} layout="row" />)
+    expect(document.querySelector('[data-lien-timeline-stop-door]')).toBeNull()
   })
 })
