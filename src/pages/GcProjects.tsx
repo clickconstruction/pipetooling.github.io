@@ -13,6 +13,7 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
+import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { Btn, Chip } from '../components/gc/gcUi'
 import {
   checkDriveAccess,
@@ -64,8 +65,9 @@ export default function GcProjects() {
   const bookOpen = params.get('book') === '1'
   const bookTrade = params.get('trade')
   const bookProjectId = params.get('project')
-  /** The new-plans window: `set=<projectId>`. */
+  /** The new-plans window: `set=<projectId>`. The plans window: `plans=<projectId>`. */
   const setProjectId = params.get('set')
+  const plansProjectId = params.get('plans')
   const [issuing, setIssuing] = useState(false)
   const [issueProblem, setIssueProblem] = useState<string | null>(null)
 
@@ -111,6 +113,13 @@ export default function GcProjects() {
   }
   const bookProject = bookProjectId ? (loaded?.projects.find((p) => p.id === bookProjectId) ?? null) : null
   const setProject = setProjectId ? (loaded?.projects.find((p) => p.id === setProjectId) ?? null) : null
+  const plansProject = plansProjectId ? (loaded?.projects.find((p) => p.id === plansProjectId) ?? null) : null
+  const setPlansWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('plans', projectId)
+    else next.delete('plans')
+    setParams(next, { replace: true })
+  }
   const setSetWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('set', projectId)
@@ -156,6 +165,9 @@ export default function GcProjects() {
               <Chip tone={justMade === p.id ? 'green' : 'grey'}>{p.stage}</Chip>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.address}</span>
               {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
+              <Btn kind="quiet" onClick={() => setPlansWindow(p.id)}>
+                The plans
+              </Btn>
               {!p.lostOn && (
                 <Btn kind="quiet" onClick={() => setSetWindow(p.id)}>
                   A new set of plans came in
@@ -265,6 +277,8 @@ export default function GcProjects() {
           </div>
         )
       })}
+
+      {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
 
       {setProject && loaded && (
         <GcNewPlansWindow

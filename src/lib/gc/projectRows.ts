@@ -95,6 +95,8 @@ export interface GcProjectView extends ScopeBookProject {
   planSets: (GcPlanSetView & { addedLines: { packageId: string; scopeId: string }[] })[]
   /** The scope book's view of the trades: the same rows under the names it reads. */
   packages: ScopeBookProject['packages']
+  /** The rows themselves, for the reads that fold the sets (src/lib/gc/planSetReads.ts). */
+  rows: GcProjectRows
 }
 
 function num(v: number | string | null | undefined): number {
@@ -211,6 +213,7 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
     specs: foldItems(sets, rows.setItems, 'section', newest).map((x) => ({ id: x.id, title: x.title })),
     trades,
     planSets: planSets.map((s) => ({ ...s, issuedOn: s.issuedOn })),
+    rows,
     // The scope book's names for the same rows.
     packages: trades.map((t) => ({
       id: t.id,
