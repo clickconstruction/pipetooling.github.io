@@ -9,9 +9,21 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
 import type { GcProject, GcState } from '../types'
+import { weekdayDate } from '../words'
 import { scheduleDraft } from './draft'
-import { roughWeeks } from './rough'
-import { roughTemplateWords, stagesCovered, templateCovers, templateFitWords, templateNameProblem, templateShape, templateSizeWords, templateUses, templateWeeks } from './templates'
+import { drawWeeks, roughWeeks } from './rough'
+import {
+  roughTemplateWords,
+  stagesCovered,
+  templateCovers,
+  templateFitWords,
+  templateNameProblem,
+  templateSaveProblem,
+  templateShape,
+  templateSizeWords,
+  templateUses,
+  templateWeeks,
+} from './templates'
 import { initialGcState } from './testState'
 import type { ScheduleTemplate } from './types'
 
@@ -99,5 +111,58 @@ describe('the first draft, from a template, and where each job came from', () =>
     const t = tpl(s)
     const sentences = [templateSizeWords(t), templateFitWords(t, job(s, 'boerne'), BOERNE_START), templateFitWords(t, job(s, 'helotes'), '2026-10-12'), roughTemplateWords(job(s, 'boerne')) ?? '']
     expect(sentences.flatMap(plainWordsFailures)).toEqual([])
+  })
+})
+
+describe('saving a job as a template, or why not (the schedule’s PR 5)', () => {
+  /** Fair Oaks D with its schedule changed. */
+  const fairOaksWith = (s: GcState, change: (schedule: NonNullable<GcProject['schedule']>) => NonNullable<GcProject['schedule']>): GcProject => {
+    const fo = job(s, 'fairoaksd')
+    return { ...fo, schedule: change(fo.schedule!) }
+  }
+
+  it('lets Fair Oaks D go under a new name', () => {
+    const s = initialGcState()
+    expect(templateSaveProblem(s, job(s, 'fairoaksd'), 'Retail shell')).toBeNull()
+  })
+
+  it('refuses a job not being built, and a name the template rules refuse', () => {
+    const s = initialGcState()
+    expect(templateSaveProblem(s, job(s, 'helotes'), 'Clinic')).toBe('Only a job being built can be saved as a template.')
+    const one = saved()
+    expect(templateSaveProblem(one, job(one, 'fairoaksd'), 'fair oaks shops,  building d')).toBe('Another template has that name.')
+    expect(templateSaveProblem(s, { ...job(s, 'fairoaksd'), schedule: undefined }, 'Retail shell')).toBe('Draw the schedule first.')
+  })
+
+  it('words a schedule with no trade’s line before the table refuses it', () => {
+    const s = initialGcState()
+    const bare = fairOaksWith(s, (sch) => ({ ...sch, activities: sch.activities.filter((a) => a.inspection) }))
+    // What the table refuses: a template of inspections alone covers no line on another job.
+    expect(templateShape(s, bare)?.lines.every((l) => l.trade === '')).toBe(true)
+    expect(templateSaveProblem(s, bare, 'Inspections only')).toBe("A template keeps the trades' lines. This schedule has none yet.")
+  })
+
+  it('words a substantial completion planned before the first start before the table refuses its weeks', () => {
+    const s = initialGcState()
+    const early = fairOaksWith(s, (sch) => ({ ...sch, milestones: sch.milestones.map((m) => (/substantial completion/i.test(m.label) ? { ...m, planned: '2026-06-01' } : m)) }))
+    // What the table refuses: weeks under one.
+    expect(templateShape(s, early)?.weeks).toBeLessThan(1)
+    const first = drawWeeks(early.schedule!)!.start
+    expect(first > '2026-06-01').toBe(true)
+    expect(templateSaveProblem(s, early, 'Too early')).toBe(`Substantial completion is planned Mon Jun 1, before the work starts ${weekdayDate(first)}. Move it to a day after the work starts.`)
+  })
+
+  it('says every refusal in plain words', () => {
+    const s = initialGcState()
+    const bare = fairOaksWith(s, (sch) => ({ ...sch, activities: sch.activities.filter((a) => a.inspection) }))
+    const early = fairOaksWith(s, (sch) => ({ ...sch, milestones: sch.milestones.map((m) => (/substantial completion/i.test(m.label) ? { ...m, planned: '2026-06-01' } : m)) }))
+    const sentences = [
+      templateSaveProblem(s, job(s, 'helotes'), 'Clinic'),
+      templateSaveProblem(s, { ...job(s, 'fairoaksd'), schedule: undefined }, 'Retail shell'),
+      templateSaveProblem(s, bare, 'Inspections only'),
+      templateSaveProblem(s, early, 'Too early'),
+    ]
+    expect(sentences.every(Boolean)).toBe(true)
+    expect(sentences.flatMap((x) => plainWordsFailures(x ?? ''))).toEqual([])
   })
 })
