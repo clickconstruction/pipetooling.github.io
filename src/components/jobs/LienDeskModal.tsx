@@ -113,7 +113,7 @@ import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence } from '../../lib/jobs/lienDeskGates'
+import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
@@ -1793,7 +1793,24 @@ export default function LienDeskModal({
           <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
         </div>
       ) : null}
-      {timeline && stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={jobLabel(job, selected.jobId)} paperFor={stopPaperFor} /> : null}
+      {timeline && stopOpen != null ? (
+        <LienStopPaperWindow
+          steps={timeline.steps}
+          index={stopOpen}
+          onIndex={setStopOpen}
+          onClose={() => setStopOpen(null)}
+          jobLabel={jobLabel(job, selected.jobId)}
+          paperFor={stopPaperFor}
+          timeline={timeline}
+          holdFor={(step) => {
+            // The hold line (v2.4806): the notice's first blocking gate, in the draft footer's own words, with its door.
+            if (step.kind !== 'notice' || step.state === 'done' || step.state === 'missed' || step.fold) return null
+            const blocker = gates.find((g) => g.tone === 'blocker') ?? null
+            if (!blocker) return null
+            return { words: lienFootBlockedSentence(blocker, months.size), short: lienGateShortWords(blocker), act: { label: `Go to gate ${blocker.n} ▴`, onPress: () => { setStopOpen(null); goToSection('gates') } } }
+          }}
+        />
+      ) : null}
 
       {leader && selected.pile === 'awaiting' ? (
         <div style={boxStyle}>

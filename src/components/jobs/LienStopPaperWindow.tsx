@@ -3,6 +3,8 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { stepRunPreview } from '../../lib/jobs/lienDeskRun'
 import { LIEN_RULE_CITES } from '../../lib/jobs/lienRuleCites'
 import { lienStopPaperKind, lienStopRuleCite, lienStopWindowWords } from '../../lib/jobs/lienStopPaper'
+import LienTimelineStrip, { LienTimelineNode } from './LienTimelineStrip'
+import type { LienTimeline } from '../../lib/jobs/lienTimeline'
 import type { LienStopPaperPage } from '../../lib/jobs/lienStopPaperPages'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import type { LienStopChecklistRow, LienStopRecordCard } from '../../lib/legal/lienStopEvidence'
@@ -51,8 +53,37 @@ export interface LienStopPaper {
   secondAct?: { label: string; onPress: () => void } | null
 }
 
+/** The hold line (v2.4806): why the stop cannot go, as v2.4797's two sentences, the chip's short words, and the gate's own door. */
+export interface LienStopHold {
+  /** *Don't send yet. Enter the owner of record and a mailing address on the property record first.* */
+  words: string
+  /** *owner of record missing* — the red chip under the stop on the path. */
+  short: string
+  act?: { label: string; onPress: () => void } | null
+}
+
+const PATH_OPEN_KEY = 'lienStopPathOpen'
+function readPathOpen(): boolean {
+  try {
+    return window.localStorage.getItem(PATH_OPEN_KEY) === 'yes'
+  } catch {
+    return false
+  }
+}
+function writePathOpen(open: boolean) {
+  try {
+    window.localStorage.setItem(PATH_OPEN_KEY, open ? 'yes' : 'no')
+  } catch {
+    // Storage that cannot be written loses the memory, not the fold.
+  }
+}
+
 type Props = {
   steps: ReadonlyArray<LienTimelineStep>
+  /** The whole timeline (v2.4806): the footer's path — folded to a row of dots, opened above the hold line. Without it the footer has no path. */
+  timeline?: LienTimeline | null
+  /** The hold line (v2.4806) for the stop the window is on; null when it can go, or already went. */
+  holdFor?: (step: LienTimelineStep) => LienStopHold | null
   index: number
   onIndex: (index: number) => void
   onClose: () => void
@@ -69,11 +100,14 @@ const kbd: CSSProperties = { fontSize: '0.7rem', border: '1px solid var(--border
 const card: CSSProperties = { padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', fontSize: '0.8rem', lineHeight: 1.45 }
 const linkBtn: CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0, textAlign: 'left' }
 
-export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jobLabel, paperFor }: Props) {
+export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jobLabel, paperFor, timeline = null, holdFor }: Props) {
   const isMobile = useIsMobile()
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [ruleOpen, setRuleOpen] = useState(false)
+  // The footer's path (v2.4806): folded by default, the choice remembered in this browser.
+  const [pathOpen, setPathOpen] = useState(readPathOpen)
+  const togglePath = () => setPathOpen((o) => { writePathOpen(!o); return !o })
   const total = steps.length
   const safeIndex = Math.min(Math.max(index, 0), Math.max(total - 1, 0))
   const step = steps[safeIndex]
@@ -105,6 +139,7 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
   const counsel = Boolean(paper.cards?.length || paper.checklist || paper.does)
   const kind = lienStopPaperKind(step)
   const cite = lienStopRuleCite(step)
+  const hold = holdFor ? holdFor(step) : null
 
   return (
     <div
@@ -128,7 +163,7 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0, flexWrap: 'wrap' }}>
               <span style={{ fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }} data-testid="lien-stop-paper-eyebrow">{words.eyebrow}</span>
               <h2 style={{ margin: 0, fontSize: '0.95rem', minWidth: 0 }} data-testid="lien-stop-paper-title">{words.title}</h2>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} data-testid="lien-stop-paper-count">stop {safeIndex + 1} of {total} · {jobLabel}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }} data-testid="lien-stop-paper-count">{timeline ? jobLabel : `stop ${safeIndex + 1} of ${total} · ${jobLabel}`}</span>
             </div>
             {words.line ? <div style={{ fontSize: '0.78rem', color: 'var(--text-700)' }} data-testid="lien-stop-paper-line">{words.line}</div> : null}
           </div>
@@ -277,9 +312,48 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
             ) : null}
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.9rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span>{counsel ? 'The record as the office keeps it. Dates and dollars, nothing anyone said.' : words.noPaper ? 'No paper of ours at this stop.' : paper.pages.length ? 'Read-only: the paper as it would print today, from the job. Change it where it is drafted.' : 'The paper as it went out is the record.'}</span>
-          {isMobile ? null : <span><span style={kbd}>←</span> <span style={kbd}>→</span> next stop · <span style={kbd}>Esc</span> back</span>}
+        <div data-testid="lien-stop-paper-foot" data-hold={hold ? 'yes' : 'no'} style={{ display: 'grid' }}>
+          {/* The path, open (v2.4806): the whole strip with this stop ringed and what blocks it marked, above the hold line. */}
+          {timeline && pathOpen ? (
+            <div data-testid="lien-stop-paper-path" style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)', padding: '0.55rem 1rem 0.3rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 2, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                <span style={{ fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.62rem' }}>Where this preview is</span>
+                {isMobile ? null : <span>the blue ring is this preview · the dashed line is today{hold ? ' · the red mark is what blocks it' : ''}</span>}
+              </div>
+              <LienTimelineStrip timeline={timeline} layout="row" view="steps" withNext={false} lit={step.key} blocked={hold ? { key: step.key, words: hold.short } : null} />
+            </div>
+          ) : null}
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.9rem', borderTop: hold ? '1px solid var(--border-amber)' : '1px solid var(--border)', background: hold ? 'var(--bg-amber-tint)' : 'transparent', fontSize: hold ? '0.8125rem' : '0.75rem', color: hold ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
+            {hold ? (
+              <>
+                <span aria-hidden style={{ fontSize: '1rem' }}>⚠</span>
+                <span data-testid="lien-stop-paper-hold" style={{ minWidth: 0 }}>{hold.words}</span>
+                {hold.act ? (
+                  <button type="button" data-testid="lien-stop-paper-hold-act" onClick={hold.act.onPress} style={{ padding: '0.3rem 0.75rem', borderRadius: 7, border: '1px solid var(--border-blue)', background: 'var(--text-link)', color: '#fff', font: 'inherit', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {hold.act.label}
+                  </button>
+                ) : null}
+              </>
+            ) : (
+              <span>{counsel ? 'The record as the office keeps it. Dates and dollars, nothing anyone said.' : words.noPaper ? 'No paper of ours at this stop.' : paper.pages.length ? 'Read-only: the paper as it would print today, from the job. Change it where it is drafted.' : 'The paper as it went out is the record.'}</span>
+            )}
+            <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap' }}>
+              {timeline ? (
+                <button type="button" data-testid="lien-stop-paper-dots" aria-expanded={pathOpen} onClick={togglePath} title="Where this preview is on the path" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '3px 9px', borderRadius: 999, border: hold ? '1px solid var(--border-amber)' : '1px solid var(--border-strong)', background: 'var(--surface)', color: hold ? 'var(--text-amber-800)' : 'var(--text-700)', font: 'inherit', fontSize: '0.72rem', cursor: 'pointer' }}>
+                  <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {steps.map((s) => (
+                      <span key={s.key} style={{ display: 'inline-flex', borderRadius: '50%', boxShadow: s.key === step.key ? '0 0 0 2px var(--surface), 0 0 0 3.5px var(--text-link)' : undefined }}>
+                        <LienTimelineNode s={s} size={s.key === step.key ? 9 : 7} />
+                      </span>
+                    ))}
+                  </span>
+                  <span>stop {safeIndex + 1} of {total}</span>
+                  <span aria-hidden>{pathOpen ? '▾' : '▸'}</span>
+                </button>
+              ) : null}
+              {isMobile ? null : <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}><span style={kbd}>←</span> <span style={kbd}>→</span> · <span style={kbd}>Esc</span></span>}
+            </span>
+          </div>
         </div>
       </div>
       {ruleOpen && cite ? (

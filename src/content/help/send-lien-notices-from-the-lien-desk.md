@@ -77,7 +77,7 @@ The **Notices** tab lists each job with a GC and an unpaid month whose window cl
 
 Pick a job, and the box under its name is its timeline. It lists every step the Texas Property Code sets for a lien, in order. Each step has its date and how it stands. A dashed today line splits what is behind from what is ahead.
 
-Press a stop's title to see what that stop sends. A window opens with the paper on the left and the stop's facts on the right. Press Next stop or Previous stop to walk the stops of the same job. A stop that sends nothing of ours shows what happens there instead.
+Press a stop's title to see what that stop sends. A window opens with the paper on the left and the stop's facts on the right. Press Next stop or Previous stop to walk the stops of the same job. A stop that sends nothing of ours shows what happens there instead. The window ends with a row of dots, one per stop, with this stop ringed. Press the dots to open the path above the footer. When the stop cannot go, the footer turns amber and says what to do first.
 
 The steps are these:
 

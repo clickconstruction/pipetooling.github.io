@@ -911,6 +911,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
                 onIndex={(i) => setStop({ jobId: t.jobId, index: i })}
                 onClose={() => setStop(null)}
                 jobLabel={t.jobLabel}
+                timeline={t.timeline}
                 paperFor={(step) => lienStopCounselPaper({ step, steps: t.timeline.steps, packet, jobId: t.jobId, voice: 'office', act: jobOf(t.jobId) ? { label: 'Open the job’s Lien window ›', onPress: () => { const job = jobOf(t.jobId); setStop(null); if (job) props.onOpenLienInstruments(job) } } : null, onCopy: copyRecord, copyLabel: copied ? 'Copied' : 'Copy the record as text' })}
               />
             ) : null}

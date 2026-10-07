@@ -1039,7 +1039,7 @@ export default function LienInstrumentsModal({
             ) : (
               <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
                 <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} onChangeLastWork={canSetLastWork && !lastWorkOpen ? () => setLastWorkOpen(true) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
-                {stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`} paperFor={stopPaperFor} /> : null}
+                {stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`} paperFor={stopPaperFor} timeline={timeline} /> : null}
               </div>
             )
           ) : null}
