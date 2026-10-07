@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   branchSlug,
+  claimRefName,
+  decodeClaimMessage,
+  encodeClaimMessage,
+  findVersionCollisions,
   isClaimStale,
   nextClaimCandidate,
+  parseClaimRefs,
   parseMigrationVersion,
   parseNewestChangelogVersion,
   parseNewestFragmentVersion,
   parseNewestReleaseNotesVersion,
+  parsePrVersions,
   parseVersionNumber,
   partitionMergedClaims,
   type SessionClaim,
@@ -103,5 +109,70 @@ describe('branchSlug', () => {
   it('sanitizes to filename-safe', () => {
     expect(branchSlug('claude/app-review-docs-9e8d52')).toBe('claude-app-review-docs-9e8d52')
     expect(branchSlug('///')).toBe('unnamed')
+  })
+})
+
+describe('GitHub as the ledger (v2.4844)', () => {
+  it('names the refs', () => {
+    expect(claimRefName('version', 4844)).toBe('refs/claims/v2.4844')
+    expect(claimRefName('migration', '20261008030000')).toBe('refs/claims/migration-20261008030000')
+  })
+
+  it('parses ls-remote and for-each-ref listings, ignoring other refs', () => {
+    const sha = 'ecc8294ba5300e564a743037f6886d6df95f6b1d'
+    const listing = [
+      `${sha}\trefs/claims/v2.4844`,
+      `${sha} refs/claims/migration-20261008030000`,
+      `${sha}\trefs/claims/probe`,
+      `${sha}\trefs/heads/main`,
+      '',
+    ].join('\n')
+    expect(parseClaimRefs(listing)).toEqual([
+      { ref: 'refs/claims/v2.4844', sha, version: 4844 },
+      { ref: 'refs/claims/migration-20261008030000', sha, migration: '20261008030000' },
+    ])
+  })
+
+  it('round-trips a claim through the commit message', () => {
+    const c: SessionClaim = { version: 4844, branch: 'claude/x', claimedAt: '2026-10-07T20:00:00Z', description: 'd' }
+    expect(decodeClaimMessage(encodeClaimMessage(c))).toEqual(c)
+    expect(decodeClaimMessage('not json')).toBeNull()
+  })
+
+  it('reads versions off open PR titles', () => {
+    expect(
+      parsePrVersions([
+        { number: 1, title: 'v2.4831 GC mode: O1', headRefName: 'claude/o1' },
+        { number: 2, title: 'chore(types): regen', headRefName: 'claude/types' },
+        { number: 3, title: ' v2.4833 Bill tab', headRefName: 'claude/bill' },
+      ]),
+    ).toEqual([
+      { version: 4831, number: 1, branch: 'claude/o1', title: 'v2.4831 GC mode: O1' },
+      { version: 4833, number: 3, branch: 'claude/bill', title: ' v2.4833 Bill tab' },
+    ])
+  })
+
+  it('finds the three kinds of collision, sorted by version', () => {
+    const prs = parsePrVersions([
+      { number: 4853, title: 'v2.4833 B1', headRefName: 'claude/b1' },
+      { number: 4856, title: 'v2.4833 Bill tab', headRefName: 'claude/bill' },
+      { number: 4851, title: 'v2.4831 O1', headRefName: 'claude/o1' },
+      { number: 4845, title: 'v2.4824 Map', headRefName: 'claude/map' },
+      { number: 4848, title: 'v2.4827 U1', headRefName: 'claude/u1' },
+    ])
+    const claims = [
+      { version: 4831, branch: 'claude/p0' },
+      { version: 4833, branch: 'claude/bill' },
+      { version: 4827, branch: 'claude/u1' },
+    ]
+    expect(findVersionCollisions(prs, claims)).toEqual([
+      { version: 4824, kind: 'unclaimed', detail: '#4845 (claude/map)' },
+      { version: 4831, kind: 'claimed-by-another-branch', detail: '#4851 (claude/o1) but claimed by claude/p0' },
+      { version: 4833, kind: 'two-prs', detail: '#4853 (claude/b1) and #4856 (claude/bill)' },
+    ])
+  })
+
+  it('nextClaimCandidate clears PR titles too when they are fed in', () => {
+    expect(nextClaimCandidate(4823, [4836, 4833, 4844])).toBe(4845)
   })
 })

@@ -10,7 +10,7 @@ import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import LegalFirmWindow, { LEGAL_FIRM_SETTINGS_HREF } from './LegalFirmWindow'
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
-const db = vi.hoisted(() => ({ writes: [] as Array<{ table: string; op: string; payload: unknown }> }))
+const db = vi.hoisted(() => ({ writes: [] as Array<{ table: string; op: string; payload: unknown }>, rpcs: [] as Array<{ name: string; args: unknown }> }))
 
 vi.mock('../../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../../test/renderSmokeMocks')
@@ -45,7 +45,7 @@ vi.mock('../../../lib/supabase', () => {
     b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve(answer(table, op, single)).then(ok, bad)
     return b
   }
-  return { supabase: { from: (table: string) => builder(table) } }
+  return { supabase: { from: (table: string) => builder(table), rpc: (name: string, args: unknown) => { db.rpcs.push({ name, args }); return Promise.resolve({ data: null, error: null }) } } }
 })
 
 const firm: LegalFirmRow = { id: 'firm-1', name: 'ZZ Test Firm', handling_name: 'Dana Holt', email: 'zz@test.example', phone: '(512) 555-0100', contingency_pct: 33, filing_cost: 350, active: true } as LegalFirmRow
@@ -92,6 +92,29 @@ describe('LegalFirmWindow', () => {
     expect(screen.queryByRole('link', { name: 'Open in Settings ↗' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Save firm' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Replace with a new firm…' })).toBeNull()
+  })
+
+  it('shows the firm’s answers to Start here with when and who, and stamps new ones read, which reloads the desk (v2.4821)', async () => {
+    db.rpcs.length = 0
+    const answered = { ...firm, intake: { needs: 'The W-9.', fileWhere: 'Hays County', efile: 'yes', constable: 'depends', rules: 'changes', rulesNote: 'Holidays.' }, intake_sent_at: '2026-10-07T15:00:00Z', intake_sent_by: 'Ann Sample', intake_seen_at: null } as LegalFirmRow
+    const { onSaved } = renderWindow({ canEdit: false, firm: answered })
+    await settle()
+    const box = document.querySelector('[data-legal-firm-intake]') as HTMLElement
+    expect(box.getAttribute('data-legal-firm-intake')).toBe('new')
+    expect(box.textContent).toContain('Sent Oct 7 by Ann Sample.')
+    expect(box.textContent).toContain('Hays County')
+    expect(box.textContent).toContain('It depends')
+    expect(box.textContent).toContain('Holidays.')
+    await waitFor(() => expect(db.rpcs).toEqual([{ name: 'legal_firm_intake_seen', args: { p_firm_id: 'firm-1' } }]))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+  })
+
+  it('a firm that has not answered says so, and nothing is stamped', async () => {
+    db.rpcs.length = 0
+    renderWindow({ canEdit: false })
+    await settle()
+    expect(document.querySelector('[data-legal-firm-intake]')!.textContent).toContain('Not answered yet.')
+    expect(db.rpcs).toEqual([])
   })
 
   it('says so when no firm is set up', async () => {

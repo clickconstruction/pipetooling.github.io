@@ -277,21 +277,47 @@ export interface SovLine {
   amount: number
   pctReported: number
   pctBilled: number
+  /**
+   * A line a signed change order added to the statement of work (Building lane): the change's
+   * cost to the trade. Readers of the original contract leave these out (`sowContractSum` adds them).
+   */
+  changeOrderId?: string
 }
 
 export interface Draw {
+  id: string
   number: number
+  requestedOn: string
+  gross: number
   retainage: number
   net: number
   status: 'requested' | 'approved' | 'paid'
   waiver: 'conditional' | 'unconditional'
+  /** What the draw claims per line: work in place, and materials stored on site in dollars (question 12). */
+  lines: { sovId: string; toPct: number; stored?: number }[]
+  /** The G702/G703 the trade sent with this draw. Absent on a draw asked for without one. */
+  payApp?: DrawPayApp
+  /**
+   * The retainage release: the last draw, asked for once the work is accepted. It pays back what
+   * was held (retainage is negative, net is the release) and its waivers are the final-payment ones.
+   */
+  final?: boolean
+  /** Approved for less than asked: what the trade asked for, why we approved less, and the day we did. */
+  asked?: { gross: number; retainage: number; net: number; lines: { sovId: string; toPct: number; stored?: number }[]; note: string; on: string }
+  /** The day we approved it. Unset: not yet, or before the day was kept. */
+  approvedOn?: string
+  /** The day we paid it. Unset: not yet, or before the day was kept. */
+  paidOn?: string
 }
 
 export interface Sow {
   status: 'draft' | 'sent' | 'signed'
   price: number
+  retainagePct: number
   sov: SovLine[]
   draws: Draw[]
+  /** Closeout: the day we accepted the work, after the punch list. Null or absent: not yet. */
+  acceptedOn?: string | null
   /** Pay applications the office sent back, oldest first. A resend takes the same number. */
   sentBack?: DrawSentBack[]
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
@@ -347,6 +373,10 @@ export interface Partner {
   /** Promises of a quote date before today's live asks: how many they made, how many they kept. */
   promisesMade: number
   promisesKept: number
+  /** Their mailing address for the pay application. Asked once, in their first one. */
+  address?: string
+  /** Their license line for the pay application. Optional. */
+  license?: string
   /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
   msaSentOn?: string
   /** Whether we have checked them (question 3). Unset: a company we know, approved. */
@@ -364,6 +394,12 @@ export interface Partner {
 export interface GcCustomer {
   id: string
   name: string
+}
+
+/** What we have billed the owner on a project we are building, and what they have paid. */
+export interface OwnerBilling {
+  /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
+  payApps?: OwnerPayAppSent[]
 }
 
 export interface GcProject {
@@ -387,8 +423,11 @@ export interface GcProject {
    * another general contractor or an owner's rep. Missing: the owner.
    */
   customerRole?: CustomerRole
+  ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
+  /** The firm's name, kept on the row for display. */
+  architect: string
   stage: GcStage
   bidDue: string | null
   planSets: PlanSet[]
@@ -411,8 +450,16 @@ export interface GcProject {
   lostWhy?: GcLostWhy | null
   /** Who the owner picked, when we know. */
   wonBy?: string | null
+  /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
+  punch?: PunchItem[]
   /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */
   dailyLogs?: DailyLog[]
+  /** The submittal register (Building lane, 2026-10-04): what each trade sends for approval before its work. Unset: none yet. */
+  submittals?: Submittal[]
+  /** The weekly reports sent to the customer (Building lane, 2026-10-05), every send, newest last. Unset: none yet. */
+  weeklyReports?: WeeklyReportSent[]
+  /** Questions about the plans while we build (RFIs; the owner, 2026-10-05), numbered in order. */
+  rfis?: Rfi[]
   /** What the work waits on from outside the trades (the Gantt, Phase 4): deliveries, the customer's decisions, permits, the utility. Unset: none. */
   waits?: ScheduleWait[]
   /** The customer's schedule as we sent it on its own (the Gantt, G-94), every send kept as it went, newest last. Unset: never sent. */
@@ -423,6 +470,64 @@ export interface GcProject {
   crewCounts?: CrewCount[]
 }
 
+/** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
+export interface WeeklyReportSent {
+  /** The Monday of the week it covers. */
+  weekOf: string
+  sentOn: string
+  from: 'me' | 'company'
+  /** Who sent it, from me: the signed-in name. */
+  by: string
+  /** Who it went to, and whether the architect was copied. */
+  to: string
+  copiedArchitect: boolean
+  subject: string
+  body: string
+}
+
+export type WeatherSky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'wind'
+
+export type SubmittalKind = 'product data' | 'shop drawings' | 'samples'
+
+export type SubmittalAnswer = 'approved' | 'approved as noted' | 'revise'
+
+/** One time a trade sent a submittal, and what came of it. */
+export interface SubmittalRound {
+  sentOn: string
+  /** The file it sent, by name (the prototype keeps no files). */
+  file: string
+  note: string
+  /** The day we sent it to the architect. Null: with us. */
+  toArchitectOn: string | null
+  /** The day the architect answered. Null: not yet. */
+  answeredOn: string | null
+  answer: SubmittalAnswer | null
+  answerNote: string
+}
+
+/**
+ * A submittal (owner, 2026-10-04): product data, shop drawings or samples a trade sends for the
+ * architect's approval before its work. It holds the schedule lines it covers until approved, and
+ * is needed by the first of their starts less the days to get it on site.
+ */
+export interface Submittal {
+  id: string
+  /** Its number in the register: the spec section and a count, "26 24 16-01". */
+  number: string
+  packageId: string
+  title: string
+  kind: SubmittalKind
+  specSection?: string
+  /** The schedule lines (activities) it holds until approved. */
+  lineIds: string[]
+  /** Days from approval to the material on site: ordering, making, shipping. */
+  leadDays: number
+  /** When no line it holds is on the schedule: the day it is needed approved by. */
+  neededBy?: string
+  askedOn: string
+  rounds: SubmittalRound[]
+}
+
 /**
  * The superintendent's daily log for one day on the job (owner, 2026-10-04): the weather, who
  * was on site and how many, what got done, what held work up, and who came by.
@@ -430,12 +535,43 @@ export interface GcProject {
 export interface DailyLog {
   /** The day it is for, YYYY-MM-DD. */
   date: string
+  sky: WeatherSky
+  /** Degrees Fahrenheit. */
+  high: number
+  low: number
   /** Work stopped for the weather. */
   weatherStop: boolean
   /** Each trade on site that day and how many workers. A trade not listed was not there. */
   crews: { packageId: string; workers: number }[]
+  /** What got done, in the superintendent's words. */
+  done: string
   /** What held work up: whose (null: the job's own), why, and a note. */
   delays: { packageId: string | null; reason: LookAheadReason; note: string }[]
+  /** Inspections and visitors: the inspector, the owner's walk, the architect. */
+  visitors: string
+  /** The day it was written. Later than `date`: caught up after the day. */
+  writtenOn: string
+}
+
+/**
+ * One punch-list item (owner, 2026-10-03): something left to fix on a trade's work, found when our
+ * superintendent walks it. The trade marks it fixed in its portal; our superintendent checks it.
+ * We accept a trade's work once every item on it is checked fixed.
+ */
+export interface PunchItem {
+  id: string
+  packageId: string
+  /** What is wrong, as our superintendent wrote it. */
+  text: string
+  /** Where on the job: a room, a grid line. */
+  where?: string
+  addedOn: string
+  /** The day the trade said it is fixed. Null: still open. */
+  fixedOn: string | null
+  /** The day our superintendent checked it fixed. Null: not checked yet. */
+  checkedOn: string | null
+  /** Checked and not fixed: sent back to the trade, how many times, with the last note. */
+  sentBack?: { times: number; note: string; on: string }
 }
 
 export interface GcState {
@@ -451,9 +587,28 @@ export interface GcState {
   scheduleTemplates?: ScheduleTemplate[]
 }
 
+/** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */
+export interface DrawPayApp {
+  periodTo: string
+  address: string
+  license: string
+  signedBy: string
+  signedTitle: string
+  signedOn: string
+}
+
+export interface OwnerPayAppSent {
+  /** The day the owner paid it. Null until they do. */
+  paidOn: string | null
+  /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
+  final?: boolean
+}
+
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
 export interface DrawSentBack {
   draw: Draw
+  on: string
+  note: string
   /** Lines where we see less done than they asked for. */
   lines: { sovId: string; weSee: number }[]
 }
@@ -475,6 +630,11 @@ export interface ChangeOrder {
   /** The day the owner signed or declined it. */
   answeredOn: string | null
   /**
+   * The trade's side (Building lane): the change sent to the company on that trade as an amendment
+   * to its statement of work. Once they sign, it is a line of their statement of work (`sovLineId`).
+   */
+  tradeChange?: { status: 'sent' | 'signed'; sentOn: string; signedOn: string | null; sovLineId: string }
+  /**
    * The days it adds to the job: the days a set of plans pushed the schedule out (New Project), or
    * typed by the office. Absent or 0: none. A signed one adds them to the contract time.
    */
@@ -485,4 +645,34 @@ export interface ChangeOrder {
    * is signed G-98 stops counting those moves as the customer's. Unset: an ordinary change order.
    */
   daysOnChart?: string[]
+}
+
+/** What an RFI's answer changes: nothing, the plans (a new set follows from Plans), or cost and days. */
+export type RfiImpact = 'none' | 'plans' | 'cost'
+
+/**
+ * A question about the plans while we build (an RFI; the owner, 2026-10-05: its own tab, trades ask
+ * from their portal, needed 3 days before the work, a cost answer starts a change order in one
+ * click). It holds the work it is about until it is answered. Bidding questions stay on Plans
+ * (`PlanQuestion`); these start once the job is ours.
+ */
+export interface Rfi {
+  id: string
+  /** RFI-001, RFI-002… on the job. */
+  number: number
+  question: string
+  sheets: string[]
+  /** The trade it is about: a cost answer's change order goes on it. Null: our own work. */
+  packageId: string | null
+  /** Who asked: a trade, from its portal or by phone. Null: our superintendent. */
+  partnerId: string | null
+  askedOn: string
+  /** The schedule activities (line ids) it holds until answered. */
+  holds: string[]
+  /** The answer is needed this many days before the first held work starts. */
+  neededDays: number
+  sentToArchitectOn: string | null
+  answer: { on: string; text: string; by: 'architect' | 'us'; impact: RfiImpact; cost: number; days: number } | null
+  /** The change order a cost answer started. Null: none yet. */
+  changeOrderId: string | null
 }

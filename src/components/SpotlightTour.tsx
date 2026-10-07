@@ -141,6 +141,8 @@ type SpotlightTourProps = {
    * from Next, Back and the arrow keys, so a page can open the tab a stop's anchor is on and both
    * draw together. A tour with it also looks again for a missing anchor for about a second before
    * it says Missing, for a tab that draws a moment late. Without it, a tour behaves as before.
+   * Called once for each stop shown, the first included (v2.4838: GC's New here? records the last
+   * stop reached).
    */
   onStep?: (index: number) => void
 }

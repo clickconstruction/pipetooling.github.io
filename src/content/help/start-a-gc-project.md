@@ -9,6 +9,8 @@ A GC project starts the day its plans come in. The New project window takes you 
 
 GC mode is the part of the app where we are the general contractor. The GC projects page lists every GC project and holds the {{button:blue|New project}} button. The office and estimators see the page.
 
+Press {{button:outline|New here?}} at the top of GC projects for a short walk through the page. The walk opens by itself the first time you visit.
+
 ## Step 1, the project
 
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:blue|New project}}.
@@ -58,3 +60,5 @@ A gap is work every trade leaves out. The footer counts them. Close a gap by giv
 The project, its trades with their scope and the first set of plans are made together. The page lists the project with its sheets, its trades and its gaps. Nobody is asked to quote yet. Who to ask comes with the company record.
 
 The app also makes the project's folder in Drive, with **Plans** and **Team only** inside. Plans is shared with anyone with the link. The page shows who can open each set's link. Press {{button:outline|Check again}} after you change the sharing in Drive.
+
+A GC project also shows on the Projects page, tagged {{chip:purple|GC}}. Press it to come back here. A GC project never opens as a plumbing workflow.

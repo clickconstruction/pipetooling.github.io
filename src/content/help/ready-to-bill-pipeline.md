@@ -201,6 +201,8 @@ Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard
 
 :::example A bill that went out through Stripe, paid in cash
 Record it the same way, on the bill. For the whole balance, Stripe is told the bill was paid outside Stripe, so the emailed pay link stops working and no reminder goes out. For **part** of it, type the amount you were handed: the window says *Part payment. Stripe lowers the bill to $500.00 due* and the button reads {{button:blue|Record $1,000.00 · $500.00 stays due}}. Stripe puts a credit line on the invoice in your words — *Cash received Sep 21 · $1,000.00* — so the pay link asks only for the rest; the customer can pay that online, or you record it here later. Recorded it wrong? The payment's row under **③ Payments received** has **Undo part payment**: it voids that credit line and takes the payment off the job.
+
+A check recorded before the Stripe bill went out, or matched in Accounts Receivable, counts here but not in Stripe. The pay link still asks for the full amount. Open the payment's {{button:outline|⋯}} menu under the bill and press **Apply it to the Stripe bill**. Stripe gets the same credit line and the pay link asks for the rest.
 :::
 
 Paying off a Stripe bill takes a moment longer. The button reads *Confirming with Stripe…* while Stripe answers. Then the row leaves Billed or Collections on its own and the job is in Paid in Full. You do not need to refresh the page.

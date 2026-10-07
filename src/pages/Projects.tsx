@@ -16,6 +16,7 @@ import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { isRowBackgroundClick } from '../lib/rowBackgroundClick'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
+import { GC_PROJECT_WORDS, gcProjectHref } from '../lib/gc/links'
 import { buildProjectAttention, type ProjectAttention } from '../lib/projects/projectAttention'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { pageTabStyle } from '../lib/pageTabStyle'
@@ -40,6 +41,8 @@ type Project = Database['public']['Tables']['projects']['Row']
 type ProjectWithCustomer = Project & { 
   customers: { name: string } | null
   master_user: { id: string; name: string | null; email: string | null } | null
+  /** A GC project (v2.4846): tagged GC, and it opens on GC projects, never on a workflow. */
+  isGc?: boolean
 }
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent'
 
@@ -323,7 +326,7 @@ export default function Projects() {
       // Parallelize: fetch customer name (when filtering) and projects together
       let projectsQuery = supabase
         .from('projects')
-        .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
+        .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email), gc_projects(project_id)')
         .order('name')
       if (customerId) projectsQuery = projectsQuery.eq('customer_id', customerId)
 
@@ -349,11 +352,13 @@ export default function Projects() {
         Project & {
           customers: { name: string } | null
           users: { id: string; name: string | null; email: string | null } | null
+          gc_projects: { project_id: string } | null
         }
       >
       const projectsWithMasters: ProjectWithCustomer[] = rows.map((row) => {
-        const { users, ...rest } = row
-        return { ...rest, master_user: users ?? null }
+        const { users, gc_projects, ...rest } = row
+        // A GC project (v2.4846): the embed is its gc_projects row, which RLS shows the GC team.
+        return { ...rest, master_user: users ?? null, isGc: gc_projects != null }
       })
 
       setProjects(projectsWithMasters)
@@ -767,9 +772,9 @@ export default function Projects() {
               // ignored. Keyboard path is unchanged (the project-name link).
               onClick={(e) => {
                 if (!isRowBackgroundClick(e.target)) return
-                navigate(`/workflows/${p.id}`)
+                navigate(p.isGc ? gcProjectHref(p.id) : `/workflows/${p.id}`)
               }}
-              title="Open workflow"
+              title={p.isGc ? GC_PROJECT_WORDS.rowTitle : 'Open workflow'}
               style={{
                 padding: '0.75rem 0',
                 borderBottom: '1px solid var(--border)',
@@ -784,10 +789,18 @@ export default function Projects() {
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
               <div>
-                <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
+                <Link to={p.isGc ? gcProjectHref(p.id) : `/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
                 {formatProjectNumberLabel(p.project_number) && (
                   <span style={{ marginLeft: 8, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     {formatProjectNumberLabel(p.project_number)}
+                  </span>
+                )}
+                {p.isGc && (
+                  <span
+                    title={GC_PROJECT_WORDS.chipTitle}
+                    style={{ marginLeft: 8, padding: '0.05rem 0.45rem', borderRadius: 999, border: '1px solid var(--text-violet-700)', color: 'var(--text-violet-700)', fontSize: '0.75rem', fontWeight: 600 }}
+                  >
+                    {GC_PROJECT_WORDS.chip}
                   </span>
                 )}
                 <button

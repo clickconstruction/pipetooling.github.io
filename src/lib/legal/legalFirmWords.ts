@@ -124,6 +124,7 @@ export function firmSavedWords(payload: Readonly<Record<string, unknown>>): stri
     case 'payment_received': return 'Saved. The office applies it to the job and records it here.'
     case 'question': return 'Sent. The office answers here.'
     case 'answer': return 'Sent. The office sees your answer now.'
+    case 'intake': return 'Sent. The office reads your answers.'
     case 'recipient_add': return 'Sent. They get one confirmation email.'
     case 'recipient_resend': return 'Sent the confirmation again.'
     case 'recipient_stop': return 'Stopped. No more emails to this person.'

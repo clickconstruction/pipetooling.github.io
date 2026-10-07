@@ -1,7 +1,7 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER_GREEN } from '../../../lib/portal/portalTheme'
 import { portalSmall } from '../../../lib/legal/legalPortalCards'
-import { START_STOPS, startStepWords, startStopLabel, type StartStop } from '../../../lib/legal/legalPortalStart'
+import { startStepWords, startStopLabel, type StartStop } from '../../../lib/legal/legalPortalStart'
 
 /**
  * Start here (v2.4820): the firm's first tab, a short intake in steps — who the office is (live
@@ -10,6 +10,12 @@ import { START_STOPS, startStepWords, startStopLabel, type StartStop } from '../
  * are the kernel's (`legalPortalStart.ts`); this draws them.
  */
 export type StartHereProps = {
+  /** The steps this portal shows (`startStops`). */
+  stops: ReadonlyArray<StartStop>
+  /** The step it opens at; the page remounts it to jump (the Matters nudge opens the answers). */
+  initialStop?: StartStop
+  /** Step 4's form (v2.4821), drawn by the page with its act. */
+  answers?: ReactNode
   short: string
   companyName: string
   companyLines: ReadonlyArray<string>
@@ -43,14 +49,15 @@ function Lines({ lines }: { lines: ReadonlyArray<string> }) {
 }
 
 export default function LegalPortalStartHere(p: StartHereProps) {
-  const [at, setAt] = useState(0)
-  const stops = START_STOPS
+  const stops = p.stops
+  const [at, setAt] = useState(() => Math.max(0, p.initialStop ? stops.indexOf(p.initialStop) : 0))
   const stop: StartStop = stops[at] ?? 'company'
   const next = stops[at + 1]
   const heading: Record<StartStop, string> = {
     company: p.companyName,
     matter: 'What comes with each matter',
     work: `How ${p.short} works with you`,
+    answers: 'Your answers',
     portal: 'The portal, stop by stop',
   }
   let body: ReactNode
@@ -66,6 +73,8 @@ export default function LegalPortalStartHere(p: StartHereProps) {
         </div>
       </>
     )
+  } else if (stop === 'answers') {
+    body = p.answers ?? null
   } else {
     body = (
       <>

@@ -60,13 +60,13 @@ A find box sits at the top of every list. Type a job number, a name, a GC, a str
 
 ## The piles
 
-The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button.
+The **Notices** tab lists each job with a GC and an unpaid month whose window closes within 30 days. The list is in piles, each under its own title with a count. The titles stay on screen as you scroll. The ones you passed stack at the top and the ones ahead wait at the bottom. Press a title to go to that pile. The Ready to send title carries the {{button:blue|Send the run · N}} button. A door from the Dashboard or from Do now can open the list on one pile. Its title then offers **show every pile**. When you clear that pile, the list widens by itself. A pile that opens empty says what is no longer there and offers **Show every pile ›**.
 
 - {{chip:yellow|Needs the owner}} means no owner of record with a mailing address is on file. The notice goes to the owner, so this comes first. The pane looks the property up on the county appraisal roll as it opens. It shows the answer under gate 1, laid out the way the envelope will read. A note below flags anything unusual, like a landlord or a public owner. {{button:blue|Use this owner}} saves it on the property record, and the row moves to To draft. {{button:outline|Find the owner ›}} opens Edit Job. Edit Job's Property record has the paste box. Use it when the roll cannot place the address.
 - **A public owner is never drafted.** A city, a county, a school district or the State cannot carry a lien. The remedy is a claim on the GC's payment bond, so the pane says to talk to the attorney. Its send buttons stay off. Saving that owner is still right, because it is how the desk knows.
 - **An owner from the roll may be unconfirmed.** Settings, Jobs & billing has a switch to save owners from the appraisal roll automatically. When it is on, the app fills empty owners overnight. The pane marks each one unconfirmed, with a link to the county and {{button:blue|Confirm}}. You can draft and send for approval on it. Recording the run refuses while any notice in it has an unconfirmed owner. Open the county link, check the name and press Confirm.
 - {{chip:gray|To draft}} is ready for the office.
-- {{chip:blue|Awaiting approval}} is with the master. When he is beside you, {{button:amber|He is here — record it ▸}} on the footer ends the wait.
+- {{chip:blue|Awaiting approval}} is with the master. When he is beside you, {{button:blue|Leader here, Approve ▸}} on the footer ends the wait.
 - {{chip:green|Ready to send}} is approved. It goes out with the run, or one at a time from the Lien window.
 - {{chip:gray|Held}} means the master is waiting on a promise or a call. The desk asks him again three days before the deadline.
 - {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} keep the record in sight.
@@ -136,11 +136,11 @@ The bar at the bottom shows the notice's state on the left. Most often it says t
 - **A send rule starts with the second notice.** Even with a rule to send notices without asking, our first notice to a GC goes to the master. That first notice proves the owner, the addresses and the GC's copy on real mail. From the next month, the button reads {{button:blue|Put it in the run ▸}}, and nobody is asked.
 - {{button:outline|The leader said to send it…}} is for when he already told you in the truck. Type who said it and when, then pick phone, in person or text. It goes straight to Ready to send. He sees its job named under **Sent on your word** in the desk's title bar. On that notice's footer, **Not what I said** pulls it back while it has not gone out.
 
-### He is here
+### Leader here
 
 The same row has two answers for when the master stands beside you. One is *he is standing over me*, and the other is *he is typing it in*. Pick one, and the line under the row shows what the record will read. Nobody signs in. The record names you as the one who wrote it down. It names him as the one who decided. Then it goes to Ready to send on his word.
 
-A notice already sent to him has {{button:amber|He is here — record it ▸}} on its footer. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in.
+A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in.
 
 ## A notice sent by hand
 
@@ -263,7 +263,7 @@ The run makes one envelope per name and address, with its notices listed under i
 
 Three steps run across the top of the run.
 
-1. **Print the packet.** {{button:outline|Envelope faces}} prints one page per envelope. Each page has your return address, the certified mail line and the recipient as the notice names them. {{button:outline|Print the packet · N envelopes}} prints one document in envelope order, ready to stuff. Press **Preview ›** on any copy row to read that copy as the packet prints it. The arrow keys walk every copy in the packet. Esc closes only the preview. The **?** beside the run's title explains what the packet holds. A cover sheet lists every envelope first. Each owner's copy sits behind counsel's letter. Printing moves the notices to their own pile, {{chip:yellow|In the mail · tracking owed}}. So a printed notice never goes missing between the printer and the record.
+1. **Print the packet.** {{button:outline|Envelope faces}} prints one page per envelope. Each page has your return address, the certified mail line and the recipient as the notice names them. {{button:outline|Print the packet · N envelopes}} prints one document in envelope order, ready to stuff. Press **Preview ›** on any copy row to read that copy as the packet prints it. The arrow keys walk every copy in the packet. Esc closes only the preview. The **?** beside the run's title explains what the packet holds. A cover sheet lists every envelope first. Each owner's copy sits behind counsel's letter. Printing moves the notices to their own pile, {{chip:yellow|In the mail · tracking owed}}. So a printed notice never goes missing between the printer and the record. One item can print on its own. Press **Print ›** on a copy row. Press **Print this envelope ›** under an envelope's address. Or press {{button:outline|Print this copy}} in the preview. Each prints and files that copy alone. A notice moves to the mail pile once both of its copies have printed.
 2. **Mail them.** Back from the post office, type each envelope's tracking number in the run. The app checks it as you type, because a certified number has 20 digits. Type the day they went out once, in **Mailed on**.
 3. **Record the mailing.** The button names what it will do, like recording 2 mailed while 1 stays in the pile. Each envelope with a number is recorded now. Each notice is written to its job with every month it covered. The courtesy emails go out, and the row moves to **Sent**. An envelope with no number waits in the mail pile until its number is typed.
 

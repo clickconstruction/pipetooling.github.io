@@ -27,6 +27,8 @@ type Props = {
   index: number
   onIndex: (index: number) => void
   onClose: () => void
+  /** Print the copy on show, on its own (v2.4853); absent, the preview stays read-only. */
+  onPrint?: (index: number) => void
 }
 
 const faint: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
@@ -36,7 +38,7 @@ const navBtn = (disabled: boolean): CSSProperties => ({ padding: '3px 9px', bord
 const paperStyle: CSSProperties = { border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', padding: '1.1rem 1.4rem', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }
 const kbd: CSSProperties = { fontSize: '0.7rem', border: '1px solid var(--border-strong)', borderBottomWidth: 2, borderRadius: 4, padding: '0 5px', background: 'var(--surface)' }
 
-export default function LienRunPreviewOverlay({ entries, index, onIndex, onClose }: Props) {
+export default function LienRunPreviewOverlay({ entries, index, onIndex, onClose, onPrint }: Props) {
   const isMobile = useIsMobile()
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const paperScrollRef = useRef<HTMLDivElement | null>(null)
@@ -105,8 +107,15 @@ export default function LienRunPreviewOverlay({ entries, index, onIndex, onClose
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.9rem', borderTop: '1px solid var(--border)', ...faint }}>
-          <span>Read-only: what the packet prints for this copy, from the run as it stands now.</span>
-          {isMobile ? null : <span><span style={kbd}>←</span> <span style={kbd}>→</span> next copy · <span style={kbd}>Esc</span> back to the run</span>}
+          <span>What the packet prints for this copy, from the run as it stands now.</span>
+          <span style={{ display: 'inline-flex', gap: '0.75rem', alignItems: 'center' }}>
+            {isMobile ? null : <span><span style={kbd}>←</span> <span style={kbd}>→</span> next copy · <span style={kbd}>Esc</span> back to the run</span>}
+            {onPrint ? (
+              <button type="button" onClick={() => onPrint(safeIndex)} data-testid="lien-run-preview-print" title="Print this copy on its own and file it as printed" style={{ padding: '4px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                Print this copy
+              </button>
+            ) : null}
+          </span>
         </div>
       </div>
     </div>

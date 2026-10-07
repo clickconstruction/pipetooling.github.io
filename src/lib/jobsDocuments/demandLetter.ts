@@ -5,6 +5,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import type { StripeInvoiceLineDetail } from '../stripeInvoiceDetailsResponse'
+import type { PayPageAssets } from '../jobs/lienNoticePayPage'
+import { payLinkDisplay } from '../billing/payLink'
 import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabase/functions/_shared/billToParty'
 import { enclosureEntries, enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
 import { loadJsPDF } from '../loadJsPDF'
@@ -44,6 +46,28 @@ export type DemandStatementInvoice = {
   total: string
   paid: string
   balance: string
+  /** The bill's row id (v2.4849): the pay code's address is `/pay/<id>`. Absent on a sample or a letter recorded before. */
+  invoiceId?: string
+  /** A Stripe bill has a payment page, so a code; a paper bill gets its row without one. */
+  payable?: boolean
+}
+
+/** One code on the letter (v2.4849): the bill, its balance, the address the code opens, and the code itself when the assets are in. */
+export type DemandPayCodeRow = { invoiceId: string; label: string; amount: string; address: string; svg: string | null; png: string | null }
+
+/** What the renderers take beside the fields (v2.4849): the codes drawn in the browser (`lienNoticePayPageAssets.ts`), by bill id. */
+export type DemandLetterRenderOptions = { payAssets?: PayPageAssets }
+
+/** The pay codes the letter carries: one per covered Stripe bill with money open, in the statement's order; a paper bill has no page and so no row. */
+export function demandPayCodeRows(statement: readonly DemandStatementInvoice[], assets: PayPageAssets = {}): DemandPayCodeRow[] {
+  const out: DemandPayCodeRow[] = []
+  for (const i of statement) {
+    if (!i.payable || !i.invoiceId) continue
+    if (!(Number(i.balance || 0) > 0)) continue
+    const a = assets[i.invoiceId]
+    out.push({ invoiceId: i.invoiceId, label: `Invoice ${i.invoiceNumber.trim()}`, amount: demandMoney(i.balance), address: payLinkDisplay(i.invoiceId), svg: a?.svg ?? null, png: a?.png ?? null })
+  }
+  return out
 }
 
 export type DemandLetterFields = {
@@ -93,6 +117,8 @@ export type DemandLetterFields = {
   includeTheftOfServices: boolean
   includeLateFees: boolean
   includeNotarial: boolean
+  /** Pay codes under the amount box (v2.4849): one per covered Stripe bill, ON by default; absent on letters saved before. */
+  includePayCodes?: boolean
   priorNotices: DemandPriorNotice[]
 }
 
@@ -206,6 +232,7 @@ export type DemandLetterBlock =
   | { kind: 'subject'; kicker: string; text: string; detail: string; re: string }
   /** How much and by when — the two facts the reader must not have to look for. */
   | { kind: 'amountBox'; balance: string; deadline: string }
+  | { kind: 'payCodes'; rows: DemandPayCodeRow[] }
   | { kind: 'paragraph'; text: string }
   /** `keepMm`: start a new page unless this much room is left, so a section is not split across the fold. */
   | { kind: 'heading'; text: string; keepMm?: number }
@@ -248,7 +275,7 @@ export function demandSubject(statement: DemandStatementInvoice[], serviceAddres
   return where ? { text: where, detail: what } : { text: what, detail: '' }
 }
 
-export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string): DemandLetterBlock[] {
+export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): DemandLetterBlock[] {
   const out = demandMoney(f.outstanding)
   const blocks: DemandLetterBlock[] = []
   blocks.push({
@@ -263,6 +290,12 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
   blocks.push({ kind: 'addressBlock', recipient: recipientLines(f.recipientName, f.recipientAddress), date: demandDate(todayYmd) })
   const KICKER = 'Final demand for payment'
   const box: DemandLetterBlock = { kind: 'amountBox', balance: out, deadline: demandDate(f.deadlineDate) }
+  // The codes sit under the box (v2.4849): the debtor pays a bill from the letter in hand. Off by the tick; no row when no covered bill is a Stripe bill.
+  const pushPayCodes = () => {
+    if (f.includePayCodes === false) return
+    const rows = demandPayCodeRows(f.statement ?? [], opts.payAssets)
+    if (rows.length) blocks.push({ kind: 'payCodes', rows })
+  }
   const statement = (f.statement ?? []).filter((i) => i.lines.length > 0 || i.invoiceNumber.trim())
   if (statement.length > 0) {
     // v2.3425: the letter reads the bill. The Re line carries the number the
@@ -270,6 +303,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     // of account, one block per invoice — never a retyped summary.
     blocks.push({ kind: 'subject', kicker: KICKER, ...demandSubject(statement, f.serviceAddress ?? ''), re: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
     blocks.push(box)
+    pushPayCodes()
     const first = statement[0]!
     const sentDates = statement.map((i) => i.sentYmd).filter((d) => d)
     const dueDates = statement.map((i) => i.dueYmd).filter((d) => d)
@@ -290,6 +324,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
   } else {
     blocks.push({ kind: 'subject', kicker: KICKER, text: `Invoice #${f.invoiceNumber.trim() || '—'}`, detail: '', re: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
     blocks.push(box)
+    pushPayCodes()
     blocks.push({
       kind: 'paragraph',
       text: `Dear ${f.recipientName.trim() || '—'}, this letter serves as a final formal demand for payment in the amount of ${out} for services rendered by ${f.businessName.trim() || '—'}, as agreed upon between the parties. Despite the notices listed below, this balance remains unpaid.`,
@@ -400,9 +435,9 @@ const ALERT = '#791f1f'
 const SANS = "'Helvetica Neue',Arial,sans-serif"
 const LABEL_STYLE = `font-family:${SANS};font-size:0.72em;letter-spacing:0.08em;text-transform:uppercase`
 
-export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: string): string {
+export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): string {
   const parts: string[] = []
-  for (const b of buildDemandLetterModel(f, todayYmd)) {
+  for (const b of buildDemandLetterModel(f, todayYmd, opts)) {
     switch (b.kind) {
       case 'senderBlock':
         parts.push(
@@ -432,6 +467,23 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
           `<td style="width:50%;padding:0.6em 0.9em;${rule ? `border-right:1px solid ${INK};` : ''}font-family:${SANS}">` +
           `<div style="font-size:0.75em;color:${MUTED}">${esc(label)}</div><div style="font-size:1.55em;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums">${esc(value)}</div></td>`
         parts.push(`<table data-demand-amount-box style="border-collapse:collapse;width:100%;border:1px solid ${INK};margin:0 0 1.1em 0"><tr>${cell('Balance due', b.balance, true)}${cell('Pay in full by', b.deadline, false)}</tr></table>`)
+        break
+      }
+      case 'payCodes': {
+        const code = (r: DemandPayCodeRow) =>
+          `<td data-demand-pay-code="${esc(r.invoiceId)}" style="vertical-align:top;padding:0.5em 0.6em 0.6em 0;font-family:${SANS};width:${Math.floor(100 / Math.min(4, Math.max(1, b.rows.length)))}%">` +
+          `<div style="width:84px;height:84px;line-height:0;margin-bottom:0.35em">${r.svg ?? `<div style="width:84px;height:84px;border:1px dashed ${MUTED};box-sizing:border-box"></div>`}</div>` +
+          `<div style="font-size:0.78em;font-weight:700;line-height:1.3">${esc(r.label)}</div>` +
+          `<div style="font-size:0.78em;line-height:1.3;font-variant-numeric:tabular-nums">${esc(r.amount)}</div>` +
+          `<div style="font-size:0.7em;color:${MUTED};line-height:1.3;word-break:break-all">${esc(r.address)}</div></td>`
+        const rows: string[] = []
+        for (let i = 0; i < b.rows.length; i += 4) rows.push(`<tr>${b.rows.slice(i, i + 4).map(code).join('')}</tr>`)
+        parts.push(
+          `<div data-demand-pay-codes style="margin:0 0 1.1em 0">` +
+            `<div style="${LABEL_STYLE};color:${MUTED};margin:0 0 0.2em 0">Pay online</div>` +
+            `<div style="font-family:${SANS};font-size:0.82em;color:${MUTED};margin:0 0 0.2em 0">Scan a code with a phone camera, or type its address. Each opens that bill's own payment page.</div>` +
+            `<table style="border-collapse:collapse;width:100%">${rows.join('')}</table></div>`,
+        )
         break
       }
       case 'heading':
@@ -550,9 +602,9 @@ function statementHtml(b: { invoices: DemandStatementInvoice[]; balance: string 
   return `<table data-demand-statement-table style="border-collapse:collapse;width:100%;margin:0 0 0.8em 0;font-family:${SANS};font-size:0.86em;line-height:1.45"><thead><tr>${head}</tr></thead><tbody>${body}${total}</tbody></table>`
 }
 
-export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): string {
+export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): string {
   const lines: string[] = []
-  for (const b of buildDemandLetterModel(f, todayYmd)) {
+  for (const b of buildDemandLetterModel(f, todayYmd, opts)) {
     switch (b.kind) {
       case 'senderBlock':
         lines.push([b.company, b.licenseLine, ...b.contactLines].filter((l) => l).join('\n'))
@@ -565,6 +617,9 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
         break
       case 'amountBox':
         lines.push(`Balance due: ${b.balance} · Pay in full by: ${b.deadline}`)
+        break
+      case 'payCodes':
+        lines.push(`Pay online — each address opens that bill's own payment page:\n${b.rows.map((r) => `  ${r.label} · ${r.amount} · ${r.address}`).join('\n')}`)
         break
       case 'signature':
         lines.push(b.lines.join('\n'))
@@ -593,12 +648,12 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
 }
 
 /** Full standalone print document — pinned light like all customer-facing paper. */
-export function buildDemandLetterPrintHtml(f: DemandLetterFields, todayYmd: string, jobNumber: string): string {
+export function buildDemandLetterPrintHtml(f: DemandLetterFields, todayYmd: string, jobNumber: string, opts: DemandLetterRenderOptions = {}): string {
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>Final Demand for Payment — Job ${esc(jobNumber)}</title>
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: ${INK}; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.6; }
   @media print { body { margin: 0.5in auto; } }
-</style></head><body>${buildDemandLetterEmailHtml(f, todayYmd)}</body></html>`
+</style></head><body>${buildDemandLetterEmailHtml(f, todayYmd, opts)}</body></html>`
 }
 
 // ---------- PDF ----------
@@ -612,7 +667,7 @@ const PAGE_MARGIN = 20
 const MAX_TEXT_WIDTH_MM = 176
 const PAGE_CONTENT_MAX_Y = 264
 
-export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: string): Promise<Blob> {
+export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: string, opts: DemandLetterRenderOptions = {}): Promise<Blob> {
   const JsPDF = await loadJsPDF()
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
   const rightX = PAGE_MARGIN + MAX_TEXT_WIDTH_MM
@@ -645,7 +700,7 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     ink()
   }
 
-  for (const b of buildDemandLetterModel(f, todayYmd)) {
+  for (const b of buildDemandLetterModel(f, todayYmd, opts)) {
     switch (b.kind) {
       case 'senderBlock': {
         const contactH = b.contactLines.length * 3.7
@@ -725,6 +780,46 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         cell(PAGE_MARGIN, 'Balance due', b.balance)
         cell(mid, 'Pay in full by', b.deadline)
         y = top + h + 8
+        break
+      }
+      case 'payCodes': {
+        // One row of up to four codes, 22 mm each with three lines under; a fifth starts a new row.
+        const perRow = 4
+        const colW = MAX_TEXT_WIDTH_MM / perRow
+        const qr = 22
+        const rowH = qr + 13
+        ensureRoom(8 + rowH)
+        label('Pay online', [95, 90, 82])
+        y += 4
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        muted()
+        doc.text("Scan a code with a phone camera, or type its address. Each opens that bill's own payment page.", PAGE_MARGIN, y)
+        y += 3.5
+        for (let i = 0; i < b.rows.length; i += perRow) {
+          ensureRoom(rowH)
+          b.rows.slice(i, i + perRow).forEach((r, j) => {
+            const x = PAGE_MARGIN + j * colW
+            if (r.png) doc.addImage(r.png, 'PNG', x, y, qr, qr)
+            else {
+              doc.setDrawColor(150, 145, 136)
+              doc.setLineWidth(0.25)
+              doc.rect(x, y, qr, qr)
+            }
+            doc.setFont('helvetica', 'bold')
+            doc.setFontSize(8)
+            ink()
+            doc.text(r.label, x, y + qr + 3.6)
+            doc.setFont('helvetica', 'normal')
+            doc.text(r.amount, x, y + qr + 7.2)
+            doc.setFontSize(7)
+            muted()
+            doc.text(r.address, x, y + qr + 10.6)
+            ink()
+          })
+          y += rowH + 2
+        }
+        y += 3
         break
       }
       case 'heading':
@@ -1022,6 +1117,8 @@ export function buildDemandStatement(job: JobWithDetails, sources: DemandInvoice
       total: moneyInput(total),
       paid: moneyInput(paid),
       balance: moneyInput(Math.max(0, total - paid)),
+      invoiceId: inv.id,
+      payable: Boolean(inv.stripe_invoice_id),
     }
   })
 }
@@ -1139,6 +1236,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     includeTheftOfServices: false,
     includeLateFees: interest.basis !== 'none',
     includeNotarial: false,
+    includePayCodes: true,
     priorNotices,
   }
 }

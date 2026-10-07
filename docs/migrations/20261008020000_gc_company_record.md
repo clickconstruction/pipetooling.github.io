@@ -140,4 +140,21 @@ Nothing on screen reads these tables yet, and other lanes' tables will key to `g
 
 ## Status
 
-Written 2026-10-07 for the Board's B1; not applied. The lead pushes it after main's GC migrations and before Building's U1, and records here what steps 1 to 6 said.
+Written 2026-10-07 for the Board's B1.
+
+Applied to prod on 2026-10-07 by the lead with `supabase db push` from a clean checkout of main, first in the batch, before Building's U1. `npm run check:migration-drift` read 782 local and 782 remote. The types are in #4876. What the verify steps said:
+
+- **Step 1**, through the management API's query endpoint, read only: all eight tables read `rls_on` true, `dev_policy` 1, `read_only_blocks` 3, `twin_fences` 3 and `stmt_trigger` 1. `anon` has no SELECT on any of them.
+- **Step 2**, through the same endpoint: all seven company keys read `convalidated` true, on `gc_plan_questions`, `gc_plan_set_sends`, `gc_schedule_late_notices`, `gc_schedule_move_tells`, `gc_schedule_move_answers`, `gc_schedule_lookahead_marks` and `gc_schedule_crew_counts`. All eight tables were empty.
+- **Step 3**, through the same endpoint, in a transaction that never committed: the training-mode user's insert into `gc_companies` got `Read-only (training) mode: changes are blocked.`
+- **Step 4**, through the same endpoint, as a dev who is not read-only, each in a transaction that rolled back:
+  - A DELETE on `gc_company_contacts`, an UPDATE on `gc_quotes` and a DELETE on `gc_trade_promise_moves` were each refused with `permission denied for table …`.
+  - `UPDATE gc_trade_promises SET what = what` went through on 0 rows.
+- **Step 5**, from the app (the dev server on this branch, signed in as the dev account, `read_only` false) through the page's `supabase` client:
+  - `gc_add_company` with a blank name answered *Give the company a name.*
+  - `gc_invite_companies` with a trade id that matches nothing answered *No trade with that id.*
+  - `gc_vet_company` with a company id that matches nothing answered *No company with that id.*
+  - `gc_companies` still read 0 rows after the three calls.
+- **Step 6**: a signed-out read of `gc_companies` with the anon key got `permission denied for table gc_companies`.
+
+The plan's own check, which writes "GC test trade company, delete me" and its ask and promise, waits on the owner's word on test rows (call 13).

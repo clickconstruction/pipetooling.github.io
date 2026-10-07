@@ -60,6 +60,7 @@ export function Btn({
   disabled,
   title,
   wrap,
+  dataTour,
 }: {
   children: ReactNode
   onClick: () => void
@@ -68,6 +69,8 @@ export function Btn({
   title?: string
   /** A long label (a Spanish one, say) may wrap instead of widening a phone page. Off by default. */
   wrap?: boolean
+  /** A walkthrough's `data-tour` anchor (New here?, v2.4838). */
+  dataTour?: string
 }) {
   const base: CSSProperties = {
     padding: '0.35rem 0.75rem',
@@ -85,7 +88,7 @@ export function Btn({
     quiet: { background: 'transparent', color: 'var(--text-link)', border: '1px solid transparent', padding: '0.35rem 0.25rem' },
   }
   return (
-    <button type="button" onClick={onClick} disabled={disabled} title={title} style={{ ...base, ...kinds[kind] }}>
+    <button type="button" onClick={onClick} disabled={disabled} title={title} data-tour={dataTour} style={{ ...base, ...kinds[kind] }}>
       {children}
     </button>
   )

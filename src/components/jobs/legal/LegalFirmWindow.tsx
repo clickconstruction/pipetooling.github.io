@@ -4,6 +4,9 @@ import { supabase } from '../../../lib/supabase'
 import LegalFirmSettingsBlock from '../../settings/LegalFirmSettingsBlock'
 import LegalFirmReplacePanel from './LegalFirmReplacePanel'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
+import { legalIntakeAnswerRows, legalIntakeSentWords, legalIntakeUnseen, shapeLegalFirmIntake } from '../../../lib/legal/legalFirmIntake'
+import { companyShortName } from '../../../lib/legal/legalPortalStart'
+import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
 import { legalOfficeContactPrintLines, legalOfficeContactsGap, type LegalOfficeContacts } from '../../../lib/legal/legalOfficeContacts'
 import { readLegalOfficeContacts } from '../../../lib/legal/legalOfficeContactsIo'
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
@@ -103,6 +106,7 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           <button type="button" onClick={onClose} aria-label="Close the firm window" style={{ ...btn, width: 30, height: 30, padding: 0, justifyContent: 'center' }}>✕</button>
         </div>
         <div style={{ padding: '14px 16px 16px' }}>
+          {firm ? <FirmIntakeAnswers key={firm.id} firm={firm} onSeen={onSaved} /> : null}
           {canEdit ? (
             <>
               {/* Keyed on the firm, so a replace remounts the block on the new one. */}
@@ -114,6 +118,49 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The firm's answers to Start here (v2.4821): each question with its answer, when and by whom. New
+ * answers wear *New* and are stamped read on open (`legal_firm_intake_seen`), which takes the dot off
+ * the desk's firm door once the desk reloads.
+ */
+function FirmIntakeAnswers({ firm, onSeen }: { firm: LegalFirmRow; onSeen: () => void }) {
+  const [wasNew] = useState(() => legalIntakeUnseen(firm))
+  useEffect(() => {
+    if (!wasNew) return
+    let cancelled = false
+    void db.rpc('legal_firm_intake_seen', { p_firm_id: firm.id }).then(({ error }) => {
+      // A training-mode user's stamp is refused; the dot stays for someone who can read it.
+      if (!cancelled && !error) onSeen()
+    })
+    return () => {
+      cancelled = true
+    }
+    // Once per open: the reload this triggers must not stamp again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const sent = legalIntakeSentWords(firm.intake_sent_at, firm.intake_sent_by)
+  const rows = firm.intake_sent_at ? legalIntakeAnswerRows(shapeLegalFirmIntake(firm.intake), companyShortName(PORTAL_COMPANY.name)) : []
+  return (
+    <div data-legal-firm-intake={wasNew ? 'new' : sent ? 'read' : 'none'} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 14, fontSize: '0.82rem' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: '0.9rem' }}>Their answers to Start here</b>
+        {wasNew ? <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0 7px', borderRadius: 999, background: '#b0662f', color: '#fff' }}>New</span> : null}
+        <span style={{ color: 'var(--text-muted)' }}>{sent || 'Not answered yet. The firm answers on its portal, under Start here.'}</span>
+      </div>
+      {rows.length ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '4px 14px', marginTop: 8 }}>
+          {rows.map((r) => (
+            <div key={r.key} style={{ display: 'contents' }}>
+              <span style={{ color: 'var(--text-muted)' }}>{r.question}</span>
+              <span style={{ whiteSpace: 'pre-wrap' }}>{r.answer}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   )
 }

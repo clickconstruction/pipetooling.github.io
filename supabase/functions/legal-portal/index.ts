@@ -22,6 +22,7 @@ import { legalNarrativeFromRow } from '../_shared/legalNarrative.ts'
 import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { LEGAL_OFFICE_CONTACT_ROLES, officeContactsFromUsers } from '../_shared/legalOfficeContacts.ts'
+import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 /**
@@ -213,6 +214,11 @@ serve(async (req) => {
 
     const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').eq('id', link.firm_id).maybeSingle()
     if (!firm || !(firm as Row).active) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    // The firm's answers to Start here (v2.4821): read apart, so the payload never fails before the migration
+    // lands; until then `intake` stays out of the answer and the portal hides the step.
+    const intakeRead = await admin.from('legal_firms').select('intake, intake_sent_at, intake_sent_by').eq('id', link.firm_id).maybeSingle()
+    const intakeRow = intakeRead.error ? null : ((intakeRead.data ?? null) as Row | null)
+    const intakePart = intakeRead.error ? {} : { intake: { answers: shapeLegalFirmIntake(intakeRow?.intake), sentAt: (intakeRow?.intake_sent_at as string | null | undefined) ?? null, sentBy: String(intakeRow?.intake_sent_by ?? '') } }
 
     // The short domain's probe (v2.4750): a my.clickplumbing.com address that is no customer's is tried here by the
     // customer page before it falls through to the sub portal. Answers that the key opens, nothing more: no payload,
@@ -278,7 +284,7 @@ serve(async (req) => {
     const { data: officeRows } = await admin.from('users').select('name, phone, role').match(REAL_ACCOUNT).is('archived_at', null).in('role', [...LEGAL_OFFICE_CONTACT_ROLES]).order('name')
     const officeContacts = officeContactsFromUsers(((officeRows ?? []) as Array<{ name: string | null; phone: string | null; role: string }>), PORTAL_COMPANY.phone)
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -495,7 +501,7 @@ serve(async (req) => {
       })
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin) })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, ...intakePart, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('legal-portal', e), 500)
   }

@@ -157,7 +157,7 @@ describe('what the schedule reads from the other lanes', () => {
     const roofing = job(s).packages.find((k) => k.id === 'froof')!
     expect(ownBidPriced(roofing)).toBe(false)
     expect(sentBackOpen(roofing.sow!)?.draw.number).toBe(1)
-    expect(sentBackOpen({ ...roofing.sow!, draws: [{ number: 1, retainage: 0, net: 0, status: 'requested', waiver: 'conditional' }] })).toBeNull()
+    expect(sentBackOpen({ ...roofing.sow!, draws: [sentBackOpen(roofing.sow!)!.draw] })).toBeNull()
   })
 
   it('names a company, and writes a date the one way every lane does', () => {

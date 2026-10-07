@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
+import { GC_PROJECT_WORDS } from '../../lib/gc/links'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -147,6 +148,8 @@ export default function EditProjectForm({
   const [customersLoading, setCustomersLoading] = useState(true)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
+  /** A GC project (v2.4846): deleting it takes its trades, scope lines, sets and questions with it. */
+  const [isGcProject, setIsGcProject] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [myRole, setMyRole] = useState<UserRole | null>(null)
 
@@ -192,7 +195,7 @@ export default function EditProjectForm({
     ;(async () => {
       const { data, error: err } = await supabase
         .from('projects')
-        .select('*')
+        .select('*, gc_projects(project_id)')
         .eq('id', projectId)
         .single()
       if (err) {
@@ -200,7 +203,8 @@ export default function EditProjectForm({
         setFetching(false)
         return
       }
-      const row = data as ProjectRow
+      const row = data as ProjectRow & { gc_projects: { project_id: string } | null }
+      setIsGcProject(row.gc_projects != null)
       setName(row.name)
       setAddress(row.address ?? '')
       setDescription(row.description ?? '')
@@ -584,6 +588,9 @@ export default function EditProjectForm({
             }}
           >
             <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>Delete project</h3>
+            {isGcProject && (
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{GC_PROJECT_WORDS.deleteWarning}</p>
+            )}
             <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
               Type the project name <strong>{name}</strong> to confirm.
             </p>

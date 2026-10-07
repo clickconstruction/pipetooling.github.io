@@ -43,6 +43,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 | Term definitions / feature names | `docs/GLOSSARY.md` |
 | History of any feature or surface | grep `docs/recent-features/` (one `v2.NNNN.md` per PR since 2026-08-20) and the frozen `docs/RECENT_FEATURES.md` |
 | Migration history / ledger alignment | `docs/MIGRATIONS.md` + `docs/migrations/`; `npm run check:migration-drift` |
+| Version numbers, migration stamps and who is working where, across machines | `docs/SESSIONS.md`; `npm run claim` reserves a number on GitHub (`refs/claims/*`), `npm run sessions` shows the board and collisions, `npm run sessions -- --brief` prints the paragraph to hand an agent on another machine |
 | Edge Functions reference | `docs/EDGE_FUNCTIONS.md`; `npm run check:edge-drift` |
 | Digital twins (the robots) and the MCP servers an agent connects through | `docs/twins/HANDOFF.md` (state + operation), `docs/EDGE_FUNCTIONS.md` → twin-mcp (every verb), `docs/dev-mcp/README.md` (the dev server: read the app as yourself, GET-only), `to-dos/mcp-servers.md` (addresses, naming, what is left) |
 | Bids system | `docs/BIDS_SYSTEM.md`; the maps start at `docs/BIDS_TABS_ARCHITECTURE.md` |

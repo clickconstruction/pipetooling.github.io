@@ -63,6 +63,43 @@ interface Body {
    * no-ops on already-paid rows, so no second payment row is created.
    */
   allow_app_paid?: boolean
+  /**
+   * v2.4847: a payment row the app already counts toward this bill (recorded before the Stripe
+   * bill existed, or matched in Accounts Receivable) that Stripe never heard of. The amount, date,
+   * type and reference come from the row; the credit note is written for it and stamped on it,
+   * and the row is pinned to the bill. Under the balance only — at the balance the bill is a
+   * whole-bill close (Mark Paid). `amount_dollars`, `paid_on` and `payment_type` are ignored.
+   */
+  payment_id?: string
+}
+
+type ExistingPaymentRow = {
+  id: string
+  job_id: string
+  invoice_id: string | null
+  amount: number | null
+  paid_on: string | null
+  payment_type: string | null
+  reference_number: string | null
+  note: string | null
+  stripe_credit_note_id: string | null
+  mercury_transaction_id: string | null
+}
+
+/**
+ * v2.4847: the type word the customer reads on the credit line for an existing row — a bank row's
+ * Mercury kind ("checkDeposit", "incomingDomesticWire") and the office's spellings ("Cheque") become
+ * Check · Wire · ACH · Card · Cash; anything else reads Payment. Mirrors src/lib/jobs/applyPaymentToStripeBill.ts.
+ */
+function customerPaymentTypeWord(paymentType: string | null | undefined): string {
+  const t = (paymentType ?? '').trim().toLowerCase()
+  if (!t) return 'Payment'
+  if (/che(ck|que)/.test(t)) return 'Check'
+  if (/card/.test(t)) return 'Card'
+  if (/wire/.test(t)) return 'Wire'
+  if (/ach|transfer/.test(t)) return 'ACH'
+  if (/cash/.test(t)) return 'Cash'
+  return 'Payment'
 }
 
 serve(async (req) => {
@@ -101,18 +138,45 @@ serve(async (req) => {
     }
 
     const body = (await req.json()) as Body
-    const {
-      jobs_ledger_invoice_id,
-      amount_dollars: amountRaw,
-      paid_on: paidOnRaw,
-      payment_type: paymentTypeRaw,
-      reference_number,
-      internal_note,
-      stripe_mode: stripeModeRaw,
-    } = body
+    const { jobs_ledger_invoice_id, stripe_mode: stripeModeRaw } = body
+    let { amount_dollars: amountRaw, paid_on: paidOnRaw, payment_type: paymentTypeRaw, reference_number, internal_note } = body
 
     if (!jobs_ledger_invoice_id?.trim()) {
       return jsonResponse({ error: 'Missing jobs_ledger_invoice_id' }, 400)
+    }
+
+    // v2.4847: an existing row supplies its own facts. Read with the service role so the
+    // function sees the row the way the app does; the invoice read below still runs as the
+    // caller, which is the access check.
+    const existingPaymentId = (body.payment_id ?? '').trim()
+    let existingRow: ExistingPaymentRow | null = null
+    if (existingPaymentId) {
+      const serviceKeyForRow = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (!serviceKeyForRow) {
+        return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY' }, 500)
+      }
+      const adminForRow = createClient(supabaseUrl, serviceKeyForRow)
+      const { data: rowData, error: rowErr } = await adminForRow
+        .from('jobs_ledger_payments')
+        .select('id, job_id, invoice_id, amount, paid_on, payment_type, reference_number, note, stripe_credit_note_id, mercury_transaction_id')
+        .eq('id', existingPaymentId)
+        .maybeSingle()
+      if (rowErr || !rowData) {
+        return jsonResponse({ error: 'Payment not found' }, 404)
+      }
+      existingRow = rowData as ExistingPaymentRow
+      if ((existingRow.stripe_credit_note_id ?? '').trim()) {
+        return jsonResponse({ error: 'Stripe already holds this payment as a credit line.' }, 400)
+      }
+      amountRaw = Number(existingRow.amount ?? 0)
+      paidOnRaw = existingRow.paid_on ? String(existingRow.paid_on).slice(0, 10) : ''
+      if (!paidOnRaw) {
+        return jsonResponse({ error: 'This payment has no received date. Add the date first, under Edit details.' }, 400)
+      }
+      paymentTypeRaw = customerPaymentTypeWord(existingRow.payment_type)
+      // A bank row's reference is the bank's id, never a check number the customer should read.
+      reference_number = (existingRow.mercury_transaction_id ?? '').trim() ? undefined : existingRow.reference_number ?? undefined
+      internal_note = existingRow.note ?? undefined
     }
     const payment_type = (paymentTypeRaw ?? '').trim()
     if (!payment_type) {
@@ -134,6 +198,15 @@ serve(async (req) => {
 
     if (invErr || !invRow) {
       return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
+    }
+
+    if (existingRow) {
+      if (existingRow.job_id !== invRow.job_id) {
+        return jsonResponse({ error: 'This payment sits on another job.' }, 400)
+      }
+      if (existingRow.invoice_id && existingRow.invoice_id !== invRow.id) {
+        return jsonResponse({ error: 'This payment is pinned to another bill.' }, 400)
+      }
     }
 
     if (invRow.status !== 'billed' && !(body.allow_app_paid === true && invRow.status === 'paid')) {
@@ -206,6 +279,16 @@ serve(async (req) => {
       )
     }
 
+    if (existingRow && amountCents >= remaining) {
+      return jsonResponse(
+        {
+          error: `This payment covers the whole open balance on the Stripe invoice ($${(remaining / 100).toFixed(2)}). Mark the bill paid instead.`,
+          stripe_amount_remaining_cents: remaining,
+        },
+        400,
+      )
+    }
+
     if (amountCents < remaining) {
       // v2.3695 — part payment in cash or by check. Stripe has no partial
       // out-of-band pay, so the cash becomes a credit note on the open invoice
@@ -220,14 +303,16 @@ serve(async (req) => {
 
       const { data: appliedRows, error: appliedErr } = await admin
         .from('jobs_ledger_payments')
-        .select('amount, sequence_order')
+        .select('id, amount, sequence_order')
         .eq('invoice_id', invRow.id)
       if (appliedErr) {
         return jsonResponse({ error: appliedErr.message }, 502)
       }
       let appliedCents = 0
       let maxSeq = -1
-      for (const r of appliedRows ?? []) {
+      for (const r of (appliedRows ?? []) as Array<{ id?: string; amount: number | null; sequence_order: number | null }>) {
+        // v2.4847: the existing row is the payment being applied, not money already on the bill.
+        if (existingRow && r.id === existingRow.id) continue
         appliedCents += Math.round(Number(r.amount ?? 0) * 100)
         const seq = typeof r.sequence_order === 'number' ? r.sequence_order : -1
         if (seq > maxSeq) maxSeq = seq
@@ -270,6 +355,37 @@ serve(async (req) => {
         const msg = e instanceof Error ? e.message : String(e)
         console.error('record-stripe-invoice-out-of-band-payment: part-payment credit note failed', msg)
         return jsonResponse({ error: msg }, 502)
+      }
+
+      if (existingRow) {
+        // v2.4847: stamp the note on the row that already exists and pin it to the bill.
+        const { error: updErr } = await admin
+          .from('jobs_ledger_payments')
+          .update({ invoice_id: invRow.id, stripe_credit_note_id: creditNote.id })
+          .eq('id', existingRow.id)
+          .is('stripe_credit_note_id', null)
+        if (updErr) {
+          try {
+            await stripe.creditNotes.voidCreditNote(creditNote.id)
+          } catch (voidErr) {
+            console.error('record-stripe-invoice-out-of-band-payment: void after update failure failed', voidErr)
+          }
+          return jsonResponse(
+            { error: `Stripe credited the invoice but the payment could not be stamped, so the credit note was voided. ${updErr.message}`.trim() },
+            502,
+          )
+        }
+        return jsonResponse({
+          success: true,
+          partial: true,
+          applied_existing: true,
+          stripe_invoice_id: stripeInvId,
+          stripe_credit_note_id: creditNote.id,
+          payment_id: existingRow.id,
+          amount_remaining_cents: remaining - amountCents,
+          credit_line: creditLine,
+          message: `Applied. Stripe now shows $${((remaining - amountCents) / 100).toFixed(2)} due on the invoice.`,
+        })
       }
 
       const { data: inserted, error: insErr } = await admin
