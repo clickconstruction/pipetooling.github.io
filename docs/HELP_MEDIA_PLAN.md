@@ -11,7 +11,7 @@ last_updated: 2026-10-01
 - **Light theme**, phone-width viewport for phone-first flows, desktop width otherwise. 10–20 seconds, no audio, end on the completed state.
 - **File goes in `public/help/`**, named after the guide slug (`<slug>.gif`). GIFs are lazy-loaded and excluded from the service-worker precache (see `vite.config.ts`) — keep each under ~3 MB so they load acceptably in the field.
 - **Re-record when the surface changes** — same rule as text: docs ship with features. If your PR visibly changes a recorded surface, re-capture in the same PR or delete the token until someone can.
-- Token syntax: `{{gif:<file>|<caption>}}` (see `src/lib/helpGuideIllustrations.ts`). A guide links to a page of the app with an ordinary Markdown link to its root path — `[GC Review](/jobs?tab=stages&gcReview=1)` — and to another guide with `/help/<slug>` (v2.4290, `helpGuideHtml.ts`).
+- Token syntax: `{{gif:<file>|<caption>}}` (see `src/lib/helpGuideIllustrations.ts`). A guide links to a page of the app with an ordinary Markdown link to its root path — `[GC Review](/jobs?tab=stages&gcReview=1)` — and to another guide with `/help/<slug>` (v2.4290, `helpGuideHtml.ts`), or to one of its headings with `/help/<slug>#<anchor>` (v2.4868).
 
 ## The five recordings
 

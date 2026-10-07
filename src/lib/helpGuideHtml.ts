@@ -16,6 +16,11 @@
  * before sanitizing and restored after as `href="/help?g=<slug>" data-guide=
  * "<slug>"`; GuideBrowser turns a click on `a[data-guide]` into an in-app
  * navigation. Only a bare slug (`[a-z0-9-]+`) survives the round trip.
+ * v2.4868: the short `?g=<slug>` (forty guides wrote it, every one dead until then) rides
+ * the same way, and so does a heading of another guide, `/help/<slug>#<anchor>`, restored
+ * with a `data-guide-anchor` GuideBrowser scrolls to. An email address in a guide is an
+ * example, so the autolink marked makes of it, which the sanitizer leaves hrefless, is
+ * printed as text. `helpGuideLinks.guides.test.ts` renders every guide and fails on a dead link.
  *
  * v2.4290: a link to a page of the app (`/settings?tab=settings-jobs&focus=issuer.signerName`,
  * `/jobs?tab=stages&gcReview=1`, `/dashboard`) rides the same way — a second placeholder host,
@@ -35,8 +40,11 @@ const MARKER_PATTERN = /\[\[\[help-(?:code|pre)-(?:open|close)\]\]\]/g
 
 /** Placeholder host: absolute https, so the contract sanitizer keeps the href. */
 const GUIDE_LINK_HOST = 'https://guide.help.internal/'
-const IN_APP_GUIDE_HREF = /href="\/help(?:\/|\?g=)([a-z0-9-]+)"/gi
-const PLACEHOLDER_GUIDE_HREF = /href="https:\/\/guide\.help\.internal\/([a-z0-9-]+)"/g
+const IN_APP_GUIDE_HREF = /href="(?:\/help\/|\/help\?g=|\?g=)([a-z0-9-]+)(?:#([a-z0-9-]+))?"/gi
+const PLACEHOLDER_GUIDE_HREF = /href="https:\/\/guide\.help\.internal\/([a-z0-9-]+)(?:#([a-z0-9-]+))?"/g
+
+/** What the sanitizer leaves of an autolinked email address: a bare `<a>` around it (v2.4868). */
+const HREFLESS_EMAIL_LINK = /<a>([^<>\s@]+@[^<>\s]+)<\/a>/g
 
 /** Placeholder host for a page of the app (v2.4290); the path rides after it, percent-encoded. */
 const PAGE_LINK_HOST = 'https://page.help.internal/'
@@ -63,7 +71,7 @@ export function encodeHelpGuideLinks(html: string): string {
     .split(PAGE_LINK_HOST).join('')
     .split(ANCHOR_LINK_HOST).join('')
     .replace(IN_GUIDE_ANCHOR_HREF, (_m, anchor: string) => `href="${ANCHOR_LINK_HOST}${anchor}"`)
-    .replace(IN_APP_GUIDE_HREF, (_m, slug: string) => `href="${GUIDE_LINK_HOST}${slug.toLowerCase()}"`)
+    .replace(IN_APP_GUIDE_HREF, (_m, slug: string, anchor?: string) => `href="${GUIDE_LINK_HOST}${slug.toLowerCase()}${anchor ? `#${anchor.toLowerCase()}` : ''}"`)
     .replace(IN_APP_PAGE_HREF, (m, path: string) => {
       // marked writes `&amp;` in attributes; the path travels plain and is re-escaped on restore.
       const plain = path.replace(/&amp;/g, '&')
@@ -75,7 +83,9 @@ export function encodeHelpGuideLinks(html: string): string {
 export function restoreHelpGuideLinks(html: string): string {
   return html
     .replace(PLACEHOLDER_ANCHOR_HREF, (_m, anchor: string) => `href="#${anchor}" data-anchor="${anchor}"`)
-    .replace(PLACEHOLDER_GUIDE_HREF, (_m, slug: string) => `href="/help?g=${slug}" data-guide="${slug}"`)
+    .replace(PLACEHOLDER_GUIDE_HREF, (_m, slug: string, anchor?: string) =>
+      anchor ? `href="/help?g=${slug}#${anchor}" data-guide="${slug}" data-guide-anchor="${anchor}"` : `href="/help?g=${slug}" data-guide="${slug}"`,
+    )
     .replace(PLACEHOLDER_PAGE_HREF, (m, enc: string) => {
       let path = ''
       try {
@@ -116,5 +126,5 @@ export function helpGuideMarkdownToSafeHtml(markdown: string): string {
   // breaks: true (unlike contracts) so multi-line :::example panels render as stacked lines.
   const rawHtml = marked.parse(encodeHelpIllustrations(markdown), { async: false, gfm: true, breaks: true })
   const sanitized = sanitizeContractSigningHtml(encodeHelpGuideLinks(encodeHelpCodeTags(rawHtml)))
-  return expandHelpIllustrations(restoreHelpGuideLinks(restoreHelpCodeTags(sanitized)))
+  return expandHelpIllustrations(restoreHelpGuideLinks(restoreHelpCodeTags(sanitized))).replace(HREFLESS_EMAIL_LINK, '$1')
 }

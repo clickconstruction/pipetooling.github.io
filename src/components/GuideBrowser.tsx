@@ -116,10 +116,12 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
     target?.scrollIntoView({ block: 'start' })
   }, [articleHtml])
 
-  function openGuide(slug: string) {
+  /** A heading of the guide (v2.4868) rides as the address's `#fragment`, which the effect above scrolls to. */
+  function openGuide(slug: string, anchor?: string | null) {
     const next = new URLSearchParams(searchParams)
     next.set(GUIDE_PARAM, slug)
-    setSearchParams(next)
+    if (anchor) navigate({ search: `?${next.toString()}`, hash: `#${anchor}` })
+    else setSearchParams(next)
   }
 
   function backToList() {
@@ -188,7 +190,7 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
               const slug = link?.getAttribute('data-guide')
               if (slug) {
                 e.preventDefault()
-                openGuide(slug)
+                openGuide(slug, link?.getAttribute('data-guide-anchor'))
                 return
               }
               // v2.4290: a link to a page of the app (`/settings?…`, `/jobs?…`) — the router, not a reload.
