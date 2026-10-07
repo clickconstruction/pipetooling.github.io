@@ -389,7 +389,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | ↳ phone sheet (`if (isMobile)` early return) | 857–1157 (~300) | — | inline, parallel copy of the desktop rows | none |
 | ↳ desktop dialog (aging strip `agingStripMeta`, `toneColors` 1165–1181, `thStyle` 1182–1190; render 1191–1576) | 1159–1576 (~418) | — | inline | none |
 | `DashboardFinancialsSection` (export) | 1581–1824 (244) | `openCard` 1584, `dispatchItem` 1585, `apBill` 1586 | inline | none (no smoke) |
-| ↳ `cards` (per-card aging buckets + detail-line copy: invoices/Collections/excluded for AR; Supply·Subs / Team (+ est. payroll) for AP; unbilled job count) | 1594–1657 (64) | — | inline money copy | **untested** (`financeCardAging` 6 covers `financeCardBarSegments`/`financeCardRisk`; `formatMoneyShortK` 5) |
+| ↳ `cards` (per-card aging buckets + detail-line copy: invoices/Collections/Uncollectible (v2.4784, not owed)/excluded for AR; Supply·Subs / Team (+ est. payroll) for AP; unbilled job count) | 1594–1657 (64) | — | inline money copy | **untested** (`financeCardAging` 6 covers `financeCardBarSegments`/`financeCardRisk`; `formatMoneyShortK` 5) |
 | ↳ render: card grid 1666–1764, `ItemsModal` 1766–1804, `ApBillModal` 1805–1820, `SendToDispatchModal` 1821 | 1659–1823 (165) | — | inline | none |
 
 **Risks / preserve:**

@@ -9,6 +9,7 @@ const stats = (over: Partial<StagesHeaderStats> = {}): StagesHeaderStats => ({
   readyToBill: { count: 1, total: 1850 },
   billed: { count: 121, total: 224400 },
   collections: { count: 5, total: 22800 },
+  uncollectible: { count: 0, total: 0 },
   paid: { count: 630 },
   capableToBill: 71969,
   billedAging: { count30_90: 10, sum30_90: 40000, count90: 4, sum90: 44000 },
@@ -150,5 +151,15 @@ describe('pipelineOverviewHiddenBySearch (v2.3184)', () => {
     expect(pipelineOverviewHiddenBySearch(null)).toBe(false)
     expect(pipelineOverviewHiddenBySearch('diamond')).toBe(true)
     expect(pipelineOverviewHiddenBySearch(' 583 ')).toBe(true)
+  })
+})
+
+describe('buildPipelineMoneyStory — Uncollectible under the tile (punch list #94, v2.4784)', () => {
+  it('the in-collections card counts only what is still chased and says the given-up dollars under it', () => {
+    const cards = buildPipelineMoneyStory(stats({ collections: { count: 5, total: 11500 }, uncollectible: { count: 2, total: 7752 } }))
+    const card = cards.find((c) => c.key === 'in-collections')!
+    expect(card.value).toBe('$11,500')
+    expect(card.sub).toBe('5 jobs · $7,752 uncollectible')
+    expect(buildPipelineMoneyStory(stats()).find((c) => c.key === 'in-collections')!.sub).toBe('5 jobs')
   })
 })

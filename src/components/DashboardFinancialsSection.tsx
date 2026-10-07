@@ -416,6 +416,7 @@ function ItemsModal({
   onOpenApBill,
   apBills,
   arCollectionsSection,
+  arUncollectibleSection = null,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -432,6 +433,8 @@ function ItemsModal({
   apBills: Record<string, DashboardApBill> | null
   /** AR only: parked difficult-to-collect receivables — listed after the main rows, excluded from the headline total. */
   arCollectionsSection: FinancialBucket | null
+  /** v2.4784: the Uncollectible section of the AR drill-down (punch list #94). */
+  arUncollectibleSection?: FinancialBucket | null
 }) {
   const meta = CARD_META[cardKey]
   // Grouped views (items keep their amount-desc order within each section):
@@ -479,12 +482,16 @@ function ItemsModal({
               ] as ModalSection[]
             ).filter((s) => s.items.length > 0)
           })()
-        : cardKey === 'ar' && arCollectionsSection && arCollectionsSection.count > 0
-          ? [
-              { title: null, items: bucket.items },
-              // Parked receivables — its own collapsible section, outside the headline total.
-              { title: 'Collections', items: arCollectionsSection.items, noun: 'bill' },
-            ]
+        : cardKey === 'ar' && ((arCollectionsSection && arCollectionsSection.count > 0) || (arUncollectibleSection && arUncollectibleSection.count > 0))
+          ? (
+              [
+                { title: null, items: bucket.items },
+                // Parked receivables — its own collapsible section, outside the headline total.
+                { title: 'Collections', items: arCollectionsSection?.items ?? [], noun: 'bill' },
+                // v2.4784: given up on — its own section, outside Owed altogether (punch list #94).
+                { title: 'Uncollectible — not owed', items: arUncollectibleSection?.items ?? [], noun: 'bill' },
+              ] as ModalSection[]
+            ).filter((s) => s.title === null || s.items.length > 0)
           : [{ title: null, items: bucket.items }]
   // Search + sort + aging state shared by the phone sheet and the desktop
   // table (v2.1483 / v2.1484). The AR column-header sort was replaced by the
@@ -1617,6 +1624,11 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
               data.arCollections.count > 0
                 ? ` · Collections ${formatMoneyShortK(data.arCollections.total)} (${data.arCollections.count})`
                 : ''
+            }${
+              // v2.4784: the Collections money the office gave up on — said, never summed (punch list #94).
+              data.arUncollectible.count > 0
+                ? ` · Uncollectible ${formatMoneyShortK(data.arUncollectible.total)} (${data.arUncollectible.count}), not owed`
+                : ''
             }`,
             // Bills the kernel keeps out of Owed (on a paid or deleted job) — said, never summed.
             ...(data.arExcluded.count > 0
@@ -1804,6 +1816,7 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
           }
           apBills={openCard === 'ap' ? data.apBills : null}
           arCollectionsSection={openCard === 'ar' ? data.arCollections : null}
+          arUncollectibleSection={openCard === 'ar' ? data.arUncollectible : null}
         />
       ) : null}
       {apBill ? (

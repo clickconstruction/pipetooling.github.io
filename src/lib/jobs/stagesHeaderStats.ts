@@ -28,6 +28,8 @@ export type StagesHeaderStats = {
   readyToBill: StagesSectionStat
   billed: StagesSectionStat
   collections: StagesSectionStat
+  /** Collections jobs marked Uncollectible (v2.4784): the grey line under the tile, never summed. */
+  uncollectible: StagesSectionStat
   paid: { count: number }
   /** "Capable of Being Billed" figure over the Working section. */
   capableToBill: number
@@ -109,6 +111,7 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
     },
     billed: { count: truth.billed.count, total: truth.billed.total },
     collections: { count: truth.collections.count, total: truth.collections.total },
+    uncollectible: { count: truth.uncollectible.count, total: truth.uncollectible.total },
     paid: { count: l.paid.length },
     capableToBill: capableToBillTotalWithPlans(l.working, stageInputs),
     billedAging: buildBilledAgingBuckets(l.filtered, now),
@@ -124,7 +127,7 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
  * sort comparator dereferences them).
  */
 export const LEAN_STATS_JOB_COLUMNS =
-  'id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party'
+  'id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party'
 export const LEAN_STATS_INVOICE_COLUMNS =
   'id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, estimated_bill_date, billed_at, bill_to_party, bill_to_email'
 export const LEAN_STATS_PAYMENT_COLUMNS = 'job_id, invoice_id, amount, paid_on'
@@ -136,6 +139,8 @@ export type LeanStatsJobRow = {
   payments_made: number | null
   pct_complete: number | null
   collections_at: string | null
+  /** Uncollectible (punch list #94, v2.4784): read by bill truth; optional so older fixtures stand. */
+  uncollectible_at?: string | null
   hcp_number: string | null
   click_number: string | null
   /** Chase-queue grouping key (v2.2025) — the header math itself never reads it. */
