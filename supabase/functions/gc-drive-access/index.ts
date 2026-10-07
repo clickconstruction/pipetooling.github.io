@@ -21,7 +21,8 @@ import { officeYmd } from '../_shared/bidFollowupReminder.ts'
  *     drive_checked_on).
  *
  * Auth: a staff JWT, office roles (dev, master_technician, assistant, controller, estimator);
- * verify_jwt = false and validated here. Google auth is the service account (GOOGLE_SERVICE_ACCOUNT_JSON),
+ * never a training account or a digital twin (door 1, v2.4832: the service role writes here, so the
+ * read-only blocks and the twin fence never see it); verify_jwt = false and validated here. Google auth is the service account (GOOGLE_SERVICE_ACCOUNT_JSON),
  * the folder is DRIVE_JOBS_FOLDER_ID (docs/DRIVE_INTAKE_SETUP.md).
  */
 
@@ -93,8 +94,10 @@ serve(async (req) => {
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
-    const { data: who } = await admin.from('users').select('role').eq('id', u.user.id).maybeSingle()
+    const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
     if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
+    if (who.read_only) return json({ error: 'A training account cannot change Drive or the project.' }, 403)
+    if (who.is_digital_twin) return json({ error: 'A digital twin cannot change Drive or the project.' }, 403)
 
     const body = (await req.json().catch(() => ({}))) as {
       make_folders?: { project_id?: string }

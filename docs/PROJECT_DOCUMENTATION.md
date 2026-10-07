@@ -1830,6 +1830,9 @@ Clickable addresses (Google Maps), `mailto:`/`tel:` links, and `#step-{id}` deep
 - **Alerts**: `list_bulk_deletion_alerts()` (`20260717120000_bulk_deletion_alerts.sql`) is a read-side aggregate over the archive that surfaces deletion bursts (measured in bundles, not rows) on the dev dashboard.
 - See [MIGRATIONS.md](./MIGRATIONS.md) and [RECENT_FEATURES.md](./RECENT_FEATURES.md) (v2.695–v2.704) for details.
 
+### 20. GC projects (`/gc`)
+`GcProjects.tsx` — GC mode, where we are the general contractor and trades quote to us; the real build of the design spike on branch `spike/gc-mode` (`to-dos/gc-mode/`). The page lists each GC project with its sets of plans, its trades and their scope lines, and holds five windows in `src/components/gc/`: **New project** (`gc_create_project`), **A new set of plans came in** (`gc_issue_plan_set`), **The plans**, **Questions about the plans** (`gc_record_question`, `gc_answer_question`, the `gc-plan-question-email` function) and the **scope book**. Reads and writes go through `src/lib/gc/gcIo.ts`; the pure kernels live in `src/lib/gc/`. The **Trades | GC** switch on Bids (`BidsModeToggle`) is the door. Access since door 1 (v2.4832): the office and estimators (`gc_office_team()` / `canOpenGcProjects`); see [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → GC projects. The schedule tab and the rest of GC mode open lane by lane.
+
 ---
 
 ## File Structure

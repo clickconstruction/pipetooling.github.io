@@ -199,6 +199,15 @@ Two review tables share the three rating dimensions (Ability / Drive / Integrity
 ### Project
 A job site or construction project for a specific customer. Each project has one workflow. The project owner automatically matches the customer owner (enforced by database trigger).
 
+### GC project (GC mode, `/gc`)
+A project where we are the general contractor and trades quote to us: a `projects` row plus its `gc_projects` side row (stage, bid due, size, who we work for, the architect, the project manager). Made with **New project** on the GC projects page, reached from the **Trades | GC** switch on Bids. Open to the office and estimators since door 1 (v2.4832). "Trades mode" is the Bids page as it was: we bid our trade to a general contractor.
+
+### Plan set (bid set · pricing set · permit set · addendum · bulletin)
+One issue of a GC project's plans (`gc_plan_sets`, rev 0 first). The first set is a **bid**, **pricing** or **permit** set; a later one is an **addendum** (while we bid), a **bulletin** (once the job is ours), or a whole **revised**, **permit** or **construction** set. Each set lists what it did to each sheet and spec section (issued, revised, added, removed, renamed), carries the Google Drive link of its files, and names who on our team checked it.
+
+### Scope line · scope book · scope set
+A **scope line** is one piece of work a trade's quote says yes or no to (`gc_scope_items`), with the sheets and sections it reads from. The **scope book** is every scope line we keep, by trade: read from our GC projects' scopes and the usual lines, plus the office's saved lines, edits and merges. A **scope set** is a named list of one trade's lines, saved to start the next project from.
+
 ### Job–Project Link
 Optional association between a Job (billing) and a Project (multi-phase work). Jobs can optionally belong to a project; not all jobs need projects. When linked, the job owner must match the project owner (enforced by trigger). When editing a job and linking it to a project, the job's owner is automatically updated to the project owner.
 
