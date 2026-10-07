@@ -144,7 +144,7 @@ Cluster N's 52 states: 18 single-job opener targets (`activityExpandJob`, `crewM
 ### 4c. Phone board (punch list #30)
 
 - `phoneBoard = isMobile && stagesMobileCards` (1252); one stage at a time — `phoneActiveStage` = first open section (1258), `pickPhoneStage` closes the rest (1259), 1262 ensures one is open. `phoneRowFilter` all / needs / today; `phoneOverviewOpen` per device.
-- `phoneNextInput` (2461–2509) composes `progressPaymentForJob`, `billedExpectedPayModel`, `stagesBillSentPctAlert`, quiet days, returned check, contract, upcoming, crew and the bill line into a `jobNextLine` input; `phoneRowsFor(stage)` (2510–2530) hands the tables `nextLineFor` / `advanceConfirm` / `advanceConsequence` / `onChip`.
+- `phoneNextInput` (2461–2509) composes `progressPaymentForJob`, `billedExpectedPayModel`, `stagesBillSentPctAlert`, quiet days, returned check, contract, upcoming, crew and the bill line (`phoneBillWords`, v2.4760: a Billed / Collections bill row reads `billedReferenceYmd`, the rest the latest event) into a `jobNextLine` input; `phoneRowsFor(stage)` (2510–2530) hands the tables `nextLineFor` / `advanceConfirm` / `advanceConsequence` / `onChip`.
 - Status: stays for now; `phoneNextInput` is a pure-input builder — Stage-A candidate once H is a hook.
 
 ### 5. IIFE-mounted dialogs (3963–4129)
