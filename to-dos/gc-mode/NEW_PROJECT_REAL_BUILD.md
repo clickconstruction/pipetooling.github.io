@@ -346,3 +346,14 @@ v2.4748 (#4764). The plan's check passed on prod: a test project ("GC test proje
 with a new customer and architect) was made from the window in one press and read back with its
 set, 7 sheets, 3 sections, 5 trades with their budgets, 20 scope lines with their sheets and
 sections, and the gaps. Next: 4b-second (the scope book page), then step 5 (Drive).
+
+Amended 2026-10-06, later still: 4b-second and step 5 are built. The scope book's window on real
+data is v2.4752 (clickconstruction/pipetooling.github.io#4770, in the queue): the four writes to the
+book's tables, *Open the scope book* and a trade's *Save as a set* on the GC projects page; the
+check passed on prod, a set saved from the test project's Concrete scope offered under *Start from
+the book* on the next project. Step 5 is v2.4754 (its PR follows #4770): the edge function
+`gc-drive-access` (`make_folders`, `check`), deployed and checked on prod. The folders appeared in
+the jobs Shared Drive, Plans reads *anyone* (the Shared Drive allowed the anyone-with-the-link
+share, the question the plan asked), and a link the service account cannot see says so with the
+words to fix it. Still to come from step 5: the plans window opening the link, `plan-fetch`
+probing the set's PDFs, and the check on issuing a new set, which land with step 6.
