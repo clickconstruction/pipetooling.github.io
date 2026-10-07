@@ -108,7 +108,7 @@ import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
+import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
@@ -2385,14 +2385,9 @@ export default function LienDeskModal({
       // on the right (the quiet Skip left in v2.4743: a month nobody sends closes on its own and is noted as missed).
       // The envelope line sits above the paper; the why is a parenthetical, not a sentence. Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing).
       const firstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
+      // Blocked, the footer says the stop and the one thing to do in plain words (v2.4797); the gate's button is the way there.
       const stateWords = blocked
-        ? firstBlocker
-          ? firstBlocker.value.toLowerCase() === 'missing'
-            ? `${firstBlocker.label} missing`
-            : `${firstBlocker.label} · ${firstBlocker.value.toLowerCase()}`
-          : monthsList.length === 0
-            ? 'Pick at least one month'
-            : 'This cannot go yet'
+        ? lienFootBlockedSentence(firstBlocker, monthsList.length)
         : leader
           ? 'Add to run'
           : claimGate

@@ -314,7 +314,7 @@ describe('LienDeskModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Find the owner ›' }))
     // It opens Edit Job at the Property record, as its hover says (punch list #87 E).
     expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'property-record')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
     // The gates (v2.3657): the verdict is the headline, gate 1 is the one blocker, and its detail is numbered to match.
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(document.querySelector('[data-lien-pane-head="gates"]')?.textContent).toBe("The four gates✗ Can't go out yet · 1 blocker · 1 to check")
@@ -325,7 +325,7 @@ describe('LienDeskModal', () => {
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     // Months: all three open windows ticked by default; the document names them.
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
@@ -477,7 +477,7 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     fireEvent.click(screen.getByTestId('lien-desk-owner-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
@@ -498,7 +498,7 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record · public property')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Don't send yet. This is public property, so no lien notice can go.")
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /The leader said to send it/ })).toBeNull()
     expect(lookupMock).not.toHaveBeenCalled()

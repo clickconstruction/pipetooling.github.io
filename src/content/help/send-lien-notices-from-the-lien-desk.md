@@ -128,7 +128,7 @@ The claim amount sits under the grid, then the notice itself. It is the same pap
 
 Above the paper, one line says who gets it. The owner of record and the GC get it by certified mail. The GC also gets a PDF by email when we have an address. The **Include counsel's cover letter** box adds counsel's letter as page 1 of the owner's copy. The letter matches the property's kind, commercial, residential or homestead. The GC's copy is the form only.
 
-The bar at the bottom shows the notice's state on the left. Most often it says the notice goes to the leader, with {{button:blue|Send for approval ▸}}. While something blocks it, it names the blocker, with {{button:blue|Go to gate 1 ▴}}. {{button:outline|Save draft}} and a quiet **Skip** link sit on the right.
+The bar at the bottom shows the notice's state on the left. Most often it says the notice goes to the leader, with {{button:blue|Send for approval ▸}}. While something blocks it, it says **Don't send yet**. Then it names the one thing to do first, such as entering the owner of record. {{button:blue|Go to gate 1 ▴}} takes you there. {{button:outline|Save draft}} sits on the right.
 
 - {{button:blue|Send for approval ▸}} sends it to the master. The words beside it say why it goes to him. There may be no standing rule yet. It may be our first notice to this GC. They may have promised a date, or he held this GC before.
 - **A send rule starts with the second notice.** Even with a rule to send notices without asking, our first notice to a GC goes to the master. That first notice proves the owner, the addresses and the GC's copy on real mail. From the next month, the button reads {{button:blue|Put it in the run ▸}}, and nobody is asked.

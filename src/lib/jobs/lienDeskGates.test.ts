@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput } from './lienDeskGates'
+import { lienFootBlockedSentence, buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sabra Texas Holdings Lp',
@@ -95,5 +95,17 @@ describe('a job with no clock hours is dated from its creation month (v2.3747)',
     expect(propertyKindSwitchWarning('non_residential')).toMatch(/^Residential makes each notice due the 15th of the 2nd month/)
     expect(sharedWithWords(['273', '866', '1009', '858'])).toBe('shared with 273, 866, 1009, 858')
     expect(sharedWithWords([])).toBe('')
+  })
+})
+
+describe('lienFootBlockedSentence (v2.4797)', () => {
+  it('says the stop and the one thing to do, for each gate', () => {
+    expect(lienFootBlockedSentence({ key: 'owner', value: 'Missing', label: 'Owner of record', n: 1 }, 2)).toBe("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
+    expect(lienFootBlockedSentence({ key: 'owner', value: 'No mailing address', label: 'Owner of record', n: 1 }, 2)).toBe("Don't send yet. Add the owner's mailing address on the property record first.")
+    expect(lienFootBlockedSentence({ key: 'owner', value: 'Public property', label: 'Owner of record', n: 1 }, 2)).toContain('public property, so no lien notice can go')
+    expect(lienFootBlockedSentence({ key: 'gc', value: 'No GC on the job', label: 'Original contractor', n: 2 }, 2)).toBe("Don't send yet. Set the GC on the job first.")
+    expect(lienFootBlockedSentence({ key: 'months', value: 'No month picked', label: 'Approved hours', n: 4 }, 0)).toBe("Don't send yet. Pick at least one month first.")
+    expect(lienFootBlockedSentence(null, 0)).toBe("Don't send yet. Pick at least one month first.")
+    expect(lienFootBlockedSentence(null, 1)).toBe("Don't send yet. Clear what the gates show first.")
   })
 })
