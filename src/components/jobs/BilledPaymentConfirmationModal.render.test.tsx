@@ -9,6 +9,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from './BilledPaymentConfirmationModal'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { heldStripeCloseYmd } from '../../lib/jobs/heldStripeMark'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 
 vi.mock('../../hooks/useAuth', async () => useAuthModuleMock())
 
@@ -87,9 +90,10 @@ describe('BilledPaymentConfirmationModal — a check holds the Stripe close (v2.
     expect(screen.queryByTestId('held-stripe-mark-note')).toBeNull()
     fireEvent.change(type, { target: { value: 'Check' } })
     const dates = document.querySelectorAll('input[type="date"]')
-    fireEvent.change(dates[0] as HTMLInputElement, { target: { value: '2026-10-07' } })
+    const today = todayYmdInAppTz()
+    fireEvent.change(dates[0] as HTMLInputElement, { target: { value: today } })
     const note = screen.getByTestId('held-stripe-mark-note')
-    expect(note.textContent).toContain('Stripe closes the invoice on Oct 14')
+    expect(note.textContent).toContain(`Stripe closes the invoice on ${formatYmdMonthDay(heldStripeCloseYmd(today))}`)
     expect(note.textContent).toContain('moved to another job or taken off')
     expect(screen.getByText('Record $1,500.00')).toBeTruthy()
     fireEvent.change(type, { target: { value: 'Cash' } })

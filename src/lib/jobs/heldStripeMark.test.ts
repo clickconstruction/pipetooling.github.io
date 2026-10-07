@@ -53,9 +53,13 @@ describe('the words', () => {
     expect(note).toContain('moved to another job or taken off')
     expect(heldStripeMarkNote('')).toContain('7 days after the check')
   })
+  it('v2.4822: a check already a week old says the next morning, not a day that has passed', () => {
+    expect(heldStripeMarkNote('2026-09-29', '2026-10-07')).toContain('The check is over 7 days old, so Stripe closes the invoice the next morning.')
+    expect(heldStripeMarkNote('2026-10-07', '2026-10-07')).toContain('on Oct 14')
+  })
   it('the line names the close day, or the next sweep once it has passed', () => {
     expect(heldStripeMarkLineWords('2026-10-07', '2026-10-08')).toBe('Stripe closes the bill Oct 14, once the check has cleared')
-    expect(heldStripeMarkLineWords('2026-10-07', '2026-10-14')).toBe('Stripe closes the bill on the next sweep')
+    expect(heldStripeMarkLineWords('2026-10-07', '2026-10-14')).toBe('Stripe closes the bill the next morning')
     expect(heldStripeMarkLineWords(null, '2026-10-14')).toBe('Stripe closes the bill once the check has cleared')
   })
 })
