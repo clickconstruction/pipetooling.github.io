@@ -350,8 +350,16 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
   }
 
   const titleBar = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
-      <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</h2>
+    <div style={{ display: 'flex', flexWrap: phone ? 'wrap' : 'nowrap', alignItems: 'center', gap: phone ? '6px 10px' : 10, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+      <h2
+        style={
+          phone
+            ? { margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)', flexBasis: '100%', minWidth: 0, overflowWrap: 'anywhere' }
+            : { margin: 0, fontSize: '1.1rem', color: 'var(--text-strong)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+        }
+      >
+        {name}
+      </h2>
       <CustomerViewSwitch view="timeline" onChange={(v) => (v === 'profile' ? onShowProfile() : undefined)} />
       <button
         type="button"
@@ -519,7 +527,7 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
         ) : null}
         {missingWords ? <div style={{ marginTop: 5, fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>{missingWords}</div> : null}
         {!compact ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, minWidth: 0 }}>
+          <div style={{ display: 'flex', flexWrap: phone ? 'wrap' : 'nowrap', alignItems: 'center', gap: 6, marginTop: 8, minWidth: 0 }}>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>Show</span>
             {(
               [
@@ -533,8 +541,8 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
               </button>
             ))}
             {openJobs.length > 0 ? (
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', minWidth: 0, flex: 1, paddingBottom: 2 }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0, marginLeft: 6 }}>Open jobs</span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', minWidth: 0, flex: phone ? '1 1 100%' : 1, paddingBottom: 2 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0, marginLeft: phone ? 0 : 6 }}>Open jobs</span>
                 {openJobs.map((j) => (
                   <button
                     key={j.id}
