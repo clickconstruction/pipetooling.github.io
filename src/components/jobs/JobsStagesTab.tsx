@@ -1764,14 +1764,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [])
 
   const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => {
-    setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
+    // The phone board shows one stage, the first open section in strip order — so a door that
+    // only opened the section landed on whichever earlier stage was open (punch list #93 D,
+    // v2.4759). Picking closes the rest, as the strip's own chips do.
+    if (phoneBoard) pickPhoneStage(key)
+    else setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
     const elId = stagesSectionElementId(key)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
     })
-  }, [])
+  }, [phoneBoard, pickPhoneStage])
 
   // `?rtb=1` (v2.2276): strip it and scroll Ready to Bill into view once the board holds still.
   useStagesRtbFocus(deepLinks, searchParams, navigate, focusStagesSection)
