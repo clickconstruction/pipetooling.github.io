@@ -1530,6 +1530,33 @@ describe('LienDeskModal · the pile titles stack (v2.4672)', () => {
     expect(head.getAttribute('data-on')).toBe('yes')
     expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
   })
+  it('a door that opens an empty pile says what is no longer there, counts the other piles, and offers the way out (v2.4854)', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650)} initialPile="awaiting" />)
+    await settle()
+    const empty = document.querySelector('[data-lien-desk-empty-pile="awaiting"]') as HTMLElement
+    expect(empty.textContent).toContain('Nothing is waiting for approval.')
+    expect(empty.textContent).toContain('1 notice is on the other piles.')
+    expect(document.querySelectorAll('[data-lien-pile-head]')).toHaveLength(0)
+    fireEvent.click(within(empty).getByRole('button', { name: 'Show every pile ›' }))
+    expect(document.querySelector('[data-lien-desk-empty-pile]')).toBeNull()
+    expect(document.querySelector('[data-lien-pile-head="needs_owner"]')).toBeTruthy()
+  })
+  it('a narrowed pile that empties under the leader’s act widens by itself (v2.4854)', async () => {
+    const awaiting = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
+    } as LienDeskItemRow
+    const { rerender } = renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} initialPile="awaiting" />)
+    await settle()
+    expect(document.querySelector('[data-lien-pile-head="awaiting"]')).toBeTruthy()
+    expect(document.querySelectorAll('[data-lien-pile-head]')).toHaveLength(1)
+    // The desk re-reads after the approval: the item is in Ready to send, the awaiting pile is empty.
+    const approved = { ...awaiting, status: 'approved', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader' } as LienDeskItemRow
+    rerender(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [approved], true)} initialPile="awaiting" />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-empty-pile]')).toBeNull()
+    expect(document.querySelector('[data-lien-pile-head="ready"]')).toBeTruthy()
+    expect(document.querySelector('[data-lien-pile-all]')).toBeNull()
+  })
   it('a list narrowed to one pile offers show every pile on its title, and widens on it', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialPile="needs_owner" />)
     await settle()

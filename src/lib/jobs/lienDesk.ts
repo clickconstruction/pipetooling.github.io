@@ -69,6 +69,26 @@ export function parseLienNoticePolicy(v: unknown): LienNoticePolicy {
 
 export type LienDeskPile = 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'printed' | 'held' | 'sent' | 'missed'
 
+/**
+ * What an empty, narrowed pile says (v2.4854): the pile by name, in the words of
+ * what is no longer there, and how many notices the other piles hold — so a
+ * leader who approved the last one is not left with "Nothing in this pile."
+ */
+export function lienEmptyPileWords(pile: LienDeskPile, onOtherPiles: number): { head: string; rest: string } {
+  const head: Record<LienDeskPile, string> = {
+    needs_owner: 'Every notice has its owner of record.',
+    to_draft: 'Nothing is left to draft.',
+    awaiting: 'Nothing is waiting for approval.',
+    ready: 'Nothing is ready to send.',
+    printed: 'Nothing in the mail is waiting on a tracking number.',
+    held: 'Nothing is held.',
+    sent: 'Nothing went out in the last 30 days.',
+    missed: 'No window was missed.',
+  }
+  const rest = onOtherPiles > 0 ? `${onOtherPiles} ${onOtherPiles === 1 ? 'notice is' : 'notices are'} on the other piles.` : 'The other piles are empty too.'
+  return { head: head[pile], rest }
+}
+
 export const LIEN_DESK_PILES: ReadonlyArray<{ key: LienDeskPile; label: string }> = [
   { key: 'needs_owner', label: 'Needs the owner' },
   { key: 'to_draft', label: 'To draft' },
