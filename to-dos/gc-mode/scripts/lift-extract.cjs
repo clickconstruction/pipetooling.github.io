@@ -129,7 +129,18 @@ function rel(from, to) {
   if (!r.startsWith('.')) r = './' + r
   return r
 }
-const fullText = (sf, s) => sf.text.slice(s.getFullStart(), s.getEnd()).replace(/^\s*\n/, '')
+/**
+ * A statement with the comments above it, word for word. The first statement after a file's imports
+ * keeps only the comments touching it: the ones above a blank line there are the spike file's own
+ * header or description, which do not belong to what moves.
+ */
+const firstAfterImports = (sf) => sf.statements.find((x) => !ts.isImportDeclaration(x))
+const fullText = (sf, s) => {
+  const text = sf.text.slice(s.getFullStart(), s.getEnd()).replace(/^\s*\n/, '')
+  if (s !== firstAfterImports(sf)) return text
+  const lead = sf.text.slice(s.getFullStart(), s.getStart())
+  return lead.split(/\n[ \t]*\n/).pop().replace(/^\n+/, '') + s.getText(sf)
+}
 
 const written = []
 for (const e of config.files) {
@@ -344,7 +355,7 @@ for (const t of config.tests || []) {
           const indent = lead.match(/[ \t]*$/)[0]
           return `${lead}describe(${s.expression.arguments[0].getText()}, () => {\n${p.text}\n${indent}})`
         }
-        return sf.text.slice(p.getFullStart(), p.getEnd()).replace(/^\s*\n/, '')
+        return fullText(sf, p)
       })
     return { text: parts.some((p) => p.describe || isCall(p, ['it', 'test'])) ? texts.join('\n\n') : '', need }
   }
