@@ -18,7 +18,8 @@ import {
   parseLegalPortalLinks,
   type LegalPortalLinkRow,
 } from '../../../lib/legal/legalPortalLinks'
-import { legalPortalAddressWords } from '../../../lib/legal/legalPortalAddress'
+import { isLegalPortalSlugKey, LEGAL_PORTAL_SHORT_ORIGIN, legalPortalAddressWords } from '../../../lib/legal/legalPortalAddress'
+import { cleanBase, composeLegalAddress, legalAddressBase, legalAddressProblem, rollLegalTail, splitLegalAddress } from '../../../lib/legal/legalPortalAddressDraft'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -30,20 +31,44 @@ const db = supabase as unknown as SupabaseClient
  * the server (the table keeps only the hash, punch list #85 item 22), dead ones with when,
  * why and by whom. A new key reads like a GC's address, my.clickplumbing.com/<firm>-<tail>.
  *
- * Per live link: Copy · Send… · Rotate · Turn off. Preview is the office's, by the firm's id,
- * signed in. Never mints on open: "No link yet" until the office creates it.
+ * Per live link: Copy · Send… · Change address… · Rotate · Turn off. Preview is the office's, by
+ * the firm's id, signed in. Never mints on open: "No link yet" until the office creates it.
+ *
+ * v2.4756 (the owner's call): the address is short and custom — the office types the name part and
+ * rolls a three-character tail, my.clickplumbing.com/snell-law-f6a (`legalPortalAddressDraft.ts`);
+ * the server checks the shape and that no customer or sub holds it. Rotate keeps the name part
+ * and rolls the tail; Change address… is a rotate to the address typed.
  *
  * v2.4624 (punch list #85 item 21): **Send … their link** — the welcome email
  * (`legal-send-firm-link`) to the firm's address on file and/or typed ones, filed in
  * `sent_documents` under the link it carried, where *Sent to … on …* reads back from.
  */
 type ListState = { kind: 'loading' } | { kind: 'unavailable' } | { kind: 'ready'; rows: LegalPortalLinkRow[] }
+type Draft = { base: string; tail: string }
 
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const dark: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
 const field: CSSProperties = { font: 'inherit', fontSize: '0.82rem', padding: '5px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }
 const head: CSSProperties = { fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const muted: CSSProperties = { fontSize: '0.76rem', color: 'var(--text-muted)' }
+const SHORT_HOST = LEGAL_PORTAL_SHORT_ORIGIN.replace(/^https:\/\//, '')
+
+/** The address editor: the short host, the name part the office types, the three-character tail and its dice. */
+function AddressEditor({ draft, onChange, disabled, label }: { draft: Draft; onChange: (d: Draft) => void; disabled: boolean; label: string }) {
+  const address = composeLegalAddress(draft.base, draft.tail)
+  const problem = legalAddressProblem(address)
+  return (
+    <div data-legal-address-editor style={{ display: 'grid', gap: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', fontFamily: 'ui-monospace, monospace', fontSize: '0.8rem' }}>
+        <span style={{ color: 'var(--text-muted)' }}>{SHORT_HOST}</span>
+        <input aria-label={label} value={draft.base} onChange={(e) => onChange({ ...draft, base: cleanBase(e.target.value) })} disabled={disabled} spellCheck={false} style={{ ...field, width: 'auto', flex: '1 1 10ch', minWidth: '8ch', fontFamily: 'inherit', fontSize: 'inherit', padding: '4px 6px' }} />
+        <span>-{draft.tail}</span>
+        <button type="button" onClick={() => onChange({ ...draft, tail: rollLegalTail() })} disabled={disabled} title="Roll the three characters again" aria-label="Roll the tail again" style={{ ...btn, height: 24, padding: '0 0.4rem' }}>🎲</button>
+      </div>
+      {problem ? <div style={{ fontSize: '0.74rem', color: '#b42318' }}>{problem}</div> : null}
+    </div>
+  )
+}
 
 export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: string; firmName: string }) {
   const { showToast } = useToastContext()
@@ -56,6 +81,10 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
   const [typed, setTyped] = useState('')
   const [note, setNote] = useState('')
   const [newLabel, setNewLabel] = useState('')
+  /** The address for the firm's own link, when it is about to be created; for a person's link; and the one being changed. */
+  const [firmDraft, setFirmDraft] = useState<Draft>({ base: '', tail: '' })
+  const [personDraft, setPersonDraft] = useState<Draft>({ base: '', tail: '' })
+  const [editing, setEditing] = useState<{ id: string; draft: Draft } | null>(null)
   /** Which live link the send form sends; the firm's own by default. */
   const [sendTarget, setSendTarget] = useState<string | null>(null)
   const [sentLines, setSentLines] = useState<Record<string, string>>({})
@@ -72,6 +101,9 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
       return
     }
     setList({ kind: 'ready', rows })
+    setFirmDraft({ base: legalAddressBase(firmName), tail: rollLegalTail() })
+    setPersonDraft({ base: legalAddressBase(firmName), tail: rollLegalTail() })
+    setEditing(null)
     const view = groupLegalPortalLinks(rows)
     const live = [view.firm, ...view.people].filter((r): r is LegalPortalLinkRow => Boolean(r))
     setSendTarget((cur) => (cur && live.some((r) => r.id === cur) ? cur : (live[0]?.id ?? null)))
@@ -90,7 +122,7 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
       }
     }
     setSentLines(lines)
-  }, [firmId])
+  }, [firmId, firmName])
 
   useEffect(() => {
     if (open) void load()
@@ -112,9 +144,10 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
   }
   const rpcError = (data: unknown, error: { message: string } | null): string | null => error?.message ?? ((data as { error?: string } | null)?.error ?? null)
 
-  const create = (label: string | null) =>
+  const create = (label: string | null, draft: Draft) =>
     run(async () => {
-      const { data, error } = await db.rpc('create_legal_portal_link', { p_firm_id: firmId, p_label: label })
+      const address = composeLegalAddress(draft.base, draft.tail)
+      const { data, error } = await db.rpc('create_legal_portal_link', { p_firm_id: firmId, p_label: label, p_address: address })
       const bad = rpcError(data, error)
       if (bad) {
         showToast(`Could not create the link: ${bad}`, 'error')
@@ -125,13 +158,20 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
       showToast(label ? `${label}’s link is ready. Copy it or send it from the list.` : 'The firm’s link is ready. Copy it or send it below.', 'success')
     })
 
-  const rotate = async (row: LegalPortalLinkRow) => {
+  /** The address a plain Rotate mints: the same name part with a fresh tail; a key made before v2.4756 gets a default one. */
+  const rolledAddress = (row: LegalPortalLinkRow): string | null => {
+    if (!row.token || !isLegalPortalSlugKey(row.token)) return null
+    const { base, tail } = splitLegalAddress(row.token)
+    return tail ? composeLegalAddress(base, rollLegalTail()) : null
+  }
+
+  const rotate = async (row: LegalPortalLinkRow, address: string | null = rolledAddress(row)) => {
     const firmOwn = row.purpose === 'firm'
     const holder = firmOwn ? firmName : legalLinkName(row, firmName)
     const ok = await confirmDialog({ title: `Mint a new link for ${holder}?`, message: rotateLinkMessage(holder, firmOwn), confirmLabel: 'Mint a new link', danger: true })
     if (!ok) return
     await run(async () => {
-      const { data, error } = await db.rpc('rotate_legal_portal_link', { p_link_id: row.id })
+      const { data, error } = await db.rpc('rotate_legal_portal_link', { p_link_id: row.id, p_address: address })
       const bad = rpcError(data, error)
       if (bad) {
         showToast(`Could not rotate it: ${bad}`, 'error')
@@ -197,6 +237,12 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
     })
   }
 
+  /** The editor's start for a live link: its own name part with a fresh tail, or the firm's default when the key is an old shape. */
+  const startDraft = (row: LegalPortalLinkRow): Draft => {
+    const { base, tail } = row.token && isLegalPortalSlugKey(row.token) ? splitLegalAddress(row.token) : { base: '', tail: '' }
+    return { base: tail ? base : legalAddressBase(firmName), tail: rollLegalTail() }
+  }
+
   const linkRow = (row: LegalPortalLinkRow) => {
     const address = legalLinkAddress(row, origin)
     const name = legalLinkName(row, firmName)
@@ -212,16 +258,27 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
         ) : (
           <div data-legal-link-hidden style={{ ...muted, background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 8px' }}>The link is live, but its address cannot be read back. Rotate for a new one.</div>
         )}
-        {legalLinkIsOldShape(row) ? <div style={muted}>Made before addresses carried the firm’s name. Rotate for one that does.</div> : null}
+        {legalLinkIsOldShape(row) ? <div style={muted}>Made before addresses were short. Rotate, or press Change address… to pick one.</div> : null}
         <div style={{ ...muted, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <span>{legalLinkSinceLine(row, calendarYmdInAppTzFromIso)}</span>
           {sent ? <span data-legal-link-sent style={{ color: '#067647' }}>✓ {sent}</span> : <span>not sent from here yet</span>}
         </div>
+        {editing?.id === row.id ? (
+          <div data-legal-change-address style={{ display: 'grid', gap: 6, padding: 8, border: '1px solid var(--border)', borderRadius: 5 }}>
+            <AddressEditor draft={editing.draft} onChange={(draft) => setEditing({ id: row.id, draft })} disabled={busy} label="New address" />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => void rotate(row, composeLegalAddress(editing.draft.base, editing.draft.tail))} disabled={busy || Boolean(legalAddressProblem(composeLegalAddress(editing.draft.base, editing.draft.tail)))} style={dark}>Save the new address</button>
+              <button type="button" onClick={() => setEditing(null)} disabled={busy} style={btn}>Cancel</button>
+              <span style={muted}>The old address stops working the moment this one is saved.</span>
+            </div>
+          </div>
+        ) : null}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {address ? <button type="button" onClick={() => void copy(address)} style={dark}>Copy</button> : null}
           <button type="button" onClick={() => pickSendTarget(row)} disabled={busy} style={btn}>Send…</button>
+          <button type="button" onClick={() => setEditing(editing?.id === row.id ? null : { id: row.id, draft: startDraft(row) })} disabled={busy} style={btn}>Change address…</button>
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={() => void rotate(row)} disabled={busy} style={btn}>Rotate</button>
+          <button type="button" onClick={() => void rotate(row)} disabled={busy} style={btn} title="The same name, three new characters">Rotate</button>
           <button type="button" onClick={() => void turnOff(row)} disabled={busy} style={{ ...btn, color: '#b42318', borderColor: '#b42318' }}>Turn off</button>
         </div>
       </div>
@@ -249,9 +306,10 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
                   {view.firm ? (
                     linkRow(view.firm)
                   ) : (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '8px 0' }}>
-                      <span style={{ fontSize: '0.84rem' }}>{view.past.some((r) => r.purpose === 'firm') ? 'The firm’s link is off.' : 'No link yet.'}</span>
-                      <button type="button" onClick={() => void create(null)} disabled={busy} style={dark}>Create the firm’s link</button>
+                    <div style={{ display: 'grid', gap: 8, padding: '8px 0' }}>
+                      <span style={{ fontSize: '0.84rem' }}>{view.past.some((r) => r.purpose === 'firm') ? 'The firm’s link is off.' : 'No link yet.'} Pick its address, then create it.</span>
+                      <AddressEditor draft={firmDraft} onChange={setFirmDraft} disabled={busy} label="The firm’s address" />
+                      <div><button type="button" onClick={() => void create(null, firmDraft)} disabled={busy || Boolean(legalAddressProblem(composeLegalAddress(firmDraft.base, firmDraft.tail)))} style={dark}>Create the firm’s link</button></div>
                     </div>
                   )}
                 </section>
@@ -260,9 +318,10 @@ export default function LegalPortalLinkButton({ firmId, firmName }: { firmId: st
                   <div style={head}>One person’s link</div>
                   <div style={{ ...muted, margin: '4px 0 2px' }}>A link for one person at the firm, so that person can be turned off without touching the firm’s own link.</div>
                   {view.people.map(linkRow)}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
-                    <input aria-label="Who it is for" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Who it is for, such as Jane Doe, paralegal" maxLength={80} style={{ ...field, flex: 1, width: 'auto' }} />
-                    <button type="button" onClick={() => void create(newLabel.trim())} disabled={busy || !newLabel.trim()} style={btn}>Add a link</button>
+                  <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
+                    <input aria-label="Who it is for" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} placeholder="Who it is for, such as Jane Doe, paralegal" maxLength={80} style={field} />
+                    <AddressEditor draft={personDraft} onChange={setPersonDraft} disabled={busy} label="The person’s address" />
+                    <div><button type="button" onClick={() => void create(newLabel.trim(), personDraft)} disabled={busy || !newLabel.trim() || Boolean(legalAddressProblem(composeLegalAddress(personDraft.base, personDraft.tail)))} style={btn}>Add a link</button></div>
                   </div>
                 </section>
 

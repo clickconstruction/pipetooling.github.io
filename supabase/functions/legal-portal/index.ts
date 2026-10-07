@@ -16,6 +16,9 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
 import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
+// v2.4756: the key is short on purpose, so wrong keys are counted by caller and a guesser is refused.
+import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -190,11 +193,18 @@ serve(async (req) => {
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
 
+    // The guess gate (v2.4756): a caller with ten wrong keys in the hour is refused before any lookup; a right key is never refused.
+    const ip = officeFirmId ? null : clientIpFromEdgeRequest(req)
+    if (!officeFirmId && (await askGuessGate(admin, ip, false)).locked) return jsonResponse({ error: GUESS_LOCKED_MSG }, 429)
+
     // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
     let link: { firm_id: string; revoked_at: string | null } | null = officeFirmId ? { firm_id: officeFirmId, revoked_at: null } : null
     if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(rawToken)).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
     if (!link && rawToken) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', rawToken).maybeSingle()).data as { firm_id: string; revoked_at: string | null } | null
-    if (!link || link.revoked_at) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    if (!link || link.revoked_at) {
+      if (!officeFirmId) await askGuessGate(admin, ip, true)
+      return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    }
 
     const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').eq('id', link.firm_id).maybeSingle()
     if (!firm || !(firm as Row).active) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
