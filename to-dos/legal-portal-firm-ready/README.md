@@ -96,6 +96,7 @@ Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating
 **The narrative** (2026-10-07, the owner's ask; mockup `mockup-documents-and-narrative.html`): v2.4812 (migration `20261007234000`) adds the office's account of a matter in markdown: the desk's first tab with an outline, a preview and `legal_set_narrative`; the firm's first tab when one is written, labelled as the office's with who and when; the printed packet's first section.
 
 **Who the firm calls** (2026-10-06, v2.4755): a strip under the letterhead with the office number and the assistants to ask for, the controller's own number, and what each is for; the same two lines on the printed packet; the desk's firm window flags a controller with no phone. Mockup: `mockup-reach-the-office.html`. Needs `supabase functions deploy legal-portal`.
+**The Lien grid by court** (2026-10-07, the owner's ask; mockup `mockup-lien-grid-by-court.html`): v2.4825 lets the rail read by court. Each county lists its justice precincts with their jobs and dollars, a job over the justice limit sits under its county, and with every court shown a band names each court above its rows, on the screen and the print.
 
 
 Found by the reviews and left for later:

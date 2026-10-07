@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal: the Lien grid by court</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+  table.plan { border-collapse: collapse; width: 100%; background: #fff; font-size: 13px; }
+  table.plan th, table.plan td { border: 1px solid #D1D5DB; padding: 6px 8px; text-align: left; vertical-align: top; }
+  table.plan th { background: #F9FAFB; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #4B5563; }
+
+  /* ---- the portal's paper (portalTheme.ts) ---- */
+  .paper { background: #f6f3ec; color: #16283c; padding: 18px; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .card { background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; padding: 14px 16px; }
+  .capP { font-size: 11px; color: #8a97a6; text-transform: uppercase; letter-spacing: .07em; }
+  .muted { color: #5a6b7e; }
+  .faint { color: #8a97a6; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 5px; border: 1px solid #b0662f; background: #b0662f; color: #fff; }
+  .seg { display: inline-flex; border: 1px solid #ddd6c8; border-radius: 6px; overflow: hidden; font-size: 12.5px; }
+  .seg span { padding: 4px 10px; color: #5a6b7e; background: #fdfcf9; }
+  .seg span + span { border-left: 1px solid #ddd6c8; }
+  .seg span.on { background: #16283c; color: #fff; font-weight: 600; }
+  .lay { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 14px; margin-top: 12px; align-items: stretch; }
+  .rail { border-right: 1px solid #ddd6c8; padding-right: 10px; display: flex; flex-direction: column; gap: 2px; }
+  .rail .lens { display: flex; margin-bottom: 8px; }
+  .rail .lens .seg { width: 100%; } .rail .lens .seg span { flex: 1; text-align: center; }
+  .gc { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 8px; padding: 6px 8px 6px 10px; border-radius: 5px; border-left: 3px solid transparent; font-size: 12.5px; line-height: 1.25; }
+  .gc .n { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gc .c { grid-column: 1; font-size: 11.5px; color: #5a6b7e; }
+  .gc .m { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .gc.on { background: #f1ece2; border-left-color: #b0662f; }
+  .gc.all { border-bottom: 1px dotted #ddd6c8; border-radius: 5px 5px 0 0; margin-bottom: 4px; padding-bottom: 8px; }
+  .gc.county { margin-top: 6px; }
+  .gc.county .n { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; }
+  .gc.court { padding-left: 22px; }
+  .gc.court .n { font-weight: 500; }
+  .gc.over .n { color: #b42318; }
+  .gc.none { margin-top: 6px; }
+  .gc.none .n { font-weight: 500; color: #5a6b7e; font-style: italic; }
+  table.g { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.g th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 5px 6px; font-weight: 700; white-space: nowrap; }
+  table.g td { padding: 6px 6px; border-bottom: 1px solid #ddd6c8; vertical-align: top; line-height: 1.3; }
+  table.g tr.sect td { background: #f1ece2; border-bottom: 1px solid #ddd6c8; padding: 6px 8px; font-size: 12px; }
+  table.g tr.sect td b { font-weight: 700; }
+  table.g tr.sect td .tot { float: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.g tr.sect.over td b { color: #b42318; }
+  td.job b { display: block; font-size: 12px; white-space: nowrap; }
+  td.job .a { display: block; color: #5a6b7e; margin-top: 1px; }
+  td.unpaid .t { display: block; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12px; }
+  td.unpaid .mo { display: block; color: #5a6b7e; margin-top: 1px; }
+  .chip { display: inline-block; font-size: 10px; padding: 0 6px; border-radius: 999px; border: 1px solid #ddd6c8; color: #5a6b7e; margin-top: 2px; white-space: nowrap; }
+  .chip.over { border-color: #b42318; color: #b42318; }
+  .q { color: #b42318; font-weight: 700; }
+  .more { color: #8a97a6; font-style: italic; }
+  .phone { max-width: 375px; }
+  .phone .rail2 { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid #ddd6c8; padding-bottom: 8px; margin-top: 10px; }
+  .chipbtn { display: inline-flex; gap: 6px; border: 1px solid #ddd6c8; border-radius: 999px; padding: 4px 9px; font-size: 12px; background: #fdfcf9; }
+  .chipbtn b { font-variant-numeric: tabular-nums; }
+  .chipbtn.on { border-color: #b0662f; background: #f1ece2; }
+  .chipbtn.cty { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; }
+  .pcard { border: 1px solid #ddd6c8; border-radius: 6px; padding: 8px 10px; margin-top: 8px; background: #fdfcf9; font-size: 12px; }
+  .pband { margin-top: 12px; padding: 5px 8px; border-radius: 5px; background: #f1ece2; font-size: 12px; }
+  .pcard .r { display: grid; grid-template-columns: 110px 1fr; gap: 6px; padding: 2px 0; }
+  .pcard .r span:first-child { color: #8a97a6; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; }
+  .print { background: #fff; border: 1px solid #D1D5DB; padding: 14px; font: 10.5px/1.35 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  .print h3 { font-size: 13px; margin: 0 0 6px; }
+  .print table { width: 100%; border-collapse: collapse; }
+  .print th, .print td { border: 1px solid #CBD5E1; padding: 3px 5px; text-align: left; vertical-align: top; }
+  .print th { background: #F3F4F6; font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+  .print tr.sect th { background: #E5E7EB; font-size: 10.5px; text-transform: none; letter-spacing: 0; }
+  @media (max-width: 900px) { .lay { grid-template-columns: minmax(0,1fr); } .rail { border-right: none; } }
+</style>
+</head>
+<body><div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Legal portal · the Lien grid · mockup and plan</p>
+  <h1>The Lien grid, by court</h1>
+  <p>The owner, 2026-10-07: <i>break the Lien grid down by court as well, so a lawyer can easily pick out the cases they want.</i> Today the rail beside the grid lists GCs. This adds a second way to read the same rail: <b>Courts</b>, county by county, each justice precinct with its jobs and dollars, the jobs over the $20,000 justice limit on a line of their own, and the jobs whose county the office has not entered at the foot. The jobs below are made up, in the sample matter's style.</p>
+</header>
+
+<h2>1 · By court, every court</h2>
+<div class="cap">After · the rail on Courts</div>
+<div class="pane"><div class="paper"><div class="card">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <div class="capP">Lien grid</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">Each job with money open and a lien month, from the office's records today: 8 jobs · $89,925 open · every court</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12.5px"><span class="muted">Show</span><span class="seg"><span>Due in 30 days · 3</span><span class="on">Upcoming · 8</span></span></div>
+    </div>
+    <span class="btn">⎙ Print the grid</span>
+  </div>
+  <div class="lay">
+    <div class="rail">
+      <div class="lens"><span class="seg"><span>GCs</span><span class="on">Courts</span></span></div>
+      <div class="gc all on"><span class="n">All courts</span><span class="c">8 jobs</span><span class="m">$89,925</span></div>
+      <div class="gc county"><span class="n">Guadalupe County</span><span class="c">2 jobs</span><span class="m">$45,625</span></div>
+      <div class="gc court"><span class="n">Precinct 1</span><span class="c">1 job</span><span class="m">$7,000</span></div>
+      <div class="gc court over"><span class="n">Over $20,000 · county court</span><span class="c">1 job</span><span class="m">$38,625</span></div>
+      <div class="gc county"><span class="n">Hays County</span><span class="c">3 jobs</span><span class="m">$24,650</span></div>
+      <div class="gc court"><span class="n">Precinct 2</span><span class="c">2 jobs</span><span class="m">$18,450</span></div>
+      <div class="gc court"><span class="n">Precinct not named yet</span><span class="c">1 job</span><span class="m">$6,200</span></div>
+      <div class="gc county"><span class="n">Comal County</span><span class="c">2 jobs</span><span class="m">$15,800</span></div>
+      <div class="gc court"><span class="n">Precinct 3</span><span class="c">1 job</span><span class="m">$9,800</span></div>
+      <div class="gc court"><span class="n">Precinct 1 or 2 · on the line</span><span class="c">1 job</span><span class="m">$6,000</span></div>
+      <div class="gc none"><span class="n">County not on the record</span><span class="c">1 job</span><span class="m">$3,850</span></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="g">
+        <thead><tr><th>Job</th><th>Owner of record</th><th>Property</th><th>Court</th><th>Last on site</th><th>Amount due<span style="display:block;font-weight:500">For work in</span></th><th class="more">+ 6 columns as today</th></tr></thead>
+        <tbody>
+          <tr class="sect"><td colspan="7"><b>Guadalupe County · Justice Court, Precinct 1</b> <span class="muted">· 1 job</span><span class="tot">$7,000</span></td></tr>
+          <tr><td class="job"><b>1066 · Cibolo Creek Clinic — gas line</b><span class="a">900 Main St</span><span class="a">Cibolo, TX 78108</span></td><td>Cibolo Creek Medical LLC</td><td>Commercial</td><td>Guadalupe · JP Pct <b>1</b><br><span class="chip">within $20,000</span></td><td>Aug 29</td><td class="unpaid"><span class="t">$7,000</span><span class="mo">Aug</span></td><td class="more">…</td></tr>
+          <tr class="sect over"><td colspan="7"><b>Guadalupe County · over $20,000, county or district court</b> <span class="muted">· 1 job</span><span class="tot">$38,625</span></td></tr>
+          <tr><td class="job"><b>1049 · Riverbend Retail — plumbing package</b><span class="a">2100 E Court St</span><span class="a">Seguin, TX 78155</span></td><td>Riverbend Retail Partners LP</td><td>Commercial</td><td>Guadalupe · JP Pct <b>4</b><br><span class="chip over">over $20,000 · county court</span></td><td>Jul 30</td><td class="unpaid"><span class="t">$38,625</span><span class="mo">Jun, Jul</span></td><td class="more">…</td></tr>
+          <tr class="sect"><td colspan="7"><b>Hays County · Justice Court, Precinct 2</b> <span class="muted">· 2 jobs</span><span class="tot">$18,450</span></td></tr>
+          <tr><td class="job"><b>1042 · Tenant finish-out — Suite 200</b><span class="a">200 Creekside Pkwy, Suite 200</span><span class="a">Kyle, TX 78640</span></td><td>Alvarado Holdings LLC</td><td>Commercial</td><td>Hays · JP Pct <b>2</b><br><span class="chip">within $20,000</span></td><td>Jul 18</td><td class="unpaid"><span class="t">$14,400</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="more">…</td></tr>
+          <tr><td class="job"><b>1071 · Stonebrook Court — water heaters</b><span class="a">41 Stonebrook Ct</span><span class="a">Kyle, TX 78640</span></td><td>Mara Ellison</td><td>Residential<br><span class="muted" style="font-size:10.5px">No homestead</span></td><td>Hays · JP Pct <b>2</b><br><span class="chip">within $20,000</span></td><td>Sep 9</td><td class="unpaid"><span class="t">$4,050</span><span class="mo">Sep</span></td><td class="more">…</td></tr>
+          <tr class="sect"><td colspan="7"><b>Hays County · justice precinct not named yet</b> <span class="muted">· 1 job</span><span class="tot">$6,200</span></td></tr>
+          <tr><td class="job"><b>1057 · Plum Creek Dental — rough-in</b><span class="a">18 Windy Hill Rd</span><span class="a">Buda, TX 78610</span></td><td>Plum Creek Dental Properties LLC</td><td>Commercial</td><td>Hays · JP Pct <span class="q">?</span><br><span class="chip">within $20,000</span></td><td>Aug 22</td><td class="unpaid"><span class="t">$6,200</span><span class="mo">Aug</span></td><td class="more">…</td></tr>
+          <tr class="sect"><td colspan="7"><b>Comal County · Justice Court, Precinct 3</b> <span class="muted">· 1 job</span><span class="tot">$9,800</span></td></tr>
+          <tr><td class="job"><b>1078 · Canyon Lake Marina — restrooms</b><span class="a">16 Marina Dr</span><span class="a">Canyon Lake, TX 78133</span></td><td>Lakeside Marina Holdings LLC</td><td>Commercial</td><td>Comal · JP Pct <b>3</b><br><span class="chip">within $20,000</span></td><td>Sep 2</td><td class="unpaid"><span class="t">$9,800</span><span class="mo">Aug, Sep</span></td><td class="more">…</td></tr>
+          <tr class="sect"><td colspan="7"><b>Comal County · Justice Court, Precinct 1 or 2 · on the line</b> <span class="muted">· 1 job</span><span class="tot">$6,000</span></td></tr>
+          <tr><td class="job"><b>1080 · Gruene Road duplex — repipe</b><span class="a">512 Gruene Rd</span><span class="a">New Braunfels, TX 78130</span></td><td>Dana Whitlock</td><td>Residential<br><span class="muted" style="font-size:10.5px">Homestead</span></td><td>Comal · JP Pct <b>1 or 2 — on the line</b><br><span class="chip">within $20,000</span></td><td>Aug 15</td><td class="unpaid"><span class="t">$6,000</span><span class="mo">Aug</span></td><td class="more">…</td></tr>
+          <tr class="sect"><td colspan="7"><b class="muted" style="font-style:italic;font-weight:600">County not on the record</b> <span class="muted">· 1 job</span><span class="tot">$3,850</span></td></tr>
+          <tr><td class="job"><b>1063 · Whitfield residence — repipe</b><span class="a">7 Willow Ct</span><span class="a">San Marcos, TX 78666</span></td><td>Sam Whitfield</td><td>Residential<br><span class="muted" style="font-size:10.5px">Homestead</span></td><td><span class="q">?</span> · JP Pct <span class="q">?</span><br><span class="chip">within $20,000</span></td><td>Sep 1</td><td class="unpaid"><span class="t">$3,850</span><span class="mo">Aug</span></td><td class="more">…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div></div>
+<ul class="notes">
+  <li><b>One rail, two ways to read it.</b> <i>GCs</i> stays as it is. <i>Courts</i> lists each county with its total, then its justice precincts in number order, each with its jobs and dollars. The counts follow <i>Due in 30 days</i> / <i>Upcoming</i>, so they foot with the grid.</li>
+  <li><b>Over the limit never sits under a precinct.</b> A justice court hears $20,000 or less, so a bigger job reads <i>Over $20,000 · county court</i> under its county, in red, the way its chip already does.</li>
+  <li><b>What the office still owes reads plainly.</b> <i>Precinct not named yet</i> and <i>County not on the record</i> say which jobs wait on the office's court map or the property record.</li>
+  <li><b>Every court at once reads in sections.</b> With <i>All courts</i>, the rows group under a band per court with its jobs and total, in the rail's order. A lawyer scans the whole book without a click.</li>
+</ul>
+
+<h2>2 · One court picked</h2>
+<div class="cap">After · Hays County, Precinct 2</div>
+<div class="pane"><div class="paper"><div class="card">
+  <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>
+      <div class="capP">Lien grid</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">Each job with money open and a lien month, from the office's records today: 2 jobs · $18,450 open · Hays County · Justice Court, Precinct 2</div>
+    </div>
+    <span class="btn">⎙ Print the grid</span>
+  </div>
+  <div class="lay">
+    <div class="rail">
+      <div class="lens"><span class="seg"><span>GCs</span><span class="on">Courts</span></span></div>
+      <div class="gc all"><span class="n">All courts</span><span class="c">8 jobs</span><span class="m">$89,925</span></div>
+      <div class="gc county"><span class="n">Guadalupe County</span><span class="c">2 jobs</span><span class="m">$45,625</span></div>
+      <div class="gc county"><span class="n">Hays County</span><span class="c">3 jobs</span><span class="m">$24,650</span></div>
+      <div class="gc court on"><span class="n">Precinct 2</span><span class="c">2 jobs</span><span class="m">$18,450</span></div>
+      <div class="gc court"><span class="n">Precinct not named yet</span><span class="c">1 job</span><span class="m">$6,200</span></div>
+      <div class="gc county"><span class="n">Comal County</span><span class="c">2 jobs</span><span class="m">$15,800</span></div>
+      <div class="faint" style="font-size:11.5px;padding:4px 10px">… the rest as above</div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="g">
+        <thead><tr><th>Job</th><th>Owner of record</th><th>Property</th><th>Court</th><th>Last on site</th><th>Amount due<span style="display:block;font-weight:500">For work in</span></th><th class="more">+ 6 columns</th></tr></thead>
+        <tbody>
+          <tr><td class="job"><b>1042 · Tenant finish-out — Suite 200</b><span class="a">200 Creekside Pkwy, Suite 200</span><span class="a">Kyle, TX 78640</span></td><td>Alvarado Holdings LLC</td><td>Commercial</td><td>Hays · JP Pct <b>2</b><br><span class="chip">within $20,000</span></td><td>Jul 18</td><td class="unpaid"><span class="t">$14,400</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="more">…</td></tr>
+          <tr><td class="job"><b>1071 · Stonebrook Court — water heaters</b><span class="a">41 Stonebrook Ct</span><span class="a">Kyle, TX 78640</span></td><td>Mara Ellison</td><td>Residential<br><span class="muted" style="font-size:10.5px">No homestead</span></td><td>Hays · JP Pct <b>2</b><br><span class="chip">within $20,000</span></td><td>Sep 9</td><td class="unpaid"><span class="t">$4,050</span><span class="mo">Sep</span></td><td class="more">…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div></div>
+<ul class="notes">
+  <li><b>A county is a choice too.</b> Pressing <i>Hays County</i> shows all three Hays jobs, banded by precinct, for a lawyer whose practice is the county.</li>
+  <li><b>The print follows the pick</b>: <i>Lien grid — Hays County · Justice Court, Precinct 2 · 2 jobs · $18,450 open</i>.</li>
+</ul>
+
+<h2>3 · On a phone</h2>
+<div class="cap">After · 375 px</div>
+<div class="pane"><div class="paper phone"><div class="card">
+  <div class="capP">Lien grid</div>
+  <div class="muted" style="font-size:12px;margin-top:2px">8 jobs · $89,925 open · every court</div>
+  <div style="margin-top:8px"><span class="seg"><span>GCs</span><span class="on">Courts</span></span></div>
+  <div class="rail2">
+    <span class="chipbtn on">All courts <b>$89,925</b></span>
+    <span class="chipbtn cty">Guadalupe <b>$45,625</b></span>
+    <span class="chipbtn">Guadalupe · Pct 1 <b>$7,000</b></span>
+    <span class="chipbtn" style="color:#b42318">Guadalupe · over $20,000 <b>$38,625</b></span>
+    <span class="chipbtn cty">Hays <b>$24,650</b></span>
+    <span class="chipbtn">Hays · Pct 2 <b>$18,450</b></span>
+    <span class="chipbtn">Hays · not named yet <b>$6,200</b></span>
+    <span class="faint" style="font-size:11.5px">…</span>
+  </div>
+  <div class="pband"><b>Guadalupe County · Justice Court, Precinct 1</b> · 1 job · $7,000</div>
+  <div class="pcard"><b>1066 · Cibolo Creek Clinic — gas line</b><div class="muted">900 Main St, Cibolo, TX 78108</div>
+    <div class="r"><span>Court</span><span>Guadalupe · JP Pct 1 · within $20,000</span></div>
+    <div class="r"><span>Amount due</span><span><b>$7,000</b> · Aug</span></div></div>
+  <div class="pband"><b style="color:#b42318">Guadalupe County · over $20,000, county or district court</b> · 1 job · $38,625</div>
+  <div class="pcard"><b>1049 · Riverbend Retail — plumbing package</b><div class="muted">2100 E Court St, Seguin, TX 78155</div>
+    <div class="r"><span>Amount due</span><span><b>$38,625</b> · Jun, Jul</span></div></div>
+</div></div></div>
+<ul class="notes">
+  <li><b>On a phone a chip carries its county</b>, since the county heading is not beside it: <i>Hays · Pct 2</i>. The bands become a line above each run of cards.</li>
+</ul>
+
+<h2>4 · The print</h2>
+<div class="cap">After · Print the grid, every court</div>
+<div class="pane"><div class="print">
+  <h3>Lien grid — every court, by court · 8 jobs · $89,925 open</h3>
+  <table>
+    <thead><tr><th>Job</th><th>Address</th><th>Owner of record</th><th>Kind · homestead</th><th>Last on site</th><th>Unpaid months · $</th><th>… 6 more</th></tr></thead>
+    <tbody>
+      <tr class="sect"><th colspan="7">Guadalupe County · Justice Court, Precinct 1 · 1 job · $7,000</th></tr>
+      <tr><td>1066 · Cibolo Creek Clinic — gas line</td><td>900 Main St, Cibolo, TX 78108</td><td>Cibolo Creek Medical LLC</td><td>Commercial</td><td>Aug 29</td><td>Aug · $7,000</td><td>…</td></tr>
+      <tr class="sect"><th colspan="7">Guadalupe County · over $20,000, county or district court · 1 job · $38,625</th></tr>
+      <tr><td>1049 · Riverbend Retail — plumbing package</td><td>2100 E Court St, Seguin, TX 78155</td><td>Riverbend Retail Partners LP</td><td>Commercial</td><td>Jul 30</td><td>Jun, Jul · $38,625</td><td>…</td></tr>
+      <tr class="sect"><th colspan="7">Hays County · Justice Court, Precinct 2 · 2 jobs · $18,450</th></tr>
+      <tr><td colspan="7" class="more">… and so on, in the rail's order</td></tr>
+    </tbody>
+  </table>
+</div></div>
+<ul class="notes">
+  <li><b>The printed grid has no Court column</b> (its twelve columns are the memo's), so the bands carry the court. The office's Lien desk prints exactly as today.</li>
+</ul>
+
+<h2>The plan · one PR</h2>
+<table class="plan">
+  <thead><tr><th>Piece</th><th>What ships</th><th>Where</th></tr></thead>
+  <tbody>
+    <tr><td>Kernel</td><td>A job's court from its county, precinct and balance: <i>Precinct N</i>, <i>on the line</i>, <i>not named yet</i>, <i>over $20,000</i>, or <i>county not on the record</i>, with the words for the rail, the band and the print. The court rail (All, each county by dollars, its courts in precinct order, then no county), the filter by county or court, and the sections in the rail's order. County names compare without "County" and without case.</td><td><code>src/lib/legal/legalLienGridView.ts</code> + tests</td></tr>
+    <tr><td>Screen</td><td><i>GCs · Courts</i> at the top of the rail. Switching clears the pick and the find box. The summary line and the print name the pick. With more than one court shown, a band opens each run of rows. A pick the view empties falls back to All courts, as a GC does.</td><td><code>LegalPortalLienGrid.tsx</code>, <code>src/index.css</code></td></tr>
+    <tr><td>Print</td><td><code>lienGridHtml</code> takes optional sections and draws a band before each. Without them it prints as today, which keeps the office's Lien desk print unchanged.</td><td><code>src/lib/jobs/lienTimelineBook.ts</code> + test</td></tr>
+    <tr><td>Words</td><td>The firm's guide gains a short section on reading the grid by court. Release note, fragment, the card's line.</td><td><code>share-your-attorney-their-portal.md</code></td></tr>
+  </tbody>
+</table>
+<p class="lede">Client only: no migration and no function. The grid already carries each job's county, precinct and balance (v2.4764 to v2.4790), so it is live when the client deploys.</p>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>First draft: a Court filter above the table.</b> Rejected. A select hides the counts and dollars, which is what the GC rail was built to show. The same rail, read by court, keeps one way of choosing.</li>
+  <li><b>First draft: every precinct under its county, the big jobs too.</b> Revised. A job over $20,000 cannot be filed in a justice court, so listing it under a precinct would mislead the very lawyer choosing by court. It gets its own red line per county.</li>
+  <li><b>First draft: filter only.</b> Revised. Clicking through seven courts to see the book is work. <i>All courts</i> now bands the rows by court with each band's total, and the print carries the same bands.</li>
+  <li><b>GC and court together?</b> Not now. One lens at a time keeps the rail short and the summary line honest. A lawyer choosing by court rarely needs the GC, and the GC rail is one press away.</li>
+  <li><b>Not done.</b> Each justice court's address, phone and filing fee: that needs a court directory the office keeps, and would make a good next step for the matter's <i>Where to file</i> too. Remembering a lawyer's last pick between visits.</li>
+</ul>
+
+</div></body>
+</html>

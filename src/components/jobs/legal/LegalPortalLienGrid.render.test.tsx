@@ -103,7 +103,7 @@ describe('LegalPortalLienGrid', () => {
     vi.mocked(openHtmlPrintWindow).mockClear()
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     const rail = within(screen.getByRole('navigation', { name: 'GCs' }))
-    const names = rail.getAllByRole('button').map((b) => b.textContent)
+    const names = rail.getAllByRole('button').filter((b) => b.hasAttribute('data-legal-lien-gc')).map((b) => b.textContent)
     expect(names).toEqual(['All GCs3 jobs$24,180', 'Lenox1 job$17,585', 'EPC Sparti1 job$4,800', 'No GC · with the owner1 job$1,795'])
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
     expect(rail.queryByLabelText('Find a GC')).toBeNull()
@@ -129,5 +129,54 @@ describe('LegalPortalLienGrid', () => {
     expect(rail.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText('273 · Dudley (Lennox)')).toBeTruthy()
     expect(screen.queryByText(/Nothing on the grid/)).toBeNull()
+  })
+  it('the rail reads by court: counties by their dollars, the justice precincts under them, over the limit apart, bands when more than one court shows, and the print follows (v2.4825)', async () => {
+    const { openHtmlPrintWindow } = await import('../../../lib/jobsDocuments/printWindow')
+    vi.mocked(openHtmlPrintWindow).mockClear()
+    const address = (id: string, county: string, jp_precinct: string) => ({ id, customer_id: 'cust-1', address: '', county, jp_precinct, jp_precinct_note: '' }) as unknown as LienBookRaw['addresses'][number]
+    const courts: LienBookRaw = {
+      ...raw,
+      jobs: raw.jobs.map((j) => (j.id === 'job-273' ? { ...j, customer_address_id: 'addr-273' } : j.id === 'job-300' ? { ...j, customer_address_id: 'addr-300', revenue: 24_800 } : j)),
+      addresses: [address('addr-273', 'Hays', '2'), address('addr-300', 'Bexar County', '')],
+    }
+    const { container } = render(<LegalPortalLienGrid raw={courts} todayYmd={TODAY} companyName="Click" initialShow="all" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Courts' }))
+    const rail = within(screen.getByRole('navigation', { name: 'Courts' }))
+    const entries = () => [...container.querySelectorAll('[data-legal-lien-court]')] as HTMLButtonElement[]
+    expect(entries().map((b) => [b.getAttribute('data-legal-lien-court'), b.querySelector('.legalLienCourtFull')?.textContent, b.querySelector('.legalLienGcOpen')?.textContent])).toEqual([
+      ['all', 'All courts', '$44,180'],
+      ['county', 'Bexar County', '$24,800'],
+      ['court', 'Over $20,000 · county court', '$24,800'],
+      ['county', 'Hays County', '$17,585'],
+      ['court', 'Precinct 2', '$17,585'],
+      ['none', 'County not on the record', '$1,795'],
+    ])
+    expect(entries()[1]!.querySelector('.legalLienCourtShort')?.textContent).toBe('Bexar')
+    // Every court: a band opens each court's run, in the rail's order.
+    const bands = () => [...container.querySelectorAll('tr[data-legal-lien-band]')].map((tr) => tr.querySelector('b')?.textContent)
+    expect(bands()).toEqual(['Bexar County · over $20,000, county or district court', 'Hays County · Justice Court, Precinct 2', 'County not on the record'])
+    expect(container.querySelector('[data-legal-lien-summary]')?.textContent).toMatch(/3 jobs · \$44,180 open · every court$/)
+    expect(container.querySelector('tr[data-legal-lien-band="precinct"]')?.textContent).toBe('Hays County · Justice Court, Precinct 2 · 1 job · $17,585')
+    fireEvent.click(screen.getByRole('button', { name: /Print the grid/ }))
+    const all = String(vi.mocked(openHtmlPrintWindow).mock.calls[0]?.[0])
+    expect(all).toContain('Lien grid — every court')
+    expect(all.match(/<tr class="sect">/g)).toHaveLength(3)
+    expect(all).toContain('Hays County · Justice Court, Precinct 2 · 1 job · $17,585')
+    // One court: its rows only, no band, and the print says which court.
+    fireEvent.click(entries().find((b) => b.querySelector('.legalLienCourtFull')?.textContent === 'Precinct 2')!)
+    expect(screen.getByText('273 · Dudley (Lennox)')).toBeTruthy()
+    expect(screen.queryByText('300 · Reliant Health')).toBeNull()
+    expect(bands()).toEqual([])
+    expect(container.querySelector('[data-legal-lien-summary]')?.textContent).toMatch(/1 job · \$17,585 open · Hays County · Justice Court, Precinct 2$/)
+    fireEvent.click(screen.getByRole('button', { name: /Print the grid/ }))
+    const one = String(vi.mocked(openHtmlPrintWindow).mock.calls[1]?.[0])
+    expect(one).toContain('Lien grid — Hays County · Justice Court, Precinct 2')
+    expect(one).not.toContain('class="sect"')
+    // Back to the GCs: the pick clears and the whole view returns.
+    fireEvent.click(rail.getByRole('button', { name: 'GCs' }))
+    const gcs = within(screen.getByRole('navigation', { name: 'GCs' }))
+    expect(gcs.getByRole('button', { name: /All GCs/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('300 · Reliant Health')).toBeTruthy()
+    expect(bands()).toEqual([])
   })
 })
