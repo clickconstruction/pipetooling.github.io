@@ -5161,6 +5161,12 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalNarrative th, .legalNarrative td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
 .legalNarrative th { background: var(--surface-muted, transparent); }
 .legalNarrative a { color: #b0662f; }
+/* Start here and the tour (v2.4820): the rail wraps on a phone; the ring marks what a tour stop means;
+   the strip docks at the bottom, full width on a phone. Colors come inline from portalTheme. */
+.legalStartRail { display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px; }
+.legalTourRing { outline: 2px solid #b0662f; outline-offset: 3px; border-radius: 6px; box-shadow: 0 0 0 6px rgba(176, 102, 47, 0.14); scroll-margin: 90px 0 160px; }
+.legalTourStrip { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(680px, calc(100vw - 24px)); z-index: 50; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 14px; border-radius: 8px; box-shadow: 0 10px 28px rgba(22, 40, 60, 0.2); }
+.legalPortalPage--touring { padding-bottom: 150px !important; }
 /* Reach the office (v2.4755): one line under the letterhead; a column on a phone. Colors inline from portalTheme. */
 .legalReachStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; margin: 12px 0 0; border-radius: 6px; font-size: 12.5px; }
 .legalReachWho { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
@@ -5187,6 +5193,9 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalMatterHeadSums > * { text-align: left !important; }
   .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .legalReachStrip { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .legalStartRailBar { display: none; }
+  .legalTourStrip { left: 0; transform: none; bottom: 0; width: 100%; border-radius: 10px 10px 0 0; grid-template-columns: minmax(0, 1fr); padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .legalPortalPage--touring { padding-bottom: 190px !important; }
   .legalReachWho { white-space: normal; flex-wrap: wrap; }
   .legalReachAny { margin-left: 0; }
   .legalReachSep { display: none; }
