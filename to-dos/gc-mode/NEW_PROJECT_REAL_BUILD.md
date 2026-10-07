@@ -357,3 +357,21 @@ the jobs Shared Drive, Plans reads *anyone* (the Shared Drive allowed the anyone
 share, the question the plan asked), and a link the service account cannot see says so with the
 words to fix it. Still to come from step 5: the plans window opening the link, `plan-fetch`
 probing the set's PDFs, and the check on issuing a new set, which land with step 6.
+
+Amended 2026-10-06, night: 4b-second merged as v2.4752 (#4770) and step 5 is #4776 in the queue.
+Step 6 is cut in two. 6a, `gc_issue_plan_set` and the line-reach kernel `src/lib/gc/lineReach.ts`,
+merged as v2.4757 (clickconstruction/pipetooling.github.io#4774, migration
+`20261007090000_gc_issue_plan_set`, applied; types in #4784). 6b, the new-plans window on real data
+(`GcNewPlans.tsx`, the draft kernel `planSetDraft.ts`, the Drive check before the issue, the guide
+`issue-a-new-set-of-plans`), is v2.4758 on `claude/gc-real-build-pr6b-new-plans`, stacked behind
+the types PR. Step 9, the plans window on real data (`planSetReads.ts` folds a set's sheets and
+specs from the set items; `GcPlansWindow.tsx` opens the Drive link, no stand-in drawings; guide
+`read-the-plans-of-a-gc-project`), is v2.4763 on the same stack. Step 8 is cut in two: 8a,
+v2.4765, is the record behind the window (migration `20261007100000_gc_plan_questions_rpcs`:
+`asked_by_name`, `gc_record_question`, `gc_answer_question`, the closing day, and
+`gc_issue_plan_set` carrying the answers in a set; the kernel `questions.ts`); 8b, v2.4767, is the
+questions window (`GcQuestions.tsx`), the edge function `gc-plan-question-email` (Reply-To the PM)
+and the guide `ask-the-architect-about-the-plans`. The stack merges in the order 6b, 9, 8a (then its
+migration and types), 8b. Step 7, the set email, waits on the company record (no lane has built it).
+The plan's checks on prod (a permit set on the test project taking S-101 out; a question emailed to
+a test architect) run as each lands.
