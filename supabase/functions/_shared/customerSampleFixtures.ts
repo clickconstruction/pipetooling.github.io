@@ -766,6 +766,8 @@ export function sampleLegalPortalResponse(company: SamplePortalCompany, todayYmd
       w9: 'on request from the office',
     },
     // Who the firm calls (v2.4755): sample people on the letterhead's number, and a sample controller.
+    // Start here's answers (v2.4821): the sample shows the step; the sample portal saves nothing.
+    intake: { answers: {}, sentAt: null, sentBy: '' },
     officeContacts: { phone: company.phone, assistants: ['Robin Ortega', 'Dana Whitlock'], controllers: [{ name: 'Morgan Ellis', phone: '(512) 555-0142' }] },
     recipients: SAMPLE_FIRM.recipients.map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: 1, digestTime: '08:00', confirmed: r.confirmed, paused: false, addedViaPortal: false })),
     firmPaused: false,

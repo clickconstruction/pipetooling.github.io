@@ -26,7 +26,8 @@ import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
 import { FIRM_TAB_LABELS, FIRM_TABS, portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 import LegalPortalStartHere from '../components/jobs/legal/LegalPortalStartHere'
 import LegalPortalTour from '../components/jobs/legal/LegalPortalTour'
-import { companyLines, companyShortName, markStartSeen, matterLines, portalStepLines, portalTourStops, readStartSeen, rulesLinkWords, startBookRows, workLines } from '../lib/legal/legalPortalStart'
+import LegalPortalIntakeForm from '../components/jobs/legal/LegalPortalIntakeForm'
+import { companyLines, companyShortName, intakeNudgeWords, markStartSeen, matterLines, portalStepLines, portalTourStops, readStartSeen, rulesLinkWords, startBookRows, startStops, workLines, type StartStop } from '../lib/legal/legalPortalStart'
 
 /** The Texas lien rules, drawn on the portal (v2.4820): loaded only when the firm opens them. */
 const LegalPortalRulesSheet = lazy(() => import('../components/jobs/legal/LegalPortalRulesSheet'))
@@ -74,6 +75,8 @@ export default function LegalPortal() {
   /** The tour's stop, or null when it is not running (v2.4820). */
   const [tourAt, setTourAt] = useState<number | null>(null)
   const [rulesOpen, setRulesOpen] = useState(false)
+  /** The step Start here opens at (v2.4821): the Matters nudge opens the answers. */
+  const [startAt, setStartAt] = useState<StartStop>('company')
   const [reloadTick, setReloadTick] = useState(0)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -291,7 +294,7 @@ export default function LegalPortal() {
         {payload ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
             {(payload.lienBook ? (['start', 'matters', 'grid', 'notifications'] as const) : (['start', 'matters', 'notifications'] as const)).map((p) => (
-              <button key={p} type="button" onClick={() => setPanel(p)} data-legal-panel-tab={p} style={{ font: 'inherit', background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', fontSize: 13 }}>
+              <button key={p} type="button" onClick={() => { if (p === 'start') setStartAt('company'); setPanel(p) }} data-legal-panel-tab={p} style={{ font: 'inherit', background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', fontSize: 13 }}>
                 {p === 'start' ? 'Start here' : p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
               </button>
             ))}
@@ -299,6 +302,22 @@ export default function LegalPortal() {
         ) : null}
         {payload && panel === 'start' ? (
           <LegalPortalStartHere
+            key={startAt}
+            stops={startStops(Boolean(payload.intake))}
+            initialStop={startAt}
+            answers={payload.intake ? (
+              <LegalPortalIntakeForm
+                short={short}
+                intake={payload.intake}
+                recipients={payload.recipients}
+                recordedById={recordedById}
+                busy={busy}
+                notice={notice}
+                onSend={(answers, by) => act({ kind: 'intake', answers, by })}
+                onOpenRules={() => setRulesOpen(true)}
+                onOpenNotifications={() => setPanel('notifications')}
+              />
+            ) : undefined}
             short={short}
             companyName={payload.company.name}
             companyLines={companyLines({ rows: bookRows, matterCount: payload.matters.length, matterBalance })}
@@ -318,6 +337,13 @@ export default function LegalPortal() {
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
+
+        {payload && panel === 'matters' && payload.intake && !payload.intake.sentAt ? (
+          <div data-legal-intake-nudge style={{ fontSize: 12.5, color: MUTED, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 12 }}>
+            {intakeNudgeWords(short)}{' '}
+            <button type="button" onClick={() => { setStartAt('answers'); setPanel('start') }} style={{ background: 'none', border: 'none', padding: 0, color: COPPER, fontWeight: 600, cursor: 'pointer', font: 'inherit' }}>Answer them on Start here ›</button>
+          </div>
+        ) : null}
 
         {payload && panel === 'matters' && payload.matters.length === 0 ? (
           <div data-legal-tour="matters" style={{ ...card, textAlign: 'center', padding: 40 }}><b>No matters yet.</b><br /><span style={{ color: MUTED }}>Accounts appear here the moment the office marks them attorney-ready.</span></div>

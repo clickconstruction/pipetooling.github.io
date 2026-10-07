@@ -12,6 +12,8 @@ import {
   startStepWords,
   startStopLabel,
   START_STOPS,
+  startStops,
+  intakeNudgeWords,
   tourStepWords,
   workLines,
   type StartBookRow,
@@ -45,7 +47,9 @@ describe('Start here (v2.4820)', () => {
     expect(companyShortName('Click Plumbing and Electrical')).toBe('Click')
     expect(companyShortName('The Pipe Co')).toBe('The office')
     expect(companyShortName('  ')).toBe('The office')
-    expect(START_STOPS.map((s) => startStopLabel(s, 'Click'))).toEqual(['Click', 'Each matter', 'How we work', 'The portal'])
+    expect(START_STOPS.map((s) => startStopLabel(s, 'Click'))).toEqual(['Click', 'Each matter', 'How we work', 'Your answers', 'The portal'])
+    expect(startStops(false)).toEqual(['company', 'matter', 'work', 'portal'])
+    expect(startStops(true)).toEqual(['company', 'matter', 'work', 'answers', 'portal'])
     expect(startStepWords(1, 4)).toBe('Step 2 of 4')
   })
 
@@ -97,6 +101,7 @@ describe('Start here (v2.4820)', () => {
       ...matterLines('Click'),
       ...workLines({ short: 'Click', contingencyPct: 33, filingCost: 350 }),
       rulesLinkWords('Click'),
+      intakeNudgeWords('Click'),
       ...portalStepLines(9),
       ...portalTourStops({ short: 'Click', hasMatters: true, hasGrid: true, matterTabs: [{ key: 'narrative', label: 'Narrative' }, ...TABS] }).map((s) => s.text),
       ...portalTourStops({ short: 'Click', hasMatters: false, hasGrid: true, matterTabs: TABS }).map((s) => s.text),

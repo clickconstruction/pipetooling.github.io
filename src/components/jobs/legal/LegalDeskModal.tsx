@@ -53,6 +53,7 @@ import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_sh
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
 import LegalPortalLinkButton from './LegalPortalLinkButton'
 import LegalFirmWindow from './LegalFirmWindow'
+import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 
@@ -571,8 +572,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ ...MUTED, fontSize: '0.78rem' }}>
               Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down.{' '}
               {stored ? (
-                <button type="button" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_CHIP : FIRM_CHIP_NONE}>
-                  {firm ? <>⚖ {firm.name} <span aria-hidden>✎</span></> : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
+                <button type="button" onClick={() => setFirmOpen(true)} data-legal-firm-door={firm ? 'firm' : 'none'} aria-label={firm ? `The collections law firm: ${firm.name}${legalIntakeUnseen(firm) ? ', new answers from the firm' : ''}` : 'Set up the collections law firm'} title={firm ? 'The firm: its details, its fee model and our particulars for filing' : 'No collections law firm is set up yet'} style={firm ? FIRM_CHIP : FIRM_CHIP_NONE}>
+                  {firm ? <>⚖ {firm.name} <span aria-hidden>✎</span>{legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#b0662f', display: 'inline-block' }} /> : null}</> : canEditFirm ? 'No firm yet · Set up the firm…' : 'No firm yet'}
                 </button>
               ) : null}
             </div>

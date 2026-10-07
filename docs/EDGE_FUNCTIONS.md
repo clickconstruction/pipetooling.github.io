@@ -1704,6 +1704,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
 
+> **v2.4821 — the firm's answers to Start here**: the answer adds `intake: { answers, sentAt, sentBy }`, read from `legal_firms` in a query of its own after the firm row, so the payload never fails before migration `20261008001000` lands: until then `intake` is left out and the portal hides the step. **Redeploy after the push.**
+
 > **v2.4812 — the narrative**: each matter carries `narrative: { markdown, updatedOn, updatedByName } | null`, read from `legal_matters.narrative_md` in a separate query that tolerates the columns' absence before migration `20261007234000` ([`_shared/legalNarrative.ts`](../supabase/functions/_shared/legalNarrative.ts); `shapeMatterForCounsel` cuts it to those keys). The page renders it through the app's sanitizer. **Redeploy required.**
 > **v2.4810 — documents from the office**: each matter carries `documents[]` (`id, title, shows, mime, sizeBytes, addedOn, addedByName, url`) and `heldDocumentCount`, from `legal_matter_documents` (live rows; a held one only counts), each `url` a 15-minute signed link from the private `legal-matter-documents` bucket ([`_shared/legalMatterDocuments.ts`](../supabase/functions/_shared/legalMatterDocuments.ts); `shapeMatterForCounsel` cuts each to those keys, never the storage path or a hold reason). Until migration `20261007230000` is pushed the read fails quietly and the list is empty. **Redeploy required.**
 
@@ -1755,6 +1757,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3512 (What customers see PR 6):** the sample token answers from `sampleLegalPortalResponse` — the sample firm's empty portal (recipients, particulars, no matters) — before the link lookup and the view row; a real matter never reaches it.
 
 ### submit-legal-portal
+
+> **v2.4821 — the firm's answers to Start here**: kind `intake` with `{ answers, by }` writes the firm's own row once (`legal_firms.intake`, shaped by [`_shared/legalFirmIntake.ts`](../supabase/functions/_shared/legalFirmIntake.ts); `intake_sent_at`; `intake_sent_by`, required, ≤ 120). No matter, no entry, no rate limit beyond the guess gate: a send replaces the last. **Redeploy after migration `20261008001000` is pushed.**
 
 > **v2.4756 — the guess gate**: the same gate as `legal-portal` around `resolveLink`: 429 for a locked caller before the lookup, a miss noted after. **Redeploy required.**
 

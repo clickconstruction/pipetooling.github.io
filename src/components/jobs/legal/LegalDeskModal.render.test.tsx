@@ -7,7 +7,7 @@
  * math lives in src/lib/legal/legalPacket.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, cleanup } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import LegalDeskModal from './LegalDeskModal'
 
@@ -165,6 +165,19 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Apply discount' })).toBeTruthy()
     expect(desk()).toBeTruthy()
+  })
+
+  it('the firm’s door wears a dot while the firm’s answers to Start here are unread (v2.4821)', async () => {
+    const withAnswers = { ...firm, intake: { needs: 'The W-9.' }, intake_sent_at: '2026-10-07T15:00:00Z', intake_sent_by: 'Ann Sample', intake_seen_at: null }
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={vi.fn()} legal={{ ...legal, firm: withAnswers, firms: [withAnswers] }} canMarkReady canEditReview />)
+    await settle()
+    const door = screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt, new answers from the firm' })
+    expect(door.querySelector('[data-legal-firm-intake-new]')).not.toBeNull()
+    cleanup()
+    const read = { ...withAnswers, intake_seen_at: '2026-10-07T16:00:00Z' }
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} onClose={vi.fn()} legal={{ ...legal, firm: read, firms: [read] }} canMarkReady canEditReview />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }).querySelector('[data-legal-firm-intake-new]')).toBeNull()
   })
 
   it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {
