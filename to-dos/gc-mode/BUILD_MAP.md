@@ -127,7 +127,7 @@ sitting and a lane without can ship several.
 From `HANDOFF.md` section 1: Quo (call 4); the roughly thirty unconfirmed defaults (call 5) and the
 lanes' timings (6, 7, 8), each a constant and changed freely; the Spanish read (9); the two portal
 ideas not picked (10); the schedule's ten decisions (11), taken as defaults while Helper 1 drives.
-Each lane's plan adds its own short list, and the lead brings them in one message.
+The schedule.s PR 1b adds one: the GC entity.s name and short name (`src/lib/gc/company.ts` carries the prototype.s "Click Construction" until the owner names it; the Pipeline.s `GC_STATEMENT_COMPANY_NAME` is the plumbing company, not this). Each lane's plan adds its own short list, and the lead brings them in one message.
 
 ## Status
 
