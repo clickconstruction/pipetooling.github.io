@@ -229,6 +229,7 @@ describe('LegalPortal — the sample matter', () => {
 
   it('folds every matter table into cards on a narrow box: each cell names its column, the first leads, money is bold, an empty cell drops (v2.4808)', async () => {
     await openSample()
+    fireEvent.click(screen.getByRole('button', { name: 'Account' })) // the sample opens on its Narrative (v2.4812)
     const tables = [...document.querySelectorAll('table.legalCardTable')] as HTMLTableElement[]
     expect(tables.length).toBeGreaterThanOrEqual(3)
     for (const t of tables) {

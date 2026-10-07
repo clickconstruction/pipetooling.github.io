@@ -77,6 +77,7 @@ function NarrativeRendered({ markdown, updatedOn, updatedByName }: { markdown: s
   return (
     <div data-theme="light" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
       <p style={{ ...MUTED, fontSize: '0.78rem', margin: '0 0 8px' }}>{legalNarrativeBandWords({ updatedOn, updatedByName })}</p>
+      {/* eslint-disable-next-line react/no-danger -- legalNarrativeHtml: marked, then the allowlist sanitizer (no scripts, styles, forms or handlers; http(s) links only), tested */}
       <div className="legalNarrative" style={{ fontSize: '0.86rem' }} dangerouslySetInnerHTML={{ __html: legalNarrativeHtml(markdown) }} />
     </div>
   )

@@ -160,6 +160,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
     return (
       <div data-legal-firm-narrative>
         <p style={{ fontSize: 12.5, color: MUTED, background: NOTE_BAND, padding: '6px 10px', borderRadius: 4, margin: '4px 0 10px' }}>{legalNarrativeBandWords(matter.narrative)}</p>
+        {/* eslint-disable-next-line react/no-danger -- legalNarrativeHtml: marked, then the allowlist sanitizer (no scripts, styles, forms or handlers; http(s) links only), tested */}
         <div className="legalNarrative" style={{ fontSize: 13.5, color: INK }} dangerouslySetInnerHTML={{ __html: legalNarrativeHtml(matter.narrative.markdown) }} />
       </div>
     )
@@ -366,7 +367,7 @@ function FirmDocuments({ documents, held }: { documents: ReadonlyArray<LegalPort
       <PortalTable
         head={['Document', 'What it shows', 'Added', '']}
         rows={documents.map((d) => [
-          <span key="t"><b>{d.title}</b><div style={{ fontSize: 11.5, color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
+          <span key="t"><b>{d.title}</b><div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
           d.shows,
           <span key="a" style={{ color: MUTED, whiteSpace: 'nowrap' }}>{[d.addedByName, d.addedOn].filter(Boolean).join(' · ')}</span>,
           d.url ? <a key="o" href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: COPPER, fontWeight: 600, whiteSpace: 'nowrap' }}>Open ↗</a> : <span key="o" style={{ color: FAINT, whiteSpace: 'nowrap' }}>on the firm's link</span>,
