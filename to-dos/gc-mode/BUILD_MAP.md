@@ -103,9 +103,14 @@ sitting and a lane without can ship several.
   lead pushes the migration, regenerates the types and deploys the function. New RPC names error
   in `npm run typecheck` until the types PR lands; that is expected, and the next PR on the stack
   waits for it.
-- **A kernel moves, it does not fork.** Lift a kernel from `src/lib/gcMode/` to `src/lib/gc/` with
-  its test unchanged, and the prototype imports it back (PR 1's pattern). The golden test on the
-  spike keeps passing without `-u`.
+- **A kernel moves, it does not fork.** Lift a kernel from `src/lib/gcMode/` to `src/lib/gc/`
+  function by function, word for word (the schedule's PR 1a found that moving files whole drags
+  every lane along: 71 modules), each helper under its own lane's file so that lane's lift extends
+  it; the prototype deletes what moved and re-exports it (PR 1's pattern). A test that reads only
+  the kernel moves with it unchanged; a test that plays the prototype's reducer stays on the spike
+  until its presses land, and main gets direct tests for what moved. The golden test on the spike
+  keeps passing without `-u`. The equality script from PR 1a shows each moved declaration equals
+  the spike's.
 - **Reuse, never a second system.** The table in `README.md` → *Where it plugs into the app that
   exists* names the customer record, the sub portal, `step_commitments`, the master agreement, the
   supply-house compare, the promise events, the waiver train, the Bid Board's map, the AIA
