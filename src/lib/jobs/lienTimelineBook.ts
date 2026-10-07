@@ -28,6 +28,9 @@ export interface LienBookJob {
   propertyKind: string
   homestead: boolean
   county: string
+  /** The justice precinct from the property record (v2.4771), '' until the office's court map names it; the note says *2 or 3 — on the line*. */
+  precinct?: string
+  precinctNote?: string
   /** The owner of record as the desk resolves it — the override on the job, else the property record. '' when none. */
   ownerName: string
   openBalance: number

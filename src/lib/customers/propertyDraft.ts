@@ -22,6 +22,10 @@ export type PropertyDraftPayload = {
   parcel_tax_year: string
   parcel_looked_up_at: string | null
   updated_at: string
+  /** Present only when the draft carries the precinct (v2.4771): a typed value is `hand` and clears the on-the-line note; an empty value clears all three. */
+  jp_precinct?: string
+  jp_precinct_source?: string
+  jp_precinct_note?: string
 }
 
 /**
@@ -46,7 +50,17 @@ export function payloadFromDraft(d: PropertyDraft, now: Date = new Date()): Prop
     parcel_tax_year: d.parcel_tax_year.trim(),
     parcel_looked_up_at: d.parcel_looked_up_at.trim() || null,
     updated_at: now.toISOString(),
+    ...precinctPayload(d),
   }
+}
+
+/** The precinct columns when the draft carries them: hand wins and clears the note; a map value passes through untouched. */
+function precinctPayload(d: PropertyDraft): Pick<PropertyDraftPayload, 'jp_precinct' | 'jp_precinct_source' | 'jp_precinct_note'> | Record<string, never> {
+  if (d.jp_precinct === undefined) return {}
+  const v = d.jp_precinct.trim()
+  if (!v) return { jp_precinct: '', jp_precinct_source: '', jp_precinct_note: '' }
+  const source = d.jp_precinct_source === 'map' ? 'map' : 'hand'
+  return source === 'hand' ? { jp_precinct: v, jp_precinct_source: 'hand', jp_precinct_note: '' } : { jp_precinct: v, jp_precinct_source: 'map' }
 }
 
 export function emptyPropertyDraft(address = ''): PropertyDraft {
@@ -66,6 +80,8 @@ export function emptyPropertyDraft(address = ''): PropertyDraft {
     parcel_source: '',
     parcel_tax_year: '',
     parcel_looked_up_at: '',
+    jp_precinct: '',
+    jp_precinct_source: '',
   }
 }
 
@@ -88,5 +104,13 @@ export function draftFromRow(a: CustomerAddressRow): PropertyDraft {
     parcel_source: a.parcel_source ?? '',
     parcel_tax_year: a.parcel_tax_year ?? '',
     parcel_looked_up_at: a.parcel_looked_up_at ?? '',
+    jp_precinct: ((a as { jp_precinct?: string | null }).jp_precinct ?? '').trim(),
+    jp_precinct_source: ((a as { jp_precinct_source?: string | null }).jp_precinct_source ?? '').trim(),
   }
+}
+
+/** What the record says beside its precinct: where it came from. */
+export function precinctSourceWords(d: Pick<PropertyDraft, 'jp_precinct' | 'jp_precinct_source'>): string {
+  if (!(d.jp_precinct ?? '').trim()) return "not yet — the office's court map fills it in nightly, or type it from the county's map"
+  return d.jp_precinct_source === 'map' ? "from the office's court map · type over it to settle it by hand" : 'typed by hand · the map never changes it'
 }

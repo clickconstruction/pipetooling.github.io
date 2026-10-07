@@ -31,6 +31,14 @@ describe('CourtAreasPanel (v2.4769)', () => {
     expect(onRemove).toHaveBeenCalledTimes(1)
   })
 
+  it('Classify now runs the night’s job by hand and shows what it said (v2.4770)', () => {
+    const onClassify = vi.fn()
+    render(<CourtAreasPanel areas={[area('a', 'Guadalupe', '2')]} coverage={{ placed: 1, outside: 0, onLine: 0, outsideLabels: [], onLineLabels: [] }} pending={false} busy={false} error={null} onSave={() => {}} onCancelPending={() => {}} onRename={() => {}} onRemove={() => {}} onFocus={() => {}} onClassify={onClassify} classifyWords="40 placed · 6 outside · 2 on a line · 0 with no point · 3 records written" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Classify now' }))
+    expect(onClassify).toHaveBeenCalledTimes(1)
+    expect(document.querySelector('[data-court-classify-words]')!.textContent).toContain('3 records written')
+  })
+
   it('with nothing drawn it says so, and a rename goes out with the new words', () => {
     const onRename = vi.fn()
     render(<CourtAreasPanel areas={[area('a', 'Guadalupe', '2')]} coverage={{ placed: 0, outside: 0, onLine: 0, outsideLabels: [], onLineLabels: [] }} pending={false} busy={false} error="Could not save." onSave={() => {}} onCancelPending={() => {}} onRename={onRename} onRemove={() => {}} onFocus={() => {}} />)

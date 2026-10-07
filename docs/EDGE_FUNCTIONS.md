@@ -149,6 +149,7 @@ when_to_read:
    - [property-lookup](#property-lookup)
    - [lien-pay-offer](#lien-pay-offer)
    - [owner-confirm-nightly](#owner-confirm-nightly)
+   - [court-precinct-nightly](#court-precinct-nightly)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -1688,6 +1689,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
 
+> **v2.4771 — the precinct**: the lien book's and the matter's address columns (`LIEN_BOOK_ADDRESS_COLUMNS`, [`_shared/legalLienBookShape.ts`](../supabase/functions/_shared/legalLienBookShape.ts)) add `jp_precinct` and `jp_precinct_note` from the office's court map (migration `20261007110000`). **Redeploy after that migration is pushed** — before it the select names a column that does not exist.
+
 > **v2.4756 — the guess gate**: the firm's address is short on purpose (`<name the office picks>-<3 characters>`), so before any key lookup the function asks `legal_portal_guess_gate(ip, false)` ([`_shared/legalPortalGuessGate.ts`](../supabase/functions/_shared/legalPortalGuessGate.ts); the caller's IP from `clientIpFromEdgeRequest`) and answers 429 `GUESS_LOCKED_MSG` to a caller with ten misses in the hour; a miss (no link, or revoked) calls the gate with `true`. The probe counts too. A right key is never refused; the office's preview by firm id never asks the gate. The gate's RPC missing (before the push) reads as not locked. **Redeploy required.**
 > **v2.4755 — who the firm calls**: the payload adds `officeContacts: { phone, assistants: string[], controllers: [{ name, phone }] }` — the letterhead's number (`PORTAL_COMPANY.phone`) and the real, unarchived `users` in the `assistant` and `controller` roles (`name, phone, role`), shaped by [`_shared/legalOfficeContacts.ts`](../supabase/functions/_shared/legalOfficeContacts.ts). The page draws the strip under the letterhead and the print's two lines from it; an older payload reads as the letterhead's number alone. **Redeploy required.**
 
@@ -2233,6 +2236,14 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`); the row's `stripe_mode` picks the key.
 
 **Implementation**: [`supabase/functions/lien-pay-offer/index.ts`](../supabase/functions/lien-pay-offer/index.ts); the pure part — the cents, the state of a bill's offer, what the page reads, the write-down, which credits expire — in [`_shared/lienPayOffer.ts`](../supabase/functions/_shared/lienPayOffer.ts), re-exported by [`src/lib/jobs/lienPayOfferShared.ts`](../src/lib/jobs/lienPayOfferShared.ts) and tested from `src/lib/jobs/lienPayOfferShared.test.ts`; the desk's call in [`src/lib/jobs/lienDeskRunIo.ts`](../src/lib/jobs/lienDeskRunIo.ts). **Deploy**: `supabase functions deploy lien-pay-offer`.
+
+### court-precinct-nightly
+
+> **v2.4778 — a record with no county takes the area's**: when the point falls in an area and the record's `county` is blank, the write adds `county` and `county_source = 'map'` (migration `20261007140000` admits the value). **Redeploy after the push.**
+
+**Purpose** (v2.4770, which court, step 4): put every property record (`customer_addresses`) in its justice precinct from the office's own court map (`court_areas`, migration `20261007110000`), using the point the geocode cache (`address_geocodes`) already holds for its address. One rule with the Map page: [`_shared/courtAreasClassify.ts`](../supabase/functions/_shared/courtAreasClassify.ts) over the dependency-free geometry in [`_shared/courtGeometry.ts`](../supabase/functions/_shared/courtGeometry.ts). A record typed by hand (`jp_precinct_source = 'hand'`) is never touched; every other record with a point is classified against the active areas of its own county and written only when the precinct or the on-the-line note changed (`jp_precinct`, `jp_precinct_note`, `jp_precinct_source = 'map'`, `jp_precinct_at`). Outside every area clears the precinct; no point in the cache is skipped (owner-confirm-nightly and the Map page fill the cache). Reads up to 5,000 records, 200 at a time.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `court-precinct-nightly`, 06:20 UTC, migration `20261007120000`), or a signed-in office user — the function checks `is_office_staff()` under the caller's JWT, which is how the Map page's **Classify now** calls it (`supabase.functions.invoke`). `verify_jwt = false` in `config.toml`. **Body**: `{ dry_run?: boolean }`. **Answer**: `{ ok, dryRun, areas, rows, placed, outside, onLine, noPoint, written }`. **Deploy**: `supabase functions deploy court-precinct-nightly` after the two migrations are pushed.
 
 ### owner-confirm-nightly
 

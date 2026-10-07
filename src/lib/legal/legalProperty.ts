@@ -28,6 +28,9 @@ export type LegalPropertyLine = {
   key: string
   address: string
   county: string
+  /** The justice precinct on the record (v2.4771), '' until the court map names it; the note when it sits on a line. */
+  precinct: string
+  precinctNote: string
   owner: string
   legalDescription: string
   parcelId: string
@@ -82,6 +85,8 @@ export function resolveLegalJobProperties(
         key,
         address: (row?.address ?? j.job_address ?? '').trim(),
         county: r.county,
+        precinct: ((row as { jp_precinct?: string | null } | null)?.jp_precinct ?? '').trim(),
+        precinctNote: ((row as { jp_precinct_note?: string | null } | null)?.jp_precinct_note ?? '').trim(),
         owner,
         legalDescription: r.legalDescription,
         parcelId: (row?.parcel_id ?? '').trim(),

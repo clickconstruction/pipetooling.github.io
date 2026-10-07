@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { precinctSourceWords } from '../../lib/customers/propertyDraft'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
 import { cadPasteHasFacts, parseCadPagePaste, type CadPasteResult } from '../../lib/customers/cadPagePaste'
@@ -291,6 +292,19 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
           ) : null}
           {showCountyPills ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>The sources disagree; the parcel record wins unless you know better.</span> : null}
         </div>
+      </div>
+
+      {/* justice precinct (v2.4771): the court map fills it; a typed value wins */}
+      <div data-property-precinct>
+        <label style={labelStyle}>Justice precinct <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· where a small claim on this property is filed</span></label>
+        <input
+          value={fields.jp_precinct ?? ''}
+          onChange={(e) => onChange({ jp_precinct: e.target.value, jp_precinct_source: e.target.value.trim() ? 'hand' : '' })}
+          placeholder="2, 1-2, 3 — as the county writes it"
+          aria-label="Justice precinct"
+          style={{ ...inputStyle, maxWidth: 260 }}
+        />
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{precinctSourceWords({ jp_precinct: fields.jp_precinct ?? '', jp_precinct_source: fields.jp_precinct_source ?? '' })}</div>
       </div>
 
       {/* legal description */}
