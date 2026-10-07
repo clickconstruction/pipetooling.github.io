@@ -2,6 +2,11 @@
   "about": "The schedule's PR 1b-ii, the trades, the customer, before the job and files (to-dos/gc-mode/mockups/schedule-pr1b.md): telling the trades, the start reminders' two, the trade's chart, the customer's schedule and its sends, the what-if's kept words, the rough schedule, templates, import, their dates, the export and the print, lifted to src/lib/gc on a spike that reads 1a and 1b-i from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr1b-ii.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "1e342854ac8eaa9c11857bf8c958c985ef57b20c",
+    "spike": "fcac57a306bbdfe156b3df3109cab6fe9e394c86",
+    "about": "#4796 merged; the spike before its follow-up ed40b8bd5"
+  },
   "files": [
     {
       "from": "gcTellTrades",

@@ -2,6 +2,11 @@
   "about": "The schedule's PR 1a (to-dos/gc-mode/mockups/schedule-pr1a.md): the schedule, the chart and moving, lifted to src/lib/gc. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr1a.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "bf11360656e7a51f627c98e10a94ee4dbc6757c9",
+    "spike": "210e10899d70cf023ba1a9c3b3bf6d8d32a69b23",
+    "about": "#4788 merged; the spike before its follow-up 5abc4ef42"
+  },
   "files": [
     {
       "from": "gcBuildingSchedule",

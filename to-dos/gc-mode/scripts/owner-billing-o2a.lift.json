@@ -2,6 +2,11 @@
   "about": "Owner Billing's O2a (to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md, Kernels): everything of Billing the customer whose inputs are on main today, lifted to src/lib/gc on a spike that reads the schedule's lifts from main; rebuilt after the Board's B2-i, which lifted proposalTotals and money first. ownerPayApp and what reads Building's kernels wait for O2b, after U2. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/owner-billing-o2a.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "99e10b047f845de0b63998498881ede7cc15f489",
+    "spike": "26200fd669c1bdf9dc27b68dd43e6de2a8cefcd5",
+    "about": "#4858 merged; the spike before its follow-up e3ad718f9"
+  },
   "files": [
     {
       "from": "gcOwnerBilling",

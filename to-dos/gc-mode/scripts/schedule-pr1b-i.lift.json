@@ -2,6 +2,11 @@
   "about": "The schedule's PR 1b-i, keeping it true (to-dos/gc-mode/mockups/schedule-pr1b.md): the walk, stale schedules, waits, the log against the chart, days lost, the finish outlook, crew counts, people on site, the morning list, late notices, crowding, three of the papers and their helpers, lifted to src/lib/gc on a spike that reads 1a from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr1b-i.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "d8719be37908e77e16781be7ca8b14ee2cbf9d8a",
+    "spike": "ee26c7d02454be93b8e0c3e25bce3ace77755f0e",
+    "about": "#4792 merged; the spike before its follow-up 7bc30c5ff"
+  },
   "files": [
     {
       "from": "gcScheduleWalk",

@@ -2,6 +2,15 @@
   "about": "The Board's B2-i (to-dos/gc-mode/BOARD_REAL_BUILD.md, B2): what the trade portal's P1 and the board row read first, lifted to src/lib/gc word for word on a spike that reads the schedule's lifts from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b2-i.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "9983e258f810348eb87fdf4da2532ed5bf430ea8",
+    "spike": "5354b3c51bc87c9ab1bd4192bc4a1e166bf7647b",
+    "about": "#4862 merged; the spike before its follow-up cf5edab1e",
+    "known": {
+      "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
+      "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same"
+    }
+  },
   "files": [
     {
       "from": "gcBids",

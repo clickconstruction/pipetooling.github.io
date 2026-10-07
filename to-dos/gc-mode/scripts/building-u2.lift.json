@@ -2,6 +2,11 @@
  "about": "The Building lane's U2 (to-dos/gc-mode/BUILDING_REAL_BUILD.md, Kernels that move): Building's kernels lifted to src/lib/gc on a spike that reads the schedule's lifts from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/building-u2.lift.json <outDir>",
  "spikeDir": "src/lib/gcMode",
  "mainBase": "src/lib/gc",
+ "pin": {
+   "main": "5460c1ddb1454fcd605c28214853e5dbbea4d3d2",
+   "spike": "737d3f2cd089591cc3ffd917d0ca7d513841cf3a",
+   "about": "#4860 merged; the spike before its follow-up c7418e38b"
+ },
  "files": [
   {
    "from": "gcBuilding",

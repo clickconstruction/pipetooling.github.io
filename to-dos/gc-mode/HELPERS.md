@@ -37,6 +37,9 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
 - **Commits carry the G-number**: `spike: GC mode G-37, pull work earlier on a press`. In the same
   commit, set your row's *Stands* in `GANTT_FEATURES.md` to *Have* with a date, and add a short
   *as built* section to `GANTT_PLAN.md` (what it does, the words, where it is in the UI, the tests).
+- **A lift's follow-up pins its config**: `"pin": { "main": <the lift's merge commit>, "spike": <the
+  spike just before the follow-up> }`, with any inequality the pair already had in `pin.known` and its
+  reason, so `node to-dos/gc-mode/scripts/lift-same.cjs --all` stays green and shows only new drift.
 - Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc`.
   Lint: `npx eslint <your files>`. Typecheck: `npm run typecheck` in the background; it takes 10 to
   25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push.

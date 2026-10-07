@@ -2,6 +2,7 @@
   "about": "The schedule's PR 1b (to-dos/gc-mode/mockups/schedule-pr1b.md): the rest of the schedule's kernels, lifted to src/lib/gc after PR 1a. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr1b.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "superseded": "split into schedule-pr1b-i and schedule-pr1b-ii, each lifted and pinned on its own; never merged as one lift",
   "files": [
     {
       "from": "gcScheduleWalk",
