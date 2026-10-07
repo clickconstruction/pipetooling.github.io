@@ -95,8 +95,8 @@ One piece per helper as they come back after the disconnect.
 
 | Helper | Piece |
 |---|---|
-| Helper 1 | `SCHEDULE_REAL_BUILD.md`: the plan for G-132, G-133 and G-134, in `NEW_PROJECT_REAL_BUILD.md`'s shape |
-| next back | The tour: *New here?* and *Walk me through this job* gain a stop for each round's rows, in plain words, one shared file so one helper |
+| Helper 1 | `SCHEDULE_REAL_BUILD.md`: the plan for G-132, G-133 and G-134, in `NEW_PROJECT_REAL_BUILD.md`'s shape (landed 50e79e1e6) |
+| Helper 1 | The tour: *New here?* and *Walk me through this job* gain a stop for each round's rows, in plain words, one shared file so one helper |
 | next back | A phone-width browser pass over every round's rows on the dev server, defects listed then fixed |
 | next back | `README.md`, `HANDOFF.md` and `PUNCHLIST.md` brought up to the day: *What the prototype has*, the status, the rows for the owner |
 | next back | The Spanish list reviewed as one voice: terms used the same way across the 985 strings, the script re-run |
