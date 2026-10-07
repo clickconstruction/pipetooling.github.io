@@ -5,7 +5,7 @@
  * computer. Wiring only: the writes are the tab's own and are not pressed here.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import LienFilingTabs from './LienFilingTabs'
 
@@ -113,6 +113,36 @@ describe('LienFilingTabs · record steps', () => {
       expect(sheet()!.querySelector('[data-lien-record-action]')!.textContent).toBe('Record filing')
       fireEvent.click(screen.getByRole('button', { name: 'Back' }))
       expect(sheet()).toBeNull()
+    })
+  })
+
+  it('Already filed — record it… (v2.4835): with a gate still ✗ the door is drawn under the list, and opens the same record box with Filed on', () => {
+    // No legal description and no owner mailing address: the paper cannot be drawn, but a lien filed by counsel is on record all the same.
+    const bare = { ...address, legal_description: '', owner_mailing_address: '' }
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, linkedAddress: bare as never })} />)
+    expect(screen.getByText(/Clear the ✗ items above/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Record filing…' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Already filed — record it…' }))
+    const box = document.querySelector('[data-lien-record-box="affidavit_filing"]') as HTMLElement
+    expect(box).toBeTruthy()
+    expect((within(box).getByLabelText('County') as HTMLInputElement).value).toBe('Guadalupe')
+    expect(within(box).getByLabelText('Recording #')).toBeTruthy()
+    expect((within(box).getByLabelText('Filed on') as HTMLInputElement).type).toBe('date')
+    expect(within(box).getByLabelText('Saved copy — link')).toBeTruthy()
+    expect(within(box).getByRole('button', { name: 'Record filing' })).toBeTruthy()
+    fireEvent.click(within(box).getByRole('button', { name: 'Back' }))
+    expect(document.querySelector('[data-lien-record-box="affidavit_filing"]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Already filed — record it…' })).toBeTruthy()
+  })
+
+  it('Already filed — record it… on a phone opens the filing sheet without the gate, and says the paper was filed elsewhere', () => {
+    onPhone(() => {
+      const bare = { ...address, legal_description: '' }
+      renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false, linkedAddress: bare as never })} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Already filed — record it…' }))
+      expect(sheet()!.getAttribute('data-lien-record-sheet')).toBe('affidavit_filing')
+      expect(sheet()!.textContent).toContain('Filed without this tab')
+      expect((screen.getByLabelText('Filed on') as HTMLInputElement).type).toBe('date')
     })
   })
 

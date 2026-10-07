@@ -701,12 +701,12 @@ export default function LienFilingTabs({
       {sheetSend('Original contractor', ocSend, setOcSend, originalContractorEmail)}
       {sheetSavedCopy}
     </LienRecordSheet>
-  ) : activeTab === 'affidavit' && affidavitReady && recordStep === 'affidavit_filing' ? (
+  ) : activeTab === 'affidavit' && recordStep === 'affidavit_filing' ? (
     <LienRecordSheet
       kind="affidavit_filing"
       title="Record the filing"
       headline={`Lien affidavit · ${demandMoney(affidavitFields.unpaidAmount)} unpaid`}
-      lines={[jobLine, 'Record it after the County Clerk stamps it.']}
+      lines={[jobLine, affidavitReady ? 'Record it after the County Clerk stamps it.' : 'Filed without this tab: record the date and number the County Clerk stamped.']}
       note="Serve-by stamps automatically: 5th calendar day after filing (§ 53.055), weekend-rolled."
       action={{ label: 'Record filing', busyLabel: 'Saving…', busy, onClick: () => void recordAffidavitFiling(), fill: '#8C1D2F' }}
       onBack={() => setRecordStep(null)}
@@ -836,6 +836,37 @@ export default function LienFilingTabs({
   }
 
   if (activeTab === 'affidavit') {
+    // The filing's record box on a computer (v2.4835): drawn once, offered behind the gate as Record filing… and in front of it as
+    // Already filed — record it…, since a lien counsel or the office filed by hand is on record whether or not the app could draw the paper.
+    const filingRecordBox = (
+      <div data-lien-record-box="affidavit_filing" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the filing (after the County Clerk stamps it)</div>
+        {savedCopyRow}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
+          <label style={{ fontSize: '0.75rem' }}>
+            County
+            <input type="text" value={filingCounty} onChange={(e) => setFilingCounty(e.target.value)} style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+          </label>
+          <label style={{ fontSize: '0.75rem' }}>
+            Recording #
+            <input type="text" value={filingNumber} onChange={(e) => setFilingNumber(e.target.value)} placeholder="2026-…" style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+          </label>
+          <label style={{ fontSize: '0.75rem' }}>
+            Filed on
+            <input type="date" value={filingDate} onChange={(e) => setFilingDate(e.target.value)} style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+          </label>
+          <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
+            Back
+          </button>
+          <button type="button" onClick={() => void recordAffidavitFiling()} disabled={busy} style={{ padding: '0.35rem 0.9rem', fontSize: '0.78rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
+            {busy ? 'Saving…' : 'Record filing'}
+          </button>
+        </div>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+          Serve-by stamps automatically: 5th calendar day after filing (§ 53.055), weekend-rolled.
+        </div>
+      </div>
+    )
     return (
       <>
       {recordSheet}
@@ -858,33 +889,7 @@ export default function LienFilingTabs({
                 <b>Sworn amounts (¶8):</b> contract {demandMoney(affidavitFields.contractAmount)} · paid {demandMoney(affidavitFields.paidAmount)} · <b>unpaid {demandMoney(affidavitFields.unpaidAmount)}</b>
               </div>
               {recordStep === 'affidavit_filing' && !isMobile ? (
-                <div data-lien-record-box="affidavit_filing" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the filing (after the County Clerk stamps it)</div>
-                  {savedCopyRow}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
-                    <label style={{ fontSize: '0.75rem' }}>
-                      County
-                      <input type="text" value={filingCounty} onChange={(e) => setFilingCounty(e.target.value)} style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    </label>
-                    <label style={{ fontSize: '0.75rem' }}>
-                      Recording #
-                      <input type="text" value={filingNumber} onChange={(e) => setFilingNumber(e.target.value)} placeholder="2026-…" style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    </label>
-                    <label style={{ fontSize: '0.75rem' }}>
-                      Filed on
-                      <input type="date" value={filingDate} onChange={(e) => setFilingDate(e.target.value)} style={{ display: 'block', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
-                    </label>
-                    <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
-                      Back
-                    </button>
-                    <button type="button" onClick={() => void recordAffidavitFiling()} disabled={busy} style={{ padding: '0.35rem 0.9rem', fontSize: '0.78rem', background: '#8C1D2F', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
-                      {busy ? 'Saving…' : 'Record filing'}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-                    Serve-by stamps automatically: 5th calendar day after filing (§ 53.055), weekend-rolled.
-                  </div>
-                </div>
+                filingRecordBox
               ) : recordStep === 'affidavit_service' && filedAffidavit && !isMobile ? (
                 <div data-lien-record-box="affidavit_service" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>
@@ -923,11 +928,24 @@ export default function LienFilingTabs({
                 </div>
               )}
             </>
+          ) : recordStep === 'affidavit_filing' && !isMobile ? (
+            filingRecordBox
           ) : (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Clear the ✗ items above. Property facts are fixed in the customer's address book. The notice is
-              recorded on the § 53.056 tab.
-            </p>
+            <>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                Clear the ✗ items above. Property facts are fixed in the customer's address book. The notice is
+                recorded on the § 53.056 tab.
+              </p>
+              {/* A lien already on file (v2.4835): the gates hold the paper the app draws, not the record of one filed by hand or by counsel. */}
+              {!anyAffidavit ? (
+                <div style={{ marginTop: '0.7rem' }}>
+                  <button type="button" onClick={() => setRecordStep('affidavit_filing')} data-lien-already-filed style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }} title="The affidavit was filed with the County Clerk without this tab — by counsel, or printed elsewhere. Record its date and number so the clocks run from it.">
+                    Already filed — record it…
+                  </button>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>Filed by counsel, or on paper from elsewhere? Record the date and the number here. The serve-by day and the year to sue count from it.</div>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
         {affidavitReady ? preview : null}

@@ -100,6 +100,8 @@ The **Mechanic's lien** tab refuses to generate until the paper trail is real. I
 
 When the gate clears, click {{button:outline-blue|Print for notarization}}. Sign before a notary. File it with the County Clerk in the property's county. Then click {{button:red|Record filing…}} with the recording number. The **serve-by date stamps itself**. A copy must reach the owner and contractor within 5 days. A red Dashboard card nags until you {{button:red|Record service…}}.
 
+Was the lien filed without this tab, by counsel or on paper from elsewhere? The gate does not stop the record. Press {{button:outline|Already filed — record it…}} under the gate list. Type the county, the recording number and the day it was filed. The serve-by day and the year to sue count from that day.
+
 ## The year after filing
 
 A recorded lien is good for one year from the last day the affidavit could have been filed. That is § 53.158. Ninety days before that day a Needs You card appears. It reads *A filed lien's year to sue ends <date>*, with the dollars still open behind it. It turns red inside 30 days. Once the day has passed, it reads *has run out*. Paid? File the release of record and the card goes. Unpaid? Get counsel on the suit. The card names the day to have counsel by. {{button:outline|Open the Timeline}} lands on the Lien desk's Timeline tab, where each job shows its date.
