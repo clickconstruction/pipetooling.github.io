@@ -678,6 +678,17 @@ export function MapPageView() {
       await courtAct('Could not remove the area.', () => retireCourtArea(courtDb, a.id))
     })()
   }, [confirmDialog, courtAct, courtDb])
+  // Classify now (v2.4770): the night's job by hand, under the office user's own session.
+  const [classifyWords, setClassifyWords] = useState('')
+  const classifyNow = useCallback(() => {
+    void courtAct('The classification could not run.', async () => {
+      const { data, error } = await supabase.functions.invoke('court-precinct-nightly', { body: {} })
+      if (error) throw error
+      const r = (data ?? {}) as { placed?: number; outside?: number; onLine?: number; noPoint?: number; written?: number; error?: string }
+      if (r.error) throw new Error(r.error)
+      setClassifyWords(`${r.placed ?? 0} placed · ${r.outside ?? 0} outside · ${r.onLine ?? 0} on a line · ${r.noPoint ?? 0} with no point · ${r.written ?? 0} ${r.written === 1 ? 'record' : 'records'} written`)
+    })
+  }, [courtAct])
   const focusCourtArea = useCallback((a: CourtAreaListed) => {
     const ring = (a.polygon.type === 'Polygon' ? a.polygon.coordinates[0] : a.polygon.coordinates[0]?.[0]) ?? []
     if (ring.length === 0) return
@@ -1038,7 +1049,7 @@ export function MapPageView() {
         <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
           {courtMode ? (
             <div style={{ marginBottom: '0.75rem' }}>
-              <CourtAreasPanel areas={courtAreas} coverage={courtCover} pending={courtPending !== null} busy={courtBusy} error={courtError} onSave={saveCourtArea} onCancelPending={discardCourtShape} onRename={renameCourtArea} onRemove={removeCourtArea} onFocus={focusCourtArea} />
+              <CourtAreasPanel areas={courtAreas} coverage={courtCover} pending={courtPending !== null} busy={courtBusy} error={courtError} onSave={saveCourtArea} onCancelPending={discardCourtShape} onRename={renameCourtArea} onRemove={removeCourtArea} onFocus={focusCourtArea} onClassify={classifyNow} classifyWords={classifyWords} />
             </div>
           ) : null}
           <MapEntityTable

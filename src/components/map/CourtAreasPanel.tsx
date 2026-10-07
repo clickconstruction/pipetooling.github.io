@@ -12,7 +12,7 @@ export type CourtAreaListed = CourtArea & { createdAt: string }
 const input: CSSProperties = { font: 'inherit', fontSize: '0.85rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', minWidth: 0 }
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
 
-export function CourtAreasPanel({ areas, coverage, pending, busy, error, onSave, onCancelPending, onRename, onRemove, onFocus }: {
+export function CourtAreasPanel({ areas, coverage, pending, busy, error, onSave, onCancelPending, onRename, onRemove, onFocus, onClassify, classifyWords }: {
   areas: ReadonlyArray<CourtAreaListed>
   coverage: CourtCoverage
   /** True while a shape is drawn and waits for its name. */
@@ -25,6 +25,10 @@ export function CourtAreasPanel({ areas, coverage, pending, busy, error, onSave,
   onRemove: (area: CourtAreaListed) => void
   /** Fly the map to an area. */
   onFocus: (area: CourtAreaListed) => void
+  /** Run the precinct classification now (v2.4770) — the night's job, by hand. */
+  onClassify?: () => void
+  /** What the last run said; '' before one. */
+  classifyWords?: string
 }) {
   const [draft, setDraft] = useState<CourtAreaDraft>({ county: '', precinct: '', label: '', sourceNote: '' })
   const [editing, setEditing] = useState<string | null>(null)
@@ -41,12 +45,20 @@ export function CourtAreasPanel({ areas, coverage, pending, busy, error, onSave,
         <b>Court areas</b>
         <span style={{ color: 'var(--text-muted)' }}>Draw a precinct on the map with the polygon tool, then name it here. Counties come from the geocoder; this map is for precincts.</span>
       </div>
-      <div data-court-coverage style={{ color: 'var(--text-muted)' }}>
-        {total === 0 ? 'No pins with a point on the map yet.' : <>
-          <b style={{ color: 'var(--text)' }}>{coverage.placed} of {total}</b> {total === 1 ? 'address' : 'addresses'} inside a drawn area
-          {coverage.outside ? <> · <b style={{ color: 'var(--text)' }}>{coverage.outside}</b> outside every area</> : null}
-          {coverage.onLine ? <> · <b style={{ color: 'var(--text)' }}>{coverage.onLine}</b> on a line to settle</> : null}
-        </>}
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div data-court-coverage style={{ color: 'var(--text-muted)' }}>
+          {total === 0 ? 'No pins with a point on the map yet.' : <>
+            <b style={{ color: 'var(--text)' }}>{coverage.placed} of {total}</b> {total === 1 ? 'address' : 'addresses'} inside a drawn area
+            {coverage.outside ? <> · <b style={{ color: 'var(--text)' }}>{coverage.outside}</b> outside every area</> : null}
+            {coverage.onLine ? <> · <b style={{ color: 'var(--text)' }}>{coverage.onLine}</b> on a line to settle</> : null}
+          </>}
+        </div>
+        {onClassify ? (
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+            {classifyWords ? <span data-court-classify-words style={{ color: 'var(--text-muted)' }}>{classifyWords}</span> : null}
+            <button type="button" onClick={onClassify} disabled={busy || areas.length === 0} title="Put every property record in its precinct from these areas now; the night does the same" style={{ ...btn, opacity: busy || areas.length === 0 ? 0.6 : 1 }}>Classify now</button>
+          </span>
+        ) : null}
       </div>
       {pending ? (
         <form data-court-pending onSubmit={(e) => { e.preventDefault(); if (!problem) onSave(draft) }} style={{ display: 'grid', gap: '0.4rem', padding: '0.6rem', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
