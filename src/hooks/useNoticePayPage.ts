@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
-import { noticeInvoiceDocs } from '../lib/jobs/noticeInvoiceEnclosure'
+import { noticeInvoiceDocs, unpaidBilledInvoices } from '../lib/jobs/noticeInvoiceEnclosure'
+import { fetchStripeInvoiceFacts } from '../lib/stripeInvoiceFacts'
+import { getBillingStripeModePref } from '../lib/billingStripeModePref'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../lib/jobs/lienNoticePayPage'
 import { buildPayPageAssets } from '../lib/jobs/lienNoticePayPageAssets'
 
@@ -19,7 +21,9 @@ type Loaded = { rows: PayPageRow[]; assets: PayPageAssets }
 
 export async function loadNoticePayPage(jobId: string): Promise<Loaded> {
   const job = await fetchJobWithDetailsById(jobId)
-  const rows = job ? payPageRows(noticeInvoiceDocs(job)) : []
+  // Stripe's own number for each hosted bill (v2.4852), so the pay page names the bill the customer saw.
+  const facts = job ? await fetchStripeInvoiceFacts(unpaidBilledInvoices(job).filter((i) => (i.stripe_invoice_id ?? '').trim()).map((i) => i.id), getBillingStripeModePref()) : {}
+  const rows = job ? payPageRows(noticeInvoiceDocs(job, facts)) : []
   const assets = rows.some((r) => r.payable) ? await buildPayPageAssets(rows, { png: false }).catch(() => ({})) : {}
   return { rows, assets }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payLineIsNotTheWork, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { enclosedInvoiceDocument, noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payLineIsNotTheWork, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 
 const inv = (id: string, amount: number, seq: number, status = 'billed') =>
@@ -92,5 +92,42 @@ describe("the pay page's description of a bill (v2.3758)", () => {
   it('never runs past a row', () => {
     const long = 'x'.repeat(200)
     expect(payPageDescription({ serviceLines: [line(long)], narrativeTitle: '', lineDescription: '' })).toHaveLength(140)
+  })
+})
+
+describe("the enclosed invoice prints Stripe's own number and due day (v2.4852)", () => {
+  const hosted = { ...job, invoices: [{ ...inv('primary', 900, 0), stripe_invoice_id: 'in_1' }, { ...inv('open', 1710, 2), stripe_invoice_id: 'in_2' }] } as unknown as JobWithDetails
+
+  it("with Stripe's facts the title, the page's number and its due day are Stripe's", () => {
+    const [first, second] = noticeInvoiceDocs(hosted, { primary: { invoiceNumber: '867-2608181428', dueYmd: '2026-09-17' }, open: { invoiceNumber: '#867-2608181500', dueYmd: null } })
+    expect(first?.title).toBe('Invoice #867-2608181428, August 18, 2026')
+    expect(first?.doc.invoiceNumberDisplay).toBe('#867-2608181428')
+    expect(first?.doc.dueDateDisplay).toBe('September 17, 2026')
+    // A number Stripe already wrote with its # is not doubled; no due day leaves the app's own.
+    expect(second?.doc.invoiceNumberDisplay).toBe('#867-2608181500')
+    expect(noticeInvoicePrintSections([first!])[0]).toContain('#867-2608181428')
+    expect(noticeInvoicePrintSections([first!])[0]).not.toContain('#0')
+  })
+
+  it('without facts the page never reads "#0": the first bill takes the job number, a later one its position', () => {
+    const [first, second] = noticeInvoiceDocs(hosted)
+    expect(first?.doc.invoiceNumberDisplay).toBe('#867')
+    expect(noticeInvoicePrintSections([first!])[0]).not.toContain('>#0<')
+    expect(second?.doc.invoiceNumberDisplay).toBe('#2')
+    // Facts for another bill, or with no number, change nothing.
+    expect(noticeInvoiceDocs(hosted, { other: { invoiceNumber: '1', dueYmd: null }, primary: { invoiceNumber: '  ', dueYmd: null } })[0]?.doc.invoiceNumberDisplay).toBe('#867')
+  })
+
+  it('the mailing note is not the Scope when the bill has a real line, and stays when it is all the bill says', () => {
+    const note = 'Paper checks can be sent to: Click Plumbing 12925 FM 20 Kingsbury TX 78638'
+    const base = noticeInvoiceDocs(job)[1]!.doc
+    const seq = { sequence_order: 2 }
+    const withLine = enclosedInvoiceDocument({ ...base, narrativeTitle: note, serviceLines: [{ description: 'Rough In', qty: 1, unitPrice: 15200, amount: 15200 }] } as PhysicalInvoiceDocument, seq, '867', null)
+    expect(withLine.narrativeTitle).toBe('')
+    expect(noticeInvoicePrintSections([{ invoiceId: 'x', title: 'Invoice #2', doc: withLine, stripeInvoiceId: null, openAmount: 15200, description: '' }])[0]).not.toContain('Paper checks can be sent to')
+    // The work's own scope stays.
+    expect(enclosedInvoiceDocument({ ...base, narrativeTitle: 'Gas install', serviceLines: [{ description: 'Rough In', qty: 1, unitPrice: 100, amount: 100 }] } as PhysicalInvoiceDocument, seq, '867', null).narrativeTitle).toBe('Gas install')
+    // The note is all the bill says: kept, a blank invoice is worse.
+    expect(enclosedInvoiceDocument({ ...base, narrativeTitle: note, serviceLines: [] } as PhysicalInvoiceDocument, seq, '867', null).narrativeTitle).toBe(note)
   })
 })
