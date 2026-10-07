@@ -5,7 +5,7 @@
  * are literal status colours (CLAUDE.md), the surfaces are tokens.
  */
 import type { UncollectibleFacts } from '../../lib/jobs/uncollectible'
-import { uncollectibleStampLine } from '../../lib/jobs/uncollectible'
+import { uncollectibleStampLine, uncollectibleStampLines } from '../../lib/jobs/uncollectible'
 
 export function StagesUncollectibleStamp({ facts }: { facts: UncollectibleFacts }) {
   return (
@@ -52,8 +52,10 @@ export function StagesUncollectibleStamp({ facts }: { facts: UncollectibleFacts 
       >
         {facts.reason}
       </div>
-      <div style={{ marginTop: '0.15rem', fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-red-800)', textTransform: 'uppercase' }}>
-        {uncollectibleStampLine(facts)}
+      {/* v2.4819: the day on one line, the dollars on the next. */}
+      <div style={{ marginTop: '0.15rem', fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.04em', lineHeight: 1.35, color: 'var(--text-red-800)', textTransform: 'uppercase' }}>
+        <div>{uncollectibleStampLines(facts).day}</div>
+        <div>{uncollectibleStampLines(facts).dollars}</div>
       </div>
     </div>
   )

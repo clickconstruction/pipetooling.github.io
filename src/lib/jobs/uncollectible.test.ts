@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { uncollectibleDayWords, uncollectibleFactsFor, uncollectiblePhoneLine, uncollectibleStampLine } from './uncollectible'
+import { uncollectibleDayWords, uncollectibleFactsFor, uncollectiblePhoneLine, uncollectibleStampLine, uncollectibleStampLines } from './uncollectible'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 const job = (o: Record<string, unknown>): JobWithDetails =>
@@ -27,6 +27,8 @@ describe('the stamp\'s and the phone card\'s words', () => {
     expect(uncollectibleDayWords('2026-10-06')).toBe('Oct 6, 2026')
     expect(uncollectibleStampLine({ markedYmd: '2026-10-06', open: 7502 })).toBe('Oct 6, 2026 · $7,502 given up on')
     expect(uncollectibleStampLine({ markedYmd: '', open: 250 })).toBe('date unknown · $250 given up on')
+    // v2.4819: the stamp draws them as two lines.
+    expect(uncollectibleStampLines({ markedYmd: '2026-10-07', open: 350 })).toEqual({ day: 'Oct 7, 2026', dollars: '$350 given up on' })
     expect(uncollectiblePhoneLine({ markedYmd: '2026-10-06', reason: 'No response in 7 months.' })).toBe('\u201cNo response in 7 months.\u201d \u2014 Oct 6, 2026')
     expect(uncollectiblePhoneLine({ markedYmd: '', reason: 'No response.' })).toBe('\u201cNo response.\u201d')
   })
