@@ -35,7 +35,6 @@ import {
   saveLienDeskDraft,
   sendLienDeskItemOnWord,
   setCustomerLienNoticePolicy,
-  skipLienDeskItem,
   noteLienWindowMissed,
   submitLienDeskItem,
   noteGcAuthorizedDirectPay,
@@ -319,13 +318,11 @@ export default function LienDeskModal({
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
-  const [skipOpen, setSkipOpen] = useState(false)
   // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
   const [byHandOpen, setByHandOpen] = useState(false)
   /** Counsel's sign-off ask on a sent notice (#41 PR 3). */
   const [signoffOpen, setSignoffOpen] = useState(false)
   const [signoffText, setSignoffText] = useState('')
-  const [skipReason, setSkipReason] = useState('')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
   const [busy, setBusy] = useState(false)
@@ -761,14 +758,12 @@ export default function LienDeskModal({
     releaseIdRef.current = storedRelease
     setReleaseId(storedRelease)
     setWordOpen(false)
-    setSkipOpen(false)
     setByHandOpen(false)
     setHoldOpen(null)
     setRulePick(null)
     setWordNote('')
     // v2.4568: these stayed open, or kept their words, on the next job.
     setWordChannel('phone')
-    setSkipReason('')
     setGcOkayOpen(false)
     setGcOkayNote('')
     setSignoffOpen(false)
@@ -1132,15 +1127,6 @@ export default function LienDeskModal({
         await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
       },
       'Recorded on the leader’s word — it is in the run.',
-    )
-  const skip = () =>
-    run(
-      'Skip',
-      async () => {
-        if (!selected) return
-        await skipLienDeskItem({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), reason: skipReason, userId: authUserId, userName: authName })
-      },
-      'Skipped — the lien right on those months is given up.',
     )
   const approve = () =>
     run(
@@ -2384,9 +2370,9 @@ export default function LienDeskModal({
     )
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
-      // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and a quiet
-      // Skip on the right. The envelope line sits above the paper; the why is a parenthetical, not a sentence; the skip's
-      // cost is said in its confirm step. Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing).
+      // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and the primary
+      // on the right (the quiet Skip left in v2.4743: a month nobody sends closes on its own and is noted as missed).
+      // The envelope line sits above the paper; the why is a parenthetical, not a sentence. Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing).
       const firstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
       const stateWords = blocked
         ? firstBlocker
@@ -2432,13 +2418,6 @@ export default function LienDeskModal({
         <>
           {byHandPane ? (
             byHandPane
-          ) : skipOpen ? (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-              <span style={{ color: 'var(--text-red-600)' }}>Skipping gives up the lien right on {monthsWord}.</span>
-              <input value={skipReason} onChange={(ev) => setSkipReason(ev.target.value)} placeholder="why (kept on the record)" aria-label="Skip reason" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              <button type="button" onClick={skip} disabled={busy || !skipReason.trim()} style={btn('amber', busy || !skipReason.trim())}>Skip these months</button>
-              <button type="button" onClick={() => setSkipOpen(false)} style={btn('plain')}>Cancel</button>
-            </div>
           ) : wordOpen ? (
             <LienWordRecordRow
               note={wordNote}
@@ -2465,9 +2444,6 @@ export default function LienDeskModal({
               <span className="lienFootSpacer" />
               {office && monthsList.length > 0 ? (
                 <>
-                <button type="button" className="lienFootSkip" onClick={() => setSkipOpen(true)} disabled={busy} title="Give up the lien right on these months on purpose, with a reason kept on the record — it stays under Earlier months">
-                  Skip {monthsList.map(workMonthShort).join(' + ')}…
-                </button>
                 <button type="button" className="lienFootSkip" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and went out by hand — record when, how, what it claimed, and which jobs at the property it covered">
                   Already mailed? Record it…
                 </button>

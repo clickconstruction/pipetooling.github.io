@@ -146,28 +146,6 @@ export async function undoLienDeskApprovals(itemIds: ReadonlyArray<string>, user
   return ((rows ?? []) as unknown as Array<{ id: string }>).length
 }
 
-/** The office accepts the forfeit for these months (the row stays as the record of the decision). */
-export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; userName?: string; kind?: LienDeskItemKind }): Promise<void> {
-  const who = (input.userName ?? '').trim()
-  const fields = draftJson({ ...input.fields, skipReason: input.reason.trim(), ...(who ? { skippedBy: { name: who, at: new Date().toISOString() } } : {}) })
-  if (input.itemId) {
-    await withSupabaseRetry(
-      () => supabase.from('job_lien_desk_items').update({ status: 'missed', fields, months: input.months } as never).eq('id', input.itemId as string),
-      'lien desk: skip',
-    )
-    return
-  }
-  await withSupabaseRetry(
-    () =>
-      supabase
-        .from('job_lien_desk_items')
-        .insert({ job_id: input.jobId, kind: input.kind ?? 'notice_53_056', status: 'missed', months: input.months, fields, drafted_by: input.userId } as never)
-        .select('id')
-        .single(),
-    'lien desk: skip',
-  )
-}
-
 /**
  * A person saw a closed window and noted it (v2.3679): a `missed` row with no reason,
  * the months it names, and who looked. It never touches a live draft on the job — a
