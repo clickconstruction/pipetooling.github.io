@@ -63,6 +63,13 @@ Landing page for every role: pinned pages, role-relevant cards (recent reports, 
 Wednesday GC-certification nudge, tasks). Start here to orient; do work elsewhere.
 Roles: all.
 
+### /gc — GC projects (dev only)
+GC mode's real build, step by step. Lists every GC project as the kernels read it (the plan
+sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
+the four-step window (project → plans → trades → each scope) that writes through
+`gc_create_project`. Who to ask (the companies) is not here yet. Guide: `/help?g=start-a-gc-project`.
+Roles: dev only.
+
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick
 a bid (search or click a row's tool icons) and the tab works on that bid. `&bidId=<uuid>`
