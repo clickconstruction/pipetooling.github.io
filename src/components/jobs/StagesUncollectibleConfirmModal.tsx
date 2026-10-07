@@ -23,8 +23,11 @@ export function StagesUncollectibleConfirmModal({
   saving,
   onCancel,
   onConfirm,
+  firmWarning = null,
 }: {
   confirm: StagesUncollectibleConfirmTarget
+  /** v2.4794: the words when the firm holds the account (`uncollectibleFirmWarning`); null = quiet. */
+  firmWarning?: string | null
   reasonDraft: string
   onReasonDraftChange: (value: string) => void
   saving: boolean
@@ -59,6 +62,11 @@ export function StagesUncollectibleConfirmModal({
             />
             {reasonShort ? <span style={{ display: 'block', marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>A short sentence at least.</span> : null}
           </label>
+        ) : null}
+        {marking && firmWarning ? (
+          <p role="note" style={{ margin: '0 0 1rem', padding: '0.5rem 0.65rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', borderRadius: 4 }}>
+            {firmWarning}
+          </p>
         ) : null}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button

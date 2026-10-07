@@ -188,4 +188,24 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(screen.queryByRole('dialog', { name: 'Mark attorney-ready' })).toBeNull()
     expect(screen.getByRole('dialog', { name: 'The collections law firm' })).toBeTruthy()
   })
+
+  it('a given-up account sits under Given up on with a pill in place of Mark attorney ready (punch list #94, v2.4794)', async () => {
+    const givenUp = {
+      ...makeJob({ id: 'job-g', hcp_number: '008', status: 'billed', collections_at: '2026-03-01T15:00:00Z', customer_id: 'surf', customer_name: 'Surf Thru', revenue: 250, payments_made: 0, invoices: [] }),
+      uncollectible_at: '2026-10-07T03:30:00Z',
+      uncollectible_reason: 'No response from the customer in 7 months.',
+    }
+    renderWithProviders(<LegalDeskModal open canMarkReady collectionsJobs={[collectionsJob('job-a', '717', 7502)]} uncollectibleJobs={[givenUp]} {...baseProps} />)
+    await settle()
+    expect(screen.getByText(/^Given up on · 1/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Surf Thru/ }))
+    await settle()
+    expect(screen.getByText('Given up on — not for the firm')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Mark attorney ready/ })).toBeNull()
+    // The chased account keeps the desk's usual header (the smoke has no legal tables, so that is the read-only note).
+    fireEvent.click(screen.getByRole('button', { name: /The Learning Experience/ }))
+    await settle()
+    expect(screen.queryByText('Given up on — not for the firm')).toBeNull()
+    expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
+  })
 })

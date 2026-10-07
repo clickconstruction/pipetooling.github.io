@@ -181,7 +181,7 @@ None of the three v2.3530 dialogs has a render test.
 | 4377 | `promisedPayModalJob` | `SetPromisedPayDateModal` | saved → reload promises + records |
 | 4389 | `paidProfitChartOpen` | `PaidProfitChartModal` | **filtered** `stagesBoardLists.paid` (see quirk 4) |
 | 4399 | `billedShareModalOpen` | `BilledReportShareModal` | print = filtered billed rows + search |
-| 4406 | `legalDesk` | `LegalDeskModal` (always mounted; `canEditFirm={authRole === 'dev'}` since v2.4711 — the firm window from the firm's name) | **filtered** `stagesBoardLists.collectionsJobs` (4409, see quirk 4), contract coverage, `legalMatters`; many doors back into the board |
+| 4406 | `legalDesk` | `LegalDeskModal` (always mounted; `canEditFirm={authRole === 'dev'}` since v2.4711 — the firm window from the firm's name; `uncollectibleJobs` since v2.4794 — the rail's *Given up on* group) | **filtered** `stagesBoardLists.collectionsJobs` (4409, see quirk 4), contract coverage, `legalMatters`; many doors back into the board |
 | 4438 | `bankPaymentsModalOpen` | `BankPaymentsModal` (always mounted) → [map](./AR_PAYMENT_MODALS_ARCHITECTURE.md) | `bankPaymentsModalBilledRows`; applied → `loadJobs` |
 | 4454 / 4459 / 4466 | `jobBookModalOpen` / `stagesHideGroupsModalOpen` / `combineSeparateModalOpen` | `JobBookModal` / `JobsStagesHideGroupsModal` / `JobsCombineSeparateModal` | Combine → `runJobsStagesSerializedPipeline(loadJobs)` |
 | 4471 | `viewBillInvoice` | `BilledBillViewModal` | Stripe details → `runFetchJobs` (retry once on coalesced `undefined`) + `findInvoiceWithJobFromJobs`; void → `scheduleLoadJobsAfterMutation` |
