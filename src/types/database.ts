@@ -14088,6 +14088,24 @@ export type Database = {
           },
         ]
       }
+      legal_portal_misses: {
+        Row: {
+          at: string
+          id: number
+          ip: string
+        }
+        Insert: {
+          at?: string
+          id?: never
+          ip: string
+        }
+        Update: {
+          at?: string
+          id?: never
+          ip?: string
+        }
+        Relationships: []
+      }
       lien_owner_record_requests: {
         Row: {
           created_at: string
@@ -24962,7 +24980,7 @@ export type Database = {
             Returns: string
           }
       create_legal_portal_link: {
-        Args: { p_firm_id: string; p_label?: string }
+        Args: { p_address?: string; p_firm_id: string; p_label?: string }
         Returns: Json
       }
       create_pending_contract_versions_after_book_save: {
@@ -25170,6 +25188,7 @@ export type Database = {
         }[]
       }
       gc_create_project: { Args: { draft: Json }; Returns: string }
+      gc_issue_plan_set: { Args: { set_in: Json }; Returns: string }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
       generate_agreement_notice: {
         Args: { p_partnership_id: string }
@@ -25707,6 +25726,14 @@ export type Database = {
         Returns: Json
       }
       legal_office_can_read: { Args: never; Returns: boolean }
+      legal_portal_address_problem: {
+        Args: { p_address: string }
+        Returns: string
+      }
+      legal_portal_guess_gate: {
+        Args: { p_ip: string; p_miss?: boolean }
+        Returns: Json
+      }
       legal_portal_link_forget_secret: {
         Args: { p_link_id: string }
         Returns: undefined
@@ -25716,7 +25743,12 @@ export type Database = {
         Returns: undefined
       }
       legal_portal_link_insert: {
-        Args: { p_firm_id: string; p_label: string; p_purpose: string }
+        Args: {
+          p_address?: string
+          p_firm_id: string
+          p_label: string
+          p_purpose: string
+        }
         Returns: Json
       }
       legal_portal_link_new_key: {
@@ -27401,7 +27433,10 @@ export type Database = {
         Returns: Json
       }
       revoke_sub_portal_link: { Args: { p_person_id: string }; Returns: Json }
-      rotate_legal_portal_link: { Args: { p_link_id: string }; Returns: Json }
+      rotate_legal_portal_link: {
+        Args: { p_address?: string; p_link_id: string }
+        Returns: Json
+      }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
         Returns: boolean
