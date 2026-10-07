@@ -8,6 +8,7 @@ import {
   NO_ARCHIVED_ROSTER,
   personIdByName,
   payRosterNames,
+  splitNamesByArchived,
   type RosterPerson,
 } from './rosterPeople'
 
@@ -202,5 +203,60 @@ describe('personIdByName (the Offsets board groups by name)', () => {
 
   it('a blank name is not a key', () => {
     expect(personIdByName([{ name: '  ', person_id: 'p-x' }]).size).toBe(0)
+  })
+})
+
+describe('splitNamesByArchived (People → Contracts, #29 item 3)', () => {
+  const archived = { is_archived: true, is_pay_roster: false, is_active_roster: false }
+  const roster = buildArchivedRoster([
+    // v2.1409's pattern: the account archived, its linked roster person left active. One roster row.
+    row({ pay_name: 'Bill Hayes', user_id: 'u-bill', person_id: 'p-bill', user_archived_at: '2026-05-01', ...archived }),
+    row({ pay_name: 'Dana Whitfield', person_id: 'p-dana', person_archived_at: '2026-09-01', ...archived }),
+    row({ pay_name: 'Jordan Lee', user_id: 'u-jordan-old', user_archived_at: '2025-12-01', ...archived }),
+    row({ pay_name: 'Jordan Lee', person_id: 'p-jordan', has_login: false, account_kind: 'external' }),
+    row({ pay_name: 'Pat Moore', user_id: 'u-pat-old', user_archived_at: '2026-01-01', ...archived }),
+    row({ pay_name: 'Sam Ortiz', user_id: 'u-sam', person_id: 'p-sam' }),
+    row({ pay_name: 'Old Sub Crew', person_id: 'p-old-crew', person_archived_at: '2026-02-01', has_login: false, ...archived }),
+  ])
+  const split = splitNamesByArchived(
+    [
+      { name: 'Bill Hayes', person_id: 'p-bill' },
+      { name: 'Dana W.', person_id: 'p-dana' },
+      { name: 'Jordan Lee', person_id: 'p-jordan' },
+      { name: 'Pat Moore', user_id: 'u-sam' },
+      { name: 'Sam Ortiz', person_id: 'p-sam' },
+      { name: 'Sam Ortiz', user_id: 'u-sam' },
+      { name: '  ', person_id: 'p-sam' },
+    ],
+    roster,
+  )
+
+  it('a roster person whose linked account is archived is archived, by id', () => {
+    expect(split.active).not.toContain('Bill Hayes')
+    expect(split.archived).toContain('Bill Hayes')
+  })
+
+  it('a renamed row folds by id, under the name it carries', () => {
+    expect(split.archived).toContain('Dana W.')
+    expect(split.active).not.toContain('Dana W.')
+  })
+
+  it('the id wins: a living row under an archived name is living, and the name leaves the archived list', () => {
+    expect(split.active).toContain('Pat Moore')
+    expect(split.archived).not.toContain('Pat Moore')
+  })
+
+  it('namesakes: the living one keeps the name', () => {
+    expect(split.active).toContain('Jordan Lee')
+    expect(split.archived).not.toContain('Jordan Lee')
+  })
+
+  it('every other archived roster name is listed, both lists sorted, each name once', () => {
+    expect(split.active).toEqual(['Jordan Lee', 'Pat Moore', 'Sam Ortiz'])
+    expect(split.archived).toEqual(['Bill Hayes', 'Dana W.', 'Dana Whitfield', 'Old Sub Crew'])
+  })
+
+  it('before the roster read lands, everyone is living and nothing is archived', () => {
+    expect(splitNamesByArchived([{ name: 'Bill Hayes', person_id: 'p-bill' }], NO_ARCHIVED_ROSTER)).toEqual({ active: ['Bill Hayes'], archived: [] })
   })
 })

@@ -189,6 +189,34 @@ export function isArchivedRosterRef(roster: ArchivedRoster, ref: ArchivedRosterR
   return false
 }
 
+
+/**
+ * A roster listed by name (People → Contracts), split into the living and the archived, id first.
+ * A name is living when any row carrying it is (`isArchivedRosterRef` false), so a namesake never
+ * hides a living person. The archived list is the names of rows archived by id plus every archived
+ * roster name, less any name a living row carries (compared trimmed, without case). The living
+ * names stay exactly as their rows spell them, since documents match on them; both lists sort A→Z.
+ */
+export function splitNamesByArchived(
+  refs: readonly ArchivedRosterRef[],
+  archived: ArchivedRoster,
+): { active: string[]; archived: string[] } {
+  const live = new Set<string>()
+  const gone = new Set<string>()
+  for (const r of refs) {
+    if (!r.name?.trim()) continue
+    if (isArchivedRosterRef(archived, r)) gone.add(r.name.trim())
+    else live.add(r.name)
+  }
+  for (const n of archived.names) gone.add(n)
+  const liveKeys = new Set([...live].map((n) => n.trim().toLowerCase()))
+  const byName = (a: string, b: string) => a.localeCompare(b)
+  return {
+    active: [...live].sort(byName),
+    archived: [...gone].filter((n) => !liveKeys.has(n.toLowerCase())).sort(byName),
+  }
+}
+
 /**
  * The one `person_id` each name's rows carry (key: the name trimmed, lower case), for a surface that
  * groups by name, like the Offsets board. A name whose rows carry two different ids, or none, maps
