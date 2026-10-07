@@ -82,6 +82,19 @@ describe('signerNamesLine — who signed, in the words after "signed by" (v2.459
     expect(signerNamesLine(filed)).toBe('Sam Owner')
   })
 
+  it('sign-job-contract reads the row as the completing signature leaves it: both names, first frame first, whoever signs last (v2.4871)', () => {
+    const nowIso = '2026-09-21T15:02:00Z'
+    // The second signer completes it: the first frame is already on the row.
+    const coCols = { co_signed_at: nowIso, co_signer_printed_name: 'Alex Q. Owner', co_signer_mode: 'type', co_signer_consented_at: nowIso }
+    expect(signerNamesLine({ ...half, ...coCols, signed_at: nowIso })).toBe('Sam Owner and Alex Q. Owner')
+    // The first signer completes it: the second frame is already on the row.
+    const coFirst = { ...two, co_signed_at: '2026-09-21T09:00:00Z', co_signer_printed_name: 'Alex Owner', co_signer_mode: 'type', co_signer_consented_at: '2026-09-21T09:00:00Z' }
+    const primaryCols = { signer_printed_name: 'Sam Owner', signer_mode: 'draw', signer_consented_at: nowIso }
+    expect(signerNamesLine({ ...coFirst, ...primaryCols, signed_at: nowIso })).toBe('Sam Owner and Alex Owner')
+    // One frame: the printed name, as the function wrote before.
+    expect(signerNamesLine({ ...one, ...primaryCols, signed_at: nowIso })).toBe('Sam Owner')
+  })
+
   it('joins names the one way: blanks dropped, "and" before the last', () => {
     expect(joinSignerNames([])).toBe('')
     expect(joinSignerNames([' Sam ', null, ''])).toBe('Sam')
