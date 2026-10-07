@@ -552,3 +552,18 @@ describe('AR items name the payer (v2.4367)', () => {
     expect(byJob.get('j1060')).toMatchObject({ customerId: 'cust-cano', customerName: 'John Cano' })
   })
 })
+
+describe('buildArBuckets — Uncollectible (punch list #94, v2.4784)', () => {
+  it('an Uncollectible job\'s bill is its own bucket: out of ar, out of collections, out of the combined AR', () => {
+    const jobs = [
+      job({ id: 'j1', collections_at: '2026-08-01', uncollectible_at: '2026-10-07' }),
+      job({ id: 'j2', hcp_number: '502', collections_at: '2026-08-01' }),
+    ]
+    const { ar, collections, uncollectible } = buildArBuckets(jobs, [invoice({ id: 'i1', job_id: 'j1', amount: 400 }), invoice({ id: 'i2', job_id: 'j2', amount: 300 })], [])
+    expect(ar.count).toBe(0)
+    expect(collections).toMatchObject({ count: 1, total: 300 })
+    expect(uncollectible).toMatchObject({ count: 1, total: 400 })
+    expect(uncollectible.items[0]?.key).toBe('inv:i1')
+    expect(buildArBucket(jobs, [invoice({ id: 'i1', job_id: 'j1', amount: 400 }), invoice({ id: 'i2', job_id: 'j2', amount: 300 })], []).total).toBe(300)
+  })
+})
