@@ -1,0 +1,424 @@
+{
+  "about": "The schedule's PR 1a (to-dos/gc-mode/mockups/schedule-pr1a.md): the schedule, the chart and moving, lifted to src/lib/gc. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr1a.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcBuildingSchedule",
+      "to": "schedule/schedule.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: the schedule and its measures, moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcBuildingSchedule.ts`), where the owner decided\n * each rule by using it. The items with their trade, worth and percent, the plan to date, what a move\n * pushes, the projected finish, work against the plan, the dates to meet, the look-ahead and its\n * reliability, the summary, and the first draft's entry. No database and no screen reads it yet; the\n * Schedule tab on real data does (PR 7 of to-dos/gc-mode/SCHEDULE_REAL_BUILD.md, on branch spike/gc-mode).\n */"
+    },
+    {
+      "from": "gcGantt",
+      "to": "schedule/gantt.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: the chart, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcGantt.ts`). Its bars, groups, filters and counts, the axis with\n * its weekends and holidays, the links between bars, the spare days after each, and the rows in view.\n * The chart is read, never stored.\n */"
+    },
+    {
+      "from": "gcSplitBars",
+      "to": "schedule/splitBars.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: one line as several bars (G-39), moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcSplitBars.ts`). A line's parts with their own\n * days and shares, a part's report and its own move, and the line's percent from its parts.\n */"
+    },
+    {
+      "from": "gcScheduleMoves",
+      "to": "schedule/moves.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: moving a bar, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcScheduleMoves.ts`). Why it moved, in a reason and the person's\n * own words (the owner, 2026-10-05), what it pushed, the move's record, Undo and Redo, and the history.\n */"
+    },
+    {
+      "from": "gcBaseline",
+      "to": "schedule/baseline.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: baselines (G-41), moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcBaseline.ts`). The plan at Start, a new one after a signed\n * change order, and the old ones kept and named.\n */"
+    },
+    {
+      "from": "gcChangeOrderDays",
+      "to": "schedule/changeOrderDays.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: a change order's days on the chart (G-76), moved word\n * for word from the GC mode prototype (branch spike/gc-mode, `gcChangeOrderDays.ts`). Owner Billing's\n * own change-order kernels follow in its lift (O2), beside `../ownerBilling.ts`.\n */"
+    },
+    {
+      "from": "gcAddedActivity",
+      "to": "schedule/addedActivity.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: the job's own activities added to the chart (G-38),\n * moved word for word from the GC mode prototype (branch spike/gc-mode, `gcAddedActivity.ts`).\n */"
+    },
+    {
+      "from": "gcActualDates",
+      "to": "schedule/actualDates.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: the days work really ran (G-55), moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcActualDates.ts`).\n */"
+    },
+    {
+      "from": "gcPlaces",
+      "to": "schedule/places.ts",
+      "moves": "all",
+      "stays": [
+        "crowdedWeeks",
+        "crowdedPlaces",
+        "crowdedSpells",
+        "placesSummary",
+        "morningCrowding",
+        "crowdedCalls",
+        "CrowdedWeek",
+        "CrowdedTrade",
+        "CrowdedSpell",
+        "CrowdedCall"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: where the work is (G-83), moved word for word from the\n * GC mode prototype (branch spike/gc-mode, `gcPlaces.ts`). A bar's place and its guess, the places\n * kept, and too many trades in one place after a move. The crowded weeks read crew counts and people\n * on site (G-84), so they and what reads them stay in the prototype until the schedule's PR 1b:\n * `crowdedWeeks`, `crowdedPlaces`, `crowdedSpells`, `placesSummary`, `crowdedCalls` and\n * `morningCrowding`.\n */"
+    },
+    {
+      "from": "gcWhatIf",
+      "to": "schedule/whatIf.ts",
+      "moves": "all",
+      "stays": [
+        "whatIfDiff",
+        "whatIfKeptWords",
+        "WHAT_IF_ACTIONS",
+        "WhatIfDiff"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: what if (G-81), moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcWhatIf.ts`). A copy to try moves on, what was tried, what the\n * real schedule changed under it, and Keep. Three stay in the prototype: `whatIfDiff` reads the\n * billing forecast, `whatIfKeptWords` reads who to tell, and `WHAT_IF_ACTIONS` is the prototype's\n * reducer's list.\n */"
+    },
+    {
+      "from": "gcPullEarlier",
+      "to": "schedule/pullEarlier.ts",
+      "moves": "all",
+      "stays": [
+        "planPull",
+        "pullBehind",
+        "pullHolds"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: a pull when work finishes early, moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcPullEarlier.ts`). The offer itself (`planPull`,\n * `pullBehind`, `pullHolds`) reads what holds each bar, from RFIs, submittals, the trades' papers,\n * waits, late notices and open date asks, so it stays in the prototype until the holds reach main\n * (PR 9 of to-dos/gc-mode/SCHEDULE_REAL_BUILD.md). Here: the move a pull makes and its words.\n */"
+    },
+    {
+      "from": "gcRecovery",
+      "to": "schedule/recovery.ts",
+      "moves": "all",
+      "stays": [
+        "recoveryOffers",
+        "recoveryFollowPeople"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: days got back, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcRecovery.ts`). The offers (`recoveryOffers`,\n * `recoveryFollowPeople`) read the holds, the late finish and the follow-up sheet, so they stay in\n * the prototype until those reach main (PR 9 of to-dos/gc-mode/SCHEDULE_REAL_BUILD.md). Here: the\n * rules, the move a recovery makes and its words.\n */"
+    },
+    {
+      "from": "gcNewProject",
+      "to": "schedule/draft.ts",
+      "moves": [
+        "scheduleDraft",
+        "SCHEDULE_STAGES",
+        "lineStage"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: the first draft from the stages of the job, moved word\n * for word from the GC mode prototype (branch spike/gc-mode, `gcNewProject.ts`, which the New project\n * lane wrote): the rough-ins side by side after framing, close-in after the inspection, the trims\n * after the finishes, or a template's lines (G-44).\n */"
+    },
+    {
+      "from": "gcBids",
+      "to": "bids.ts",
+      "moves": [
+        "carriedAmount",
+        "leveledTotal",
+        "takenAlternatesTotal"
+      ],
+      "header": "/**\n * GC mode, the real build: the number we carry for a trade, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcBids.ts`) by the schedule's PR 1a, which reads it for a line's\n * worth before the trade has a statement of work. The Board lane's lift (B2) adds the rest of\n * `gcBids.ts` here.\n */"
+    },
+    {
+      "from": "gcExclusions",
+      "to": "exclusions.ts",
+      "moves": [
+        "exclusionCoversTotal"
+      ],
+      "append": true
+    },
+    {
+      "from": "gcBuilding",
+      "to": "building.ts",
+      "moves": [
+        "addDays",
+        "crewStages",
+        "sentBackOpen"
+      ],
+      "header": "/**\n * GC mode, the real build: the Building lane's day math, our crew's stages and a draw sent back, moved\n * word for word from the GC mode prototype (branch spike/gc-mode, `gcBuilding.ts`) by the schedule's\n * PR 1a, which reads them. The Building lane's lift (U2) adds the rest of `gcBuilding.ts` here.\n */"
+    },
+    {
+      "from": "gcOwnerBilling",
+      "to": "ownerBilling.ts",
+      "moves": [
+        "changeOrderDays",
+        "signedChangeOrders",
+        "projectChangeOrders",
+        "contractDaysAdded"
+      ],
+      "header": "/**\n * GC mode, the real build: a project's change orders and their days, moved word for word from the GC\n * mode prototype (branch spike/gc-mode, `gcOwnerBilling.ts`) by the schedule's PR 1a, which reads them.\n * The Owner Billing lane's lift (O2) adds the rest of `gcOwnerBilling.ts` here.\n */"
+    },
+    {
+      "from": "gcLookups",
+      "to": "lookups.ts",
+      "moves": [
+        "partnerById",
+        "ownBidPriced"
+      ],
+      "header": "/**\n * GC mode, the real build: lookups the kernels share, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcLookups.ts`) by the schedule's PR 1a.\n */"
+    },
+    {
+      "from": "gcWords",
+      "to": "words.ts",
+      "moves": [
+        "shortDate",
+        "weekdayDate"
+      ],
+      "header": "/**\n * GC mode, the real build: dates in words, moved word for word from the GC mode prototype (branch\n * spike/gc-mode, `gcWords.ts`) by the schedule's PR 1a. Every lane's kernels write dates this way.\n */"
+    }
+  ],
+  "types": [
+    {
+      "to": "schedule/types.ts",
+      "whole": true,
+      "names": [
+        "ProjectSchedule",
+        "ScheduleActivity",
+        "ActivityPart",
+        "InspectionFailure",
+        "ScheduleMilestone",
+        "ScheduleBaseline",
+        "LookAheadMark",
+        "LookAheadReason",
+        "ScheduleMove",
+        "ScheduleMoveReason",
+        "ScheduleWhatIf",
+        "WhatIfBase",
+        "TemplateLine",
+        "TemplateUse",
+        "ScheduleWalk",
+        "LateNotice"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 1a: the schedule's own shapes, moved word for word from the\n * GC mode prototype (branch spike/gc-mode, `gcTypes.ts`), so its records fit them as they are. The\n * schedule, its activities and their parts, waits and limits, the dates to meet, baselines, the\n * look-ahead marks, moves with what they pushed and who was told, the weekly walks, a trade's late\n * notices, the what-if copy and the template a draft came from.\n */"
+    },
+    {
+      "to": "types.ts",
+      "names": [
+        "GcState",
+        "GcProject",
+        "TradePackage",
+        "ScopeItem",
+        "Invite",
+        "SubBid",
+        "BidAlternate",
+        "QuoteExclusion",
+        "Sow",
+        "SovLine",
+        "Draw",
+        "DrawSentBack",
+        "ChangeOrder",
+        "Partner",
+        "Includes",
+        "ScopeExclusion"
+      ],
+      "append": true,
+      "fields": {
+        "GcState": [
+          "today",
+          "projects",
+          "partners"
+        ],
+        "GcProject": [
+          "id",
+          "name",
+          "startedOn",
+          "packages",
+          "schedule",
+          "whatIf",
+          "changeOrders"
+        ],
+        "TradePackage": [
+          "id",
+          "trade",
+          "budget",
+          "carried",
+          "scope",
+          "excludes",
+          "invites",
+          "awardedInviteId",
+          "selfPerform",
+          "sow"
+        ],
+        "ScopeItem": [
+          "id",
+          "label"
+        ],
+        "Invite": [
+          "id",
+          "partnerId",
+          "bid"
+        ],
+        "SubBid": [
+          "amount",
+          "includes",
+          "plugs",
+          "exclusions",
+          "exclusionCovers",
+          "alternates",
+          "takenAlternates"
+        ],
+        "BidAlternate": [
+          "label",
+          "amount"
+        ],
+        "QuoteExclusion": [
+          "name"
+        ],
+        "Sow": [
+          "sov",
+          "price",
+          "draws",
+          "sentBack"
+        ],
+        "SovLine": [
+          "id",
+          "label",
+          "amount",
+          "pctReported"
+        ],
+        "Draw": [
+          "number"
+        ],
+        "DrawSentBack": [
+          "draw",
+          "lines"
+        ],
+        "ChangeOrder": [
+          "id",
+          "number",
+          "packageId",
+          "description",
+          "status",
+          "days",
+          "daysOnChart",
+          "answeredOn"
+        ],
+        "Partner": [
+          "id",
+          "company"
+        ],
+        "Includes": "all"
+      },
+      "header": "// ---------------------------------------------------------------------------------------------\n// The job as main's kernels read it (the schedule's PR 1a, 2026-10-07)\n// ---------------------------------------------------------------------------------------------\n\n/*\n * Each shape below keeps the prototype's name (`gcTypes.ts`, branch spike/gc-mode) with only the\n * fields main's kernels read, so the prototype's own records fit it as they are. A lane that lifts\n * more kernels adds the fields they read. PR 6 of to-dos/gc-mode/SCHEDULE_REAL_BUILD.md builds\n * `GcProject` from New project's `GcProjectView` (`projectRows.ts`) and the schedule's rows.\n */"
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcExclusions.ts#fold": "exclusions.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "outside": {
+    "src/lib/plainWords.ts": "src/lib/plainWords.ts"
+  },
+  "tests": [
+    {
+      "from": "gcBuildingSchedule.test.ts",
+      "to": "schedule/schedule.test.ts",
+      "header": "/**\n * The tests of `gcBuildingSchedule.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcGantt.test.ts",
+      "to": "schedule/gantt.test.ts",
+      "header": "/**\n * The tests of `gcGantt.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcSplitBars.test.ts",
+      "to": "schedule/splitBars.test.ts",
+      "header": "/**\n * The tests of `gcSplitBars.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcPlaces.test.ts",
+      "to": "schedule/places.test.ts",
+      "header": "/**\n * The tests of `gcPlaces.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcScheduleMoves.test.ts",
+      "to": "schedule/moves.test.ts",
+      "header": "/**\n * The tests of `gcScheduleMoves.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcPullEarlier.test.ts",
+      "to": "schedule/pullEarlier.test.ts",
+      "header": "/**\n * The tests of `gcPullEarlier.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcRecovery.test.ts",
+      "to": "schedule/recovery.test.ts",
+      "header": "/**\n * The tests of `gcRecovery.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcBaseline.test.ts",
+      "to": "schedule/baseline.test.ts",
+      "header": "/**\n * The tests of `gcBaseline.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcActualDates.test.ts",
+      "to": "schedule/actualDates.test.ts",
+      "header": "/**\n * The tests of `gcActualDates.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcAddedActivity.test.ts",
+      "to": "schedule/addedActivity.test.ts",
+      "header": "/**\n * The tests of `gcAddedActivity.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcChangeOrderDays.test.ts",
+      "to": "schedule/changeOrderDays.test.ts",
+      "header": "/**\n * The tests of `gcChangeOrderDays.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcWhatIf.test.ts",
+      "to": "schedule/whatIf.test.ts",
+      "header": "/**\n * The tests of `gcWhatIf.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcChartHolds.test.ts",
+      "to": "schedule/chartHolds.test.ts",
+      "header": "/**\n * The tests of `gcChartHolds.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    },
+    {
+      "from": "gcNotReady.test.ts",
+      "to": "schedule/notReady.test.ts",
+      "header": "/**\n * The tests of `gcNotReady.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a). The data is `testState.ts`, the prototype's fixture cut to\n * what the kernels read. The tests that play the prototype's reducer or read another lane stay on the\n * spike, where they run against these kernels, until their presses and lanes reach main.\n */"
+    }
+  ],
+  "slice": {
+    "about": "What schedule-test-state.ts cuts the fixture to: each named shape keeps its fields in types.ts; these say which fields hold another named shape. Everything else is kept whole.",
+    "root": "GcState",
+    "to": "schedule/testState.ts",
+    "nested": {
+      "GcState": {
+        "projects": "GcProject",
+        "partners": "Partner"
+      },
+      "GcProject": {
+        "packages": "TradePackage",
+        "changeOrders": "ChangeOrder"
+      },
+      "TradePackage": {
+        "scope": "ScopeItem",
+        "invites": "Invite",
+        "sow": "Sow"
+      },
+      "Invite": {
+        "bid": "SubBid"
+      },
+      "SubBid": {
+        "alternates": "BidAlternate",
+        "exclusions": "QuoteExclusion"
+      },
+      "Sow": {
+        "sov": "SovLine",
+        "draws": "Draw",
+        "sentBack": "DrawSentBack"
+      },
+      "DrawSentBack": {
+        "draw": "Draw"
+      }
+    }
+  }
+}

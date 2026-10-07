@@ -2,7 +2,7 @@
 name: "The schedule's PR 1a: its kernels lifted to main (the schedule, the chart and moving)"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 1a; BUILD_MAP.md, Helper 1's first row
 branch: the plan on spike/schedule-pr1a-plan (from origin/spike/gc-mode at 41f3abe59); the code on claude/gc-schedule-pr1a-kernels, cut from origin/main
-status: plan 2026-10-07 by Helper 1, for the lead's go. Nothing built.
+status: plan 2026-10-07 by Helper 1; the lead's go the same day on the three picks (lanes' files, one PR, the tests that move plus direct ones on main). Amended while building: crowding stays whole for 1b (148 move, not 151), and 52 tests move, not 61.
 ---
 
 # The schedule's PR 1a: its kernels on main
@@ -15,10 +15,10 @@ spike's `src/lib/gcMode` at 41f3abe59.
 - **Moved whole, the 14 files reach 71 of the prototype's modules, 24,684 lines.** That is every
   lane's kernels, the made-up data, both portals, owner billing and the AIA workbook filler. Lifted
   that way, 1a would carry most of the prototype.
-- **Function by function, 151 of their 174 exports read only the schedule.** They also call seven
+- **Function by function, 148 of their 174 exports read only the schedule.** They also call seven
   small helpers from other files, about 300 lines. In all they need about 2,300 lines.
-- **The other 23 read another lane** (below). With their private helpers, they are 771 lines.
-- **None of the 151 calls one of the 23**, so the cut is clean.
+- **The other 26 read another lane** (below). With their private helpers, they are 849 lines.
+- **None of the 148 calls one of the 26**, so the cut is clean.
 
 My plan's list grouped these kernels without this check. The cut below is the fix.
 
@@ -37,7 +37,7 @@ It moves word for word. Only its imports change. The rest waits in the spike for
 | `gcChangeOrderDays` | `schedule/changeOrderDays.ts` | all 7 | |
 | `gcAddedActivity` | `schedule/addedActivity.ts` | all 4 | |
 | `gcActualDates` | `schedule/actualDates.ts` | all 3 | |
-| `gcPlaces` | `schedule/places.ts` | 16 of 19 | `crowdedWeeks`, `crowdedCalls`, `morningCrowding` |
+| `gcPlaces` | `schedule/places.ts` | 13 of 19 | `crowdedWeeks`, `crowdedPlaces`, `crowdedSpells`, `placesSummary`, `crowdedCalls`, `morningCrowding` |
 | `gcWhatIf` | `schedule/whatIf.ts` | 8 of 11 | `whatIfDiff`, `whatIfKeptWords`, `WHAT_IF_ACTIONS` |
 | `gcPullEarlier` | `schedule/pullEarlier.ts` | 8 of 11 | `planPull`, `pullBehind`, `pullHolds` |
 | `gcRecovery` | `schedule/recovery.ts` | 7 of 9 | `recoveryOffers`, `recoveryFollowPeople` |
@@ -65,7 +65,7 @@ file instead of moving the function again:
 |---|---|---|
 | `chartHolds`, all of `gcNotReady` | RFIs, submittals, waits, Start's checklist, the trades' papers and insurance | when holds reach main |
 | `planPull`, `pullBehind`, `pullHolds`, `recoveryOffers`, `recoveryFollowPeople` | the holds, late notices, open date asks, the late finish, the follow-up sheet | PR 9, which should take the holds as an input (way 3 below) |
-| `crowdedWeeks`, `crowdedCalls`, `morningCrowding` | crew counts, people on site, the morning list | 1b, with `gcCrewCounts` and `gcPeopleOnSite` |
+| `crowdedWeeks` and what reads its weeks: `crowdedPlaces`, `crowdedSpells`, `placesSummary`, `crowdedCalls`, `morningCrowding` | crew counts, people on site, the morning list. A crowded week carries each trade's count and where it came from. | 1b, with `gcCrewCounts` and `gcPeopleOnSite` |
 | `whatIfDiff` | the billing forecast | with Owner Billing's forecast |
 | `whatIfKeptWords` | who to tell | PR 13, with Tell the trades |
 | `WHAT_IF_ACTIONS` | the prototype's reducer, the actions a copy takes | with PR 11, if its screen needs the list. Main has no reducer. |
@@ -102,14 +102,16 @@ file instead of moving the function again:
 
 The 14 files hold 205 tests:
 
-- **61 read only the made-up data and the moved functions.** They move as they are. Only the import
-  of the data changes. By file: schedule 23, gantt 22, moves 6, recovery 5, places 2, pulls 2,
-  splits 1.
-- **112 play actions through the prototype's reducer**, which main does not have. 63 play only the
+- **52 read only the made-up data and the moved functions.** They move as they are. Only their
+  imports change. By file: gantt 22, schedule 19, moves 5, places 2, pulls 2, splits 1, recovery 1.
+  The plan first said 61. The extraction, which follows every name a test reaches, found 9 more
+  that play the reducer through a helper.
+- **The other 153 stay.** Most play actions through the prototype's reducer, which main does not
+  have. Of the 112 that play it, 63 play only the
   schedule's presses. 49 play another lane's too: a trade's report, a change order signed, our
   crew's report, Start, a submittal answered. They also check the press itself, like its log line
   and a refused press, not only the kernels.
-- **32 more test the 23 that stay**, or call another lane's kernels.
+- The rest test the 26 that stay, or call another lane's kernels.
 
 **The fixture: a test-only copy of the slice these kernels read**, `schedule/testState.ts`:
 
@@ -119,19 +121,19 @@ The 14 files hold 205 tests:
   Each call returns a fresh copy.
 - A script on the spike writes it from the fixture, never a hand. From the follow-up on, a spike
   test holds the two equal.
-- *Why a copy and not a smaller fixture per test:* the 61 pin the prototype's own numbers (Fair
+- *Why a copy and not a smaller fixture per test:* the 52 pin the prototype's own numbers (Fair
   Oaks D's Dec 11 finish, Roofing's 10 days slipped). A smaller fixture would rewrite every
   expectation, and the lift would no longer be shown to be the same.
 - *Why only the slice:* the whole made-up state is 67 KB and carries every lane.
 
-**The 144 that cannot run on main stay in the spike.** There they run against main's copy, which the
+**The 153 that cannot run on main stay in the spike.** There they run against main's copy, which the
 spike re-exports, so each keeps pinning the moved code. The press tests come to main with the
 presses in PR 8 and 9, which take the reducer's cases into the screen's io. The cross-lane tests
-come with their lanes. `BUILD_MAP.md` says a kernel moves *with its test unchanged*. For these 144
-that cannot hold, so this is the nearest I can keep to it.
+come with their lanes. `BUILD_MAP.md` says a kernel moves *with its test unchanged*. For these 153
+that cannot hold, so this is the nearest I can keep to it. The lead has amended that line.
 
-**Main still tests what it holds.** The 61 call 48 of the 151 moved names. 59 moved functions over
-three lines are not called by any of them, among them Undo and Redo, a move's record, a split's
+**Main still tests what it holds.** Many moved functions over three lines are not called by any of
+the 52, among them Undo and Redo, a move's record, a split's
 parts, keeping a what-if, a new baseline, the real days and places. 1a adds a direct test on the
 slice for each, about 20 tests. Each test is written against the spike's code first, so it pins the
 prototype's own answer.
@@ -173,8 +175,8 @@ Once the lead merges main into the spike:
 
 1. **Move the 14 files whole, with all they reach.** That is 71 modules and 24,684 lines, every
    lane's kernels and the made-up data. **Dropped.**
-2. **Move what reads only the schedule:** 151 of the 174, with seven small helpers, each in its
-   lane's file. The 23 that read another lane wait in the spike. **I pick it.**
+2. **Move what reads only the schedule:** 148 of the 174, with seven small helpers, each in its
+   lane's file. The 26 that read another lane wait in the spike. **I pick it.**
 3. **Move all 174, passing the other lanes' facts in as arguments:** the holds, crew counts, the
    billing shift, who to tell.
    - Against it now: it changes about 25 signatures and their callers, and main has no lane code
@@ -188,4 +190,4 @@ Three calls for the lead:
 
 - the helpers' homes in their lanes' files;
 - one PR or two;
-- the 144 tests staying in the spike while main gets direct tests.
+- the 153 tests staying in the spike while main gets direct tests.
