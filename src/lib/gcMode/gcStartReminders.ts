@@ -16,19 +16,12 @@ import { partnerById } from './gcLookups'
 import { pt, pWeekday, type PortalLang } from './gcPortalI18n'
 import type { PortalMessage } from './gcPortal'
 import { startGaps, type StartGapKind } from './gcNotReady'
-
-/** Days before the first day the two reminders go: two weeks, then three days. */
-export const START_REMINDER_DAYS = [14, 3] as const
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { START_REMINDER_DAYS, firstStartOf } from '../gc/schedule/startReminders'
+export { START_REMINDER_DAYS, firstStartOf } from '../gc/schedule/startReminders'
 
 function awardedTo(pkg: TradePackage, partnerId: string): boolean {
   return pkg.invites.some((i) => i.id === pkg.awardedInviteId && i.partnerId === partnerId)
-}
-
-/** A company's first planned day on a job, by its lines on the schedule. Null: nothing of theirs drawn. */
-export function firstStartOf(project: GcProject, pkg: TradePackage): string | null {
-  const ids = new Set(scheduleLinesOf(pkg).map((l) => l.lineId))
-  const starts = (project.schedule?.activities ?? []).filter((a) => ids.has(a.lineId) && !a.inspection).map((a) => a.start)
-  return starts.length === 0 ? null : starts.reduce((m, d) => (d < m ? d : m))
 }
 
 /**

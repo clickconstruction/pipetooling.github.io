@@ -19,7 +19,7 @@ type Lift = {
   slice?: { root?: string; nested: Record<string, Record<string, string>> }
 }
 /** The lifts whose fields main's test data carries, oldest first. A later lift's list for a shape replaces an earlier one's. */
-const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json']
+const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json', 'schedule-pr1b-ii.lift.json']
 const withAt = process.argv.indexOf('--with')
 const withLift = withAt > 0 ? process.argv[withAt + 1] : undefined
 const lifts = [...LIFTS, ...(withLift ? [withLift] : [])].map((f) => JSON.parse(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8')) as Lift)

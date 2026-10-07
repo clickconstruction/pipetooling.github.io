@@ -6,19 +6,16 @@
  *
  * Its own file, out of the barrel: it reads the customer's schedule kernel.
  */
-import type { GcProject, GcState, ScheduleSend } from './gcTypes'
+import type { GcProject, GcState } from './gcTypes'
 import { CUSTOMER_STAGE_WORDS, customerAsks, customerChanges, customerDoneWords, customerMilestones, customerStages, customerStanding } from './gcCustomerSchedule'
 import { customerContractDays } from './gcChangeOrderDays'
 import { lateFinish } from './gcLateFinish'
 import { shortDate, weekdayDate } from './gcWords'
 import { GC_COMPANY } from './gcFixture'
-
-/** The letter as it would go today: who to, the subject, and the lines. */
-export interface ScheduleLetter {
-  to: string
-  subject: string
-  lines: string[]
-}
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import type { ScheduleLetter } from '../gc/schedule/customerScheduleSend'
+export type { ScheduleLetter } from '../gc/schedule/customerScheduleSend'
+export { customerScheduleHtml, scheduleSendRecord, scheduleSends } from '../gc/schedule/customerScheduleSend'
 
 export function customerScheduleLetter(state: GcState, project: GcProject, by: string): ScheduleLetter {
   const customer = state.customers.find((c) => c.id === project.customerId)
@@ -43,20 +40,4 @@ export function customerScheduleLetter(state: GcState, project: GcProject, by: s
   for (const ask of customerAsks(project)) lines.push(`We need from you: ${ask.words}`)
   lines.push(`Call me with any question.`, `${by}, ${GC_COMPANY.name}`)
   return { to: `${contact}, ${customer?.name ?? project.owner}`, subject: `Your schedule on ${project.name}, ${shortDate(state.today)}`, lines }
-}
-
-/** The letter as a printable page: the portal's paper look, light, one paragraph a line. */
-export function customerScheduleHtml(letter: ScheduleLetter): string {
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(letter.subject)}</title><style>body{font:14px/1.5 -apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#16283c;background:#fff;max-width:42rem;margin:2rem auto;padding:0 1rem}h1{font-size:1.15rem;margin:0 0 .25rem}p{margin:.45rem 0}.to{color:#555;margin-bottom:1rem}</style></head><body><h1>${esc(letter.subject)}</h1><div class="to">To ${esc(letter.to)}</div>${letter.lines.map((l) => `<p>${esc(l)}</p>`).join('')}</body></html>`
-}
-
-/** The record of a send, as it is kept on the project. */
-export function scheduleSendRecord(project: GcProject, letter: ScheduleLetter, by: string, today: string): ScheduleSend {
-  return { id: `${project.id}-ssend-${(project.scheduleSends ?? []).length + 1}`, on: today, by, to: letter.to, subject: letter.subject, lines: letter.lines }
-}
-
-/** Every send, newest first. */
-export function scheduleSends(project: GcProject): ScheduleSend[] {
-  return [...(project.scheduleSends ?? [])].reverse()
 }

@@ -4,7 +4,7 @@
  * (branch spike/gc-mode, `src/lib/gcMode/gcTypes.ts`), so its records fit them as they are. The plans:
  * to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md and SCHEDULE_REAL_BUILD.md on branch spike/gc-mode.
  */
-import type { CrewCount, LookAheadReason, ProjectSchedule, ScheduleWait, ScheduleWhatIf } from './schedule/types'
+import type { CrewCount, LookAheadReason, ProjectSchedule, RoughSchedule, ScheduleSend, ScheduleTemplate, ScheduleWait, ScheduleWhatIf } from './schedule/types'
 
 /** One drawing in a set: its number, like "E-201", and its title. */
 export interface PlanSheet {
@@ -201,15 +201,35 @@ export interface Partner {
   email?: string
 }
 
+/**
+ * One company, one record: the app's own customers. The same row can be the owner we build for,
+ * the architect who drew the plans, and a GC we bid a trade to in Trades mode. What a company is
+ * on a project is the project's to say (customerId, architectId), never the record's.
+ */
+export interface GcCustomer {
+  id: string
+  name: string
+}
+
 export interface GcProject {
   id: string
   name: string
+  address: string
   /** Where the job is, for the drive from each trade partner. */
   town: string
+  /** A rough schedule drawn while we bid, for our bid's weeks to build (G-45). Absent: none drawn. */
+  rough?: RoughSchedule
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
+  customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string
+  /**
+   * Who our customer is to the job (the owner, 2026-10-04: "Sometimes we are working for the owner,
+   * sometimes we are working for another GC or an owner's rep who then works and bills the owner"):
+   * another general contractor or an owner's rep. Missing: the owner.
+   */
+  customerRole?: CustomerRole
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
   stage: GcStage
@@ -218,10 +238,17 @@ export interface GcProject {
   closedOn?: string | null
   /** The schedule we draw while buying out; Start locks it as the baseline (owner, 2026-10-02). */
   schedule?: ProjectSchedule
+  /**
+   * The day we heard the owner picked another builder (owner, 2026-10-03). The project keeps its
+   * stage ('pursuing') and leaves Bidding for the board's Lost section. Absent or null: not lost.
+   */
+  lostOn?: string | null
   /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */
   dailyLogs?: DailyLog[]
   /** What the work waits on from outside the trades (the Gantt, Phase 4): deliveries, the customer's decisions, permits, the utility. Unset: none. */
   waits?: ScheduleWait[]
+  /** The customer's schedule as we sent it on its own (the Gantt, G-94), every send kept as it went, newest last. Unset: never sent. */
+  scheduleSends?: ScheduleSend[]
   /** A what-if copy of the schedule (the Gantt, G-81), beside it and never inside it: only the Schedule tab reads it. Unset: none open. */
   whatIf?: ScheduleWhatIf
   /** Each trade's own word on how many a day it will have on site in a week (G-142), from its portal, newest first. Unset: none yet. */
@@ -245,8 +272,11 @@ export interface DailyLog {
 
 export interface GcState {
   today: string
+  customers: GcCustomer[]
   projects: GcProject[]
   partners: Partner[]
+  /** Schedule templates, oldest first (G-44): a job's shape for the next job like it. Unset: none saved. */
+  scheduleTemplates?: ScheduleTemplate[]
 }
 
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
@@ -269,6 +299,7 @@ export interface ChangeOrder {
   /** The trade the work belongs to. Null: our own work, under general conditions. */
   packageId: string | null
   status: 'draft' | 'sent' | 'signed' | 'declined'
+  sentOn: string | null
   /** The day the owner signed or declined it. */
   answeredOn: string | null
   /**

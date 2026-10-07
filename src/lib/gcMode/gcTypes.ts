@@ -1,6 +1,9 @@
 // What moved to main (the real build) is re-exported from there, so there is one copy.
-import type { LookAheadReason, ProjectSchedule, ScheduleMilestone, ScheduleMoveReason, ScheduleWhatIf, TemplateLine, TemplateUse } from '../gc/schedule/types'
+import type { LookAheadReason, ProjectSchedule, ScheduleMilestone, ScheduleMoveReason, ScheduleWhatIf } from '../gc/schedule/types'
 import type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
+import type { RoughSchedule, ScheduleImport, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
+export type { RoughSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
+
 export type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
 
 export type { ActivityPart, InspectionFailure, LateNotice, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleBaseline, ScheduleMilestone, ScheduleMove, ScheduleMoveReason, ScheduleWalk, ScheduleWhatIf, TemplateLine, TemplateUse, WhatIfBase } from '../gc/schedule/types'
@@ -540,41 +543,6 @@ export interface PreBidMeeting {
    */
   setOn?: string
 }
-/**
- * A rough schedule drawn while we bid (the Gantt's G-45): the start day and the stage lengths it is
- * drawn from, by the first draft's own kernel. Never the schedule itself: the trades' and the
- * customer's views read `GcProject.schedule`, and this stays out of it.
- */
-export interface RoughSchedule {
-  /** The day work would start, as the office assumes it while bidding. */
-  start: string
-  /** This job's stage lengths in days, by stage key. A stage not named takes its usual days. */
-  days: Record<string, number>
-  by: string
-  on: string
-  /** The weeks to build and the finish as they went with our bid: kept when the bid went in, or at award if it was never marked sent. */
-  kept?: { on: string; weeks: number; finish: string; at: 'bid' | 'award' }
-  /** The template it was drawn from (G-44). Unset: the stage days alone. */
-  template?: TemplateUse
-  /** A copy of that template's lines, so every redraw reads the copy and no edit to the template reaches the rough (G-44). */
-  like?: TemplateLine[]
-}
-/** A job's schedule shape kept to start the next job like it (G-44). Never dates, companies, percents or moves. */
-export interface ScheduleTemplate {
-  id: string
-  name: string
-  /** The job it was saved from, by its name then, and how much of its work was done. */
-  from: { projectId: string; name: string; donePct: number }
-  on: string
-  by: string
-  lines: TemplateLine[]
-  /** Each stage's span on that job in days, first start to last finish, in build order: what the card shows. */
-  stages: { key: string; days: number }[]
-  /** From the job's first day to substantial completion, in whole weeks. */
-  weeks: number
-  /** Set aside: not offered for new jobs. The jobs drawn from it keep what they drew. */
-  asideOn?: string
-}
 export interface GcProject {
   id: string
   name: string
@@ -683,17 +651,6 @@ export interface GcProject {
   whatIf?: ScheduleWhatIf
   /** Each trade's own word on how many a day it will have on site in a week (G-142), from its portal, newest first. Unset: none yet. */
   crewCounts?: CrewCount[]
-}
-/** The customer's schedule sent on its own, dated and kept as sent (G-94). */
-export interface ScheduleSend {
-  id: string
-  on: string
-  by: string
-  /** Who it went to: the customer's contact and company. */
-  to: string
-  subject: string
-  /** The letter, one paragraph a line. */
-  lines: string[]
 }
 /** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
 export interface WeeklyReportSent {
@@ -1410,41 +1367,6 @@ export interface DrawSentBack {
   note: string
   /** Lines where we see less done than they asked for. */
   lines: { sovId: string; weSee: number }[]
-}
-/** Where a row of a schedule someone handed us lands (G-137): one of our lines, an inspection, or the job's own. */
-export type ScheduleImportPlace =
-  | { kind: 'line'; lineId: string }
-  | { kind: 'roughInInspection' }
-  | { kind: 'finalInspection' }
-  | { kind: 'inspection' }
-  | { kind: 'added'; who: string }
-/** One activity of theirs the office kept, and where it lands (G-137). */
-export interface ScheduleImportRow {
-  /** The file's own key for it: its task's number, or its line in the spreadsheet. */
-  key: string
-  name: string
-  start: string
-  finish: string
-  place: ScheduleImportPlace
-  /** What it waits on in their file, by key, with the days of gap. */
-  after: { key: string; gap: number }[]
-  notBefore?: string
-  mustFinishBy?: string
-  /** Shorter than a working day in their file: it never becomes a part of a split line (G-137 after G-39). */
-  underADay?: boolean
-  /** Where its work is, from our own file's Place (G-83): kept on the line it lands on. Unset: none in the file. */
-  workPlace?: string
-}
-/** A schedule a customer or the architect handed us, as the office kept it (G-137). Never kept on the job: the schedule it makes is. */
-export interface ScheduleImport {
-  /** The file's name and who handed it, for the log. */
-  file: string
-  from: string
-  /** The day our lines not in the file are drawn from, when nothing they wait on comes later. */
-  workStarts: string
-  rows: ScheduleImportRow[]
-  /** Their dates to meet, as ticked. */
-  dates: { name: string; on: string }[]
 }
 /** Why the work changed, in the words the app's change orders already use. */
 export type ChangeOrderReason = 'owner' | 'field' | 'plans'
