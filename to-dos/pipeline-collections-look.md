@@ -2,7 +2,7 @@
 name: "Pipeline → Collections: a look at the section (2026-10-06)"
 number: 93
 group: ready
-status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · A shipped v2.4758, D v2.4759
+status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · A shipped v2.4758, D v2.4759, B v2.4760
 summary: >
   The Collections section does what the guides say — a flag on a billed job, the typed confirm, the note
   under the money, the self-clearing flag, ⚖ Legal and Lien desk on the header. Three things do not match
@@ -10,8 +10,8 @@ summary: >
   "billed" for a resend, and a Billed count that reads one number on the phone strip and another on the
   desktop header. The docs side (the term, the three columns, the archived migrations) landed with this card.
 next: >
-  A and D shipped. B and C: a read first, then the owner's word on the wording.
-size: XS (A) · S (B, C) · a question (D)
+  A, B and D shipped. C: the working scope rides with Billed and Ready to Bill.
+size: XS (A) · S (B, C) · XS (D)
 blocker: None for A. B, C and D want the owner's call on the words once the reads are in.
 mockup: not required — A changes no screen a Billed row does not already show; B, C and D are words and a count
 ---
@@ -41,7 +41,7 @@ shell shows its amber pill; their only age is the dates block's *Lien by* / *Lie
 The renderer already branches on `collectionsRef?.source === 'collections'`, so nothing else moves. The
 map's §4 Collections row records the gap.
 
-## B. The phone card says "billed 5 weeks ago" for a bill billed 144 days ago — S, a read first
+## B. The phone card says "billed 5 weeks ago" for a bill billed 144 days ago — shipped v2.4760
 
 On the phone board a Collections card's second line reads `billed <distance>`; the words come from
 `deriveStagesBillingActivityDetail(job)` (`stagesJobReferenceDates.ts`, "the best detail from the

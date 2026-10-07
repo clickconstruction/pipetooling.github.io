@@ -123,7 +123,8 @@ import NewReportModal from '../NewReportModal'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
-import { stripBillParts, stripDistancePhrase, stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
+import { stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
+import { phoneBillWords } from '../../lib/jobs/phoneBillWords'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
@@ -2502,12 +2503,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         : null,
       upcoming: stagesUpcomingByJobId[job.id] ?? null,
       crew,
-      billDisplay: bDetail
-        ? (() => {
-            const bill = stripBillParts(bDetail, phoneTodayYmd)
-            return `${bill.label === 'Paid' ? 'paid' : 'billed'} ${stripDistancePhrase(bDetail.ymd, phoneTodayYmd) ?? bill.main}`
-          })()
-        : null,
+      // v2.4760: a Billed / Collections bill row reads the bill's own day, not the latest event.
+      billDisplay: phoneBillWords({ stage, inv, detail: bDetail, todayYmd: phoneTodayYmd }),
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
       lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
