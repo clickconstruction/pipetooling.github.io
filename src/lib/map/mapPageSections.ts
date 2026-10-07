@@ -17,6 +17,30 @@ import type { SubmissionSectionKey } from '../bids/submissionSections'
 export type { JobsMapSection, BidBoardMapDueTone }
 export { JOBS_MAP_COLLECTIONS_RING_COLOR, JOBS_MAP_SECTIONS, JOBS_MAP_SECTION_COLOR, JOBS_MAP_SECTION_LABEL, BID_BOARD_MAP_DUE_RING_COLOR }
 
+/** Bid stage chips; keys and meanings match the Bid Board sections (submissionSections kernel). */
+export const BID_STAGE_META: ReadonlyArray<{ key: SubmissionSectionKey; label: string; title: string }> = [
+  { key: 'unsent', label: 'Unsent', title: 'Unsent / Working Bids' },
+  { key: 'pending', label: 'Pending', title: 'Not yet won or lost' },
+  { key: 'won', label: 'Won', title: 'Won' },
+  { key: 'startedOrComplete', label: 'Started', title: 'Started or Complete' },
+  { key: 'lost', label: 'Lost', title: 'Lost' },
+]
+
+export const BID_STAGE_TITLE: Record<SubmissionSectionKey, string> = Object.fromEntries(BID_STAGE_META.map((m) => [m.key, m.title])) as Record<SubmissionSectionKey, string>
+
+/** "Working", "Billed · Collections", "Won", "sent $1,240" — the record's stage in words for a card row. */
+export function mapPageStageWords(e: { kind: 'job' | 'bid' | 'estimate'; meta?: string; jobSection?: JobsMapSection | null; inCollections?: boolean; bidSection?: SubmissionSectionKey }, focusSection?: SubmissionSectionKey): string {
+  if (e.kind === 'job') {
+    const base = e.jobSection ? JOBS_MAP_SECTION_LABEL[e.jobSection] : (e.meta ?? '')
+    return e.inCollections ? `${base} · Collections` : base
+  }
+  if (e.kind === 'bid') {
+    const s = focusSection ?? e.bidSection
+    return s ? BID_STAGE_TITLE[s] : (e.meta ?? '')
+  }
+  return e.meta ?? ''
+}
+
 export const MAP_PAGE_ESTIMATE_COLOR = '#8b5cf6'
 /** A job whose status is not a Pipeline section, or a bid the board cannot place. */
 export const MAP_PAGE_UNKNOWN_COLOR = '#9ca3af'
