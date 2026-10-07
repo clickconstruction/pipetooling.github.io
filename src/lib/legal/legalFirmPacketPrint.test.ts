@@ -43,6 +43,14 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(html.indexOf('<h3>Where to file</h3>')).toBeLessThan(html.indexOf('<h3>Property record</h3>'))
   })
 
+  it('the letterhead carries who the firm calls (v2.4755)', () => {
+    const { payload, m, packet } = sample()
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars, officeContacts: payload.officeContacts })
+    expect(html).toContain('Reach the office: (512) 555-0100, ask for Robin or Dana<br>Controller Morgan Ellis (512) 555-0142')
+    const bare = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+    expect(bare).not.toContain('Reach the office')
+  })
+
   it('is addressed to the firm and says the matter, the stage and the demand', () => {
     expect(html).toContain('Referral packet')
     expect(html).toContain(`prepared 2026-10-05 for ${payload.firm.name.replace("&", "&amp;")}`)

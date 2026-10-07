@@ -5129,6 +5129,10 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalPortalPair > * { min-width: 0; }
 .legalJobTimeline { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 12px; align-items: start; }
 /* The firm's Lien grid (v2.4749): a rail of GCs beside the table; colors come inline from portalTheme. */
+/* Reach the office (v2.4755): one line under the letterhead; a column on a phone. Colors inline from portalTheme. */
+.legalReachStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; margin: 12px 0 0; border-radius: 6px; font-size: 12.5px; }
+.legalReachWho { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.legalReachAny { margin-left: auto; font-style: italic; }
 .legalLienLay { display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 14px; margin-top: 12px; align-items: stretch; }
 .legalLienLay > * { min-width: 0; }
 .legalLienRail { border-right: 1px solid var(--border); padding-right: 10px; }
@@ -5150,6 +5154,10 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalMatterHeadSums { width: 100%; }
   .legalMatterHeadSums > * { text-align: left !important; }
   .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .legalReachStrip { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .legalReachWho { white-space: normal; flex-wrap: wrap; }
+  .legalReachAny { margin-left: 0; }
+  .legalReachSep { display: none; }
   .legalLienLay { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
   .legalLienRail { border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 8px; }
   .legalLienRailList { position: static; max-height: none; overflow: visible; flex-direction: row; flex-wrap: wrap; gap: 6px; }

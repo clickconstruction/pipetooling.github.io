@@ -92,6 +92,8 @@ Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating
 
 **Which court** (2026-10-06, the owner's ask; plan and mockup `mockup-justice-precinct.html`, reordered on the holistic look): step 1, v2.4764, the Court column and *Where to file* from the county, the cap, TRCP 502.4's two venues and the lien line; steps 2–5 are the office's own court-areas layer on the Map page (areas table and kernel; draw, name and save with the jobs as pins; import Bexar, Travis and Hays; nightly classification, the hand override, the desk gap, the precinct on the portal). The owner wants every county with a job drawn.
 
+**Who the firm calls** (2026-10-06, v2.4755): a strip under the letterhead with the office number and the assistants to ask for, the controller's own number, and what each is for; the same two lines on the printed packet; the desk's firm window flags a controller with no phone. Mockup: `mockup-reach-the-office.html`. Needs `supabase functions deploy legal-portal`.
+
 
 Found by the reviews and left for later:
 

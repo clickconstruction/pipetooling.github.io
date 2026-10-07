@@ -19,6 +19,8 @@ import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCoun
 // v2.4756: the key is short on purpose, so wrong keys are counted by caller and a guesser is refused.
 import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
+import { LEGAL_OFFICE_CONTACT_ROLES, officeContactsFromUsers } from '../_shared/legalOfficeContacts.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -269,8 +271,11 @@ serve(async (req) => {
       // pull-back, and never a voided row. The office's steps, notes and anything after the pull-back stay home.
       entries: ((pulledEntryRows ?? []) as Row[]).filter((e) => e.matter_id === p.id && pulledEntryTravels(e, p.pulled_at as string | null)),
     })).map((pm) => ({ ...pm, entries: (shapeMatterForCounsel({ jobs: [], entries: pm.entries }).entries as Row[]) }))
+    // Who the firm calls (v2.4755): the office line with the assistants to ask for, and the controller's own number.
+    const { data: officeRows } = await admin.from('users').select('name, phone, role').match(REAL_ACCOUNT).is('archived_at', null).in('role', [...LEGAL_OFFICE_CONTACT_ROLES]).order('name')
+    const officeContacts = officeContactsFromUsers(((officeRows ?? []) as Array<{ name: string | null; phone: string | null; role: string }>), PORTAL_COMPANY.phone)
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, recipients, firmPaused, matters: [], pulledMatters, lienBook: await readLienBook(admin) })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -464,7 +469,7 @@ serve(async (req) => {
       })
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin) })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, officeContacts, recipients, firmPaused, matters: out, pulledMatters, lienBook: await readLienBook(admin) })
   } catch (e) {
     return jsonResponse(unexpectedErrorBody('legal-portal', e), 500)
   }

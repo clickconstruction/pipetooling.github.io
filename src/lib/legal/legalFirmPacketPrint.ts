@@ -18,6 +18,7 @@ import type { LegalPortalParticulars } from './legalPortalPayload'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
 import { propertyKindCell, propertySourceNote } from './legalProperty'
 import { venuePlaces, whereToFileText } from './jpVenue'
+import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
@@ -25,6 +26,8 @@ export type FirmPacketPrintOptions = {
   firm: { name: string; handling: string }
   matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number }
   particulars: LegalPortalParticulars
+  /** Who the firm calls (v2.4755), under the letterhead; omitted, the letterhead carries no number. */
+  officeContacts?: LegalOfficeContacts
 }
 
 function esc(s: string | null | undefined): string {
@@ -39,6 +42,7 @@ function table(head: string[], rows: string[], empty: string, foot?: string): st
 }
 
 export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPrintOptions): string {
+  const reach = opts.officeContacts ? legalOfficeContactPrintLines(opts.officeContacts).map(esc).join('<br>') : ''
   const a = packet.account
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
   // The firm's fees and costs, less the contingency the office books when it applies a recovery (item 5: one rule with the matter card).
@@ -124,7 +128,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   a { color: #b0662f; }
 </style></head><body>
 <div class="head">
-  <div><div class="co">${esc(opts.companyName)}</div><div class="muted">Referral packet · prepared ${esc(opts.preparedOn)} for ${esc(opts.firm.name)}${opts.firm.handling ? ` · ${esc(opts.firm.handling)}` : ''}</div></div>
+  <div><div class="co">${esc(opts.companyName)}</div><div class="muted">Referral packet · prepared ${esc(opts.preparedOn)} for ${esc(opts.firm.name)}${opts.firm.handling ? ` · ${esc(opts.firm.handling)}` : ''}</div>${reach ? `<div class="muted reach">${reach}</div>` : ''}</div>
   <div style="text-align:right"><h1>Referral packet</h1><div class="muted">${esc(stage)}${opts.matter.releasedAt ? ` · referred ${esc(opts.matter.releasedAt)}` : ''}</div></div>
 </div>
 <div class="matter">

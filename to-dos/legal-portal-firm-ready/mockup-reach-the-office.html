@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal: reach the office — mockup</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.new { background: #111827; color: #fff; } .cap.alt { background: #E5E7EB; color: #374151; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+
+  /* ---- the portal's paper (portalTheme.ts) ---- */
+  .paper { background: #f6f3ec; color: #16283c; padding: 26px 20px; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .muted { color: #5a6b7e; } .faint { color: #8a97a6; } .ink { color: #16283c; } .copper { color: #b0662f; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #b0662f; padding-bottom: 10px; gap: 12px; flex-wrap: wrap; }
+  .head .co { font-weight: 700; font-size: 17px; } .head .sub { font-size: 12px; color: #5a6b7e; }
+  .head .aside { text-align: right; font-size: 12.5px; color: #5a6b7e; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid #ddd6c8; margin-top: 14px; font-size: 13px; }
+  .tabs span { padding: 6px 12px; color: #5a6b7e; border-bottom: 2px solid transparent; }
+  .tabs span.on { color: #16283c; font-weight: 700; border-bottom-color: #b0662f; }
+  /* A: the strip */
+  .reach { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; padding: 9px 12px; margin-top: 12px; background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; font-size: 12.5px; }
+  .reach .lbl { font-size: 11px; color: #8a97a6; text-transform: uppercase; letter-spacing: .07em; margin-right: 4px; }
+  .reach .who { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+  .reach .role { color: #5a6b7e; }
+  .reach .name { font-weight: 600; }
+  .reach a { color: #b0662f; text-decoration: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .reach .sep { color: #ddd6c8; }
+  .reach .any { margin-left: auto; color: #8a97a6; font-size: 12px; font-style: italic; }
+  /* B: in the letterhead */
+  .aside .reachB { margin-top: 6px; line-height: 1.45; }
+  .aside .reachB a { color: #b0662f; text-decoration: none; font-weight: 600; }
+  /* phone */
+  .phone { max-width: 375px; }
+  .phone .head .aside { text-align: left; }
+  .phone .reach { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .phone .reach .any { margin-left: 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Legal portal · mockup</p><h1>Reach the office</h1>
+<p>The owner, 2026-10-06: <i>at the top of the legal portal offer the office point of contact: list Office Assistants and the company number, and Controller Robert Douglas, +1 617 939 6295 — this way lawyers can call someone at any time.</i> The portal has no phone number on it today; the firm's only door to the office is the question box on a matter.</p></header>
+
+<h2>A · A strip under the letterhead (recommended)</h2>
+<div class="cap new">Every page of the portal, above the tabs</div>
+<div class="pane"><div class="paper">
+  <div class="head">
+    <div><div class="co">Click Plumbing and Electrical</div><div class="sub">Collections referred to counsel · prepared 2026-10-06 · no sign-in, one revocable link</div></div>
+    <div class="aside">For <b class="ink">Snell Law Firm, PLLC</b><br>1 matter · $15,781.82 in balance</div>
+  </div>
+  <div class="reach">
+    <span class="lbl">Reach the office</span>
+    <span class="who"><span class="role">Office</span> <a href="tel:+15123600599">(512) 360-0599</a> <span class="role">· ask for Robin or Casey</span></span>
+    <span class="sep">|</span>
+    <span class="who"><span class="role">Controller · settlements and payments</span> <span class="name">Robert Douglas</span> <a href="tel:+16179396295">(617) 939-6295</a></span>
+    <span class="any">The office in business hours. Robert when the office does not answer.</span>
+  </div>
+  <div class="tabs"><span class="on">Matters · 1</span><span>Lien grid</span><span>Notifications · 0 people</span></div>
+</div></div>
+
+<div class="cap new" style="margin-top:14px">On a phone (375 px): one line per person, the numbers tap to call</div>
+<div class="pane"><div class="paper phone">
+  <div class="head">
+    <div><div class="co">Click Plumbing and Electrical</div><div class="sub">Collections referred to counsel · prepared 2026-10-06</div></div>
+    <div class="aside">For <b class="ink">Snell Law Firm, PLLC</b><br>1 matter · $15,781.82 in balance</div>
+  </div>
+  <div class="reach">
+    <span class="lbl">Reach the office</span>
+    <span class="who"><span class="role">Office</span> <a href="tel:+15123600599">(512) 360-0599</a> <span class="role">· ask for Robin or Casey</span></span>
+    <span class="who"><span class="role">Controller</span> <span class="name">Robert Douglas</span> <a href="tel:+16179396295">(617) 939-6295</a></span>
+    <span class="any">The office in business hours. Robert when the office does not answer.</span>
+  </div>
+</div></div>
+
+<h2>B · Folded into the letterhead's right side</h2>
+<div class="cap alt">Smaller, but the names and numbers compete with the firm's own line</div>
+<div class="pane"><div class="paper">
+  <div class="head">
+    <div><div class="co">Click Plumbing and Electrical</div><div class="sub">Collections referred to counsel · prepared 2026-10-06 · no sign-in, one revocable link</div></div>
+    <div class="aside">For <b class="ink">Snell Law Firm, PLLC</b> · 1 matter · $15,781.82 in balance
+      <div class="reachB">Office <a href="tel:+15123600599">(512) 360-0599</a> · ask for Robin or Casey<br>Controller Robert Douglas <a href="tel:+16179396295">(617) 939-6295</a></div>
+    </div>
+  </div>
+  <div class="tabs"><span class="on">Matters · 1</span><span>Lien grid</span><span>Notifications · 0 people</span></div>
+</div></div>
+
+<h2>C · The same line on the printed packet</h2>
+<div class="cap new">Under the firm packet's letterhead, so the paper and the portal agree</div>
+<div class="pane"><div class="paper" style="background:#fff;padding:18px 22px;border:1px solid #ddd6c8">
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #16283c;padding-bottom:8px">
+    <div><div style="font-weight:700;font-size:16px">Click Plumbing and Electrical</div><div class="muted" style="font-size:11.5px">Account referred to Snell Law Firm, PLLC · prepared 2026-10-06</div></div>
+    <div class="muted" style="font-size:11.5px;text-align:right">Reach the office: (512) 360-0599, ask for Robin or Casey<br>Controller Robert Douglas (617) 939-6295</div>
+  </div>
+</div></div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Second look (the owner asked).</b> <i>Ask for Robin or Casey</i> in place of a list of full names, since that is what the person answering will say; what each number is for in place of <i>at any time</i>, which promised what the office may not keep; both numbers in one format; a word on what the controller decides; and the same line on the printed packet, where a lawyer holding paper had no number at all.</li>
+  <li><b>A strip, not a tab.</b> A lawyer reaching for a phone should not have to find a page. The strip sits on every view, under the letterhead and above the tabs, and stays small: one line on a computer, four on a phone.</li>
+  <li><b>Two numbers, not a list.</b> The office number reaches whichever assistant is in; the controller's number is the one that answers when the office does not. The assistants are named by first name so the lawyer knows who to ask for, but they share the office line rather than each carrying a mobile on the firm's page.</li>
+  <li><b>Where the names come from.</b> The function reads the active users with the <i>assistant</i> role (names) and the <i>controller</i> role (name and phone) from the users table, so a new assistant or a changed number shows on the firm's next open with nothing to edit; the particulars block was the other home, but it is still 0 of 8 filled and names change with staff. If the controller has no phone on file the strip shows the office number alone, and the Legal desk's firm window says the line is missing. The office number is the portal letterhead's company phone. This needs a <code>legal-portal</code> redeploy; the sample portal draws the same strip from the fixture.</li>
+  <li><b>Numbers are tel: links</b>, so on a phone one tap dials. On a computer they are plain copper text.</li>
+  <li><b>Not done: email addresses.</b> The firm already writes to the office through a matter's question box, and that lands in the record. A loose email would not.</li>
+</ul>
+</div></body></html>

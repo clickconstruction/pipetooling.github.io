@@ -8,6 +8,7 @@
  * many were. `sharedOverrides` marks every entry that arrived as shared, so a
  * page still on the old default rule shows them too.
  */
+import { emptyOfficeContacts, type LegalOfficeContacts } from './legalOfficeContacts'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobContractRowLike, SignedEstimateLike } from '../jobs/jobContractCoverage'
@@ -74,6 +75,8 @@ export type LegalPortalPayload = {
   preparedOn: string
   firm: LegalFirmRow
   particulars: LegalPortalParticulars
+  /** Who the firm calls (v2.4755); from an older function, the letterhead's number alone. */
+  officeContacts: LegalOfficeContacts
   recipients: LegalPortalRecipient[]
   firmPaused: boolean
   matters: LegalPortalMatter[]
@@ -132,6 +135,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
     preparedOn: typeof raw.preparedOn === 'string' ? raw.preparedOn : '',
     firm: firm as unknown as LegalFirmRow,
     particulars: isRecord(raw.particulars) ? (raw.particulars as LegalPortalParticulars) : {},
+    officeContacts: parseOfficeContacts(raw.officeContacts, isRecord(raw.company) && typeof raw.company.phone === 'string' ? raw.company.phone : ''),
     recipients: Array.isArray(raw.recipients)
       ? (raw.recipients as unknown[]).filter(isRecord).map((r): LegalPortalRecipient => ({ id: String(r.id ?? ''), name: String(r.name ?? ''), email: String(r.email ?? ''), role: String(r.role ?? ''), mode: r.mode === 'digest' ? 'digest' : 'now', scope: r.scope === 'mine' ? 'mine' : 'all', digestWeekday: Number(r.digestWeekday) || 1, digestTime: typeof r.digestTime === 'string' ? r.digestTime : '07:00', confirmed: Boolean(r.confirmed), paused: Boolean(r.paused), addedViaPortal: Boolean(r.addedViaPortal), failingSince: typeof r.failingSince === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.failingSince) ? r.failingSince : null }))
       : [],
@@ -181,4 +185,13 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
 
 export function portalFeeModel(payload: LegalPortalPayload): LegalFeeModel {
   return feeModelOf(payload.firm)
+}
+
+function parseOfficeContacts(raw: unknown, companyPhone: string): LegalOfficeContacts {
+  if (!isRecord(raw)) return emptyOfficeContacts(companyPhone)
+  const names = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0) : [])
+  const controllers = Array.isArray(raw.controllers)
+    ? raw.controllers.filter(isRecord).filter((k) => typeof k.name === 'string' && k.name.trim()).map((k) => ({ name: String(k.name).trim(), phone: typeof k.phone === 'string' && k.phone.trim() ? k.phone.trim() : null }))
+    : []
+  return { phone: typeof raw.phone === 'string' ? raw.phone.trim() : companyPhone, assistants: names(raw.assistants), controllers }
 }
