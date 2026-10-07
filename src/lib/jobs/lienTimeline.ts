@@ -255,7 +255,7 @@ export function lienThirtyDayClock(fromYmd: string | null | undefined): string {
 /**
  * The first day a work month's § 53.056 notice can go out (v2.3815): the 1st of the next
  * month, once the month's work is done and unpaid. The statute sets only the last day; the
- * first-day reading sits under the rules guide's *Not yet verified* until counsel confirms it.
+ * first-day reading sits under the rules guide's *Not yet read by counsel* until counsel confirms it.
  */
 export function lienNoticeOpensOn(monthKey: string): string {
   const m = /^(\d{4})-(\d{2})/.exec(monthKey ?? '')

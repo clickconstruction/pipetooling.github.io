@@ -1,5 +1,5 @@
 /**
- * LIEN_RULE_CITES (v2.3594): section → the heading in the guide *read the Texas lien
+ * LIEN_RULE_CITES (v2.3594; the headings are the questions they answer since v2.4826): section → the heading in the guide *read the Texas lien
  * rules the app follows* that explains it. The guide is the one copy of the rules; the
  * surfaces quote section numbers and this table turns each into a door (`/help?g=…#…`).
  * A heading renamed in the guide has to be renamed here — the test pins every entry to a
@@ -10,21 +10,21 @@ import { helpGuideHref } from '../helpGuideAnchors'
 export const LIEN_RULES_GUIDE_SLUG = 'texas-lien-rules-the-app-follows'
 
 export const LIEN_RULE_CITES = {
-  '§ 53.003': 'The month rule',
-  '§ 53.056': 'The § 53.056 notice',
+  '§ 53.003': 'When each date falls',
+  '§ 53.056': 'What the notice is and where it goes',
   '§ 53.081': 'What the notice does for the owner',
-  '§ 53.052': 'The affidavit',
-  '§ 53.152': 'Releases and waivers',
-  '§ 38.001': "Attorney's fees need presentment",
-  '§ 38.002': "Attorney's fees need presentment",
-  'Rule 185': 'Sworn account',
-  '§ 392': 'Debt collection (homeowners)',
-  '§ 28.004': 'Interest: Prompt Payment',
-  '§ 302.002': 'Interest: the legal rate',
-  '§ 31.04': 'Theft of service',
-  '§ 27.031': 'Justice court',
-  residential: 'Residential shortens everything by a month',
-  delivery: 'Delivery',
+  '§ 53.052': 'What the affidavit needs before it can be filed',
+  '§ 53.152': 'When a release or a waiver is owed',
+  '§ 38.001': "Attorney's fees need a demand first",
+  '§ 38.002': "Attorney's fees need a demand first",
+  'Rule 185': 'A suit on an account needs an itemized record',
+  '§ 392': 'What a letter to a homeowner may not say',
+  '§ 28.004': 'Interest at 1.5 percent a month on an unpaid bill',
+  '§ 302.002': 'Interest at 6 percent a year when no bill was sent',
+  '§ 31.04': 'Theft of service stays off the letter',
+  '§ 27.031': 'What a justice court can hear',
+  residential: 'A house moves every date up a month',
+  delivery: 'When certified mail is required',
 } as const
 
 export type LienRuleCite = keyof typeof LIEN_RULE_CITES
