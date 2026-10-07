@@ -513,8 +513,19 @@ const BUCKET_TONE: Record<LienCalendarBucketKey, { ink: string; bar: string; rul
   next_month: { ink: 'var(--text-700)', bar: 'var(--bg-subtle)', rule: 'var(--border-strong)', band: 'var(--bg-blue-tint)', pillBg: 'var(--bg-blue-tint)', pillBorder: 'var(--border-blue)' },
   later: { ink: 'var(--text-700)', bar: 'var(--bg-subtle)', rule: 'var(--border-strong)', band: 'var(--bg-slate-100)', pillBg: 'var(--bg-blue-tint)', pillBorder: 'var(--border-blue)' },
 }
-/** The date row's height: the bucket bars stick under it. */
+/** The date row's height. It is a fixed row above the list since v2.4766, so nothing the list scrolls can show above it. */
 const DATE_ROW_H = 40
+/** A bucket bar's height: its 36 px row, the 2 px rule above and the 1 px border below. */
+const BAR_H = 39
+/**
+ * A bucket's section ends with one bar's height of nothing (`BUCKET_SPACER`) and pulls the next
+ * section up by the same, so the bar it sticks stays at the top until the next bar arrives and
+ * covers it (v2.4766). Without the room a sticky bar is pushed out by its section's end and its
+ * bottom half shows for a moment under the row above it. Padding would not do: a sticky box is
+ * held inside its parent's content box.
+ */
+const BUCKET_SECTION: CSSProperties = { position: 'relative', marginBottom: -BAR_H }
+const BUCKET_SPACER: CSSProperties = { height: BAR_H }
 /** The Overdue bar's hover: why nothing is left to file, and who chases the money. */
 const OVERDUE_NOTE = 'A notice or lien window closed with nothing sent. The money is still owed. Collections or the Legal desk can chase it.'
 /** A line of words across the whole board sits over the today line and the column rules. */
@@ -711,7 +722,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow
       {shown.map((b) => {
         const open = !folded.has(b.key)
         return (
-          <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`}>
+          <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={BUCKET_SECTION}>
             <BucketBar b={b} open={open} onToggle={() => onFold(b.key)} onDraft={onDraft} top={0} phone />
             {open && b.jobs.length === 0 ? <div style={{ padding: '0.9rem 12px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : b.empty}</div> : null}
             {open
@@ -746,6 +757,7 @@ function PhoneBoard({ shown, folded, onFold, onDraft, onOpenJob, onOpenJobWindow
                   </div>
                 ))
               : null}
+            <div aria-hidden style={BUCKET_SPACER} />
           </section>
         )
       })}
@@ -849,7 +861,15 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
         </div>
       ) : null}
       {rows && kindsOpen && penOn ? <KindsSheet jobs={liveJobs} onClose={() => setKindsOpen(false)} onOpenEditJob={onOpenEditJob} onSaved={saved} /> : null}
-      <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, position: 'relative' }}>
+      {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
+        // The date row is a fixed row above the list, not a sticky row inside it (v2.4766): a sticky row can lag
+        // the scroll in Safari and let a scrolled row show above it. `scrollbar-gutter: stable` here and on the
+        // list keeps the columns aligned when the list draws a scrollbar.
+        <div style={{ flex: 'none', overflow: 'hidden', scrollbarGutter: 'stable', background: 'var(--surface)' }}>
+          <DateRow axis={axis} counts={counts} query={query} onQuery={setQuery} lens={housesLens} />
+        </div>
+      ) : null}
+      <div style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0, position: 'relative', scrollbarGutter: 'stable' }}>
         {!rows ? <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading the board…</div> : null}
         {rows && board.count === 0 && !query.trim() ? <div style={{ padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Nothing billed is on a lien clock.</div> : null}
         {rows && isMobile && (board.count > 0 || query.trim()) ? (
@@ -861,16 +881,13 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
         ) : null}
         {rows && !isMobile && axis && (board.count > 0 || query.trim()) ? (
           <div style={{ position: 'relative' }}>
-            <div style={{ position: 'sticky', top: 0, zIndex: 4, background: 'var(--surface)' }}>
-              <DateRow axis={axis} counts={counts} query={query} onQuery={setQuery} lens={housesLens} />
-            </div>
             {board.count === 0 ? <div style={{ ...ABOVE_LINES, padding: '1.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No billed job matches that.</div> : null}
             {board.count > 0
               ? shown.map((b) => {
                   const open = !folded.has(b.key)
                   return (
-                    <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={{ position: 'relative' }}>
-                      <BucketBar b={b} open={open} onToggle={() => fold(b.key)} onDraft={onDraft} top={DATE_ROW_H} />
+                    <section key={b.key} aria-label={b.title} data-testid={`lien-cal-bucket-${b.key}`} style={BUCKET_SECTION}>
+                      <BucketBar b={b} open={open} onToggle={() => fold(b.key)} onDraft={onDraft} top={0} />
                       {open && b.jobs.length === 0 ? <div style={{ ...ABOVE_LINES, padding: '1rem 14px 1rem 30px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{query.trim() ? 'No billed job matches that.' : b.empty}</div> : null}
                       {open
                         ? b.groups.map((g) => {
@@ -914,6 +931,7 @@ export default function LienDeskCalendarTab({ rows, todayYmd, onOpenJob, onOpenJ
                             )
                           })
                         : null}
+                      <div aria-hidden style={BUCKET_SPACER} />
                     </section>
                   )
                 })
