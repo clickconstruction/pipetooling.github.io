@@ -16,7 +16,7 @@ describe('LIEN_RULE_CITES (v2.3594)', () => {
     for (const cite of Object.values(LIEN_RULES_DOOR)) expect(cite in LIEN_RULE_CITES).toBe(true)
   })
   it('builds the in-app address with the anchor', () => {
-    expect(lienRuleHref('§ 53.056')).toBe('/help?g=texas-lien-rules-the-app-follows#the-s-53-056-notice')
-    expect(lienRuleHref('§ 28.004')).toBe('/help?g=texas-lien-rules-the-app-follows#interest-prompt-payment')
+    expect(lienRuleHref('§ 53.056')).toBe('/help?g=texas-lien-rules-the-app-follows#what-the-notice-is-and-where-it-goes')
+    expect(lienRuleHref('§ 28.004')).toBe('/help?g=texas-lien-rules-the-app-follows#interest-at-1-5-percent-a-month-on-an-unpaid-bill')
   })
 })

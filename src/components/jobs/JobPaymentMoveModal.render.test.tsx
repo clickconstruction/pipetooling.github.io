@@ -36,6 +36,15 @@ describe('JobPaymentMoveModal', () => {
     expect(screen.getByText('Pick a job')).toBeTruthy()
   })
 
+  it('v2.4822: a cash payment Stripe holds is called a payment, not a check', () => {
+    renderWithProviders(<JobPaymentMoveModal open payment={row({ payment_type: 'Cash', reference_number: null })} fromJob={job([heldBill])} onClose={() => {}} onMoved={() => {}} />)
+    // first paint
+    expect(screen.getByRole('dialog', { name: 'Move this payment' }).textContent).toContain('Move this payment')
+    expect(screen.getByTestId('held-move-intro').textContent).toContain('Stripe holds this payment as paid')
+    expect(screen.getByTestId('held-move-steps').textContent).toContain('The $6,200.00 payment lands on the job you pick')
+    expect(screen.getByTestId('held-move-steps').textContent).not.toContain('check')
+  })
+
   it('an ordinary row keeps the one-RPC words and no step list', () => {
     renderWithProviders(<JobPaymentMoveModal open payment={row({ invoice_id: 'inv-p' })} fromJob={job([plainBill])} onClose={() => {}} onMoved={() => {}} />)
     // first paint

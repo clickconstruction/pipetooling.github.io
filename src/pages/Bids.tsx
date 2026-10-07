@@ -33,6 +33,8 @@ import { submissionFollowupBidShareUrl } from '../lib/submissionFollowupBidShare
 import type { BreakdownJumpTarget } from '../lib/bids/bidTabRowJump'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
+import { BidsModeToggle } from '../components/gc/BidsModeToggle'
+import { canOpenGcProjects } from '../lib/gc/access'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal } from '../components/bids/BidFormModal'
 import { useBidWindowState } from '../hooks/useBidWindowState'
@@ -108,7 +110,6 @@ import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
-import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
@@ -1514,16 +1515,19 @@ export default function Bids() {
       </div>
     ) : null
 
-  /** GC mode design spike: the Trades / GC switch sits before the trades, for a dev only. */
-  const bidsTradeSegments =
-    myRole === 'dev' ? (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
-        <BidsModeToggle mode="trades" />
-        {bidsTradeOnlySegments}
-      </div>
-    ) : (
-      bidsTradeOnlySegments
-    )
+  /**
+   * GC mode, door 1 (v2.4832): the Trades | GC switch sits before the trades, for the office and
+   * estimators. Below the wide header its pieces join the header's own wrapping row, so on a phone
+   * the switch takes one row and the trades keep theirs beside New Bid.
+   */
+  const bidsTradeSegments = canOpenGcProjects(myRole) ? (
+    <div style={{ display: wideBidsHeader ? 'flex' : 'contents', alignItems: 'center', gap: '0.6rem' }}>
+      <BidsModeToggle mode="trades" />
+      {bidsTradeOnlySegments && <div style={{ display: 'flex', marginRight: 'auto' }}>{bidsTradeOnlySegments}</div>}
+    </div>
+  ) : (
+    bidsTradeOnlySegments
+  )
 
   const bidsNewBidButton =
     visibleServiceTypes.length > 0 && myRole !== 'primary' ? (

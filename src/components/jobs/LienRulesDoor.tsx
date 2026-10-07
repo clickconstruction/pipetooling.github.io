@@ -1,5 +1,6 @@
 import { lazy, Suspense, useState, type CSSProperties } from 'react'
 import { LIEN_RULES_DOOR } from '../../lib/jobs/lienRuleCites'
+import type { LienRulesJob } from '../../lib/jobs/lienRulesDates'
 
 // The window reads one guide through `helpGuideRegistry`, whose eager glob carries every help guide
 // (about 1.7 MB of text). Imported here directly it put that text in the app's main chunk, past the
@@ -12,9 +13,11 @@ const LienRulesModal = lazy(() => import('./LienRulesModal'))
  * the guide *read the Texas lien rules the app follows*, opened at the row that matters for
  * what is on screen. Since v2.4655 it opens the rules as a window over the desk with a find
  * box (`LienRulesModal`), not a new page — the desk or window stays open behind it. Shows
- * wherever its surface shows; the guide's own front matter gates who reads it.
+ * wherever its surface shows; the guide's own front matter gates who reads it. Since v2.4826
+ * the desk hands it the picked job (`job`), which the window names in a strip with its two
+ * dates and lights in the clock rule's table.
  */
-export function LienRulesDoor({ where, style }: { where: keyof typeof LIEN_RULES_DOOR; style?: CSSProperties }) {
+export function LienRulesDoor({ where, style, job, todayYmd }: { where: keyof typeof LIEN_RULES_DOOR; style?: CSSProperties; job?: LienRulesJob | null; todayYmd?: string }) {
   const cite = LIEN_RULES_DOOR[where]
   const [open, setOpen] = useState(false)
   return (
@@ -50,7 +53,7 @@ export function LienRulesDoor({ where, style }: { where: keyof typeof LIEN_RULES
       </button>
       {open ? (
         <Suspense fallback={null}>
-          <LienRulesModal cite={cite} onClose={() => setOpen(false)} />
+          <LienRulesModal cite={cite} job={job} todayYmd={todayYmd} onClose={() => setOpen(false)} />
         </Suspense>
       ) : null}
     </>

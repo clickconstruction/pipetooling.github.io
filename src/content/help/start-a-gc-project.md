@@ -1,17 +1,17 @@
 ---
 title: start a GC project from its plans
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, general contractor, new project, plans, sheet index, trades, scope, scope book, bid set, drive link
 order: 93
 ---
 A GC project starts the day its plans come in. The New project window takes you through the project, the plans, the trades and each scope.
 
-GC mode is the part of the app where we are the general contractor. The GC projects page lists every GC project and holds the {{button:blue|New project}} button. Only devs see the page while the real build goes on.
+GC mode is the part of the app where we are the general contractor. The GC projects page lists every GC project and holds the {{button:blue|New project}} button. The office and estimators see the page.
 
 ## Step 1, the project
 
-1. Open **GC projects** at `/gc` and press {{button:blue|New project}}.
+1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:blue|New project}}.
 2. Type the project's name and its address, with the street and the town.
 3. Pick the customer from the list, or pick **Someone new** and type the name.
 4. Pick the architect the same way.

@@ -1,17 +1,17 @@
 ---
 title: put a new set of plans on a GC project
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, new set, addendum, bulletin, permit set, plans, sheets, sections, taken out, renamed, scope lines, trades, checked by
 order: 95
 ---
 A new set of plans came in, an addendum or a bulletin or a whole new set. The window reads what changed and puts the set on the project in one press.
 
-An addendum comes while we bid. A bulletin comes once the job is ours. A whole new set, such as a permit set, brings every sheet again. Only devs see the window while the real build goes on.
+An addendum comes while we bid. A bulletin comes once the job is ours. A whole new set, such as a permit set, brings every sheet again. The office and estimators see the window.
 
 ## Say what came in
 
-1. Open **GC projects** at `/gc` and press {{button:outline|A new set of plans came in}} on the project's card.
+1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|A new set of plans came in}} on the project's card.
 2. Pick the kind of set. The name follows it, such as *Addendum 1*. Change the name if you want.
 3. Pick who on our team checked the files under **Checked by**.
 4. Paste the set's Google Drive link under **Google Drive link to this set**.

@@ -1,12 +1,14 @@
 /**
- * GC mode, the real build, step 4: the GC projects page, dev-only while the build goes on. It
- * lists every GC project as the kernels read it (the sets, the sheets, the trades with their scope
- * lines and the gaps), and holds the New project window. `src/lib/gc/gcIo.ts` does the reading
+ * GC mode, the real build, step 4: the GC projects page, open to the office and estimators since
+ * door 1 (v2.4832, `canOpenGcProjects`). It lists every GC project as the kernels read it (the
+ * sets, the sheets, the trades with their scope lines and the gaps), and holds the New project
+ * window. `src/lib/gc/gcIo.ts` does the reading
  * and the one write; the window and the kernels decide the rest.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { canOpenGcProjects } from '../lib/gc/access'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -17,6 +19,7 @@ import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow } from '../components/gc/GcQuestions'
 import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
+import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import {
   checkDriveAccess,
   createGcProject,
@@ -92,7 +95,7 @@ export default function GcProjects() {
   }, [])
 
   useEffect(() => {
-    if (role !== 'dev') return
+    if (!canOpenGcProjects(role)) return
     void load()
   }, [role, load])
 
@@ -103,7 +106,7 @@ export default function GcProjects() {
   const book = useMemo(() => (bookInput ? scopeBook(bookInput) : []), [bookInput])
 
   if (authLoading) return null
-  if (role !== 'dev') return <Navigate to="/dashboard" replace />
+  if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
 
   const setWindow = (open: boolean) => {
     const next = new URLSearchParams(params)
@@ -163,8 +166,11 @@ export default function GcProjects() {
   return (
     <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <BidsModeToggle mode="gc" />
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>GC projects</h1>
-        <Chip tone="grey">dev only, the real build</Chip>
+        <Chip tone="grey" title="GC mode is new. Tell the office what you find.">
+          Being built
+        </Chip>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
           <Btn kind="quiet" onClick={() => setBook({})} disabled={!loaded}>
             Open the scope book

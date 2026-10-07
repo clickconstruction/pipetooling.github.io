@@ -19,7 +19,8 @@ import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeoco
  * county takes the county the point sits in (`county_source = 'geocoder'`, v2.4790). Before
  * it classifies, it geocodes up to GEOCODE_PER_NIGHT addresses that have no point yet —
  * Google, else the Census — through the same cache the Map page and the job form use
- * (v2.4790), so the backlog of unplaced records drains by itself.
+ * (v2.4790), so the backlog of unplaced records drains by itself. The lookups stop at
+ * LOOKUP_BUDGET_MS (v2.4824) and the run classifies with what it has; the rest wait for the next run.
  *
  * Auth: `X-Cron-Secret` = `CRON_SECRET`, or a signed-in office user (`is_office_staff()`
  * under the caller's JWT). Body: `{ dry_run?: boolean }`.
@@ -44,6 +45,12 @@ const MAX_ROWS = 5000
 const BATCH = 200
 /** Addresses with no point that one night geocodes; the rest wait for the next night. */
 const GEOCODE_PER_NIGHT = 300
+/**
+ * How long one run spends on outside lookups (the geocoder, the Census county) before it classifies with
+ * what it has (v2.4824). A long backlog ran past the gateway, so Classify now saw a dropped connection
+ * while the work finished unseen. What is left waits for the next run (`lookupsDeferred`).
+ */
+const LOOKUP_BUDGET_MS = 75_000
 
 type AddressRow = { id: string; address: string | null; county: string | null; jp_precinct: string | null; jp_precinct_note: string | null; jp_precinct_source: string | null }
 
@@ -78,6 +85,7 @@ serve(async (req) => {
   const dryRun = body.dry_run === true
   const admin = createClient(supabaseUrl, serviceKey)
 
+  const lookupsUntil = Date.now() + LOOKUP_BUDGET_MS
   try {
     const { data: areaRows, error: areaErr } = await admin.from('court_areas').select('id, county, precinct, label, polygon, source, source_note, active').eq('active', true)
     if (areaErr) return jsonResponse({ error: areaErr.message }, 500)
@@ -99,6 +107,7 @@ serve(async (req) => {
     let geocoded = 0
     let geocodeMisses = 0
     let countyFilled = 0
+    let lookupsDeferred = 0
     const now = new Date().toISOString()
     const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
@@ -115,6 +124,10 @@ serve(async (req) => {
     // 2 · up to GEOCODE_PER_NIGHT addresses with no point: Google, else the Census, into the cache (v2.4790).
     const unplaced = [...new Set(rows.map((r) => (r.address ?? '').trim().replace(/\s+/g, ' ')).filter((a) => a.length >= 8 && !point.has(normalizeKey(a))))].slice(0, GEOCODE_PER_NIGHT)
     for (const display of unplaced) {
+      if (Date.now() > lookupsUntil) {
+        lookupsDeferred += 1
+        continue
+      }
       const key = normalizeKey(display)
       let hit: { lat: number; lng: number; county?: string } | null = null
       if (googleKey) {
@@ -154,8 +167,10 @@ serve(async (req) => {
       let fillCounty: { county: string; county_source: string } | null = null
       if (!hadCounty) {
         if (c.precinct) fillCounty = { county: c.county, county_source: 'map' }
+        else if (pt.county?.trim()) fillCounty = { county: pt.county.trim(), county_source: 'geocoder' }
+        else if (Date.now() > lookupsUntil) lookupsDeferred += 1
         else {
-          const county = pt.county?.trim() || (await censusCountyFromPoint(pt.lat, pt.lng))
+          const county = await censusCountyFromPoint(pt.lat, pt.lng)
           if (county) fillCounty = { county, county_source: 'geocoder' }
         }
       }
@@ -166,7 +181,7 @@ serve(async (req) => {
       const { error: upErr } = await admin.from('customer_addresses').update({ ...next, ...(fillCounty ?? {}), jp_precinct_source: c.precinct ? 'map' : '', jp_precinct_at: now }).eq('id', r.id)
       if (upErr) console.error('court-precinct-nightly: write failed', r.id, upErr.message)
     }
-    const out = { ok: true, dryRun, areas: areas.length, rows: rows.length, placed, outside, onLine, noPoint, written, geocoded, geocodeMisses, countyFilled }
+    const out = { ok: true, dryRun, areas: areas.length, rows: rows.length, placed, outside, onLine, noPoint, written, geocoded, geocodeMisses, countyFilled, lookupsDeferred }
     console.log('court-precinct-nightly', JSON.stringify(out))
     return jsonResponse(out)
   } catch (e) {

@@ -58,6 +58,31 @@ describe('buildLienPayRunway', () => {
     expect(worked.title).toContain('approved hours')
   })
 
+  it('a last day set by hand counts first: before the clock hours, before the creation day, and the hover says so (v2.4830)', () => {
+    // Job 663: created March 10, no clock hours, the office set July 6 by hand. Before, the runway counted
+    // from March (notice not sent by Jun 15); the desk and the window already counted from July.
+    const r = buildLienPayRunway(input({ lastWorkYmd: null, createdAt: '2026-03-10T15:00:00Z', handLastWorkYmd: '2026-07-06', propertyKind: 'non_residential', isSub: true, workMonths: [], todayYmd: '2026-10-07' }))
+    expect(r.datedByHand).toBe(true)
+    expect(r.datedFromCreation).toBe(false)
+    expect(r.basisYmd).toBe('2026-07-06')
+    expect(r.noticeMonths.map((m) => m.key)).toEqual(['2026-07'])
+    // Commercial: July's notice is due the 15th of the third month after — still owed on Oct 7, so the job leaves Overdue for This month.
+    expect(r.noticeByYmd).toBe('2026-10-15')
+    expect(r.state).toBe('notice_due')
+    expect(r.lienByYmd).toBe('2026-11-16')
+    expect(r.title).toContain('July 2026, last day set by hand')
+    expect(r.title).not.toContain('creation')
+    // Over clock hours too: the hours say July 20, the hand says August 3 — August is the last work month, July still owed before it.
+    const h = buildLienPayRunway(input({ lastWorkYmd: '2026-07-20', handLastWorkYmd: '2026-08-03', isSub: true, workMonths: ['2026-07'] }))
+    expect(h.datedByHand).toBe(true)
+    expect(h.basisYmd).toBe('2026-08-03')
+    expect(h.noticeMonths.map((m) => m.key)).toEqual(['2026-07', '2026-08'])
+    expect(h.title).toContain('August 2026, last day set by hand')
+    // A blank or junk hand day changes nothing.
+    expect(buildLienPayRunway(input({ handLastWorkYmd: '' })).datedByHand).toBe(false)
+    expect(buildLienPayRunway(input({ handLastWorkYmd: 'soon' })).basisYmd).toBe('2026-07-20')
+  })
+
   it('room: the pay dot lands before the flag, the run between them is green', () => {
     const r = buildLienPayRunway(input({ expectedPayYmd: '2026-10-03' }))
     expect(r.state).toBe('room')

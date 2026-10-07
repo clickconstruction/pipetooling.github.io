@@ -9,10 +9,13 @@ import { formatLegalMoney } from './legalPacket'
  * the matter's *Where to file* block and the printed packet read one rule.
  */
 
+/** `$20,000` — the justice court limit in words (the Lien grid's court rail reads it too, v2.4825). */
+export const JUSTICE_COURT_LIMIT_WORDS = formatLegalMoney(JUSTICE_COURT_LIMIT).replace(/\.00$/, '')
+
 /** Gov't Code § 27.031: fees count toward the limit, interest and costs do not. */
 export function justiceCourtCap(balance: number): { within: boolean; words: string; chip: string } {
   const within = Number.isFinite(balance) && balance <= JUSTICE_COURT_LIMIT
-  const limit = formatLegalMoney(JUSTICE_COURT_LIMIT).replace(/\.00$/, '')
+  const limit = JUSTICE_COURT_LIMIT_WORDS
   return within
     ? { within, words: `${formatLegalMoney(balance)} is within the justice court limit (${limit}, Gov't Code § 27.031; fees count, interest does not).`, chip: `within ${limit}` }
     : { within, words: `${formatLegalMoney(balance)} is over the justice court limit (${limit}) — county or district court.`, chip: `over ${limit} · county court` }

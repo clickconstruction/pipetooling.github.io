@@ -110,6 +110,8 @@ describe('what the schedule reads from the other lanes', () => {
   it('levels a quote: a plug for what it leaves out, a taken alternate, and a cover cost on what it excludes', () => {
     const bid: SubBid = {
       amount: 100000,
+      basedOnRev: 0,
+      submittedOn: '2026-09-28',
       includes: { 'x-1': 'yes', 'x-2': 'no' },
       plugs: { 'x-2': 4000 },
       alternates: [
@@ -130,7 +132,7 @@ describe('what the schedule reads from the other lanes', () => {
         { id: 'x-2', label: 'Roof curbs' },
       ],
       excludes: [{ label: 'Permits and fees', by: 'the owner' }],
-      invites: [{ id: 'x-quote', partnerId: 'summit', bid }],
+      invites: [{ id: 'x-quote', partnerId: 'summit', status: 'bid', invitedOn: '2026-09-20', bid }],
       awardedInviteId: null,
       selfPerform: null,
       sow: null,
@@ -155,7 +157,7 @@ describe('what the schedule reads from the other lanes', () => {
     const roofing = job(s).packages.find((k) => k.id === 'froof')!
     expect(ownBidPriced(roofing)).toBe(false)
     expect(sentBackOpen(roofing.sow!)?.draw.number).toBe(1)
-    expect(sentBackOpen({ ...roofing.sow!, draws: [{ number: 1 }] })).toBeNull()
+    expect(sentBackOpen({ ...roofing.sow!, draws: [{ number: 1, retainage: 0, net: 0, status: 'requested', waiver: 'conditional' }] })).toBeNull()
   })
 
   it('names a company, and writes a date the one way every lane does', () => {

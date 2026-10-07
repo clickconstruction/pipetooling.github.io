@@ -1,6 +1,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { filingDeadlineForMonth, noticeDeadlineForMonth } from './lienDeadlines'
 import { formatYmdMonthDay } from './billedExpectedPay'
+import { LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 
 /**
@@ -47,6 +48,8 @@ export type LienRunwayInput = {
   lastWorkYmd: string | null | undefined
   /** The job's creation instant — its month in the company calendar stands in when there are no clock hours (the Lien desk's rule). */
   createdAt?: string | null
+  /** The last day of work set by hand (`jobs_ledger.lien_last_work_on`, v2.4676): when present it is the day every date counts from, before the clock hours and the creation day (v2.4830 — the four lien readers already took it; the runway did not). */
+  handLastWorkYmd?: string | null
   /** '' | 'residential' | 'non_residential' from the property record. */
   propertyKind: string
   /** The expected-pay date from `billedExpectedPayModel` (the GC's word, a promise, or the pay-speed estimate); null when none. */
@@ -110,6 +113,8 @@ export type LienPayRunway = {
   noticeSent: boolean
   /** No clock hours — the clock counts from the month the job was created. */
   datedFromCreation: boolean
+  /** The day every date counts from was set by hand (v2.4830). */
+  datedByHand: boolean
   /** The day every date was counted from: the last work day, or the creation day when there are no hours (the Lien calendar's tick, v2.4265); '' when there is neither. */
   basisYmd: string
   /** On a closed row, which window shut: the § 53.056 notice's, or the § 53.052 lien's; null otherwise (v2.4265). */
@@ -140,6 +145,7 @@ const NONE: LienPayRunway = {
   kindAssumed: false,
   noticeSent: false,
   datedFromCreation: false,
+  datedByHand: false,
   basisYmd: '',
   closedBy: null,
   noticeMonths: [],
@@ -185,11 +191,11 @@ function daysWords(n: number): string {
 
 const KIND_ASSUMED_NOTE = 'Property kind is not set, so the earlier (residential) date is shown — set the kind on the property record to confirm.'
 
-function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: boolean, datedFromCreation: boolean): string {
+function basisWords(lastWorkYmd: string, propertyKind: string, kindAssumed: boolean, datedFromCreation: boolean, datedByHand: boolean): string {
   const month = new Date(`${lastWorkYmd.slice(0, 7)}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   const nth = kindAssumed || propertyKind === 'residential' ? '3rd' : '4th'
   const kindWords = kindAssumed ? 'residential assumed' : propertyKind === 'residential' ? 'residential' : 'commercial'
-  const from = datedFromCreation ? `${month}, ${DATED_FROM_CREATION_WORDS}` : `${month}, approved hours`
+  const from = datedByHand ? `${month}, ${LAST_DAY_SET_BY_HAND_WORDS}` : datedFromCreation ? `${month}, ${DATED_FROM_CREATION_WORDS}` : `${month}, approved hours`
   return `Counts from the last work month (${from}) · ${kindWords}: the 15th of the ${nth} month after (§ 53.052)`
 }
 
@@ -241,7 +247,10 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   const today = (input.todayYmd ?? '').slice(0, 10)
   if (ymdToUtcDays(today) == null) return NONE
 
-  const worked = (input.lastWorkYmd ?? '').trim().slice(0, 10)
+  // The day every date counts from (v2.4830, the order `lienLastWorkDay` keeps): set by hand, else the clock hours, else the creation day.
+  const hand = (input.handLastWorkYmd ?? '').trim().slice(0, 10)
+  const datedByHand = /^\d{4}-\d{2}-\d{2}$/.test(hand)
+  const worked = datedByHand ? hand : (input.lastWorkYmd ?? '').trim().slice(0, 10)
   const created = calendarYmdInAppTzFromIso((input.createdAt ?? '').trim())
   const datedFromCreation = !/^\d{4}-\d{2}-\d{2}$/.test(worked) && /^\d{4}-\d{2}-\d{2}$/.test(created)
   const lastWork = datedFromCreation ? created : worked
@@ -260,6 +269,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       chipLabel: 'lien filed',
       basisYmd,
       datedFromCreation,
+      datedByHand,
       sortKey: 3_000_000,
     }
   }
@@ -267,7 +277,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
   if (!lienBy) return NONE
   const daysToLien = daysBetweenYmd(today, lienBy)
   if (daysToLien == null) return NONE
-  const basis = basisWords(lastWork, input.propertyKind, kindAssumed, datedFromCreation)
+  const basis = basisWords(lastWork, input.propertyKind, kindAssumed, datedFromCreation, datedByHand)
   const kindNote = kindAssumed ? ` ${KIND_ASSUMED_NOTE}` : ''
   const lienWords = formatYmdMonthDay(lienBy)
   const wordsOf = (lines: string[]) => lines.join(' · ')
@@ -306,6 +316,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      datedByHand,
       basisYmd,
       closedBy: 'notice',
       noticeMonths,
@@ -329,6 +340,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      datedByHand,
       basisYmd,
       closedBy: 'lien',
       noticeMonths,
@@ -365,6 +377,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      datedByHand,
       basisYmd,
       closedBy: null,
       noticeMonths,
@@ -391,6 +404,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      datedByHand,
       basisYmd,
       closedBy: null,
       noticeMonths,
@@ -417,6 +431,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
       kindAssumed,
       noticeSent,
       datedFromCreation,
+      datedByHand,
       basisYmd,
       closedBy: null,
       noticeMonths,
@@ -443,6 +458,7 @@ export function buildLienPayRunway(input: LienRunwayInput): LienPayRunway {
     kindAssumed,
     noticeSent,
     datedFromCreation,
+    datedByHand,
     basisYmd,
     closedBy: null,
     noticeMonths,

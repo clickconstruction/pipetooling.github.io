@@ -16,7 +16,7 @@
   .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
   .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
   .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
-  .pane img { max-width: 100%; border: 1px solid #E5E7EB; }
+  .pane p.was { margin: 0; color: #374151; max-width: 100ch; }
   ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
   ul.notes li { margin: 4px 0; }
 
@@ -68,42 +68,42 @@
 <p>The owner, 2026-10-06, on the firm's Lien grid: the address under the job name; <i>Com</i> and <i>Res</i> spelled out, with <i>Homestead</i> or <i>No homestead</i> on the line beneath; the unpaid total first and the months under it; the § 53.056 column without the missed months; and the GC picker made attractive, showing each GC's job count and dollars, as tall as it needs to be.</p></header>
 
 <h2>Before</h2>
-<div class="cap old">The grid today, 2026-10-06 (the owner's screenshot)</div>
-<div class="pane"><img src="mockup-lien-grid-reads-before.webp" alt="The Lien grid today: seven of twelve columns in the frame, a GC select, Com · — in the kind column, Jun: Sep 15 MISSED in the notice column"></div>
+<div class="cap old">The grid today, 2026-10-06</div>
+<div class="pane"><p class="was">Twelve columns, about seven in view, with the address in a column of its own and a GC select above the table. The kind read <i>Com · —</i>, the months came before the total, and a missed § 53.056 month stayed listed as <i>Jun: Sep 15 MISSED</i>.</p></div>
 
 <h2>After</h2>
-<div class="cap new">The grid with a GC rail, the same rows</div>
+<div class="cap new">The grid with a GC rail · every job, GC, owner, street and amount here is made up</div>
 <div class="pane"><div class="paper"><div class="card">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
     <div>
       <div class="capP">Lien grid</div>
-      <div class="muted" style="font-size:12.5px;margin-top:2px">Each job with money open and a lien month, from the office's records today — 19 jobs · $123,716 open</div>
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;font-size:12.5px"><span class="muted">Show</span> <span class="seg"><span class="on">Something due · 19</span><span>All · 46</span></span></div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">Each job with money open and a lien month, from the office's records today — 17 jobs · $110,210 open</div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;font-size:12.5px"><span class="muted">Show</span> <span class="seg"><span class="on">Something due · 17</span><span>All · 41</span></span></div>
     </div>
     <span class="btn">⎙ Print the grid</span>
   </div>
   <div class="lay">
     <div class="rail">
       <input class="find" value="Find a GC" readonly>
-      <div class="gc all on"><span class="n">All GCs</span><span class="c">19 jobs</span><span class="m">$123,716</span></div>
-      <div class="gc"><span class="n">RMC- Dudley Mason</span><span class="c">7 jobs</span><span class="m">$41,980</span></div>
-      <div class="gc"><span class="n">Knight Contracting</span><span class="c">4 jobs</span><span class="m">$38,625</span></div>
-      <div class="gc"><span class="n">Michael Palmer</span><span class="c">2 jobs</span><span class="m">$15,722</span></div>
-      <div class="gc"><span class="n">Heron Construction Group</span><span class="c">1 job</span><span class="m">$9,221</span></div>
-      <div class="gc"><span class="n">TF Harper</span><span class="c">2 jobs</span><span class="m">$7,152</span></div>
-      <div class="gc"><span class="n">Summit General Contractors</span><span class="c">1 job</span><span class="m">$4,800</span></div>
-      <div class="gc"><span class="n">Burd &amp; Assoc.</span><span class="c">1 job</span><span class="m">$4,421</span></div>
-      <div class="gc none"><span class="n">No GC · with the owner</span><span class="c">1 job</span><span class="m">$1,795</span></div>
+      <div class="gc all on"><span class="n">All GCs</span><span class="c">17 jobs</span><span class="m">$110,210</span></div>
+      <div class="gc"><span class="n">Ridgeway Builders</span><span class="c">6 jobs</span><span class="m">$41,315</span></div>
+      <div class="gc"><span class="n">Limestone Creek Builders</span><span class="c">3 jobs</span><span class="m">$27,640</span></div>
+      <div class="gc"><span class="n">Prairie Wind Construction</span><span class="c">2 jobs</span><span class="m">$14,980</span></div>
+      <div class="gc"><span class="n">Caliche Road Builders</span><span class="c">1 job</span><span class="m">$8,640</span></div>
+      <div class="gc"><span class="n">Wrenfield Homes</span><span class="c">2 jobs</span><span class="m">$6,875</span></div>
+      <div class="gc"><span class="n">Granite Point Contracting</span><span class="c">1 job</span><span class="m">$5,250</span></div>
+      <div class="gc"><span class="n">Lone Cedar Construction</span><span class="c">1 job</span><span class="m">$3,960</span></div>
+      <div class="gc none"><span class="n">No GC · with the owner</span><span class="c">1 job</span><span class="m">$1,550</span></div>
     </div>
     <div style="overflow-x:auto">
     <table class="g"><thead><tr><th>Job</th><th>Owner of record</th><th>Property</th><th>Last on site</th><th>Unpaid · months</th><th>§ 53.056 per month</th><th>Affidavit by</th><th>Bond</th><th>Paid out to GC</th><th>10 % reserved</th><th>Contract completed</th></tr></thead><tbody>
-      <tr><td class="job"><b>878 · Take 5- Seguin</b><span class="a">380 TX-123, Seguin, TX 78155</span></td><td>TC/JP SEGUIN 2019 LLC</td><td class="kind">Commercial</td><td>Sep 2026</td><td class="unpaid"><span class="t">$38,625</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span><span class="row">Sep: <b>Dec 15</b></span></td><td>Jan 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
-      <tr><td class="job"><b>891 · Take 5- Liberty Hill</b><span class="a">11730 TX-29, Liberty Hill, TX 78642</span></td><td>JBI LIBERTY HILL LLC</td><td class="kind">Commercial</td><td>Aug 2026</td><td class="unpaid"><span class="t">$27,199</span><span class="mo">Jul, Aug</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span></td><td>Dec 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
-      <tr><td class="job"><b>650 · ATI Schertz — As per plans</b><span class="a">5498 Cibolo Valley Dr 200, Schertz, TX 78108</span></td><td>SCHERTZ STATION LTD</td><td class="kind">Commercial</td><td>Sep 2026</td><td class="unpaid"><span class="t">$15,722</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span><span class="row">Sep: <b>Dec 15</b></span></td><td>Jan 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
-      <tr><td class="job"><b>843 · Michael Palmer- Jacob Roberts</b><span class="a">102 Jacob Roberts, Blanco, TX 78606</span></td><td>LAGAN JOEL C &amp; SHANNON</td><td class="kind">Residential<span class="h">Homestead</span></td><td>Sep 2026</td><td class="unpaid"><span class="t">$7,152</span><span class="mo">Aug, Sep</span></td><td class="n"><span class="row">Aug: <b>Oct 15</b></span><span class="row">Sep: <b>Nov 16</b></span></td><td>Dec 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
-      <tr><td class="job"><b>898 · Reliant Health</b><span class="a">150 E Sonterra Blvd 200B, San Antonio, TX 78258</span></td><td>EPC SPARTI LLC</td><td class="kind">Commercial</td><td>Jul 2026</td><td class="unpaid"><span class="t">$4,800</span><span class="mo">Jul</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span></td><td>Nov 16</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
-      <tr><td class="job"><b>1101 · Whitfield residence — repipe</b><span class="a">7 Willow Ct, San Marcos, TX 78666</span></td><td>Sam Whitfield</td><td class="kind">Residential<span class="h">No homestead</span></td><td>Aug 2026</td><td class="unpaid"><span class="t">$1,795</span><span class="mo">Aug</span></td><td class="n">none needed (with the owner)</td><td>Nov 16</td><td>N</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
-      <tr><td class="job"><b>702 · Old Mill Suites</b><span class="a">4 Mill Run, Kyle, TX 78640</span></td><td>OLD MILL HOLDINGS LP</td><td class="kind">Commercial</td><td>Jun 2026</td><td class="unpaid"><span class="t">$9,221</span><span class="mo">May, Jun</span></td><td class="n"><span class="dash" title="Every month's § 53.056 window has closed">—</span></td><td>Oct 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>904 · Ridgeway- Hackberry Plaza</b><span class="a">2150 Hackberry Pkwy, Seguin, TX 78155</span></td><td>HACKBERRY PLAZA PARTNERS LLC</td><td class="kind">Commercial</td><td>Sep 2026</td><td class="unpaid"><span class="t">$24,830</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span><span class="row">Sep: <b>Dec 15</b></span></td><td>Jan 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>917 · Limestone Creek- Quarry Row offices</b><span class="a">480 Quarry Row, Georgetown, TX 78626</span></td><td>QUARRY ROW OFFICE LP</td><td class="kind">Commercial</td><td>Aug 2026</td><td class="unpaid"><span class="t">$19,460</span><span class="mo">Jul, Aug</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span></td><td>Dec 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>733 · Prairie Wind- Kestrel clinic</b><span class="a">1220 Kestrel Ct, New Braunfels, TX 78130</span></td><td>KESTREL MEDICAL HOLDINGS LLC</td><td class="kind">Commercial</td><td>Sep 2026</td><td class="unpaid"><span class="t">$11,240</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span><span class="row">Sep: <b>Dec 15</b></span></td><td>Jan 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>861 · Wrenfield- Juniper Ln</b><span class="a">315 Juniper Ln, Blanco, TX 78606</span></td><td>PARK LEE &amp; JORDAN</td><td class="kind">Residential<span class="h">Homestead</span></td><td>Sep 2026</td><td class="unpaid"><span class="t">$6,120</span><span class="mo">Aug, Sep</span></td><td class="n"><span class="row">Aug: <b>Oct 15</b></span><span class="row">Sep: <b>Nov 16</b></span></td><td>Dec 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>925 · Granite Point- Arrowhead suite</b><span class="a">8400 Arrowhead Trace 110, San Antonio, TX 78249</span></td><td>ARROWHEAD TRACE CENTER LLC</td><td class="kind">Commercial</td><td>Jul 2026</td><td class="unpaid"><span class="t">$5,250</span><span class="mo">Jul</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span></td><td>Nov 16</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>1088 · Dana Lee residence — repipe</b><span class="a">42 Sycamore Ct, San Marcos, TX 78666</span></td><td>Dana Lee</td><td class="kind">Residential<span class="h">No homestead</span></td><td>Aug 2026</td><td class="unpaid"><span class="t">$1,550</span><span class="mo">Aug</span></td><td class="n">none needed (with the owner)</td><td>Nov 16</td><td>N</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>688 · Caliche Road- Cypress Row suites</b><span class="a">60 Cypress Row, Buda, TX 78610</span></td><td>CYPRESS ROW HOLDINGS LP</td><td class="kind">Commercial</td><td>Jun 2026</td><td class="unpaid"><span class="t">$8,640</span><span class="mo">May, Jun</span></td><td class="n"><span class="dash" title="Every month's § 53.056 window has closed">—</span></td><td>Oct 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
     </tbody></table>
     </div>
   </div>
@@ -114,10 +114,10 @@
 <div class="pane"><div class="paper phone"><div class="card">
   <div class="capP">Lien grid</div>
   <div class="lay"><div class="rail">
-    <div class="gc all on"><span class="n">All GCs</span><span class="m">$123,716</span></div>
-    <div class="gc"><span class="n">RMC- Dudley Mason</span><span class="m">$41,980</span></div>
-    <div class="gc"><span class="n">Knight Contracting</span><span class="m">$38,625</span></div>
-    <div class="gc"><span class="n">Michael Palmer</span><span class="m">$15,722</span></div>
+    <div class="gc all on"><span class="n">All GCs</span><span class="m">$110,210</span></div>
+    <div class="gc"><span class="n">Ridgeway Builders</span><span class="m">$41,315</span></div>
+    <div class="gc"><span class="n">Limestone Creek Builders</span><span class="m">$27,640</span></div>
+    <div class="gc"><span class="n">Prairie Wind Construction</span><span class="m">$14,980</span></div>
   </div><div class="muted" style="font-size:12px">… the table scrolls sideways inside the card, as today (item 8).</div></div>
 </div></div></div>
 

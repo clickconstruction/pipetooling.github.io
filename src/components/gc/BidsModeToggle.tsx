@@ -1,14 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 
 /**
- * GC mode design spike: the switch between the two faces of Bids. Trades mode is the page as it
- * is (we bid a trade to a GC). GC mode is the mirror (we are the GC and trades bid to us).
+ * GC mode, door 1 (v2.4832): the switch between the two faces of Bids, from the design spike
+ * (branch spike/gc-mode). Trades mode is the Bids page as it is: we bid our trade to a general
+ * contractor. GC mode is the mirror: we are the general contractor and trades quote to us, on the
+ * GC projects page. Shown to `canOpenGcProjects` only.
  */
 export function BidsModeToggle({ mode }: { mode: 'trades' | 'gc' }) {
   const navigate = useNavigate()
   const options = [
     { key: 'trades' as const, label: 'Trades', to: '/bids', title: 'We bid our trade to a general contractor.' },
-    { key: 'gc' as const, label: 'GC', to: '/bids/gc', title: 'We are the general contractor. Trades bid to us.' },
+    { key: 'gc' as const, label: 'GC', to: '/gc', title: 'We are the general contractor. Trades quote to us.' },
   ]
   return (
     <div

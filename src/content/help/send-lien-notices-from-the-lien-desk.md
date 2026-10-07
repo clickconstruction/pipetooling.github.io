@@ -37,7 +37,7 @@ All filings reopens on the tab you last used there. This guide names those four 
 
 ## Look ahead on the Deadlines
 
-The **Deadlines** tab is beside Do now. It shows when each lien deadline falls.
+The **Deadlines** tab is beside Do now. It shows when each lien deadline falls. A last day of work set by hand moves the job's dates here too.
 
 Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
 
@@ -257,7 +257,7 @@ A bill paid in full by the day is written down by the percent once the money lan
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the three views. It opens the run.
+Approved notices go out together. {{button:blue|Send the run · N}} sits on the desk's title line, right after the three views. It opens the run. When every notice in the run has printed, the same button reads {{button:blue|Record the mailing · N}}. Then the run opens on its third step.
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
@@ -269,7 +269,7 @@ Three steps run across the top of the run.
 
 With no number on any envelope, the button reads {{button:blue|Record the run ▸}} and records everything. The **Saved copy** boxes above it take a Drive link to the packet as printed.
 
-A printed notice waits on the desk in the mail pile. Open it and press {{button:blue|Record the mailing · N ▸}} to go back to the run. If it was never mailed, press {{button:outline|Back to ready}}. The approval stands.
+A printed notice waits on the desk in the mail pile. Open it and press {{button:blue|Record the mailing · N ▸}} to go back to the run. The run then shows step 1 as done, with the day it printed. The print button reads {{button:outline|Print it again · N envelopes}}, for a lost copy only. If the notice was never mailed, press {{button:outline|Back to ready}}. The approval stands.
 
 A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same. The Dashboard's Needs you counts the mailed notices that still have no number.
 

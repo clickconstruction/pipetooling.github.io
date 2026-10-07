@@ -1,17 +1,17 @@
 ---
 title: keep the scope book
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, scope book, scope lines, sets, duplicates, merge, known exclusions, trades
 order: 94
 ---
 The scope book is every scope line we keep, by trade. It starts from the scopes on our GC projects and grows each time a line is saved.
 
-A scope line is one piece of work a quote says yes or no to. A set is a named list of one trade's lines, saved to start another job from. The book opens from the GC projects page. Only devs see it while the real build goes on.
+A scope line is one piece of work a quote says yes or no to. A set is a named list of one trade's lines, saved to start another job from. The book opens from the GC projects page. The office and estimators see it.
 
 ## Open the book
 
-1. Open **GC projects** at `/gc` and press {{button:outline|Open the scope book}}.
+1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|Open the scope book}}.
 2. Pick a trade on the left. The number beside it is how many lines the trade has.
 3. Pick **Lines**, **Sets** or **Duplicates to merge** at the top.
 

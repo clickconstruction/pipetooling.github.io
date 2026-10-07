@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildLienTimelineBook, type LienTimelineBookInput, type LienBookJob } from '../jobs/lienTimelineBook'
-import { filterLegalLienGrid, findLegalLienGcs, legalLienGcCountWords, legalLienGridCells, legalLienGridGcs, LEGAL_LIEN_NO_GC } from './legalLienGridView'
+import { filterLegalLienGrid, findLegalLienCourts, findLegalLienGcs, legalLienCountyName, legalLienCourtOf, legalLienCourtSections, legalLienGcCountWords, legalLienGridCells, legalLienGridCourts, legalLienGridGcs, legalLienSectionWords, LEGAL_LIEN_NO_COUNTY, LEGAL_LIEN_NO_GC } from './legalLienGridView'
 
 const TODAY = '2026-10-06'
 
@@ -157,5 +157,77 @@ describe('the rail', () => {
     expect(findLegalLienGcs(rail, '', 'gc2')).toHaveLength(4)
     expect(legalLienGcCountWords(1)).toBe('1 job')
     expect(legalLienGcCountWords(0)).toBe('0 jobs')
+  })
+})
+
+describe('by court (v2.4825)', () => {
+  // Hays: one precinct, one on a line, one not named yet, one over the limit. Guadalupe (written with "County"): one precinct. No county: one.
+  function courtInput(): LienTimelineBookInput {
+    const base = input()
+    return {
+      ...base,
+      rows: [
+        ...base.rows,
+        month('j900', '2026-08', '2026-11-16'),
+        month('j901', '2026-08', '2026-11-16'),
+      ],
+      jobs: {
+        j878: job('j878', { openBalance: 38_625 }),
+        j843: job('j843', { gcId: 'gc2', gcName: 'Michael Palmer', county: 'Guadalupe County', precinct: '2', openBalance: 7_152 }),
+        j702: job('j702', { precinct: '2', openBalance: 9_221 }),
+        j1101: job('j1101', { gcId: null, gcName: '', isSub: false, county: '', openBalance: 1_795 }),
+        j900: job('j900', { precinct: '1', precinctNote: '1 or 2 — on the line', openBalance: 4_000 }),
+        j901: job('j901', { openBalance: 3_000 }),
+      },
+    }
+  }
+  const book = buildLienTimelineBook(courtInput())
+
+  it('reads a job\'s court from its county, precinct and balance', () => {
+    expect(legalLienCourtOf({ county: ' Hays County ', precinct: '2', openBalance: 20_000 })).toMatchObject({ id: 'court:hays|precinct|2', countyId: 'county:hays', county: 'Hays', kind: 'precinct', name: 'Precinct 2', title: 'Hays County · Justice Court, Precinct 2', short: 'Hays · Pct 2' })
+    expect(legalLienCourtOf({ county: 'Hays', precinct: '2', openBalance: 20_000.01 })).toMatchObject({ kind: 'over', name: 'Over $20,000 · county court', title: 'Hays County · over $20,000, county or district court' })
+    expect(legalLienCourtOf({ county: 'Hays', precinct: '1', precinctNote: '1 or 2 — on the line', openBalance: 10 })).toMatchObject({ kind: 'line', precinct: '1 or 2', name: 'Precinct 1 or 2 · on the line' })
+    expect(legalLienCourtOf({ county: 'Hays', openBalance: 10 })).toMatchObject({ kind: 'pending', name: 'Precinct not named yet', title: 'Hays County · justice precinct not named yet' })
+    expect(legalLienCourtOf({ county: '', precinct: '2', openBalance: 10 })).toMatchObject({ id: LEGAL_LIEN_NO_COUNTY, kind: 'none', name: 'County not on the record' })
+    expect(legalLienCountyName('guadalupe county')).toBe('guadalupe')
+  })
+
+  it('lists All, then each county by its dollars with its courts in precinct order, then the jobs with no county', () => {
+    const rail = legalLienGridCourts(book, 'all')
+    expect(rail.map((e) => [e.id, e.kind, e.name, e.count, e.open])).toEqual([
+      ['', 'all', 'All courts', 6, 63_793],
+      ['county:hays', 'county', 'Hays County', 4, 54_846],
+      ['court:hays|precinct|2', 'court', 'Precinct 2', 1, 9_221],
+      ['court:hays|line|1 or 2', 'court', 'Precinct 1 or 2 · on the line', 1, 4_000],
+      ['court:hays|pending|', 'court', 'Precinct not named yet', 1, 3_000],
+      ['court:hays|over|', 'court', 'Over $20,000 · county court', 1, 38_625],
+      ['county:guadalupe', 'county', 'Guadalupe County', 1, 7_152],
+      ['court:guadalupe|precinct|2', 'court', 'Precinct 2', 1, 7_152],
+      [LEGAL_LIEN_NO_COUNTY, 'none', 'County not on the record', 1, 1_795],
+    ])
+    expect(rail.find((e) => e.id === 'court:hays|over|')!.courtKind).toBe('over')
+    expect(legalLienGridCourts(book, 'due')[0]!.count).toBe(book.counts.due)
+  })
+
+  it('filters by a county, a court or no county, and bands the rows in the rail\'s order', () => {
+    expect(filterLegalLienGrid(book, { gcId: null, courtId: 'county:hays', show: 'all' }).map((r) => r.jobId).sort()).toEqual(['j702', 'j878', 'j900', 'j901'])
+    expect(filterLegalLienGrid(book, { gcId: null, courtId: 'court:hays|precinct|2', show: 'all' }).map((r) => r.jobId)).toEqual(['j702'])
+    expect(filterLegalLienGrid(book, { gcId: null, courtId: LEGAL_LIEN_NO_COUNTY, show: 'all' }).map((r) => r.jobId)).toEqual(['j1101'])
+    const sections = legalLienCourtSections(filterLegalLienGrid(book, { gcId: null, courtId: null, show: 'all' }))
+    expect(sections.map((s) => [s.title, s.rows.map((r) => r.jobId)])).toEqual([
+      ['Hays County · Justice Court, Precinct 2', ['j702']],
+      ['Hays County · Justice Court, Precinct 1 or 2 · on the line', ['j900']],
+      ['Hays County · justice precinct not named yet', ['j901']],
+      ['Hays County · over $20,000, county or district court', ['j878']],
+      ['Guadalupe County · Justice Court, Precinct 2', ['j843']],
+      ['County not on the record', ['j1101']],
+    ])
+    expect(legalLienSectionWords(sections[0]!)).toBe('Hays County · Justice Court, Precinct 2 · 1 job · $9,221')
+  })
+
+  it('a find keeps All and the selected entry, and matches the rest by their full words', () => {
+    const rail = legalLienGridCourts(book, 'all')
+    expect(findLegalLienCourts(rail, 'guadalupe', null).map((e) => e.id)).toEqual(['', 'county:guadalupe', 'court:guadalupe|precinct|2'])
+    expect(findLegalLienCourts(rail, 'guadalupe', 'court:hays|over|').map((e) => e.id)).toEqual(['', 'court:hays|over|', 'county:guadalupe', 'court:guadalupe|precinct|2'])
   })
 })

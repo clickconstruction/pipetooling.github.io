@@ -12,6 +12,10 @@
  * open bill with room, else a plain row), the `moved` event — and, when a step after the
  * credit note fails, says exactly what is done and what is left by hand
  * (`stripeHeldPaymentMove.ts`).
+ *
+ * v2.4822: the window names a check only when it is one, and the landing on another job's
+ * Stripe bill follows Mark Paid's rules (`heldLandingWrite`) so no Stripe invoice is left open
+ * behind a bill the app reads Paid.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -23,15 +27,22 @@ import { formatCurrency } from '../../lib/format'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { planJobPaymentMove } from '../../lib/jobs/jobPaymentMove'
 import {
+  heldLandingWrite,
   heldMoveBill,
   heldMoveEventRow,
+  heldMoveNoun,
   planHeldLanding,
+  stripeHeldMoveDoneWords,
+  stripeHeldMoveIntro,
   stripeHeldMoveOffered,
   stripeHeldMoveReason,
   stripeHeldMoveSteps,
   stripeHeldMoveStoppedWords,
+  stripeHeldMoveTitle,
   type HeldLanding,
 } from '../../lib/jobs/stripeHeldPaymentMove'
+import { invoiceRecordsThroughStripe } from '../../lib/jobs/paymentInvoiceLinking'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
@@ -85,9 +96,10 @@ export function JobPaymentMoveModal({
   const [busy, setBusy] = useState(false)
   /** A held-check step after the credit note failed: what is done and what is left by hand. */
   const [stopped, setStopped] = useState<string | null>(null)
-  // Stripe holds this check as paid: the four-step path instead of the one RPC.
+  // Stripe holds this payment as paid: the four-step path instead of the one RPC.
   const held = Boolean(payment && fromJob && stripeHeldMoveOffered(payment, fromJob))
   const heldBill = payment ? heldMoveBill(payment, fromJob) : null
+  const noun = heldMoveNoun(payment ?? { payment_type: null })
 
   useEffect(() => {
     if (!open) return
@@ -140,18 +152,19 @@ export function JobPaymentMoveModal({
     if (held && payment) setLanding(await readHeldLanding(c.id, Number(payment.amount ?? 0)))
   }
 
-  /** Where a held check lands on the other job: its bills and what each already holds. */
+  /** Where a held payment lands on the other job: its bills, what each already holds, and which are Stripe's. */
   async function readHeldLanding(jobId: string, amount: number): Promise<HeldLanding> {
     try {
       const [{ data: bills }, { data: pays }] = await Promise.all([
-        db.from('jobs_ledger_invoices').select('id, status, amount').eq('job_id', jobId),
+        db.from('jobs_ledger_invoices').select('id, status, amount, stripe_invoice_id, external_send_channel').eq('job_id', jobId),
         db.from('jobs_ledger_payments').select('invoice_id, amount').eq('job_id', jobId),
       ])
       const applied = new Map<string, number>()
       for (const p of (pays ?? []) as Array<{ invoice_id: string | null; amount: number | null }>) {
         if (p.invoice_id) applied.set(p.invoice_id, (applied.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
       }
-      const rows = ((bills ?? []) as Array<{ id: string; status: string | null; amount: number | null }>).map((b) => ({ ...b, applied: applied.get(b.id) ?? 0 }))
+      type BillRow = { id: string; status: string | null; amount: number | null; stripe_invoice_id: string | null; external_send_channel: string | null }
+      const rows = ((bills ?? []) as BillRow[]).map((b) => ({ id: b.id, status: b.status, amount: b.amount, applied: applied.get(b.id) ?? 0, stripeHosted: invoiceRecordsThroughStripe(b) }))
       return planHeldLanding(rows, amount)
     } catch {
       return { kind: 'job' }
@@ -169,7 +182,7 @@ export function JobPaymentMoveModal({
   }, [payment, fromJob, dest])
 
   /**
-   * v2.4803 — a check Stripe holds, in order. The credit note writes nothing on failure, so
+   * v2.4803 — a payment Stripe holds, in order. The credit note writes nothing on failure, so
    * a refusal there is a plain error; after it every stop leaves words on screen and the
    * form re-reads the job.
    */
@@ -179,7 +192,10 @@ export function JobPaymentMoveModal({
     const toLabel = jobLabel(dest).split(' · ')[0] ?? 'that job'
     const why = stripeHeldMoveReason(toLabel, reason)
     const amount = Number(payment.amount ?? 0)
-    const stopArgs = { fromLabel, toLabel, amount, paidOn: payment.paid_on ? String(payment.paid_on).slice(0, 10) : null, reference: (payment.reference_number ?? '').trim() || null }
+    const paidOnYmd = payment.paid_on ? String(payment.paid_on).slice(0, 10) : null
+    const paymentType = (payment.payment_type ?? '').trim()
+    const referenceNumber = (payment.reference_number ?? '').trim()
+    const stopArgs = { fromLabel, toLabel, amount, paidOn: paidOnYmd, reference: referenceNumber || null, noun }
     const snapshot = { amount: payment.amount, paid_on: payment.paid_on, sent_on: payment.sent_on, note: payment.note, payment_type: payment.payment_type, reference_number: payment.reference_number, invoice_id: payment.invoice_id }
     setBusy(true)
     try {
@@ -209,27 +225,55 @@ export function JobPaymentMoveModal({
         return
       }
 
-      // 3. The check lands on the other job — its one open bill with room, else the job.
+      // 3. The payment lands on the other job — its one open bill with room, else the job. On a
+      // Stripe bill it is written the way Mark Paid would write it there (`heldLandingWrite`).
       const land = landing ?? (await readHeldLanding(dest.id, amount))
       let landedPaymentId: string | null = null
+      /** A whole non-check payment on a Stripe bill: the bill is paid here, Stripe must close too. */
+      let closeStripeAfter: string | null = null
+      // The Stripe calls below carry no mode: the bill's own row decides it, as Accounts Receivable's close does.
+      const oobBody = (invoiceId: string) => ({
+        jobs_ledger_invoice_id: invoiceId,
+        amount_dollars: amount,
+        paid_on: paidOnYmd ?? todayYmdInAppTz(),
+        payment_type: paymentType || 'Other',
+        ...(referenceNumber ? { reference_number: referenceNumber } : {}),
+        internal_note: `Moved from ${fromLabel}`,
+      })
+      const invokeOob = async (body: Record<string, unknown>): Promise<{ payment_id?: string }> => {
+        const { data, error } = await supabase.functions.invoke('record-stripe-invoice-out-of-band-payment', { headers: { Authorization: `Bearer ${token}` }, body })
+        if (error) {
+          const detail = await readEdgeFunctionErrorBody(error)
+          throw new Error(detail ?? (error instanceof Error ? error.message : 'Stripe did not answer'))
+        }
+        const payload = data as { error?: string; payment_id?: string } | null
+        if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) throw new Error(payload.error)
+        return payload ?? {}
+      }
       try {
-        if (land.kind === 'bill') {
+        const write = land.kind === 'bill' ? heldLandingWrite(land, paymentType, amount) : null
+        if (land.kind === 'bill' && write === 'stripe_part') {
+          // Under the open balance on a Stripe bill: the credit note lowers the pay link and the function writes the row.
+          const res = await invokeOob(oobBody(land.invoiceId))
+          landedPaymentId = typeof res.payment_id === 'string' ? res.payment_id : null
+        } else if (land.kind === 'bill') {
           const data = await withSupabaseRetry(
             async () =>
               supabase.rpc('mark_invoice_paid', {
                 p_invoice_id: land.invoiceId,
                 p_amount: amount,
-                p_paid_on: payment.paid_on ? String(payment.paid_on).slice(0, 10) : undefined,
+                p_paid_on: paidOnYmd ?? undefined,
                 p_note: (payment.note ?? '').trim() || undefined,
-                p_payment_type: (payment.payment_type ?? '').trim() || undefined,
-                p_reference_number: (payment.reference_number ?? '').trim() || undefined,
+                p_payment_type: paymentType || undefined,
+                p_reference_number: referenceNumber || undefined,
               }),
-            'mark_invoice_paid · moved check',
+            'mark_invoice_paid · moved payment',
           )
           const result = data as { error?: string } | null
           if (result && typeof result === 'object' && result.error) throw new Error(result.error)
           const { data: newest } = await db.from('jobs_ledger_payments').select('id').eq('invoice_id', land.invoiceId).order('created_at', { ascending: false }).limit(1).maybeSingle()
           landedPaymentId = (newest as { id?: string } | null)?.id ?? null
+          if (write === 'mark_paid_then_close') closeStripeAfter = land.invoiceId
         } else {
           const { data: last } = await db.from('jobs_ledger_payments').select('sequence_order').eq('job_id', dest.id).order('sequence_order', { ascending: false }).limit(1).maybeSingle()
           const next = Number((last as { sequence_order?: number | null } | null)?.sequence_order ?? -1) + 1
@@ -256,16 +300,31 @@ export function JobPaymentMoveModal({
         return
       }
 
-      // 4. The grey line on both jobs.
+      // 3b. The bill reads Paid here; close its Stripe invoice too, so its pay link cannot be paid again.
+      let closeError: string | null = null
+      if (closeStripeAfter) {
+        try {
+          await invokeOob({ ...oobBody(closeStripeAfter), allow_app_paid: true })
+        } catch (e) {
+          closeError = e instanceof Error ? e.message : 'Stripe did not answer'
+        }
+      }
+
+      // 4. The grey line on both jobs — the office's reason alone; the line names the job itself.
       const { error: evErr } = await db.from('jobs_ledger_payment_events').insert(
-        heldMoveEventRow({ snapshot, fromJobId: fromJob.id, toJobId: dest.id, landedPaymentId, reason: why, actorUserId: authUser?.id ?? null, actorName: profileName }),
+        heldMoveEventRow({ snapshot, fromJobId: fromJob.id, toJobId: dest.id, landedPaymentId, reason, actorUserId: authUser?.id ?? null, actorName: profileName }),
       )
+      if (closeError) {
+        setStopped(stripeHeldMoveStoppedWords('close', { ...stopArgs, message: closeError }))
+        onMoved()
+        return
+      }
       if (evErr) showToast(stripeHeldMoveStoppedWords('trace', { ...stopArgs, message: evErr.message }), 'warning')
-      showToast(`Check moved to ${toLabel}. ${fromLabel} is Ready to Bill — press Bill Customer there for a fresh bill.`, 'success')
+      showToast(stripeHeldMoveDoneWords(noun, fromLabel, toLabel), 'success')
       onMoved()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not move the check', 'error')
+      showToast(e instanceof Error ? e.message : `Could not move the ${noun}`, 'error')
     } finally {
       setBusy(false)
     }
@@ -305,6 +364,10 @@ export function JobPaymentMoveModal({
         amount: Number(payment.amount ?? 0),
         billAmount: Number(heldBill?.amount ?? 0),
         landing: dest ? landing : null,
+        noun,
+        paymentType: payment.payment_type,
+        paidOnYmd: payment.paid_on ? String(payment.paid_on).slice(0, 10) : null,
+        todayYmd: todayYmdInAppTz(),
       })
     : null
 
@@ -326,12 +389,12 @@ export function JobPaymentMoveModal({
     <div role="presentation" style={overlay} onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }}>
       <div role="dialog" aria-modal="true" aria-label="Move this payment" style={card} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
-          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{held ? 'Move this check' : 'Move this payment'}</h3>
+          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{held ? stripeHeldMoveTitle(noun) : 'Move this payment'}</h3>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{amount}{payment.paid_on ? ` · ${payment.paid_on}` : ''}{(payment.reference_number ?? '').trim() ? ` · ref ${payment.reference_number}` : ''}</span>
         </div>
         {held ? (
           <p data-testid="held-move-intro" style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Stripe holds this check as paid, and Stripe never reopens a paid invoice. Moving it reverses that mark with a credit note, sends {fromJob ? jobLabel(fromJob) : 'this job'}'s bill back for a fresh one, and lands the check on the job you pick.
+            {stripeHeldMoveIntro(noun, fromJob ? jobLabel(fromJob) : 'this job')}
           </p>
         ) : (
           <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>

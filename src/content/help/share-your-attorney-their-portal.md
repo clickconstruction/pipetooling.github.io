@@ -2,7 +2,7 @@
 title: share your attorney their portal
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, portal, link, collections, packet, particulars, exhibits, attorney ready, send the link, welcome email
+keywords: legal, attorney, law firm, portal, link, collections, packet, particulars, exhibits, attorney ready, send the link, welcome email, lien grid, court, justice precinct
 ---
 The collections law firm gets private links that need no sign-in. A link opens every account a dev has marked attorney-ready, and nothing else. The firm has its own link, and can have one link per person at the firm.
 
@@ -17,6 +17,18 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 5. **Change address…** lets you type a new name part or roll the tail again. Saving it kills the old address. **Rotate** keeps the name and rolls three new characters, and kills the old one too. Rotating the firm's own link also kills the link in every email the firm already has. Send the new link after a Rotate. **Turn off** is the kill switch for that link. The firm gets "This link is no longer active" on it.
 6. A wrong address is counted. After ten wrong tries in an hour from one connection, the portal refuses that connection for the hour. The right address always opens.
 7. **Turned off** lists every link that is gone. Each shows the day it was made, the day it ended, and who ended it. A link made before addresses were short still works. Rotate it, or change its address, when you are ready.
+
+## Start here and the tour
+
+The firm's first visit opens on **Start here**. It is a short intake in four steps. A rail across the top says which step the firm is on. Every step has a link to Matters.
+
+- **Step 1** names us and gives live figures. It counts the jobs on the lien grid, their counties, their balances and what is due in 30 days. It also counts the matters with the firm.
+- **Step 2** says what comes with each matter. Lien rights are kept, notices go out on time and the evidence is gathered.
+- **Step 3** says how we work with the firm. It states the firm's fee and filing cost, as set on Settings → Jobs & billing. It names the courts and the settlement rule.
+- Step 3 also links to the Texas lien rules the app follows. The rules open on the portal with no sign-in.
+- **Step 4** starts the tour.
+
+The tour opens each part of the portal and rings it. A strip at the bottom says the stop number and what the part is for. {{button:outline|‹ Back}} and {{button:blue|Next ›}} walk it. Esc or × ends it. After the first visit the portal opens on Matters. Start here stays as the first tab.
 
 ## What the firm sees
 
@@ -46,14 +58,14 @@ Under the portal's letterhead, on every page, a line says who at the office to c
 
 ## The lien grid
 
-The lien grid is a third panel beside **Matters** and **Notifications**. The grid shows every billed job with money open and a lien month. Each job is one row. The address sits under the job name. The property reads Commercial or Residential, with Homestead or No homestead beneath. The **Amount due** column shows the open balance, with the work months it covers under it. The § 53.056 column lists each month whose window is still open, with its date. A month whose window has closed is left off. The rows are the same ones the office's Lien desk Timeline tab holds, read live. A rail beside the grid lists every GC with its job count and open dollars, largest first. Click a GC to narrow the grid to its jobs. The last entry is the jobs with no GC. **Due in 30 days** shows the jobs with a step inside the next 30 days. Switch to **Upcoming** for the whole book, every row. The rail's numbers follow that switch. {{button:blue|⎙ Print the grid}} hands over the same letter-landscape page the desk prints, in counsel's twelve columns. A red **?** marks a fact the office has not entered yet:
+The lien grid is a third panel beside **Matters** and **Notifications**. The grid shows every billed job with money open and a lien month. Each job is one row. The address sits under the job name. The property reads Commercial or Residential, with Homestead or No homestead beneath. The **Amount due** column shows the open balance, with the work months it covers under it. The § 53.056 column lists each month whose window is still open, with its date. A month whose window has closed is left off. The rows are the same ones the office's Lien desk Timeline tab holds, read live. A rail beside the grid lists every GC with its job count and open dollars, largest first. Click a GC to narrow the grid to its jobs. The last entry is the jobs with no GC. Press **Courts** at the top of the rail to read it by court instead. Each county lists its justice precincts with their counts and dollars. A job over the $20,000 justice limit sits under its county as county court, never under a precinct. The jobs whose county is not on the record come last. Click a county or a precinct to narrow the grid. With more than one court shown, a band names each court above its rows. The print carries the same bands. **Due in 30 days** shows the jobs with a step inside the next 30 days. Switch to **Upcoming** for the whole book, every row. The rail's numbers follow that switch. {{button:blue|⎙ Print the grid}} hands over the same letter-landscape page the desk prints, in counsel's twelve columns. A red **?** marks a fact the office has not entered yet:
 
 - the payment bond
 - paid out to the GC
 - the 10 % reserved
 - the owner's contract completion
 
-On a phone, each job is a card with its address on top. The facts the office has not entered show as one red line at the foot of the card.
+On a phone, each job is a card with its address on top. The facts the office has not entered show as one red line at the foot of the card. By court, each chip names its county.
 
 ## What the firm does on the portal
 

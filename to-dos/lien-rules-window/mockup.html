@@ -1,0 +1,231 @@
+<title>Lien Rules Window</title>
+<style>
+  /* Layout: a page of two window drawings, Now above Proposed, each a fixed-frame sketch of the § Rules window at 860 px; a phone frame of Proposed beside it; a short critique at the foot. */
+  :root {
+    --bg: #f6f6f4; --fg: #1f2328; --muted: #656d76; --surface: #ffffff; --subtle: #f0f1f3;
+    --border: #d9dde2; --border-strong: #b9c0c8; --accent: #1f5fbf; --accent-tint: #e8f0fb;
+    --amber: #9a5b00; --amber-tint: #fff4dc; --amber-border: #e7c36a; --green: #1f6f3f; --green-tint: #e6f4ea;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141618; --fg: #e6e8eb; --muted: #9aa3ad; --surface: #1e2124; --subtle: #25292d; --border: #353b41; --border-strong: #4a525a; --accent: #7fb0ff; --accent-tint: #1d2a3f; --amber: #f0c36a; --amber-tint: #3a2e12; --amber-border: #7a5a1a; --green: #8fd4a8; --green-tint: #1b3324; color-scheme: dark } }
+  :root[data-theme="dark"] { --bg: #141618; --fg: #e6e8eb; --muted: #9aa3ad; --surface: #1e2124; --subtle: #25292d; --border: #353b41; --border-strong: #4a525a; --accent: #7fb0ff; --accent-tint: #1d2a3f; --amber: #f0c36a; --amber-tint: #3a2e12; --amber-border: #7a5a1a; --green: #8fd4a8; --green-tint: #1b3324; color-scheme: dark }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+  .page { max-width: 1180px; margin: 0 auto; padding-block: 28px 60px; padding-inline: 16px; display: grid; gap: 28px; }
+  h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+  .lede { color: var(--muted); margin: 0; max-width: 70ch; }
+  h2 { font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .note { color: var(--muted); font-size: 13px; max-width: 76ch; margin: 8px 0 0; }
+  .note b { color: var(--fg); }
+  .win { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,0.18); overflow: hidden; max-width: 860px; font-size: 13.5px; }
+  .win .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .win .head h3 { margin: 0; font-size: 15px; }
+  .win .head .sub { font-size: 12px; color: var(--muted); }
+  .win .x { color: var(--muted); font-size: 20px; line-height: 1; }
+  .find { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--border); background: var(--subtle); flex-wrap: wrap; }
+  .find .box { flex: 1 1 240px; min-width: 0; border: 1px solid var(--border-strong); border-radius: 8px; padding: 7px 10px; background: var(--surface); color: var(--muted); }
+  .find .hint { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .body { padding: 14px 20px; line-height: 1.6; }
+  .body p { margin: 0 0 10px; }
+  .body h4 { margin: 14px 0 6px; font-size: 17px; }
+  .body .lit { box-shadow: inset 3px 0 0 var(--accent); padding-left: 8px; }
+  .cite { font-style: italic; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .foot a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  kbd { font-size: 11px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--surface); }
+  .btn { display: inline-block; border: 1px solid var(--border-strong); border-radius: 7px; padding: 1px 8px; font-size: 12px; font-weight: 600; background: var(--surface); }
+  .scrollbar { position: relative; }
+  .scrollbar::after { content: ""; position: absolute; right: 3px; top: 34%; height: 7%; width: 6px; border-radius: 3px; background: var(--border-strong); }
+  /* Proposed */
+  .split { display: grid; grid-template-columns: 212px minmax(0, 1fr); min-height: 0; }
+  .rail { border-right: 1px solid var(--border); padding: 10px 0; background: var(--subtle); font-size: 12.5px; }
+  .rail .sec { padding: 8px 14px 3px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .rail .row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 14px; color: var(--fg); }
+  .rail .row.on { background: var(--accent-tint); color: var(--accent); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+  .rail .row .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rail .row.dim { color: var(--muted); }
+  .rules { padding: 10px 18px 14px; }
+  .rules h4 { margin: 12px 0 6px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .rule { border: 1px solid var(--border); border-radius: 8px; margin: 0 0 8px; background: var(--surface); }
+  .rule .top { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; padding: 9px 12px; }
+  .rule .top .car { color: var(--muted); font-size: 11px; }
+  .rule .q { font-weight: 650; font-size: 14.5px; }
+  .rule .short { color: var(--fg); margin-top: 2px; }
+  .rule .tag { font-size: 11.5px; color: var(--muted); white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; font-variant-numeric: tabular-nums; }
+  .rule.open { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-tint); }
+  .rule.open .car { color: var(--accent); }
+  .rule .more { border-top: 1px solid var(--border); padding: 10px 12px 12px 38px; display: grid; gap: 8px; }
+  .rule .more p { margin: 0; }
+  .rule .lab { font-weight: 650; }
+  .door { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .door::after { content: " ›"; }
+  .amber { display: flex; gap: 8px; align-items: baseline; background: var(--amber-tint); border: 1px solid var(--amber-border); color: var(--amber); border-radius: 7px; padding: 6px 10px; font-size: 12.5px; }
+  .amber b { font-weight: 650; }
+  .job { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; padding: 8px 18px; border-bottom: 1px solid var(--border); background: var(--accent-tint); font-size: 12.5px; }
+  .job .who { font-weight: 650; color: var(--fg); }
+  .job .k { color: var(--muted); }
+  .job .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+  table.dl { border-collapse: collapse; width: 100%; font-size: 12.5px; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+  table.dl th, table.dl td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.dl th { font-size: 11px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  table.dl td.now { background: var(--accent-tint); font-weight: 600; }
+  .tblwrap { overflow-x: auto; }
+  dfn { font-style: normal; border-bottom: 1px dotted var(--border-strong); }
+  /* phone */
+  .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 300px)); gap: 20px; align-items: start; }
+  .phone { width: 300px; max-width: 100%; border: 1px solid var(--border-strong); border-radius: 22px; background: var(--surface); overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.18); font-size: 12.5px; }
+  .phone .head { padding: 8px 12px; }
+  .phone .chips { display: flex; gap: 6px; padding: 8px 10px; overflow-x: auto; border-bottom: 1px solid var(--border); background: var(--subtle); }
+  .chip { border: 1px solid var(--border-strong); border-radius: 999px; padding: 2px 9px; white-space: nowrap; font-size: 11.5px; background: var(--surface); }
+  .chip.on { background: var(--accent-tint); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .phone .rules { padding: 8px 10px; }
+  .phone .rule .top { padding: 8px 10px; grid-template-columns: 14px minmax(0,1fr); }
+  .phone .rule .top .tag { grid-column: 2; justify-self: start; margin-top: 4px; }
+  .phone .rule .more { padding-left: 10px; }
+  .crit { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; max-width: 860px; }
+  .crit h2 { margin-bottom: 8px; }
+  .crit ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; }
+  .crit li b { font-weight: 650; }
+  .crit .kept { color: var(--muted); }
+  @media (max-width: 720px) { .split { grid-template-columns: minmax(0, 1fr); } .rail { display: none; } }
+</style>
+
+<div class="page">
+  <header>
+    <h1>The § Rules window, redrawn</h1>
+    <p class="lede">What the office sees when they press <span class="btn">§ Rules</span> on the Lien desk or the Lien window. The drawings are the window at 860 px, opened the way the desk opens it: at the notice rule, for job 804. Nothing below is built.</p>
+  </header>
+
+  <section>
+    <h2>Now</h2>
+    <div class="win scrollbar" aria-label="The § Rules window today">
+      <div class="head"><div><h3>§ Rules</h3><div class="sub">The Texas lien rules the app follows · opened at <b>The § 53.056 notice</b></div></div><span class="x">×</span></div>
+      <div class="find"><span class="box">Find a rule: 53.056, homestead, interest, certified mail…</span><span class="hint">Type to narrow the rules</span></div>
+      <div class="body">
+        <h4 class="lit">The § 53.056 notice</h4>
+        <p><b>What it says.</b> The notice is a form the statute sets. It goes to the owner of record and to the original contractor. It is due by the 15th of the third month after the work month. On a residential property it is due by the 15th of the second month. It goes by certified mail or another service that can be traced. <b>It may include the invoice.</b></p>
+        <p><b>What the app does.</b> You send it from the notice tab or from <span class="btn">Lien desk</span>. The invoice is enclosed behind the notice.</p>
+        <p><b>Cite.</b> <span class="cite">§ 53.056(a-1) to (a-3), § 53.003</span></p>
+        <h4>What the notice does for the owner</h4>
+        <p><b>What it says.</b> The owner may withhold what we are owed from the GC. This is called fund trapping. The owner is liable for money paid out after the notice.</p>
+        <p><b>What the app does.</b> Counsel's cover letter goes on the owner's copy of every notice the desk sends. The office can untick the letter on a draft. When a supply house is still owed, the letter ends with a paragraph about it. It names the house, its money and its notice day. It says the owner may withhold. It says what paying the GC anyway risks. The demand letter points the owner to the notice. It does not point to a demand.</p>
+        <p><b>Cite.</b> <span class="cite">§ 53.081, § 53.082, § 53.084</span></p>
+        <h4>The owner demand is gone</h4>
+        <p><b>What it says.</b> The old <span class="cite">§ 53.083</span> demand for payment to the owner was <b>repealed</b>. The repeal covers contracts made on or after 2022-01-01.</p>
+      </div>
+      <div class="foot"><a>Open the guide on its own page ↗</a><span><kbd>Enter</kbd> next match · <kbd>Esc</kbd> back</span></div>
+    </div>
+    <p class="note">You land a third of the way down a 7,100 px page of 2,300 words. The index is 1,900 px above you. The heading is the statute's name. The dates are in prose. Nothing says which rules counsel has not read, and nothing says what these rules mean for the job you had open.</p>
+  </section>
+
+  <section>
+    <h2>Proposed</h2>
+    <div class="win" aria-label="The § Rules window, proposed">
+      <div class="head"><div><h3>§ Rules</h3><div class="sub">The Texas lien rules the app follows · 23 rules, the one for this screen open</div></div><span class="x">×</span></div>
+      <div class="find"><span class="box">Find a rule: when is the notice due, homestead, interest, certified mail…</span><span class="hint">Type to narrow · <kbd>Enter</kbd> next · <kbd>Esc</kbd> back</span></div>
+      <div class="job"><span class="who">804 · Summit GC – Auto Zone</span><span><span class="k">Sub job, commercial · last work </span><span class="v">July</span></span><span><span class="k">Notice due </span><span class="v">Oct 15</span></span><span><span class="k">Lien due </span><span class="v">Nov 16</span></span><span class="k">The dates below are this job's.</span></div>
+      <div class="split">
+        <nav class="rail" aria-label="Sections">
+          <div class="sec">The clock</div>
+          <div class="row"><span>When each date falls</span></div>
+          <div class="row"><span>A house moves every date up a month</span></div>
+          <div class="row"><span>A 15th on a weekend</span></div>
+          <div class="sec">The notice</div>
+          <div class="row"><span>Does this job need a notice?</span></div>
+          <div class="row on"><span>What the notice is and where it goes</span></div>
+          <div class="row"><span>What it does for the owner</span></div>
+          <div class="row"><span>The owner demand is gone</span></div>
+          <div class="sec">The lien</div>
+          <div class="row"><span>What the affidavit needs</span></div>
+          <div class="row"><span>A homestead needs one more statement</span></div>
+          <div class="row"><span>Releases and waivers</span></div>
+          <div class="sec">The demand letter</div>
+          <div class="row dim"><span>5 rules</span></div>
+          <div class="sec">Interest</div>
+          <div class="row dim"><span>2 rules</span></div>
+          <div class="sec">Limits on a collection letter</div>
+          <div class="row dim"><span>2 rules</span></div>
+          <div class="sec">Not yet read by counsel</div>
+          <div class="row dim"><span>7 readings</span></div>
+        </nav>
+        <div class="rules">
+          <h4>The clock</h4>
+          <div class="rule">
+            <div class="top"><span class="car">▸</span><div><div class="q">When each date falls</div><div class="short">Count from the month the work was done, never the bill date. Each unpaid month has its own clock.</div></div><span class="tag">§ 53.056, § 53.052</span></div>
+          </div>
+          <div class="rule open">
+            <div class="top"><span class="car">▾</span><div><div class="q">The dates, month by month</div><div class="short">A sub's notice is due the 15th of the third month after the work. The lien is due a month after that.</div></div><span class="tag">§ 53.056(a-1), § 53.052</span></div>
+            <div class="more">
+              <div class="tblwrap"><table class="dl">
+                <thead><tr><th>Work done in</th><th>Notice due · commercial</th><th>Notice due · a house</th><th>Lien due · commercial</th><th>Lien due · a house</th></tr></thead>
+                <tbody>
+                  <tr><td>June</td><td>Sep 15</td><td>Aug 17</td><td>Oct 15</td><td>Sep 15</td></tr>
+                  <tr><td>July</td><td class="now">Oct 15</td><td>Sep 15</td><td class="now">Nov 16</td><td>Oct 15</td></tr>
+                  <tr><td>August</td><td>Nov 16</td><td>Oct 15</td><td>Dec 15</td><td>Nov 16</td></tr>
+                </tbody>
+              </table></div>
+              <p class="lab">What you do</p>
+              <p>Nothing by hand. The Lien desk and the Payment forecast count these for you from the approved clock sessions. <a class="door">Open the Lien desk</a></p>
+            </div>
+          </div>
+          <div class="rule">
+            <div class="top"><span class="car">▸</span><div><div class="q">A house moves every date up a month</div><div class="short">A house, a duplex, a triplex, a fourplex or a condo its owner lives in is residential. Every deadline is a month earlier.</div></div><span class="tag">§ 53.001(10)</span></div>
+          </div>
+          <h4>The notice</h4>
+          <div class="rule">
+            <div class="top"><span class="car">▸</span><div><div class="q">Does this job need a monthly notice?</div><div class="short">Only when there is a GC. No GC means we contracted with the owner, and the affidavit stands alone.</div></div><span class="tag">§ 53.056, § 53.052</span></div>
+          </div>
+          <div class="rule open">
+            <div class="top"><span class="car">▾</span><div><div class="q">What the notice is and where it goes</div><div class="short">A form the statute sets. It goes to the <dfn title="The person the county's records name as the property's owner">owner of record</dfn> and to the GC, by certified mail, with the invoice behind it.</div></div><span class="tag">§ 53.056(a-1) to (a-3)</span></div>
+            <div class="more">
+              <p><span class="lab">What it says.</span> The notice is a form the statute sets. It goes to the owner of record and to the original contractor. It is due by the 15th of the third month after the work month, or the second month on a house. It goes by certified mail or another service that can be traced. It may include the invoice.</p>
+              <p><span class="lab">What you do.</span> Draft it on the Lien desk under Notices. The desk picks the months and the owner of record, prints the form, and encloses the invoice behind it. <a class="door">Draft this job's notice</a></p>
+            </div>
+          </div>
+          <div class="rule">
+            <div class="top"><span class="car">▸</span><div><div class="q">What the notice does for the owner</div><div class="short">The owner may hold back what we are owed from the GC. Money paid out after the notice is the owner's risk.</div></div><span class="tag">§ 53.081 to .084</span></div>
+          </div>
+          <h4>The lien</h4>
+          <div class="rule">
+            <div class="top"><span class="car">▸</span><div><div class="q">What the affidavit needs before it can be filed</div><div class="short">The owner of record, the county and legal description, a recorded notice on a sub job, and a property that is not a homestead.</div></div><span class="tag">§ 53.052 to .055</span></div>
+          </div>
+          <div class="rule">
+            <div class="top"><span class="car">▸</span><div><div class="q">A late notice can still carry the affidavit</div><div class="short">While the affidavit window is open, a notice sent after its own 15th still counts. The owner's reading since Oct 6, 2026.</div><div class="amber" style="margin-top:6px"><b>Counsel has not read this.</b> Their memo of Sep 22 read a closed month as information only.</div></div><span class="tag">§ 53.056</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><a>Open the guide on its own page ↗</a><span>Checked against the statute 2026-09-14</span></div>
+    </div>
+    <p class="note"><b>What changed.</b> A rail of the sections and rules, the current one lit. Each rule folds to its question and a one-sentence answer, so the folded list answers most visits on its own; the rule the door opened is unfolded. The cite is a tag on the row, not the title. A strip at the top names the job the desk had open and its two dates, and the table lights that job's row. <i>What the app does</i> becomes <i>What you do</i> with a door to the screen. A rule counsel has not read says so on the rule. Terms get a dotted underline with the meaning on hover.</p>
+  </section>
+
+  <section>
+    <h2>On a phone</h2>
+    <div class="phones">
+      <div class="phone">
+        <div class="head"><div><h3 style="margin:0;font-size:14px">§ Rules</h3><div class="sub">The one for this screen open</div></div><span class="x">×</span></div>
+        <div class="find" style="padding:6px 10px"><span class="box" style="padding:6px 9px">Find a rule…</span></div>
+        <div class="job" style="padding:6px 10px"><span class="who">804 · Summit GC</span><span><span class="k">Notice </span><span class="v">Oct 15</span></span><span><span class="k">Lien </span><span class="v">Nov 16</span></span></div>
+        <div class="chips"><span class="chip">Clock</span><span class="chip on">Notice</span><span class="chip">Lien</span><span class="chip">Demand letter</span><span class="chip">Interest</span><span class="chip">Limits</span></div>
+        <div class="rules">
+          <div class="rule"><div class="top"><span class="car">▸</span><div><div class="q">Does this job need a monthly notice?</div><div class="short">Only when there is a GC.</div><span class="tag">§ 53.056</span></div></div></div>
+          <div class="rule open"><div class="top"><span class="car">▾</span><div><div class="q">What the notice is and where it goes</div><div class="short">A form the statute sets. To the owner of record and the GC, certified mail, invoice behind it.</div><span class="tag">§ 53.056(a-1)</span></div></div>
+            <div class="more"><p><span class="lab">What you do.</span> Draft it on the Lien desk under Notices. <a class="door">Draft this job's notice</a></p></div></div>
+          <div class="rule"><div class="top"><span class="car">▸</span><div><div class="q">What the notice does for the owner</div><div class="short">The owner may hold back what we are owed.</div><span class="tag">§ 53.081</span></div></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">The rail becomes a chip row that scrolls sideways. The cite tag drops under the question. The job strip keeps the two dates.</p>
+  </section>
+
+  <section class="crit">
+    <h2>Is this the best we can do?</h2>
+    <ol>
+      <li><b>The first draft had a rail and folded rules and stopped there.</b> That fixes being lost, but a folded list of statute names is still a list of statute names. The one-sentence answer under each question is what makes the folded list useful on its own. Added.</li>
+      <li><b>The rules are general and the reader has a job open.</b> Every date in the guide is "the 15th of the third month". The desk already knows this job's months, its kind and both dates. Showing them in a strip at the top, and lighting the job's row in the table, turns the rules into an answer. Added. When the window opens from the Lien window or with no job, the strip is left out and the table shows the last three months.</li>
+      <li><b>Hiding the lawyer-facing half.</b> I considered dropping the demand letter, interest and limits sections from the window. They stay, folded, with a count in the rail, because the Lien window's demand letter opens the window at those rules.</li>
+      <li><b>Tooltips for terms.</b> On a phone there is no hover, so the first use of a term also gets its meaning in the sentence. The dotted underline is a hint, not the only copy.</li>
+      <li class="kept"><b>Kept as is:</b> the find box and its Enter walk, the Esc that closes only this window, the link to the guide on its own page, the three-part shape of each rule once unfolded.</li>
+    </ol>
+  </section>
+</div>

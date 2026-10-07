@@ -4,6 +4,7 @@ import { WRITE_VERBS, alreadyApplied, canonicalJson, isWriteVerb, planCommitment
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
+const NARRATIVE_MIGRATION = readFileSync('supabase/migrations/20261007235000_dev_legal_narrative_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -13,7 +14,7 @@ const HASH = 'a'.repeat(64)
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_hr_entry_write', 'dev_legal_narrative_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -26,6 +27,15 @@ describe('devMcpWrites — the allowlist', () => {
     // The wrapper calls the LIVE hr_agent_write; it never redefines it.
     expect(HR_MIGRATION).toContain('public.hr_agent_write(v_payload)')
     expect(HR_MIGRATION).not.toContain('FUNCTION public.hr_agent_write')
+    // v2.4814: the narrative wrapper, the same shape over legal_set_narrative.
+    expect(NARRATIVE_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(NARRATIVE_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_narrative_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(NARRATIVE_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(NARRATIVE_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_legal_narrative_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(NARRATIVE_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_legal_narrative_write(jsonb, boolean) TO authenticated;')
+    expect(NARRATIVE_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(NARRATIVE_MIGRATION).toContain('public.legal_set_narrative(v_matter.id, v_md)')
+    expect(NARRATIVE_MIGRATION).not.toContain('FUNCTION public.legal_set_narrative')
   })
 
   it('knows its verbs, and the server declares every one as a tool and refuses them through view_as', () => {
@@ -117,5 +127,23 @@ describe('the plan hash — what apply must match', () => {
     expect(alreadyApplied('apply_cost_batch', { target: PERSON, at: '2026-09-22T10:00:00Z' })).toBe(`Nothing written: this plan was already applied as batch ${PERSON} at 2026-09-22T10:00:00Z. Revert that batch first if it was wrong, or plan a different batch.`)
     expect(alreadyApplied('apply_hr_entry', { target: PERSON, at: null })).toMatch(/^Nothing written: this plan was already applied on this person\. A second identical entry is a duplicate/)
     expect(String(planReply('plan_cost_batch', {}, HASH).next)).toContain('One apply per plan')
+  })
+})
+
+describe('the narrative verbs (v2.4814)', () => {
+  const MATTER = 'a1b2c3d4-0000-4000-8000-000000000085'
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } to the dry-run wrapper', () => {
+    expect(isWriteVerb('plan_matter_narrative')).toBe(true)
+    expect(planVerbFor('apply_matter_narrative')).toBe('plan_matter_narrative')
+    const plan = writeRpcBody('plan_matter_narrative', { narrative: { matter_id: MATTER, markdown: '## The parties' } })
+    expect(plan).toEqual({ ok: true, rpc: 'dev_legal_narrative_write', step: 'plan', body: { p: { matter_id: MATTER, markdown: '## The parties' }, p_dry_run: true }, dryRunBody: { p: { matter_id: MATTER, markdown: '## The parties' }, p_dry_run: true }, target: MATTER, planHash: null })
+    expect(writeRpcBody('apply_matter_narrative', { narrative: { matter_id: MATTER, markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+    expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: 'nope', markdown: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
+    expect(writeRpcBody('plan_matter_narrative', { narrative: { matter_id: MATTER } })).toMatchObject({ ok: false })
+  })
+
+  it('the plan reply points at apply_matter_narrative, and a repeat apply says it is already on the matter', () => {
+    expect(String(planReply('plan_matter_narrative', { matter: { id: MATTER } }, 'a'.repeat(64)).next)).toContain('apply_matter_narrative')
+    expect(alreadyApplied('apply_matter_narrative', { target: MATTER, at: '2026-10-07T18:00:00Z' })).toContain('on this matter')
   })
 })

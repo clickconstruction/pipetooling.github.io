@@ -5161,6 +5161,12 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalNarrative th, .legalNarrative td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
 .legalNarrative th { background: var(--surface-muted, transparent); }
 .legalNarrative a { color: #b0662f; }
+/* Start here and the tour (v2.4820): the rail wraps on a phone; the ring marks what a tour stop means;
+   the strip docks at the bottom, full width on a phone. Colors come inline from portalTheme. */
+.legalStartRail { display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px; }
+.legalTourRing { outline: 2px solid #b0662f; outline-offset: 3px; border-radius: 6px; box-shadow: 0 0 0 6px rgba(176, 102, 47, 0.14); scroll-margin: 90px 0 160px; }
+.legalTourStrip { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: min(680px, calc(100vw - 24px)); z-index: 50; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 10px 14px; border-radius: 8px; box-shadow: 0 10px 28px rgba(22, 40, 60, 0.2); }
+.legalPortalPage--touring { padding-bottom: 150px !important; }
 /* Reach the office (v2.4755): one line under the letterhead; a column on a phone. Colors inline from portalTheme. */
 .legalReachStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; margin: 12px 0 0; border-radius: 6px; font-size: 12.5px; }
 .legalReachWho { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
@@ -5174,6 +5180,10 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalLienGcName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .legalLienGcCount { grid-column: 1; font-size: 11.5px; }
 .legalLienGcOpen { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+/* The rail by court (v2.4825): a county heads its precincts, which sit indented; the phone's chips carry the county instead. */
+.legalLienCountyEntry { margin-top: 6px; }
+.legalLienCourtEntry { padding-left: 22px; }
+.legalLienCourtShort { display: none; }
 @media (max-width: 720px) {
   .legalPortalPage { padding: 16px 16px 48px; --legal-small: 12px; }
   .legalPortalSplit { grid-template-columns: minmax(0, 1fr); grid-template-areas: "list" "main" "aside"; grid-template-rows: auto; row-gap: 14px; }
@@ -5187,6 +5197,9 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalMatterHeadSums > * { text-align: left !important; }
   .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .legalReachStrip { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .legalStartRailBar { display: none; }
+  .legalTourStrip { left: 0; transform: none; bottom: 0; width: 100%; border-radius: 10px 10px 0 0; grid-template-columns: minmax(0, 1fr); padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .legalPortalPage--touring { padding-bottom: 190px !important; }
   .legalReachWho { white-space: normal; flex-wrap: wrap; }
   .legalReachAny { margin-left: 0; }
   .legalReachSep { display: none; }
@@ -5197,6 +5210,9 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalLienGc { display: inline-flex; gap: 6px; width: auto; border: 1px solid var(--border) !important; border-radius: 999px; padding: 4px 9px; margin: 0 !important; }
   .legalLienGc[aria-pressed="true"] { border-color: #b0662f !important; }
   .legalLienGcCount { display: none; }
+  .legalLienRailList > .legalLienLens { width: 100%; margin-bottom: 2px !important; }
+  .legalLienCourtFull { display: none; }
+  .legalLienCourtShort { display: inline; }
   .legalRecipientScope { margin-left: 0 !important; }
 }
 /* The firm's tables fold into cards when their box is narrow (v2.4808): a row is a card, each cell its column's name
@@ -5212,6 +5228,8 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalCardTable > tbody > tr { padding: 8px 0; border-bottom: 1px solid var(--legal-card-hair); }
   .legalCardTable > tbody > tr[data-card-has-sub] { border-bottom: none; padding-bottom: 4px; }
   .legalCardTable > tbody > tr[data-card-sub] { padding-top: 0; }
+  .legalCardTable > tbody > tr[data-card-band] { padding: 12px 0 0; border-bottom: none; }
+  .legalCardTable > tbody > tr[data-card-band] > td { display: block; padding: 5px 8px !important; border-radius: 5px; }
   .legalCardTable > tbody > tr > td { display: grid; grid-template-columns: minmax(6.5rem, 34%) minmax(0, 1fr); column-gap: 10px; align-items: baseline; padding: 3px 0 !important; border: none !important; text-align: left !important; white-space: normal !important; }
   .legalCardTable > tbody > tr > td::before { content: attr(data-label); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.4; text-transform: uppercase; color: var(--legal-card-label); }
   .legalCardTable > tbody > tr > td[data-label=""], .legalCardTable > tbody > tr[data-card-sub] > td { display: block; }
@@ -5225,6 +5243,50 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 
 /* Uncollectible (punch list #94, v2.4792): a Collections row the office gave up on wears faint
    stripes under its cells; the red stamp in the money cell says why. */
-tr[data-stages-row-stamped] > td {
+tr[data-stages-row-stamped] {
+  /* v2.4818: one pattern across the whole row. On each cell the stripes restarted at every column edge;
+     the row paints its background once, so they run straight through (the cells set none of their own). */
   background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgba(127, 127, 127, 0.07) 14px 28px);
 }
+/* The § Rules window redrawn (v2.4826): the rail, the chips, the job strip, the folded rules. `data-folded` is the fold (lienRulesFold.ts); `hidden` stays the find's (helpGuideFind.ts). */
+.lienRulesSplit { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 0; }
+.lienRulesSplit[data-mobile="yes"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.lienRulesRail { overflow: auto; min-height: 0; border-right: 1px solid var(--border); background: var(--bg-subtle); padding: 0.4rem 0 0.8rem; font-size: 0.78rem; }
+.lienRulesRailGroup { padding: 0.3rem 0; }
+.lienRulesRailHead, .lienRulesRailRow { display: block; width: 100%; text-align: left; font: inherit; border: 0; background: none; cursor: pointer; color: var(--text-700); }
+.lienRulesRailHead { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); font-weight: 650; padding: 0.3rem 0.85rem 0.15rem; }
+.lienRulesRailHead[data-on="yes"] { color: var(--text-blue-800); }
+.lienRulesRailRow { padding: 0.2rem 0.85rem; line-height: 1.3; }
+.lienRulesRailRow:hover, .lienRulesRailRow:focus-visible, .lienRulesRailHead:hover { color: var(--text-strong); background: var(--surface); outline: none; }
+.lienRulesRailRow[data-on="yes"] { color: var(--text-blue-800); font-weight: 600; background: var(--bg-blue-tint); box-shadow: inset 3px 0 0 var(--border-blue); }
+.lienRulesChips { display: flex; gap: 0.35rem; overflow-x: auto; padding: 0.45rem 0.75rem; border-bottom: 1px solid var(--border); background: var(--bg-subtle); scrollbar-width: none; }
+.lienRulesChip { flex: none; font: inherit; font-size: 0.74rem; font-weight: 600; padding: 0.15rem 0.6rem; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; white-space: nowrap; }
+.lienRulesChip[data-on="yes"] { background: var(--bg-blue-tint); color: var(--text-blue-800); border-color: var(--border-blue); }
+.lienRulesJob { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; align-items: baseline; padding: 0.45rem 0.9rem; border-bottom: 1px solid var(--border); background: var(--bg-blue-tint); font-size: 0.78rem; }
+.lienRulesJobWho { font-weight: 650; color: var(--text-strong); }
+.lienRulesJobFacts, .lienRulesJobK { color: var(--text-muted); }
+.lienRulesJobV { font-weight: 650; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.lienRulesBody [data-folded="yes"] { display: none; }
+.lienRulesBody [data-page-section] { display: none; }
+.lienRulesBody h2[data-rule-group] { font-size: 0.7rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin: 1.1rem 0 0.4rem; border: 0; padding: 0; }
+.lienRulesBody h3[data-rule] { display: grid; grid-template-columns: 0.9rem minmax(0, 1fr) auto; column-gap: 0.55rem; align-items: baseline; margin: 0.45rem 0 0; padding: 0.5rem 0.7rem 0.2rem; font-size: 0.95rem; font-weight: 650; border: 1px solid var(--border); border-radius: 8px 8px 0 0; border-bottom: 0; background: var(--surface); cursor: pointer; }
+.lienRulesBody h3[data-rule]::before { content: "▸"; font-size: 0.7rem; color: var(--text-muted); }
+.lienRulesBody h3[data-rule][data-open="yes"]::before { content: "▾"; color: var(--text-blue-800); }
+.lienRulesBody h3[data-rule]:hover, .lienRulesBody h3[data-rule]:focus-visible { background: var(--bg-subtle); outline: none; }
+.lienRulesBody h3[data-rule][data-open="yes"] { border-color: var(--border-blue); }
+.lienRulesBody h3[data-rule] [data-rule-cite] { font-size: 0.7rem; font-weight: 500; color: var(--text-muted); white-space: nowrap; border: 1px solid var(--border); border-radius: 999px; padding: 0 0.5rem; font-variant-numeric: tabular-nums; }
+.lienRulesBody h3[data-rule][data-rule-opened="yes"] { box-shadow: none; padding-left: 0.7rem; }
+.lienRulesBody [data-rule-of] { margin: 0; padding: 0 0.7rem 0 2.15rem; border-left: 1px solid var(--border); border-right: 1px solid var(--border); background: var(--surface); }
+.lienRulesBody h3[data-rule][data-open="yes"] ~ [data-rule-of] { border-color: var(--border-blue); }
+.lienRulesBody [data-rule-lead] { padding-bottom: 0.55rem; border-radius: 0 0 8px 8px; border-bottom: 1px solid var(--border); margin-bottom: 0.2rem; }
+.lienRulesBody h3[data-rule][data-open="yes"] ~ [data-rule-lead] { border-bottom: 1px dashed var(--border); border-radius: 0; margin-bottom: 0; }
+.lienRulesBody [data-rule-of]:not([data-rule-lead]) { padding-top: 0.5rem; }
+.lienRulesBody [data-rule-of] + h3[data-rule], .lienRulesBody [data-rule-of] + h2 { margin-top: 0.55rem; }
+.lienRulesBody [data-rule-counsel] { margin: 0.1rem 0.7rem 0.3rem 2.15rem; padding: 0.4rem 0.7rem; border: 1px solid var(--border-amber); border-radius: 7px; background: var(--bg-amber-tint); color: var(--text-amber-800); font-size: 0.86rem; }
+.lienRulesBody [data-rule-of] ul, .lienRulesBody [data-rule-of] ol { margin: 0.2rem 0 0.4rem; }
+.lienRulesBody table { border-collapse: collapse; font-size: 0.84rem; font-variant-numeric: tabular-nums; margin: 0.2rem 0 0.4rem; }
+.lienRulesBody table th, .lienRulesBody table td { text-align: left; padding: 0.2rem 0.55rem; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.lienRulesBody table th { font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+.lienRulesBody table tr[data-lit="yes"] td { background: var(--bg-blue-tint); font-weight: 650; }
+.lienRulesBody table[data-live-dates] + p { font-size: 0.84rem; color: var(--text-muted); }
+@media (max-width: 640px) { .lienRulesBody h3[data-rule] { grid-template-columns: 0.9rem minmax(0, 1fr); } .lienRulesBody h3[data-rule] [data-rule-cite] { grid-column: 2; justify-self: start; margin-top: 0.15rem; white-space: normal; line-height: 1.3; } .lienRulesBody [data-rule-of], .lienRulesBody [data-rule-counsel] { padding-left: 0.7rem; margin-left: 0; } }

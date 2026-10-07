@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal: Start here and the tour — mockup</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 80px; }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 32px 0 6px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.new { background: #111827; color: #fff; } .cap.alt { background: #E5E7EB; color: #374151; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; margin-bottom: 16px; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 110ch; } ul.notes li { margin: 5px 0; }
+  table.plan { border-collapse: collapse; font-size: 13px; margin-top: 8px; } table.plan th, table.plan td { border: 1px solid #D1D5DB; padding: 5px 8px; text-align: left; vertical-align: top; } table.plan th { background: #F3F4F6; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  /* the portal's paper */
+  .paper { background: #f6f3ec; color: #16283c; padding: 18px; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; position: relative; }
+  .muted { color: #5a6b7e; } .faint { color: #8a97a6; } .copper { color: #b0662f; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #b0662f; padding-bottom: 8px; gap: 12px; flex-wrap: wrap; }
+  .head .co { font-weight: 700; font-size: 16px; } .head .sub { font-size: 12px; color: #5a6b7e; } .head .aside { text-align: right; font-size: 12.5px; color: #5a6b7e; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid #ddd6c8; margin: 12px 0 14px; font-size: 13px; flex-wrap: wrap; }
+  .tabs span { padding: 6px 12px; color: #5a6b7e; border-bottom: 2px solid transparent; }
+  .tabs span.on { color: #16283c; font-weight: 700; border-bottom-color: #b0662f; }
+  .card { background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; padding: 16px 18px; }
+  .rail { display: flex; gap: 0; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .rail .s { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #8a97a6; padding-right: 10px; }
+  .rail .s .n { width: 20px; height: 20px; border-radius: 999px; border: 1.5px solid #ddd6c8; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: #fdfcf9; }
+  .rail .s.done { color: #5a6b7e; } .rail .s.done .n { background: #1f7a3a; border-color: #1f7a3a; color: #fff; }
+  .rail .s.on { color: #16283c; font-weight: 700; } .rail .s.on .n { background: #b0662f; border-color: #b0662f; color: #fff; }
+  .rail .bar { width: 22px; height: 1.5px; background: #ddd6c8; margin-right: 10px; }
+  .stepof { font-size: 11px; color: #8a97a6; text-transform: uppercase; letter-spacing: .07em; }
+  .stop h3 { margin: 2px 0 10px; font-size: 20px; }
+  .stop ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; font-size: 14px; }
+  .stop li { padding-left: 16px; position: relative; } .stop li::before { content: ''; position: absolute; left: 0; top: 9px; width: 6px; height: 6px; border-radius: 999px; background: #b0662f; }
+  .stop li b { font-variant-numeric: tabular-nums; }
+  .nav { display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 5px; border: 1px solid #b0662f; color: #b0662f; background: #fdfcf9; }
+  .btn.fill { background: #b0662f; color: #fff; } .btn.ghost { border-color: #ddd6c8; color: #5a6b7e; }
+  .quiet { font-size: 12.5px; color: #5a6b7e; margin-bottom: 10px; }
+  .quiet a { color: #b0662f; font-weight: 600; text-decoration: none; }
+  .q { display: grid; gap: 4px; margin-top: 12px; font-size: 13px; }
+  .q .in { border: 1px solid #ddd6c8; border-radius: 4px; padding: 6px 8px; background: #fff; color: #8a97a6; }
+  .chips { display: inline-flex; border: 1px solid #ddd6c8; border-radius: 999px; overflow: hidden; font-size: 12px; font-weight: 700; width: max-content; }
+  .chips span { padding: 3px 12px; color: #5a6b7e; } .chips span.on { background: #b0662f; color: #fff; }
+  .split { display: grid; grid-template-columns: 1.3fr .8fr; gap: 14px; }
+  .ring { outline: 2px solid #b0662f; outline-offset: 3px; border-radius: 6px; box-shadow: 0 0 0 6px rgba(176,102,47,.12); }
+  .strip { position: sticky; bottom: 8px; margin: 16px auto 0; max-width: 640px; background: #fdfcf9; border: 1px solid #ddd6c8; border-top: 3px solid #b0662f; border-radius: 8px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(22,40,60,.18); display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; }
+  .seg { display: flex; gap: 3px; grid-column: 1 / -1; } .seg i { flex: 1; height: 3px; border-radius: 2px; background: #ddd6c8; } .seg i.d { background: #1f7a3a; } .seg i.c { background: #b0662f; }
+  .strip .t { font-size: 13.5px; } .strip .t b { font-size: 14px; }
+  .phone { max-width: 375px; } .phone .strip { grid-template-columns: 1fr; max-width: none; } .phone .split { grid-template-columns: 1fr; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Legal portal · after punch list #85 · mockup</p><h1>Start here, then the tour</h1>
+<p>The owner, 2026-10-07, after pitching a firm: <i>make an intake flow that includes the above information curated for a law firm looking at their portal, followed by a guide of how the portal works where we signal where they are in the process, and use short, curt, to the point language.</i> The figures below are made up. On the portal every figure is read live from the same book the Lien grid draws.</p></header>
+
+<h2>1 · A new first tab, Start here</h2>
+<p class="lede">It opens first on a browser's first visit. After that the portal opens on Matters, and Start here stays one tab away. A rail across the top says where you are.</p>
+
+<div class="cap new">Step 1 of 5 · who you are working with</div>
+<div class="pane"><div class="paper">
+  <div class="head"><div><div class="co">Click Plumbing and Electrical</div><div class="sub">Collections referred to counsel · no sign-in, one revocable link</div></div><div class="aside">For <b style="color:#16283c">Sample &amp; Partner, PLLC</b><br>1 matter · $14,400.00 in balance</div></div>
+  <div class="tabs"><span class="on">Start here</span><span>Matters · 1</span><span>Lien grid</span><span>Notifications · 2 people</span></div>
+  <div class="card stop">
+    <div class="quiet">With your firm now: 1 matter. <a href="#">Open Matters ›</a></div>
+    <div class="rail"><span class="s on"><span class="n">1</span>Click</span><span class="bar"></span><span class="s"><span class="n">2</span>Each matter</span><span class="bar"></span><span class="s"><span class="n">3</span>How we work</span><span class="bar"></span><span class="s"><span class="n">4</span>Your answers</span><span class="bar"></span><span class="s"><span class="n">5</span>The portal</span></div>
+    <div class="stepof">Step 1 of 5</div>
+    <h3>Click Plumbing and Electrical</h3>
+    <ul>
+      <li>Most of the work is for general contractors. <b>31 of 38</b> jobs on the lien grid have one.</li>
+      <li>Counties: Bexar, Guadalupe, Comal, Hays and Travis.</li>
+      <li><b>34 of 38</b> jobs owe under $20,000, the justice court limit.</li>
+      <li>On the lien grid now: <b>38 jobs, $412,000</b> open.</li>
+      <li>Due in the next 30 days: <b>15 jobs, $96,500</b>.</li>
+      <li>With your firm now: <b>1 matter, $14,400</b> in balance.</li>
+    </ul>
+    <div class="nav"><span class="btn fill">Next: Each matter ›</span></div>
+  </div>
+</div></div>
+
+<div class="cap new">Step 2 of 5 · what comes with each matter</div>
+<div class="pane"><div class="paper"><div class="card stop">
+  <div class="rail"><span class="s done"><span class="n">✓</span>Click</span><span class="bar"></span><span class="s on"><span class="n">2</span>Each matter</span><span class="bar"></span><span class="s"><span class="n">3</span>How we work</span><span class="bar"></span><span class="s"><span class="n">4</span>Your answers</span><span class="bar"></span><span class="s"><span class="n">5</span>The portal</span></div>
+  <div class="stepof">Step 2 of 5</div>
+  <h3>What comes with each matter</h3>
+  <ul>
+    <li>Lien rights are kept. Each job's notice months and affidavit deadline run from the last day on site.</li>
+    <li>Notices go out on time. Each one is on file with the day it went.</li>
+    <li>The evidence is gathered. The agreement, bills, payments, crew time on site with GPS, notices and the demand.</li>
+    <li>Every call, promise and note is on the record, with its date.</li>
+    <li>Click keeps the office work. Payments, job changes and calls to the customer stay with Click.</li>
+  </ul>
+  <div class="nav"><span class="btn ghost">‹ Back</span><span class="btn fill">Next: How we work ›</span></div>
+</div></div></div>
+
+<div class="cap new">Step 3 of 5 · how Click works with you</div>
+<div class="pane"><div class="paper"><div class="card stop">
+  <div class="stepof">Step 3 of 5</div>
+  <h3>How Click works with you</h3>
+  <ul>
+    <li>Your fee is 33% contingency. Filing cost is $350.</li>
+    <li>Under $20,000, file in justice court. Over it, county or district court.</li>
+    <li>A lien foreclosure goes to district court in the property's county.</li>
+    <li>Each matter says what you may settle for. Below that, ask Click first.</li>
+    <li>You record fees, costs, steps and payments here. Click sees them the same day.</li>
+    <li>Emails go to the people you name, as things happen or in a weekly digest.</li>
+  </ul>
+  <div class="quiet" style="margin-top:12px"><a href="#">Read the Texas lien rules Click follows ›</a> <span class="faint">It opens here. No sign-in.</span></div>
+  <div class="nav"><span class="btn ghost">‹ Back</span><span class="btn fill">Next: Your answers ›</span></div>
+</div></div></div>
+
+<div class="cap new">Step 4 of 5 · your answers go to Click</div>
+<div class="pane"><div class="paper"><div class="card stop">
+  <div class="stepof">Step 4 of 5</div>
+  <h3>Your answers</h3>
+  <div class="muted" style="font-size:13px">Five questions. Your answers go to Click. Change any of them later and send again.</div>
+  <div class="q"><b>What else do you want with each matter?</b><div class="in">e.g. the W-9, the original bid</div></div>
+  <div class="q"><b>Where do you prefer to file when the rules give a choice?</b><div class="in">e.g. Bexar County, Precinct 3</div></div>
+  <div class="q"><b>Do you e-file?</b><span class="chips"><span class="on">Yes</span><span>No</span></span></div>
+  <div class="q"><b>Do you serve through the constable?</b><span class="chips"><span>Yes</span><span>No</span><span class="on">It depends</span></span></div>
+  <div class="q"><b>The Texas lien rules Click follows.</b><span class="chips"><span class="on">Signed off</span><span>Changes needed</span></span><span class="muted" style="font-size:12px"><a class="copper" href="#">Read them ›</a></span></div>
+  <div class="q"><b>Who at your firm gets the link and the emails?</b><span class="muted">Add them on <a class="copper" href="#">Notifications ›</a></span></div>
+  <div class="q" style="grid-template-columns:auto 1fr auto;align-items:center;gap:8px"><span class="muted">Answered by</span><div class="in" style="color:#16283c">Ann Sample · attorney</div><span class="btn fill">Send to Click</span></div>
+  <div class="quiet" style="margin-top:10px">After sending: <b style="color:#1f7a3a">Sent Oct 7 by Ann Sample.</b> Change an answer and send again.</div>
+</div></div></div>
+
+<div class="cap new">Step 5 of 5 · the portal, stop by stop</div>
+<div class="pane"><div class="paper"><div class="card stop">
+  <div class="stepof">Step 5 of 5</div>
+  <h3>The portal, stop by stop</h3>
+  <ul>
+    <li>Nine short stops. Each one opens the real page and rings the part it means.</li>
+  </ul>
+  <div class="muted" style="margin-top:10px;font-size:12.5px">Matters, Account, Paper, Record of contact, Evidence, Fees &amp; steps, Lien grid, Notifications.</div>
+  <div class="nav"><span class="btn ghost">‹ Back</span><span class="btn fill">Start the tour ›</span><span class="btn ghost">Skip to Matters</span></div>
+</div></div></div>
+
+<h2>2 · The tour, docked at the bottom</h2>
+<p class="lede">Each stop opens the real panel or tab and rings it. The strip says the stop number, its name and one or two lines. Back and Next. Esc or × ends it.</p>
+<div class="cap new">Stop 4 of 8 · the Paper tab is open and ringed</div>
+<div class="pane"><div class="paper">
+  <div class="tabs"><span>Start here</span><span class="on">Matters · 1</span><span>Lien grid</span><span>Notifications · 2 people</span></div>
+  <div class="split">
+    <div class="card ring"><div class="tabs" style="margin:0 0 10px"><span>Account</span><span class="on">Paper</span><span>Record of contact</span><span>Evidence</span><span>Fees &amp; steps</span></div><div class="muted" style="font-size:13px">Agreements · Where each job stands under Chapter 53 · The paper that went out…</div><div style="height:90px"></div></div>
+    <div class="card"><div class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em">Matters</div><div style="margin-top:8px;font-size:13.5px"><b>Brazos Ridge Contracting</b> <span class="muted">· $14,400.00</span></div></div>
+  </div>
+  <div class="strip">
+    <div class="seg"><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i><i></i><i></i><i></i></div>
+    <div class="t"><span class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em">Tour · stop 4 of 8</span><br><b>Paper</b> <span class="muted">Agreements, notices, liens and the demand. Each job's lien clock is here.</span></div>
+    <div style="display:flex;gap:6px"><span class="btn ghost">‹ Back</span><span class="btn fill">Next ›</span><span class="btn ghost">×</span></div>
+  </div>
+</div></div>
+
+<div class="cap alt">On a phone (375 px): the strip runs full width, above the thumb</div>
+<div class="pane"><div class="paper phone">
+  <div class="card ring" style="height:120px"><b>Lien grid</b></div>
+  <div class="strip">
+    <div class="seg"><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="d"></i><i class="c"></i><i></i></div>
+    <div class="t"><span class="faint" style="font-size:11px;text-transform:uppercase;letter-spacing:.07em">Tour · stop 7 of 8</span><br><b>Lien grid</b> <span class="muted">Every job with a lien month. Deadlines, court and amount due.</span></div>
+    <div style="display:flex;gap:6px"><span class="btn ghost">‹ Back</span><span class="btn fill" style="flex:1;justify-content:center">Next ›</span><span class="btn ghost">×</span></div>
+  </div>
+</div></div>
+
+<h2>The tour's stops</h2>
+<table class="plan"><thead><tr><th>Stop</th><th>Opens</th><th>Says</th></tr></thead><tbody>
+<tr><td>Matters</td><td>Matters, the list ringed</td><td>Each account Click sends you, largest balance first. Click one to open it.</td></tr>
+<tr><td>Narrative</td><td>the matter's Narrative tab, when it has one</td><td>The office's account of the matter, in its own words.</td></tr>
+<tr><td>Account</td><td>Account</td><td>The statement of account, with the balance owed. Print packet makes the whole matter one PDF.</td></tr>
+<tr><td>Paper</td><td>Paper</td><td>Agreements, notices, liens and the demand. Each job's lien clock is here.</td></tr>
+<tr><td>Record of contact</td><td>Record of contact</td><td>Every call, promise and note, with its date and who said it.</td></tr>
+<tr><td>Evidence</td><td>Evidence</td><td>Crew time on site with GPS, field reports and the office's documents.</td></tr>
+<tr><td>Fees &amp; steps</td><td>Fees &amp; steps</td><td>Record fees, costs, steps and payments. Ask Click a question here.</td></tr>
+<tr><td>Lien grid</td><td>Lien grid</td><td>Every job with a lien month. Deadlines, court and amount due.</td></tr>
+<tr><td>Notifications</td><td>Notifications</td><td>Who at your firm gets emails. Add your people here.</td></tr>
+</tbody></table>
+<p class="lede">With no matter yet, the tour is three stops: Matters says accounts appear there when Click refers one, then the Lien grid and Notifications.</p>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>First draft: an About page.</b> The pitch bullets as one long page, and a help page beside it. Dropped. Nobody reads a long page, it does not ask anything back, and it says nothing about where the reader is.</li>
+  <li><b>Live figures, never typed ones.</b> Step 1's numbers come from the same book the Lien grid draws, so they are never stale. The sample portal shows the sample's own figures.</li>
+  <li><b>The pitch, curated.</b> Kept what a lawyer needs on the job. Dropped the sales close and the pilot; that is a conversation, not a page. "What is not finished" became the Lien grid's own note on precincts.</li>
+  <li><b>Answers the office receives, not an email.</b> The firm's answers land on the firm's record, and the Legal desk's firm door shows a dot until someone in the office reads them. The firm can change them and send again.</li>
+  <li><b>The real portal, not screenshots.</b> Each tour stop opens the real tab and rings it, so the tour cannot drift from the page.</li>
+  <li><b>Never in the way.</b> Start here opens first only on a browser's first visit. Matters are one tap from every step. Until the firm answers, Matters carries one quiet line pointing back to step 4.</li>
+  <li><b>The rules readable without an account.</b> The sign-off question opens the Texas lien rules guide right on the portal. Today the guide only opens inside the signed-in app.</li>
+  <li><b>Plain words, enforced.</b> Every line passes the app's plain-words rule in a test: one idea, no more than 20 words, no dashes or brackets.</li>
+</ul>
+
+<h2>The plan</h2>
+<table class="plan"><thead><tr><th>PR</th><th>What ships</th><th>Deploy</th></tr></thead><tbody>
+<tr><td>A</td><td>Start here with steps 1, 2, 3 and 5; the tour; the rules sheet. Kernel <code>legalPortalStart.ts</code> with tests on made-up data.</td><td>Client only</td></tr>
+<tr><td>B</td><td>Step 4, Your answers. Columns on the firm's record and a seen stamp; the <code>intake</code> act; the payload reads the answers; the desk's firm door dot and the firm window's answers.</td><td>db push, then deploy <code>legal-portal</code> and <code>submit-legal-portal</code></td></tr>
+</tbody></table>
+</div></body></html>

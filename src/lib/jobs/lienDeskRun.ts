@@ -77,6 +77,21 @@ export type RunNotice = {
   release?: NoticeRelease | null
   /** The pay page's lines the office typed (v2.4724), by invoice id, from the item's draft. */
   payLines?: Record<string, string>
+  /** When the packet with this notice printed (v2.4823, from `printed_at`): the run opens on recording, not printing, when every notice in it has one. Absent or null = not yet. */
+  printedAt?: string | null
+}
+
+/** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
+export function runOpening(notices: ReadonlyArray<Pick<RunNotice, 'printedAt'>>): { step: 'print' | 'record'; printedAt: string | null } {
+  if (notices.length === 0 || notices.some((n) => !n.printedAt)) return { step: 'print', printedAt: null }
+  const stamps = notices.map((n) => n.printedAt!).sort()
+  return { step: 'record', printedAt: stamps[stamps.length - 1]! }
+}
+
+/** The title bar's door to the run (v2.4823): Send the run while something approved is still to print; Record the mailing when only printed notices wait on their tracking numbers. */
+export function runDoorWords(counts: { ready: number; printed: number; retReady: number }): { label: 'Send the run' | 'Record the mailing'; count: number } {
+  const count = counts.ready + counts.printed + counts.retReady
+  return { label: counts.ready + counts.retReady === 0 && counts.printed > 0 ? 'Record the mailing' : 'Send the run', count }
 }
 
 /** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
@@ -126,6 +141,7 @@ export function buildLienDeskRun(
       itemId: item.id,
       jobId: e.jobId,
       kind: 'notice_53_056',
+      printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months,

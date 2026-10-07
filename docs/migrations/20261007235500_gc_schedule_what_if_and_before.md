@@ -66,3 +66,11 @@ Nothing reads these tables yet. Going back is a new migration with two steps. Fi
 ## Status
 
 Written 2026-10-07 for the schedule's PR 4; not applied. The stamp skips past three claims not yet merged, 20261007230000, 20261007234000 and 20261007235000, on purpose, so it lands after them whichever is pushed first. The lead pushes it after PR 3's, and records here what steps 1 to 5 said.
+
+Applied to prod 2026-10-07 with `supabase db push` after #4835 merged (the drift check reads 777 local, 777 remote, fully applied; types in the PR that follows). The five verify steps ran the same evening through the management API's query endpoint, every write inside a transaction that rolled back:
+
+- Step 1: all three tables read `rls_on` true, `dev_policy` 1, `read_only_blocks` 3, `twin_fences` 3 and `stmt_trigger` 1; `gc_schedules_template_fkey` is there with `confdeltype` `n`.
+- Step 2: all three empty.
+- Step 3: the training-mode user's insert into `gc_schedule_templates` got `Read-only (training) mode: changes are blocked.`
+- Step 4, as a dev who is not read-only: `UPDATE … SET lines = lines` and `DELETE` on `gc_schedule_templates` were both refused with `permission denied for table gc_schedule_templates`; `UPDATE … SET name = name, aside_on = aside_on` went through on 0 rows (the door is open); the insert of a copy for another person into `gc_schedule_what_ifs` was refused with `new row violates row-level security policy`.
+- Step 5: `anon` got `permission denied for table gc_schedule_templates`.
