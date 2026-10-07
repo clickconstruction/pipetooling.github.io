@@ -5,10 +5,11 @@
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
 import { supabase } from '../supabase'
-import type { Json } from '../../types/database'
+import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
+import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
@@ -136,6 +137,26 @@ export async function loadGcProjects(): Promise<GcProjectView[]> {
 /** The press: the whole draft goes in as one, and the new project's id comes back. */
 export async function createGcProject(draft: NewProjectDraft): Promise<string> {
   const id = taken(await supabase.rpc('gc_create_project', { draft: draftForRpc(draft) as Json }), 'make the project')
+  return id
+}
+
+/** Someone on our team who can check a set: the office roles, by name. */
+export interface GcTeamMember {
+  id: string
+  name: string
+  role: string
+}
+
+const TEAM_ROLES: Database['public']['Tables']['users']['Row']['role'][] = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent']
+
+export async function loadGcTeam(): Promise<GcTeamMember[]> {
+  const rows = taken(await supabase.from('users').select('id, name, role').in('role', TEAM_ROLES).order('name'), 'load our team')
+  return rows.map((r) => ({ id: r.id, name: r.name ?? '', role: r.role ?? '' })).filter((r) => r.name !== '')
+}
+
+/** The press: a new set of plans on a project, in one write. The new set's id comes back. */
+export async function issuePlanSet(draft: IssuePlanSetDraft): Promise<string> {
+  const id = taken(await supabase.rpc('gc_issue_plan_set', { set_in: issueDraftForRpc(draft) as Json }), 'put the set on the project')
   return id
 }
 
