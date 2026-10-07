@@ -70,8 +70,9 @@ other lanes'. Decisions 1 to 4 shape the tables, so they come first.
 
 1. **Where a bill lives: a Pipeline job for each GC job we win.** *Default:* the first time we send
    the customer a pay application, the project gets one row in `jobs_ledger`, its **billing job**.
-   That row is named "<project> (GC)", for the project's customer, with `jobs_ledger.project_id`
-   set. `gc_projects.billing_job_id` names it. Every bill we send becomes a `jobs_ledger_invoices`
+   That row is named "<project> (GC)", for the project's customer. `jobs_ledger.project_id` stays
+   null (decision 10's check: a project with a superintendent would put it on their list), and
+   `gc_projects.billing_job_id` names it. Every bill we send becomes a `jobs_ledger_invoices`
    row on it. So the rest is the app's own:
    - the customer portal's statement and its **Pay** (`customer-portal`, `portalMergedBills.ts`);
    - the Stripe link (`create-stripe-invoice`, `pay-link`) and the bank transfer card;
@@ -133,6 +134,51 @@ other lanes'. Decisions 1 to 4 shape the tables, so they come first.
     that type (crew boards, dispatch, hours). It keeps the billing job off every crew screen, or it
     stops and asks the lead.
 
+    **The check (2026-10-07, a read of main): it would show on crew screens, so O4a stops here.**
+    Nothing on main can hide a job: `jobs_ledger` has no hidden or kind column, and
+    `service_types` has no flag. No job list filters by service type. A billing job left
+    `working`, with no team, no schedule and no `project_id`, stays off every list built from
+    a team, a schedule or a clock session:
+    - My jobs and the clock-in default list;
+    - the crew-day cards and email;
+    - the calendar, the team board and My schedule;
+    - the Hours grid.
+
+    It still shows in four places:
+    - **The clock-in typed search** (`search_jobs_ledger`, `20260905220000`), with no status,
+      team or owner filter. The same search feeds the hours and dispatch pickers.
+    - **My Schedule's "+ Add job"** (`search_jobs_for_self_schedule`, `20260811140701`), open to
+      any signed-in user. It lists the top 20 before anyone types.
+    - **The dispatch board's job pickers** (`fetchJobsLedgerForScheduleDispatchHub`).
+    - **The office's Tally and `/map`.**
+
+    Nothing on the server stops a clock-in on it. Once someone clocks in, the read policy on
+    their own sessions puts the job on every session-built screen.
+
+    **The fix, if the owner keeps decision 1:** one Pipeline PR of its own, before O4a.
+    - `jobs_ledger.billing_only boolean NOT NULL DEFAULT false`.
+    - A guard on `clock_sessions`, `job_schedule_blocks` and `jobs_ledger_team_members` that
+      refuses a billing-only job.
+    - `search_jobs_for_self_schedule` leaves it out.
+    - `search_jobs_ledger` leaves it out unless asked. The money pickers ask: Mercury
+      allocations, the transaction detail, the payment move, the header search.
+    - The dispatch hub, office Tally, `/map` and the job follow-up queue leave it out.
+
+    It is an ALTER on `jobs_ledger`, a busy table, and touches the Pipeline's own screens.
+
+    The read also found three things O4a has to get right:
+    - **Revenue:** a job's `revenue` must be the contract and be kept current. With it null, the
+      first payment marks the job paid, and every later bill drops off as "on a paid job"
+      (`20260927230000`).
+    - **Status:** the job stays `working`, with bills inserted as `billed`. A `billed` job with
+      no billed bills shows its revenue less payments as owed.
+    - **`project_id` stays null:** a project with a superintendent puts its jobs on the
+      superintendent's list. `gc_projects.billing_job_id` is the only link.
+
+    Three office places are the owner's to say: whether the money-waiting email counts it (it reads
+    only `billed` jobs), whether its bills count as revenue in the overhead rate (pass-through
+    money lowers it), and whether it belongs in Job Summary and the Stages header counts.
+
 ## The tables (O1, one migration)
 
 Every migration follows `CLAUDE.md`: `SET lock_timeout = '3s';` first, numbered from `origin/main`,
@@ -186,11 +232,18 @@ Agreed with the other lanes:
 - the certificate: `certified` (null while it waits on the architect), `certified_on`,
   `certified_note`, `certified_by` (who typed it);
 - `invoice_id` (FK `jobs_ledger_invoices`, set null: the bill made at the certificate,
-  decision 3);
-- `conditional_waiver_id` (FK `job_lien_releases`, set null: our conditional waiver with it).
+  decision 3) and `conditional_waiver_id` (FK `job_lien_releases`, set null: our conditional
+  waiver with it). *As built:* both come with O4a's migration, which first uses them, so only
+  `billing_job_id` leans on decision 1 until then (the lead, 2026-10-07).
 
-A trigger refuses any change to a sent row but its certificate, `invoice_id` and
-`conditional_waiver_id` (HANDOFF's gotcha: a sent bill keeps what it went with). Paid is not stored.
+*As built in O1:* a sent row is held by privileges, the schedule's pattern, not a trigger
+(HANDOFF's gotcha: a sent bill keeps what it went with). `authenticated` has no UPDATE, DELETE or
+TRUNCATE on pay applications, their lines, reminders and interest bills. Two column grants stay:
+the certificate's four columns, and a reminder's `email_send_log_id`. O4a adds the grants for its
+two links. The trade keys on contract lines, change orders and pay application lines, and the
+change order key on those lines, are `DEFERRABLE INITIALLY DEFERRED`. A billed or signed trade
+can't be deleted, and a whole project still goes by cascade. Without the deferral, a project
+delete failed before the cascade reached the bill lines (found on a local Postgres run). Paid is not stored.
 It is read from the bill's payments in `jobs_ledger_payments`, and the bill's own `status = 'paid'`
 closes it, so there is one record of money in.
 
@@ -209,7 +262,7 @@ Pipeline's chase list knows we touched them.
 
 **`gc_owner_interest_bills`** (`OwnerInterestBill`): `project_id`, `number` (unique per project),
 `sent_on`, `amount` (above 0), `invoice_id` (FK `jobs_ledger_invoices`; the interest bill is a bill
-on the billing job, with its own **Pay**), `created_by`. Paid is read from the bill, as above.
+on the billing job, with its own **Pay**; *as built,* it comes with O4a), `created_by`. Paid is read from the bill, as above.
 
 **`gc_owner_acceptances`**: the customer accepts the work (`OwnerBilling.acceptedOn`). Columns:
 `project_id` (primary key), `accepted_on`, `accepted_by_name` (who walked it), `how` (`office`,
@@ -563,6 +616,15 @@ and the controller sees. It could be better three ways:
    would show each as a touch.
 
 ## Status
+
+**2026-10-07, evening.**
+- **O1** is clickconstruction/pipetooling.github.io#4851 (v2.4831 after the queue's renumber;
+  migration `20261008010000_gc_owner_billing_tables`), reviewed by the lead and armed. Its push
+  goes in the 10-08 evening batch.
+- **O2a** is #4858 (v2.4842), armed. It lifts everything whose inputs are on main, with the
+  manifest `scripts/owner-billing-o2a.lift.json`. `lift-same` reports all of it word for word.
+- **Decision 10's check came back "it would show on crew screens".** O4a waits for the owner's
+  word on the fix above.
 
 Planned 2026-10-07 by Helper 5 on `spike/owner-billing-plan`, cut from `spike/gc-mode` at
 e8f61a36f. Two read-only scouts mapped main's AIA filler, the waiver train, the bill, the payment
