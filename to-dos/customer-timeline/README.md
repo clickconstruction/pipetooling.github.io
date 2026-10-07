@@ -1,10 +1,10 @@
 ---
 name: "Customer timeline: one customer's whole story on one spine, with what they owe us floating above it"
 number: 97
-group: gated
-size: 4 PRs — kernel (S), the window (M), the Pipeline doors (S), a one-shot RPC (S, only if needed)
-blocker: the owner's five calls below, after looking at the mock-up; nothing technical — every row it needs exists
-status: mock-up drawn 2026-10-07 on claude/docs-job-stages-review-2810da; not started
+group: ready
+size: 3 PRs — kernel (S), the window (M), the doors (S)
+blocker: none — the owner took the recommendations on all five calls (2026-10-07)
+status: building — PR 1 (the kernel and the reads) claude/customer-timeline-1-kernel as v2.4811; PR 2 (the window) and PR 3 (the doors) next
 summary: >
   Look up a customer and scroll one vertical timeline of everything between us: each job is an arrow
   from the day its card was made to the day the final payment landed, office events (notes, bills,
@@ -13,8 +13,8 @@ summary: >
   yet, and the hours and materials we have not been paid for; as you scroll into the past it reads
   what those numbers were then.
 next: >
-  The owner looks at the mock-up and answers the five calls. Then PR 1, the kernel, which needs no
-  screen and no migration.
+  PR 2: the Profile | Timeline switch in the Customer profile window, the timeline view on a computer
+  and a phone, the floating bar and its scrub, focus and the Show chips, the help guide.
 ---
 
 # Customer timeline
@@ -73,22 +73,41 @@ screen, and a cheque did not say how fast they paid. The second draft folds a da
 the gaps with the days they hold, collapses the bar on scroll, and writes *27 days after the bill* on
 every payment. Left for the owner: the five calls below.
 
-## Decisions for the owner
+## Decisions (2026-10-07)
 
-1. **Today at the top** (the mock-up) or the past at the top? Newest first matches every feed in the
-   app and lets open rails run up into the owed-us bar; oldest first reads like the arrow the owner
-   described.
-2. **The left/right rule.** The mock-up's rule is *left = with the customer, right = what we put in*,
-   so materials sit on the right beside hours. The owner's words put only "field hours and field notes
-   and reports" on the right.
-3. **Rails colored by job**, with the job's state as solid / hollow / dashed, or rails colored by
-   state (blue working, amber billed, green paid) with the job named only on the cards?
-4. **Field days fold** between office events on the same job, and *show the days ›* opens the job's
-   existing hours story. Or every day its own card?
-5. **The scrubbing bar** (the as-of line) ships in PR 2, or waits until the plain view has been used?
+The owner, after the mock-up and its check against a live GC: *I like what you've proposed, please
+build it.* The recommendation on each call stands:
 
-Also the name: **Timeline** (the owner's word) or **Story** (the app already says *hours story* and
-*money story*). The mock-up says Timeline.
+1. **Today at the top.** Newest first, like every feed in the app; open rails run up into the bar.
+2. **Left is with the customer, right is what we put in.** Materials sit on the right beside hours.
+3. **Rails colored by job**, with the job's state drawn as dashed (waiting), solid (working), hollow
+   (billed) and red (Collections).
+4. **Field days fold** between office cards on the same job; *show the days ›* opens the job's hours
+   story.
+5. **The scrubbing bar ships with the window** in PR 2.
+
+The name is **Timeline**, the owner's word.
+
+### What a live GC taught the design
+
+Checked against a real GC's open jobs (on a private page; nothing from it is in this repo). The view
+held, and the rows changed eight rules, now in the kernel's docblock:
+
+1. **A GC's timeline follows both links.** On most of a GC's jobs the house's owner is the payer
+   (`customer_id`) and the GC is `gc_customer_id`. Every card on such a job names who pays.
+2. **Lanes are capped.** A busy GC has more open jobs than a screen has room for rails: four colored
+   lanes for the jobs that owe the most, one grey lane for the rest, and focus from the job chips.
+3. **A job is named by its street** when its name only repeats the customer's.
+4. **A job starts when it was first seen.** Imported jobs carry bills and payments from before their
+   card was made; they open on *First record*.
+5. **Notes come in batches.** The office writes the same note across many jobs in one sitting; a day's
+   batch by one person folds to one card. So do bills sent together and one notice step on many jobs.
+6. **Status moves bounce** on a fix-and-resend day; the rail reads the day's last state.
+7. **Owed comes from the bill-truth kernel.** Payments from before an import are not tied to a bill,
+   a paid bill can lack a billed day, and a waiting job can hold an open bill. A billed job with no
+   bill line shows a *Marked billed* card.
+8. **A deposit names who paid.** The Mercury counterparty is the first clue when a GC pays through
+   someone else.
 
 ## Entry points in Jobs → Pipeline
 
@@ -98,9 +117,9 @@ Also the name: **Timeline** (the owner's word) or **Story** (the app already say
    switch in its title bar, remembered per device. No new button on the row.
 2. **The Pipeline search.** The search already matches `customer_name`. When the text matches one
    customer, a chip sits above the board: *Ridgeway Builders · timeline →*.
-3. **A deep link** `?timeline=<customerId>` consumed by `useStagesDeepLinkParams` like `?liendesk`,
-   so the Dashboard's AR tiles, the Collections rows, the AR window and the Customers page can link
-   straight to it.
+3. **A deep link** `?customerTimeline=<customerId>`, read by the window's app-level provider so it
+   opens on any page, for the Dashboard's AR tiles, the Collections rows, the AR window and a texted
+   link.
 4. Later: the Customers page row and `CustomerDetail`'s Jobs tab get the same door.
 
 Who sees it: whoever can open the Customer profile today (the office roles). Field roles do not.
@@ -126,12 +145,12 @@ Nothing new in the database for PRs 1–3.
 
 ## The plan
 
-**PR 1 — the kernel, no screen.** `src/lib/customers/customerTimeline.ts` + tests:
-`buildCustomerTimeline(input, todayYmd)` → the jobs with their lane and state segments, the days
-(each with its office and field cards), the gap spacers, the quiet folds, and a running snapshot per
-day (owed, unbilled, unpaid hours, unpaid materials); the fold rule for field days; the kind → side
-table. `fetchCustomerTimeline(customerId)` beside it: the customer's jobs (by `customer_id`, as the
-profile does), then the per-job reads above in parallel, capped like the summary.
+**PR 1 — the kernel and the reads, no screen (v2.4811).** `src/lib/customers/customerTimeline.ts`:
+`buildCustomerTimeline(input, todayYmd, nowMs)` → the ranked jobs with their lanes and colors, the
+rows (days with their office and field cards, month labels, spacers, quiet folds), the lane cells of
+every row, a snapshot per day (owed, unpaid hours, unpaid materials) and the summary tiles.
+`fetchCustomerTimeline(customerId)` beside it: the jobs on either link (newest 200), then every part
+in batches of job ids, each failing soft into `missing`.
 
 **PR 2 — the window.** `CustomerTimelineView` inside `CustomerProfileModal` behind the Profile |
 Timeline switch: three columns on a computer, one on a phone, the floating bar, focus, the Show
@@ -139,12 +158,11 @@ chips, the `?timeline=` deep link. Help guide *see everything that happened with
 note and fragment; `PROJECT_DOCUMENTATION.md` and `GLOSSARY.md` lines; the profile's section in the
 docs amended.
 
-**PR 3 — the Pipeline doors and the scrub.** The search chip; *show the days ›* opens the job's hours
-story; the as-of line if PR 2 left it out; the Customers page door.
+**PR 3 — the doors.** The Pipeline search chip; *show the days ›* opens the job's hours story; the
+`?customerTimeline=` deep link; the Customers page door. The card retires when it lands.
 
-**PR 4 — one round trip, only if needed.** `list_customer_timeline(p_customer_id)` (server-side
-role gating, one query per source) when PR 1's per-job reads are slow on a 60-job GC. Migration,
-types PR, `EDGE_FUNCTIONS`/`ACCESS_CONTROL` lines.
+**No RPC.** The batched reads load a GC with a few dozen jobs in under a second, so the one-round-trip
+RPC the first plan held in reserve is not needed.
 
 ## How to verify
 
