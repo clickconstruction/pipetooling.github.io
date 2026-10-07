@@ -1,8 +1,8 @@
 ---
 name: "Pipeline → Collections: a look at the section (2026-10-06)"
 number: 93
-group: ready
-status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · A shipped v2.4758, D v2.4759, B v2.4760
+group: close
+status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · all four shipped: A v2.4758, D v2.4759, B v2.4760, C v2.4761
 summary: >
   The Collections section does what the guides say — a flag on a billed job, the typed confirm, the note
   under the money, the self-clearing flag, ⚖ Legal and Lien desk on the header. Three things do not match
@@ -10,7 +10,7 @@ summary: >
   "billed" for a resend, and a Billed count that reads one number on the phone strip and another on the
   desktop header. The docs side (the term, the three columns, the archived migrations) landed with this card.
 next: >
-  A, B and D shipped. C: the working scope rides with Billed and Ready to Bill.
+  All four shipped. The read for C found the cause: a bill rides its job's scope, and the phone board loaded one; every non-paid scope rides with Billed and Ready to Bill now. Retire this card once v2.4761 is live.
 size: XS (A) · S (B, C) · XS (D)
 blocker: None for A. B, C and D want the owner's call on the words once the reads are in.
 mockup: not required — A changes no screen a Billed row does not already show; B, C and D are words and a count
@@ -54,7 +54,7 @@ May 15 · 144d ago*, the phone *billed 5 weeks ago* (the resend). The other six 
 decide the word — *resent 5 weeks ago* keeps the phone honest; reading `billedReferenceYmd` makes it
 match the desktop. The owner picks; either is one line in `phoneNextInput`'s `billDisplay`.
 
-## C. Billed reads 64 on the phone strip and 71 on the desktop header — S, a read first
+## C. Billed reads 64 on the phone strip and 71 on the desktop header — shipped v2.4761
 
 Same account, same minute: the phone strip's *Billed 64* (the cached header stats, `cacheHeaderStats`,
 the bill-truth kernel's `billed.count`) and the desktop's *Billed Awaiting Payment 71* (the live rows,

@@ -5,7 +5,7 @@
  * the board (reads/writes on toggle) and Jobs.tsx (reads before the first
  * fetch to decide which scopes the initial load needs).
  */
-import type { JobsBoardScope } from './boardScopes'
+import { NON_PAID_SCOPES, type JobsBoardScope } from './boardScopes'
 
 export type StagesSectionOpenState = {
   waiting: boolean
@@ -97,12 +97,26 @@ export function scopeForStagesSection(section: keyof StagesSectionOpenState): Jo
 }
 
 /** Distinct scopes the given open-set needs fetched (deduped; stable order). */
+/**
+ * Every scope a section's rows come from (v2.4761, punch list #93 C). A bill rides its job's
+ * scope, not its own: a progress bill on a job still in `working`, a billed line on a job sent
+ * back to Ready to Bill, sit in Billed, but the `billed_all` fetch ships only jobs in `billed`
+ * status, so the row exists only once the job's scope is loaded — the rule the money modals
+ * already follow with `NON_PAID_SCOPES`. On a computer the map card asked for every scope and
+ * hid it; the phone board (one stage at a time) read Billed 64 where the cached stats said 71.
+ */
+export function scopesForStagesSection(section: keyof StagesSectionOpenState): JobsBoardScope[] {
+  const primary = scopeForStagesSection(section)
+  return primary === 'billed_all' || primary === 'ready_to_bill' ? [primary, ...NON_PAID_SCOPES.filter((s) => s !== primary)] : [primary]
+}
+
 export function scopesForOpenStagesSections(open: StagesSectionOpenState): JobsBoardScope[] {
   const out: JobsBoardScope[] = []
   for (const section of Object.keys(open) as Array<keyof StagesSectionOpenState>) {
     if (!open[section]) continue
-    const scope = scopeForStagesSection(section)
-    if (!out.includes(scope)) out.push(scope)
+    for (const scope of scopesForStagesSection(section)) {
+      if (!out.includes(scope)) out.push(scope)
+    }
   }
   return out
 }

@@ -278,6 +278,7 @@ import { fetchJobsLedgerWithDetailsForStages } from '../../lib/fetchJobsLedgerWi
 import {
   readStagesSectionOpenPrefs,
   scopeForStagesSection,
+  scopesForStagesSection,
   writeStagesSectionOpenPrefs,
   type StagesSectionOpenState,
   stagesSectionElementId,
@@ -684,7 +685,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!active) return
     for (const section of Object.keys(stagesSectionOpen) as Array<keyof StagesSectionOpenState>) {
       if (!stagesSectionOpen[section]) continue
-      void cacheFetchScopeIfNeeded(scopeForStagesSection(section), customerFilterForFetch)
+      // v2.4761: Billed and Ready to Bill ask for every non-paid scope — a bill rides its job's scope.
+      for (const scope of scopesForStagesSection(section)) void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
     }
   }, [active, stagesSectionOpen, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
 
@@ -3354,10 +3356,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const stagesSearchActive = stagesSearchQuery.trim() !== ''
             const sectionShown = (section: keyof StagesSectionOpenState) =>
               stagesSearchActive || (phoneBoard ? section === phoneActiveStage : stagesSectionOpen[section])
+            // v2.4761: a section is merged once every scope its rows come from has landed, so the
+            // header reads the cached count until the other statuses' bills are on the board too.
             const sectionMerged = (section: keyof StagesSectionOpenState) =>
-              cacheMergedScopes.has(scopeForStagesSection(section))
+              scopesForStagesSection(section).every((scope) => cacheMergedScopes.has(scope))
             const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
-              cacheScopeLoading.has(scopeForStagesSection(section))
+              scopesForStagesSection(section).some((scope) => cacheScopeLoading.has(scope))
             // The header numbers and the loading suffix — `lib/jobs/stagesSectionHeader` (v2.3863).
             const sectionHdr = (section: StagesSectionKey, liveCount: number, liveTotal: number) =>
               stagesSectionHeader({ useLive: stagesSearchActive || sectionMerged(section), live: { count: liveCount, total: liveTotal }, cached: cacheHeaderStats?.[section] })
