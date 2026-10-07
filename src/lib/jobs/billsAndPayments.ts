@@ -14,7 +14,7 @@
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
 import { attributeJobPayments, type PaymentSlice } from './paymentAttribution'
-import { mercuryLinkedPaymentRow, stripeBillInvoiceForPaymentRow } from './jobFormPaymentPredicates'
+import { mercuryLinkedPaymentRow, stripeOwnsPaymentRow } from './jobFormPaymentPredicates'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -67,7 +67,9 @@ export function paymentSource(row: PaymentRow, job: JobWithDetails | null, bank?
     const word = (bank?.kind && BANK_KIND_WORDS[bank.kind]) || instrumentWord(row.payment_type) || null
     return { kind: 'bank', chip: word ? `${cap(word)} · bank deposit` : 'Bank deposit', instrument: word ?? 'deposit' }
   }
-  if (stripeBillInvoiceForPaymentRow(row, job)) {
+  // v2.4801: only a row Stripe holds a record of is Stripe's; a check Mark Paid holds until it
+  // clears sits on a Stripe bill as a hand-typed row.
+  if (stripeOwnsPaymentRow(row, job)) {
     const word = instrumentWord(row.payment_type)
     if (word && word !== 'card') return { kind: 'stripe-recorded', chip: `${cap(word)} · recorded in Stripe`, instrument: word }
     return { kind: 'stripe-card', chip: 'Card · Stripe', instrument: 'card' }

@@ -115,7 +115,8 @@ describe('JobFormPaymentLine — a bank deposit', () => {
 describe('JobFormPaymentLine — a Stripe row', () => {
   it('a card payment is locked, says Stripe wrote it, and offers the Stripe bill; no Undo on a plain row', () => {
     const row = paymentRow({ id: 'p-stripe', amount: 1500, invoice_id: 'inv-s', note: 'Stripe' })
-    const { acts } = renderLine(row, { bill: stripeBill, job: job([stripeBill]) })
+    const paidInStripe = { ...stripeBill, status: 'paid', stripe_invoice_status: 'paid' } as unknown as JobsLedgerInvoiceRow
+    const { acts } = renderLine(row, { bill: paidInStripe, job: job([paidInStripe]) })
     expect(screen.getByLabelText('Payment amount 1,500.00 dollars')).toBeTruthy()
     expect(screen.queryByLabelText('Payment amount')).toBeNull()
     expect(screen.getByText(/card through Stripe/)).toBeTruthy()
@@ -149,6 +150,22 @@ describe('JobFormPaymentLine — a Stripe row', () => {
     const billed = { ...stripeBill, status: 'billed', stripe_invoice_status: 'paid' } as unknown as JobsLedgerInvoiceRow
     renderLine(row, { bill: billed, job: job([billed]) })
     expect(openMenu('$1,500.00').textContent).not.toContain("Check didn't clear…")
+  })
+
+  it('v2.4801: a check Mark Paid holds (paid here, open in Stripe) is a hand-typed row that moves and comes off', () => {
+    const row = paymentRow({ id: 'p-held', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check', reference_number: '1042', paid_on: '2099-01-01' })
+    const held = { ...stripeBill, status: 'paid', stripe_invoice_status: 'open' } as unknown as JobsLedgerInvoiceRow
+    const { acts } = renderLine(row, { bill: held, job: job([held]) })
+    expect(screen.getByText(/check · typed by hand/)).toBeTruthy()
+    expect(screen.getByTestId('held-stripe-mark-line').textContent).toBe('Stripe closes the bill Jan 8, once the check has cleared')
+    const menu = openMenu('$1,500.00')
+    expect(menu.textContent).not.toContain("Check didn't clear…")
+    const move = within(menu).getByRole('menuitem', { name: /Move to job/ }) as HTMLButtonElement
+    expect(move.disabled).toBe(false)
+    fireEvent.click(move)
+    expect(acts.requestMovePaymentRow).toHaveBeenCalledWith(row)
+    const remove = within(openMenu('$1,500.00')).getByRole('menuitem', { name: 'Remove payment row' }) as HTMLButtonElement
+    expect(remove.disabled).toBe(false)
   })
 })
 

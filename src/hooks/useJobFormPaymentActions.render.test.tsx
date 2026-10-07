@@ -51,7 +51,8 @@ const pay = (over: Partial<PaymentRow> & { id: string }): PaymentRow => ({
 const saved = pay({ id: 'p-saved' })
 const typed = pay({ id: 'p-typed', amount: 200 })
 const bank = pay({ id: 'p-bank', mercury_transaction_id: 'mtx-1' })
-const onStripe = pay({ id: 'p-stripe', invoice_id: 'inv-stripe' })
+// v2.4801: Stripe holds this one as a credit note; a plain row on an open Stripe bill is an ordinary line now.
+const onStripe = pay({ id: 'p-stripe', invoice_id: 'inv-stripe', stripe_credit_note_id: 'cn_1' })
 const bankOnPaidStripe = pay({ id: 'p-bank-stripe', mercury_transaction_id: 'mtx-2', invoice_id: 'inv-paid' })
 
 const job = (over: Record<string, unknown> = {}) =>

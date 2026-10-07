@@ -219,11 +219,15 @@ Sometimes you email a Stripe invoice and the customer mails a check anyway. Thos
 
 **Mark Paid** on a billed row opens the Record payment window with the job's balance. If the job still has a balance you record the payment there. If it is already fully paid, the window says so and offers a one-click {{button:blue|Move to Paid}}. That happens when, say, the payment landed through a bank-deposit allocation but the stage never moved. No payment gets invented.
 
+### A check waits to clear
+
+Pick **Check** on a Stripe bill and the window says what happens next. The bill reads Paid here at once. Stripe keeps its invoice open for seven days. Then it closes on its own one morning, once the check has cleared. Until then the check is an ordinary payment on the job. It can move to another job or come off. The pay link stays open for that week. Cash, a wire, a bank transfer or a card close in Stripe at once.
+
 Jobs that are billed but proving hard to collect can be flagged for **Collections**. They get their own section so the AR picture stays honest. AR means accounts receivable, the money customers owe. The flag takes care of itself on the way out. The moment the job is paid in full, it leaves Collections and lands in {{chip:green|Paid}} with the flag cleared. That works by Stripe, a bank-deposit allocation, or Mark Paid. The job's activity thread notes it was removed from Collections. **Send back to Billed** on a Collections row is for one case only. That is when the job should return to plain Billed Awaiting Payment before it is paid.
 
 ### The check didn't clear?
 
-A bill marked paid by check is closed in Stripe as paid *out of band*. Stripe holds no money, only the mark. So when the check fails at the bank the bill cannot simply be re-sent. Stripe never reopens a paid invoice and its pay link now reads Paid. The way back is to reverse the mark and bill again. Both doors do it in one press:
+A check recorded with Mark Paid closes the Stripe invoice seven days later, as paid *out of band*. Stripe holds no money, only the mark. A check the bank returns inside that week is never closed. Open the job's Bill tab and press **Remove** on the line, or **Unlink and remove** if the deposit is linked. After that week the mark is Stripe's. So when the check fails at the bank then, the bill cannot simply be re-sent. Stripe never reopens a paid invoice and its pay link now reads Paid. The way back is to reverse the mark and bill again. Both doors do it in one press:
 
 - On the job's **③ Payments received**, the check payment wears {{button:outline|Check didn't clear…}}. It opens **Undo out-of-band payment** with the reason filled in. **Send the bill back to Ready to Bill** is already ticked. You confirm. ClickTooling issues a credit note in Stripe that reverses the mark. It takes the payment off the job, removes the billed line and moves the job back to {{chip:blue|Ready to Bill}}.
 - If the payment was already removed, you open **View Bill** on the Billed row. The footer reads {{button:outline|Check didn't clear · send back…}}. The confirm says what it will do: credit note, billed line removed, job back to Ready to Bill.

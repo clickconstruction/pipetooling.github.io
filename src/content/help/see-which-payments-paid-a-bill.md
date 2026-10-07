@@ -26,6 +26,17 @@ Two buttons sit on the **Bills** row, just above the first bill. {{button:blue|B
 
 Press {{button:outline|⋯}} at the right of a payment line. The menu holds the rare moves. **Add the check date** is the date written on the check. **Move to job…** sends the payment to the job it belongs on. **Unlink and remove** takes a bank deposit off the job. **Edit details** opens the boxes on a payment you typed.
 
+## A check on a Stripe bill
+
+A check you record with **Mark Paid** stays an ordinary payment for seven days. The bill reads Paid here at once. Stripe closes its invoice once the check has cleared. The line says the day. Until then the ⋯ menu still holds **Move to job…** and **Remove**. So a check on the wrong job moves in one press. The bill it leaves reads Billed again.
+
+:::example a held check
+*$6,200.00 · Oct 7 · check 1042 · typed by hand*
+*Stripe closes the bill Oct 14, once the check has cleared*
+:::
+
+After that day the check is Stripe's. Its menu then holds only **View the Stripe bill** and **Check didn't clear…**. See *ready to bill pipeline* for that case.
+
 ## Money with no bill picked
 
 A payment can sit on the job with no bill picked. The oldest open bill counts it for now. The line wears {{chip:yellow|no bill picked}}. Press **Pin it to this bill** to keep it there. Or open **Edit details** and pick another bill under **Pays**.

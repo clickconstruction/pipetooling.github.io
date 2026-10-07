@@ -113,6 +113,7 @@ when_to_read:
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
+   - [close-held-stripe-marks](#close-held-stripe-marks)
    - [remind-bid-followups](#remind-bid-followups)
    - [share-job-contract](#share-job-contract)
    - [send-submittal-reply-email](#send-submittal-reply-email)
@@ -3941,6 +3942,24 @@ interface RecordStripeInvoiceOobBody {
 - **`That is more than the open balance on the Stripe invoice`** — **`amount_dollars`** (compared in cents) exceeds Stripe **`amount_remaining`**; **`That is more than what ClickTooling shows open on this bill`** — exceeds `invoice.amount − applied` in the ledger (v2.3695). Before v2.3695 any amount other than the full balance was rejected.
 
 **Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
+
+> **v2.4801 — a check holds the close**: Mark Paid · **Check** at the whole open balance no longer calls this function; the window records the row with `mark_invoice_paid` and the daily [`close-held-stripe-marks`](#close-held-stripe-marks) sweep pays the Stripe invoice out of band seven days later with the same `pt_*` metadata. Cash, wire, ACH, card and every part payment still come here.
+
+---
+
+### close-held-stripe-marks
+
+**Purpose** (v2.4801, `docs/recent-features/v2.4801.md`): the sweep behind *a check on a Stripe bill holds the Stripe close*. Mark Paid · Check records the ledger row only, so the bill reads Paid in the app while the Stripe invoice stays open and, for `CHECK_CLEAR_DAYS` (7), the row moves or comes off like any hand-typed payment. This function closes the Stripe side once the check has had its days.
+
+**Endpoint**: `POST /functions/v1/close-held-stripe-marks` — `{}`; optional `dry_run: true` (decide, write nothing) and `invoice_id: '<jobs_ledger_invoices.id>'` (one bill, for a hand run). `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**What it does**: reads every `jobs_ledger_invoices` row with `status = 'paid'`, a `stripe_invoice_id`, and `stripe_invoice_status` not `paid` / `void` / `uncollectible` (a *held mark*). For each, with the service role: the bill's payments; skip unless at least one is a check (`/check|cheque|\bck\b/i`, no credit note), the payments cover the amount, every check's `paid_on + 7` is on or before today (company time zone), and no linked Mercury deposit is `failed`. Then Stripe (the row's `stripe_mode`): an invoice already `paid` / `void` / `uncollectible` just has its status stamped on the row; an `open` one whose `amount_remaining` is within the ledger's covered cents gets the `pt_paid_on` / `pt_payment_type` / `pt_reference` / `pt_internal_note` / `pt_recorded_by` metadata from the latest check row (`created_by` rides as the recorder) and `invoices.pay({ paid_out_of_band: true })`; the `stripe-webhook` paid handler no-ops on the already-paid app row and stamps `stripe_invoice_status`, which this function stamps as well. Anything else is reported, never forced (`stripe_remaining_mismatch`, `check_without_date`, `bank_returned`).
+
+**Response**: `{ ok, today, dry_run, held, closed: [{ invoice_id, job_id, result: 'closed' | 'would_close', detail? }], skipped: [...result: 'clearing' | 'no_check' | 'not_covered' | 'bank_returned' | 'stripe_already_paid' | …], errors: [...] }`.
+
+**Schedule**: pg_cron `held-stripe-marks-sweep`, daily `17 11 * * *` UTC (migration `20261007213000_held_stripe_marks`). **Kill switch**: `app_settings` key `held_stripe_marks_sweep_disabled_v1` = `'1'`.
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. **Secrets**: `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, the Stripe key for the row's mode. Deploy: `supabase functions deploy close-held-stripe-marks`.
 
 ---
 

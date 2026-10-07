@@ -26,7 +26,9 @@ const job = {
   id: 'job-1',
   invoices: [
     { id: 'inv-plain', status: 'billed', amount: 500, stripe_invoice_id: null },
-    { id: 'inv-stripe', status: 'billed', amount: 500, stripe_invoice_id: 'in_123', stripe_invoice_status: 'open' },
+    { id: 'inv-stripe', status: 'paid', amount: 500, stripe_invoice_id: 'in_123', stripe_invoice_status: 'paid' },
+    // v2.4801: a check Mark Paid holds — paid here, still open in Stripe — is an ordinary line.
+    { id: 'inv-held', status: 'paid', amount: 500, stripe_invoice_id: 'in_124', stripe_invoice_status: 'open' },
   ],
 } as unknown as JobWithDetails
 
@@ -34,6 +36,7 @@ const manual = pay({ id: 'p-manual' })
 const bank = pay({ id: 'p-bank', mercury_transaction_id: 'mtx-1' })
 const onInvoice = pay({ id: 'p-inv', invoice_id: 'inv-plain' })
 const onStripe = pay({ id: 'p-stripe', invoice_id: 'inv-stripe' })
+const onHeld = pay({ id: 'p-held', invoice_id: 'inv-held' })
 const blank = (): PaymentRow => pay({ id: 'fresh', amount: 0, paid_on: null, payment_type: null })
 
 describe('mergePaymentRowUpdate', () => {
@@ -49,6 +52,10 @@ describe('mergePaymentRowUpdate', () => {
   it('a line on a Stripe bill is frozen the same way; one on a plain invoice is not', () => {
     expect(mergePaymentRowUpdate(onStripe, { amount: 1, invoice_id: null }, job)).toMatchObject({ amount: 100, invoice_id: 'inv-stripe' })
     expect(mergePaymentRowUpdate(onInvoice, { amount: 1 }, job).amount).toBe(1)
+  })
+
+  it('v2.4801: a check held on a Stripe bill Stripe has not closed takes the edit like any hand-typed line', () => {
+    expect(mergePaymentRowUpdate(onHeld, { amount: 1 }, job).amount).toBe(1)
   })
 
   it('with no job open nothing reads as a Stripe bill', () => {
@@ -89,6 +96,11 @@ describe('planPaymentRemoveRequest', () => {
     expect(planPaymentRemoveRequest(manual, job, saved)).toBe('confirm')
     expect(planPaymentRemoveRequest(manual, job, none)).toBe('confirm')
     expect(planPaymentRemoveRequest(manual, null, none)).toBe('confirm')
+  })
+
+  it('v2.4801: a saved check held on a Stripe bill opens the confirm — the remove RPC reconciles the bill', () => {
+    expect(planPaymentRemoveRequest(onHeld, job, new Set(['p-held']))).toBe('confirm')
+    expect(paymentRemoveWritesNow(onHeld, job, new Set(['p-held']))).toBe(true)
   })
 
   it('a line on a plain invoice: the confirm when it is saved, a refusal when it is not', () => {

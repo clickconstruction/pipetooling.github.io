@@ -501,6 +501,9 @@ verify_jwt = false
 [functions.remind-job-contracts]
 verify_jwt = false
 
+[functions.close-held-stripe-marks]
+verify_jwt = false
+
 # Bid call-again reminders (v2.4427): cron-called, X-Cron-Secret is the credential.
 [functions.remind-bid-followups]
 verify_jwt = false
