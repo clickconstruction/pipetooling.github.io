@@ -221,7 +221,7 @@ Sometimes you email a Stripe invoice and the customer mails a check anyway. Thos
 
 ### A check waits to clear
 
-Pick **Check** on a Stripe bill and the window says what happens next. The bill reads Paid here at once. Stripe keeps its invoice open for seven days. Then it closes on its own one morning, once the check has cleared. Until then the check is an ordinary payment on the job. It can move to another job or come off. The pay link stays open for that week. Cash, a wire, a bank transfer or a card close in Stripe at once.
+Pick **Check** on a Stripe bill and the window says what happens next. The bill reads Paid here at once. Stripe keeps its invoice open for seven days. Then it closes on its own one morning, once the check has cleared. A check dated more than a week back closes the next morning. Until then the check is an ordinary payment on the job. It can move to another job or come off. The pay link stays open for that week. Cash, a wire, a bank transfer or a card close in Stripe at once.
 
 Jobs that are billed but proving hard to collect can be flagged for **Collections**. They get their own section so the AR picture stays honest. AR means accounts receivable, the money customers owe. The flag takes care of itself on the way out. The moment the job is paid in full, it leaves Collections and lands in {{chip:green|Paid}} with the flag cleared. That works by Stripe, a bank-deposit allocation, or Mark Paid. The job's activity thread notes it was removed from Collections. **Send back to Billed** on a Collections row is for one case only. That is when the job should return to plain Billed Awaiting Payment before it is paid.
 

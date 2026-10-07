@@ -46,17 +46,25 @@ export function paymentRowOnHeldStripeMark(row: PaymentRow, job: JobWithDetails 
   return inv
 }
 
-/** Under the payment type in Mark Paid, when the close is held. */
-export function heldStripeMarkNote(paidOnYmd: string): string {
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(paidOnYmd) ? formatYmdMonthDay(heldStripeCloseYmd(paidOnYmd)) : null
+/**
+ * Under the payment type in Mark Paid, when the close is held. With today (v2.4822), a check
+ * already a week old says the next morning instead of a day that has passed.
+ */
+export function heldStripeMarkNote(paidOnYmd: string, todayYmd?: string): string {
+  const until = 'Until then this payment can be moved to another job or taken off like any other, and the pay link stays open.'
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(paidOnYmd)
+  if (valid && todayYmd && heldStripeCloseYmd(paidOnYmd) <= todayYmd) {
+    return `The bill reads Paid here now. The check is over ${CHECK_CLEAR_DAYS} days old, so Stripe closes the invoice the next morning. ${until}`
+  }
+  const day = valid ? formatYmdMonthDay(heldStripeCloseYmd(paidOnYmd)) : null
   const when = day ? `on ${day}, ${CHECK_CLEAR_DAYS} days after the check's date` : `${CHECK_CLEAR_DAYS} days after the check's date`
-  return `The bill reads Paid here now. Stripe closes the invoice ${when}, once the check has cleared. Until then this payment can be moved to another job or taken off like any other, and the pay link stays open.`
+  return `The bill reads Paid here now. Stripe closes the invoice ${when}, once the check has cleared. ${until}`
 }
 
 /** The line under a held check on the job's payment list. */
 export function heldStripeMarkLineWords(paidOnYmd: string | null, todayYmd: string): string {
   if (!paidOnYmd || !/^\d{4}-\d{2}-\d{2}$/.test(paidOnYmd)) return 'Stripe closes the bill once the check has cleared'
   const closeYmd = heldStripeCloseYmd(paidOnYmd)
-  if (closeYmd <= todayYmd) return 'Stripe closes the bill on the next sweep'
+  if (closeYmd <= todayYmd) return 'Stripe closes the bill the next morning'
   return `Stripe closes the bill ${formatYmdMonthDay(closeYmd)}, once the check has cleared`
 }

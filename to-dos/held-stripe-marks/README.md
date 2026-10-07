@@ -3,10 +3,10 @@ name: A check on a Stripe bill — hold the close, then move the stuck ones
 number: 98
 group: ready
 status: >
-  PR 1 on PR #4818 (v2.4801: Mark Paid · Check holds the Stripe close; Move to job… and Remove
-  work on a held check; the daily sweep closes Stripe after seven days) · PR 2 built on
-  claude/stripe-held-move (v2.4803: Move to job… on a check Stripe already holds, in one press)
-  · left: the live tests, then job 186
+  PR 1 v2.4801 (#4818) and PR 2 v2.4803 (#4820) on main, functions deployed and the migration
+  pushed · both test-mode recipes passed 2026-10-07 · v2.4822 fixes the four faults the run
+  found · left: the sweep's first run on 2026-10-08, then job 186 (the owner's press) and the
+  two test jobs' cleanup
 summary: >
   **A check recorded on a Stripe bill no longer tells Stripe "paid" at once.** It is an
   ordinary payment for seven days, so a check on the wrong job moves with Move to job… and a
@@ -15,12 +15,12 @@ summary: >
   already holds (job 186 today), which still need the credit note and a fresh bill — PR 2
   puts that behind the same Move to job… so it is one press too.
 next: >
-  Deploy the three functions and push the migration, run both live tests below on test-mode
-  bills, then job 186: Move to job… on Taunya's check (the owner's press — a real credit note
-  and a fresh bill for Dudley Mason).
-size: XS — live tests
+  After 2026-10-08 11:17 UTC, check that the sweep closed J904's test bill (recipe in The live
+  run), then delete J904 and J907. Job 186 is the owner's press: Move to job… on Taunya's check,
+  with the Bill Customer Stripe toggle on Live.
+size: XS — one check and a cleanup
 blocker: none
-ver: v2.4801
+ver: v2.4801 · v2.4803 · v2.4822
 opinion: run the test-mode recipes first; job 186 (Dudley Mason, Taunya's check) is the first real use and sends the customer a fresh bill.
 ---
 
@@ -96,6 +96,37 @@ the trace names the reason.
 
 [`before-after.html`](./before-after.html) — the Mark Paid window and the payment line before
 and after PR 1, and PR 2's Move window on a Stripe-held row.
+
+## The live run — 2026-10-07
+
+Run on the dev server as the dev, on two throwaway jobs under *ZZ TEST Claude Billing*: J904
+*ZZ TEST held check A* and J907 *ZZ TEST held check B*, $10 each, numbered below the live
+range so `next_job_number_suggestion` stays at 1070. J904 got a Stripe **test** bill
+(`in_1UNzyP…`, never sent); J907 a HouseCall Pro bill (records only). Both recipes passed.
+
+- **Mark Paid · Check** on J904: the note named Oct 14; the window closed in under two seconds
+  with no Stripe wait; the bill read Paid here while the pay link (asked live through `pay-link`)
+  read *open*.
+- **The line**: *Oct 7 · check · typed by hand*, *Stripe closes the bill Oct 14, once the check
+  has cleared*; the menu held Edit details, View the Stripe bill, Move to job… and Remove.
+- **Move to job…** to J907 through the new `move_jobs_ledger_payment` rule: J904's bill and job
+  back to Billed, Stripe still open; the check on J907 with its number; both grey lines.
+- **PR 2**: Mark Paid · Cash on J904's re-opened bill (the test webhook wrote the row in about
+  five seconds), then Move to job…: one credit note (`cn_1UO04J…`), reused by the send-back;
+  J904's bill gone and J904 Ready to Bill; the cash on J907's bill, now Paid; the `removed`
+  event read *oob_mark_reversed: Moved to J907 · wrong job*.
+- **Found and fixed in v2.4822**: the words said *check* for cash and *held for seven days* for
+  a bill Stripe never sees; a whole cash payment landing on a Stripe bill would have left that
+  invoice open; the moved line repeated the job.
+- **The sweep could not be run by hand**: the cron secret is in the vault, not in `.env.local`.
+  Before its first run, no production bill was held-shaped (all 117 paid Stripe bills read
+  paid, void or uncollectible in Stripe), so it can only touch checks recorded from 2026-10-07.
+
+**Waiting on the first run (2026-10-08 11:17 UTC):** J904 holds a second Stripe test bill
+(`in_1UO06t…`, row `03e928f3…`) marked paid by a check dated 2026-09-29. The sweep should close
+it. Check `jobs_ledger_invoices.stripe_invoice_status` for that row reads `paid`, and J904's
+line menu now offers *Check didn't clear…*. Then delete J904 and J907 (Edit Job → Delete; two
+archive bundles).
 
 ## How to verify
 

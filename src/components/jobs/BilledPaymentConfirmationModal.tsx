@@ -7,7 +7,7 @@ import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 import { promiseBackfillChoices, shouldAskPromiseBackfill } from '../../lib/jobs/promiseBackfillPrompt'
 import { waitUntilLanded } from '../../lib/jobs/waitUntilLanded'
@@ -433,7 +433,7 @@ export default function BilledPaymentConfirmationModal({
               </div>
               {holdsStripeClose ? (
                 <p data-testid="held-stripe-mark-note" style={{ margin: '0.35rem 0 0', color: 'var(--text-700)', fontSize: '0.8125rem', lineHeight: 1.4 }}>
-                  {heldStripeMarkNote(paidOn.trim())}
+                  {heldStripeMarkNote(paidOn.trim(), todayYmdInAppTz())}
                 </p>
               ) : null}
               {stripeInvoicePath && !holdsStripeClose && stripePlan?.kind !== 'part' && (
