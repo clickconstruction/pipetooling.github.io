@@ -213,7 +213,7 @@ export const GC_PROJECT_TOUR_STEPS: GcTourStep[] = [
   {
     anchor: 'gc-gantt-toolbar',
     title: 'The chart',
-    body: 'Each bar is one piece of a trade’s work. Zoom with Days, Weeks or Months. Group it by trade, by stage or by company. The pills count what is late, held or tight, and filter the chart. Drag a bar to move it. Every move asks why.',
+    body: 'Each bar is one piece of a trade’s work. Zoom with Days, Weeks or Months. Group it by trade, by stage or by company. The pills count what is late, held or tight, and filter the chart. Pick one company to see only their work. Drag a bar to move it. Every move asks why.',
     missingBody: 'Open the Schedule tab on a job with a schedule drawn and the chart is here.',
     tab: 'schedule',
     stages: ['buyout', 'building'],

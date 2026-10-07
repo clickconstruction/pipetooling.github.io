@@ -1,7 +1,7 @@
 ---
 name: "GC mode, the Gantt: every feature, numbered"
 parent: to-dos/gc-mode/GANTT_PLAN.md (punch list #81)
-status: listed 2026-10-05 at the owner's ask ("save that as a list as well so as we develop this we can reference that list") · built 2026-10-05 and 2026-10-06, the last rows in four rounds of helper sessions (HELPERS.md) · **90 of the 97 rows stand Have** · G-13 stands Part on purpose (By company does a one-company filter's job) and G-131 needs nothing · the real build's five wait on SCHEDULE_REAL_BUILD.md: G-51 and G-130 in its PRs, and G-132, G-133 and G-134 on the owner's word on its decisions · nothing else is built unless its row says Have
+status: listed 2026-10-05 at the owner's ask ("save that as a list as well so as we develop this we can reference that list") · built 2026-10-05 and 2026-10-06, the last rows in four rounds of helper sessions (HELPERS.md) · **91 of the 97 rows stand Have** (G-13 on 2026-10-07) · G-131 needs nothing · the real build's five wait on SCHEDULE_REAL_BUILD.md: G-51 and G-130 in its PRs, and G-132, G-133 and G-134 on the owner's word on its decisions · nothing else is built unless its row says Have
 summary: >
   The reference list for the schedule as a Gantt chart. Each feature has a number to cite in
   commits and notes (G-12), where it stands on the prototype today, and the phase of
@@ -33,7 +33,7 @@ The three jobs the chart has, which every feature serves at least one of:
 | G-10 | Milestones as diamonds on a row of their own, red when late, green when met | See | Have | — |
 | G-11 | Group by trade, by stage of the job, or by company | See, Chase | Have (built 2026-10-05) | 1 |
 | G-12 | Fold a group into one summary bar; fold all, open all | See | Have (built 2026-10-05; finished groups open folded) | 1 |
-| G-13 | Filters: no spare days, only late, next 3 weeks, one company, held | See, Chase | Part (five filters with counts; no one-company filter, By company does that job) | 1 |
+| G-13 | Filters: no spare days, only late, next 3 weeks, one company, held | See, Chase | Have (five filters with counts 2026-10-05; one company 2026-10-07: *Every company* at the end of *Show only*, the pills then count that company's work, and the call list's *Their work* picks it; the kernel on main, clickconstruction/pipetooling.github.io#4859) | 1 |
 | G-14 | The left columns stay put while the chart scrolls sideways; the header stays while it scrolls down | See | Have (built 2026-10-05) | 1 |
 | G-15 | Hover a bar: dates, working days, percent against plan, who, what holds it | See | Have (built 2026-10-05: a card beside the pointer) | 1 |
 | G-16 | A held bar is striped, and says what holds it: a submittal, an RFI, a failed inspection, a delivery | See | Have (submittals and RFIs 2026-10-05; a delivery, a decision, a permit or the utility 2026-10-06, when it is expected on or after the day the work starts or its day passed) | 1 |

@@ -221,16 +221,41 @@ const FILTER_TEST: Record<keyof GanttFilters, (b: GanttBar) => boolean> = {
   moved: (b) => b.moved && b.status !== 'done',
 }
 
-/** How many bars each filter would show: the numbers on the filter pills, which are the chart's summary. */
-export function ganttCounts(bars: GanttBar[]): Record<keyof GanttFilters, number> {
-  const count = (key: keyof GanttFilters) => bars.filter(FILTER_TEST[key]).length
+/**
+ * One company's bars (G-13), by the name By company groups them under: the company hired, our own
+ * crew, the city for inspections. No company: every bar.
+ */
+export function ganttCompanyBars(bars: GanttBar[], company?: string): GanttBar[] {
+  return company === undefined ? bars : bars.filter((b) => b.item.company === company)
+}
+
+/**
+ * How many bars each filter would show: the numbers on the filter pills, which are the chart's summary.
+ * With a company picked (G-13), only that company's bars are counted, so the pills are their summary.
+ */
+export function ganttCounts(bars: GanttBar[], company?: string): Record<keyof GanttFilters, number> {
+  const theirs = ganttCompanyBars(bars, company)
+  const count = (key: keyof GanttFilters) => theirs.filter(FILTER_TEST[key]).length
   return { critical: count('critical'), late: count('late'), held: count('held'), soon: count('soon'), moved: count('moved') }
 }
 
-/** The bars that pass every filter turned on. None on: all of them. */
-export function ganttFilter(bars: GanttBar[], filters: GanttFilters): GanttBar[] {
+/** The bars that pass every filter turned on, within one company when one is picked (G-13). None on: all of them. */
+export function ganttFilter(bars: GanttBar[], filters: GanttFilters, company?: string): GanttBar[] {
+  const theirs = ganttCompanyBars(bars, company)
   const on = (Object.keys(FILTER_TEST) as (keyof GanttFilters)[]).filter((k) => filters[k])
-  return on.length === 0 ? bars : bars.filter((b) => on.every((k) => FILTER_TEST[k](b)))
+  return on.length === 0 ? theirs : theirs.filter((b) => on.every((k) => FILTER_TEST[k](b)))
+}
+
+/** A company the chart can show alone (G-13): its name, how many bars it has, and how many are late. */
+export interface GanttCompany {
+  company: string
+  bars: number
+  late: number
+}
+
+/** The companies on the chart, for the one-company picker (G-13): By company's groups, in By company's order, the most late work first. */
+export function ganttCompanies(bars: GanttBar[]): GanttCompany[] {
+  return ganttGroups(bars, 'company').map((g) => ({ company: g.key, bars: g.bars.length, late: g.late }))
 }
 
 // ---------------------------------------------------------------------------------------------

@@ -16,6 +16,7 @@ export function GcCallList({
   onFollowUp,
   onWorkList,
   onReason,
+  theirWork,
 }: {
   list: CallList
   /** The Follow up sheet on this list, at this person: on "What did they say?" after a Call. */
@@ -24,6 +25,8 @@ export function GcCallList({
   onWorkList: () => void
   /** A line about a bar was pressed: open the bar. */
   onReason: (lineId: string) => void
+  /** The chart's one company (G-13): a press that shows a person's company's work, or null when the chart has none of theirs. */
+  theirWork?: (person: ProjectPerson) => (() => void) | null
 }) {
   const [hidden, setHidden] = useState(false)
   // A phone puts each person's buttons under their words. Read once: a test page may have no matchMedia.
@@ -64,6 +67,7 @@ export function GcCallList({
               onReason={(_, r) => {
                 if (r.lineId) onReason(r.lineId)
               }}
+              {...(theirWork ? { theirWork } : {})}
             />
           </div>
         </>

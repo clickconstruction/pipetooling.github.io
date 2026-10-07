@@ -221,12 +221,15 @@ export function PeopleRows({
   narrow,
   onFollowUp,
   onReason,
+  theirWork,
 }: {
   people: ProjectPerson[]
   narrow: boolean
   onFollowUp: (person: ProjectPerson, calling: boolean) => void
   /** A reason about a bar on the schedule pressed (the Gantt's call list, G-115): open that bar. Unset: reasons are words only. */
   onReason?: (person: ProjectPerson, reason: PersonReason) => void
+  /** The chart's one company (G-13): a press that shows this person's company's work, or null when the chart has none of theirs. Unset: no link. */
+  theirWork?: (person: ProjectPerson) => (() => void) | null
 }) {
   return (
     <>
@@ -255,6 +258,23 @@ export function PeopleRows({
             >
               {person.tag}
             </span>
+            {(() => {
+              // Their work on the chart (G-13): only for a company the chart has bars for.
+              const show = theirWork?.(person)
+              return show ? (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={show}
+                    title={`Show only ${person.company} on the chart`}
+                    style={{ border: 'none', background: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', cursor: 'pointer' }}
+                  >
+                    Their work
+                  </button>
+                </>
+              ) : null
+            })()}
           </span>
           {/* A call about the work is not a paper owed (G-146): the reasons in two groups, each worst first. */}
           {REASON_GROUPS.map((g) => {
