@@ -33,6 +33,18 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
   const { payload, m, packet } = sample()
   const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
 
+  it('lists the documents from the office under Section D and letters them as one exhibit (v2.4810)', () => {
+    const { payload, m, packet } = sample()
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, documents: m.documents, heldDocumentCount: m.heldDocumentCount }, particulars: payload.particulars })
+    const letter = String.fromCharCode(65 + packet.exhibits.length)
+    expect(html).toContain(`<td class="letter">${letter}</td><td>Documents from the office</td><td class="num">2</td>`)
+    expect(html).toContain(`<h3>Documents from the office (Exhibit ${letter})</h3>`)
+    expect(html).toContain('Billing report')
+    expect(html).toContain('The office held back 1 document.')
+    const bare = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+    expect(bare).not.toContain('Documents from the office')
+  })
+
   it('says where to file, in one paragraph after the money (v2.4764)', () => {
     const { payload, m, packet } = sample()
     const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })

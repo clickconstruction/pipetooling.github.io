@@ -44,6 +44,9 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateU
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
+import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
+import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { legalPortalDocumentFromRow, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { settlementFloorDollars, settlementFloorOf, settlementFloorWords, type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
@@ -673,7 +676,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null} />
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter), answerSettlement, setSettlementFloor, floor: settlementFloorOf(matter), moveStage, voidEntry } : null}
+                    documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null} />
                 ) : null}
               </>
             )}
@@ -742,7 +746,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), settlementFloor: Number(sheet.floor) > 0 ? (sheet.floorUnit === 'usd' ? { amount: Number(sheet.floor), pct: null } : { amount: null, pct: Number(sheet.floor) }) : settlementFloorOf(matter) }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}
@@ -844,7 +848,10 @@ type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shar
 type EntryLike = LegalEntryRow
 type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
 
-function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs }) {
+/** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
+type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
+
+function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs, documents = null }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -993,6 +1000,7 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   if (tab === 'evidence') {
     return (
       <div>
+        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} /> : null}
         <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
           rows={packet.evidence.map((e) => [
@@ -1192,4 +1200,13 @@ function DeskUndo({ onUndo }: { onUndo: (reason: string) => Promise<boolean> }) 
       <button type="button" onClick={() => setOpen(false)} style={btn}>Cancel</button>
     </span>
   )
+}
+
+/** The desk's preview of the firm's documents (v2.4810): the ones not held, without links; the held ones as the count the firm sees. */
+function previewDocuments(rows: ReadonlyArray<LegalMatterDocumentRow>, users: ReadonlyArray<{ id: string; name: string | null }>): { documents: LegalPortalDocument[]; heldDocumentCount: number } {
+  const nameOf = (id: string | null) => (id ? users.find((u) => u.id === id)?.name ?? '' : '')
+  return {
+    documents: rows.filter((r) => !r.held_reason.trim()).map((r) => legalPortalDocumentFromRow(r, nameOf(r.added_by), '', calendarYmdInAppTzFromIso)),
+    heldDocumentCount: rows.filter((r) => r.held_reason.trim()).length,
+  }
 }

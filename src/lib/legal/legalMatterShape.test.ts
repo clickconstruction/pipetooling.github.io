@@ -129,3 +129,10 @@ describe('shapeMatterForCounsel', () => {
     expect(b.evidence.map((e) => [e.jobId, e.reports, e.sessions, e.hours, e.threadNotes])).toEqual(a.evidence.map((e) => [e.jobId, e.reports, e.sessions, e.hours, e.threadNotes]))
   })
 })
+
+describe('documents from the office (v2.4810)', () => {
+  it('travel cut to their keys: never the storage path or a hold reason', () => {
+    const out = shapeMatterForCounsel({ jobs: [], documents: [{ id: 'd', title: 'Billing report', shows: 'x', mime: 'application/pdf', sizeBytes: 1, addedOn: '2026-10-07', addedByName: 'R', url: 'https://x', storage_path: 'm/d.pdf', held_reason: 'no' }] })
+    expect(out.documents).toEqual([{ id: 'd', title: 'Billing report', shows: 'x', mime: 'application/pdf', sizeBytes: 1, addedOn: '2026-10-07', addedByName: 'R', url: 'https://x' }])
+  })
+})

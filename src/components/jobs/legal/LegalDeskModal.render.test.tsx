@@ -119,7 +119,7 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     byPayerKey: new Map(),
     byJobId: new Map(),
     jobIdsByMatter: new Map(),
-    entriesByMatter: new Map(),
+    entriesByMatter: new Map(), documentsByMatter: new Map(),
     recipients: [],
     firmPaused: false,
     reload: async () => {},

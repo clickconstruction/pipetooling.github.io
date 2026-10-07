@@ -130,6 +130,17 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.querySelector('[data-legal-reach-strip]')).not.toBeNull()
   })
 
+  it('lists the documents from the office under Evidence, with the held count (v2.4810)', async () => {
+    await openSample()
+    fireEvent.click(screen.getByRole('button', { name: 'Evidence' }))
+    const docs = document.querySelector('[data-legal-firm-documents]')!
+    expect(docs.textContent).toContain('Documents from the office · 2')
+    expect(docs.textContent).toContain('Billing report')
+    expect(docs.textContent).toContain('The office’s itemization of both bills')
+    expect(docs.textContent).toContain("on the firm's link")
+    expect(docs.textContent).toContain('The office held back 1 document.')
+  })
+
   it('opens the Lien grid on Upcoming, with the matter’s own job beside the other two', async () => {
     await openSample()
     fireEvent.click(screen.getByRole('button', { name: 'Lien grid' }))

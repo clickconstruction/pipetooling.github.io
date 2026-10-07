@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { listLegalMatterDocuments, type LegalMatterDocumentRow } from '../lib/legal/legalMatterDocumentsIo'
 import { supabase } from '../lib/supabase'
 import { indexMatters, type LegalEntryRow, type LegalFirmRow, type LegalMatterJobRow, type LegalMatterRow, type LegalRecipientRow } from '../lib/legal/legalMatters'
 
@@ -22,6 +23,8 @@ export type LegalMattersData = {
   byJobId: Map<string, LegalMatterRow>
   jobIdsByMatter: Map<string, string[]>
   entriesByMatter: Map<string, LegalEntryRow[]>
+  /** The office's documents for the firm, live ones, by matter (v2.4810); empty until the table exists. */
+  documentsByMatter: Map<string, LegalMatterDocumentRow[]>
   /** The firm's people and their email rules (PR 5); office read-only. */
   recipients: LegalRecipientRow[]
   firmPaused: boolean
@@ -36,18 +39,20 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
   const [links, setLinks] = useState<LegalMatterJobRow[]>([])
   const [entries, setEntries] = useState<LegalEntryRow[]>([])
   const [recipients, setRecipients] = useState<LegalRecipientRow[]>([])
+  const [documents, setDocuments] = useState<LegalMatterDocumentRow[]>([])
   const [firmPaused, setFirmPaused] = useState(false)
 
   const reload = useCallback(async () => {
     if (!enabled) return
     setLoading(true)
     try {
-      const [f, m, l, e, r] = await Promise.all([
+      const [f, m, l, e, r, d] = await Promise.all([
         db.from('legal_firms').select('*').order('active', { ascending: false }).order('created_at'),
         db.from('legal_matters').select('*'),
         db.from('legal_matter_jobs').select('matter_id, job_id'),
         db.from('legal_matter_entries').select('*').order('created_at'),
         db.from('legal_firm_recipients').select('*').is('removed_at', null).order('created_at'),
+        listLegalMatterDocuments(db as unknown as SupabaseClient).then((rows) => ({ data: rows, error: null }), () => ({ data: [] as LegalMatterDocumentRow[], error: 'missing' })),
       ])
       if (f.error || m.error || l.error || e.error) {
         // 42P01 / PGRST205: the tables aren't there yet — the desk stays read-only.
@@ -61,6 +66,8 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
       setEntries((e.data ?? []) as LegalEntryRow[])
       // Recipients land with the PR 5 migration; a missing table leaves the list empty, not the desk broken.
       setRecipients(r.error ? [] : ((r.data ?? []) as LegalRecipientRow[]))
+      // Documents land with the v2.4810 migration; a missing table leaves the list empty, not the desk broken.
+      setDocuments(d.error ? [] : (d.data ?? []))
       const activeFirm = ((f.data ?? []) as Array<LegalFirmRow & { paused_at?: string | null }>).find((x) => x.active)
       setFirmPaused(Boolean(activeFirm?.paused_at))
     } catch {
@@ -81,6 +88,12 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     return out
   }, [entries])
 
+  const documentsByMatter = useMemo(() => {
+    const out = new Map<string, LegalMatterDocumentRow[]>()
+    for (const doc of documents) out.set(doc.matter_id, [...(out.get(doc.matter_id) ?? []), doc])
+    return out
+  }, [documents])
+
   return {
     available,
     loading,
@@ -91,6 +104,7 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     byJobId: idx.byJobId,
     jobIdsByMatter: idx.jobIdsByMatter,
     entriesByMatter,
+    documentsByMatter,
     recipients,
     firmPaused,
     reload,
