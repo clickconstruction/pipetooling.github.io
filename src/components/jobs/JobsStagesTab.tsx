@@ -1015,6 +1015,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         todayYmd,
         openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
         lastWorkYmd: job.last_work_date ?? null,
+        // The last day of work set by hand (v2.4676) counts first, as on the desk (v2.4830).
+        handLastWorkYmd: job.lien_last_work_on ?? null,
         createdAt: job.created_at ?? null,
         propertyKind: clock.propertyKind,
         expectedPayYmd: model?.expectedYmd ?? null,
@@ -1098,7 +1100,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
         isSub: Boolean(job.gc_customer_id),
         runway,
-        lastWorkYmd: job.last_work_date ?? null,
+        lastWorkYmd: job.lien_last_work_on || job.last_work_date || null,
         addressId: job.customer_address_id ?? null,
       })
     }

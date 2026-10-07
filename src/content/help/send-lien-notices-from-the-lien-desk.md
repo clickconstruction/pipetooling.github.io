@@ -37,7 +37,7 @@ All filings reopens on the tab you last used there. This guide names those four 
 
 ## Look ahead on the Deadlines
 
-The **Deadlines** tab is beside Do now. It shows when each lien deadline falls.
+The **Deadlines** tab is beside Do now. It shows when each lien deadline falls. A last day of work set by hand moves the job's dates here too.
 
 Pills at the top sort the jobs into Overdue, This month, Next month and Later. Each job is counted once, at its next date. Press a pill to see one month.
 
