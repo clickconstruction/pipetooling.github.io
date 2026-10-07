@@ -55,7 +55,7 @@ stateDiagram-v2
     working --> waiting: office send-back
 ```
 
-"Collections" is **not** a status — it is a flag on billed jobs (`collections_at/by/note`, migrations `supabase/migrations/20260704150000_job_collections_flag.sql` + `…160000_collections_flag_row_lock.sql`; RPC `set_job_collections_flag`, client `src/lib/setJobCollectionsFlag.ts`, helper `jobInCollections` in `src/lib/jobsStagesBoard.ts`). The flag clears **automatically when the job transitions to paid** (BEFORE trigger `jobs_ledger_clear_collections_on_paid`, `…20260814171357_clear_collections_on_paid.sql`, v2.1642 — logs the same `collections_change` activity event as a manual unflag, `detail.auto=true`); before v2.1642 it was sticky across status transitions.
+"Collections" is **not** a status — it is a flag on billed jobs (`collections_at/by/note`, migrations `20260704150000_job_collections_flag.sql` + `…160000_collections_flag_row_lock.sql`, which sit with the third one below in `supabase/archive/migrations-pre-baseline/` since the squash baseline; RPC `set_job_collections_flag`, client `src/lib/setJobCollectionsFlag.ts`, helper `jobInCollections` in `src/lib/jobsStagesBoard.ts`). The flag clears **automatically when the job transitions to paid** (BEFORE trigger `jobs_ledger_clear_collections_on_paid`, `…20260814171357_clear_collections_on_paid.sql`, v2.1642 — logs the same `collections_change` activity event as a manual unflag, `detail.auto=true`); before v2.1642 it was sticky across status transitions.
 
 ### RPC `update_job_status(p_job_id, p_to_status)`
 
