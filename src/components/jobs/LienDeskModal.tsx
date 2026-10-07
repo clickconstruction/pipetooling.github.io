@@ -2370,6 +2370,7 @@ export default function LienDeskModal({
         authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
+        leaderNameFor={leaderNameFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
         onFixProperty={office ? (jobId, focus) => setPaneFix({ jobId, focus }) : undefined}
@@ -2450,6 +2451,7 @@ export default function LienDeskModal({
         authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
+        leaderNameFor={leaderNameFor}
         signerPhoneFor={signerPhoneFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}

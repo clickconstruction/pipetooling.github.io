@@ -12,7 +12,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/job
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
-import type { LienWordChannel } from '../../lib/jobs/lienWord'
+import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from '../../lib/jobs/lienNoticeDraft'
 import { coverLetterKindFor } from '../../lib/jobs/gcOnNotice'
@@ -56,6 +56,7 @@ export default function LienDeskRetainagePane({
   authName = '',
   issuer,
   signerNameFor,
+  leaderNameFor,
   signerPhoneFor,
   onChanged,
   onOpenEditJob,
@@ -73,6 +74,8 @@ export default function LienDeskRetainagePane({
   authName?: string
   issuer: PhysicalInvoiceIssuer | null
   signerNameFor: (masterUserId: string | null) => string
+  /** The job's master by his plain name (v2.4856): the word row and the record say *on Malachi's word*; absent, *the leader*. */
+  leaderNameFor?: (masterUserId: string | null) => string
   /** The signing master's own phone (v2.3844) for the letter's call line; the letterhead's when absent. */
   signerPhoneFor?: (masterUserId: string | null) => string
   onChanged: () => void
@@ -105,6 +108,8 @@ export default function LienDeskRetainagePane({
   const promise = data.promisesByJob[entry.jobId] ?? null
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
   const label = job ? `${jobNumber}${(job.job_name ?? '').trim() ? ` · ${(job.job_name ?? '').trim()}` : ''}` : entry.jobId.slice(0, 8)
+  // The job's master by name (v2.4856): the word row and the record say *on Malachi's word*.
+  const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
   const item = entry.item && entry.item.status !== 'sent' && entry.item.status !== 'missed' ? entry.item : null
   const endedWords = contractEndedWords(entry.contractEndedHow, entry.contractEndedOn, formatYmdMonthDay)
 
@@ -183,7 +188,9 @@ export default function LienDeskRetainagePane({
         onChannel={setWordChannel}
         radioName="ret-word-channel"
         recorderName={authName}
-        actionLabel="Record it ▸"
+        leaderName={leaderName}
+        preview={wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: label, gcName: gc?.name ?? null, amountWords: formatUsdNoCents(entry.retainageHeld) })}
+        actionLabel="Approve on his word ▸"
         onAction={sendOnWord}
         actionDisabled={busy || !wordNote.trim()}
         onCancel={() => setWordOpen(false)}
@@ -196,7 +203,7 @@ export default function LienDeskRetainagePane({
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ flex: 1 }} />
-          {canWord ? <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)}>The leader said to send it ▸</button> : null}
+          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)}>The leader said to send it ▸</button> : null}
           {leader ? (
             <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)}>Approve ▸</button>
           ) : (
@@ -232,7 +239,7 @@ export default function LienDeskRetainagePane({
   } else if (entry.pile === 'ready') {
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>{item?.approval_mode === 'word' ? `On the leader's word — ${item.word_note}.` : item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule.` : 'Approved.'} In the run — it goes out with the monthly notices, one envelope per name and address. {fuse}</span>
+        <span>{item?.approval_mode === 'word' ? `On ${wordRecordWords(item, leaderName).slice(3)}.` : item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule.` : 'Approved.'} In the run — it goes out with the monthly notices, one envelope per name and address. {fuse}</span>
         {leader && item?.approval_mode === 'word' ? <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Not what I said</button> : null}
         <span style={{ flex: 1 }} />
         <button type="button" onClick={onOpenRun} disabled={!office} style={btn('primary', !office)}>Send the run ▸</button>
