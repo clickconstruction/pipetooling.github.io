@@ -65,6 +65,8 @@ export interface GanttPrintInput {
   earlier?: ReadonlyMap<string, { start: string; finish: string; words: string }>
   /** Show people on site is on (G-84): each week's people between two days, for the strip under the last page's rows on our team's copy (G-144). */
   peopleOf?: (from: string, to: string) => PeopleWeek[]
+  /** One company picked on the chart (G-13): our team's copy shows only its work and says so. The customer's copies never read it. */
+  company?: string
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -493,12 +495,18 @@ export function printPages(rows: GanttPrintRow[], firstCap: number, nextCap: num
 
 const BY_WORDS: Record<GanttGroupBy, string> = { trade: 'by trade', stage: 'by stage', company: 'by company' }
 
+function possessive(name: string): string {
+  return name.endsWith('s') ? `${name}'` : `${name}'s`
+}
+
 /** What the person has the chart showing, in sentences: the count, the filters by their pills' names, the folds, the lines. */
 function showsWords(input: GanttPrintInput, shown: GanttBar[], groups: GanttGroup[], window: { first: string; last: string } | null): string[] {
   const total = input.bars.length
   const on = (Object.keys(input.filters) as (keyof GanttFilters)[]).filter((k) => input.filters[k])
   const words: string[] = []
-  words.push(on.length === 0 ? `It shows all ${plural(total, 'activity', 'activities')}, ${BY_WORDS[input.by]}.` : `It shows ${shown.length} of ${plural(total, 'activity', 'activities')}, ${BY_WORDS[input.by]}.`)
+  const narrowed = on.length > 0 || input.company !== undefined
+  words.push(narrowed ? `It shows ${shown.length} of ${plural(total, 'activity', 'activities')}, ${BY_WORDS[input.by]}.` : `It shows all ${plural(total, 'activity', 'activities')}, ${BY_WORDS[input.by]}.`)
+  if (input.company !== undefined) words.push(`Only ${possessive(input.company)} work shows.`)
   if (on.length > 0) words.push(`${on.length === 1 ? 'Filter' : 'Filters'} on: ${on.map((k) => input.filterNames[k]).join(', ')}.`)
   const folded = groups.filter((g) => input.folded.has(g.key)).map((g) => g.title)
   if (folded.length === 1) words.push(`${folded[0] ?? ''} is folded into one bar.`)
@@ -592,7 +600,7 @@ export function ganttPrint(input: GanttPrintInput): GanttPrint {
   const { job, today } = input
   const picture = job.customer
   const copy: GanttPrint['copy'] = input.for === 'team' ? 'team' : picture.everyBar ? 'everyBar' : 'stages'
-  const shown = ganttFilter(input.bars, input.filters)
+  const shown = ganttFilter(input.bars, input.filters, input.company)
   const groups = ganttGroups(shown, input.by)
   const lookAhead = copy === 'team' && input.filters.soon
   const window = lookAhead ? lookAheadWindow(today) : null
