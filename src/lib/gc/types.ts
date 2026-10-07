@@ -386,6 +386,27 @@ export interface Partner {
   email?: string
 }
 
+/** What we have billed the owner on a project we are building, and what they have paid. */
+export interface OwnerBilling {
+  billed: number
+  paid: number
+  retainageHeld: number
+  /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
+  payApps?: OwnerPayAppSent[]
+  /** The day the owner accepted the work in their portal. Absent: not yet. Our final pay application waits for it. */
+  acceptedOn?: string
+  /** Interest on late bills we sent the owner, oldest first: a bill of its own, never on the pay application. */
+  interestBills?: OwnerInterestBill[]
+}
+
+/** A bill for the interest on the owner's late bills (owner's go-ahead, 2026-10-04). */
+export interface OwnerInterestBill {
+  number: number
+  sentOn: string
+  amount: number
+  paidOn: string | null
+}
+
 /**
  * One company, one record: the app's own customers. The same row can be the owner we build for,
  * the architect who drew the plans, and a GC we bid a trade to in Trades mode. What a company is
@@ -394,6 +415,10 @@ export interface Partner {
 export interface GcCustomer {
   id: string
   name: string
+  contact: string
+  /** Average days from our bill to their payment. Null: they have not paid us yet. */
+  payDays: number | null
+  portalOn: boolean
 }
 
 /** What we have billed the owner on a project we are building, and what they have paid. */
@@ -412,6 +437,17 @@ export interface GcProject {
   ourBidSentOn: string | null
   /** A rough schedule drawn while we bid, for our bid's weeks to build (G-45). Absent: none drawn. */
   rough?: RoughSchedule
+  /**
+   * The owner's price as they signed it, by line: each trade by its package id, then 'gc',
+   * 'contingency' and 'fee' (owner, 2026-10-04). Bill the owner reads it, so buying a trade out for
+   * more or less never changes their price; only a change order does. Absent: not signed yet, or
+   * signed before it was kept, and the price follows what we carry (`ownerContractWorthNow`).
+   */
+  ownerContractWorth?: Record<string, number>
+  /** Interest on the owner's late bills, if we chose to charge it on this job: a percent a month. Absent: none. */
+  ownerLateInterest?: { pctPerMonth: number }
+  /** The owner contract's fee a day for finishing past substantial completion (liquidated damages), as we entered it. Absent: none. */
+  ownerLateFinish?: { perDay: number }
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
   customerId: string
@@ -613,6 +649,68 @@ export interface DrawSentBack {
   lines: { sovId: string; weSee: number }[]
 }
 
+/** One pay application we sent the owner, kept as it went. The next one starts from its lines. */
+/**
+ * Retainage the owner holds that drops partway (the owner, 2026-10-04: we may offer it and choose
+ * it per job). The owner holds their full percent until the work is `atPct` done, then `toPct`.
+ */
+export interface OwnerRetainageStep {
+  /** How far along the work is when it drops, in percent of our price: 50 is half done. */
+  atPct: number
+  /** What the owner holds after that, in percent. Below their full percent. */
+  toPct: number
+  /**
+   * 'after': the lower percent on the work past that point; what they held before stays held.
+   * 'all': the lower percent on all the work once it is that far along, so some of what they held comes back.
+   */
+  way: 'after' | 'all'
+}
+
+export interface OwnerPayAppSent {
+  number: number
+  /** The bill day it went for. One a month. */
+  periodTo: string
+  sentOn: string
+  /** Done so far on each of the owner's lines when it went, by line id. */
+  doneToDate: Record<string, number>
+  /** Every line's done so far, added up. */
+  workToDate: number
+  retainagePct: number
+  /** What the owner holds on the work done so far. */
+  retainage: number
+  /** What it asked the owner to pay. */
+  due: number
+  /** The day the owner paid it. Null until they do. */
+  paidOn: string | null
+  /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
+  final?: boolean
+  /** Each line's scheduled value when it went, by line id. Absent on the made-up ones: today's values stand in. */
+  worthByLine?: Record<string, number>
+  /**
+   * What the architect certified the owner should pay (owner's call, 2026-10-03: the architect
+   * certifies first). Null: waiting on the architect. Absent: the made-up history, certified as asked.
+   */
+  certified?: number | null
+  certifiedOn?: string | null
+  /** Why the architect certified less than we asked. */
+  certifiedNote?: string
+  /** What the owner paid, once paid: the certified amount. Absent: as asked. */
+  paidAmount?: number
+  /** Each payment the owner made on it, oldest first. A part payment leaves the rest open. Absent: none, or the made-up history. */
+  payments?: { on: string; amount: number }[]
+  /** The owner's word on when they will pay, oldest first. The newest counts; a passed one stays on the record. */
+  promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
+  /** The retainage step it went under, if the job had one then. */
+  retainageStep?: OwnerRetainageStep
+  /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
+  storedByLine?: Record<string, number>
+  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
+  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
+}
+
+/** Why the work changed, in the words the app's change orders already use. */
+export type ChangeOrderReason = 'owner' | 'field' | 'plans'
+
 /**
  * A change to our contract with the owner: what changed, what it costs us, what it adds to their
  * price, and their signature. The owner side is the Owner Billing lane's; amending the trade's
@@ -623,6 +721,9 @@ export interface ChangeOrder {
   number: number
   /** What is changing, in a sentence, with the plan reference if there is one. */
   description: string
+  reason: ChangeOrderReason
+  /** Plain words: "+2 working days", "none". */
+  schedule: string
   /** The trade the work belongs to. Null: our own work, under general conditions. */
   packageId: string | null
   status: 'draft' | 'sent' | 'signed' | 'declined'
