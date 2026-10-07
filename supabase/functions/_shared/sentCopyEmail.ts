@@ -93,7 +93,8 @@ export function sentAttachmentType(filename: string): string {
  */
 export function sentCopyKeptHtml(kind: string, html: string): string {
   if (kind !== 'legal_firm_link') return html
-  return html.replace(/([?&](?:amp;)?t=)[^"'&<\s]+/g, '$1…')
+  // The direct form (`/legal?t=<key>`) and, since v2.4750, the short address (`my.clickplumbing.com/<firm>-<tail>`).
+  return html.replace(/([?&](?:amp;)?t=)[^"'&<\s]+/g, '$1…').replace(/(my\.clickplumbing\.com\/)[a-z0-9-]+/g, '$1…')
 }
 
 /**

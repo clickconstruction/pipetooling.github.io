@@ -199,6 +199,11 @@ serve(async (req) => {
     const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').eq('id', link.firm_id).maybeSingle()
     if (!firm || !(firm as Row).active) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
+    // The short domain's probe (v2.4750): a my.clickplumbing.com address that is no customer's is tried here by the
+    // customer page before it falls through to the sub portal. Answers that the key opens, nothing more: no payload,
+    // no view row (the page's own load counts the visit).
+    if (url.searchParams.get('probe') === '1') return jsonResponse({ ok: true, firmName: String((firm as Row).name ?? '') })
+
     // View counting — fire-and-forget; office previews and staff sessions do not count, and neither does the
     // page's own quiet ten-minute reload (`refresh=1`, item 22): it is the same visit, not a new one.
     const isRefresh = url.searchParams.get('refresh') === '1'

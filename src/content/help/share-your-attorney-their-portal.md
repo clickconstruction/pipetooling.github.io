@@ -4,17 +4,18 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: legal, attorney, law firm, portal, link, collections, packet, particulars, exhibits, attorney ready, send the link, welcome email
 ---
-The collections law firm gets one private link that needs no sign-in. The link opens every account a dev has marked attorney-ready, and nothing else.
+The collections law firm gets private links that need no sign-in. A link opens every account a dev has marked attorney-ready, and nothing else. The firm has its own link, and can have one link per person at the firm.
 
 Each account opens as the same five-section packet the Legal desk shows. The portal works on a phone too. On a narrow screen it is one column, with the matters list first.
 
-## Create and send the link
+## Create and send the links
 
 1. On **Jobs → Pipeline → Collections**, open {{button:outline|⚖ Legal}}. The header shows {{button:outline|🌐 Firm's link}} once a firm is set up. To set one up, press **Set up the firm…** in that header. Settings → Jobs & billing → Collections law firm holds the same details.
-2. {{button:blue|Create the firm's link}} makes it. {{button:blue|Copy link}} puts it on your clipboard. The app shows the link only when you create or rotate it. {{button:outline|Preview ↗}} opens what the firm sees, without counting as their visit. Preview works any time you are signed in.
-3. Send it from the card. Under **Send the firm their link**, tick the firm's address on file or type one. You can add a line of your own. Press {{button:blue|Send the link}}. The email carries the live link even when the card no longer shows it.
-4. The email comes from the company and is signed by you. A reply comes back to you. It says what the portal is and holds the link. Its first step asks the firm to add the people who should get our emails. The card then shows who it went to and when.
-5. **Rotate** makes a new link and kills the old one. The link in every email the firm already has stops opening too. Send the firm the new link after a Rotate. **Turn off** is the kill switch. The firm gets "This link is no longer active" until you create a new one.
+2. {{button:blue|Create the firm's link}} makes the firm's own link. Its address is the firm's name and a short tail, such as `my.clickplumbing.com/snell-law-firm-k4tp9x2mq7zr`. The tail is the key, so keep the whole address private. The address shows on the list any time. {{button:blue|Copy}} puts it on your clipboard. {{button:outline|Preview ↗}} opens what the firm sees, without counting as their visit.
+3. Under **One person's link**, type who the link is for and press {{button:outline|Add a link}}. That person gets their own address. Turning it off leaves the firm's other links working. The firm's own link is the one in every email the firm gets.
+4. Press {{button:outline|Send…}} on a link to email it. Tick the firm's address on file or type one. You can add a line of your own. Press {{button:blue|Send the link}}. The email comes from the company and is signed by you. A reply comes back to you. Its first step asks the firm to add the people who should get our emails. The list then shows who it went to and when.
+5. **Rotate** gives a link a new address and kills the old one. Rotating the firm's own link also kills the link in every email the firm already has. Send the new link after a Rotate. **Turn off** is the kill switch for that link. The firm gets "This link is no longer active" on it.
+6. **Turned off** lists every link that is gone. Each shows the day it was made, the day it ended, and who ended it. A link made before the firm's name was in addresses still works. Rotate it to get an address with the name.
 
 ## What the firm sees
 

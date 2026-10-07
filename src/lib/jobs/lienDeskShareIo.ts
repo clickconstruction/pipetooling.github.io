@@ -1,5 +1,6 @@
 import { FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
+import { groupLegalPortalLinks, legalLinkAddress, parseLegalPortalLinks } from '../legal/legalPortalLinks'
 import { fetchActiveUsers } from '../people/fetchActiveUsers'
 import type { LienStatusPayload } from '../../../supabase/functions/_shared/lienDeskStatus'
 
@@ -34,22 +35,24 @@ export async function fetchLienSharePeople(): Promise<LienSharePerson[]> {
 }
 
 /**
- * The firm's live portal link (one active firm, one live link), or null when there is none yet. Hash-only at
- * rest (punch list #85, item 22): once the office can no longer read the token, a live link comes back with
- * `url: null`, and the share panel says to send it from the Legal desk instead of going quiet.
+ * The firm's own live portal link, or null when there is none yet. Since v2.4750 the address is read back through
+ * `list_legal_portal_links` (the office's list; the key sits in Vault, never in the table), so the share panel can copy
+ * it again. Before that RPC is live, or when Vault cannot give the key back, a live link comes back with `url: null`
+ * and the panel says to send it from the Legal desk instead of going quiet.
  */
 export async function fetchFirmPortalUrl(origin: string): Promise<{ firmName: string; url: string | null } | null> {
   const { data: firm, error: firmErr } = await db.from('legal_firms').select('id, name').eq('active', true).order('created_at').limit(1).maybeSingle()
   if (firmErr || !firm) return null
   const firmId = (firm as { id: string }).id
-  const live = (cols: string) => db.from('legal_portal_links').select(cols).eq('firm_id', firmId).is('revoked_at', null).order('created_at', { ascending: false }).limit(1)
-  // The raw token while the table still gives it to the office; else only that a link is live.
-  let res: { data: unknown; error: unknown } = await live('id, token, created_at')
-  if (res.error) res = await live('id, created_at')
-  const row = (res.data as Array<{ token?: string | null }> | null)?.[0]
-  if (res.error || !row) return null
   const firmName = ((firm as { name: string | null }).name ?? '').trim() || 'the firm'
-  return { firmName, url: row.token ? `${origin}/legal?t=${row.token}` : null }
+  const { data, error } = await db.rpc('list_legal_portal_links', { p_firm_id: firmId })
+  const rows = error ? null : parseLegalPortalLinks(data)
+  if (!rows) {
+    const live = await db.from('legal_portal_links').select('id').eq('firm_id', firmId).is('revoked_at', null).limit(1)
+    return live.error || !(live.data ?? []).length ? null : { firmName, url: null }
+  }
+  const own = groupLegalPortalLinks(rows).firm
+  return own ? { firmName, url: legalLinkAddress(own, origin) } : null
 }
 
 async function fnErrorMessage(e: unknown, fallback: string): Promise<string> {

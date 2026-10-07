@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { legalPortalAddress } from '../_shared/legalPortalAddress.ts'
 import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalNowTriggerOf, legalPageHtml, legalTriggerSendsNow, legalWrapHtml } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
@@ -98,9 +99,10 @@ async function noteSend(admin: SupabaseClient, r: Recipient, result: { success: 
   await admin.from('legal_firm_recipients').update(patch).eq('id', r.id)
 }
 
+// The firm's own link, as the office's list shows it (v2.4750: my.clickplumbing.com/<firm>-<tail> for a slug key).
 function portalLink(token: string | null): string {
   const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
-  return token ? `${origin}/legal?t=${token}` : origin
+  return token ? legalPortalAddress(origin, token) : origin
 }
 
 function wrap(bodyHtml: string, unsub: string): string {
