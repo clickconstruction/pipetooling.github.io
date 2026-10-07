@@ -2,7 +2,7 @@
 name: "The schedule's PR 4: what if and before the job, as tables"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 4; The tables (What if, and before the job)
 branch: the plan on spike/schedule-pr4-plan (from origin/spike/gc-mode at 897021a58); the migration from origin/main when the PR is cut, after PR 3 (#4827) is on main
-status: plan 2026-10-07 by Helper 1 at the lead's ask; the lead's go the same day on the three answers and the three calls as picked. Cut from main at d21075a00 as #4835 (v2.4816), with the stamp 20261007235500, past three claims not yet merged (20261007230000, 20261007234000, 20261007235000) on purpose. The tables in SCHEDULE_REAL_BUILD.md are amended to match. Not applied: the lead pushes it after PR 3's, from a clean checkout, and opens the types PR.
+status: plan 2026-10-07 by Helper 1 at the lead's ask; the lead's go the same day on the three answers and the three calls as picked. Cut from main at d21075a00 as #4835 (v2.4816), with the stamp 20261007235500, past three claims not yet merged (20261007230000, 20261007234000, 20261007235000) on purpose. The tables in SCHEDULE_REAL_BUILD.md are amended to match. Not applied: the lead pushes it after PR 3's, from a clean checkout, and opens the types PR. Paused 2026-10-07 for the handoff: see Status at the end.
 ---
 
 # The schedule's PR 4: what if and before the job, as tables
@@ -397,3 +397,23 @@ These are what the SQL above does that *The tables* does not say, or says anothe
 4. Add the migration, its doc, the release note (infra, dev, two bullets) and the fragment.
 5. Open the PR with auto-merge, and put the amendment to *The tables* on a spike branch beside it.
    The lead pushes it after PR 3's from a clean checkout and opens the types PR. I never apply it.
+
+## Status
+
+Stopped 2026-10-07 at the owner's pause, for the handoff.
+- **The PR.** PR 4 is #4835 on branch `claude/gc-schedule-pr4-what-if-before`: one commit, 3b6416177, cut from main at d21075a00.
+  - It is open and its CI passed.
+  - Auto-merge is turned off and it is in no merge queue, so it cannot merge while nobody is here to push its migration.
+- **Claimed:** the stamp `20261007235500` (`supabase/migrations/20261007235500_gc_schedule_what_if_and_before.sql`) and the version v2.4816.
+- **Built:**
+  - the migration, this plan's SQL with v2.4816 filled in;
+  - its doc, `docs/migrations/20261007235500_gc_schedule_what_if_and_before.md`, with the five verify steps and a status line;
+  - the release note `src/content/releaseNotes/v2.4816.ts` and the fragment `docs/recent-features/v2.4816.md`.
+
+  `scripts/check-migrations.sh`, the release notes test, and eslint and tsc on the note all passed. The amendment to *The tables* in `SCHEDULE_REAL_BUILD.md` is c17b0e1d9, under this commit.
+- **Left, in order:**
+  1. Check the stamp is still after main's newest migration and after every claim not yet merged. If a later stamp has landed, renumber PR 4 from a clean commit: the file, its doc's first line and the fragment's two paths, claimed again with `npm run claim -- --migration`.
+  2. Re-arm with `gh pr merge 4835 --auto`.
+  3. After it merges, push it with `supabase db push` from a clean checkout. It goes after PR 3's `20261007220000`, which the lead was pushing when PR 4 was cut.
+  4. Run the doc's five verify steps, record them in its status, and open the types PR.
+- **Not started:** the schedule's PR 5 plan, the RPCs. It owes the two refusals the lead named on 2026-10-07. The template save refuses a schedule with nothing that can be drawn on another job, before the table's non-empty check would. It also words a weeks under one, from a substantial completion planned before the first start.
