@@ -29,9 +29,8 @@ import {
 import { customerBillingEmail, effectiveInvoiceParty, type EffectiveBillParty } from '../../lib/jobs/billToParty'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../../lib/physicalInvoiceDocumentForBilledInvoice'
-import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
-import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
-import { parseStripeInvoiceDetailsResponse } from '../../lib/stripeInvoiceDetailsResponse'
+import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
+import { fetchStripeInvoiceFacts, type StripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
 import { buildDemandLetterPacket, exhibitKind, exhibitLabels, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { LienRulesDoor } from './LienRulesDoor'
@@ -39,7 +38,7 @@ import { lienRuleHref } from '../../lib/jobs/lienRuleCites'
 import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
 import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
-import { noticeInvoiceDocs } from '../../lib/jobs/noticeInvoiceEnclosure'
+import { noticeInvoiceDocs, unpaidBilledInvoices } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
@@ -70,7 +69,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -96,11 +95,6 @@ function todayYmdLocal(): string {
 }
 
 /** A Stripe unix timestamp as a company-calendar day (v2.3445). */
-function unixToAppYmd(sec: number | null | undefined): string | null {
-  if (!sec || !Number.isFinite(sec)) return null
-  return new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(sec * 1000))
-}
-
 /** "Invoice #867-2608180928, as sent August 18, 2026" (v2.3429). */
 function exhibitATitle(invoiceNumber: string, sentYmd: string): string {
   return `Invoice ${invoiceNumber}${sentYmd ? `, as sent ${demandDate(sentYmd)}` : ''}`
@@ -222,7 +216,7 @@ export default function LienInstrumentsModal({
   // v2.3425 — the letter reads the bill: the full job (fixtures for the
   // invoice document), what Stripe rendered per hosted invoice, the payer rows.
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(null)
-  const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, { invoiceNumber: string | null; lines: { description: string; quantity: number | null; amount: number }[]; dueYmd: string | null }>>({})
+  const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, StripeInvoiceFacts>>({})
   const [payerRows, setPayerRows] = useState<Record<string, { name: string; address: string; email: string }>>({})
   const [addressTouched, setAddressTouched] = useState(false)
   // v2.3429 — the exhibits: the signed agreement when the job has one, and the two switches.
@@ -407,37 +401,29 @@ export default function LienInstrumentsModal({
   const effJob = fullJob && job && fullJob.id === job.id ? fullJob : job
   const demandable = useMemo(() => (effJob ? demandableInvoices(effJob) : []), [effJob])
 
-  // What Stripe rendered for each hosted bill: the number the customer saw and the lines as they saw them.
+  // What Stripe rendered for each hosted bill: the number the customer saw, the day it was due and the lines as they saw them —
+  // for the demand letter's bills and, since v2.4852, the notice's enclosed bills too (`fetchStripeInvoiceFacts`, shared with the run).
+  const hostedIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const i of demandable) if ((i.stripe_invoice_id ?? '').trim()) ids.add(i.id)
+    if (effJob) for (const i of unpaidBilledInvoices(effJob)) if ((i.stripe_invoice_id ?? '').trim()) ids.add(i.id)
+    return Array.from(ids)
+  }, [demandable, effJob])
   useEffect(() => {
     if (!open || !job) return
-    const hosted = demandable.filter((i) => (i.stripe_invoice_id ?? '').trim() && !stripeByInvoice[i.id])
+    const hosted = hostedIds.filter((id) => !stripeByInvoice[id])
     if (hosted.length === 0) return
     let cancelled = false
     void (async () => {
-      const token = await getAccessTokenForEdgeFunctions().catch(() => null)
-      if (!token || cancelled) return
-      const mode = authRole === 'dev' ? getBillingStripeModePref() : 'live'
-      await Promise.all(
-        hosted.map(async (inv) => {
-          try {
-            const { data } = await supabase.functions.invoke('get-stripe-invoice-details', {
-              body: { jobs_ledger_invoice_id: inv.id, ...stripeModeInvokeBody(mode) },
-              headers: { Authorization: `Bearer ${token}` },
-            })
-            const parsed = parseStripeInvoiceDetailsResponse(data as Record<string, unknown> | null)
-            if (!parsed || cancelled) return
-            setStripeByInvoice((prev) => ({ ...prev, [inv.id]: { invoiceNumber: parsed.invoice_number, lines: parsed.lines, dueYmd: unixToAppYmd(parsed.due_date) } }))
-          } catch {
-            // the statement falls back to the app's own document
-          }
-        }),
-      )
+      const facts = await fetchStripeInvoiceFacts(hosted, authRole === 'dev' ? getBillingStripeModePref() : 'live')
+      if (cancelled || Object.keys(facts).length === 0) return
+      setStripeByInvoice((prev) => ({ ...prev, ...facts }))
     })()
     return () => {
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, job?.id, demandable.map((i) => i.id).join(','), authRole])
+  }, [open, job?.id, hostedIds.join(','), authRole])
   const selectedInvoices = useMemo(
     () => demandable.filter((i) => selectedInvoiceIds.has(i.id)),
     [demandable, selectedInvoiceIds],
@@ -548,7 +534,7 @@ export default function LienInstrumentsModal({
   }, [effJob, selectedInvoices, debtorParty, payerRows, gcEmail, customerAddress])
 
   // The unpaid bills behind the § 53.056 notice (v2.3437) — every one, not just the demand's selection.
-  const noticeDocs = useMemo(() => (effJob ? noticeInvoiceDocs(effJob) : []), [effJob])
+  const noticeDocs = useMemo(() => (effJob ? noticeInvoiceDocs(effJob, stripeByInvoice) : []), [effJob, stripeByInvoice])
 
   const sources = useMemo<DemandInvoiceSource[]>(() => {
     if (!effJob) return []

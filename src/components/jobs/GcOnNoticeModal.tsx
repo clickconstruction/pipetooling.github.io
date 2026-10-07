@@ -35,6 +35,7 @@ import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { claimDeltaWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { lookLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
+import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
 import { eligibleForUseAll, propertyKey, readsAs, type OwnerToConfirmRow } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/ownerConfirmWrite'
@@ -1230,6 +1231,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       {runOpen && data ? (
         <LienDeskRunModal
           notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob })}
+          stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

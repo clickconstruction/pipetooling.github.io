@@ -11,7 +11,8 @@ import type { Database } from '../../types/database'
 import { buildPhysicalInvoiceEmailBodies, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../physicalInvoiceDocumentForBilledInvoice'
 import type { DemandExhibitInput } from '../jobsDocuments/demandLetterPacket'
-import { demandDate, fallbackInvoiceNumber } from '../jobsDocuments/demandLetter'
+import { demandDate, exhibitInvoiceDocument, fallbackInvoiceNumber } from '../jobsDocuments/demandLetter'
+import type { StripeInvoiceFacts } from '../stripeInvoiceFacts'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -78,19 +79,46 @@ export function payPageDescription(doc: Pick<PhysicalInvoiceDocument, 'serviceLi
   return out.length > PAY_PAGE_DESCRIPTION_MAX ? `${out.slice(0, PAY_PAGE_DESCRIPTION_MAX - 1).trimEnd()}…` : out
 }
 
-/** The document for each unpaid bill; a bill the job cannot render is skipped, never faked. */
-export function noticeInvoiceDocs(job: JobWithDetails): NoticeInvoiceDoc[] {
+/** Stripe's number as a bill prints it: "#878-2609161138"; '' when Stripe gave none. */
+export function stripeBillNumber(facts: Pick<StripeInvoiceFacts, 'invoiceNumber'> | null | undefined): string {
+  const n = (facts?.invoiceNumber ?? '').trim().replace(/^#/, '')
+  return n ? `#${n}` : ''
+}
+
+/**
+ * The enclosed invoice as the paper prints it (v2.4852): Stripe's own number and due day when
+ * the office has them (the app's document knows only the bill's position, "#0" for the first,
+ * and falls back to the send day), never "#0" on the page, and no Scope when the memo under
+ * the work is the mailing note ("Paper checks can be sent to…") rather than the work — the
+ * pay page already reads it that way (`payPageDescription`). A bill whose only words are that
+ * note keeps them: a blank invoice is worse.
+ */
+export function enclosedInvoiceDocument(doc: PhysicalInvoiceDocument, inv: Pick<JobsLedgerInvoice, 'sequence_order'>, hcp: string | null | undefined, facts: Pick<StripeInvoiceFacts, 'invoiceNumber' | 'dueYmd'> | null | undefined): PhysicalInvoiceDocument {
+  const shown = exhibitInvoiceDocument(doc, { invoiceNumber: stripeBillNumber(facts), dueYmd: facts?.dueYmd ?? '' })
+  const number = shown.invoiceNumberDisplay !== '—' && shown.invoiceNumberDisplay !== '#0' ? shown.invoiceNumberDisplay : fallbackInvoiceNumber(inv, hcp)
+  const realLines = (shown.serviceLines ?? []).some((l) => (l.description ?? '').trim() && !payLineIsNotTheWork(l.description ?? ''))
+  const scope = payLineIsNotTheWork(shown.narrativeTitle) && realLines ? '' : shown.narrativeTitle
+  return { ...shown, invoiceNumberDisplay: number, narrativeTitle: scope }
+}
+
+/**
+ * The document for each unpaid bill; a bill the job cannot render is skipped, never faked.
+ * `stripeFacts` by invoice id (`fetchStripeInvoiceFacts`) puts Stripe's number and due day on
+ * the paper; without them the app's own document prints, its number the fallback.
+ */
+export function noticeInvoiceDocs(job: JobWithDetails, stripeFacts?: Readonly<Record<string, Pick<StripeInvoiceFacts, 'invoiceNumber' | 'dueYmd'>>>): NoticeInvoiceDoc[] {
   const out: NoticeInvoiceDoc[] = []
   for (const { inv, open } of unpaidBilledInvoicesWithOpen(job)) {
-    let doc: PhysicalInvoiceDocument | null = null
+    let built: PhysicalInvoiceDocument | null = null
     try {
-      doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv)
+      built = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv)
     } catch {
-      doc = null
+      built = null
     }
-    if (!doc) continue
-    // The number the bill shows (never "#0" for the primary bill) and the day it went out (v2.3445).
-    const number = doc.invoiceNumberDisplay !== '—' && doc.invoiceNumberDisplay !== '#0' ? doc.invoiceNumberDisplay : fallbackInvoiceNumber(inv, job.hcp_number)
+    if (!built) continue
+    const doc = enclosedInvoiceDocument(built, inv, job.hcp_number, stripeFacts?.[inv.id])
+    // The number the bill shows — Stripe's when known, never "#0" for the primary bill — and the day it went out (v2.3445).
+    const number = doc.invoiceNumberDisplay
     const billed = calendarYmdInAppTzFromIso((inv.billed_at ?? inv.sent_to_customer_at ?? '') as string)
     out.push({
       invoiceId: inv.id,
