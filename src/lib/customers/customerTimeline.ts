@@ -28,7 +28,8 @@
  * - **Folds.** A job's crew days fold into one card until an office card on that job or a pause
  *   of more than two weeks. Three or more notes one person wrote on one day fold into one card
  *   (the words once when they are the same words); so do three or more bills billed or sent on
- *   one day, and the same notice step on two or more jobs.
+ *   one day, three or more jobs made or paid in full on one day, and the same notice step on
+ *   two or more jobs.
  * - **Owed now** is the bill-truth kernel's: open billed rows (job shells included), clamped
  *   once each, Collections in, Uncollectible out. **Owed on a past day** replays each bill:
  *   open from its billed day, less its linked payments as they landed.
@@ -1061,6 +1062,7 @@ export function buildCustomerTimeline(input: CustomerTimelineInput, todayYmd: st
     let key: string | null = null
     if ((d.kind === 'note' || d.kind === 'fieldNote') && d.author) key = `${d.ymd}|${d.kind}|${d.author}`
     else if (d.kind === 'bill' || d.kind === 'billSent') key = `${d.ymd}|${d.kind}`
+    else if ((d.kind === 'start' || d.kind === 'closed') && d.jobId) key = `${d.ymd}|${d.kind}|${d.title}`
     else if (d.kind === 'lien' && d.foldKey) key = `${d.ymd}|lien|${d.foldKey}`
     if (!key) continue
     const list = groups.get(key) ?? []
@@ -1086,6 +1088,22 @@ export function buildCustomerTimeline(input: CustomerTimelineInput, todayYmd: st
         quote: sameWords ? first.quote : null,
         lines: sameWords ? [`the same words on ${jobsCovered.length} jobs`] : [],
         items: sameWords ? [jobsCovered.map((id) => jobRef(id)).join(', ')] : list.map((d) => `${jobRef(d.jobId)}: “${squash(d.quote, 110)}”`),
+      })
+    } else if (first.kind === 'start' || first.kind === 'closed') {
+      const payer = (jobId: string | null) => (jobId ? (workById.get(jobId)?.out.payerName ?? null) : null)
+      foldCards.push({
+        ...base,
+        title:
+          first.kind === 'closed'
+            ? `${list.length} jobs paid in full`
+            : first.title === 'First record'
+              ? `${list.length} jobs first on record`
+              : `${list.length} job cards made`,
+        by: null,
+        amount: null,
+        quote: null,
+        lines: [],
+        items: list.map((d) => [jobRef(d.jobId), ...d.lines, payer(d.jobId) ? `${payer(d.jobId)} pays` : ''].filter(Boolean).join(' · ')),
       })
     } else if (first.kind === 'lien') {
       foldCards.push({

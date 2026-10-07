@@ -294,6 +294,7 @@ import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
+import StagesCustomerTimelineChips from './StagesCustomerTimelineChips'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
@@ -3511,6 +3512,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     stageLine={phoneStageLine}
                   />
                 ) : null}
+                <StagesCustomerTimelineChips query={stagesSearchQuery} customers={customers} />
                 {paidSearchHint ? (
                   <div
                     role="status"

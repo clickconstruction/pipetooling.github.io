@@ -15,6 +15,14 @@ The timeline shows one customer's whole story on one page. Every job is a colore
 
 Press {{button:outline|Profile}} to go back to the customer's contact details and job list.
 
+There are three more ways in:
+
+- Click the GC's name under a job on the Pipeline. The GC's timeline opens with every job they are the GC on.
+- Type a customer's name in the Pipeline search. A chip like {{chip:blue|Ridgeway Builders · timeline ›}} appears above the board. Press it.
+- On a customer's own page, press {{button:outline-blue|Timeline}} beside {{button:outline|✎ Edit customer}}.
+
+Press {{button:outline-blue|Copy link}} in the timeline to copy a link to it. The link opens the Pipeline with this timeline on top.
+
 ## Read the bar at the top
 
 The bar stays in place while you scroll. It shows four numbers.
@@ -45,8 +53,8 @@ A busy customer can have more open jobs than there is room for. The four jobs th
 Cards on the left are what happened with the customer. They are bills, payments, promises, statements, lien notices and office notes. Cards on the right are what we put in. They are crew hours, field notes, reports, tests and supply-house tickets.
 
 - A payment says how many days after the bill it came. It also says when it was deposited and who paid.
-- A job's crew days fold into one card until the office does something on that job.
-- When someone writes the same note on many jobs, the notes fold into one card.
+- A job's crew days fold into one card until the office does something on that job. Press **show the days ›** to see each day and who worked it.
+- When someone writes the same note on many jobs, the notes fold into one card. So do many bills or many new jobs on one day.
 - The space between two days grows with the time that passed. A long stretch with nothing open folds to one quiet line.
 
 Press a job's name on any card to open that job.
