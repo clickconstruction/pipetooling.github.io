@@ -13,7 +13,8 @@
  *
  * - **Whose jobs.** Every job where the customer is the payer (`customer_id`) or the GC
  *   (`gc_customer_id`). On a GC's job somebody else may pay; every card on it names them.
- * - **A job's name** is its street when the job name only repeats the customer's name.
+ * - **A job's name** is its street when the job name only repeats a name the timeline already
+ *   shows: the customer's, the payer's or the GC's (jobs are often named after their GC).
  * - **First seen.** A job starts at the earliest thing on record: the card, a status move, a
  *   bill, a payment, a crew day, a ticket, a note. A job whose records start more than a week
  *   before its card was made opens on *First record* (imported work), not *Job card made*.
@@ -70,6 +71,8 @@ export type TimelineJobInput = {
   /** `jobs_ledger.customer_name`: who the job bills. */
   customerName: string | null
   gcCustomerId: string | null
+  /** The GC's customer name, when the job has a GC. */
+  gcName?: string | null
   collectionsAt: string | null
   collectionsNote: string | null
   uncollectibleAt: string | null
@@ -433,18 +436,29 @@ function squash(text: string | null | undefined, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1).trimEnd()}…` : s
 }
 
-function normalizedName(s: string | null | undefined): string {
-  return (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '')
+function nameWords(s: string | null | undefined): string[] {
+  return (s ?? '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length >= 2)
 }
 
-/** The job's words: the street when the job name only repeats the customer's name. */
-export function timelineJobLabel(jobName: string | null, jobAddress: string | null, customerName: string): string {
+/**
+ * The job's words: the street when every word of the job name is a word of a name the timeline
+ * already shows (the customer, the payer, the GC). 'Dana Lee' on Dana Lee's job, 'Ridgeway' on
+ * Ridgeway Builders' job, read as their street.
+ */
+export function timelineJobLabel(jobName: string | null, jobAddress: string | null, relatedNames: ReadonlyArray<string | null | undefined>): string {
   const name = (jobName ?? '').trim()
   const street = (jobAddress ?? '').split(',')[0]?.trim() ?? ''
-  const n = normalizedName(name)
-  const c = normalizedName(customerName)
-  const repeatsCustomer = !n || (c.length > 0 && (c.includes(n) || n.includes(c)))
-  if (repeatsCustomer && street) return street
+  const words = nameWords(name)
+  const repeats =
+    words.length === 0 ||
+    relatedNames.some((other) => {
+      const known = new Set(nameWords(other))
+      return known.size > 0 && words.every((w) => known.has(w))
+    })
+  if (repeats && street) return street
   return name || street || 'job'
 }
 
@@ -708,7 +722,7 @@ export function buildCustomerTimeline(input: CustomerTimelineInput, todayYmd: st
     let initialState: RawState = firstMove ? railStateOf(firstMove.fromStatus) : railStateOf(status)
     if (initialState === 'paid') initialState = invs.some((i) => i.billedAt) ? 'billed' : 'working'
     const imported = cardMade != null && timelineDaysBetween(firstSeen, cardMade) > TIMELINE_IMPORTED_AFTER_DAYS
-    const label = timelineJobLabel(j.jobName, j.jobAddress, customerName)
+    const label = timelineJobLabel(j.jobName, j.jobAddress, [customerName, j.customerName, j.gcName])
     works.push({
       input: j,
       moves,

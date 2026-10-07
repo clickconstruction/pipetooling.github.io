@@ -295,6 +295,15 @@ button:focus-visible {
   --border-indigo: #a5b4fc;
   --border-indigo-soft: #c7d2fe;
   --border-violet: #c4b5fd;
+  /* Customer timeline (punch list #97): one color per job rail and job tag. Jobs open at once never share one. */
+  --timeline-job-0: #0d9488;
+  --timeline-job-1: #4f46e5;
+  --timeline-job-2: #ea580c;
+  --timeline-job-3: #db2777;
+  --timeline-job-4: #2563eb;
+  --timeline-job-5: #16a34a;
+  --timeline-job-6: #9333ea;
+  --timeline-job-7: #ca8a04;
 }
 
 :root[data-theme='dark'] {
@@ -410,6 +419,14 @@ button:focus-visible {
   --border-indigo: #3730a3;
   --border-indigo-soft: #312e81;
   --border-violet: #5b21b6;
+  --timeline-job-0: #2dd4bf;
+  --timeline-job-1: #a5b4fc;
+  --timeline-job-2: #fb923c;
+  --timeline-job-3: #f472b6;
+  --timeline-job-4: #60a5fa;
+  --timeline-job-5: #4ade80;
+  --timeline-job-6: #c084fc;
+  --timeline-job-7: #facc15;
 }
 
 [data-theme='light']:not(:root) {

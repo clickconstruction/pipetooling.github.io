@@ -215,11 +215,18 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
   type MercuryRow = { id: string; posted_at: string | null; counterparty_name: string | null }
   type UserRow = { id: string; name: string | null; role: string | null }
   type TemplateRow = { id: string; name: string | null }
-  const [mercury, users, templates] = await Promise.all([
+  const gcIds = [...new Set(jobsRaw.map((j) => j.gc_customer_id).filter((id): id is string => !!id && id !== customerId))]
+  type GcRow = { id: string; name: string | null }
+  const [mercury, users, templates, gcs] = await Promise.all([
     readPart<MercuryRow>('deposits', mercuryIds, (b) => supabase.from('mercury_transactions').select('id, posted_at, counterparty_name').in('id', b)),
     readPart<UserRow>('note authors', userIds, (b) => supabase.from('users').select('id, name, role').in('id', b)),
     readPart<TemplateRow>('report names', templateIds, (b) => supabase.from('report_templates').select('id, name').in('id', b)),
+    readPart<GcRow>('GC names', gcIds, (b) => supabase.from('customers').select('id, name').in('id', b)),
   ])
+  const gcNameById = new Map(gcs.rows.map((g) => [g.id, g.name]))
+  for (const j of jobs) {
+    if (j.gcCustomerId) j.gcName = j.gcCustomerId === customerId ? (customer.name ?? null) : (gcNameById.get(j.gcCustomerId) ?? null)
+  }
   const depositById = new Map(mercury.rows.map((m) => [m.id, m]))
   const userById = new Map(users.rows.map((u) => [u.id, u]))
   const templateById = new Map(templates.rows.map((t) => [t.id, t]))
@@ -320,6 +327,7 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
     ['crew hours', clock],
     ['field reports', reports],
     ['report names', templates],
+    ['GC names', gcs],
     ['test reports', tests],
     ['supply tickets', allocs],
     ['promises', promises],
