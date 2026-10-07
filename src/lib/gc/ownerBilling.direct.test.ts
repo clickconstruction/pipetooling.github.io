@@ -43,7 +43,7 @@ import { money } from './words'
 const job = (s: GcState, id: string) => s.projects.find((p) => p.id === id)!
 const cents = (n: number) => Math.round(n * 100) / 100
 /** A change order to ask about, owned by no trade until a case says so. */
-const co: ChangeOrder = { id: 'co-9', number: 9, description: 'A test change', reason: 'owner', schedule: 'none', packageId: null, cost: 1000, price: 1100, status: 'signed', sentOn: '2026-09-28', answeredOn: '2026-10-01', pctDone: 0 }
+const co: ChangeOrder = { id: 'co-9', number: 9, description: 'A test change', reason: 'owner', schedule: 'none', packageId: null, status: 'signed', sentOn: '2026-09-28', answeredOn: '2026-10-01' }
 /** A draft pay application, written out: two trades and the fee, half of one trade new this month. */
 const draft: OwnerPayApp = {
   number: 4,
@@ -145,7 +145,6 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
   })
 
   it('spreads our costs and fee into the trades so every total stays the same', () => {
-    const s = initialGcState()
     const lines = [{ id: 'a', worth: 100, doneBefore: 0, thisMonth: 50, doneToDate: 50 }, { id: 'b', worth: 300, doneBefore: 100, thisMonth: 50, doneToDate: 150 }, { id: 'gc', worth: 40, doneBefore: 10, thisMonth: 10, doneToDate: 20 }, { id: 'fee', worth: 20, doneBefore: 5, thisMonth: 5, doneToDate: 10 }, { id: 'co-1', worth: 30, doneBefore: 0, thisMonth: 15, doneToDate: 15 }]
     expect([spreadMarkup(lines).map((l) => [l.id, cents(l.worth), cents(l.doneBefore), cents(l.doneToDate), cents(l.thisMonth), cents(l.tradeWorth), cents(l.ourShare)]), markupOnTop(lines), OUR_COST_LINE_IDS]).toEqual([
       [
@@ -188,7 +187,6 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
   })
 
   it('keeps a draft as it goes, and says what the architect left out before', () => {
-    const s = initialGcState()
     expect([ownerPayAppToSend(draft, '2026-10-25'), ownerPayAppHasWork(draft), ownerPayAppHasWork({ ...draft, due: 0.4 }), cents(ownerCarriedForward(draft)), cents(ownerCarriedForward({ ...draft, due: draft.due + 1200 }))]).toEqual([
       {
         number: 4,
@@ -271,7 +269,6 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
   })
 
   it('writes money in whole dollars', () => {
-    const s = initialGcState()
     expect([money(1234.5), money(0), money(288878.51)]).toEqual(['$1,235', '$0', '$288,879'])
   })
 })
