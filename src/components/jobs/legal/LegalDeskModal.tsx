@@ -78,6 +78,8 @@ export type LegalDeskModalProps = {
   onClose: () => void
   /** Every job the board has in Collections (all payers). */
   collectionsJobs: JobWithDetails[]
+  /** Punch list #94 (v2.4794): the Collections jobs the office gave up on — the rail's *Given up on* group, never released to the firm. */
+  uncollectibleJobs?: JobWithDetails[]
   /** The board still fetching the billed/Collections scope — show a wait, not an empty rail. */
   jobsLoading?: boolean
   contractCoverage: ReadonlyMap<string, JobContractCoverage>
@@ -212,7 +214,7 @@ function daysAgo(iso: string | null | undefined, todayYmd: string): number | nul
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
+  const { open, onClose, collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, overlayZIndex = 760 } = props
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
   const todayYmd = todayYmdInAppTz()
@@ -221,6 +223,11 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const accounts = useMemo(
     () => sortAccountsByNet(groupCollectionsByPayer(collectionsJobs, contractCoverage, todayYmd), (a) => quickNet(a.balance, fee)),
     [collectionsJobs, contractCoverage, todayYmd, fee],
+  )
+  // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
+  const givenUpAccounts = useMemo(
+    () => sortAccountsByNet(groupCollectionsByPayer(uncollectibleJobs, contractCoverage, todayYmd), (a) => quickNet(a.balance, fee)),
+    [uncollectibleJobs, contractCoverage, todayYmd, fee],
   )
   const [selectedKey, setSelectedKey] = useState<LegalPayerKey | null>(null)
   const [tab, setTab] = useState<Tab>('account')
@@ -247,7 +254,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     if (initialTab) setTab(initialTab)
   }, [open, initialPayerKey, initialTab, accounts])
 
-  const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? null
+  const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? givenUpAccounts.find((a) => a.key === selectedKey) ?? null
+  const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
   const holdOverrides = useMemo(() => heldOverridesOf(matter), [matter])
   const { packet, loading, failed, reload } = useLegalPacketData(selected, users, open && selected != null, holdOverrides, fee)
@@ -264,6 +272,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
     { cap: 'Needs a dev’s eyes', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
     { cap: 'With the firm', list: accounts.filter((a) => matterIsWithFirm(legal?.byPayerKey.get(a.key))) },
     { cap: 'Closed', list: accounts.filter((a) => matterIsClosed(legal?.byPayerKey.get(a.key))) },
+    { cap: 'Given up on', list: givenUpAccounts },
   ]
 
   const firstJob = selected?.jobs[0] ?? null
@@ -495,7 +504,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const setFirmPaused = async (paused: boolean) => { await run(paused ? 'Pause' : 'Resume', () => legalRpc('legal_firm_set_paused', { p_firm_id: firm?.id, p_paused: paused })) }
   const removeRecipient = async (id: string, name: string) => { await run('Remove', () => legalRpc('legal_firm_recipient_remove', { p_recipient_id: id })); showToast(`${name} removed from the firm's list.`, 'info') }
 
-  const headerActs: ReactNode = !stored ? (
+  // v2.4794: an account the office gave up on is read, never released — whatever the legal tables say.
+  const headerActs: ReactNode = selectedGivenUp ? (
+    pill('Given up on — not for the firm', 'neutral')
+  ) : !stored ? (
     <span style={{ ...MUTED, fontSize: '0.76rem' }}>Read-only until the legal tables are applied.</span>
   ) : withFirm ? (
     <>
@@ -551,7 +563,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ ...MUTED, fontSize: '0.7rem', letterSpacing: '0.06em', textTransform: 'uppercase', padding: '4px 6px 2px' }}>
               {accounts.length} account{accounts.length === 1 ? '' : 's'} · {formatLegalMoney(accounts.reduce((s, a) => s + a.balance, 0))} · by what Click would keep
             </div>
-            {accounts.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>{jobsLoading ? 'Loading Collections…' : 'Nothing is in Collections.'}</p> : null}
+            {accounts.length === 0 && givenUpAccounts.length === 0 ? <p style={{ ...MUTED, fontSize: '0.84rem', padding: 6 }}>{jobsLoading ? 'Loading Collections…' : 'Nothing is in Collections.'}</p> : null}
             {groups.map((g) =>
               g.list.length === 0 ? null : (
                 <div key={g.cap}>

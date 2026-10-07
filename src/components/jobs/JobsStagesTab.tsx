@@ -152,6 +152,8 @@ import JobBookModal from './JobBookModal'
 import LegalDeskModal from './legal/LegalDeskModal'
 import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
 import { matterIsWithFirm } from '../../lib/legal/legalMatters'
+import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
+import { payerForJob } from '../../lib/legal/legalPacket'
 import { newAskMeta, signoffStateForJob } from '../../lib/legal/legalAsks'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
@@ -4532,6 +4534,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         open={legalDesk != null}
         onClose={() => setLegalDesk(null)}
         collectionsJobs={stagesBoardLists.collectionsJobs}
+        uncollectibleJobs={stagesBoardLists.uncollectibleJobs}
         jobsLoading={!NON_PAID_SCOPES.every((sc) => cacheMergedScopes.has(sc))}
         contractCoverage={jobContractCoverageByJobId}
         users={users}
@@ -4925,6 +4928,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           saving={uncollectibleSaving}
           onCancel={closeUncollectibleConfirm}
           onConfirm={confirmUncollectible}
+          firmWarning={uncollectibleFirmWarning(legalMatters.byPayerKey.get(payerForJob(uncollectibleConfirm.job).key))}
         />
       )}
       {quickAssignJob ? (
