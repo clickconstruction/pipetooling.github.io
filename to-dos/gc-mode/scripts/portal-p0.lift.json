@@ -1,5 +1,5 @@
 {
-  "about": "The Portal lane's P0 (to-dos/gc-mode/PORTAL_REAL_BUILD.md): the trade partner portal's words and the kernels whose callees are on main, lifted to src/lib/gc word for word, no database. Rebuilt over the Board's B2-i (board-b2-i.lift.json): what B2-i placed whole counts as existing, and each shape both trim lists the union of both lifts' fields. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p0.lift.json <outDir>",
+  "about": "The Portal lane's P0 (to-dos/gc-mode/PORTAL_REAL_BUILD.md): the trade partner portal's words and the kernels whose callees are on main, lifted to src/lib/gc word for word, no database. Rebuilt over the Board's B2-i, Building's U2 and Owner Billing's O2a: what they placed whole counts as existing, and each shape P0 widens lists the union of every lift's fields on main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p0.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
   "files": [
@@ -51,7 +51,6 @@
         "PortalLookAheadWeek",
         "portalLookAhead",
         "lookAheadOwed",
-        "PAY_WITHIN_DAYS",
         "PortalPayState",
         "PortalPayRow",
         "PortalPayJob",
@@ -76,7 +75,7 @@
         "PortalWeek",
         "portalWeeks"
       ],
-      "header": "/**\n * GC mode, the real build, the Portal lane's P0: the trade partner's portal, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcPortal.ts`). What one company reads about its own asks. The readers that need the Board's,\n * Building's or the schedule's kernels wait for those lifts (to-dos/gc-mode/PORTAL_REAL_BUILD.md, Kernels that move).\n */"
+      "append": true
     },
     {
       "from": "gcLookups",
@@ -96,14 +95,13 @@
         "PortalMailGroup",
         "PartnerPerson",
         "BackCharge",
-        "ChangeOrderReason",
         "TradeChangeRequest"
       ]
     },
     {
       "to": "types.ts",
       "append": true,
-      "about": "The shapes the schedule's lifts and the Board's B2-i trimmed, written again with P0's fields added (each field word for word), the union of both lifts' lists. They replace those in types.ts.",
+      "about": "The shapes the earlier lifts trimmed, written again with P0's fields added (each field word for word): the union of every lift's list on main. They replace those in types.ts.",
       "fields": {
         "SubBid": [
           "amount",
@@ -129,19 +127,13 @@
           "declineReason",
           "contacts"
         ],
-        "Draw": [
-          "id",
-          "number",
-          "retainage",
-          "net",
-          "status",
-          "waiver"
-        ],
         "Sow": [
           "status",
           "price",
+          "retainagePct",
           "sov",
           "draws",
+          "acceptedOn",
           "sentBack",
           "sentOn",
           "backCharges",
@@ -160,6 +152,8 @@
           "bids",
           "promisesMade",
           "promisesKept",
+          "address",
+          "license",
           "portalOpenedOn",
           "msaSentOn",
           "vetting",
@@ -180,11 +174,17 @@
           "town",
           "ourBidSentOn",
           "rough",
+          "ownerContractWorth",
+          "ownerLateInterest",
+          "ownerLateFinish",
           "startedOn",
           "customerId",
           "owner",
           "customerRole",
+          "ownerBilling",
           "changeOrders",
+          "changeRequests",
+          "architect",
           "stage",
           "bidDue",
           "planSets",
@@ -192,14 +192,17 @@
           "generalConditions",
           "contingencyPct",
           "feePct",
-          "team",
-          "changeRequests",
           "closedOn",
           "schedule",
+          "team",
           "lostOn",
           "lostWhy",
           "wonBy",
+          "punch",
           "dailyLogs",
+          "submittals",
+          "weeklyReports",
+          "rfis",
           "waits",
           "scheduleSends",
           "whatIf",
@@ -209,21 +212,22 @@
           "id",
           "number",
           "description",
+          "reason",
+          "schedule",
           "packageId",
           "cost",
           "status",
           "sentOn",
           "answeredOn",
+          "tradeChange",
           "days",
-          "daysOnChart",
-          "tradeChange"
+          "daysOnChart"
         ]
       },
       "names": [
         "SubBid",
         "QuoteExclusion",
         "Invite",
-        "Draw",
         "Sow",
         "Partner",
         "PlanSet",
@@ -258,7 +262,10 @@
     "src/lib/gcMode/gcTypes.ts#ProjectContact": "types.ts",
     "src/lib/gcMode/gcTypes.ts#GcLostWhy": "types.ts",
     "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
-    "src/lib/gcMode/gcWords.ts#money": "words.ts"
+    "src/lib/gcMode/gcWords.ts#money": "words.ts",
+    "src/lib/gcMode/gcTypes.ts#Draw": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ChangeOrderReason": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#OwnerBilling": "types.ts"
   },
   "standIns": {
     "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
