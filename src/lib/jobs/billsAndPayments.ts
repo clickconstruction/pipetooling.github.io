@@ -14,8 +14,9 @@
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
 import { attributeJobPayments, type PaymentSlice } from './paymentAttribution'
-import { mercuryLinkedPaymentRow, stripeBillInvoiceForPaymentRow } from './jobFormPaymentPredicates'
+import { mercuryLinkedPaymentRow, stripeOwnsPaymentRow } from './jobFormPaymentPredicates'
 import { daysBetweenYmd, formatYmdMonthDay } from './billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /** What the bank synced about the deposit behind a bank-linked row. */
 export type MercuryDepositFacts = {
@@ -66,7 +67,9 @@ export function paymentSource(row: PaymentRow, job: JobWithDetails | null, bank?
     const word = (bank?.kind && BANK_KIND_WORDS[bank.kind]) || instrumentWord(row.payment_type) || null
     return { kind: 'bank', chip: word ? `${cap(word)} · bank deposit` : 'Bank deposit', instrument: word ?? 'deposit' }
   }
-  if (stripeBillInvoiceForPaymentRow(row, job)) {
+  // v2.4801: only a row Stripe holds a record of is Stripe's; a check Mark Paid holds until it
+  // clears sits on a Stripe bill as a hand-typed row.
+  if (stripeOwnsPaymentRow(row, job)) {
     const word = instrumentWord(row.payment_type)
     if (word && word !== 'card') return { kind: 'stripe-recorded', chip: `${cap(word)} · recorded in Stripe`, instrument: word }
     return { kind: 'stripe-card', chip: 'Card · Stripe', instrument: 'card' }
@@ -94,10 +97,12 @@ export function sourceWords(source: PaymentSource, bank?: MercuryDepositFacts | 
   }
 }
 
-/** The bill's day the pay gap is measured from: when it was sent, else when it was billed. */
+/**
+ * The bill's day the pay gap is measured from: when it was sent, else when it was billed. Both are
+ * instants, read as their day in APP_CALENDAR_TZ, not their first ten characters (the UTC date).
+ */
 export function billSentYmd(inv: Pick<JobsLedgerInvoiceRow, 'sent_to_customer_at' | 'billed_at'>): string | null {
-  const raw = (inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()
-  return raw ? raw.slice(0, 10) : null
+  return calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()) || null
 }
 
 /** Whole days from the bill going out to the money arriving; null without both dates, never negative words. */
@@ -244,7 +249,7 @@ export type BillsAndPayments = {
   slicesByBill: Map<string, PaymentSlice<PaymentRow>[]>
   /** Payments no listed bill counts: unlinked money the sent bills did not need, or linked to a bill not listed. */
   onNoBill: PaymentRow[]
-  /** Dollars of unlinked money no bill needed. */
+  /** Dollars of unlinked money no bill counts: what paid the part of the job on no bill (v2.4534) and what no bill needed. */
   surplus: number
 }
 
@@ -261,9 +266,11 @@ export function splitBillsAndPayments(
   invoices: ReadonlyArray<JobsLedgerInvoiceRow>,
   payments: ReadonlyArray<PaymentRow>,
   persistedIds?: ReadonlySet<string> | null,
+  /** The job's total (v2.4534): money that paid the part of the job on no bill stays in ③. */
+  jobTotal?: number | string | null,
 ): BillsAndPayments {
   const saved = persistedIds ? payments.filter((p) => persistedIds.has(p.id)) : payments
-  const attribution = attributeJobPayments(invoices, saved)
+  const attribution = attributeJobPayments(invoices, saved, jobTotal)
   const slicesByBill = new Map<string, PaymentSlice<PaymentRow>[]>()
   const placed = new Set<string>()
   for (const inv of invoices) {
@@ -272,5 +279,5 @@ export function splitBillsAndPayments(
     for (const s of slices) placed.add(s.payment.id)
   }
   const onNoBill = payments.filter((p) => !placed.has(p.id))
-  return { slicesByBill, onNoBill, surplus: attribution.surplus }
+  return { slicesByBill, onNoBill, surplus: Math.round((attribution.surplus + attribution.offBill) * 100) / 100 }
 }

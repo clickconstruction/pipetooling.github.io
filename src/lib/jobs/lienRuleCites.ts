@@ -34,7 +34,7 @@ export function lienRuleHref(cite: LienRuleCite): string {
   return helpGuideHref(LIEN_RULES_GUIDE_SLUG, LIEN_RULE_CITES[cite])
 }
 
-/** Where each surface's § The rules door lands: the row that matters for what is on screen. */
+/** Where each surface's § Rules door lands: the row that matters for what is on screen. */
 export const LIEN_RULES_DOOR: Record<'desk_notice' | 'desk_affidavit' | 'window_demand' | 'window_notice' | 'window_affidavit' | 'window_release', LienRuleCite> = {
   desk_notice: '§ 53.056',
   desk_affidavit: '§ 53.052',

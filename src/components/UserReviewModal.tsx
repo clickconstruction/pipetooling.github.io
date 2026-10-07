@@ -334,7 +334,7 @@ export default function UserReviewModal() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       role="dialog"
@@ -348,7 +348,7 @@ export default function UserReviewModal() {
           borderRadius: 8,
           maxWidth: 'min(100%, 48rem)',
           width: '100%',
-          maxHeight: 'min(90vh, 800px)',
+          maxHeight: 'min(90vh, 800px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',

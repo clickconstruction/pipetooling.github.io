@@ -346,3 +346,30 @@ export interface TakeoffFixtureHistoryRow {
   per_unit_cost: number
   lines: TakeoffFixtureHistoryLine[]
 }
+
+/** v2.4750: `list_legal_portal_links(p_firm_id)` — every link the firm ever had; live ones carry their key from Vault. */
+export interface ListLegalPortalLinksResult {
+  links?: Array<{
+    id: string
+    purpose: 'firm' | 'person'
+    label: string | null
+    createdAt: string
+    createdBy: string | null
+    revokedAt: string | null
+    revokedBy: string | null
+    revokeReason: 'rotated' | 'off' | 'replaced' | null
+    token: string | null
+  }>
+  error?: string
+}
+
+/** v2.4750: `create_legal_portal_link` / `rotate_legal_portal_link` / `mint_legal_portal_link` — the new link with its key, the one time it is shown by the server. Since v2.4756 both take `p_address` (null: a default one) and answer `error` with the server's words when the address is refused. */
+export interface LegalPortalLinkMintResult {
+  id?: string
+  token?: string | null
+  exists?: boolean
+  activeSince?: string
+  purpose?: 'firm' | 'person'
+  label?: string | null
+  error?: string
+}

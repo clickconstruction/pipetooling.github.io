@@ -102,11 +102,11 @@ export function HazmatFeeEditDialog({
       aria-modal="true"
       aria-label="Edit hazmat fee"
       onClick={() => (saving ? null : onClose())}
-      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem', width: 'min(560px, 100%)', maxHeight: '88vh', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem', width: 'min(560px, 100%)', maxHeight: 'min(88vh, 100%)', overflowY: 'auto', boxSizing: 'border-box', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
       >
         <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.0625rem' }}>☣ Edit hazmat fee</h3>
         <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

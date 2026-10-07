@@ -295,6 +295,8 @@ export function JobsMapCard({
   onOpenJob,
   onEditJob,
   onFocusJob,
+  hidden: hiddenFromBoard,
+  onToggleHidden,
 }: {
   /** The board's filtered rows — the map follows the search and every filter. */
   jobs: readonly JobWithDetails[]
@@ -314,8 +316,15 @@ export function JobsMapCard({
   onEditJob: (jobId: string) => void
   /** A pin (or an unmapped-job link) was clicked — light the row on the board (by number when the row is not loaded, e.g. a rewound paid job). */
   onFocusJob: (jobId: string, numberLabel: string) => void
+  /**
+   * The board holds the hidden choice (v2.4518): on a desktop a hidden card is not drawn at all and
+   * a Map button beside the search box brings it back. Left out, the card keeps the choice itself.
+   */
+  hidden?: boolean
+  onToggleHidden?: () => void
 }) {
-  const [hidden, setHidden] = useState<boolean>(() => readJobsMapHidden())
+  const [hiddenOwn, setHidden] = useState<boolean>(() => readJobsMapHidden())
+  const hidden = hiddenFromBoard ?? hiddenOwn
   const [clustered, setClustered] = useState<boolean>(() => readJobsMapClustered())
   const toggleClustered = useCallback(() => {
     setClustered((c) => {
@@ -468,11 +477,15 @@ export function JobsMapCard({
   }, [byId, selectedId])
 
   const toggleHidden = useCallback(() => {
+    if (onToggleHidden) {
+      onToggleHidden()
+      return
+    }
     setHidden((h) => {
       writeJobsMapHidden(!h)
       return !h
     })
-  }, [])
+  }, [onToggleHidden])
   const toggleSection = useCallback(
     (section: JobsMapSection) => {
       if (section === 'paid' && !paidLoaded) onLoadPaid()
@@ -522,8 +535,11 @@ export function JobsMapCard({
         scrollMarginTop: '3.25rem',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'var(--text-muted)', minWidth: 0 }}>
+      {/* Hide map holds the top right corner; the chips and links wrap under the title when the row runs out.
+          A phone has no room for two groups beside it, so there every control wraps on its own. */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? '0.5rem' : '0.875rem' }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: isMobile ? 'flex-start' : 'space-between', alignItems: 'center', gap: isMobile ? '0 0.625rem' : '0.5rem', flexWrap: 'wrap' }}>
+        <div style={isMobile ? { display: 'contents', color: 'var(--text-muted)' } : { display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'var(--text-muted)', minWidth: 0 }}>
           <PinGlyph />
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             <button
@@ -586,7 +602,7 @@ export function JobsMapCard({
             </button>
           ) : null}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.875rem', flexWrap: 'wrap' }}>
+        <div style={isMobile ? { display: 'contents' } : { display: 'flex', alignItems: 'center', gap: '0.875rem', flexWrap: 'wrap' }}>
           {!isMobile && !hidden ? <SectionChips legend={legend} show={show} paidLoaded={paidLoaded} onToggle={toggleSection} isMobile={false} /> : null}
           {!hidden && canvasPins.length > 1 && !isMobile ? (
             <button
@@ -612,10 +628,11 @@ export function JobsMapCard({
               {clustered ? 'Clustered ✓' : 'Cluster'}
             </button>
           ) : null}
-          <button type="button" onClick={toggleHidden} aria-expanded={!hidden} style={{ ...LINK_BUTTON_STYLE, minHeight: isMobile ? 44 : undefined }}>
-            {hidden ? 'Show map' : isMobile ? 'Hide' : 'Hide map'}
-          </button>
         </div>
+      </div>
+        <button type="button" onClick={toggleHidden} aria-expanded={!hidden} data-testid="jobs-map-hide" style={{ ...LINK_BUTTON_STYLE, flex: 'none', whiteSpace: 'nowrap', minHeight: isMobile ? 44 : '1.6rem' }}>
+          {hidden ? 'Show map' : isMobile ? 'Hide' : 'Hide map'}
+        </button>
       </div>
 
       {hidden ? null : (

@@ -10,32 +10,10 @@ import { supabase } from '../supabase'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
+import { OFFICE_LIKE_MERCURY_CATEGORIES, mercuryCategoryString } from '../mercuryOfficeLikeCategories'
 
-/**
- * Mercury categories that are overhead by nature, never a job's direct cost.
- * Fuel, vehicle expenses, retail, professional services, fees and government
- * services are deliberately NOT here — those can be legitimate job purchases
- * (fuel to reach the site, permits, rentals) and are a separate labelling
- * question.
- */
-export const OFFICE_LIKE_MERCURY_CATEGORIES: readonly string[] = [
-  'Software',
-  'Utilities',
-  'Insurance',
-  'InternetAndTelephone',
-  'Advertising',
-  'Medical',
-  'Education',
-]
-
-/** `mercury_transactions.mercury_category` is jsonb: usually a JSON string, occasionally null/other. */
-export function mercuryCategoryString(v: unknown): string | null {
-  if (typeof v === 'string') return v.trim() || null
-  if (v && typeof v === 'object' && 'name' in v && typeof (v as { name: unknown }).name === 'string') {
-    return ((v as { name: string }).name.trim() || null)
-  }
-  return null
-}
+// The list and the parser live in a pure module so the Tally sort suggestions read the same list.
+export { OFFICE_LIKE_MERCURY_CATEGORIES, mercuryCategoryString }
 
 export type OfficeLikeChargeRow = {
   jobId: string

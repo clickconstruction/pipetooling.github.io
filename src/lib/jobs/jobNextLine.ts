@@ -63,6 +63,8 @@ export type JobNextLineInput = {
   crew: JobCrewPosition | null
   /** The billing clause as finished words — "billed 2 days ago" / "paid today" (v2.3792); null = none. */
   billDisplay: string | null
+  /** v2.4792 (punch list #94): the row is a Collections job the office gave up on — the line is the reason, the chip UNCOLLECTIBLE. */
+  uncollectible?: { line: string } | null
   createdAt: string | null
   todayYmd: string
   now?: Date
@@ -130,6 +132,15 @@ export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
 export function jobNextLine(input: JobNextLineInput): JobNextLine {
   const { upcoming, crew, contract, billDisplay, createdAt, todayYmd } = input
   const now = input.now ?? new Date()
+  if (input.uncollectible) {
+    // Given up on: the reason is the whole story, the chip is the stamp, and nothing here needs anyone.
+    return {
+      line: input.uncollectible.line,
+      chip: { label: 'UNCOLLECTIBLE', tone: 'red', action: 'bill-row', title: 'The office gave up on collecting this job. It is in no total and on no lien clock. Tap to open the bill; Mark Paid still works if the money turns up.' },
+      needsMe: false,
+      today: upcoming?.ymd === todayYmd || !!crew?.onSiteToday,
+    }
+  }
   const parts: string[] = []
   if (upcoming) {
     const who = upcoming.assigneeNames.length ? ` · ${upcoming.assigneeNames.join(', ')}` : ''

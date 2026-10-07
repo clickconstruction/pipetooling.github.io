@@ -17,27 +17,34 @@
  * the people on it, the trail, and Close; 4a-ii reads their decisions back
  * onto the rows and builds the next revision from the rows sent back.
  */
-import { Children, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { smallMuted, btn, btnPrimary, btnQuiet, btnGreen } from './submittalTabStyles'
+import { RoadSection, type RoadStatus } from './SubmittalRoadSection'
+import { SubmittalRowsTable } from './SubmittalRowsTable'
+import { SubmittalRoomPanel } from './SubmittalRoomPanel'
+import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
+import { robotScheduleNote, scheduleReadHoldsStepOpen } from '../../lib/submittals/robotNote'
+import { buildRowCutSheet, cutSheetFileName, rowCutSheetPlan } from '../../lib/submittals/rowCutSheet'
+import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
-import { RobotOffer } from './RobotOffer'
-import { robotSeatState, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
+import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
 import { SeeWhatTheGcSees } from './SeeWhatTheGcSees'
-import { describeForReviewer } from '../../lib/submittals/seeWhatTheySee'
+import { describeForReviewer, emailedRecordLine, isRoomClosed, linkViewOf } from '../../lib/submittals/seeWhatTheySee'
 import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
 import { SubmittalProcurementPanel } from './SubmittalProcurementPanel'
 import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { SubmittalTakeoffPicker } from './SubmittalTakeoffPicker'
 import { loadTakeoffCandidates, saveTakeoffChoices, type TakeoffCandidatesLoad } from '../../lib/submittals/takeoffCandidatesIo'
 import { candidateToItemInserts, rowSplitTags, splitExplanation, type TakeoffCandidate } from '../../lib/submittals/takeoffCandidates'
-import { carryPartInsert, copyPartInsert, formatPartQty, partCallsLine, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
+import { carryPartInsert, copyPartInsert, formatPartQty, leftOutPieceKeys, partPieceKey, partsByItem, partsFromPieces, rollUpFromParts, submittedParts, type PartDraft, type SubmittalPartInsert, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { applyPartWrites, clearEnteredCallsOnParts, enterCallOnParts, insertItemParts, loadItemParts, moveProcurementLines, saveItemParts, writeRowCallFromParts } from '../../lib/submittals/itemPartsIo'
 import { foldSuggestions, foldWrites, planTakeoffRefresh, takeoffRefreshWrites } from '../../lib/submittals/refreshFromTakeoff'
 import { SplitRuleModal } from './SplitRuleModal'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { procurementItemsFrom } from '../../lib/submittals/procurementLogIo'
 import type { ProcurementItemSource } from '../../lib/submittals/procurementLog'
-import { submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
-import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
+import { showNextRevisionLoop, submittalJourney, type JourneyAction, type JourneyStage, type JourneyStageKey, stageGate } from '../../lib/submittals/submittalJourney'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_STAGE_ABOUT, SUBMITTAL_TOUR_STEPS, stageAbout, hasOpenEveryStage, tourStopForStage, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen, rememberOpenEveryStage } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -53,51 +60,61 @@ import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
-import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
-import { SubmittalPartsCell } from './SubmittalPartsCell'
 import { SubmittalHouseFileModal } from './SubmittalHouseFileModal'
-import { SubmittalFoldModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
+import { SubmittalFoldModal, SubmittalScheduleGradeModal, SubmittalTakeoffRefreshModal } from './SubmittalRefreshModals'
+import { gradePatch, planScheduleGrade } from '../../lib/submittals/gradeAgainstSchedule'
+import { openOrSaveFromStorage, saveBlobAs, saveFromStorage } from '../../lib/storageSave'
 import { matchFileToRows, pairParts, defaultFileChoice, planFileApply, readHouseFile, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
 import { SubmittalApproveAllDialog, type ApproveAllChoice } from './SubmittalApproveAllDialog'
+import { SubmittalAnswerDialog, type AnswerSave } from './SubmittalAnswerDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
 import { SubmittalShareModal } from './SubmittalShareModal'
-import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from '../../lib/submittals/submittalRoom'
+import { SubmittalResubmitChooser } from './SubmittalResubmitChooser'
+import { describeRoomLine, roomLink, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, parseRoomMessage, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { isReviewerAnswer, loadRevisionStandings, revisionStandings, type RevisionStanding } from '../../../supabase/functions/_shared/submittalRecord'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
-import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
-import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
-import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, enteredSuffix, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
-import type { ReviewerChoice } from '../../lib/submittals/reviewerPick'
+import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
+import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRows'
+import { loadBidOrderFacts, loadPartOrderWords, loadRowOrderFacts, rememberLeftOutLines, writeRowOrderOnly } from '../../lib/submittals/orderOnlyIo'
+import { planRowsAdded, planSummary, standsLine, type TakeoffPlan } from '../../lib/submittals/takeoffPicks'
+import { SubmittalTakeOffDialog } from './SubmittalTakeOffDialog'
+import { approvedPartsGoingOn, decisionsAsText, describeDecisions, resubmitCaption, resubmitChooser, resubmitHasChoice, resubmitLabel, resubmitNothingSent, resubmitOneKind, resubmitSplit, startDraftLabel, summarizeDecisions, type ResubmitRows } from '../../lib/submittals/reviewDecisions'
+import { parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
+import { CLEAR_DECISION_PATCH, enteredDecisionAt, enteredDecisionPatch, enteredEntryBody, rowsToApproveAll } from '../../lib/submittals/enteredDecisions'
+import { matchRoomPerson, type ReviewerChoice, type ReviewerSources } from '../../lib/submittals/reviewerPick'
 import { newRoomToken } from '../../lib/submittals/submittalRoom'
-import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, scheduleToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
+import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
 import { describeTask, type SubmittalTaskKind } from '../../../supabase/functions/_shared/submittalRobot'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
-import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
-import { needsReason, REASON_LABELS, type StatusOverride, COLUMN_HELP, STATUS_LABELS, STATUS_MEANINGS, type ProductStatus } from '../../lib/submittals/productStatus'
+import { buildSubmittalRows, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
+import { REASON_LABELS, type StatusOverride, STATUS_LABELS, STATUS_MEANINGS, type ProductStatus } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
 import { buildCoverModel, buildSubmittalPackage, packageFileName, packageSheets, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { fixtureKey } from '../../lib/submittals/picksFromQuotes'
-import { loadPicksForBid, setSubmittalsNotNeeded } from '../../lib/submittals/firstRevisionClient'
+import { createFirstRevisionFromPicks, loadPicksForBid, overridesByTag as overridesByTagOf, setSubmittalsNotNeeded } from '../../lib/submittals/firstRevisionClient'
 import {
   asDecision,
   asReason,
   asRevisionStatus,
   asStatus,
   describeRevision, describeWhatIsLeft,
+  buildPackageLabel,
   describeRevisionChip,
+  revisionAnsweredAt,
+  sentByEmailLine,
+  rowsOwingSheet,
+  sheetsToFollowConfirm,
   draftToItemInsert,
-  formatPages,
   formatShortDate,
   itemToPrevious,
-  needsSheet,
   parseSourceFiles,
   revisionTiles,
   serializeSourceFiles,
@@ -109,67 +126,8 @@ import {
 // The stage 1–2 tables are hand-typed until the regen chore; the untyped client keeps a checkout ahead of the push honest.
 const db = supabase as unknown as SupabaseClient
 
-const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
-const btn: CSSProperties = { padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
-const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
-const btnQuiet: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer' }
-const btnGreen: CSSProperties = { ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }
-const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontWeight: 600, whiteSpace: 'nowrap' }
-const td: CSSProperties = { padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--bg-muted)', verticalAlign: 'top', fontSize: '0.8125rem', color: 'var(--text-base)' }
-const sub: CSSProperties = { display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }
 
-type RoadStatus = 'done' | 'current' | 'waiting' | 'later'
 
-/**
- * One stage of the road (v2.4090): the numbered dot on the rail, the title, a one-line
- * summary, and the body. A done stage folds to its summary line (click the title to
- * open it); the current stage is ringed; a later stage is dashed so a first-timer sees
- * the whole road. `anchor` is the `data-tour` the strip's pills and the walkthrough jump to.
- */
-function RoadSection({ n, title, status, open, onToggle, onJump, anchor, summary, about, onHelp, last = false, always = false, children }: { n: number; title: ReactNode; status: RoadStatus; open: boolean; /** The caret: fold or unfold in place. */ onToggle: () => void; /** v2.4207 · the title: open the step and ring its controls, scrolling only when they would be off screen. */ onJump: () => void; anchor: string; summary?: ReactNode; about?: string; onHelp?: () => void; last?: boolean; /** v2.4201 · never out of reach (Procure): reads strong and draws a solid box even while the journey calls it later. */ always?: boolean; children?: ReactNode }) {
-  const dot: CSSProperties = {
-    width: 30, height: 30, borderRadius: '50%', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '0.8125rem', flexShrink: 0,
-    border: `2px solid ${status === 'done' ? '#16a34a' : status === 'current' ? '#2563eb' : status === 'waiting' ? '#d97706' : 'var(--border-strong)'}`,
-    background: status === 'current' ? '#2563eb' : 'var(--surface)',
-    color: status === 'done' ? 'var(--text-green-700)' : status === 'current' ? 'white' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)',
-  }
-  return (
-    <>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} aria-hidden>
-        <div style={dot}>{status === 'done' ? '✓' : n}</div>
-        {!last ? <div style={{ flex: 1, width: 2, minHeight: 14, background: status === 'done' ? '#16a34a' : 'var(--border)' }} /> : null}
-      </div>
-      <section data-tour={anchor} data-testid={`road-${n}`} data-status={status} data-open={open} style={{ padding: '0.15rem 0 1rem', minWidth: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', minWidth: 0 }}>
-            <button type="button" onClick={onJump} style={{ ...btnQuiet, fontSize: '0.95rem', fontWeight: 700, color: status === 'later' && !always ? 'var(--text-muted)' : 'var(--text-strong)', textAlign: 'left' }} data-testid={`road-${n}-title`}>
-              {n} · {title}
-            </button>
-            <button type="button" onClick={onToggle} aria-expanded={open} aria-label={`${open ? 'Fold' : 'Unfold'} step ${n}`} title={open ? 'Fold this step' : 'Unfold this step'} style={{ ...btnQuiet, padding: '0.1rem 0.4rem', fontSize: '0.75rem', color: 'var(--text-faint)' }} data-testid={`road-${n}-caret`}>
-              {open ? '▴' : '▾'}
-            </button>
-          </span>
-          {summary ? <span style={{ fontSize: '0.8125rem', color: status === 'done' ? 'var(--text-green-700)' : status === 'waiting' ? 'var(--text-amber-700)' : 'var(--text-muted)', minWidth: 0 }}>{summary}</span> : null}
-        </div>
-        {about ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid={`road-${n}-about`}>
-            <span>{about}</span>
-            {onHelp ? (
-              <button type="button" onClick={onHelp} title={`Walk me through step ${n}`} aria-label={`Walk me through step ${n}`} style={{ font: 'inherit', flexShrink: 0, width: 18, height: 18, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.66rem', fontWeight: 700, lineHeight: 1, padding: 0, cursor: 'pointer' }}>
-                ?
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-        {open && Children.toArray(children).some(Boolean) ? (
-          <div data-testid={`road-${n}-body`} style={{ marginTop: '0.5rem', border: `1px ${status === 'later' && !always ? 'dashed' : 'solid'} ${status === 'current' ? '#2563eb' : 'var(--border)'}`, boxShadow: status === 'current' ? '0 0 0 3px var(--bg-blue-tint)' : undefined, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {children}
-          </div>
-        ) : null}
-      </section>
-    </>
-  )
-}
 
 export type BidsSubmittalsTabProps = {
   bids: BidWithBuilder[]
@@ -214,25 +172,66 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // From the takeoff (v2.4107): the takeoff's fixtures as candidates, and the picker (build = Rev 1 from them, add = onto the draft).
   const [takeoff, setTakeoff] = useState<TakeoffCandidatesLoad | null>(null)
   const [takeoffPicker, setTakeoffPicker] = useState<'build' | 'add' | null>(null)
+  /** 2026-10-02 · by count row, what the log holds for its rows on the draft ("Ordered 09/23"): such a fixture cannot be left out. */
+  const [takeoffBought, setTakeoffBought] = useState<Map<string, string>>(() => new Map())
+  /** By count row, then by a part's takeoff key: the same for each part of a row on the draft. */
+  const [takeoffBoughtParts, setTakeoffBoughtParts] = useState<Map<string, Map<string, string>>>(() => new Map())
   // v2.4118 · "When a row can split", opened from the rows' footer.
   const [splitRuleOpen, setSplitRuleOpen] = useState(false)
   /** 2026-10-01 · a draft catching up: the takeoff's parts on its rows, a hand row folded into a fixture. */
   const [refreshOpen, setRefreshOpen] = useState(false)
+  // v2.4609 · the schedule, typed after the takeoff built the rows, grades them.
+  const [gradeOpen, setGradeOpen] = useState(false)
   const [foldFrom, setFoldFrom] = useState<{ fromId: string; intoId: string | null } | null>(null)
   const [sectionToggles, setSectionToggles] = useState<Partial<Record<JourneyStageKey, boolean>>>({})
   // Procure (v2.4083): the newest revision's rows as the log reads them, and the counts the strip's pill lights on.
   const [procItems, setProcItems] = useState<ProcurementItemSource[]>([])
-  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number } | null>(null)
+  /** 2026-10-02 · the rows approved on an earlier shared revision whose tag the newest no longer holds (`rowsThatStand`): on the log, with their parts; nowhere else. */
+  // 2026-10-03 · the newest answer on each earlier revision's rows, by revision id: a replaced draft that holds answers reads "answered", not "superseded".
+  const [answeredByRev, setAnsweredByRev] = useState<Map<string, string>>(() => new Map())
+  const [standing, setStanding] = useState<{ items: SubmittalItemRow[]; parts: SubmittalPartRow[]; revOf: Map<string, number> }>({ items: [], parts: [], revOf: new Map() })
+  const [procCounts, setProcCounts] = useState<{ released: number; ordered: number; delivered: number; late: number; steps: { gc: number; to_order: number; on_order: number; on_site: number }; gcLabel: string } | null>(null)
   const [reportSettings, setReportSettings] = useState<TestReportSettings>(() => cachedTestReportSettings())
   const companyName = reportSettings.companyName
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
-  /** 2026-10-02 · the part a Procure line opened the Edit window on; gone when the window closes. */
-  const [editFocus, setEditFocus] = useState<{ itemId: string; partId: string | null } | null>(null)
+  /** 2026-10-02 · the part a Procure line opened the Edit window on, or its house cell on a row with no parts; gone when the window closes. */
+  const [editFocus, setEditFocus] = useState<{ itemId: string; partId: string | null; house: boolean } | null>(null)
   useEffect(() => {
     if (!editing) setEditFocus(null)
   }, [editing])
+  /** 2026-10-02 · by part id, what the log holds for the parts of the row in the Edit window: an ordered part cannot be left out. */
+  const [editBought, setEditBought] = useState<Map<string, string>>(() => new Map())
   const [approvingAll, setApprovingAll] = useState(false)
+  /** 2026-10-02 · the row whose answer window is open: what the reviewer said, part by part. */
+  const [answering, setAnswering] = useState<SubmittalItemRow | null>(null)
+  /** 2026-10-02 · the part a procurement log line opened the answer window on; gone when the window closes. */
+  const [answerFocus, setAnswerFocus] = useState<{ itemId: string; partId: string | null } | null>(null)
+  useEffect(() => {
+    if (!answering) setAnswerFocus(null)
+  }, [answering])
+  /** The GC's contacts the app already holds, offered as who answered. */
+  const [gcContacts, setGcContacts] = useState<ReviewerSources['contacts']>([])
+  const gcCustomerId = selectedBid?.customer_id ?? null
+  useEffect(() => {
+    setGcContacts([])
+    if (!gcCustomerId) return
+    let alive = true
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(() => db.from('customer_contact_persons').select('id, name, email').eq('customer_id', gcCustomerId).order('name'), 'load the GC contacts')
+        if (alive) setGcContacts(((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>).filter((c) => c.name?.trim()).map((c) => ({ id: c.id, name: c.name!.trim(), email: c.email })))
+      } catch {
+        // The picker still offers the GC by name and a typed person.
+      }
+    })()
+    return () => {
+      alive = false
+    }
+  }, [gcCustomerId])
+  const reviewerSources: ReviewerSources = useMemo(() => ({ gcName: selectedBid?.customers?.name ?? selectedBid?.bids_gc_builders?.name ?? null, contacts: gcContacts }), [selectedBid, gcContacts])
+  /** 2026-10-02 · the × on a draft row: the row, and what the log already holds for it ("Ordered 09/23"; '' = nothing bought). */
+  const [takeOff, setTakeOff] = useState<{ item: SubmittalItemRow; bought: string } | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
   const bidsRef = useRef(bids)
   bidsRef.current = bids
@@ -252,13 +251,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [tourStage, setTourStage] = useState<number | null>(null)
   const [statusLegendOpen, setStatusLegendOpen] = useState(false)
   // v2.4248 · the supply houses: the row editor's picker, and the name under each row's product. One read; a failed read hides both.
-  const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
+  const [houses, setHouses] = useState<Array<{ id: string; name: string; default_lead_time_days: number | null }>>([])
   useEffect(() => {
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses')
-        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string }>).filter((h) => h.name?.trim()))
+        // v2.4685 · with the house's usual lead time; until the column is pushed, the names alone.
+        const data = await withSupabaseRetry(() => db.from('supply_houses').select('id, name, default_lead_time_days').order('name'), 'load supply houses').catch(() => withSupabaseRetry(() => db.from('supply_houses').select('id, name').order('name'), 'load supply houses'))
+        if (!cancelled) setHouses(((data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>).filter((h) => h.name?.trim()).map((h) => ({ id: h.id, name: h.name, default_lead_time_days: h.default_lead_time_days ?? null })))
       } catch {
         if (!cancelled) setHouses([])
       }
@@ -299,14 +299,36 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   // 6b · the robot's tasks on this bid (queued · working · ready · blocked · done)
   const [tasks, setTasks] = useState<SubmittalTaskRow[]>([])
   const [lookChecked, setLookChecked] = useState<Record<string, boolean>>({})
+  /** The row whose cut sheet is being cut into its own PDF. */
+  const [savingSheetId, setSavingSheetId] = useState<string | null>(null)
   const [messageRows, setMessageRows] = useState<Array<{ id: string; submittal_id: string | null; tags: string[]; metadata: unknown; author_kind: string; kind: string }>>([])
   const [threadOpen, setThreadOpen] = useState(false)
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyBody, setReplyBody] = useState('')
   const [replying, setReplying] = useState(false)
   const [sharing, setSharing] = useState(false)
+  // Step 7's question, open: the next revision as planned, and which rows the owner has ticked.
+  const [nextDraft, setNextDraft] = useState<Awaited<ReturnType<typeof planNextRevision>> | null>(null)
+  const [nextDraftRows, setNextDraftRows] = useState<ResubmitRows>('need')
 
   const bidId = selectedBid?.id ?? null
+  // 2026-10-06 · the GC's record: the revisions the room serves (shared, or answered by email with a package built),
+  // read by the three room functions' own rule (`_shared/submittalRecord.ts`). Read again when a share, a package
+  // or a typed answer changes; until it lands, the shared revisions stand in.
+  const [standings, setStandings] = useState<{ bidId: string; list: RevisionStanding[] } | null>(null)
+  const revisionsKey = revisions.map((r) => `${r.id}:${r.shared_at ?? ''}:${r.package_path ?? ''}`).join('|')
+  const answersKey = [...items, ...parts].map((x) => `${x.id}:${x.review_decision ?? ''}:${x.decision_source ?? ''}`).join('|')
+  useEffect(() => {
+    if (!bidId) return
+    let cancelled = false
+    void loadRevisionStandings(db, bidId)
+      .then((list) => { if (!cancelled) setStandings({ bidId, list }) })
+      .catch(() => { if (!cancelled) setStandings(null) })
+    return () => {
+      cancelled = true
+    }
+  }, [bidId, revisionsKey, answersKey])
+  const recordList = standings && standings.bidId === bidId ? standings.list : revisionStandings(revisions, new Map())
   // The won question's "not needed on this job" (4c) — local so undo reads back at once.
   const [notNeededAt, setNotNeededAt] = useState<string | null>(null)
   useEffect(() => {
@@ -476,7 +498,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     return g ? guessByPage(g) : undefined
   }, [assignFile, sourceFiles, tasks])
   const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
-  const tiles = useMemo(() => revisionTiles(items), [items])
+  // 2026-10-02 · the rows the GC sees: an order-only row is bought, never counted, packaged or called.
+  const gcItems = useMemo(() => gcRows(items), [items])
+  const orderOnlyItems = useMemo(() => orderOnlyRows(items), [items])
+  const tiles = useMemo(() => revisionTiles(gcItems), [gcItems])
   // The parts reload whenever the rows do (every write reloads the rows).
   useEffect(() => {
     let cancelled = false
@@ -492,10 +517,71 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       cancelled = true
     }
   }, [items])
-  const partsOf = useMemo(() => partsByItem(parts), [parts])
-  const decisions = useMemo(() => summarizeDecisions(items), [items])
+  // The standing rows' parts sit in the same map, so their Edit window and the bought-parts read work unchanged.
+  const partsOf = useMemo(() => partsByItem(standing.parts.length > 0 ? [...parts, ...standing.parts] : parts), [parts, standing.parts])
+  // 2026-10-02 · the Edit window on a draft row: which of its parts the log already holds an order for.
+  useEffect(() => {
+    setEditBought(new Map())
+    if (!editing || !bidId || editing.id === NEW_ROW_ID || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    let cancelled = false
+    const rowParts = partsOf.get(editing.id) ?? []
+    if (rowParts.length === 0) return
+    void loadPartOrderWords(supabase, bidId, editing.tag, boughtWords)
+      .then((byKey) => {
+        if (cancelled) return
+        setEditBought(new Map(rowParts.filter((p) => byKey.has(p.procure_key)).map((p) => [p.id, byKey.get(p.procure_key)!])))
+      })
+      .catch(() => {
+        // The log could not be read: every part is treated as bought, so no order is dropped unseen.
+        if (!cancelled) setEditBought(new Map(rowParts.map((p) => [p.id, 'The procurement log could not be read'])))
+      })
+    return () => {
+      cancelled = true
+    }
+    // The window's row decides; its parts are read as they stood when it opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.id, bidId, selectedRev?.id, selectedRev?.status])
+  const decisions = useMemo(() => summarizeDecisions(gcItems, partsOf), [gcItems, partsOf])
+  /** Step 7's button has a choice to offer: rows were sent back, and a row or a part was approved. */
+  const draftHasChoice = useMemo(() => {
+    const split = resubmitSplit(gcItems)
+    return split.sentBack.length > 0 && resubmitHasChoice({ approved: split.approved.length, approvedParts: approvedPartsGoingOn(gcItems, partsOf) })
+  }, [gcItems, partsOf])
   // Rows one "they approved all of it" entry would cover: no call yet, and a product to approve.
-  const approvableRows = useMemo(() => rowsToApproveAll(items), [items])
+  const approvableRows = useMemo(() => rowsToApproveAll(gcItems), [gcItems])
+  // 2026-10-02 · "Rev N+1 from the rows sent back" leaves the approved rows on Rev N. They are released and
+  // still to order, so the log reads them from there: the newest revision that asked about a tag speaks for
+  // it, and a call entered by hand on a draft since superseded still counts (`rowsThatStand`). Read again
+  // whenever the newest rows do, so a house or a lead time set on a standing row shows.
+  useEffect(() => {
+    let cancelled = false
+    const earlier = selectedRev && newestRev?.id === selectedRev.id ? revisions.filter((r) => r.id !== newestRev.id) : []
+    if (earlier.length === 0) {
+      setStanding((cur) => (cur.items.length === 0 ? cur : { items: [], parts: [], revOf: new Map() }))
+      return
+    }
+    void (async () => {
+      const rows = await Promise.all(earlier.map((r) => loadItems(r.id)))
+      const earlierIds = rows.flat().map((it) => it.id)
+      const earlierParts = earlierIds.length > 0 ? await loadItemParts(db, earlierIds) : []
+      // Approved whole, or part by part: a part the GC approved is released whatever the rest of its row says.
+      const approvedParts = new Set(earlierParts.filter((p) => p.on_submittal && asDecision(p.review_decision) === 'approved').map((p) => p.item_id))
+      const stands = rowsThatStand([{ rev: newestRev!.rev_number, rows: items }, ...earlier.map((r, i) => ({ rev: r.rev_number, rows: rows[i] ?? [], asked: revisionWasRead(r.status) }))], (it) => asDecision(it.review_decision) === 'approved' || approvedParts.has(it.id))
+      if (cancelled) return
+      const answered = new Map<string, string>()
+      earlier.forEach((r, i) => {
+        const ids = new Set((rows[i] ?? []).map((it) => it.id))
+        const at = revisionAnsweredAt(rows[i] ?? [], earlierParts.filter((p) => ids.has(p.item_id)))
+        if (at) answered.set(r.id, at)
+      })
+      setAnsweredByRev(answered)
+      const standingIds = new Set(stands.map((s) => s.row.id))
+      setStanding({ items: stands.map((s) => s.row), parts: earlierParts.filter((p) => standingIds.has(p.item_id)), revOf: new Map(stands.map((s) => [s.row.id, s.rev])) })
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [items, revisions, selectedRev, newestRev, loadItems])
   useEffect(() => {
     let cancelled = false
     if (!selectedRev || newestRev?.id !== selectedRev.id) {
@@ -503,25 +589,21 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setProcCounts(null)
       return
     }
-    void procurementItemsFrom(supabase, items, selectedRev.status !== 'draft', parts).then((rows) => {
-      if (!cancelled) setProcItems(rows)
+    void Promise.all([
+      procurementItemsFrom(supabase, items, selectedRev.status !== 'draft', parts),
+      standing.items.length > 0 ? procurementItemsFrom(supabase, standing.items, true, standing.parts) : Promise.resolve([] as ProcurementItemSource[]),
+    ]).then(([newest, stands]) => {
+      if (!cancelled) setProcItems([...newest, ...stands.map((src) => ({ ...src, standsOnRev: src.itemId ? standing.revOf.get(src.itemId) ?? null : null }))])
     })
     return () => {
       cancelled = true
     }
-  }, [items, parts, selectedRev, newestRev])
+  }, [items, parts, selectedRev, newestRev, standing])
   useEffect(() => {
     void fetchTestReportSettings().then(setReportSettings).catch(() => undefined)
   }, [])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
-  const overridesByTag = useMemo(() => {
-    const out: Record<string, StatusOverride> = {}
-    for (const s of specified) {
-      const ov = overridesByFixture.get(fixtureKey(s.fixture))
-      if (ov) out[s.tag] = ov
-    }
-    return out
-  }, [specified, overridesByFixture])
+  const overridesByTag = useMemo(() => overridesByTagOf({ specified, overridesByFixture }), [specified, overridesByFixture])
 
   /** Build the rows for a revision from today's picks; `previous` carries sheets, reasons and the diff. */
   async function writeRows(revId: string, previous: SubmittalItemRow[]): Promise<number> {
@@ -550,10 +632,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!bidId) return
     setBusy(true)
     try {
-      const { data, error } = await db.from('bid_submittals').insert({ bid_id: bidId, rev_number: 1, status: 'draft', created_by: user?.id ?? null }).select('id').single()
-      if (error) throw error
-      const revId = (data as { id: string }).id
-      const n = await writeRows(revId, [])
+      // The one way a Rev 1 is built from picks, shared with the won question (firstRevisionClient); the picks already on the page ride along.
+      const { revId, rows: n } = await createFirstRevisionFromPicks(db, { bidId, userId: user?.id ?? null, picks: { specified, picks, overridesByFixture } })
       setSelectedRevId(revId)
       await load(bidId)
       showToast(`Rev 1 built · ${n} row${n === 1 ? '' : 's'} from the picks.`, 'success')
@@ -568,16 +648,68 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const takeoffFixtures = takeoff?.fixtures ?? 0
   const takeoffCandidatesForPicker = useMemo<TakeoffCandidate[]>(() => {
     if (!takeoff) return []
-    const on = new Set(items.map((it) => it.source_count_row_id).filter((x): x is string => !!x))
-    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId) }))
-  }, [takeoff, items])
+    // How each fixture sits on the draft: a row the GC sees, an order-only row, or not on it.
+    const on = new Map<string, 'gc' | 'order'>()
+    for (const it of items) if (it.source_count_row_id && on.get(it.source_count_row_id) !== 'gc') on.set(it.source_count_row_id, isOrderOnlyRow(it) ? 'order' : 'gc')
+    // The row's takeoff parts by their place on the takeoff, so the window shows each as it sits on the draft.
+    // A row with no parts, or with parts from the house's file, has its parts set in Edit.
+    const onParts = new Map<string, Array<{ key: string; onSubmittal: boolean }> | null>()
+    for (const it of items) {
+      if (!it.source_count_row_id || onParts.has(it.source_count_row_id)) continue
+      const rowParts = partsOf.get(it.id) ?? []
+      const fromTakeoff = rowParts.filter((p) => p.source === 'takeoff' && partPieceKey(p))
+      onParts.set(it.source_count_row_id, rowParts.length === 0 || rowParts.some((p) => p.source === 'file') || fromTakeoff.length === 0 ? null : fromTakeoff.map((p) => ({ key: partPieceKey(p)!, onSubmittal: p.on_submittal })))
+    }
+    // 2026-10-03 · a fixture the GC approved on an earlier revision stands there: it is not on the draft, and it is not left out.
+    const standsOn = new Map<string, { rev: number; whole: boolean }>()
+    for (const it of standing.items) {
+      const rev = standing.revOf.get(it.id)
+      if (!it.source_count_row_id || rev == null) continue
+      const whole = asDecision(it.review_decision) === 'approved'
+      const was = standsOn.get(it.source_count_row_id)
+      standsOn.set(it.source_count_row_id, { rev: was ? Math.max(was.rev, rev) : rev, whole: (was?.whole ?? true) && whole })
+    }
+    return takeoff.candidates.map((c) => ({ ...c, alreadyOn: on.has(c.countRowId), onAs: on.get(c.countRowId) ?? null, onParts: onParts.get(c.countRowId) ?? null, standsOn: on.has(c.countRowId) ? null : standsOn.get(c.countRowId) ?? null }))
+  }, [takeoff, items, partsOf, standing])
+  /** The takeoff's fixtures that are not on the draft: what the Left out line under the rows counts. */
+  const takeoffLeftOut = takeoffCandidatesForPicker.filter((c) => !c.onAs && !c.standsOn).length
+  const takeoffStandsLine = standsLine(takeoffCandidatesForPicker)
   function openTakeoffPicker() {
     if (takeoffFixtures === 0) return
     if (revisions.length === 0) setTakeoffPicker('build')
-    else if (selectedRev && asRevisionStatus(selectedRev.status) === 'draft') setTakeoffPicker('add')
+    else if (selectedRev && asRevisionStatus(selectedRev.status) === 'draft') {
+      setTakeoffPicker('add')
+      void readTakeoffBought()
+    }
     else showToast('Rows from the takeoff land on a draft — start a new revision first.', 'info')
   }
-  async function confirmTakeoff(rows: ReadonlyArray<TakeoffCandidate>, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>) {
+  /** What the log holds for the fixtures on the draft and for each of their parts, so the window can hold Left out on what somebody ordered. */
+  async function readTakeoffBought() {
+    if (!bidId) return
+    try {
+      const facts = await loadBidOrderFacts(supabase, bidId)
+      const rows = new Map<string, string>()
+      const partsBought = new Map<string, Map<string, string>>()
+      for (const it of items) {
+        if (!it.source_count_row_id) continue
+        const words = boughtWords(facts.byTag.get(it.tag) ?? [])
+        if (words) rows.set(it.source_count_row_id, words)
+        for (const p of partsOf.get(it.id) ?? []) {
+          const key = partPieceKey(p)
+          const w = key ? boughtWords(facts.byPartKey.get(p.procure_key) ?? []) : ''
+          if (key && w) partsBought.set(it.source_count_row_id, new Map(partsBought.get(it.source_count_row_id) ?? []).set(key, w))
+        }
+      }
+      setTakeoffBought(rows)
+      setTakeoffBoughtParts(partsBought)
+    } catch {
+      // The log could not be read: every fixture on the draft is treated as bought.
+      setTakeoffBought(new Map(items.filter((it) => it.source_count_row_id).map((it) => [it.source_count_row_id!, 'The procurement log could not be read'])))
+    }
+  }
+
+  /** 2026-10-02 · the window's picks: rows come on (the GC's or order only), rows on the draft move or come off, the bid remembers every pick. */
+  async function confirmTakeoff(plan: TakeoffPlan, splits?: ReadonlyMap<string, boolean>) {
     if (!bidId || !takeoffPicker) return
     setBusy(true)
     try {
@@ -593,12 +725,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         seq = items.reduce((m, it) => Math.max(m, it.sequence_order), 0)
       }
       // v2.4118 · a split candidate becomes one row per tag; the sequence runs on through them.
-      const inserts: ReturnType<typeof candidateToItemInserts> = []
+      const inserts: Array<ReturnType<typeof candidateToItemInserts>[number] & { order_only?: true }> = []
       const fromCandidate: TakeoffCandidate[] = []
-      for (const c of rows) {
-        const made = candidateToItemInserts(c, revId, seq + inserts.length + 1)
-        inserts.push(...made)
-        for (let k = 0; k < made.length; k++) fromCandidate.push(c)
+      for (const a of plan.add) {
+        const made = candidateToItemInserts(a.candidate, revId, seq + inserts.length + 1)
+        inserts.push(...made.map((m) => (a.orderOnly ? { ...m, order_only: true as const } : m)))
+        for (let k = 0; k < made.length; k++) fromCandidate.push(a.candidate)
       }
       let partsNote = ''
       if (inserts.length > 0) {
@@ -618,19 +750,38 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           partsNote = ` The parts under each row did not save (${formatErrorMessage(e, 'unknown')}); the rows read as before.`
         }
       }
-      await saveTakeoffChoices(db, bidId, ticks, splits, productKeys)
+      // Rows already on the draft: to order only, back to the GC, or off. A split fixture's rows move together.
+      const rowsOf = (countRowId: string) => items.filter((it) => it.source_count_row_id === countRowId)
+      for (const [ids, on] of [[plan.toOrderOnly, true], [plan.toGc, false]] as const) {
+        for (const it of ids.flatMap(rowsOf)) {
+          const { error } = await db.from('bid_submittal_items').update({ order_only: on }).eq('id', it.id)
+          if (error) throw error
+        }
+      }
+      for (const it of plan.remove.flatMap(rowsOf)) {
+        const { error } = await db.from('bid_submittal_items').delete().eq('id', it.id)
+        if (error) throw error
+      }
+      // Rows staying on the draft whose parts were picked differently: each takes the fixture's parts as picked.
+      // A part it keeps holds its house, lead time, stage and call; one left out comes off; one brought back comes on.
+      const removed = new Set(plan.remove)
+      for (const pc of plan.parts) {
+        if (removed.has(pc.countRowId)) continue
+        for (const it of rowsOf(pc.countRowId)) await applyPartWrites(db, it.id, takeoffRefreshWrites(partsOf.get(it.id) ?? [], pc.candidate, it.id, bidId))
+      }
+      await saveTakeoffChoices(db, bidId, plan.ticks, splits, plan.productKeys, plan.orderOnly, plan.leftOut)
       setTakeoffPicker(null)
       const proposed = inserts.filter((r) => r.status === 'proposed').length
       const toType = inserts.length - proposed
-      const tail = `${inserts.length} row${inserts.length === 1 ? '' : 's'} from the takeoff · ${proposed} proposed${toType > 0 ? `, ${toType} to type with Edit` : ''}`
       if (takeoffPicker === 'build') {
         setSelectedRevId(revId)
         await load(bidId)
+        const tail = `${inserts.length} row${inserts.length === 1 ? '' : 's'} from the takeoff · ${proposed} proposed${toType > 0 ? `, ${toType} to type with Edit` : ''}`
         showToast(`Rev 1 built · ${tail}.${partsNote}`, partsNote ? 'info' : 'success')
       } else {
         setItems(await loadItems(revId))
         setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
-        showToast(`Added · ${tail}.${partsNote}`, partsNote ? 'info' : 'success')
+        showToast(`${planRowsAdded(plan) > 0 && plan.toOrderOnly.length + plan.toGc.length + plan.remove.length === 0 ? 'Added' : 'Updated'} · ${planSummary(plan, `Rev ${selectedRev?.rev_number ?? 1}`)}.${partsNote}`, partsNote ? 'info' : 'success')
       }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not build from the takeoff'), 'error')
@@ -638,17 +789,62 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setBusy(false)
     }
   }
-  /** v2.4107 · a draft row leaves; a row that came from the takeoff is unticked there too, so the choice holds. */
+  /** What the procurement log already holds for a row: "Ordered 09/23, on site 09/29", or '' when nothing is bought. */
+  async function boughtOnLog(it: SubmittalItemRow): Promise<string> {
+    if (!bidId) return ''
+    try {
+      return boughtWords(await loadRowOrderFacts(supabase, bidId, it.tag))
+    } catch {
+      // The log could not be read: the row is treated as bought, so nothing ordered is dropped unseen.
+      return 'The procurement log could not be read'
+    }
+  }
+
+  /** 2026-10-02 · the × on a row the GC sees: the window asks whether the fixture is still bought. */
+  async function askTakeOff(it: SubmittalItemRow) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    setTakeOff({ item: it, bought: await boughtOnLog(it) })
+  }
+
+  /** Order only, or back to a row the GC sees; the bid remembers it for a row from the takeoff. */
+  async function setOrderOnly(it: SubmittalItemRow, on: boolean) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    setBusy(true)
+    try {
+      await writeRowOrderOnly(supabase, bidId, it, on)
+      setItems(await loadItems(selectedRev.id))
+      setTakeOff(null)
+      showToast(on ? `${it.tag.trim() || 'The row'} is order only. The GC will not see it; it stays on the procurement log.` : `${it.tag.trim() || 'The row'} is back on the submittal.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, on ? 'Could not set the row order only' : 'Could not put the row back'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** The × on an order-only row: left out, after one question. A fixture the log holds an order for stays. */
+  async function leaveOrderOnlyOut(it: SubmittalItemRow) {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    const bought = await boughtOnLog(it)
+    if (bought) {
+      showToast(`${it.tag.trim() || 'The row'} cannot be left out. ${bought}.`, 'error')
+      return
+    }
+    const ok = await confirm({ title: `Leave ${it.tag.trim() || 'this row'} out`, message: it.source_count_row_id ? 'It leaves this draft and the procurement log. The takeoff list remembers it as left out, so it stays out next time.' : 'It leaves this draft and the procurement log.', confirmLabel: 'Leave out', danger: true })
+    if (!ok) return
+    await removeRow(it)
+  }
+
+  /** Left out: the row leaves the draft (and so the procurement log), and the takeoff list remembers it. */
   async function removeRow(it: SubmittalItemRow) {
     if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
-    const ok = await confirm({ title: `Remove ${it.tag.trim() || 'this row'}`, message: it.source_count_row_id ? 'The row leaves this draft, and the fixture is unticked on the takeoff list so it stays out next time.' : 'The row leaves this draft.', confirmLabel: 'Remove', danger: true })
-    if (!ok) return
     setBusy(true)
     try {
       const { error } = await db.from('bid_submittal_items').delete().eq('id', it.id)
       if (error) throw error
       if (it.source_count_row_id) await saveTakeoffChoices(db, bidId, new Map([[it.source_count_row_id, false]]))
       setItems(await loadItems(selectedRev.id))
+      setTakeOff(null)
       if (it.source_count_row_id) setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not remove the row'), 'error')
@@ -682,6 +878,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         supply_house_id: it.supply_house_id, source_quote_line_id: it.source_quote_line_id, source_count_row_id: it.source_count_row_id,
         status: it.status, reason_kind: it.reason_kind, reason_note: it.reason_note, lead_time_days: it.lead_time_days,
         sheet_file: it.sheet_file, sheet_pages: it.sheet_pages, sheet_source: it.sheet_source,
+        ...orderOnlyInsert(it),
       }))).select('id, sequence_order')
       if (error) throw error
       // Each tag's row gets the fixture's parts; each is bought on its own, so only the first keeps the procurement line.
@@ -727,6 +924,26 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       showToast(`${n} row${n === 1 ? '' : 's'} took the takeoff’s parts.`, 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not refresh from the takeoff'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+  /** v2.4609 · each Proposed row the schedule names takes the plans' product and the status the comparison gives. */
+  async function gradeRowsAgainstSchedule() {
+    if (!bidId || !selectedRev || asRevisionStatus(selectedRev.status) !== 'draft') return
+    setBusy(true)
+    try {
+      let n = 0
+      for (const r of gradePlan.rows) {
+        const { error } = await db.from('bid_submittal_items').update(gradePatch(r)).eq('id', r.itemId)
+        if (error) throw error
+        n++
+      }
+      setGradeOpen(false)
+      setItems(await loadItems(selectedRev.id))
+      showToast(`${n} row${n === 1 ? '' : 's'} graded against the schedule.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not grade the rows'), 'error')
     } finally {
       setBusy(false)
     }
@@ -786,32 +1003,64 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     await insertItemParts(db, copies)
   }
 
-  async function newRevision(onlySentBack = false) {
-    if (!bidId || !newestRev) return
-    const onNewest = newestRev.id === selectedRev?.id
-    const previous = onNewest ? items : await loadItems(newestRev.id)
+  /** What the next revision would hold, read once: the question counts from it and the build writes from it. */
+  async function planNextRevision(newest: SubmittalRevisionRow) {
+    const onNewest = newest.id === selectedRev?.id
+    const previous = onNewest ? items : await loadItems(newest.id)
     const previousParts = onNewest ? partsOf : partsByItem(await loadItemParts(db, previous.map((p) => p.id)))
-    const sentBack = itemsSentBack(previous)
+    // 2026-10-03 · only an approved row stays behind. A row sent back goes on to be fixed; a row nobody answered goes on to keep waiting.
+    const split = resubmitSplit(gcRows(previous))
+    const goOn = [...split.sentBack, ...split.noAnswer]
     const preview = buildSubmittalRows({ specified, picks, previous: previous.map(itemToPrevious), overrides: overridesByTag })
-    const kept = onlySentBack ? preview.filter((r) => sentBack.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
     // 2026-10-01 · the rows the picks do not rebuild (from the takeoff, typed by hand) carry as they stand.
     const carried = rowsToCarry(previous, preview)
-    const carriedKept = onlySentBack ? carried.filter((it) => sentBack.some((sb) => sb.id === it.id)) : carried
-    const total = kept.length + carriedKept.length
+    // 2026-10-02 · an order-only row was never the reviewer's to send back: it carries either way, so it stays on the log.
+    const rowsFor = (rows: ResubmitRows) => ({
+      kept: rows === 'need' ? preview.filter((r) => r.orderOnly || goOn.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview,
+      carriedKept: rows === 'need' ? carried.filter((it) => isOrderOnlyRow(it) || goOn.some((x) => x.id === it.id)) : carried,
+    })
+    const total = (rows: ResubmitRows) => rowsFor(rows).kept.length + rowsFor(rows).carriedKept.length
+    return { newest, previous, previousParts, preview, carried, rowsFor, counts: { sentBack: split.sentBack.length, noAnswer: split.noAnswer.length, approved: split.approved.length, orderOnly: orderOnlyRows(previous).length, approvedParts: approvedPartsGoingOn(gcRows(previous), previousParts), needTotal: total('need'), everyTotal: total('every') } }
+  }
+
+  /**
+   * Step 7's one button, and the strip's (2026-10-05). With rows sent back it opens the chooser:
+   * the rows that need it, or every row. With none sent back, or nothing approved, there is one kind of draft, so it asks once.
+   */
+  async function startNextDraft() {
+    if (!bidId || !newestRev) return
+    const plan = await planNextRevision(newestRev)
+    const next = newestRev.rev_number + 1
+    if (plan.counts.sentBack > 0 && resubmitHasChoice(plan.counts)) {
+      setNextDraftRows('need')
+      setNextDraft(plan)
+      return
+    }
+    // Rows sent back, nothing approved: both kinds of draft are the same one, so there is nothing to choose.
+    if (plan.counts.sentBack > 0) {
+      if (await confirm(resubmitOneKind(newestRev.rev_number, plan.counts))) await buildNextRevision(plan, 'need')
+      return
+    }
+    const { preview, carried } = plan
     const fromPicks = specified.length > 0 || picks.length > 0
     const ok = await confirm({
-      title: onlySentBack ? `Rev ${newestRev.rev_number + 1} from the ${sentBack.length} row${sentBack.length === 1 ? '' : 's'} sent back` : fromPicks ? `Rev ${newestRev.rev_number + 1} from today's picks` : `Rev ${newestRev.rev_number + 1} from Rev ${newestRev.rev_number}`,
-      message: onlySentBack
-        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${total} row${total === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number}.`
-        : `${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
-      confirmLabel: `Build Rev ${newestRev.rev_number + 1}`,
+      title: `Start a Rev ${next} draft`,
+      message: `Every row goes on Rev ${next}${fromPicks ? ", built from today's picks" : ''}. ${preview.length > 0 ? `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. ` : ''}${carried.length > 0 ? `${carried.length} row${carried.length === 1 ? '' : 's'} from the takeoff or typed by hand carry as ${carried.length === 1 ? 'it stands' : 'they stand'}, with ${carried.length === 1 ? 'its' : 'their'} parts. ` : ''}Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''} Rev ${next} starts as a draft. ${resubmitNothingSent(next)}`,
+      confirmLabel: startDraftLabel(plan.counts.everyTotal),
     })
-    if (!ok) return
+    if (ok) await buildNextRevision(plan, 'every')
+  }
+
+  async function buildNextRevision(plan: Awaited<ReturnType<typeof planNextRevision>>, rows: ResubmitRows) {
+    if (!bidId) return
+    const { newest, previous, previousParts } = plan
+    const { kept, carriedKept } = plan.rowsFor(rows)
+    const onlySentBack = rows === 'need'
     setBusy(true)
     try {
       const { data, error } = await db
         .from('bid_submittals')
-        .insert({ bid_id: bidId, rev_number: newestRev.rev_number + 1, status: 'draft', title: newestRev.title, source_files: newestRev.source_files, created_by: user?.id ?? null })
+        .insert({ bid_id: bidId, rev_number: newest.rev_number + 1, status: 'draft', title: newest.title, source_files: newest.source_files, created_by: user?.id ?? null })
         .select('id')
         .single()
       if (error) throw error
@@ -822,14 +1071,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (inserts.length > 0) {
         const { data: made, error: insErr } = await db.from('bid_submittal_items').insert(inserts).select('id, carried_from_item_id, submitted_label')
         if (insErr) throw insErr
-        // A resubmit of the rows sent back: the parts the GC approved stand; only the parts sent back are asked again.
+        // A resubmit: the parts the GC approved stand; the parts sent back, and the parts with no answer, are asked again.
         await carryPartsOnto((made ?? []) as Array<{ id: string; carried_from_item_id: string | null; submitted_label: string | null }>, previous, previousParts, onlySentBack)
       }
-      if (asRevisionStatus(newestRev.status) === 'draft') {
-        const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newestRev.id)
+      if (asRevisionStatus(newest.status) === 'draft') {
+        const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newest.id)
         if (supErr) throw supErr
       }
       setSelectedRevId(revId)
+      setNextDraft(null)
       await load(bidId)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not build the revision.', 'error')
@@ -894,7 +1144,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     try {
       const texts: string[] = []
       for (let p = 1; p <= pdf.numPages; p++) texts.push(await pdf.pageText(p).catch(() => ''))
-      const reads = readPages(texts, walkRowsFrom(items))
+      const reads = readPages(texts, walkRowsFrom(gcItems))
       const header = commonHeader(texts)
       return { namesRows: Object.values(reads).filter((r) => r.itemId !== null).length, sectioned: header ? fileSectionTags(texts, header).length > 0 : false }
     } finally {
@@ -993,9 +1243,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   async function openReviewerFile(f: ReviewerFile) {
     try {
-      const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(f.path, 300)
-      if (error || !data?.signedUrl) throw error ?? new Error('No link.')
-      window.open(data.signedUrl, '_blank', 'noopener')
+      // v2.4610 · a redlined PDF opens to be read; a forwarded email is saved, from the app's own address.
+      if (!(await openOrSaveFromStorage(SUBMITTALS_BUCKET, f.path, f.name))) throw new Error('No link.')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not open the file.', 'error')
     }
@@ -1053,7 +1302,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!t || !g) return
     setBusy(true)
     try {
-      const byTag = new Map(items.map((it) => [it.tag.trim().toUpperCase(), it]))
+      const byTag = new Map(gcItems.map((it) => [it.tag.trim().toUpperCase(), it]))
       const pagesByItem = new Map<string, number[]>()
       for (const guess of g.sure) {
         const it = byTag.get(guess.tag)
@@ -1096,7 +1345,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         theRoom = data as SubmittalRoomRow
       }
       const now = new Date().toISOString()
-      const byTag = new Map(items.map((it) => [it.tag.trim().toUpperCase(), it]))
+      const byTag = new Map(gcItems.map((it) => [it.tag.trim().toUpperCase(), it]))
       const counts = { approved: 0, revise: 0, rejected: 0 }
       const marks = useUnsure ? [...r.sure, ...r.unsure] : r.sure
       for (const a of marks) {
@@ -1148,12 +1397,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   /** The package (stage 2c): cover table + every row's sheet pages, stamped; stored at package-rev<N>.pdf and opened. */
+  /** The Build package button: with cut sheets still missing it names the rows first, then builds. */
+  async function askBuildPackage() {
+    const owing = rowsOwingSheet(gcItems)
+    if (owing.length > 0 && !(await confirm(sheetsToFollowConfirm(owing)))) return
+    await buildPackage()
+  }
+
   async function buildPackage(open = true) {
     if (!bidId || !selectedRev) return
     setBusy(true)
     try {
       const settings = await fetchTestReportSettings()
-      const rowsIn: PackageRowInput[] = items.map((it) => {
+      const rowsIn: PackageRowInput[] = gcItems.map((it) => {
         const reason = asReason(it.reason_kind)
         // 2026-10-01 · a row with parts lists the parts the GC sees, one per line.
         const gcParts = submittedParts(partsOf.get(it.id) ?? [])
@@ -1223,16 +1479,46 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  /** A five-minute signed link to the stored package; the fresh blob as the fallback when the link cannot be minted. */
+  /** v2.4579 · the dropped vendor file, saved whole under its own name (read into the page, then saved from the app's own address, v2.4610). */
+  async function saveSourceFile(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f) return
+    const name = /\.pdf$/i.test(f.name) ? f.name : `${f.name}.pdf`
+    if (!(await saveFromStorage(SUBMITTALS_BUCKET, f.path, name))) showToast(`${f.name} could not be saved right now. Try again.`, 'error')
+  }
+
+  /** The stored package, saved under its name; the fresh blob when it has just been built, so nothing is read twice (v2.4610). */
   async function openStoredPackage(path: string, revNumber: number, fallback?: Blob) {
     const name = packageFileName(revNumber, bidWorkflowTabHeading(bid, prefixMap))
-    const { data } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(path, 300, { download: name })
-    const url = data?.signedUrl ?? (fallback ? URL.createObjectURL(fallback) : null)
-    if (!url) {
-      showToast('The package is stored, but the link could not be opened right now.', 'error')
+    if (fallback) {
+      saveBlobAs(fallback, name)
       return
     }
-    window.open(url, '_blank', 'noopener')
+    if (!(await saveFromStorage(SUBMITTALS_BUCKET, path, name))) showToast('The package is stored, but it could not be read right now.', 'error')
+  }
+
+  /**
+   * One row's cut sheet as a PDF of its own (2026-10-05): the row's pages cut out of the vendor's
+   * file and saved to the device, to attach to an email or a text. Nothing is written or sent.
+   */
+  async function saveRowCutSheet(it: SubmittalItemRow) {
+    const plan = rowCutSheetPlan(it, partsOf.get(it.id) ?? [])
+    if (plan.length === 0 || savingSheetId) return
+    setSavingSheetId(it.id)
+    try {
+      const out = await buildRowCutSheet(plan, async (fileIndex) => {
+        const f = sourceFiles[fileIndex]
+        if (!f) throw new Error('The vendor file for this cut sheet is no longer on the revision.')
+        return downloadFile(f.path)
+      })
+      const name = cutSheetFileName(it.tag)
+      saveBlobAs(new Blob([out.bytes as BlobPart], { type: 'application/pdf' }), name)
+      showToast(`Saved ${name} · ${out.pages} page${out.pages === 1 ? '' : 's'}. Attach it to your email or text.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save the cut sheet.', 'error')
+    } finally {
+      setSavingSheetId(null)
+    }
   }
 
   // ---------- stage 3a · the sheet strip ----------
@@ -1553,8 +1839,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   /**
    * The room and the reviewer an entered call is recorded under. The person is on the room, or
-   * joins it now (how = named); the room itself is minted if the bid has none yet — nothing is
-   * shared by that.
+   * joins it now (how = named, with an email only when the office has one); the room itself is
+   * minted if the bid has none yet — nothing is shared by that, and nothing is sent.
    */
   async function roomAndReviewerFor(choice: ReviewerChoice): Promise<{ theRoom: SubmittalRoomRow; person: { id: string; name: string; email: string | null } }> {
     if (!bidId) throw new Error('Pick a bid first.')
@@ -1569,9 +1855,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       if (!p) throw new Error('That person is no longer on the room.')
       return { theRoom, person: { id: p.id, name: p.name, email: p.email } }
     }
-    const { data: existing } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).ilike('email', choice.email.trim()).maybeSingle()
-    if (existing) return { theRoom, person: existing as { id: string; name: string; email: string | null } }
-    const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: choice.name, email: choice.email.trim().toLowerCase(), role: choice.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
+    // Read fresh: the person may have joined since the tab loaded. With an email they are matched by it; without one, by name among the people who have none.
+    const { data: onRoom, error: readErr } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).is('closed_at', null)
+    if (readErr) throw readErr
+    const existing = matchRoomPerson((onRoom ?? []) as Array<{ id: string; name: string; email: string | null }>, choice)
+    if (existing) return { theRoom, person: existing }
+    const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: choice.name, email: choice.email?.trim().toLowerCase() || null, role: choice.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
     if (error) throw error
     return { theRoom, person: data as { id: string; name: string; email: string | null } }
   }
@@ -1582,7 +1871,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
    */
   async function approveAll(choice: ApproveAllChoice) {
     if (!selectedRev || !bidId) return
-    const rows = rowsToApproveAll(items)
+    const rows = rowsToApproveAll(gcItems)
     if (rows.length === 0) return
     setBusy(true)
     try {
@@ -1614,6 +1903,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setApprovingAll(false)
       setItems(await loadItems(selectedRev.id))
       await loadRoom(bidId)
+      await markSentOutside(choice.on ?? null, { onlyIfUnset: true })
       showToast(`Approved on ${done.length} row${done.length === 1 ? '' : 's'} · ${person.name} · entered by ${profileName ?? 'you'}.`, 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not enter their approval'), 'error')
@@ -1622,18 +1912,109 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /**
+   * v2.4705 · the revision went out by email or on paper: `sent_outside_at` on the draft. Typed
+   * answers set it on their day, once (`is null`); the office sets or changes it from step 5.
+   */
+  async function markSentOutside(ymd: string | null, opts: { onlyIfUnset?: boolean } = {}) {
+    if (!selectedRev || !bidId || asRevisionStatus(selectedRev.status) !== 'draft') return
+    if (opts.onlyIfUnset && selectedRev.sent_outside_at) return
+    const at = enteredDecisionAt(ymd, new Date(), todayYmdInAppTz())
+    let q = db.from('bid_submittals').update({ sent_outside_at: at }).eq('id', selectedRev.id)
+    if (opts.onlyIfUnset) q = q.is('sent_outside_at', null)
+    const { error } = await q
+    if (error) {
+      if (!opts.onlyIfUnset) showToast(formatErrorMessage(error, 'Could not record the day it was sent'), 'error')
+      return
+    }
+    setRevisions(await loadRevisions(bidId))
+    if (!opts.onlyIfUnset) showToast(`Rev ${selectedRev.rev_number} · sent by email. Nobody was emailed.`, 'success')
+  }
+
+  /**
+   * Their answer on one row, part by part (2026-10-02): each group of lines that share an answer
+   * and a note is one write in the reviewer's name, on the day they answered; lines taken back
+   * are emptied. One thread line and one event for the whole save. Nothing is sent.
+   */
+  async function saveAnswer(save: AnswerSave) {
+    if (!answering || !selectedRev || !bidId) return
+    const row = answering
+    const { writes } = save
+    if (writes.changed === 0) return
+    setBusy(true)
+    try {
+      let who: { id: string; name: string } | null = null
+      if (writes.sets.length > 0 && save.person) {
+        const { theRoom, person } = await roomAndReviewerFor(save.person)
+        who = person
+        const at = enteredDecisionAt(save.on, new Date(), todayYmdInAppTz())
+        for (const set of writes.sets) {
+          const callPatch = enteredDecisionPatch({ decision: set.decision, note: set.note, person, byUserId: user?.id ?? null, byName: profileName, now: at })
+          if (set.row) {
+            const { error } = await db.from('bid_submittal_items').update(callPatch).eq('id', row.id)
+            if (error) throw error
+          } else await enterCallOnParts(db, row.id, callPatch, { partIds: set.partIds })
+        }
+        const counts = writes.counts
+        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', save.on ?? null), kind: 'decision', tags: row.tag.trim() ? [row.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(save.on ? { decided_on: save.on } : {}) } })
+        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(save.on ? { decided_on: save.on } : {}) } })
+      }
+      if (writes.clearPartIds.length > 0) await clearEnteredCallsOnParts(db, row.id, { ...CLEAR_DECISION_PATCH }, writes.clearPartIds)
+      if (writes.clearRow) {
+        const { error } = await db.from('bid_submittal_items').update({ ...CLEAR_DECISION_PATCH }).eq('id', row.id)
+        if (error) throw error
+      }
+      setAnswering(null)
+      const fresh = await loadItems(selectedRev.id)
+      setItems(fresh)
+      setParts(await loadItemParts(db, fresh.map((x) => x.id)))
+      if (who) await loadRoom(bidId)
+      // v2.4705 · an answer typed on a draft means the draft went out by email: the header stops saying "draft".
+      if (who) await markSentOutside(save.on ?? null, { onlyIfUnset: true })
+      const said = [writes.counts.approved ? `${writes.counts.approved} approved` : '', writes.counts.revise ? `${writes.counts.revise} revise` : '', writes.counts.rejected ? `${writes.counts.rejected} rejected` : ''].filter(Boolean).join(' · ')
+      const tag = row.tag.trim() || 'the accessory'
+      showToast(who ? `${said} on ${tag} · ${who.name} · entered by ${profileName ?? 'you'}. Nobody was emailed.` : `Taken back on ${tag}.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not record their answer'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   /** The row's parts as the editor left them, saved; the row's own label, house and lead time read from them (2026-10-01). */
   async function savePartsOf(itemId: string, drafts: PartDraft[] | undefined): Promise<Record<string, unknown>> {
     if (!drafts || !bidId) return {}
-    const r = await saveItemParts(db, itemId, bidId, partsOf.get(itemId) ?? [], drafts)
+    const before = partsOf.get(itemId) ?? []
+    const r = await saveItemParts(db, itemId, bidId, before, drafts)
+    // 2026-10-02 · a takeoff part left out is remembered on the bid, so a refresh from the takeoff does not bring it back.
+    const countRowId = items.find((it) => it.id === itemId)?.source_count_row_id ?? null
+    const leftOut = leftOutPieceKeys(before, drafts)
+    if (countRowId && leftOut.length > 0) {
+      await rememberLeftOutLines(supabase, bidId, countRowId, leftOut)
+      setTakeoff(await loadTakeoffCandidates(db, bidId, { selectedVersionId: bidsRef.current.find((b) => b.id === bidId)?.selected_bid_version_id ?? null }))
+    }
     return { submitted_label: r.submitted_label, supply_house_id: r.supply_house_id, lead_time_days: r.lead_time_days }
   }
 
+  const savingItem = useRef(false)
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev || !bidId) return
-    const { entered, clearDecision, parts: partDrafts, ...rowPatch } = patch
+    const { thenAnswer, parts: partDrafts, ...rowPatch } = patch
+    // 2026-10-03 · one save at a time: the window reads Saving… and holds, so a second press cannot add the row twice.
+    if (savingItem.current) return
+    savingItem.current = true
+    setBusy(true)
+    try {
+      await saveItemWrites(thenAnswer, partDrafts, rowPatch)
+    } finally {
+      savingItem.current = false
+      setBusy(false)
+    }
+  }
+  async function saveItemWrites(thenAnswer: boolean | undefined, partDrafts: SubmittalItemPatch['parts'], rowPatch: Omit<SubmittalItemPatch, 'thenAnswer' | 'parts'>) {
+    if (!editing || !selectedRev || !bidId) return
     if (editing.id === NEW_ROW_ID) {
-      // v2.4105 · the row by hand lands now, with what the editor holds; a call on it is entered with Edit once it exists.
+      // v2.4105 · the row by hand lands now, with what the editor holds; their answer goes on it once it exists.
       const { data: made, error } = await db.from('bid_submittal_items').insert({ submittal_id: selectedRev.id, sequence_order: editing.sequence_order, ...rowPatch, tag: rowPatch.tag ?? '', sheet_pages: rowPatch.sheet_pages ?? [] }).select('id').single()
       if (error) {
         showToast(formatErrorMessage(error, 'Could not add the row'), 'error')
@@ -1649,39 +2030,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       }
       setEditing(null)
       setItems(await loadItems(selectedRev.id))
-      if (entered) showToast('The row is in. Their call goes on it with Edit.', 'info')
       return
     }
     try {
-      let write: Record<string, unknown> = { ...rowPatch, ...(await savePartsOf(editing.id, partDrafts)) }
-      let enteredFor: { id: string; name: string } | null = null
-      if (entered) {
-        // 5b · the reviewer's call, typed from their file, on the day they made it.
-        const { theRoom, person } = await roomAndReviewerFor(entered.person)
-        enteredFor = person
-        const callPatch = enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: enteredDecisionAt(entered.on, new Date(), todayYmdInAppTz()) })
-        // A row with parts: the call lands on the parts picked (all the GC sees by default); the row reads the roll-up.
-        const onParts = await enterCallOnParts(db, editing.id, callPatch, { partIds: entered.partIds ?? null })
-        if (onParts === 0) write = { ...write, ...callPatch }
-        const n = Math.max(1, onParts)
-        const counts = { approved: entered.decision === 'approved' ? n : 0, revise: entered.decision === 'revise' ? n : 0, rejected: entered.decision === 'rejected' ? n : 0 }
-        const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
-        if (error) throw error
-        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'entered', entered.on ?? null), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, ...(entered.on ? { decided_on: entered.on } : {}) } })
-        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null, ...(entered.on ? { decided_on: entered.on } : {}) } })
-      } else {
-        if (clearDecision) {
-          if ((partsOf.get(editing.id) ?? []).some((p) => p.on_submittal)) await clearEnteredCallsOnParts(db, editing.id, { ...CLEAR_DECISION_PATCH })
-          else write = { ...write, ...CLEAR_DECISION_PATCH }
-        }
-        const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
-        if (error) throw error
-      }
+      const write: Record<string, unknown> = { ...rowPatch, ...(await savePartsOf(editing.id, partDrafts)) }
+      const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
+      if (error) throw error
+      const rowId = editing.id
       setEditing(null)
-      setItems(await loadItems(selectedRev.id))
-      if (enteredFor) {
-        await loadRoom(bidId)
-        showToast(`${DECISION_LABELS[entered!.decision]} on ${editing.tag.trim() || 'the accessory'} · ${enteredFor.name} · entered by ${profileName ?? 'you'}.`, 'success')
+      const fresh = await loadItems(selectedRev.id)
+      setItems(fresh)
+      // "Save and enter their answer…": the row is saved, so the answer window opens on it as it now reads.
+      if (thenAnswer) {
+        setParts(await loadItemParts(db, fresh.map((x) => x.id)))
+        setAnswering(fresh.find((x) => x.id === rowId) ?? null)
       }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not save the row.', 'error')
@@ -1704,6 +2066,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               owesReason: tiles.alternatesWithoutReason + tiles.designChangesWithoutReason,
               sheetsNeeded: tiles.sheetsNeeded,
               packageBuilt: !!selectedRev.package_path,
+              sentOutside: !!selectedRev.sent_outside_at,
             }
           : null,
         room: room ? { status: room.status, opens: events.filter((e) => e.event_type === 'view').length, identified: people.map((p) => p.name).filter((n): n is string => !!n) } : null,
@@ -1721,10 +2084,10 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else if (action === 'build_rev1') void createFirstRevision()
     else if (action === 'choose_from_takeoff') openTakeoffPicker()
     else if (action === 'drop_vendor_pdf') fileInput.current?.click()
-    else if (action === 'build_package') void buildPackage()
+    else if (action === 'build_package') void askBuildPackage()
     else if (action === 'share') setSharing(true)
     else if (action === 'copy_room_link' && room) void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))
-    else if (action === 'resubmit') void newRevision(true)
+    else if (action === 'resubmit') void startNextDraft()
   }
   /** A pill click: scroll to the stage's controls and ring them for a moment. */
   /**
@@ -1778,30 +2141,40 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   const bid = selectedBid
   const isDraft = selectedRev ? asRevisionStatus(selectedRev.status) === 'draft' : false
+  // v2.4705 · step 5's line: a revision that went by email says so (until the room shares one); else the room's own words.
+  const shareLine = selectedRev?.sent_outside_at && !room?.shared_at ? sentByEmailLine(selectedRev.sent_outside_at, decisions.entered) : room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ, decisions.entered) : ''
   // 2026-10-01 · what a draft could catch up on: rows the takeoff reads differently, hand rows that read like another row's part.
   const refreshPlan = isDraft && takeoff ? planTakeoffRefresh(items, partsOf, takeoff.candidates) : { rows: [], skipped: [] }
+  const gradePlan = isDraft && specified.length > 0 ? planScheduleGrade(items, specified, partsOf) : { rows: [], skipped: [] }
   const foldHints = isDraft ? foldSuggestions(items, partsOf) : []
 
   // The road (v2.4090): a done stage folds to its line; the current stage and the stage it reads from stay open;
   // "Open every stage" (remembered per device) and the walkthrough open everything.
   const stageStatus = (key: JourneyStageKey): RoadStatus => journey.stages.find((st) => st.key === key)?.status ?? 'later'
-  const gates = { package: stageGate(journey.stages, 'package'), share: stageGate(journey.stages, 'share'), resubmit: stageGate(journey.stages, 'resubmit') }
-  const currentStageKey = journey.stages.find((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure')?.key ?? null
+  // 2026-10-04 · the newest draft's own facts: only a reason holds the package back, and a built package can be shared.
+  const draftFacts = isDraft && newestRev != null && selectedRev?.id === newestRev.id ? { rows: gcItems.length, owesReason: tiles.alternatesWithoutReason + tiles.designChangesWithoutReason, packageBuilt: !!selectedRev.package_path } : null
+  const gates = { package: stageGate(journey.stages, 'package', draftFacts), share: stageGate(journey.stages, 'share', draftFacts), resubmit: stageGate(journey.stages, 'resubmit') }
+  // 2026-10-03 · every stage that is live, not the first alone: a draft answered by email has its rows, Their call and Resubmit live at once.
+  const liveStageKeys = journey.stages.filter((st) => (st.status === 'current' || st.status === 'waiting') && st.key !== 'procure').map((st) => st.key)
   // What each stage reads from stays open beside it: the package reads the rows; their call and the resubmit land on the rows.
-  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['rows', 'review'] }
-  const scheduleReadLive = liveTask(tasks, 'read_schedule') != null
+  // v2.4689 · step 7 opens step 6 alone: the Resubmit button's own line names the rows sent back, so the fourteen rows of
+  // step 3 need not open with it (BP375 at step 7 opened 3, 6 and 8 at once — five screens before the log; punch list #89, item 7).
+  const readsFrom: Partial<Record<JourneyStageKey, JourneyStageKey[]>> = { package: ['rows'], share: ['package'], review: ['rows'], resubmit: ['review'] }
+  // 2026-10-05 · the robot's schedule read keeps step 1 open only while its tags wait to be confirmed; anything else it is doing rides on the folded step's line.
+  const scheduleRead = liveTask(tasks, 'read_schedule')
+  const scheduleReadNote = scheduleRead ? robotScheduleNote(scheduleRead, robotSeat, Date.now(), formatShortDate) : null
   function sectionOpen(key: JourneyStageKey): boolean {
     const toggled = sectionToggles[key]
     if (toggled != null) return toggled
     if (openAllStages || tourOpen) return true
-    if (key === 'picks' && scheduleReadLive) return true
+    if (key === 'picks' && scheduleReadHoldsStepOpen(scheduleRead)) return true
     // v2.4169 · a stage you have not reached folds to its sentence; its controls draw only when you open it, and then held.
     if (key === 'build' && revisions.length === 0) return true
     // v2.4201 · Procure is a side track the office works at any time (long-lead items go in before a row is approved), so it never folds on its own.
     if (key === 'procure') return true
     if (stageStatus(key) === 'later') return false
     if (stageStatus(key) !== 'done') return true
-    return currentStageKey != null && (readsFrom[currentStageKey] ?? []).includes(key)
+    return liveStageKeys.some((live) => (readsFrom[live] ?? []).includes(key))
   }
   function toggleSection(key: JourneyStageKey) {
     const open = sectionOpen(key)
@@ -1814,6 +2187,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     else toggleSection(key)
   }
   const isNewest = selectedRev != null && newestRev != null && selectedRev.id === newestRev.id
+  // v2.4593 · what the room's link shows now, for the line under the rows and the window: the newest revision on the GC's record
+  // (2026-10-06: shared, or answered by email with its package); a closed room shows only that.
+  const link = linkViewOf(recordList, isRoomClosed(room))
+  /** The number the next draft takes: one past the newest revision, whichever one is on screen. */
+  const nextRevNumber = (newestRev?.rev_number ?? selectedRev?.rev_number ?? 0) + 1
 
   return (
     // One column: What the GC sees opens in a window over the road (2026-10-02), not a pane beside it.
@@ -1823,49 +2201,39 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <BidWorkflowTabTitleWithPreview bid={bid} previewEnabled={bidPreview != null} onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)} h2Style={{ margin: 0, fontSize: '1.15rem' }} />
-            {/* v2.4067: the same "?" Pricing has beside its title — here it starts the walkthrough. */}
-            <button
-              type="button"
-              onClick={() => startWalkThrough()}
-              title="How this page works. Walk me through it"
-              aria-label="How this page works"
-              style={{ font: 'inherit', flexShrink: 0, width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-            >
-              ?
-            </button>
           </div>
-          <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source">
-            Submittals · plumbing fixtures &amp; equipment · {takeoffFixtures > 0 ? <>{takeoffFixtures} fixture{takeoffFixtures === 1 ? '' : 's'} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'} on the schedule`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}
-            {takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? (
+          {/* One line (2026-10-05): which revision, and what the submittal is. Where the rows come from is step 1's to say; how many rows and sheets is step 3's. */}
+          <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source" data-testid="revision-line">
+            {selectedRev ? (
               <>
-                {' · '}
-                <button type="button" onClick={openTakeoffPicker} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                  choose from the takeoff
-                </button>
+                <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev, revisionAnsweredAt(items, parts))}</b> · {selectedRev.title?.trim() || 'Plumbing fixtures & equipment'}
+                {previousRev && isNewest && isDraft ? ` · started from Rev ${previousRev.rev_number}` : ''}
+                {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
+                {!isNewest ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · an older revision, the record; the newest is where the work is</span> : null}
               </>
-            ) : onOpenPricing ? (
-              <>
-                {' · '}
-                <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
-                  {specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}
-                </button>
-              </>
-            ) : null}
+            ) : (
+              'Submittals · plumbing fixtures & equipment · no submittal on this bid yet'
+            )}
           </p>
-          {selectedRev ? (
-            <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-testid="revision-line">
-              Working on <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev)}</b> · {describeRevision(tiles)}
-              {previousRev && isNewest && isDraft ? ` · started from Rev ${previousRev.rev_number}` : ''}
-              {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
-              {!isNewest ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}> · an older revision, the record; the newest is where the work is</span> : null}
-            </p>
-          ) : null}
         </div>
-        {!narrowViewport640 ? (
-          <button type="button" onClick={onClose} title="Close" aria-label="Close" style={bidDetailCloseXStyle}>
-            ×
+        {/* The page's one help door (owner, 2026-10-05): the ? beside the ×. It starts the walkthrough, which opens with the words the page uses and links to the guide. */}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, marginLeft: 'auto' }}>
+          <button
+            type="button"
+            onClick={() => startWalkThrough()}
+            title="How this page works. Walk me through it"
+            aria-label="How this page works"
+            style={{ font: 'inherit', flexShrink: 0, width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.78rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            data-testid="submittal-help"
+          >
+            ?
           </button>
-        ) : null}
+          {!narrowViewport640 ? (
+            <button type="button" onClick={onClose} title="Close" aria-label="Close" style={bidDetailCloseXStyle}>
+              ×
+            </button>
+          ) : null}
+        </span>
       </div>
 
       {loading ? <p style={smallMuted}>Loading…</p> : null}
@@ -1897,93 +2265,41 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         </label>
       ) : null}
       {!loading ? (
-        <div className="submittal-road" data-testid="submittal-road" style={{ display: 'grid', gridTemplateColumns: '34px 1fr', columnGap: '0.6rem' }}>
+        <div className="submittal-road" data-testid="submittal-road">
+          {/* The loop the button on step 7 starts (punch list #84): back to step 2 as the next revision, then 3 to 6 again. Decoration: the button and its line say it in words. */}
+          {showNextRevisionLoop(journey.stages, isNewest) ? (
+            <div className="submittal-road-loop" data-testid="next-revision-loop" aria-hidden="true">
+              <span className="submittal-road-loop__label">Next revision</span>
+              <span className="submittal-road-loop__head" />
+            </div>
+          ) : null}
           {/* 1 · Sources (Where the rows come from) — the source line is in the header; the robot's offer lives here while there is no schedule. */}
           <RoadSection n={1} about={SUBMITTAL_STAGE_ABOUT[1]} onHelp={() => startWalkThrough(1)} title="Where the rows come from" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} onJump={() => jumpToSection('picks')} anchor="submittals-schedule"
-            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? <> · <button type="button" onClick={openTakeoffPicker} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>choose from the takeoff</button></> : onOpenPricing ? <> · <button type="button" onClick={() => (specified.length === 0 ? setPlugInOpen(true) : onOpenPricing(bid))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'type or paste the fixture schedule' : 'the picks on Pricing'}</button></> : null}</>}>
-            {/* v2.4107 · three sources, the takeoff first: a bid priced from a takeoff has no picks and often no schedule, yet the takeoff already names every product. */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', maxWidth: 900 }} data-testid="submittal-sources">
-              <div style={{ border: `1px solid ${takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? '#2563eb' : 'var(--border)'}`, borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-takeoff">
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The takeoff <span style={{ ...smallMuted, fontWeight: 400 }}>· {takeoffFixtures === 0 ? 'none on this bid' : `${takeoffFixtures} fixture${takeoffFixtures === 1 ? '' : 's'}, ${takeoff?.withProduct ?? 0} with a part`}</span></div>
-                <span style={smallMuted}>{takeoffFixtures === 0 ? 'Count the fixtures on Takeoffs and they show here.' : 'One row per fixture you tick. The part under it is the product.'}</span>
-                <button type="button" disabled={busy || takeoffFixtures === 0} onClick={openTakeoffPicker} style={{ ...(takeoffFixtures > 0 && specified.length === 0 && picks.length === 0 ? btnPrimary : btn), alignSelf: 'flex-start', opacity: takeoffFixtures === 0 ? 0.5 : 1 }} title="Tick the fixtures you counted. Each one becomes a row, with its part as the product" data-testid="choose-from-takeoff" data-tour="submittals-takeoff">
-                  {revisions.length === 0 ? 'Choose from the takeoff' : 'Add from the takeoff'}
-                </button>
-              </div>
-              {picks.length > 0 ? (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-picks">
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Quotes compared <span style={{ ...smallMuted, fontWeight: 400 }}>· {picks.length} picked line{picks.length === 1 ? '' : 's'}</span></div>
-                  <span style={smallMuted}>The house you picked for each line on Pricing, with the reason and lead time you gave.</span>
-                  {onOpenPricing ? <button type="button" disabled={busy} onClick={() => onOpenPricing(bid)} style={{ ...btn, alignSelf: 'flex-start' }}>Open the compare</button> : null}
-                </div>
-              ) : null}
-              {(() => {
-                // v2.4109 · the robot lives in the schedule card: the offer under the typed door, the state while it works, Cancel beside it.
-                // v2.4144 · the state row is two lines, not three: the sentence, then the task line with Cancel/Dismiss at its right.
-                const t = liveTask(tasks, 'read_schedule')
-                const st = t ? taskStatus(t) : null
-                const conf = t ? scheduleToConfirm(t) : null
-                return (
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="source-schedule">
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The plans’ schedule <span style={{ ...smallMuted, fontWeight: 400 }}>· {specified.length === 0 ? 'none yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}</span></div>
-                    <span style={smallMuted}>{specified.length === 0 ? 'Optional. A tag is the plan’s name for a fixture, like WC-1. With the schedule, the app checks each row against the plans.' : 'Every tag here becomes a row. A row with no pick gets its product typed with Edit.'}</span>
-                    {t ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.3rem 0.55rem', fontSize: '0.8rem' }} data-testid="robot-schedule" data-tour="submittals-robot">
-                        <span style={{ color: 'var(--text-strong)' }}>
-                          {st === 'ready' ? (conf ? 'The robot read the schedule. Confirm the tags below.' : 'The robot read the schedule and found no tags.') : st === 'blocked' ? (t.summary || 'The robot could not read the plans.') : st === 'working' ? 'The robot is reading the fixture schedule off the plans.' : 'The robot is queued to read the fixture schedule off the plans.'}
-                        </span>
-                        <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
-                          <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
-                          {st === 'blocked' || st === 'queued' ? (
-                            <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: '0.78rem', flexShrink: 0 }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
-                          ) : null}
-                        </span>
-                      </div>
-                    ) : null}
-                    <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={{ ...(specified.length === 0 && takeoffFixtures === 0 ? btnPrimary : btn), alignSelf: 'flex-start' }} title="Type or paste the tags from the plans, one per line" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
-                      {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
-                    </button>
-                    {!t && specified.length === 0 ? <RobotOffer kind="read_schedule" seat={robotSeat} hasPlans={Boolean(selectedBid?.plans_link)} busy={busy} onAsk={() => void askRobot('read_schedule', {}, null)} testId="ask-robot-schedule" tour="submittals-robot" /> : null}
-                  </div>
-                )
-              })()}
-            </div>
-        {!loading ? (() => {
-          // 6b · the schedule read, ready: the tags to confirm, under the cards at full width
-          const t = liveTask(tasks, 'read_schedule')
-          const conf = t ? scheduleToConfirm(t) : null
-          if (!t || !conf) return null
-          const n = conf.sure.length + conf.look.length
-          return (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 900, marginTop: '0.6rem' }} data-testid="robot-schedule-confirm">
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>The robot read {n} tag{n === 1 ? '' : 's'} off the plans <span style={{ ...smallMuted, fontWeight: 400 }}>· confirm them and they join the schedule; the rest are dropped</span></div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
-                {conf.sure.map((r) => (
-                  <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
-                ))}
-                {conf.look.map((r) => (
-                  <Fragment key={r.tag}>
-                    <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
-                      <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
-                    </label>
-                    <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
-                  </Fragment>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
-                  {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
-                </button>
-                <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
-                <span style={smallMuted}>Confirmed tags join the schedule; the rest are dropped.</span>
-              </div>
-            </div>
-          )
-        })() : null}
+            summaryWhenOpen={false}
+            summary={<>{takeoffFixtures > 0 ? <>{takeoffFixtures} on the takeoff · </> : null}{specified.length === 0 ? 'no schedule yet' : `${specified.length} tag${specified.length === 1 ? '' : 's'}`}{picks.length > 0 ? <> · {picks.length} picked line{picks.length === 1 ? '' : 's'}</> : null}{scheduleReadNote?.chip ? <span data-testid="road-1-robot" style={{ color: scheduleReadNote.tone === 'warn' ? 'var(--text-amber-700)' : scheduleReadNote.tone === 'bad' ? 'var(--text-red-700)' : undefined, fontWeight: scheduleReadNote.tone === 'plain' ? undefined : 600 }}> · <span aria-hidden>🤖 </span>{scheduleReadNote.chip}</span> : null}</>}>
+            <SubmittalSourcesPanel
+              takeoffFixtures={takeoffFixtures}
+              takeoffWithProduct={takeoff?.withProduct ?? 0}
+              scheduleTags={specified.length}
+              picks={picks.length}
+              hasRevision={revisions.length > 0}
+              hasPlans={Boolean(selectedBid?.plans_link)}
+              tasks={tasks}
+              robotSeat={robotSeat}
+              lookChecked={lookChecked}
+              busy={busy}
+              onChooseFromTakeoff={openTakeoffPicker}
+              onOpenCompare={onOpenPricing ? () => onOpenPricing(bid) : undefined}
+              onPlugIn={() => setPlugInOpen(true)}
+              onAskRobot={() => void askRobot('read_schedule', {}, null)}
+              onCancelTask={(id) => void markTask(id, 'cancelled').then(() => loadTasks(bidId as string))}
+              onLookChecked={(tag, checked) => setLookChecked((m) => ({ ...m, [tag]: checked }))}
+              onConfirmSchedule={(t, tags) => void confirmSchedule(t, tags)}
+            />
           </RoadSection>
 
           {/* 2 · Build Rev 1 / the revision */}
-          <RoadSection n={2} about={SUBMITTAL_STAGE_ABOUT[2]} onHelp={() => startWalkThrough(2)} title={revisions.length === 0 ? 'Build Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} status={stageStatus('build')} open={sectionOpen('build')} onToggle={() => toggleSection('build')} onJump={() => jumpToSection('build')} anchor="submittals-build"
+          <RoadSection n={2} about={stageAbout(2, selectedRev ? { number: selectedRev.rev_number, isNewest } : null)} onHelp={() => startWalkThrough(2)} title={revisions.length === 0 ? 'Build Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} status={stageStatus('build')} open={sectionOpen('build')} onToggle={() => toggleSection('build')} onJump={() => jumpToSection('build')} anchor="submittals-build"
             summary={selectedRev ? (
               <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-tour="submittals-revisions">
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip" data-tour="submittals-revisions">
@@ -1991,7 +2307,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     const on = r.id === selectedRev.id
                     return (
                       <button key={r.id} type="button" data-testid="revision-chip" aria-pressed={on} onClick={() => setSelectedRevId(r.id)} style={{ ...btn, padding: '0.25rem 0.65rem', borderRadius: 999, fontSize: '0.75rem', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', borderColor: on ? '#2563eb' : 'var(--border-strong)', color: on ? 'var(--text-blue-700)' : 'var(--text-muted)', fontWeight: on ? 700 : 500 }}>
-                        {describeRevisionChip(r)}
+                        {describeRevisionChip(r, on ? revisionAnsweredAt(items, parts) : answeredByRev.get(r.id) ?? null)}
                       </button>
                     )
                   })}
@@ -2049,6 +2365,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     Rebuild rows from picks
                   </button>
                 ) : null}
+                {isDraft && gradePlan.rows.length > 0 ? (
+                  <button type="button" disabled={busy} onClick={() => setGradeOpen(true)} style={{ ...btn, borderColor: '#2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }} title="The schedule names rows that read Proposed. Each takes the plans' product and its status; nothing you typed changes" data-testid="grade-against-schedule">
+                    Grade {gradePlan.rows.length} row{gradePlan.rows.length === 1 ? '' : 's'} against the schedule…
+                  </button>
+                ) : null}
                 <span style={smallMuted}>{selectedRev.note ? selectedRev.note : isDraft ? 'A draft until you share it. Each shared version stays as the record.' : 'Shared. A new version starts when the GC sends rows back, or a product changes.'}</span>
                 {isDraft && isNewest ? (
                   <button type="button" disabled={busy} onClick={() => void deleteDraft()} style={{ ...btnQuiet, color: 'var(--text-red-700)', textDecoration: 'underline dotted', marginLeft: 'auto' }}>
@@ -2063,122 +2384,41 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <>
               {/* 3 · Reasons & cut sheets — the rows are the work */}
               <RoadSection n={3} about={SUBMITTAL_STAGE_ABOUT[3]} onHelp={() => startWalkThrough(3)} title="Reasons & cut sheets" status={stageStatus('rows')} open={sectionOpen('rows')} onToggle={() => toggleSection('rows')} onJump={() => jumpToSection('rows')} anchor="submittals-rows-section"
+                summaryWhenOpen={false}
                 summary={<span data-testid="submittal-tiles" data-tour="submittals-tiles" title={describeRevision(tiles)}>{describeWhatIsLeft(tiles)}</span>}>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }} data-tour="submittals-rows">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
-                    <thead>
-                      <tr>
-                        <th style={th}>Tag</th>
-                        <th style={th}>Specified</th>
-                        <th style={th}>Submitted</th>
-                        <th style={th} title={COLUMN_HELP.status}>Status <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
-                        <th style={th} title={COLUMN_HELP.reason}>Reason <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
-                        <th style={th}>Lead time</th>
-                        <th style={th} title={COLUMN_HELP.sheet}>Sheet <span aria-hidden style={{ color: 'var(--text-faint)', fontWeight: 400 }}>?</span></th>
-                        {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
-                        {decisions.decided > 0 || parts.some((p) => p.review_decision) ? <th style={th}>Their call</th> : null}
-                        <th style={th} />
-                      </tr>
-                    </thead>
-                    <tbody data-testid="submittal-rows">
-                      {items.length === 0 ? (
-                        <tr>
-                          <td style={td} colSpan={9}>
-                            <span style={smallMuted}>No rows on this revision.</span>
-                          </td>
-                        </tr>
-                      ) : null}
-                      {items.map((it) => {
-                        const status = asStatus(it.status)
-                        const reason = asReason(it.reason_kind)
-                        const lead = describeLeadTime(it.lead_time_days)
-                        const file = it.sheet_file != null ? sourceFiles[it.sheet_file] ?? null : null
-                        const prev = it.carried_from_item_id ? prevById.get(it.carried_from_item_id) ?? null : null
-                        const note = previousRev ? changeNoteFor(prev ? itemToPrevious(prev) : null, { submittedModel: it.submitted_model, submittedLabel: it.submitted_label, status, reasonKind: reason }) : null
-                        const specText = [it.specified_manufacturer, it.specified_model].filter(Boolean).join(' ')
-                        return (
-                          <tr key={it.id} data-testid="submittal-row" style={{ background: status === 'design_change' ? 'var(--bg-red-tint)' : undefined }}>
-                            <td style={{ ...td, fontWeight: 700, color: it.tag.trim() ? 'var(--text-strong)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{it.tag.trim() || '—'}</td>
-                            <td style={td}>
-                              {specText || (it.tag.trim() ? '—' : <span style={smallMuted}>not on the schedule</span>)}
-                              {it.specified_description ? <span style={sub}>{it.specified_description}</span> : null}
-                            </td>
-                            <td style={td}>
-                              {(partsOf.get(it.id) ?? []).length > 0 ? (
-                                <SubmittalPartsCell parts={partsOf.get(it.id) ?? []} houseNameById={houseNameById} />
-                              ) : (
-                                <>
-                                  {it.submitted_label ?? it.submitted_model ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                                  {it.submitted_label && it.submitted_model && it.submitted_label !== it.submitted_model ? <span style={sub}>{it.submitted_model}</span> : null}
-                                  {it.supply_house_id && houseNameById.get(it.supply_house_id) ? <span style={sub} data-testid="row-house">{houseNameById.get(it.supply_house_id)}</span> : null}
-                                </>
-                              )}
-                            </td>
-                            <td style={td}>
-                              <ProductStatusChip status={status} size="md" />
-                            </td>
-                            <td style={td}>
-                              {reason ? REASON_LABELS[reason] : needsReason(status) ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>say why</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                              {it.reason_note ? <span style={sub}>{it.reason_note}</span> : null}
-                            </td>
-                            <td style={{ ...td, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{lead ?? <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                            <td style={td}>
-                              {file && (it.sheet_pages ?? []).length > 0 ? (
-                                <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
-                                  ✓ {formatPages(it.sheet_pages)}
-                                  <span style={sub}>{file.name}</span>
-                                </span>
-                              ) : needsSheet(it) ? (
-                                <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>sheet needed</span>
-                              ) : (
-                                <span style={{ color: 'var(--text-faint)' }}>—</span>
-                              )}
-                            </td>
-                            {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
-                            {decisions.decided > 0 || parts.some((p) => p.review_decision) ? (
-                              <td style={td} data-testid="their-call">
-                                {(() => {
-                                  const d = asDecision(it.review_decision)
-                                  const byPart = partCallsLine(partsOf.get(it.id) ?? [])
-                                  if (!d) return byPart ? <span style={{ color: 'var(--text-muted)', fontWeight: 600 }} data-testid="their-call-parts">{byPart}</span> : <span style={{ color: 'var(--text-faint)' }}>—</span>
-                                  const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
-                                  return (
-                                    <span style={{ color, fontWeight: 600 }}>
-                                      {DECISION_LABELS[d]}
-                                      {byPart ? <span style={sub} data-testid="their-call-parts">{byPart}</span> : null}
-                                      <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
-                                      {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
-                                    </span>
-                                  )
-                                })()}
-                              </td>
-                            ) : null}
-                            <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                                Edit
-                              </button>
-                              {isDraft && rowSplitTags(it.tag).length > 1 ? (
-                                <button type="button" aria-label={`Split ${it.tag.trim()}`} disabled={busy} onClick={() => void splitRow(it)} title={`One row per tag: ${rowSplitTags(it.tag).join(', ')}`} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem', borderColor: '#2563eb', color: 'var(--text-blue-700)' }} data-testid="split-row">
-                                  Split
-                                </button>
-                              ) : null}
-                              {isDraft && !it.source_count_row_id && (partsOf.get(it.id) ?? []).length === 0 && items.length > 1 ? (
-                                <button type="button" aria-label={`Make ${it.tag.trim() || 'this row'} a part of another row`} disabled={busy} onClick={() => setFoldFrom({ fromId: it.id, intoId: foldHints.find((h) => h.fromId === it.id)?.intoId ?? null })} title="Fold this row into another row's fixture, as one of its parts" style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', marginLeft: '0.3rem' }} data-testid="fold-row">
-                                  Part of…
-                                </button>
-                              ) : null}
-                              {isDraft ? (
-                                <button type="button" aria-label={`Remove ${it.tag.trim() || 'accessory'}`} disabled={busy} onClick={() => void removeRow(it)} title={it.source_count_row_id ? 'Off this draft, and unticked on the takeoff list' : 'Off this draft'} style={{ ...btn, padding: '0.2rem 0.5rem', fontSize: '0.75rem', marginLeft: '0.3rem', color: 'var(--text-muted)' }}>
-                                  ×
-                                </button>
-                              ) : null}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <SubmittalRowsTable
+                  items={items}
+                  gcItems={gcItems}
+                  orderOnlyItems={orderOnlyItems}
+                  parts={parts}
+                  partsOf={partsOf}
+                  houseNameById={houseNameById}
+                  sourceFiles={sourceFiles}
+                  previousRev={previousRev}
+                  prevById={prevById}
+                  decisions={decisions}
+                  scheduleTags={specified.length}
+                  isDraft={isDraft}
+                  busy={busy}
+                  foldHints={foldHints}
+                  onEdit={setEditing}
+                  onAnswer={setAnswering}
+                  onSplit={(it) => void splitRow(it)}
+                  onFold={(fromId, intoId) => setFoldFrom({ fromId, intoId })}
+                  onTakeOff={(it) => void askTakeOff(it)}
+                  onPutBack={(it) => void setOrderOnly(it, false)}
+                  onLeaveOut={(it) => void leaveOrderOnlyOut(it)}
+                  onTypeSchedule={isDraft ? () => setPlugInOpen(true) : undefined}
+                  onSaveSheet={(it) => void saveRowCutSheet(it)}
+                  savingSheetId={savingSheetId}
+                />
+                {isDraft && (takeoffLeftOut > 0 || takeoffStandsLine) ? (
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-testid="left-out-line">
+                    {takeoffLeftOut > 0 ? <span><b style={{ color: 'var(--text-base)' }}>Left out</b><span style={{ color: 'var(--text-muted)' }}> · {takeoffLeftOut} from the takeoff · not submitted, not ordered</span></span> : null}
+                    {takeoffStandsLine ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }} data-testid="stands-line" title="Approved on an earlier revision. They stay there and on the procurement log">{takeoffStandsLine}</span> : null}
+                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btnQuiet, color: 'var(--text-link)', textDecoration: 'underline' }}>Show them</button>
+                  </div>
+                ) : null}
                 {/* v2.4140 · the statuses explained where they are read: a quiet link under the table opens the legend. */}
                 <div style={{ marginTop: '0.35rem', fontSize: '0.78rem' }}>
                   <button type="button" onClick={() => setStatusLegendOpen((v) => !v)} aria-expanded={statusLegendOpen} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }} data-testid="status-legend-toggle">
@@ -2195,7 +2435,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 </div>
                 {isNewest ? (() => {
                   // v2.4174 · see what they see, Layer 1 (#62): the reviewer's own headline and subline, from the rows as they stand — under the rows, where they are edited.
-                  const r = describeForReviewer(items, asRevisionStatus(selectedRev.status) !== 'draft')
+                  const r = describeForReviewer(items, { rev: selectedRev.rev_number, ...link })
                   return (
                     <p style={{ margin: '0.45rem 0 0', fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.45 }} data-testid="reviewer-line">
                       <b style={{ color: 'var(--text-strong)' }}>{r.lead}</b> {r.line} <span style={smallMuted}>{r.note}</span>
@@ -2233,8 +2473,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   </button>
                   <span style={smallMuted}>A cut sheet is the maker’s page for a product. Drop the house’s whole PDF here, then put each page on its row.</span>
                   {isDraft && takeoffFixtures > 0 ? (
-                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto' }} title="Tick more fixtures from the takeoff onto this draft" data-testid="add-from-takeoff">
-                      + Add from the takeoff…
+                    <button type="button" disabled={busy} onClick={openTakeoffPicker} style={{ ...btn, marginLeft: 'auto', borderColor: '#2563eb', color: 'var(--text-blue-700)', fontWeight: 600 }} title="Every fixture on the takeoff: the GC sees it, order only, or left out" data-testid="add-from-takeoff">
+                      Choose what the GC sees…
                     </button>
                   ) : null}
                   {isDraft ? (
@@ -2249,7 +2489,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 {sourceFiles.length > 0 ? (
                   <SubmittalSheetStrip
                     files={sourceFiles}
-                    items={items}
+                    items={gcItems}
                     thumbnails={thumbs}
                     busy={busy}
                     onNeedThumbnails={(i) => void showPages(i)}
@@ -2258,13 +2498,14 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onDone={(i) => void doneWithFile(i)}
                     onRemove={(i) => void removeFile(i)}
                     guesses={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? guessByPage(g) : new Map()] }))}
-                    robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); return [i, t ? describeTask(t, f.pages) : ''] }))}
+                    robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const stale = t && taskStatus(t) === 'queued' ? staleAsk('file_cut_sheets', t.requested_at, robotSeat, Date.now(), formatShortDate) : null; return [i, t ? `${describeTask(t, f.pages)}${stale ? ` · ${stale.suffix}` : ''}` : ''] }))}
                     confirmLabels={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? confirmLabel(g.sure.length, g.unsure.length) : ''] }))}
                     robotSeat={robotSeat}
                     onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
                     onConfirmGuesses={(i) => void confirmGuesses(i)}
                     onAssignPages={(i) => setAssignFile(i)}
                     onReadParts={(i) => void readFileParts(i)}
+                    onSaveFile={(i) => void saveSourceFile(i)}
                   />
                 ) : null}
               </RoadSection>
@@ -2281,9 +2522,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 ) : items.length > 0 ? 'not built for this version yet' : 'appears once Rev 1 has rows'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   {items.length > 0 ? (
-                    <button type="button" disabled={busy || !gates.package.on} onClick={() => void buildPackage()} style={{ ...(selectedRev.package_path ? btn : btnPrimary), opacity: gates.package.on ? 1 : 0.5 }} data-testid="build-package"
+                    <button type="button" disabled={busy || !gates.package.on} onClick={() => void askBuildPackage()} style={{ ...(selectedRev.package_path ? btn : btnPrimary), opacity: gates.package.on ? 1 : 0.5 }} data-testid="build-package"
  title="One PDF for the GC: the cover table, then every cut sheet stamped with its tag and status. Saved on this version and opened" data-tour="submittals-package">
-                      {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
+                      {buildPackageLabel(!!selectedRev.package_path, isDraft ? tiles.sheetsNeeded : 0)}
                     </button>
                   ) : null}
                   {selectedRev.package_path ? (
@@ -2294,218 +2535,90 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   {selectedRev.drive_file_url ? null : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
                     <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Save this version's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
                   ) : null}
-                  <span style={smallMuted} data-testid="package-caption">{gates.package.on ? 'One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.' : gates.package.why}</span>
+                  <span style={smallMuted} data-testid="package-caption">{gates.package.on ? (isDraft && tiles.sheetsNeeded > 0 ? `One PDF on our letterhead. ${tiles.sheetsNeeded} row${tiles.sheetsNeeded === 1 ? ' has' : 's have'} no cut sheet yet. The cover lists ${tiles.sheetsNeeded === 1 ? 'it' : 'them'} as cut sheets to follow.` : 'One PDF on our letterhead. The cover table first, then every cut sheet stamped with its tag and status.') : gates.package.why}</span>
                 </div>
               </RoadSection>
 
               {/* 5 · Share — the room link and the people on it */}
               <RoadSection n={5} about={SUBMITTAL_STAGE_ABOUT[5]} onHelp={() => startWalkThrough(5)} title="Share" status={stageStatus('share')} open={sectionOpen('share')} onToggle={() => toggleSection('share')} onJump={() => jumpToSection('share')} anchor="submittals-share-section"
-                summary={room ? describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ) : items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows'}>
-                {items.length > 0 && isNewest ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: room ? '0.5rem' : 0 }}>
-                    <button type="button" disabled={busy || room?.status === 'closed' || !gates.share.on} onClick={() => setSharing(true)} style={{ ...(asRevisionStatus(selectedRev.status) === 'shared' ? btn : btnPrimary), opacity: gates.share.on ? 1 : 0.5 }} data-testid="share-button" title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
-                      {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
-                    </button>
-                    <span style={smallMuted} data-testid="share-caption">{!gates.share.on ? gates.share.why : room ? 'The same link shows every later version.' : 'Makes the link for the GC and copies it. Paste it into your email.'}</span>
-                  </div>
-                ) : null}
-                {room ? (
-                  <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line" data-tour="submittals-room">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ)}</span>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        {room.status === 'open' ? (
-                          <>
-                            <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                              Copy link
-                            </button>
-                            <button type="button" onClick={() => void closeRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              Close the room
-                            </button>
-                          </>
-                        ) : (
-                          <button type="button" onClick={() => void reopenRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                            Reopen
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {people.filter((p) => !p.closed_at).length > 0 || anonymousOpens(events) > 0 ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '0.3rem 0.75rem', alignItems: 'center', fontSize: '0.78rem' }} data-testid="room-people">
-                        {people.filter((p) => !p.closed_at).map((p) => {
-                          const t = personTrail(p.id, events, items.filter((it) => it.reviewed_by_person_id === p.id).length)
-                          return (
-                            <div key={p.id} style={{ display: 'contents' }}>
-                              <span><b style={{ color: 'var(--text-strong)' }}>{p.name}</b> <span style={smallMuted}>· {ROOM_ROLE_LABELS[asRoomRole(p.role)]}</span></span>
-                              <span style={smallMuted}>{describeHow(asPersonHow(p.how))} · {describeTrail(t, ROOM_TZ)}</span>
-                              <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', fontSize: '0.7rem' }} role="group" aria-label={`${p.name} may`}>
-                                <button type="button" aria-pressed={p.may_decide} onClick={() => void setMayDecide(p.id, true)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: p.may_decide ? '#16a34a' : 'var(--surface)', color: p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: p.may_decide ? 700 : 500 }}>deciding</button>
-                                <button type="button" aria-pressed={!p.may_decide} onClick={() => void setMayDecide(p.id, false)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: !p.may_decide ? 'var(--text-strong)' : 'var(--surface)', color: !p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: !p.may_decide ? 700 : 500 }}>watching</button>
-                              </span>
-                              <span style={{ display: 'flex', gap: '0.3rem' }}>
-                                {p.token ? (
-                                  <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, p.token as string)).then(() => showToast('Personal link copied.', 'success'), () => showToast(roomLink(window.location.origin, p.token as string), 'info'))} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem' }}>
-                                    Personal link
-                                  </button>
-                                ) : null}
-                                <button type="button" aria-label={`Close ${p.name}'s link`} onClick={() => void closePerson(p.id)} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                  ×
-                                </button>
-                              </span>
-                            </div>
-                          )
-                        })}
-                        {anonymousOpens(events) > 0 ? (
-                          <div style={{ display: 'contents' }}>
-                            <span style={smallMuted}>+ {anonymousOpens(events)} open{anonymousOpens(events) === 1 ? '' : 's'}</span>
-                            <span style={smallMuted}>by people who did not say who they were</span>
-                            <span />
-                            <span />
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span style={smallMuted}>Nobody has identified themselves yet. Anyone with the link can read; deciding or asking asks who they are.</span>
-                    )}
-                  </div>
+                summaryWhenOpen={!room}
+                summary={shareLine || (items.length > 0 ? 'not shared yet' : 'appears once Rev 1 has rows')}>
+                {(items.length > 0 && isNewest) || room ? (
+                  <SubmittalRoomPanel
+                    showShare={items.length > 0 && isNewest}
+                    revisionShared={asRevisionStatus(selectedRev.status) === 'shared'}
+                    shareGate={gates.share}
+                    room={room}
+                    roomLine={shareLine}
+                    sentOutsideAt={selectedRev.sent_outside_at}
+                    onSentOutside={isDraft && isNewest ? (ymd) => void markSentOutside(ymd) : undefined}
+                    people={people}
+                    events={events}
+                    decidedBy={(personId) => items.filter((it) => it.reviewed_by_person_id === personId).length}
+                    busy={busy}
+                    onShare={() => setSharing(true)}
+                    onCloseRoom={() => void closeRoom()}
+                    onReopenRoom={() => void reopenRoom()}
+                    onSetMayDecide={(personId, mayDecide) => void setMayDecide(personId, mayDecide)}
+                    onClosePerson={(personId) => void closePerson(personId)}
+                  />
                 ) : null}
               </RoadSection>
 
               {/* 6 · Their call — decisions, the reviewer's own files, the thread */}
               <RoadSection n={6} about={SUBMITTAL_STAGE_ABOUT[6]} onHelp={() => startWalkThrough(6)} title={<>Their call{decisions.decided > 0 || reviewerFiles.length > 0 ? <span style={{ ...smallMuted, fontWeight: 400 }}> on Rev {selectedRev.rev_number}</span> : null}</>} status={stageStatus('review')} open={sectionOpen('review')} onToggle={() => toggleSection('review')} onJump={() => jumpToSection('review')} anchor="submittals-review"
+                summaryWhenOpen={gcItems.length === 0}
                 summary={decisions.decided > 0 ? `${describeDecisions(decisions)}${decisions.open > 0 ? ` · ${decisions.open} still open` : ''}` : room ? (room.status === 'closed' ? 'link closed' : 'no answers yet') : 'appears after you share'}>
-                {decisions.decided > 0 ? (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }} data-testid="decisions-line">
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
-                      <b>Their call:</b> {describeDecisions(decisions)}
-                      {decisions.open > 0 ? <span style={smallMuted}> · {decisions.open} still open</span> : null}
-                    </span>
-                    <button type="button" onClick={() => void navigator.clipboard.writeText(decisionsAsText(items, `${describeRevisionChip(selectedRev)} · ${bidWorkflowTabHeading(bid, prefixMap)}`, ROOM_TZ)).then(() => showToast('Decisions copied as text.', 'success'), () => showToast('Could not copy.', 'error'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
-                      Copy their decisions as text
-                    </button>
-                  </div>
-                ) : null}
-                {isNewest && approvableRows.length > 0 ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
-                    <button type="button" disabled={busy} onClick={() => setApprovingAll(true)} style={btn} data-testid="approve-all-open" title="They said yes to all of it by email, on paper or before the room existed. One entry marks every row with no call yet.">
-                      They approved all of it…
-                    </button>
-                    <span style={smallMuted}>One entry for a submittal approved whole. You say who approved it and on what day.</span>
-                  </div>
-                ) : null}
-                {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0' }}>
-                    <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email. Keep their file here and type their answers onto the rows">
-                      Drop a reviewer's file
-                    </button>
-                    <span style={smallMuted}>A marked-up PDF or an email instead of the room; type their calls onto the rows with Edit.</span>
-                  </div>
-                ) : null}
-                {reviewerFiles.length > 0 ? (
-                  <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="reviewer-files">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
-                      <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type their calls onto the rows with Edit — the record reads entered by you'}</span>
-                    </div>
-                    {reviewerFiles.map((f, i) => {
-                      const t = liveTask(tasks, 'read_redlines', (inp) => inp.reviewer_index === i && (!inp.path || inp.path === f.path))
-                      const r = t ? redlinesToConfirm(t) : null
-                      const st = t ? taskStatus(t) : null
-                      return (
-                        <div key={f.path} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-                            <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
-                            <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                              {f.kind === 'redline' && !t ? <RobotOffer kind="read_redlines" seat={robotSeat} busy={busy} onAsk={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} testId="ask-robot-redlines" /> : null}
-                              <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
-                              <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
-                            </span>
-                          </div>
-                          {t ? (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                              <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
-                              {st === 'blocked' || st === 'queued' ? <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button> : null}
-                            </div>
-                          ) : null}
-                          {r ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '0.5rem', borderLeft: '3px solid var(--border-strong)' }} data-testid="robot-redlines">
-                              {[...r.sure, ...r.unsure].map((a, k) => (
-                                <span key={k} style={{ fontSize: '0.8125rem' }}>
-                                  <b style={{ color: a.proposed === 'approved' ? 'var(--text-green-700)' : a.proposed === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)' }}>{a.tag}{a.confidence < 0.7 ? ' ?' : ''}</b> · {DECISION_LABELS[a.proposed as 'approved' | 'revise' | 'rejected']}{a.text ? <span style={smallMuted}> · “{a.text}”</span> : null}{a.page ? <span style={smallMuted}> · p.{a.page}</span> : null}
-                                </span>
-                              ))}
-                              {r.questions.map((q, k) => (
-                                <span key={`q${k}`} style={{ fontSize: '0.8125rem' }}><b style={{ color: 'var(--text-muted)' }}>{q.tag ?? 'no tag'}</b> · a question for the thread<span style={smallMuted}> · “{q.text}”</span></span>
-                              ))}
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                                <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, false)} style={btnGreen} data-testid="confirm-redlines">{confirmLabel(r.sure.length, r.unsure.length, 'settle') || 'Confirm'}</button>
-                                {r.unsure.length ? <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, true)} style={btn}>Take the unsure ones too</button> : null}
-                                <span style={smallMuted}>Each lands as read from {f.personName ?? 'the reviewer'}'s file, confirmed by you; the questions post to the thread.</span>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      )
-                    })}
-                    <span style={smallMuted}>Nothing about these files shows on the room.</span>
-                  </div>
-                ) : null}
-                {room ? (
-                  <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-panel">
-                    <button type="button" aria-expanded={threadOpen} onClick={() => setThreadOpen((o) => !o)} style={{ ...btnQuiet, display: 'flex', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: 0 }}>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Thread</span>
-                      <span style={smallMuted}>{summarizeThread(messages, ROOM_TZ)} {threadOpen ? '▴' : '▾'}</span>
-                    </button>
-                    {threadOpen ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-entries">
-                        {messages.length === 0 ? <span style={smallMuted}>Nothing asked yet. Questions from the room land here and on the inbox.</span> : null}
-                        {messages.map((m) => {
-                          const d = describeThreadEntry(m, ROOM_TZ)
-                          const askable = m.authorKind === 'reviewer' || m.authorKind === 'watcher'
-                          return (
-                            <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.8125rem', borderLeft: `3px solid ${m.authorKind === 'office' ? '#b0662f' : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 8, color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
-                              <div style={{ ...smallMuted, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <span>{d.who ? <b>{d.who}</b> : null}{d.who && d.when ? ' · ' : ''}{d.when}{m.tags.length ? ` · ${m.tags.join(', ')}` : ''}{m.revNumber ? ` · Rev ${m.revNumber}` : ''}</span>
-                                {askable && room.status === 'open' ? (
-                                  <button type="button" onClick={() => { setReplyTo(m.id); setReplyBody('') }} style={{ ...btnQuiet, padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
-                                    Reply
-                                  </button>
-                                ) : null}
-                              </div>
-                              <div style={{ whiteSpace: 'pre-wrap', fontStyle: d.quiet ? 'italic' : 'normal' }}>{m.body}</div>
-                              {replyTo === m.id ? (
-                                <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="room-thread-reply">
-                                  <textarea aria-label="Your answer" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={3} placeholder="The answer — the room shows it as the company; they get it by email with their own link" style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', resize: 'vertical' }} />
-                                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                                    <button type="button" style={btn} disabled={replying} onClick={() => { setReplyTo(null); setReplyBody('') }}>Cancel</button>
-                                    <button type="button" style={{ ...btn, background: '#b0662f', color: 'white', borderColor: 'transparent' }} disabled={replying || !replyBody.trim()} onClick={() => void sendReply()}>
-                                      {replying ? 'Sending…' : 'Send the answer'}
-                                    </button>
-                                  </div>
-                                </div>
-                              ) : null}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    ) : null}
-                  </div>
+                {gcItems.length > 0 || asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 || room ? (
+                  <SubmittalTheirCallPanel
+                    items={gcItems}
+                    partsOf={partsOf}
+                    canEdit={isDraft && isNewest}
+                    isNewest={isNewest}
+                    nextRev={selectedRev.rev_number + 1}
+                    sharedLine={shareLine}
+                    recordLine={emailedRecordLine({ rev: selectedRev.rev_number, shared: !!selectedRev.shared_at, hasPackage: !!selectedRev.package_path, hasAnswer: items.some(isReviewerAnswer) || parts.some(isReviewerAnswer) })}
+                    onEdit={setEditing}
+                    onAnswer={setAnswering}
+                    decisions={decisions}
+                    decisionsText={() => decisionsAsText(items, `${describeRevisionChip(selectedRev)} · ${bidWorkflowTabHeading(bid, prefixMap)}`, ROOM_TZ)}
+                    approvable={isNewest ? approvableRows.length : 0}
+                    showDropFile={asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0}
+                    reviewerFiles={reviewerFiles}
+                    tasks={tasks}
+                    robotSeat={robotSeat}
+                    room={room}
+                    messages={messages}
+                    threadOpen={threadOpen}
+                    replyTo={replyTo}
+                    replyBody={replyBody}
+                    replying={replying}
+                    busy={busy}
+                    onApproveAll={() => setApprovingAll(true)}
+                    onPickFile={() => reviewerInput.current?.click()}
+                    onAskRobot={(i, f) => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)}
+                    onOpenFile={(f) => void openReviewerFile(f)}
+                    onRemoveFile={(i) => void removeReviewerFile(i)}
+                    onCancelTask={(id) => void markTask(id, 'cancelled').then(() => loadTasks(bidId as string))}
+                    onConfirmRedlines={(t, withUnsure) => void confirmRedlines(t, withUnsure)}
+                    onToggleThread={() => setThreadOpen((o) => !o)}
+                    onReplyTo={(id) => { setReplyTo(id); setReplyBody('') }}
+                    onReplyBody={setReplyBody}
+                    onSendReply={() => void sendReply()}
+                  />
                 ) : null}
               </RoadSection>
 
               {/* 7 · Resubmit */}
-              <RoadSection n={7} about={SUBMITTAL_STAGE_ABOUT[7]} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
-                summary={isNewest && decisions.sentBack > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back — start Rev ${selectedRev.rev_number + 1} with just ${decisions.sentBack === 1 ? 'that row' : 'those rows'}` : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
+              <RoadSection n={7} about={stageAbout(7, { number: selectedRev.rev_number, isNewest })} onHelp={() => startWalkThrough(7)} title="Resubmit" status={stageStatus('resubmit')} open={sectionOpen('resubmit')} onToggle={() => toggleSection('resubmit')} onJump={() => jumpToSection('resubmit')} anchor="submittals-resubmit-section"
+                summaryWhenOpen={!(isNewest && decisions.sentBack > 0)}
+                summary={isNewest && decisions.sentBack > 0 ? (decisions.noAnswer > 0 ? `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · ${decisions.noAnswer} with no answer go on Rev ${selectedRev.rev_number + 1} too` : `${decisions.sentBack} row${decisions.sentBack === 1 ? '' : 's'} sent back · start a Rev ${selectedRev.rev_number + 1} draft`) : previousRev ? `Rev ${selectedRev.rev_number} carries what Rev ${previousRev.rev_number} sent back` : 'nothing sent back'}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {isNewest && decisions.sentBack > 0 ? (
-                    <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new version with only the rows marked Revise or Reject" data-tour="submittals-resubmit">
-                      Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
-                    </button>
-                  ) : null}
-                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void newRevision()} style={{ ...(decisions.sentBack > 0 || !isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
-                    New revision
+                  {/* One button (2026-10-05): with rows sent back and something approved it asks which rows go on the draft; the line beside it says nothing is sent. */}
+                  <button type="button" disabled={busy || !isNewest || !gates.resubmit.on} onClick={() => void startNextDraft()} style={{ ...(!isNewest || !gates.resubmit.on ? btn : btnGreen), opacity: !isNewest || !gates.resubmit.on ? 0.5 : 1 }} data-testid="new-revision" title={!isNewest ? 'Only the newest revision can be revised' : draftHasChoice ? `Start a draft of Rev ${nextRevNumber}. ${resubmitCaption(nextRevNumber)}` : `Carry every row into a Rev ${nextRevNumber} draft and mark what changed. ${resubmitNothingSent(nextRevNumber)}`} data-tour="submittals-resubmit">
+                    {resubmitLabel(nextRevNumber)}
                   </button>
-                  <span style={smallMuted} data-testid="resubmit-caption">{gates.resubmit.on ? 'Fix the rows, then share again. The GC’s link shows the new version.' : gates.resubmit.why}</span>
+                  <span style={smallMuted} data-testid="resubmit-caption">{!isNewest ? 'Only the newest revision can be revised.' : !gates.resubmit.on ? gates.resubmit.why : draftHasChoice ? resubmitCaption(nextRevNumber) : `The draft starts with every row. ${resubmitNothingSent(nextRevNumber)}`}</span>
                 </div>
               </RoadSection>
             </>
@@ -2513,15 +2626,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
               {/* 8 · Procure — a side track, always open (v2.4201) and drawn with or without a revision: long-lead items go in before a row is approved; never the Next stage until every row is approved */}
             <RoadSection n={8} about={SUBMITTAL_STAGE_ABOUT[8]} onHelp={() => startWalkThrough(8)} title="Procure" status={stageStatus('procure')} open={sectionOpen('procure')} onToggle={() => toggleSection('procure')} onJump={() => jumpToSection('procure')} anchor="submittals-procure-section" last always
-              summary={procCounts ? `${procCounts.released} released · ${procCounts.ordered} ordered · ${procCounts.delivered} delivered${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
-              {isNewest && selectedRev && approvableRows.length > 0 ? (
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'baseline', margin: '0 0 0.5rem' }} data-testid="procure-approve-all">
-                  <span style={smallMuted}>{approvableRows.length} {approvableRows.length === 1 ? 'row has' : 'rows have'} no call from the reviewer yet, so {approvableRows.length === 1 ? 'it is' : 'they are'} not released. Approved outside the app?</span>
-                  <button type="button" disabled={busy} onClick={() => setApprovingAll(true)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }}>
-                    Enter their approval…
-                  </button>
-                </div>
-              ) : null}
+              summaryWhenOpen={!procCounts}
+              summary={procCounts ? `${procCounts.steps.gc} ${procCounts.gcLabel.toLowerCase()} · ${procCounts.steps.to_order} to order · ${procCounts.steps.on_order} on order · ${procCounts.steps.on_site} on site${procCounts.late > 0 ? ` · ${procCounts.late} behind schedule` : ''}` : isNewest || !selectedRev ? 'fills in as the GC approves rows · long-lead items can go in now' : 'on the newest version'}>
               {(isNewest || !selectedRev) && bidId && selectedBid ? (
                 <SubmittalProcurementPanel
                   bidId={bidId}
@@ -2536,18 +2642,30 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   currentUser={{ id: user?.id ?? null, name: profileName ?? '' }}
                   busy={busy}
                   onCounts={setProcCounts}
+                  // v2.4663 · a draft nobody has shared: its lines read Not sent yet, not Waiting on the GC.
+                  draftRev={selectedRev && selectedRev.status === 'draft' ? selectedRev.rev_number : null}
+                  // The Next line's door to the approve-all window, while a row still has no call (v2.4581).
+                  onEnterApproval={isNewest && selectedRev && approvableRows.length > 0 ? () => setApprovingAll(true) : undefined}
                   houses={houses}
                   onLinesChanged={() => {
                     // House, lead time or stage set from the log's tick bar: the rows and their parts read again.
                     if (selectedRev) void loadItems(selectedRev.id).then(setItems)
                   }}
-                  onOpenItem={({ itemId, partKey }) => {
-                    // The row's Edit window over the log, on the part tapped: no scrolling up to the rows.
-                    const it = items.find((x) => x.id === itemId)
+                  onOpenItem={({ itemId, partKey, house }) => {
+                    // The row's Edit window over the log, on the part tapped: no scrolling up to the rows. A standing row opens too.
+                    const it = items.find((x) => x.id === itemId) ?? standing.items.find((x) => x.id === itemId)
                     if (!it) return
                     const part = partKey ? (partsOf.get(itemId) ?? []).find((p) => p.procure_key === partKey) : undefined
-                    setEditFocus({ itemId, partId: part?.id ?? null })
+                    setEditFocus({ itemId, partId: part?.id ?? null, house: house === true })
                     setEditing(it)
+                  }}
+                  onAnswerItem={({ itemId, partKey }) => {
+                    // A line the GC still holds: the row's Their answer window over the log, on the part tapped.
+                    const it = items.find((x) => x.id === itemId)
+                    if (!it || isOrderOnlyRow(it)) return
+                    const part = partKey ? (partsOf.get(itemId) ?? []).find((p) => p.procure_key === partKey) : undefined
+                    setAnswerFocus({ itemId, partId: part?.id ?? null })
+                    setAnswering(it)
                   }}
                 />
               ) : null}
@@ -2559,7 +2677,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <SubmittalAssignPagesModal
           file={sourceFiles[assignFile]!}
           fileIndex={assignFile}
-          items={items}
+          items={gcItems}
           loadBytes={assignLoadBytes}
           guesses={assignGuesses}
           busy={busy}
@@ -2582,7 +2700,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           onClose={() => setHouseFile(null)}
         />
       ) : null}
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision canEditProduct={isDraft} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} houses={houses} parts={partsOf.get(editing.id) ?? []} canEnterDecision={editing.id !== NEW_ROW_ID} isNew={editing.id === NEW_ROW_ID} canEditProduct={isDraft && !standing.revOf.has(editing.id)} orderOnly={isOrderOnlyRow(editing)} boughtParts={editBought} focusPartId={editFocus?.itemId === editing.id ? editFocus.partId : null} focusHouse={editFocus?.itemId === editing.id && editFocus.house && editFocus.partId == null} busy={busy} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {answering && selectedRev ? (
+        <SubmittalAnswerDialog key={answering.id} item={answering} parts={partsOf.get(answering.id) ?? []} people={people} sources={reviewerSources} revLabel={`Rev ${selectedRev.rev_number}`} focusPartId={answerFocus?.itemId === answering.id ? answerFocus.partId : null} busy={busy} onSave={(a) => void saveAnswer(a)} onClose={() => setAnswering(null)} />
+      ) : null}
+      {takeOff ? (
+        <SubmittalTakeOffDialog
+          tag={takeOff.item.tag}
+          bought={takeOff.bought}
+          busy={busy}
+          onOrderOnly={() => void setOrderOnly(takeOff.item, true)}
+          onLeaveOut={() => void removeRow(takeOff.item)}
+          onClose={() => setTakeOff(null)}
+        />
+      ) : null}
       {approvingAll && selectedRev ? (
         <SubmittalApproveAllDialog
           revLabel={`Rev ${selectedRev.rev_number}`}
@@ -2590,20 +2721,32 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           alreadyDecided={decisions.decided}
           missing={items.filter((it) => !asDecision(it.review_decision) && asStatus(it.status) === 'missing').length}
           people={people}
+          sources={reviewerSources}
           busy={busy}
           onSave={(c) => void approveAll(c)}
           onClose={() => setApprovingAll(false)}
         />
       ) : null}
+      {gradeOpen ? <SubmittalScheduleGradeModal rows={gradePlan.rows} skipped={gradePlan.skipped} busy={busy} onConfirm={() => void gradeRowsAgainstSchedule()} onClose={() => setGradeOpen(false)} /> : null}
       {refreshOpen ? <SubmittalTakeoffRefreshModal rows={refreshPlan.rows} skipped={refreshPlan.skipped} busy={busy} onConfirm={() => void refreshRowsFromTakeoff()} onClose={() => setRefreshOpen(false)} /> : null}
       {foldFrom && items.some((x) => x.id === foldFrom.fromId) ? (
         <SubmittalFoldModal from={items.find((x) => x.id === foldFrom.fromId)!} rows={items} partsByItem={partsOf} suggestedIntoId={foldFrom.intoId} busy={busy} onConfirm={(intoId, replaceId) => void foldRowInto(foldFrom.fromId, intoId, replaceId)} onClose={() => setFoldFrom(null)} />
       ) : null}
       {splitRuleOpen ? <SplitRuleModal examples={splitExplanation(takeoffCandidatesForPicker)} onClose={() => setSplitRuleOpen(false)} /> : null}
       {takeoffPicker && takeoff ? (
-        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} busy={busy} onConfirm={(rows, ticks, splits, productKeys) => void confirmTakeoff(rows, ticks, splits, productKeys)} onClose={() => setTakeoffPicker(null)} />
+        <SubmittalTakeoffPicker mode={takeoffPicker} revLabel={takeoffPicker === 'build' ? 'Rev 1' : `Rev ${selectedRev?.rev_number ?? newestRev?.rev_number ?? 1}`} candidates={takeoffCandidatesForPicker} bought={takeoffPicker === 'add' ? takeoffBought : undefined} boughtParts={takeoffPicker === 'add' ? takeoffBoughtParts : undefined} busy={busy} onConfirm={(plan, splits) => void confirmTakeoff(plan, splits)} onClose={() => setTakeoffPicker(null)} />
       ) : null}
       {plugInOpen && bidId && selectedBid ? <PlugInScheduleModal open onClose={() => setPlugInOpen(false)} onSaved={() => { setPlugInOpen(false); void load(bidId) }} bidId={bidId} bidLabel={bidDisplayName(selectedBid) || 'Bid'} rows={[]} /> : null}
+      {nextDraft ? (
+        <SubmittalResubmitChooser
+          words={resubmitChooser(nextDraft.newest.rev_number, nextDraft.counts)}
+          choice={nextDraftRows}
+          busy={busy}
+          onChoose={setNextDraftRows}
+          onCancel={() => setNextDraft(null)}
+          onConfirm={() => void buildNextRevision(nextDraft, nextDraftRows)}
+        />
+      ) : null}
       {sharing && selectedRev && bidId ? (
         <SubmittalShareModal
           bidId={bidId}
@@ -2626,7 +2769,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         items={items}
         parts={parts}
         revNumber={selectedRev.rev_number}
-        shared={asRevisionStatus(selectedRev.status) !== 'draft'}
+        revisions={recordList}
+        link={link}
+        roomToken={room?.token ?? null}
         hasPackage={Boolean(selectedRev.package_path)}
         company={{ name: companyName, tagline: reportSettings.companyTagline, phone: reportSettings.officePhone }}
         bid={{ label: bidDisplayName(selectedBid) || 'Bid', projectName: selectedBid.project_name ?? null, address: selectedBid.address ?? null }}

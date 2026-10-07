@@ -32,10 +32,13 @@ export async function invokeVoidStripeInvoiceForRevert(params: {
   invoiceId: string
   stripeModeForBilling: BillingStripeModePref
   accessToken: string
+  /** v2.4803: why — the credit note's memo and the trail read it instead of "payment did not clear". */
+  reason?: string
 }): Promise<VoidStripeInvoiceForRevertOk | { ok: false; message: string }> {
   const { data: raw, error: fnErr } = await supabase.functions.invoke('void-stripe-invoice-for-revert', {
     body: {
       jobs_ledger_invoice_id: params.invoiceId,
+      ...(params.reason?.trim() ? { reason: params.reason.trim() } : {}),
       ...stripeModeInvokeBody(params.stripeModeForBilling),
     },
     headers: { Authorization: `Bearer ${params.accessToken}` },
@@ -70,11 +73,13 @@ export async function sendBackStripeBilledLine(params: {
   jobId: string
   stripeModeForBilling: BillingStripeModePref
   accessToken: string
+  reason?: string
 }): Promise<VoidStripeInvoiceForRevertOk | { ok: false; message: string }> {
   const r = await invokeVoidStripeInvoiceForRevert({
     invoiceId: params.invoiceId,
     stripeModeForBilling: params.stripeModeForBilling,
     accessToken: params.accessToken,
+    reason: params.reason,
   })
   if (!r.ok) return r
   const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(params.invoiceId)

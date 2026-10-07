@@ -11,7 +11,7 @@ const inv = (over: Partial<HazmatRollInInvoice> & { id: string }): HazmatRollInI
 })
 
 describe('eligibleHazmatRollIns', () => {
-  const incident = { id: 'inc1', invoice_id: 'rider1', incident_at: '2026-07-20' }
+  const incident = { id: 'inc1', invoice_id: 'rider1', incident_at: '2026-07-20T12:00:00Z' }
 
   it('the reported TJ Brace case: unsent draft rider rolls into the primary bill', () => {
     const lines = eligibleHazmatRollIns({
@@ -83,8 +83,8 @@ describe('eligibleHazmatRollIns', () => {
       incidents: [
         incident,
         { id: 'inc2', invoice_id: 'rider2', incident_at: null },
-        { id: 'inc3', invoice_id: null, incident_at: '2026-07-01' },
-        { id: 'inc4', invoice_id: 'riderGone', incident_at: '2026-07-01' },
+        { id: 'inc3', invoice_id: null, incident_at: '2026-07-01T12:00:00Z' },
+        { id: 'inc4', invoice_id: 'riderGone', incident_at: '2026-07-01T12:00:00Z' },
       ],
       invoices: [
         inv({ id: 'rider1', status: 'ready_to_bill' }),
@@ -100,8 +100,8 @@ describe('eligibleHazmatRollIns', () => {
       billingInvoiceId: 'primary1',
       incidents: [
         incident,
-        { id: 'inc2', invoice_id: 'rider2', incident_at: '2026-07-22' },
-        { id: 'incDup', invoice_id: 'rider1', incident_at: '2026-07-23' },
+        { id: 'inc2', invoice_id: 'rider2', incident_at: '2026-07-22T12:00:00Z' },
+        { id: 'incDup', invoice_id: 'rider1', incident_at: '2026-07-23T12:00:00Z' },
       ],
       invoices: [inv({ id: 'rider1', amount: 500 }), inv({ id: 'rider2', amount: 250.5 })],
     })
@@ -120,8 +120,8 @@ describe('foldedHazmatFeeLines', () => {
       incidents: [
         { id: 'incA', invoice_id: 'primary1', incident_at: '2026-07-20T18:00:00Z', fee_amount: 500 },
         { id: 'incB', invoice_id: 'primary1', incident_at: null, fee_amount: '250.50' },
-        { id: 'incOther', invoice_id: 'rider9', incident_at: '2026-07-21', fee_amount: 500 },
-        { id: 'incUnlinked', invoice_id: null, incident_at: '2026-07-21', fee_amount: 75 },
+        { id: 'incOther', invoice_id: 'rider9', incident_at: '2026-07-21T12:00:00Z', fee_amount: 500 },
+        { id: 'incUnlinked', invoice_id: null, incident_at: '2026-07-21T12:00:00Z', fee_amount: 75 },
       ],
     })
     expect(lines.map((l) => l.incidentId)).toEqual(['incA', 'incB', 'incUnlinked'])
@@ -132,7 +132,7 @@ describe('foldedHazmatFeeLines', () => {
   })
 
   it('never splits on a non-primary invoice (legacy rider: the whole amount IS the fee)', () => {
-    const incidents = [{ id: 'incA', invoice_id: 'rider1', incident_at: '2026-07-20', fee_amount: 500 }]
+    const incidents = [{ id: 'incA', invoice_id: 'rider1', incident_at: '2026-07-20T12:00:00Z', fee_amount: 500 }]
     expect(foldedHazmatFeeLines({ billingInvoice: { id: 'rider1', is_primary_rtb_bundle: false }, incidents })).toEqual([])
     expect(foldedHazmatFeeLines({ billingInvoice: { id: 'rider1', is_primary_rtb_bundle: null }, incidents })).toEqual([])
   })
@@ -183,5 +183,22 @@ describe('foldedHazmatFeeLines — voided', () => {
       ],
     })
     expect(lines.map((l) => l.incidentId)).toEqual(['live'])
+  })
+})
+
+describe('an incident in the evening keeps its day on the bill (v2.4473)', () => {
+  it('writes the Central day into the Stripe line', () => {
+    // TJ Brace's incident, as stored: 00:31 UTC on Jul 21 is 7:31 pm CDT on Jul 20. 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const rollIn = eligibleHazmatRollIns({
+      billingInvoiceId: 'primary1',
+      incidents: [{ id: 'inc1', invoice_id: 'rider1', incident_at: '2026-07-21T00:31:00+00:00' }],
+      invoices: [inv({ id: 'primary1', amount: 1380 }), inv({ id: 'rider1', amount: 500 })],
+    })
+    expect(rollIn[0]!.description).toBe('Biohazard remediation fee — incident 07/20/2026')
+    const folded = foldedHazmatFeeLines({
+      billingInvoice: { id: 'primary1', is_primary_rtb_bundle: true },
+      incidents: [{ id: 'incW', invoice_id: 'primary1', incident_at: '2026-12-02T00:30:00Z', fee_amount: 500 }],
+    })
+    expect(folded[0]!.description).toBe('Biohazard remediation fee — incident 12/01/2026')
   })
 })

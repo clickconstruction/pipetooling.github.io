@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer timeline (mockup, to-do 97)</title>
+</head>
+<body>
+<style>
+  /* Layout: a window from the Pipeline. A floating money bar, then one spine of time
+     (today at the top): one row per day, office cards left, the job rails in the middle,
+     field cards right. Gaps between days grow with the days they hold. */
+  :root {
+    --bg: #f3f4f6; --surface: #ffffff; --surface-2: #f8f9fb; --border: #dfe3ea;
+    --fg: #1a1f2b; --fg-muted: #5b6474; --fg-faint: #8a93a3;
+    --accent: #2563eb; --good: #15803d; --good-bg: #ecfdf3; --warn: #b45309; --warn-bg: #fff7e6;
+    --bad: #b91c1c; --bad-bg: #fef2f2; --promise: #6d28d9; --promise-bg: #f3effd;
+    --j612: #0f766e; --j688: #4f46e5; --j901: #c2410c; --j944: #9d174d;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0f1218; --surface: #171b23; --surface-2: #1d222c; --border: #2b3140;
+    --fg: #e6e9ef; --fg-muted: #a3abba; --fg-faint: #6f788a;
+    --accent: #60a5fa; --good: #4ade80; --good-bg: #122218; --warn: #fbbf24; --warn-bg: #2a2110;
+    --bad: #f87171; --bad-bg: #2a1414; --promise: #c4b5fd; --promise-bg: #1f1a30;
+    --j612: #2dd4bf; --j688: #a5b4fc; --j901: #fb923c; --j944: #f472b6; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #0f1218; --surface: #171b23; --surface-2: #1d222c; --border: #2b3140;
+    --fg: #e6e9ef; --fg-muted: #a3abba; --fg-faint: #6f788a;
+    --accent: #60a5fa; --good: #4ade80; --good-bg: #122218; --warn: #fbbf24; --warn-bg: #2a2110;
+    --bad: #f87171; --bad-bg: #2a1414; --promise: #c4b5fd; --promise-bg: #1f1a30;
+    --j612: #2dd4bf; --j688: #a5b4fc; --j901: #fb923c; --j944: #f472b6; color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.4 var(--font); }
+  button { font: inherit; color: inherit; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* The window chrome: how it looks opened over the Pipeline. */
+  .win { max-width: 1120px; margin: 0 auto; background: var(--surface); min-height: 100vh; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .titlebar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .titlebar .crumb { color: var(--fg-muted); font-size: 12px; }
+  .titlebar h1 { margin: 0; font-size: 17px; font-weight: 650; }
+  .views { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; padding: 2px; margin-left: 8px; }
+  .views button { border: 0; background: transparent; padding: 3px 10px; border-radius: 999px; font-size: 12px; color: var(--fg-muted); cursor: pointer; }
+  .views button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .x { margin-left: auto; border: 0; background: transparent; font-size: 20px; line-height: 1; color: var(--fg-muted); cursor: pointer; }
+
+  /* The floating bar. It collapses to one line once you scroll. */
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px 8px; }
+  .who { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; font-size: 13px; color: var(--fg-muted); }
+  .who b { color: var(--fg); font-size: 15px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--surface-2); min-width: 0; }
+  .tile .k { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-muted); }
+  .tile .v { font-size: 20px; font-weight: 650; line-height: 1.15; }
+  .tile .s { font-size: 12px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.owed .v { color: var(--warn); }
+  .asof { margin-top: 6px; font-size: 12px; color: var(--fg-muted); display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .asof .pin { font-weight: 650; color: var(--fg); }
+  .asof[hidden] { display: none; }
+  .filters { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+  .filters .lbl { font-size: 12px; color: var(--fg-muted); }
+  .chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--fg); color: var(--surface); border-color: var(--fg); }
+  .jobchip { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 9px 2px 6px; font-size: 12px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+  .jobchip .sw { width: 9px; height: 9px; border-radius: 50%; background: var(--jc); }
+  .jobchip.dim { opacity: .4; }
+  .bar.compact { padding: 6px 16px; }
+  .bar.compact .who span:not(.keep) { display: none; }
+  .bar.compact .tiles { display: flex; gap: 14px; margin-top: 2px; flex-wrap: wrap; }
+  .bar.compact .tile { border: 0; background: none; padding: 0; display: flex; gap: 5px; align-items: baseline; }
+  .bar.compact .tile .k { font-size: 10px; }
+  .bar.compact .tile .v { font-size: 14px; }
+  .bar.compact .tile .s { display: none; }
+  .bar.compact .filters { display: none; }
+
+  /* The spine. */
+  .tl { padding: 0 16px 48px; }
+  .heads { display: grid; grid-template-columns: 1fr var(--railw) 1fr; align-items: end; }
+  .heads .cap { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-faint); padding: 10px 0 4px; }
+  .heads .cap.r { text-align: left; padding-left: 12px; }
+  .heads .cap.l { text-align: right; padding-right: 12px; }
+  .heads .open { display: flex; justify-content: center; }
+  .heads .open .lane { width: 22px; text-align: center; color: var(--jc); font-size: 13px; line-height: 1; padding-top: 10px; }
+
+  .row { display: grid; grid-template-columns: 1fr var(--railw) 1fr; align-items: start; }
+  .row.dim .card { opacity: .3; }
+  .cell { min-width: 0; display: flex; flex-direction: column; gap: 6px; padding: 5px 0; }
+  .cell.l { align-items: flex-end; padding-right: 12px; }
+  .cell.r { align-items: flex-start; padding-left: 12px; }
+  .rails { display: flex; justify-content: center; align-self: stretch; }
+  .lane { position: relative; width: 22px; align-self: stretch; }
+  .strip { position: absolute; left: 50%; transform: translateX(-50%); width: 6px; }
+  .strip.top { top: 0; height: 50%; } .strip.bot { bottom: 0; height: 50%; } .strip.full { top: 0; bottom: 0; }
+  .strip.working { background: var(--jc); }
+  .strip.billed { border-left: 2px solid var(--jc); border-right: 2px solid var(--jc); }
+  .strip.waiting { width: 0; border-left: 2px dashed var(--jc); }
+  .strip.quiet { width: 0; border-left: 2px dotted var(--jc); }
+  .node { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; }
+  .node.start { width: 18px; height: 18px; border-radius: 50%; background: var(--surface); border: 3px solid var(--jc); }
+  .node.end { width: 20px; height: 20px; border-radius: 50%; background: var(--jc); color: #fff; font-size: 12px; line-height: 20px; text-align: center; font-weight: 700; }
+  .node.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--jc); box-shadow: 0 0 0 2px var(--surface); }
+  .node.dot.hollow { background: var(--surface); border: 2px solid var(--jc); }
+  .row.day .node { top: 22px; }
+
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--surface); max-width: 420px; min-width: 0; cursor: pointer; }
+  .cell.l .card { border-right: 3px solid var(--jc); }
+  .cell.r .card { border-left: 3px solid var(--jc); }
+  .card .t { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .card .day { font-size: 12px; color: var(--fg-muted); white-space: nowrap; }
+  .card .job { font-size: 11px; font-weight: 700; color: var(--jc); letter-spacing: .02em; }
+  .card .h { font-weight: 600; }
+  .card .b { color: var(--fg-muted); font-size: 13px; margin-top: 2px; }
+  .card .q { color: var(--fg); font-size: 13px; margin-top: 2px; font-style: italic; }
+  .card .amt { font-weight: 700; white-space: nowrap; }
+  .card.payment { background: var(--good-bg); } .card.payment .amt { color: var(--good); }
+  .card.bill { background: var(--warn-bg); } .card.bill .amt { color: var(--warn); }
+  .card.promise { background: var(--promise-bg); } .card.promise .h { color: var(--promise); }
+  .card.lien { background: var(--bad-bg); } .card.lien .h { color: var(--bad); }
+  .card.hours .hbar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .card.hours .hbar i { display: block; height: 100%; background: var(--jc); }
+  .card .crew { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .card .crew span { font-size: 11px; border: 1px solid var(--border); border-radius: 999px; padding: 0 7px; color: var(--fg-muted); }
+  .card .more { font-size: 12px; color: var(--accent); margin-top: 3px; }
+  .side-tag { display: none; }
+
+  .row.month .cell.l { padding: 0 12px 0 0; }
+  .row.month .mlabel { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--fg-faint); padding-top: 12px; }
+  .row.gap .cell.l { justify-content: center; padding: 0 12px 0 0; }
+  .row.gap .glabel { font-size: 11px; color: var(--fg-faint); }
+  .row.quiet { min-height: 56px; }
+  .row.quiet .cell.l { justify-content: center; padding: 0 12px 0 0; }
+  .row.quiet .qlabel { font-size: 12px; color: var(--fg-faint); font-style: italic; text-align: right; }
+  .row.quiet .qlabel b { font-style: normal; color: var(--fg-muted); }
+  .row.cust .card { border-right-color: var(--fg-faint); }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--fg-muted); padding: 14px 0 0; border-top: 1px dashed var(--border); margin-top: 22px; }
+  .legend i { display: inline-block; vertical-align: middle; margin-right: 5px; }
+  .legend .s1 { width: 18px; height: 6px; background: var(--fg-muted); }
+  .legend .s2 { width: 18px; height: 6px; border-left: 2px solid var(--fg-muted); border-right: 2px solid var(--fg-muted); }
+  .legend .s3 { width: 18px; height: 0; border-top: 2px dashed var(--fg-muted); }
+  .legend .s4 { width: 14px; height: 14px; border-radius: 50%; background: var(--fg-muted); }
+  .legend .s5 { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--fg-muted); }
+
+  @media (max-width: 720px) {
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .tile .v { font-size: 17px; }
+    .heads { grid-template-columns: var(--railw) 1fr; }
+    .heads .cap.l { display: none; }
+    .heads .cap.r { font-size: 0; }
+    .heads .cap.r::after { content: "Office, then field, day by day"; font-size: 11px; }
+    .row { grid-template-columns: var(--railw) 1fr; }
+    .lane { width: 16px; }
+    .rails { order: 1; grid-row: 1 / span 2; }
+    .cell.l { order: 2; align-items: stretch; padding: 5px 0 0 10px; }
+    .cell.r { order: 3; padding: 0 0 5px 10px; }
+    .cell:empty { display: none; }
+    .row.month .cell.l, .row.gap .cell.l, .row.quiet .cell.l { padding-left: 10px; }
+    .row.quiet .qlabel { text-align: left; }
+    .cell.l .card { border-right: 1px solid var(--border); border-left: 3px solid var(--jc); }
+    .cell.r .card { margin-left: 18px; background: var(--surface-2); }
+    .card { max-width: none; }
+    .side-tag { display: inline; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-faint); }
+    .titlebar .crumb { display: none; }
+    .row.day .node { top: 24px; }
+  }
+  @media (prefers-reduced-motion: no-preference) { .card { transition: opacity .15s; } }
+  .card:focus-visible, .chip:focus-visible, .jobchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="win" id="win">
+  <div class="titlebar">
+    <span class="crumb">Jobs › Pipeline ›</span>
+    <h1>Ridgeway Builders</h1>
+    <span class="views"><button type="button" aria-pressed="false">Profile</button><button type="button" aria-pressed="true">Timeline</button></span>
+    <button type="button" class="x" aria-label="Close">×</button>
+  </div>
+
+  <div class="bar" id="bar">
+    <div class="who">
+      <b class="keep">Ridgeway Builders</b>
+      <span>GC · Dana Whitlock · (512) 555-0188</span>
+      <span>customer since Nov 2024 · 4 jobs</span>
+      <span>pays in <b class="num">~27 days</b></span>
+    </div>
+    <div class="tiles">
+      <div class="tile owed"><div class="k">Owes us</div><div class="v num">$31,250</div><div class="s">1 bill · 79 days · they said Oct 15</div></div>
+      <div class="tile"><div class="k">Not yet billed</div><div class="v num">$4,200</div><div class="s">1 job working</div></div>
+      <div class="tile"><div class="k">Unpaid hours</div><div class="v num">231h 30m</div><div class="s">on 2 open jobs</div></div>
+      <div class="tile"><div class="k">Unpaid materials</div><div class="v num">$9,550</div><div class="s">Ferguson, Winsupply</div></div>
+    </div>
+    <div class="asof" id="asof" hidden><span class="pin" id="asof-when"></span><span id="asof-what"></span></div>
+    <div class="filters">
+      <span class="lbl">Show</span>
+      <button type="button" class="chip" data-f="all" aria-pressed="true">Everything</button>
+      <button type="button" class="chip" data-f="money" aria-pressed="false">Money</button>
+      <button type="button" class="chip" data-f="field" aria-pressed="false">Field</button>
+      <span class="lbl" style="margin-left:8px">Jobs</span>
+      <span id="jobchips"></span>
+    </div>
+  </div>
+
+  <div class="tl" id="tl"></div>
+</div>
+
+<script>
+(function () {
+  const TODAY = '2026-10-07';
+  const JOBS = {
+    j612: { n: '612', name: 'Oak Hill shell', lane: 0, created: '2025-02-03', working: '2025-02-10', billed: '2025-04-01', paid: '2025-05-01', color: 'var(--j612)', totalHrs: 164 },
+    j688: { n: '688', name: 'Oak Hill trim', lane: 0, created: '2025-06-10', working: '2025-07-07', billed: '2025-08-04', paid: '2025-11-17', color: 'var(--j688)', totalHrs: 72 },
+    j901: { n: '901', name: 'Bluff Springs clinic', lane: 0, created: '2026-03-02', working: '2026-03-16', billed: '2026-07-20', paid: null, color: 'var(--j901)', totalHrs: 212 },
+    j944: { n: '944', name: 'Clinic add-on · gas test', lane: 1, created: '2026-09-08', working: '2026-09-29', billed: null, paid: null, color: 'var(--j944)', totalHrs: 19.5 },
+  };
+  // One event per card, newest first. side: office | field. kind drives the look and the running totals.
+  // Field days fold into one card between two office events on the same job.
+  const E = [
+    { d: '2026-10-06', side: 'office', job: 'j901', kind: 'promise', h: 'They said Oct 15', b: 'Taunya called Dana. The check run is on the 15th.' },
+    { d: '2026-10-05', side: 'field', job: 'j944', kind: 'hours', h: '7h 10m', days: 1, crew: ['Malachi'], q: '“Set the regulator. Test tomorrow.”', hrs: 7.17 },
+    { d: '2026-10-03', side: 'field', job: 'j944', kind: 'report', h: 'Gas test report · passed', b: '15 psi for 30 min · sent to Dana' },
+    { d: '2026-10-03', side: 'field', job: 'j944', kind: 'hours', h: '9h 20m', days: 1, crew: ['Malachi', 'Bryan'], hrs: 9.33 },
+    { d: '2026-09-30', side: 'field', job: 'j944', kind: 'material', h: 'Ferguson · $610', b: 'regulator, CSST, fittings', mat: 610 },
+    { d: '2026-09-29', side: 'field', job: 'j944', kind: 'hours', h: '3h 0m', days: 1, crew: ['Malachi'], q: '“Waiting on the regulator.”', hrs: 3 },
+    { d: '2026-09-26', side: 'office', job: 'j944', kind: 'note', h: 'Add-on approved by email', b: '$4,200. Dana wants it on the clinic’s final. · Taunya' },
+    { d: '2026-09-15', side: 'office', job: 'j901', kind: 'lien', h: 'Notice of unpaid balance sent', b: '§ 53.056 · to the owner and Ridgeway · $31,250' },
+    { d: '2026-09-08', side: 'office', job: 'j944', kind: 'start', h: 'Job card created', b: 'Clinic add-on · $4,200 bid · Taunya', unb: 4200 },
+    { d: '2026-09-02', side: 'office', job: 'j901', kind: 'statement', h: 'GC statement sent', b: 'to Dana · $31,250 open · 44 days' },
+    { d: '2026-08-18', side: 'office', job: 'j901', kind: 'note', h: 'Owner’s draw is late', b: 'Dana expects it by the end of the month. · Taunya' },
+    { d: '2026-07-20', side: 'office', job: 'j901', kind: 'bill', h: 'Final bill sent', amt: 31250, b: 'Stripe · due Aug 19', bill: 31250, unb: -31250 },
+    { d: '2026-07-17', side: 'field', job: 'j901', kind: 'report', h: 'Final inspection · passed', b: 'City of Austin · 2 photos' },
+    { d: '2026-07-16', side: 'field', job: 'j901', kind: 'hours', h: '25h 30m', range: 'Jul 1 → Jul 16', days: 4, crew: ['Malachi', 'Bryan', 'Paige'], hrs: 25.5 },
+    { d: '2026-07-09', side: 'office', job: 'j901', kind: 'note', h: 'Change order #2 approved', b: '+$3,250 on the final. · Taunya', unb: 3250 },
+    { d: '2026-06-26', side: 'field', job: 'j901', kind: 'hours', h: '17h 45m', range: 'Jun 4 → Jun 26', days: 3, crew: ['Malachi', 'Paige'], hrs: 17.75 },
+    { d: '2026-06-03', side: 'office', job: 'j901', kind: 'payment', h: 'Cheque #4471', amt: 22000, b: 'received Jun 1, 27 days after the bill · deposited Jun 3 · Mercury', pay: 22000 },
+    { d: '2026-06-01', side: 'field', job: 'j901', kind: 'hours', h: '38h 15m', range: 'May 6 → Jun 1', days: 6, crew: ['Malachi', 'Bryan', 'Paige'], hrs: 38.25 },
+    { d: '2026-05-12', side: 'field', job: 'j901', kind: 'material', h: 'Winsupply · $2,730', b: 'fixtures, carriers', mat: 2730 },
+    { d: '2026-05-05', side: 'office', job: 'j901', kind: 'bill', h: 'Progress bill sent', amt: 22000, b: '40% of the contract · Stripe', bill: 22000, unb: -22000 },
+    { d: '2026-05-01', side: 'field', job: 'j901', kind: 'hours', h: '12h 0m', range: 'Apr 27 → May 1', days: 2, crew: ['Malachi', 'Bryan'], hrs: 12 },
+    { d: '2026-04-24', side: 'field', job: 'j901', kind: 'hours', h: '118h 30m', range: 'Mar 16 → Apr 24', days: 23, crew: ['Malachi', 'Bryan', 'Paige'], q: '“Under-slab passed Apr 2.”', hrs: 118.5 },
+    { d: '2026-03-20', side: 'field', job: 'j901', kind: 'material', h: 'Ferguson · $6,210', b: 'under-slab PVC, hangers, cleanouts', mat: 6210 },
+    { d: '2026-03-13', side: 'field', job: 'j901', kind: 'fnote', h: 'Field note', q: '“Slab pours Friday. We start under-slab Monday.” · Malachi' },
+    { d: '2026-03-02', side: 'office', job: 'j901', kind: 'start', h: 'Job card created', b: 'Bluff Springs clinic · from bid B482 · $50,000', unb: 50000 },
+    { d: '2025-11-17', side: 'office', job: 'j688', kind: 'payment', h: 'Cheque #3980 · paid in full', amt: 4850, b: 'received Nov 14, 102 days after the bill · deposited Nov 17', pay: 4850, end: true },
+    { d: '2025-10-20', side: 'office', job: 'j688', kind: 'note', h: 'Balance after the draw closes', b: 'Dana, by phone. · Taunya' },
+    { d: '2025-09-02', side: 'office', job: 'j688', kind: 'payment', h: 'ACH', amt: 5000, b: 'partial · 29 days after the bill · Mercury', pay: 5000 },
+    { d: '2025-08-04', side: 'office', job: 'j688', kind: 'bill', h: 'Bill sent', amt: 9850, b: 'Stripe', bill: 9850, unb: -9850 },
+    { d: '2025-07-30', side: 'field', job: 'j688', kind: 'report', h: 'Trim-out report', b: '2 photos' },
+    { d: '2025-07-30', side: 'field', job: 'j688', kind: 'hours', h: '72h 0m', range: 'Jul 7 → Jul 30', days: 9, crew: ['Malachi', 'Paige'], hrs: 72 },
+    { d: '2025-07-08', side: 'field', job: 'j688', kind: 'material', h: 'Winsupply · $2,210', b: 'trim, stops, supplies', mat: 2210 },
+    { d: '2025-06-10', side: 'office', job: 'j688', kind: 'start', h: 'Job card created', b: 'Oak Hill trim · $9,850 · Taunya', unb: 9850 },
+    { d: '2025-05-01', side: 'office', job: 'j612', kind: 'payment', h: 'Cheque #3612 · paid in full', amt: 18400, b: 'received Apr 28, 27 days after the bill · deposited May 1', pay: 18400, end: true },
+    { d: '2025-04-01', side: 'office', job: 'j612', kind: 'bill', h: 'Bill sent', amt: 18400, b: 'Stripe', bill: 18400, unb: -18400 },
+    { d: '2025-03-27', side: 'field', job: 'j612', kind: 'report', h: 'Top-out inspection · passed' },
+    { d: '2025-03-27', side: 'field', job: 'j612', kind: 'hours', h: '164h 0m', range: 'Feb 10 → Mar 27', days: 21, crew: ['Malachi', 'Bryan', 'Paige'], hrs: 164 },
+    { d: '2025-02-14', side: 'field', job: 'j612', kind: 'fnote', h: 'Field note', q: '“GC moved the break-room wall. Re-ran the vent.” · Bryan' },
+    { d: '2025-02-12', side: 'field', job: 'j612', kind: 'material', h: 'Ferguson · $6,120', b: 'DWV, copper, hangers', mat: 6120 },
+    { d: '2025-02-03', side: 'office', job: 'j612', kind: 'start', h: 'Job card created', b: 'Oak Hill shell · from estimate E-2291', unb: 18400 },
+    { d: '2025-01-28', side: 'office', job: null, kind: 'cust', h: 'Estimate E-2291 accepted', b: 'Oak Hill shell · $18,400 · signed by Dana Whitlock' },
+    { d: '2024-11-12', side: 'office', job: null, kind: 'cust', h: 'Customer added', b: 'met at the Oak Hill pre-bid · GC · net 30' },
+  ];
+  const MONEY = new Set(['bill', 'payment', 'promise', 'lien', 'statement', 'start', 'cust']);
+
+  const fmt$ = (n) => '$' + Math.round(n).toLocaleString('en-US');
+  const fmtH = (h) => { const m = Math.round(h * 60); return Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; };
+  const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day = (ymd) => { const [, m, d] = ymd.split('-').map(Number); return MON[m - 1] + ' ' + d; };
+  const monthKey = (ymd) => ymd.slice(0, 7);
+  const monthLabel = (ymd) => { const [y, m] = ymd.split('-'); return MON[Number(m) - 1] + ' ' + y; };
+  const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
+  const gapWords = (n) => n < 14 ? n + ' days' : n < 60 ? Math.round(n / 7) + ' weeks' : Math.round(n / 30) + ' months';
+
+  // Running totals, walked oldest → newest; each event carries the picture as of that moment.
+  const owed = {}, unb = {}, hrs = {}, mat = {};
+  const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+  for (const e of [...E].reverse()) {
+    if (e.job) {
+      if (e.bill) owed[e.job] = (owed[e.job] || 0) + e.bill;
+      if (e.pay) owed[e.job] = (owed[e.job] || 0) - e.pay;
+      if (e.unb) unb[e.job] = (unb[e.job] || 0) + e.unb;
+      if (e.hrs) hrs[e.job] = (hrs[e.job] || 0) + e.hrs;
+      if (e.mat) mat[e.job] = (mat[e.job] || 0) + e.mat;
+      if (e.end) { owed[e.job] = 0; unb[e.job] = 0; hrs[e.job] = 0; mat[e.job] = 0; }
+    }
+    e.snap = { owed: sum(owed), unb: sum(unb), hrs: sum(hrs), mat: sum(mat) };
+  }
+
+  function stateAt(j, d) {
+    if (j.paid && d >= j.paid) return 'paid';
+    if (j.billed && d >= j.billed) return 'billed';
+    if (j.working && d >= j.working) return 'working';
+    return 'waiting';
+  }
+  const LANES = 2;
+  function laneJobAt(lane, d) {
+    for (const [id, j] of Object.entries(JOBS)) {
+      if (j.lane !== lane) continue;
+      if (d >= j.created && (!j.paid || d <= j.paid)) return id;
+    }
+    return null;
+  }
+
+  // Rows: one per day, a month label when the month changes, a gap spacer that grows with
+  // the days it holds, and a quiet fold over a long stretch with nothing open.
+  const rows = [];
+  let lastMonth = null, prevDay = null;
+  for (const e of E) {
+    if (prevDay && prevDay.d === e.d) { prevDay.events.push(e); continue; }
+    if (prevDay) {
+      const gap = daysBetween(e.d, prevDay.d);
+      const nothingOpen = !laneJobAt(0, e.d) && !laneJobAt(1, e.d) && !laneJobAt(0, prevDay.d) && !laneJobAt(1, prevDay.d);
+      if (gap > 60 && nothingOpen) { rows.push({ kind: 'quiet', d: e.d, from: e.d, to: prevDay.d }); lastMonth = null; }
+      else if (gap >= 10) rows.push({ kind: 'gap', d: e.d, days: gap });
+    }
+    const mk = monthKey(e.d);
+    if (mk !== lastMonth) { rows.push({ kind: 'month', d: e.d }); lastMonth = mk; }
+    prevDay = { kind: 'day', d: e.d, events: [e] };
+    rows.push(prevDay);
+  }
+
+  function railsHtml(d, events, mode) {
+    let h = '';
+    for (let lane = 0; lane < LANES; lane++) {
+      const id = laneJobAt(lane, d);
+      if (!id) { h += '<div class="lane"></div>'; continue; }
+      const j = JOBS[id];
+      const st = stateAt(j, d);
+      const mine = (events || []).filter((e) => e.job === id);
+      const strip = (pos) => st === 'paid' ? '' : `<div class="strip ${pos} ${mode === 'quiet' ? 'quiet' : st}"></div>`;
+      let inner;
+      if (mine.some((e) => e.kind === 'start')) inner = strip('top') + '<div class="node start"></div>';
+      else if (mine.some((e) => e.end)) inner = strip('bot') + '<div class="node end">✓</div>';
+      else inner = strip('full') + (mine.length ? `<div class="node dot ${st === 'billed' ? 'hollow' : ''}"></div>` : '');
+      h += `<div class="lane" style="--jc:${j.color}" data-job="${id}">${inner}</div>`;
+    }
+    return `<div class="rails">${h}</div>`;
+  }
+
+  function cardHtml(e) {
+    const j = e.job ? JOBS[e.job] : null;
+    const jobTag = j ? `<span class="job">${j.n} · ${j.name}</span>` : '';
+    let body = '';
+    if (e.kind === 'hours') {
+      const pct = Math.round((e.hrs / j.totalHrs) * 100);
+      body = `<div class="b">${e.range ? e.range + ' · ' + e.days + ' work days' : 'one day'} · ${pct}% of the job’s hours</div>` +
+        (e.q ? `<div class="q">${e.q}</div>` : '') +
+        `<div class="hbar"><i style="width:${pct}%"></i></div>` +
+        `<div class="crew">${e.crew.map((c) => `<span>${c}</span>`).join('')}</div>` +
+        (e.days > 1 ? '<div class="more">show the days ›</div>' : '');
+    } else {
+      body = (e.b ? `<div class="b">${e.b}</div>` : '') + (e.q ? `<div class="q">${e.q}</div>` : '');
+    }
+    return `<div class="card ${e.kind}" tabindex="0" style="--jc:${j ? j.color : 'var(--fg-faint)'}" data-job="${e.job || ''}" data-side="${e.side}" data-money="${MONEY.has(e.kind)}">
+      <div class="t"><span class="day num">${day(e.d)}</span>${jobTag}<span class="side-tag">${e.side}</span><span class="h">${e.h}</span>${e.amt != null ? `<span class="amt num">${fmt$(e.amt)}</span>` : ''}</div>${body}</div>`;
+  }
+
+  const tl = document.getElementById('tl');
+  document.documentElement.style.setProperty('--railw', (LANES * 22 + 16) + 'px');
+  let html = `<div class="heads"><div class="cap l">Office · with the customer</div><div class="open">` +
+    Array.from({ length: LANES }, (_, lane) => { const id = laneJobAt(lane, TODAY); return `<div class="lane" style="--jc:${id ? JOBS[id].color : 'transparent'}" title="still open">${id ? '▲' : ''}</div>`; }).join('') +
+    `</div><div class="cap r">Field · what we put in</div></div>`;
+  for (const r of rows) {
+    if (r.kind === 'month') {
+      html += `<div class="row month"><div class="cell l"><span class="mlabel">${monthLabel(r.d)}</span></div>${railsHtml(r.d)}<div class="cell r"></div></div>`;
+    } else if (r.kind === 'gap') {
+      const px = Math.min(96, 18 + Math.round(r.days * 0.9));
+      html += `<div class="row gap" style="min-height:${px}px"><div class="cell l"><span class="glabel">${gapWords(r.days)}</span></div>${railsHtml(r.d)}<div class="cell r"></div></div>`;
+    } else if (r.kind === 'quiet') {
+      html += `<div class="row quiet"><div class="cell l"><span class="qlabel"><b>${gapWords(daysBetween(r.from, r.to))} quiet</b> · ${day(r.from)} → ${day(r.to)} · nothing open, nothing owed</span></div>${railsHtml(r.d, null, 'quiet')}<div class="cell r"></div></div>`;
+    } else {
+      const jobs = [...new Set(r.events.map((e) => e.job).filter(Boolean))].join(' ');
+      const office = r.events.filter((e) => e.side === 'office').map(cardHtml).join('');
+      const field = r.events.filter((e) => e.side === 'field').map(cardHtml).join('');
+      html += `<div class="row day ${r.events.some((e) => e.kind === 'cust') ? 'cust' : ''}" data-d="${r.d}" data-jobs="${jobs}" data-snap='${JSON.stringify(r.events[0].snap)}'>` +
+        `<div class="cell l">${office}</div>${railsHtml(r.d, r.events)}<div class="cell r">${field}</div></div>`;
+    }
+  }
+  html += `<div class="legend"><span><i class="s5"></i>card created</span><span><i class="s1"></i>working</span><span><i class="s2"></i>billed, waiting on their money</span><span><i class="s3"></i>waiting to start</span><span><i class="s4"></i>paid in full</span><span>▲ still open today</span></div>`;
+  tl.innerHTML = html;
+
+  // Job chips in the bar.
+  document.getElementById('jobchips').innerHTML = Object.entries(JOBS).reverse().map(([id, j]) =>
+    `<button type="button" class="jobchip" data-job="${id}" style="--jc:${j.color}"><span class="sw"></span>${j.n} · ${j.name}${j.paid ? '' : ' · open'}</button>`).join(' ');
+
+  // Focus one job: everything else dims.
+  let focus = null;
+  function applyFocus() {
+    document.querySelectorAll('.row.day').forEach((r) => r.classList.toggle('dim', !!focus && !r.dataset.jobs.split(' ').includes(focus)));
+    document.querySelectorAll('.card').forEach((c) => c.style.opacity = focus && c.dataset.job !== focus ? '.3' : '');
+    document.querySelectorAll('.jobchip').forEach((c) => c.classList.toggle('dim', !!focus && c.dataset.job !== focus));
+  }
+  document.addEventListener('click', (ev) => {
+    const t = ev.target.closest('.jobchip, .card, .lane[data-job]');
+    if (!t || !t.dataset.job) return;
+    focus = focus === t.dataset.job ? null : t.dataset.job;
+    applyFocus();
+  });
+
+  // Show filter: a card hides when it is not asked for; a day with nothing left hides too.
+  document.querySelectorAll('.chip[data-f]').forEach((c) => c.addEventListener('click', () => {
+    const show = c.dataset.f;
+    document.querySelectorAll('.chip[data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === c)));
+    document.querySelectorAll('.row.day').forEach((r) => {
+      let left = 0;
+      r.querySelectorAll('.card').forEach((card) => {
+        const ok = show === 'all' || (show === 'money' && card.dataset.money === 'true') || (show === 'field' && card.dataset.side === 'field');
+        card.hidden = !ok; if (ok) left++;
+      });
+      r.hidden = left === 0;
+    });
+    onScroll();
+  }));
+
+  // The floating bar collapses once you scroll, and scrubs time: the first day under it
+  // tells what they owed us then.
+  const bar = document.getElementById('bar'), asof = document.getElementById('asof'), when = document.getElementById('asof-when'), what = document.getElementById('asof-what');
+  function onScroll() {
+    bar.classList.toggle('compact', window.scrollY > 140);
+    const barBottom = bar.getBoundingClientRect().bottom;
+    const dayRows = Array.from(document.querySelectorAll('.row.day:not([hidden])'));
+    const first = dayRows.find((r) => r.getBoundingClientRect().bottom > barBottom + 4);
+    if (!first || first === dayRows[0]) { asof.hidden = true; return; }
+    const s = JSON.parse(first.dataset.snap);
+    when.textContent = 'At ' + monthLabel(first.dataset.d) + ':';
+    what.textContent = `owed us ${fmt$(s.owed)} · ${fmt$(s.unb)} unbilled · ${fmtH(s.hrs)} unpaid · ${fmt$(s.mat)} materials`;
+    asof.hidden = false;
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>

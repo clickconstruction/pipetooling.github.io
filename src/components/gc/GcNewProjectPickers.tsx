@@ -1,5 +1,4 @@
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
-import type { GcCustomer } from '../../lib/gcMode/gcModel'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 
 /**
@@ -60,6 +59,14 @@ export function Picker({
   )
 }
 
+/** A customer as the pickers read one: the row's name, what it is, and who to call. */
+export interface PickerCustomer {
+  id: string
+  name: string
+  kind: string
+  contact: string
+}
+
 /** The value the customer pickers use for "Someone new". */
 export const SOMEONE_NEW = '__new'
 
@@ -77,18 +84,18 @@ export function CustomerPicker({
   fitsLabel,
   ariaLabel,
 }: {
-  customers: GcCustomer[]
+  customers: PickerCustomer[]
   value: string
   onChange: (value: string) => void
   onNewName: (name: string) => void
-  fits: (c: GcCustomer) => boolean
+  fits: (c: PickerCustomer) => boolean
   fitsLabel: string
   ariaLabel: string
 }) {
   const sorted = [...customers].sort((a, b) => a.name.localeCompare(b.name))
   const first = sorted.filter(fits)
   const rest = sorted.filter((c) => !fits(c))
-  const row = (c: GcCustomer): SearchableSelectOption => ({
+  const row = (c: PickerCustomer): SearchableSelectOption => ({
     value: c.id,
     label: [c.name, c.kind, c.contact].filter(Boolean).join(' · '),
     labelContent: pickerRow(c.name, [c.kind, c.contact].filter(Boolean).join(' · ')),

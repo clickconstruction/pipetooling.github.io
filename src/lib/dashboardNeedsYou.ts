@@ -38,7 +38,9 @@ import type { LienDeskNeedsYou } from './jobs/lienDesk'
 import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
+import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
+import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -71,6 +73,7 @@ export type NeedsYouItem = {
     | 'tally-self'
     | 'tally-team'
     | 'lost-bids'
+    | 'bid-followups'
     | 'team-reviews'
     | 'statement-round'
     | 'roadmap-needs-person'
@@ -92,6 +95,7 @@ export type NeedsYouItem = {
     | 'lien-notice-approve'
     | 'lien-notice-batch'
     | 'lien-file-window'
+    | 'owner-records-signed'
     | 'd22-uncoded'
     | 'hours-approvals'
     | 'typed-hours'
@@ -109,6 +113,7 @@ export type NeedsYouItem = {
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
     | 'job-account-missing'
+    | 'vehicle-records-missing'
     | 'customer-waiting'
     | 'price-matrix-ready'
     | 'price-requests-late'
@@ -168,6 +173,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'tally-self': 30,
   'tally-team': 30,
   'job-followups': 40,
+  // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
+  'bid-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
   'lien-tracking-owed': 10,
@@ -177,6 +184,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lien-notice-approve': 40,
   'lien-notice-batch': 40,
   'lien-file-window': 40,
+  // An owner signed for our records on their portal and is waiting on us for the packet (punch list #86).
+  'owner-records-signed': 20,
   'team-reviews': 50,
   'statement-round': 30,
   'roadmap-needs-person': 50,
@@ -204,6 +213,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lost-bids': 60,
   'd22-uncoded': 60,
   'job-account-missing': 60,
+  // Hygiene tier: records to enter, though Review prices a company truck from them (v2.4700).
+  'vehicle-records-missing': 60,
   'price-matrix-ready': 40,
   // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
   'price-requests-late': 40,
@@ -284,6 +295,8 @@ export type NeedsYouInputs = {
   tallyMinAgeDays: number
   lostBidNudge: LostBidNudge | null
   lostBidNudgeLoading: boolean
+  /** Promised bid calls due today or missed (v2.4426, `bidFollowupsDue`); null/absent = none. */
+  bidFollowupsDue?: BidFollowupsDue | null
   /**
    * Team reviews overdue for the signed-in reviewer (v2.2488). The hook
    * self-gates (empty without Team access), so no enabled flag here.
@@ -459,6 +472,12 @@ export type NeedsYouInputs = {
   lienDesk?: LienDeskNeedsYou | null
   /** The viewer approves (master / dev) — shows the approvals card. */
   lienDeskLeader?: boolean
+  /**
+   * Owners who signed for our records on their portal and wait for the packet (punch list #86,
+   * `ownerRecordsSignedWaiting`). The office set; null while loading or when none wait.
+   */
+  ownerRecordsSignedEnabled?: boolean
+  ownerRecordsSigned?: import('./jobs/ownerRecords').OwnerRecordsSigned | null
   lienWatchEnabled: boolean
   lienWatch: {
     noticeDue: { deadline: string; openBalance: number }[]
@@ -530,6 +549,10 @@ export type NeedsYouInputs = {
   jobAccountGapsEnabled?: boolean
   /** v2.3430 — the evidence rule: jobs that bought at a house expecting a job account with none on record. */
   jobAccountGaps?: { jobs: number; pairs: number; allocatedTotal: number; houseNames: string } | null
+  /** v2.4700 — dev, assistant and controller: active vehicles with no insurance, registration or service on file. */
+  vehicleRecordGapsEnabled?: boolean
+  /** `useVehicleRecordGapsNudge`: most missing first; null while loading or when none is missing. */
+  vehicleRecordGaps?: VehicleRecordGap[] | null
   /**
    * Customer Waiting (v2.3248): open high-priority portal requests in the
    * inboxes this viewer belongs to, from `CustomerWaitingContext` — null when
@@ -621,7 +644,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: 'red',
       kicker: 'Lien filings',
       title: n === 1 ? 'A filed lien has not been served' : `${n} filed liens have not been served`,
-      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service on the job's lien instruments.`,
+      detail: `A copy of the filed affidavit must reach the owner and contractor by the 5th day after filing (§ 53.055) — the ${n === 1 ? 'deadline is' : 'earliest deadline is'} ${worst}. Record the service in the job's Lien window.`,
       figure: String(n),
       actionLabel: 'Record service',
     })
@@ -639,6 +662,25 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${sends} certified ${sends === 1 ? 'send has' : 'sends have'} no number on record. The number is what the affidavit leans on to swear the notice went out — type it on the notice's Sent row on the Lien desk, or in the job's Lien window (“add the number”).`,
       figure: String(n),
       actionLabel: 'Open the Lien desk',
+    })
+  }
+
+  // Records for an owner (punch list #86): the owner did their part on the portal; the packet is ours to send.
+  if (inputs.ownerRecordsSignedEnabled && inputs.ownerRecordsSigned && inputs.ownerRecordsSigned.count > 0) {
+    const { count, first } = inputs.ownerRecordsSigned
+    const where = first.address || 'their property'
+    const waited = -(daysUntilYmd(first.signedOn) ?? 0)
+    const since = waited >= 1 ? ` They have waited ${waited} day${waited === 1 ? '' : 's'}.` : ''
+    items.push({
+      key: 'owner-records-signed',
+      severity: 'amber',
+      kicker: 'Records for an owner',
+      title: count === 1 ? `${first.name} signed for the records on ${where}` : `${count} owners signed for their records on their portal`,
+      detail:
+        `${count === 1 ? '' : `The first is ${first.name}, on ${where}. `}Signed on their portal ${monthDayLabel(first.signedOn)}.${since} ` +
+        'Finish the checks in the window, then press Record it as sent and pick On their portal. Their Download opens when you do.',
+      figure: String(count),
+      actionLabel: count === 1 ? 'Open their request' : 'Open the first',
     })
   }
 
@@ -904,7 +946,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         n === 1 ? 'A demand-letter deadline passed unpaid' : `${n} demand-letter deadlines passed unpaid`,
       detail:
         `${money} is still open past the payment deadline${n === 1 ? '' : 's'} you set in writing. ` +
-        "Follow through on the letter's next step — open the lien instruments on each job's Pipeline row.",
+        "Follow through on the letter's next step — open the job's Lien window from its Pipeline row.",
       figure: String(n),
       actionLabel: 'Open the jobs',
     })
@@ -946,7 +988,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   }
 
   if (inputs.bankReturnedEnabled && inputs.bankReturnCases && inputs.bankReturnCases.length > 0) {
-    const views = inputs.bankReturnCases.map((row) => arReturnCaseView({ row, trail: [], todayYmd: inputs.todayYmd ?? row.opened_at?.slice(0, 10) ?? '' }))
+    const views = inputs.bankReturnCases.map((row) => arReturnCaseView({ row, trail: [], todayYmd: inputs.todayYmd ?? calendarYmdInAppTzFromIso(row.opened_at ?? '') }))
     const n = views.length
     const total = views.reduce((sum, v) => sum + v.amount, 0)
     const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -1065,6 +1107,21 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'work them one GC call at a time on the Why we lost lens (it opens on one trade).',
       figure: count > 99 ? '99+' : String(count),
       actionLabel: 'Start call mode',
+    })
+  }
+
+  if (inputs.bidFollowupsDue != null && inputs.bidFollowupsDue.count > 0) {
+    const { count, overdueCount, value, names } = inputs.bidFollowupsDue
+    const late = overdueCount === 0 ? '' : overdueCount === count ? (count === 1 ? ' The day has passed.' : ' Every day has passed.') : ` ${overdueCount} ${overdueCount === 1 ? 'is' : 'are'} past the day.`
+    items.push({
+      key: 'bid-followups',
+      // A missed promise is louder than one due today.
+      severity: overdueCount > 0 ? 'red' : 'amber',
+      kicker: 'Calls you promised',
+      title: count === 1 ? 'One bid follow-up is due' : `${count} bid follow-ups are due`,
+      detail: `${followupNamesLine(names)}${value > 0 ? ` — ${formatLostBidNudgeValue(value)} pending.` : '.'}${late}`,
+      figure: count > 99 ? '99+' : String(count),
+      actionLabel: 'Open the call queue',
     })
   }
 
@@ -1448,6 +1505,32 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
+  if (inputs.vehicleRecordGapsEnabled && (inputs.vehicleRecordGaps?.length ?? 0) > 0) {
+    const gaps = inputs.vehicleRecordGaps!
+    const n = gaps.length
+    const first = gaps[0]!
+    const held = (g: VehicleRecordGap) => (g.holderName ? ` (${g.holderName})` : '')
+    const why = 'Review prices a company truck from these, so until they are entered they count as $0 there.'
+    items.push({
+      key: 'vehicle-records-missing',
+      severity: 'gray',
+      kicker: 'Vehicles',
+      title:
+        n === 1
+          ? `The ${first.name} has no ${vehicleRecordGapWords(first, 'or')} on file`
+          : `${n} vehicles are missing insurance, registration or service`,
+      detail:
+        n === 1
+          ? `${first.holderName ? `${first.holderName} drives it. ` : ''}Add them on People → Vehicles. ${why}`
+          : `${gaps
+              .slice(0, 3)
+              .map((g) => `${g.name}${held(g)}: ${vehicleRecordGapWords(g)}`)
+              .join('. ')}${n > 3 ? `. And ${n - 3} more` : ''}. Add them on People → Vehicles. ${why}`,
+      figure: String(n),
+      actionLabel: 'Open Vehicles',
+    })
+  }
+
   if (inputs.submittalsEnabled && inputs.submittalNudge) {
     const n = inputs.submittalNudge
     const monthDay = (ymd: string) => {
@@ -1473,7 +1556,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         severity: 'red',
         kicker: 'Submittals',
         title: n.sentBack.count === 1 ? `${f.rows} row${f.rows === 1 ? '' : 's'} sent back on ${f.bidLabel} Rev ${f.revNumber}, no resubmit yet` : `${n.sentBack.count} submittals have rows sent back with no resubmit — ${f.bidLabel} first`,
-        detail: `The reviewer marked ${f.rows === 1 ? 'a row' : `${f.rows} rows`} Revise or Reject${n.sentBack.count === 1 ? '' : ` on ${f.bidLabel}`}. Rev ${f.revNumber + 1} from the rows sent back is one tap on the Submittals tab; the same room link shows it.`,
+        detail: `The reviewer marked ${f.rows === 1 ? 'a row' : `${f.rows} rows`} Revise or Reject${n.sentBack.count === 1 ? '' : ` on ${f.bidLabel}`}. A Rev ${f.revNumber + 1} draft with those rows is one tap on the Submittals tab. Nothing is sent until you share it; the same room link shows it then.`,
         figure: String(n.sentBack.count),
         actionLabel: 'Open Submittals',
       })
@@ -1545,6 +1628,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   if (inputs.legalFirmActivityEnabled && inputs.legalFirmActivity && inputs.legalFirmActivity.count > 0) {
     const f = inputs.legalFirmActivity
     const parts: string[] = []
+    if (f.settlements) parts.push(`${f.settlements} settlement${f.settlements === 1 ? '' : 's'} below your floor to sign off`)
     if (f.payments) parts.push(`${f.payments} payment${f.payments === 1 ? '' : 's'} received by counsel ($${Math.round(f.paymentTotal).toLocaleString('en-US')}) to apply to the job`)
     if (f.questions) parts.push(`${f.questions} question${f.questions === 1 ? '' : 's'} to answer`)
     if (f.answers) parts.push(`${f.answers} answer${f.answers === 1 ? '' : 's'} from counsel${f.signoffs ? ` (${f.signoffs} sign-off${f.signoffs === 1 ? '' : 's'} granted)` : ''}`)
@@ -1552,7 +1636,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     if (f.steps) parts.push(`${f.steps} step${f.steps === 1 ? '' : 's'} recorded`)
     items.push({
       key: 'legal-firm-activity',
-      severity: f.payments || f.questions || f.signoffs ? 'amber' : 'blue',
+      severity: f.settlements || f.payments || f.questions || f.signoffs ? 'amber' : 'blue',
       kicker: 'Legal',
       title: `The law firm has ${f.count} thing${f.count === 1 ? '' : 's'} for you`,
       detail: `${parts.join(' · ')}${f.firstName ? ` — starts with ${f.firstName}` : ''}. Each clears from the desk's Fees & steps tab when you answer, apply or acknowledge it.`,

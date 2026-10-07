@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PricingEntryFormModal, type PricingEntryFormProps } from './PricingEntryFormModal'
+import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
 import type { PriceBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
 import { settle } from '../../test/renderSmokeMocks'
 
@@ -39,6 +40,14 @@ function props(over: Partial<PricingEntryFormProps> = {}): PricingEntryFormProps
 }
 
 describe('PricingEntryFormModal', () => {
+  it('stands above the dock, so Save is never under it (v2.4431)', async () => {
+    render(<PricingEntryFormModal {...props()} />)
+    await settle()
+    const backdrop = screen.getByRole('dialog').parentElement!
+    expect(backdrop.style.position).toBe('fixed')
+    expect(Number(backdrop.style.zIndex)).toBeGreaterThan(DISPATCH_MODE_FOOTER_Z_INDEX)
+  })
+
   it('Combined mode: one Price box, and a typed price lands in Rough In net of the other stages', async () => {
     // A fixture name so the required field lets the form submit.
     const p = props({ fixtureName: 'Lavatory' })

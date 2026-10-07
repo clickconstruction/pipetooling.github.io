@@ -7,6 +7,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
 import { VENDOR_KINDS, VENDOR_KIND_HINTS, vendorKindLabel, vendorKindOf, type VendorKind } from '../lib/materials/vendorKind'
 import type { TradeType } from '../lib/materials/supplyHouseTrades'
+import { parseLeadTime } from '../lib/submittals/leadTime'
 import { JOB_ACCOUNT_POLICIES, JOB_ACCOUNT_POLICY_HINTS, JOB_ACCOUNT_POLICY_LABELS, jobAccountPolicyOf, type JobAccountPolicy } from '../lib/materials/jobSupplyHouseAccounts'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -20,6 +21,8 @@ export interface SupplyHouseFormData {
   website_url: string | null
   notes: string
   monthly_payment_day: number | null
+  /** v2.4685 · the house's usual lead time in days; a submittal part with none of its own reads it on the procurement log. */
+  default_lead_time_days: number | null
   /** v2.3172: what kind of vendor this is; only `supply_house` is quoted from or shown to estimators. */
   vendor_kind: VendorKind
   /** v2.3173: trades this house serves (service_type ids). Empty = everyone. */
@@ -36,6 +39,8 @@ interface SupplyHouseFormProps {
   websiteUrl: string
   notes: string
   monthlyPaymentDay: string
+  /** v2.4685 · as typed: "3 wk", "10 days", "" */
+  defaultLeadTime: string
   onChange: (field: keyof SupplyHouseFormData, value: string) => void
   onSubmit: (data: SupplyHouseFormData) => Promise<void>
   onClose: () => void
@@ -72,6 +77,7 @@ export function SupplyHouseForm({
   websiteUrl,
   notes,
   monthlyPaymentDay,
+  defaultLeadTime,
   onChange,
   onSubmit,
   onClose,
@@ -132,6 +138,7 @@ export function SupplyHouseForm({
       website_url: normalizedWebsite,
       notes: notes.trim() || '',
       monthly_payment_day: day,
+      default_lead_time_days: defaultLeadTime.trim() ? parseLeadTime(defaultLeadTime) : null,
       vendor_kind: vendorKind,
       service_type_ids: tradeTypes.filter((t) => tradeIds.has(t.id)).map((t) => t.id),
       job_accounts: jobAccountPolicy,
@@ -181,6 +188,17 @@ export function SupplyHouseForm({
             value={monthlyPaymentDay}
             onChange={(e) => onChange('monthly_payment_day', e.target.value)}
             style={narrow ? fieldStyles : { ...fieldStyles, width: 180 }}
+          />
+        </FieldRow>
+        <FieldRow label="Usual lead time" narrow={narrow}>
+          <input
+            type="text"
+            placeholder="like 3 wk or 10 days"
+            title="How long this house usually takes. A submittal part with no lead time of its own reads it on the procurement log."
+            value={defaultLeadTime}
+            onChange={(e) => onChange('default_lead_time_days', e.target.value)}
+            style={{ ...(narrow ? fieldStyles : { ...fieldStyles, width: 180 }), ...(defaultLeadTime.trim() && parseLeadTime(defaultLeadTime) == null ? { borderColor: 'var(--text-red-700)' } : {}) }}
+            data-testid="supply-house-lead-time"
           />
         </FieldRow>
         <FieldRow label="Notes" narrow={narrow} alignTop>
@@ -323,7 +341,7 @@ export function SupplyHouseForm({
 
   if (variant === 'modal') {
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 800, paddingTop: 'var(--app-top-chrome, 0px)' }}>
         <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: narrow ? 480 : 560, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
           {formContent}
         </div>

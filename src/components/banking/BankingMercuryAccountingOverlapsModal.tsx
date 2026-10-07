@@ -89,7 +89,7 @@ export function BankingMercuryAccountingOverlapsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1250,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -107,7 +107,7 @@ export function BankingMercuryAccountingOverlapsModal({
           maxWidth: 720,
           width: '100%',
           padding: '1.25rem',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflowY: 'auto',
           border: '1px solid var(--border)',
         }}

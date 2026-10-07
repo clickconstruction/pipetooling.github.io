@@ -22,7 +22,7 @@ export type PeopleOffsetsTabProps = {
   users: UserRow[]
   payStubs: PayStubRow[]
   loadPayStubs: () => Promise<unknown>
-  /** Archived account-user names (RPC get_archived_user_names) — fold into the Archived users section. */
+  /** The names archived roster rows answer to (`archivedRosterNames`, from `roster_people`) — fold into the Archived users section. */
   archivedUserNames?: Set<string>
   /** Archived roster people (people.archived_at set) — same treatment. */
   archivedPeople?: Person[]
@@ -573,7 +573,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
       />
 
       {offsetApplyModalOpen && offsetToApply && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Apply offset to pay report</h3>
             <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} ${formatCurrency(offsetToApply.amount)} for {offsetToApply.person_name} to a pay report:</p>

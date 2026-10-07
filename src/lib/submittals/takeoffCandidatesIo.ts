@@ -54,7 +54,7 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   const [rowsRes, linesRes, choicesRes, onRes] = await Promise.all([
     supabase.from('bids_count_rows').select('id, fixture, count, bid_version_id, sequence_order').eq('bid_id', bidId).order('sequence_order'),
     supabase.from('bids_takeoff_rough_part_lines').select('id, count_row_id, sequence_order, part_id, source_template_id, quantity, unit_price, source_material_part_price_id, bid_version_id').eq('bid_id', bidId).order('sequence_order'),
-    supabase.from('bid_submittal_takeoff_choices').select('count_row_id, ticked, split, product_line_ids').eq('bid_id', bidId),
+    supabase.from('bid_submittal_takeoff_choices').select('count_row_id, ticked, split, product_line_ids, order_only, left_out_line_ids').eq('bid_id', bidId),
     opts.revisionId ? supabase.from('bid_submittal_items').select('source_count_row_id').eq('submittal_id', opts.revisionId) : Promise.resolve({ data: [] as Array<{ source_count_row_id: string | null }> }),
   ])
   const sel = opts.selectedVersionId ?? null
@@ -101,29 +101,37 @@ export async function loadTakeoffCandidates(supabase: Client, bidId: string, opt
   const choices = new Map<string, boolean>()
   const splits = new Map<string, boolean>()
   const productKeys = new Map<string, string[]>()
-  for (const c of (choicesRes.data ?? []) as Array<{ count_row_id: string; ticked: boolean; split?: boolean | null; product_line_ids?: string[] | null }>) {
+  const orderOnly = new Map<string, boolean>()
+  const leftOut = new Map<string, string[]>()
+  for (const c of (choicesRes.data ?? []) as Array<{ count_row_id: string; ticked: boolean; split?: boolean | null; product_line_ids?: string[] | null; order_only?: boolean | null; left_out_line_ids?: string[] | null }>) {
     choices.set(c.count_row_id, c.ticked)
     if (c.split != null) splits.set(c.count_row_id, !!c.split)
     if (Array.isArray(c.product_line_ids)) productKeys.set(c.count_row_id, c.product_line_ids)
+    if (c.order_only === true) orderOnly.set(c.count_row_id, true)
+    if (Array.isArray(c.left_out_line_ids) && c.left_out_line_ids.length > 0) leftOut.set(c.count_row_id, c.left_out_line_ids)
   }
   const alreadyOn = new Set<string>()
   for (const it of (onRes.data ?? []) as Array<{ source_count_row_id: string | null }>) if (it.source_count_row_id) alreadyOn.add(it.source_count_row_id)
 
-  const candidates = takeoffCandidates({ countRows, lines, parts, templates, assemblies, houses, choices, splits, productKeys, alreadyOn })
+  const candidates = takeoffCandidates({ countRows, lines, parts, templates, assemblies, houses, choices, splits, productKeys, alreadyOn, orderOnly, leftOut })
   return { candidates, fixtures: candidates.length, withProduct: candidates.filter((c) => c.product).length }
 }
 
 /**
- * The estimator's ticks (and splits, v2.4118; and the pieces switched in the product, v2.4292), one upsert
- * per fixture shown; a split or pieces not given are left as stored.
+ * The estimator's ticks (and splits, v2.4118; the pieces switched in the product, v2.4292; order only,
+ * 2026-10-02), one upsert per fixture shown; a split, pieces or an order-only pick not given are left as stored.
  */
-export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>): Promise<void> {
+export async function saveTakeoffChoices(supabase: Client, bidId: string, ticks: ReadonlyMap<string, boolean>, splits?: ReadonlyMap<string, boolean>, productKeys?: ReadonlyMap<string, ReadonlyArray<string>>, orderOnly?: ReadonlyMap<string, boolean>, leftOut?: ReadonlyMap<string, ReadonlyArray<string>>): Promise<void> {
   const rows = [...ticks.entries()].map(([count_row_id, ticked]) => ({
     bid_id: bidId,
     count_row_id,
     ticked,
     ...(splits?.has(count_row_id) ? { split: !!splits.get(count_row_id) } : {}),
     ...(productKeys?.has(count_row_id) ? { product_line_ids: [...productKeys.get(count_row_id)!] } : {}),
+    // 2026-10-02 · the fixture comes on as an order-only row; not given, it is left as stored.
+    ...(orderOnly?.has(count_row_id) ? { order_only: !!orderOnly.get(count_row_id) } : {}),
+    // The lines left off the fixture, as the window left them: the whole list, so one brought back is forgotten.
+    ...(leftOut?.has(count_row_id) ? { left_out_line_ids: [...leftOut.get(count_row_id)!] } : {}),
   }))
   if (rows.length === 0) return
   const { error } = await supabase.from('bid_submittal_takeoff_choices').upsert(rows, { onConflict: 'bid_id,count_row_id' })

@@ -91,3 +91,86 @@ describe('paymentAttribution (v2.3592) — oldest bill first', () => {
     expect(r.surplus).toBe(0)
   })
 })
+
+// v2.4534: with the job's total in hand, unlinked money pays the part of the job that is on no
+// sent bill before it pays a bill. The four jobs below are the ledger's own (2026-10-05).
+describe('paymentAttribution (v2.4534) — off-bill work first', () => {
+  // Job 273: a $56,365 job, three open bills adding to $17,585, $38,780 paid before the first was sent.
+  it('job 273: money that paid the unbilled part leaves the three bills open in full', () => {
+    const bills = [bill('s0', 13420, 'billed', 0, '2026-03-16'), bill('s1', 665, 'billed', 1, '2026-08-21'), bill('s2', 3500, 'billed', 2, '2026-08-21')]
+    const payments = [pay(8880, null, '2025-12-19', 0), pay(12000, null, '2025-10-10', 1), pay(1200, null, '2025-11-11', 2), pay(16700, null, '2026-03-10', 3)]
+    const r = attributeJobPayments(bills, payments, 56365)
+    expect([...r.byBill.values()].map((b) => b.applied)).toEqual([0, 0, 0])
+    expect(r.offBill).toBe(38780)
+    expect(r.surplus).toBe(0)
+    expect(r.unlinkedTotal).toBe(38780)
+    expect(paymentsAppliedToBill(bills, payments, 's0', 56365)).toBe(0)
+    expect(billPaymentSlices(bills, payments, 's0', 56365)).toEqual([])
+    // Without the total: the reading before v2.4534, every bill covered and the rest a surplus.
+    const before = attributeJobPayments(bills, payments)
+    expect([...before.byBill.values()].map((b) => b.applied)).toEqual([13420, 665, 3500])
+    expect(before.surplus).toBe(21195)
+    expect(before.offBill).toBe(0)
+  })
+
+  // Job 473: $42,868.75; paid bills of $18,640 (no linked money) and $4,900.17 (its own payment), one open $5,723.58.
+  it('job 473: the off-bill part fills first, the rest closes the oldest paid bill, the open bill stays open', () => {
+    const bills = [bill('old', 18640, 'paid', 0), bill('mid', 4900.17, 'paid', 1, '2026-08-06'), bill('open', 5723.58, 'billed', 2, '2026-09-25')]
+    const payments = [pay(13980, null, '2026-01-02', 0), pay(18265, null, '2026-03-12', 1), pay(4900.17, 'mid', '2026-08-17', 2)]
+    const r = attributeJobPayments(bills, payments, 42868.75)
+    expect(r.offBill).toBe(13605)
+    expect(r.byBill.get('old')!.applied).toBe(18640)
+    expect(r.byBill.get('mid')).toMatchObject({ linked: 4900.17, unlinked: 0, applied: 4900.17 })
+    expect(r.byBill.get('open')!.applied).toBe(0)
+    expect(r.surplus).toBe(0)
+    // The first payment went wholly off-bill; the second split $-off-bill / the old bill, so its slice is partial.
+    expect(r.byBill.get('old')!.slices).toEqual([
+      { payment: payments[0], amount: 375, partial: true },
+      { payment: payments[1], amount: 18265, partial: false },
+    ])
+  })
+
+  // Job 251: $23,600; paid bills of $23 and $9,440, one open $4,720; two unlinked $9,440 payments.
+  it('job 251: $9,417 off-bill, $9,463 closes the two paid bills, the $4,720 bill is owed', () => {
+    const bills = [bill('a', 23, 'paid', 0), bill('b', 9440, 'paid', 1), bill('c', 4720, 'billed', 2, '2026-08-26')]
+    const r = attributeJobPayments(bills, [pay(9440, null, '2026-03-12', 0), pay(9440, null, '2026-10-03', 1)], 23600)
+    expect(r.offBill).toBe(9417)
+    expect([r.byBill.get('a')!.applied, r.byBill.get('b')!.applied, r.byBill.get('c')!.applied]).toEqual([23, 9440, 0])
+    expect(r.surplus).toBe(0)
+  })
+
+  // Job 102: an $8,355 job whose one bill is the $5,355 left after a $3,000 check.
+  it('job 102: the $3,000 check paid the part the bill left out, so the bill is owed in full', () => {
+    const r = attributeJobPayments([bill('a', 5355, 'billed', 0, '2026-08-04')], [pay(3000, null, '2026-02-26')], 8355)
+    expect(r.byBill.get('a')!.applied).toBe(0)
+    expect(r.offBill).toBe(3000)
+  })
+
+  it('a job wholly on its bills reads as before: a deposit comes off the bill, and what is left over is a surplus', () => {
+    const one = attributeJobPayments([bill('a', 10000)], [pay(3000, null)], 10000)
+    expect(one.byBill.get('a')!.applied).toBe(3000)
+    expect(one.offBill).toBe(0)
+    // Bills past the job's total (a change the total has not caught up with) leave no off-bill part either.
+    const over = attributeJobPayments([bill('a', 6000), bill('b', 6000, 'billed', 1)], [pay(13000, null)], 10000)
+    expect([over.byBill.get('a')!.applied, over.byBill.get('b')!.applied, over.offBill, over.surplus]).toEqual([6000, 6000, 0, 1000])
+  })
+
+  it('money past the off-bill part walks the bills, and a draft bill counts as off-bill work', () => {
+    // $10,000 job: $4,000 sent, $2,500 drafted. Off-bill is 10,000 − 4,000 = 6,000 (the draft was never sent).
+    const bills = [bill('sent', 4000, 'billed', 0), bill('draft', 2500, 'ready_to_bill', 1)]
+    const r = attributeJobPayments(bills, [pay(5000, null, '2026-01-01', 0), pay(2500, null, '2026-02-01', 1)], 10000)
+    expect(r.offBill).toBe(6000)
+    expect(r.byBill.get('sent')!.applied).toBe(1500)
+    expect(r.byBill.get('draft')!.applied).toBe(0)
+    expect(r.byBill.get('sent')!.slices).toEqual([{ payment: pay(2500, null, '2026-02-01', 1), amount: 1500, partial: true }])
+  })
+
+  it('linked money is untouched by the job total, and a blank total is no total', () => {
+    const bills = [bill('a', 1000, 'billed', 0), bill('b', 1000, 'billed', 1)]
+    const r = attributeJobPayments(bills, [pay(1000, 'a'), pay(400, null)], 5000)
+    expect(r.byBill.get('a')).toMatchObject({ linked: 1000, unlinked: 0 })
+    expect(r.byBill.get('b')!.applied).toBe(0)
+    expect(r.offBill).toBe(400)
+    for (const none of [null, undefined, ''] as const) expect(attributeJobPayments(bills, [pay(400, null)], none).byBill.get('a')!.applied).toBe(400)
+  })
+})

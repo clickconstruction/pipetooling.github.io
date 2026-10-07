@@ -4,7 +4,8 @@ import { fetchDispatchScheduledJobsForAssigneeDay, type DispatchScheduledJobForA
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database, Json } from '../types/database'
-import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
+import { mercuryPostedOnALaterDay, mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../lib/mercuryRawDebitCard'
 import { pushRecentPersonUserId, readRecentPersonUserIds } from '../lib/mercuryAllocRecentPersonUserIds'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
@@ -352,10 +353,13 @@ export function MercuryTransactionAllocationsModal({
   const displayTotal = Math.abs(txAmount)
   const allocationSign = (txAmount === 0 ? 1 : Math.sign(txAmount)) as 1 | -1
 
-  /** Tally self-service + staff follow-up: show Dispatch schedule + clock-session quick picks for the calendar day of posted_at. */
-  const showTallyDayContext = Boolean(
-    tallySelfService && transaction?.posted_at && (tallyActAsUserId ?? authUser?.id),
-  )
+  /**
+   * Tally self-service + staff follow-up: the day the card was swiped (`raw.createdAt`, else
+   * posted_at). Its Dispatch schedule and clock sessions are the quick picks: Mercury posts a
+   * charge a median 8 hours later, often on the next day, and that day's jobs are the wrong ones.
+   */
+  const tallySwipeAt = tallySelfService && transaction ? mercurySwipeAtIso(transaction.raw, transaction.posted_at) : null
+  const showTallyDayContext = Boolean(tallySelfService && tallySwipeAt && (tallyActAsUserId ?? authUser?.id))
 
   const scheduleForOtherPerson = Boolean(
     tallyActAsUserId && authUser?.id && tallyActAsUserId !== authUser.id,
@@ -367,7 +371,7 @@ export function MercuryTransactionAllocationsModal({
   const tallyUseTheirFallback = scheduleForOtherPerson && tallyOtherPossessive === ''
 
   const tallyScheduleHeadings = useMemo(() => {
-    if (!transaction?.posted_at) {
+    if (!tallySwipeAt) {
       return {
         scheduleTitle: scheduleForOtherPerson
           ? tallyUseTheirFallback
@@ -381,8 +385,8 @@ export function MercuryTransactionAllocationsModal({
           : 'Clock sessions that day',
       }
     }
-    const ms = new Date(transaction.posted_at).getTime()
-    if (!Number.isFinite(ms)) {
+    const swipeYmd = calendarYmdInAppTzFromIso(tallySwipeAt)
+    if (!swipeYmd) {
       return {
         scheduleTitle: scheduleForOtherPerson
           ? tallyUseTheirFallback
@@ -396,9 +400,7 @@ export function MercuryTransactionAllocationsModal({
           : 'Clock sessions that day',
       }
     }
-    const postedYmd = denverCalendarDayKey(ms)
-    const todayYmd = denverCalendarDayKey(Date.now())
-    const isToday = postedYmd === todayYmd
+    const isToday = swipeYmd === todayYmdInAppTz()
     if (scheduleForOtherPerson) {
       if (tallyUseTheirFallback) {
         return {
@@ -419,7 +421,7 @@ export function MercuryTransactionAllocationsModal({
       scheduleTitle: isToday ? 'Jobs on my schedule' : 'Jobs on my schedule that day',
       clockSessionsTitle: isToday ? 'Clock sessions today' : 'Clock sessions that day',
     }
-  }, [transaction?.posted_at, scheduleForOtherPerson, tallyUseTheirFallback, tallyOtherPossessive])
+  }, [tallySwipeAt, scheduleForOtherPerson, tallyUseTheirFallback, tallyOtherPossessive])
 
   // Re-seed only when the modal opens or the transaction / user identity changes — not when the parent
   // passes new object/array refs for the same row (e.g. stale tally follow-up rebuilds `transaction` each render).
@@ -599,7 +601,7 @@ export function MercuryTransactionAllocationsModal({
   }, [open, transaction?.id])
 
   useEffect(() => {
-    if (!open || !tallySelfService || !transaction?.posted_at) {
+    if (!open || !tallySelfService || !tallySwipeAt) {
       setStaffDayScheduleJobs([])
       setStaffDaySessionJobs([])
       setStaffDaySessionBids([])
@@ -616,16 +618,15 @@ export function MercuryTransactionAllocationsModal({
       setStaffDayContextError(null)
       return
     }
-    const ms = new Date(transaction.posted_at).getTime()
-    if (!Number.isFinite(ms)) {
+    const workDateYmd = calendarYmdInAppTzFromIso(tallySwipeAt)
+    if (!workDateYmd) {
       setStaffDayScheduleJobs([])
       setStaffDaySessionJobs([])
       setStaffDaySessionBids([])
-      setStaffDayContextError('Invalid posted date.')
+      setStaffDayContextError('Invalid purchase date.')
       setStaffDayContextLoading(false)
       return
     }
-    const workDateYmd = denverCalendarDayKey(ms)
     let cancelled = false
     setStaffDayContextLoading(true)
     setStaffDayContextError(null)
@@ -767,7 +768,7 @@ export function MercuryTransactionAllocationsModal({
     return () => {
       cancelled = true
     }
-  }, [open, tallySelfService, tallyActAsUserId, authUser?.id, transaction?.posted_at, transaction?.id, ledgerPrefixMap])
+  }, [open, tallySelfService, tallyActAsUserId, authUser?.id, tallySwipeAt, transaction?.id, ledgerPrefixMap])
 
   const allocationSum = useMemo(() => {
     let sum = 0
@@ -1141,7 +1142,9 @@ export function MercuryTransactionAllocationsModal({
           >
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
-                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Posted</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>
+                  {tallySwipeAt ? 'Bought' : 'Posted'}
+                </th>
                 <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Amount</th>
                 <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Debit card</th>
                 <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Account</th>
@@ -1151,7 +1154,10 @@ export function MercuryTransactionAllocationsModal({
             <tbody>
               <tr>
                 <td style={{ padding: '0.45rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-                  {formatPostedDate(transaction.posted_at)}
+                  {formatPostedDate(tallySwipeAt ?? transaction.posted_at)}
+                  {tallySwipeAt && mercuryPostedOnALaterDay(transaction.raw, transaction.posted_at) ? (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Posted {formatPostedDate(transaction.posted_at)}</div>
+                  ) : null}
                 </td>
                 <td style={{ padding: '0.45rem 0.5rem', textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
                   {formatCurrency(Number(transaction.amount))}

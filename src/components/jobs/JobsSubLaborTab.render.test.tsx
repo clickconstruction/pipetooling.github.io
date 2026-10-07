@@ -100,3 +100,15 @@ describe('JobsSubLaborTab · the Pay view on a phone', () => {
     expect(screen.getByText(/That date was not finished, so it was not saved/)).toBeTruthy()
   })
 })
+
+describe('JobsSubLaborTab · an undated sheet made in the evening (v2.4469)', () => {
+  it('shows the Central day it was made in the Sheet date box', async () => {
+    narrow.on = false
+    // 00:30 UTC on Sep 11 is 7:30 pm CDT on Sep 10.
+    renderWithProviders(<JobsSubLaborTab {...props({ laborJobs: [makeLaborJob({ id: 'sheet-1', assigned_to_name: 'Sam Sub', job_number: 'S-212', job_date: null, created_at: '2026-09-11T00:30:00Z' })] })} />)
+    await settle()
+    const sheetRow = [...document.querySelectorAll('tr')].find((tr) => tr.firstElementChild?.textContent === '▶') as HTMLElement
+    fireEvent.click(sheetRow)
+    expect((screen.getByLabelText('Sheet date') as HTMLInputElement).value).toBe('2026-09-10')
+  })
+})

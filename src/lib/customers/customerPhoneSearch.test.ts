@@ -77,3 +77,13 @@ describe('phoneCustomerLines (v2.3895)', () => {
   })
 })
 
+
+describe('phoneActivityWords · an evening instant keeps its day (v2.4471)', () => {
+  it('reads a job made last evening as yesterday, and a paid day as it is', () => {
+    // 00:30 UTC on Sep 27 is 7:30 pm CDT on Sep 26; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(phoneActivityWords('2026-09-27T00:30:00Z', '2026-09-27')).toBe('yesterday')
+    expect(phoneActivityWords('2026-12-02T00:30:00+00:00', '2026-12-08')).toBe('7 d ago')
+    expect(phoneActivityWords('2026-09-27T12:00:00Z', '2026-09-27')).toBe('today')
+    expect(phoneActivityWords('2026-09-26', '2026-09-27')).toBe('yesterday')
+  })
+})

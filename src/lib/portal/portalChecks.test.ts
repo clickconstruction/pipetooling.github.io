@@ -35,6 +35,29 @@ describe('buildPortalChecks', () => {
     ])
   })
 
+  it('2026-10-02 · a bill’s day is its day in the company’s zone, so the page orders bills by it', () => {
+    const billedOn = (billed_at: string | null) =>
+      buildPortalChecks({ jobs: [job('a')], invoices: [inv('a1', 'a', 1, 500, { billed_at })], payments: [pay('p1', 'a', 'a1', 500)], events: [], viewerCustomerId: V }).jobs[0]!.invoices[0]!.billed_at
+    expect(billedOn('2026-10-03T00:30:00Z')).toBe('2026-10-02')
+    expect(billedOn('2026-12-02T00:30:00+00:00')).toBe('2026-12-01')
+    expect(billedOn('2026-10-02T12:00:00Z')).toBe('2026-10-02')
+    expect(billedOn(null)).toBeNull()
+  })
+
+  // v2.4534: the job's total rides along only when the viewer pays every sent bill, since only then is the list whole.
+  it('carries the job total when the viewer pays every sent bill on the job, and never on a job it only partly pays', () => {
+    const whole = buildPortalChecks({ jobs: [job('a', { revenue: 9000 })], invoices: [inv('a1', 'a', 1, 500)], payments: [pay('p1', 'a', null, 400)], events: [], viewerCustomerId: V })
+    expect(whole.jobs[0]!.revenue).toBe(9000)
+    const part = buildPortalChecks({
+      jobs: [job('s', { customer_id: 'owner', gc_customer_id: V, bill_to_party: 'customer', revenue: 9000 })],
+      invoices: [inv('s1', 's', 1, 1000, { bill_to_party: 'gc' }), inv('s2', 's', 2, 2000)],
+      payments: [pay('pa', 's', 's1', 1000)],
+      events: [],
+      viewerCustomerId: V,
+    })
+    expect(part.jobs[0]!.revenue).toBeNull()
+  })
+
   it('leaves out the other party’s bills, and an unlinked payment on a job the viewer only partly pays', () => {
     const r = buildPortalChecks({
       jobs: [job('s', { customer_id: 'owner', gc_customer_id: V, bill_to_party: 'customer' })],

@@ -1,12 +1,16 @@
 import type { CSSProperties } from 'react'
+import type { LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import type { LegalNarrative } from '../../../lib/legal/legalNarrative'
 import { CARD, COPPER, FAINT, HAIR } from '../../../lib/portal/portalTheme'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
+import type { LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
+import { portalSmall } from '../../../lib/legal/legalPortalCards'
 
 /** Constants and styles shared by the firm's matter view (`LegalFirmMatterView.tsx`) and its callers — kept out of the component file so fast refresh stays whole. */
 
-export const FIRM_TABS = ['account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
+export const FIRM_TABS = ['narrative', 'account', 'paper', 'their_word', 'evidence', 'fees_steps'] as const
 export type FirmTab = (typeof FIRM_TABS)[number]
-export const FIRM_TAB_LABELS: Record<FirmTab, string> = { account: 'Account', paper: 'Paper', their_word: 'Their word', evidence: 'Evidence', fees_steps: 'Fees & steps' }
+export const FIRM_TAB_LABELS: Record<FirmTab, string> = { narrative: 'Narrative', account: 'Account', paper: 'Paper', their_word: 'Record of contact', evidence: 'Evidence', fees_steps: 'Fees & steps' }
 
 /** The slice of a matter the view needs — the portal passes its payload matter, the desk builds one from the sheet. */
 export type FirmMatterLike = {
@@ -14,12 +18,32 @@ export type FirmMatterLike = {
   noteToFirm: string
   contracts: ReadonlyArray<{ id: string; job_id: string; signedPdfUrl: string | null }>
   entries: ReadonlyArray<LegalEntryRow>
+  /** Entries the office held back (#85 item 29): the portal passes the function's count (held entries never arrive); the desk's preview reads its packet. */
+  heldCount?: number
+  /** The office's settlement floor (#85 item 20): the portal passes it; the desk's preview reads the matter. Undefined = not shown. */
+  settlementFloor?: LegalSettlementFloor | null
+  /** Documents from the office (v2.4810): the portal passes the function's, each with a link; the desk's preview passes its own, without. */
+  documents?: ReadonlyArray<LegalPortalDocument>
+  /** Documents the office held back; the firm sees the count. */
+  heldDocumentCount?: number
+  /** The office's account of the matter (v2.4812): the first tab when there is one. */
+  narrative?: LegalNarrative | null
+}
+
+/** The tabs a matter shows: Narrative only when the office has written one (v2.4812). */
+export function firmTabsFor(matter: Pick<FirmMatterLike, 'narrative'>): FirmTab[] {
+  return FIRM_TABS.filter((t) => t !== 'narrative' || Boolean(matter.narrative?.markdown))
+}
+
+/** The tab to draw: the one asked for when the matter shows it, else Account. */
+export function firmTabShown(tab: FirmTab, matter: Pick<FirmMatterLike, 'narrative'>): FirmTab {
+  return firmTabsFor(matter).includes(tab) ? tab : 'account'
 }
 
 export const portalCard: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }
-export const portalCap: CSSProperties = { fontSize: 11, color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
-export const portalH: CSSProperties = { margin: '16px 0 6px', fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: FAINT, fontWeight: 700 }
-export const portalTh: CSSProperties = { textAlign: 'left', fontSize: 10.5, letterSpacing: '0.05em', textTransform: 'uppercase', color: FAINT, borderBottom: `1px solid ${HAIR}`, padding: '5px 8px', fontWeight: 700 }
+export const portalCap: CSSProperties = { fontSize: portalSmall(11), color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
+export const portalH: CSSProperties = { margin: '16px 0 6px', fontSize: portalSmall(11), letterSpacing: '0.06em', textTransform: 'uppercase', color: FAINT, fontWeight: 700 }
+export const portalTh: CSSProperties = { textAlign: 'left', fontSize: portalSmall(10.5), letterSpacing: '0.05em', textTransform: 'uppercase', color: FAINT, borderBottom: `1px solid ${HAIR}`, padding: '5px 8px', fontWeight: 700 }
 export const portalTd: CSSProperties = { padding: '7px 8px', borderBottom: `1px solid ${HAIR}`, verticalAlign: 'top', fontSize: 13.5 }
 export const portalNum: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 export const portalBtn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, padding: '6px 12px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer' }

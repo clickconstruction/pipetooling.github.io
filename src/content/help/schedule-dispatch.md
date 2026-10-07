@@ -130,8 +130,8 @@ Lanes do more than group the grid. Typing a lane's name in the **Search Person o
 
 To put the same jobs on several people at once, you use the chains button in the People toolbar. It shows two links of a chain. It sits next to the **×** multiply button, which puts one job across many cells. A bar appears at the top and walks you through two steps:
 
-1. ***1 of 2 — Click the job blocks you want to copy linked.*** Every block gets a dashed outline. You click the ones to copy and they highlight. Then you press {{button:blue|Next: pick people}}.
-2. ***2 of 2 — Click the people to apply them to.*** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block. It has the same day, same times, same instructions. It is chained to the original so time and instruction changes stay in sync. The {{chip:blue|linked}} chains marker appears on the cards. If the grid is grouped by swim lanes, the lane headings become targets too. You click ***<lane> — whole crew*** and the blocks apply to every member of that lane in one click. A single toast sums up what copied and what was skipped.
+1. ***1 of 2 — Click the job blocks you want to copy linked.*** Every block gets a dashed outline. Click the ones to copy and they highlight. Then press {{button:blue|Next: pick people}}.
+2. ***2 of 2 — Click the people to apply them to.*** Names in the left column become click targets. Each click instantly gives that person a **linked** copy of every selected block. It has the same day, same times, same instructions. It is chained to the original so time and instruction changes stay in sync. The {{chip:blue|linked}} chains marker appears on the cards. If the grid is grouped by swim lanes, the lane headings become targets too. Click ***<lane> — whole crew*** and the blocks apply to every member of that lane in one click. A single toast sums up what copied and what was skipped.
 
 Copies that would overlap something already on that person's day are skipped. So are copies the person already has. The toast tells you how many applied. You click as many people as you need, then press {{chip:gray|Esc}} or **Done**.
 
@@ -254,8 +254,8 @@ You press {{chip:gray|Esc}} to close the modal. If a recipient dropdown is open,
 
 Office people used to get their "Office" block typed in by hand every morning. Now the schedule fills those in itself:
 
-1. You open **Dispatch**, the gear on the schedule, then **Standing office schedule**.
-2. You add each person who works office days. Assistants, controllers, and estimators are offered. You adjust their daily window if it is not 8:00 to 4:00.
+1. Open **Dispatch**, the gear on the schedule, then **Standing office schedule**.
+2. Add each person who works office days. Assistants, controllers, and estimators are offered. Adjust their daily window if it is not 8:00 to 4:00.
 3. That is it. Weekdays on the visible week get their Office block automatically, ahead of time.
 
 The automation stays polite:

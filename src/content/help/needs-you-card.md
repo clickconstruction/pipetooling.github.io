@@ -2,7 +2,7 @@
 title: work the Needs you list on the dashboard
 category: Getting Started
 roles: all
-keywords: needs you, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill
+keywords: needs you, bid follow-ups, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
 order: 13
 ---
 The Needs you card sits near the top of the Dashboard. It collects the things waiting on a decision from you.
@@ -31,7 +31,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 - **Allocate N bank deposits**. {{button:blue|Match deposits}} opens the Accounts Receivable deposit matcher right over the card. When you close it, the count refreshes. There is nothing to navigate back from.
 - ***A deposit the bank returned is still counted as paid ($13,680)***. This is a check matched to a job and then bounced. The card names the job, the amount and the bank's reason. {{button:outline|Open J878}} opens the job on ③ Payments received. There the row wears *Returned by the bank*. **Unlink and remove** takes it off the job and marks the deposit returned. See [match bank deposits to the bills they pay](?g=match-bank-deposits-to-bills). The item is amber because the job reads paid everywhere until then.
 - **N purchases need a job**. {{button:outline|Open tally}} opens **Job Parts Tally**. The card counts purchases more than two days old. The Tally page header shows both numbers. It reads *105 unlinked · 100 over 2 days old — the Dashboard card's count*. So the two never look like a disagreement.
-- **Team purchases waiting to be sorted** opens the sort-for-the-team window.
+- **Team purchases waiting to be sorted** opens the sort-for-the-team window. Its *Sorted* list is the way back to a purchase you already sorted. See [sort the team's card purchases from the office](/help/sort-the-teams-card-purchases).
 - **N bank-label suggestions have waited 3+ days for an OK**. {{button:outline|Open approvals}} opens **Banking → Accounting**. There **Approve all** clears the backlog. The item shows only once the oldest suggestion is 3 days old. The office may have switched on *rule matches approve themselves*. Then only the true exceptions come back here.
 - **N GCs are waiting on your statement**. {{button:outline|Start round}} opens GC Review on the week's list. There every GC is grouped by its account man.
 - **GC review is due today / still due this week**. {{button:outline|Open GC Review}} opens it. Once every GC is certified and sent on Wednesday, the item is replaced by a green *done for the week* note.
@@ -50,12 +50,14 @@ Each item's button drops you exactly where the work happens. What you see depend
 - **N open jobs have sat idle N+ days**. {{button:outline|See them}} opens Job Summary's cycle view.
 - **Field capacity has run under 60% three weeks running**. {{button:outline|Open Capacity}} opens Job Summary's Capacity view. The card names the three complete weeks. It gives each week's utilization, the share of available hours that was worked. It reads like *48% · 52% · 41% for the weeks of Aug 24, Aug 31 and Sep 7*. It also gives the field hours clocked against the roster's available hours. The current week never counts until it is over.
 - **N jobs are waiting on a follow-up**. {{button:outline|Start review}} starts the follow-up review on the Jobs board.
-- **Lien windows**. A lien is a legal claim on the property for unpaid work. The item may be a notice or filing window closing soon. It may be a filed lien not yet served, or a demand deadline. Each opens the job or jobs on the Pipeline board. A cleared payment behind a conditional release gets {{button:outline|Issue releases}}. That opens the **cleared releases list** right over the card. You issue the unconditional version from the row. See [give a customer a lien release](?g=give-a-customer-a-lien-release).
+- **Lien windows**. A lien is a legal claim on the property for unpaid work. The item may be a notice or filing window closing soon. It may be a filed lien not yet served, or a demand deadline. A window closing soon opens the Lien desk. A filed lien not yet served, or a demand deadline, opens the job's Lien window. A cleared payment behind a conditional release gets {{button:outline|Issue releases}}. That opens the **cleared releases list** right over the card. You issue the unconditional version from the row. See [give a customer a lien release](?g=give-a-customer-a-lien-release).
+- **N vehicles are missing insurance, registration or service**. Only the office sees this one. It covers each vehicle someone is driving. The card names the driver and what is missing. One vehicle reads ***The 2019 Ford F-150 has no registration or service on file***. {{button:outline|Open Vehicles}} opens **People → Vehicles**. Open the vehicle there. **Add to plan** on its **Insurance** card puts it on a plan with a cost. A vehicle already on a plan with no cost reads **insurance cost**. {{button:outline|Edit}} opens the vehicle's form, where **Registration** is its weekly cost. {{button:outline|Log service}} records a shop visit. A vehicle counts as serviced once any service is logged. Review prices a company truck from these. Until they are entered, they count as $0 there. See [manage company vehicles](/help/manage-company-vehicles).
 
 **Bids**
 
 Estimators and devs see these.
 
+- **N bid follow-ups are due**. These are calls you promised a GC for a day, and the day is here or has passed. A missed day turns the card red. {{button:outline|Open the call queue}} opens the Call queue, with those builders on top. See [follow up with builders](/help/follow-up-with-builders).
 - ***N lost bids have no reason recorded · all trades***. {{button:outline|Start call mode}} opens call mode on the Why we lost lens. The card counts every trade and says so on its number. The lens opens on one trade at a time and names it the same way. It reads *59 need a reason · Plumbing*.
 - **N robot bids are waiting on your audit**. {{button:outline|Open Audits}} opens them. **N fixture names have no Division 22 code**. {{button:outline|Pin codes}} opens the audit. The audit folds spellings the same way the card counts them.
 
@@ -83,7 +85,7 @@ Four cards each open the bid's Submittals tab. A submittal is the product paperw
 
 - **Won 5 days, no submittal started**. The GC usually asks in the first week. You build Rev 1, the first revision, from the picks. After 45 days the card lets the job go.
 - **Shared N days, nobody has opened it**. The card names who never opened their link. You ask the GC to nudge them, or you send the link again.
-- **N rows sent back, no resubmit**. The reviewer marked Revise or Reject. *Rev N+1 from the rows sent back* is one tap.
+- **N rows sent back, no resubmit**. The reviewer marked Revise or Reject. A draft of the next revision with those rows is one tap. Nothing is sent until you share it.
 - **A lead time runs past its stage window**. Ordered today, the product lands after the job's earliest stage window ends. You order now, pick a product in stock, or move the window.
 
 The won bid's Job block on the Bid Board carries the same fact. It shows a chip: {{chip:blue|Rev 2 · shared · waiting on Dana W.}}.

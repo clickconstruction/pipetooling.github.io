@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { payLinkDisplay, payLinkUrl } from '../../lib/billing/payLink'
 import { brandMarkPath, loadBrandMarkDataUrl, payQrPngDataUrl, payQrProps, payQrSheetHtml, payQrSvgMarkup } from '../../lib/billing/payQr'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 
 /**
  * The fourth Payment Link (punch list #35, v2.3757): the bill's pay code, large enough to
@@ -99,7 +99,8 @@ export function BillQrModal({
     setBusy('print')
     try {
       const svg = await payQrSvgMarkup(url, 300, await loadBrandMarkDataUrl())
-      const ok = openHtmlPrintWindow(payQrSheetHtml({ company, billLabel, jobName: jobName ?? '', amountLabel, invoiceId, svg }))
+      // A print counts as a send (docs/SENT_COPIES.md): the pay code sheet is filed under its bill.
+      const ok = printAndFile(payQrSheetHtml({ company, billLabel, jobName: jobName ?? '', amountLabel, invoiceId, svg }), { kind: 'bill_pay_code', title: `Pay code · ${billLabel}${jobName ? ` · ${jobName}` : ''}`, source: { table: 'jobs_ledger_invoices', id: invoiceId } })
       if (!ok) showToast('The print window was blocked — allow pop-ups for this site', 'error')
     } finally {
       setBusy(null)
@@ -128,7 +129,7 @@ export function BillQrModal({
   )
 
   return (
-    <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: '1rem' }} onClick={onClose}>
+    <div role="presentation" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: overlayZIndex, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
       <div
         role="dialog"
         aria-modal="true"

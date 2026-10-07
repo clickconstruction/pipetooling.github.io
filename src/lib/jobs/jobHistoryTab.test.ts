@@ -9,8 +9,9 @@ import {
 } from './jobHistoryTab'
 
 describe('job window tabs (T5-05)', () => {
-  it('Job · Edit · Bill · Costs · History, labelled', () => {
-    expect(JOB_WINDOW_TABS).toEqual(['job', 'edit', 'bill', 'costs', 'history'])
+  it('Job · Edit · Bill · Costs · History · Documents, labelled', () => {
+    expect(JOB_WINDOW_TABS).toEqual(['job', 'edit', 'bill', 'costs', 'history', 'documents'])
+    expect(JOB_WINDOW_TAB_LABELS.documents).toBe('Documents')
     expect(JOB_WINDOW_TAB_LABELS.history).toBe('History')
     expect(JOB_WINDOW_TAB_LABELS.costs).toBe('Costs')
     // v2.3182: the form pane shows on Edit / Bill / Costs, one region each.
@@ -20,9 +21,10 @@ describe('job window tabs (T5-05)', () => {
     expect(jobWindowFormRegionForTab('edit')).toBe('edit')
     expect(jobWindowFormRegionForTab('job')).toBe('edit')
   })
-  it('the form pane hides on Job and History, shows on Edit, Bill and Costs', () => {
+  it('the form pane hides on Job, History and Documents, shows on Edit, Bill and Costs', () => {
     expect(jobWindowFormPaneHidden('job')).toBe(true)
     expect(jobWindowFormPaneHidden('history')).toBe(true)
+    expect(jobWindowFormPaneHidden('documents')).toBe(true)
     expect(jobWindowFormPaneHidden('edit')).toBe(false)
     expect(jobWindowFormPaneHidden('bill')).toBe(false)
   })

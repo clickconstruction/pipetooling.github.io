@@ -86,6 +86,18 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     expect(within(row).getByText('21 d past expected')).toBeTruthy()
   })
 
+  it('a bill sent in a Central evening reads that day', async () => {
+    // Sent and billed 7:30 pm CDT on Sep 4, which is Sep 5 in UTC.
+    renderList(
+      makeJob({
+        customer_name: 'Maria Delgado',
+        invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 9800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-05T00:30:00+00:00', billed_at: '2026-09-05T00:30:00+00:00' })],
+      }),
+    )
+    await settle()
+    expect(within(screen.getByTestId('invoice-row')).getByText('sent Sep 4 to Maria Delgado')).toBeTruthy()
+  })
+
   it('paid bills stay in the list, muted, with how long they took; the sum line adds up to the tiles', async () => {
     renderList(
       makeJob({

@@ -469,3 +469,16 @@ describe('the budget footing on the rows (v2.3300)', () => {
     expect(countJobSummaryAssumed(enriched)).toBe(1)
   })
 })
+
+describe('the last worked day of a job with no hours (v2.4472)', () => {
+  it('falls back to the Central day the job was made', () => {
+    // 00:30 UTC on Jan 16 is 6:30 pm CST on Jan 15; 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2.
+    const [winter, summer, noon] = enrichJobSummaryRows({
+      rows: [row('e1', '1', { job: { created_at: '2026-01-16T00:30:00Z' } }), row('e2', '2', { job: { created_at: '2026-10-03T00:30:00+00:00' } }), row('e3', '3', { job: { created_at: '2026-01-16T12:00:00Z' } })],
+      reportPctByJobId: new Map(),
+      ledger: null,
+      method: 'day',
+    })
+    expect([winter!.lastWorkedYmd, summer!.lastWorkedYmd, noon!.lastWorkedYmd]).toEqual(['2026-01-15', '2026-10-02', '2026-01-16'])
+  })
+})

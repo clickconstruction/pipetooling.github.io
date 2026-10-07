@@ -90,7 +90,7 @@ const overlayStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '0.5rem',
+  padding: 'calc(0.5rem + var(--app-top-chrome, 0px)) 0.5rem 0.5rem',
 }
 
 const sheetStyle: CSSProperties = {
@@ -100,7 +100,7 @@ const sheetStyle: CSSProperties = {
   border: '1px solid var(--border)',
   width: '100%',
   maxWidth: 430,
-  maxHeight: 'min(92vh, 720px)',
+  maxHeight: 'min(92vh, 720px, 100%)',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',

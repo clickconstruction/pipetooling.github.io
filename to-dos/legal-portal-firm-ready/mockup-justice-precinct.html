@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal: which justice court — plan and mockup</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  h3 { font-size: 15px; margin: 18px 0 4px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.new { background: #111827; color: #fff; } .cap.alt { background: #E5E7EB; color: #374151; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  ul.notes, ol.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 110ch; }
+  ul.notes li, ol.notes li { margin: 5px 0; }
+  table.plan { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.plan th, table.plan td { border: 1px solid #D1D5DB; padding: 5px 8px; text-align: left; vertical-align: top; }
+  table.plan th { background: #F3F4F6; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #374151; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+
+  /* ---- the portal's paper (portalTheme.ts) ---- */
+  .paper { background: #f6f3ec; color: #16283c; padding: 18px; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .card { background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; padding: 14px 16px; }
+  .capP { font-size: 11px; color: #8a97a6; text-transform: uppercase; letter-spacing: .07em; }
+  .muted { color: #5a6b7e; } .faint { color: #8a97a6; } .copper { color: #b0662f; } .red { color: #b42318; font-weight: 700; } .green { color: #1f7a3a; }
+  table.g { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.g th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 5px 6px; font-weight: 700; white-space: nowrap; }
+  table.g td { padding: 6px 6px; border-bottom: 1px solid #ddd6c8; vertical-align: top; line-height: 1.3; }
+  td.job b { display: block; font-size: 12px; white-space: nowrap; } td.job span { display: block; color: #5a6b7e; }
+  td.court b { display: block; font-size: 12px; white-space: nowrap; } td.court span { display: block; color: #5a6b7e; font-size: 10.5px; }
+  .chip { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid #ddd6c8; color: #5a6b7e; white-space: nowrap; }
+  .chip.over { border-color: #b42318; color: #b42318; }
+  .where { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 4px 12px; font-size: 12.5px; margin-top: 8px; }
+  .where .k { color: #5a6b7e; }
+  .where .v b { font-weight: 600; }
+  .srcline { font-size: 11px; color: #8a97a6; margin-top: 8px; }
+  .office { background: #fff; color: #1f2937; border: 1px solid #D1D5DB; border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .office label { display: block; font-size: 11.5px; color: #6B7280; margin-top: 8px; }
+  .office .in { display: inline-block; border: 1px solid #D1D5DB; border-radius: 5px; padding: 4px 8px; min-width: 220px; background: #fff; }
+  .office .btn { display: inline-block; border: 1px solid #2563EB; color: #2563EB; border-radius: 5px; padding: 4px 10px; font-weight: 600; margin-left: 6px; }
+  .office .note { font-size: 12px; color: #6B7280; margin-top: 4px; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Legal portal · plan and mockup</p><h1>Which justice court each case would fall under</h1>
+<p>The owner, 2026-10-06: <i>the overwhelming number of cases are below twenty thousand dollars and between San Antonio, Guadalupe County, Austin and San Marcos … I will almost certainly be taking many of these to the small claims courts run by precincts and justices of the peace … show on the legal portal which precinct in which county these cases would fall under.</i></p></header>
+
+<h2>What the law gives us to work with</h2>
+<ul class="notes">
+  <li><b>The justice court hears a claim up to $20,000</b> (Gov't Code § 27.031), interest and costs aside, attorney's fees included. The app already applies this cap in the demand letter and the Lien desk.</li>
+  <li><b>Venue is a county <i>and</i> a precinct</b> (TRCP 502.4). The defendant may be sued where the defendant resides, where the contract was to be performed, or where the incident occurred. For a plumbing bill the contract was performed at the job site, so <b>the job's own address gives one proper venue</b>, and the payer's address gives another. The lawyer picks; the portal shows both.</li>
+  <li><b>A justice court cannot foreclose a lien on land</b> (§ 27.031(b)). The debt suit can go to the precinct court; a § 53.158 foreclosure goes to district court in the property's county. The portal has to say so beside the precinct, or a lien job reads as a small-claims case.</li>
+  <li><b>Precincts are drawn on county maps.</b> Bexar, Travis and Hays publish their justice precinct boundaries as live map layers the app can ask with a point, the same way it already asks the state's parcel layer for the owner of record. Comal publishes map data on its open-data portal; Guadalupe and Williamson publish maps to read by eye. Where there is no layer the office enters the precinct from the county's map once, and it stays on the property record.</li>
+</ul>
+
+<h2>The mockup</h2>
+<h3>1 · The Lien grid gets a Court column</h3>
+<div class="cap new">Beside Property — county and precinct where the work was done, the cap, the lien note</div>
+<div class="pane"><div class="paper"><div class="card">
+<table class="g"><thead><tr><th>Job</th><th>Owner of record</th><th>Property</th><th>Court</th><th>Last on site</th><th>Amount due<br><span style="font-weight:500">For work in</span></th><th>§ 53.056 per month</th></tr></thead><tbody>
+<tr><td class="job"><b>878 · Take 5- Seguin</b><span>380 TX-123</span><span>Seguin, TX 78155</span></td><td>TC/JP SEGUIN 2019 LLC</td><td>Commercial</td><td class="court"><b>Guadalupe · JP Pct 2</b><span>where the work was</span><span class="chip over">over $20,000 · county court</span></td><td>Sep 2026</td><td><b>$38,625</b><br><span class="muted">Jun, Jul, Aug, Sep</span></td><td>Jul: Oct 15<br>Aug: Nov 16<br>Sep: Dec 15</td></tr>
+<tr><td class="job"><b>843 · Michael Palmer- Jacob Roberts</b><span>102 Jacob Roberts</span><span>Blanco, TX 78606</span></td><td>LAGAN JOEL C &amp; SHANNON</td><td>Residential<br><span class="muted" style="font-size:10.5px">Homestead</span></td><td class="court"><b>Blanco · JP Pct <span class="red">?</span></b><span>county known · precinct not yet</span></td><td>Sep 2026</td><td><b>$7,152</b><br><span class="muted">Aug, Sep</span></td><td>Aug: Oct 15<br>Sep: Nov 16</td></tr>
+<tr><td class="job"><b>898 · Reliant Health</b><span>150 E Sonterra Blvd 200B</span><span>San Antonio, TX 78258</span></td><td>EPC SPARTI LLC</td><td>Commercial</td><td class="court"><b>Bexar · JP Pct 3</b><span>where the work was</span><span class="chip">within $20,000</span></td><td>Jul 2026</td><td><b>$4,800</b><br><span class="muted">Jul</span></td><td>Jul: Oct 15</td></tr>
+<tr><td class="job"><b>1063 · Whitfield residence — repipe</b><span>7 Willow Ct</span><span>San Marcos, TX 78666</span></td><td>Sam Whitfield</td><td>Residential<br><span class="muted" style="font-size:10.5px">No homestead</span></td><td class="court"><b>Hays · JP Pct 1-2</b><span>where the work was</span><span class="chip">within $20,000</span></td><td>Aug 2026</td><td><b>$3,850</b><br><span class="muted">Aug</span></td><td>none needed<br><span class="muted">(with the owner)</span></td></tr>
+</tbody></table>
+<p class="srcline">Court: the justice precinct the job's address falls in, from the county's own map, where the work was done (TRCP 502.4). The payer's own precinct is on the matter. A lien foreclosure goes to district court whatever the amount.</p>
+</div></div></div>
+
+<h3>2 · The matter's Account tab gets a Where to file block</h3>
+<div class="cap new">Under the money, above the paper — both venues, the cap, the lien line, the source</div>
+<div class="pane"><div class="paper"><div class="card" style="max-width:720px">
+  <div class="capP">Where to file</div>
+  <div style="font-size:13px;margin-top:4px"><b>$15,781.82 is within the justice court limit</b> <span class="muted">($20,000, Gov't Code § 27.031; fees count, interest does not)</span></div>
+  <div class="where">
+    <div class="k">Where the work was done</div><div class="v"><b>Guadalupe County · Justice Court, Precinct 2</b> <span class="muted">· 380 TX-123, Seguin</span><br><span class="muted">Seguin · (830) 303-8869 · county page ↗</span></div>
+    <div class="k">Where the defendant is</div><div class="v"><b>Bexar County · Justice Court, Precinct 3</b> <span class="muted">· TC/JP Seguin 2019 LLC, 9000 Tesoro Dr, San Antonio</span><br><span class="muted">Precinct 3, Place 1 or 2 · county page ↗</span></div>
+    <div class="k">A lien foreclosure</div><div class="v">District court, Guadalupe County — a justice court cannot foreclose a lien on land (§ 27.031(b)).</div>
+  </div>
+  <div class="srcline">Precincts from Guadalupe County's and Bexar County's maps, looked up 2026-10-06 (TRCP 502.4 gives either venue; the choice is counsel's). Confirm with the clerk before filing.</div>
+</div></div></div>
+
+<h3>3 · The printed packet carries the same block</h3>
+<div class="cap alt">After Section A's money, before the paper</div>
+<div class="pane"><div class="paper" style="background:#fff;padding:14px 18px;border:1px solid #ddd6c8;font-size:12px">
+  <div style="font-weight:700;font-size:12.5px;margin-bottom:4px">Where to file</div>
+  <div>$15,781.82 is within the justice court limit ($20,000). Where the work was done: <b>Guadalupe County, Justice Court Precinct 2</b> (380 TX-123, Seguin). Where the defendant is: <b>Bexar County, Justice Court Precinct 3</b> (9000 Tesoro Dr, San Antonio). A lien foreclosure goes to district court in Guadalupe County. Precincts from the counties' maps, 2026-10-06; confirm before filing.</div>
+</div></div>
+
+<h3>4 · The office side: the precinct lives on the property record</h3>
+<div class="cap alt">Customer → Properties → the record (where the county and parcel already are)</div>
+<div class="pane"><div class="office">
+  <div><b>380 TX-123, Seguin, TX 78155</b> <span class="muted" style="font-size:12px">· Guadalupe County · parcel 1R0423 · looked up 2026-09-30</span></div>
+  <label>Justice precinct</label>
+  <span class="in">Precinct 2</span><span class="btn">Look it up</span>
+  <div class="note">From Guadalupe County's map, 2026-10-06. Where the county publishes no map layer the button reads <b>Open the county's map ↗</b> and the office types the precinct in.</div>
+  <label>What the firm sees</label>
+  <div class="note">Guadalupe · JP Pct 2 on the Lien grid and the matter. Until a precinct is on the record the firm sees the county and a red <b class="red">?</b>, and the Legal desk lists <i>justice precinct not entered</i> among the gaps an attorney asks for first.</div>
+</div></div>
+
+<h2>The plan — four PRs, each one useful alone</h2>
+<table class="plan"><thead><tr><th>PR</th><th>What ships</th><th>Where it plugs in</th><th>Size</th></tr></thead><tbody>
+<tr><td>1</td><td><b>The field and the courts.</b> Migration: <code>customer_addresses.jp_precinct</code>, <code>jp_precinct_source</code> (<i>county_map</i> / <i>hand</i>), <code>jp_precinct_looked_up_at</code>; a <code>jp_courts</code> reference table (county, precinct, court name, address, phone, county page) seeded for Bexar, Guadalupe, Comal, Hays, Travis and Williamson from each county's own site, each row carrying the page it came from. The property record gets the field and the office types it. Kernel: <code>jpVenue.ts</code> — the cap check, the lien line, the words.</td><td><code>customer_addresses</code>, the property record form, <code>src/lib/legal/jpVenue.ts</code></td><td>M</td></tr>
+<tr><td>2</td><td><b>The portal shows it.</b> The Lien grid's Court column; the matter's <i>Where to file</i> block (both venues, the cap, the lien line, the source line); the printed packet's block; a red ? and the desk gap when the precinct is unknown. The payer's venue uses the payer's primary property record.</td><td><code>legal-portal</code> (reads the two columns and <code>jp_courts</code>), <code>LegalPortalLienGrid</code>, <code>LegalFirmMatterView</code>, <code>legalFirmPacketPrint</code>, <code>legalPacket</code> gaps</td><td>M</td></tr>
+<tr><td>3</td><td><b>The lookup.</b> <code>_shared/txJpPrecinct.ts</code>: a county → map-layer table (Bexar, Travis, Hays; Comal once its layer is confirmed) and a point query at the geocoded address, the way <code>property-lookup</code> already asks the parcel layer. <b>Look it up</b> on the record; the nightly job fills every lien-grid and matter property still missing one. Counties with no layer get <b>Open the county's map ↗</b>.</td><td><code>property-lookup</code>, <code>owner-confirm-nightly</code>, the record form</td><td>M</td></tr>
+<tr><td>4</td><td><b>Serving the papers.</b> The constable precinct (the same lines in these counties) and the court's filing page beside each venue, once the firm says what it wants at intake.</td><td><code>jp_courts</code>, the matter block</td><td>S</td></tr>
+</tbody></table>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Show both venues, never pick one.</b> A first draft picked the job site's precinct and called it <i>the</i> court. TRCP 502.4 gives the lawyer a choice, and the defendant's precinct is sometimes the better one (a GC in San Antonio, work in Blanco). The block names both with the rule and leaves the choice to counsel.</li>
+  <li><b>Say what a justice court cannot do.</b> Without the lien line, a $4,800 job with a lien window open reads as a small-claims case; the foreclosure is a district-court suit. One line beside the precinct keeps the firm from filing in the wrong building.</li>
+  <li><b>The county's own map, dated, and the lawyer confirms.</b> Precinct lines moved in 2021–2023 redistricting and will move again. The lookup reads the county's live layer and the source line carries the date; the words say <i>confirm with the clerk</i>. A hand-typed precinct says <i>entered by the office</i>, so the firm knows which it is reading.</li>
+  <li><b>A point on a map can sit on a line.</b> The geocoder's point for a rural address can land a few hundred feet off. Where the point falls within 100 m of a precinct boundary the lookup writes both precincts (<i>2 or 3 — on the line</i>) rather than one wrong answer, and the record asks the office to settle it.</li>
+  <li><b>Bexar's places.</b> Each Bexar precinct has two courts (Place 1 and Place 2); either may be filed in. The block says <i>Precinct 3, Place 1 or 2</i> rather than inventing a rule.</li>
+  <li><b>The precinct lives on the property record, not the matter.</b> It is a fact about an address, like the county and the parcel; it serves every job at that address and every future matter, and the office edits it in one place.</li>
+  <li><b>Court addresses come after the precinct.</b> PR 1 seeds the six counties' courts from their own pages; anything not verified against a county page stays out, since a wrong courthouse address costs the firm a trip. The county page link is always there.</li>
+  <li><b>Not done now.</b> E-filing links and the constable's fee schedule wait for the firm's answer on what it needs at intake (#85, items 12–15).</li>
+</ul>
+</div></body></html>

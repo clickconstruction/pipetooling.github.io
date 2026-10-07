@@ -275,6 +275,7 @@ export function PeopleHoursAlignModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={() => {
         if (busyId == null) onClose()
@@ -290,7 +291,7 @@ export function PeopleHoursAlignModal({
           borderRadius: 8,
           maxWidth: 940,
           width: '95%',
-          maxHeight: '86vh',
+          maxHeight: 'min(86vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

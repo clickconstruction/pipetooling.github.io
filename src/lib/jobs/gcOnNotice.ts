@@ -135,6 +135,42 @@ export function gcNoticeBatchReason(key: GcNoticeReasonKey, note: string): strin
   return n ? `${label} — ${n}` : label
 }
 
+/** The stored reason read back into the window's two fields; null when it is not one of the window's reasons. */
+export function parseGcNoticeBatchReason(text: string | null | undefined): { reason: GcNoticeReasonKey; note: string } | null {
+  const t = (text ?? '').trim()
+  if (!t) return null
+  for (const r of GC_NOTICE_REASONS) {
+    const label = r.label.replace(/…$/, '')
+    if (t === label) return { reason: r.key, note: '' }
+    if (t.startsWith(`${label} — `)) return { reason: r.key, note: t.slice(label.length + 3).trim() }
+  }
+  return null
+}
+
+/**
+ * What the office saved when it sent a GC's notices to the leader (v2.4571): the reason, the
+ * note, and the cover letter as edited, read back from the drafts waiting on him. The window
+ * opens on these, so the leader reads and approves what the office wrote; before, his window
+ * opened on the defaults and Approve all saved the defaults over the office's drafts.
+ * `kindOf` says which of counsel's letters a job gets. Null when nothing is waiting.
+ */
+export function gcNoticeSavedRun<K extends string>(
+  jobs: ReadonlyArray<Pick<GcNoticeJob, 'jobId' | 'item'>>,
+  kindOf: (jobId: string) => K,
+): { reason: GcNoticeReasonKey | null; note: string; letters: Partial<Record<K, string>>; includeLetter: boolean } | null {
+  const waiting = jobs.filter((j) => j.item?.status === 'awaiting_approval')
+  const drafts = waiting.map((j) => ({ jobId: j.jobId, fields: parseLienDeskDraftFields(j.item?.fields) })).filter((d) => d.fields?.batchReason)
+  if (drafts.length === 0) return null
+  const parsed = parseGcNoticeBatchReason(drafts[0]!.fields!.batchReason)
+  const letters: Partial<Record<K, string>> = {}
+  for (const d of drafts) {
+    const letter = (d.fields!.coverLetter ?? '').trim()
+    const kind = kindOf(d.jobId)
+    if (letter && letters[kind] == null) letters[kind] = letter
+  }
+  return { reason: parsed?.reason ?? null, note: parsed?.note ?? '', letters, includeLetter: Object.keys(letters).length > 0 }
+}
+
 /** A job's months split by window (v2.3818), and the office's per-month figures (v2.3682) when set. */
 export function gcNoticeJobClaim(
   months: ReadonlyArray<GcNoticeMonth>,
@@ -319,6 +355,10 @@ export const COVER_LETTER_FILLS = {
   /** "fourth" on commercial work, "third" on residential — the § 53.052 affidavit month. */
   affidavitMonth: '{{affidavit_month}}',
   /** The job's trade (v2.3849, `lienTradeWords`): the contractor ("plumbing contractor"), the work ("the plumbing" / "the electrical work"), what we did ("installed the plumbing" / "did the electrical work"). */
+  /** The supply houses owed on the job (v2.4725): a paragraph of its own, or nothing — `lienSupplierLetterParagraph`. */
+  supplyHouses: '{{supply_houses}}',
+  /** The conditional release enclosed with the notice (v2.4729): a paragraph of its own, or nothing — `conditionalReleaseParagraph`. */
+  conditionalRelease: '{{conditional_release}}',
   tradeContractor: '{{trade_contractor}}',
   tradeWork: '{{trade_work}}',
   tradeInstalled: '{{trade_installed}}',
@@ -386,6 +426,8 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
       `3. If you decide to clear the property yourself while ${gc} stays silent, call us first. We will take ${F.amount} payable only to ${us}, send you a release the same day, and mail a copy to ${gc}. That is your decision on your contract with ${gc}. The Code does not require you to do it.`,
       `If ${F.amount} is not paid, we will file the lien affidavit in the county records within the time § 53.052 allows — the 15th day of the ${F.affidavitMonth} month after our last work month on this job. A recorded affidavit is harder to take off than this notice. We would rather pick up a check.`,
       `Call ${F.contact} at ${F.phone} before you make the next payment to ${gc}. If you have already paid ${gc} in full, say so on that call. There may be nothing left to withhold except retainage.`,
+      F.supplyHouses,
+    F.conditionalRelease,
     ].join('\n\n')
   }
   const kind = input.kind ?? 'commercial'
@@ -403,6 +445,8 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
       `• you withhold ${F.amount} and call ${F.contact} at ${F.phone}; or`,
       `• ${gc} writes that you may pay ${us} directly, and you send us ${F.amount}. We cannot deposit a joint check.`,
       `We would rather pick up a check than put an affidavit on a homestead. Please call before the next payment to ${gc}.`,
+      F.supplyHouses,
+    F.conditionalRelease,
     ].join('\n\n')
   }
   if (kind === 'residential') {
@@ -418,6 +462,8 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
       `2. Hold back ${F.amount} from the next payment to ${gc} and call ${F.contact} at ${F.phone} so we know it is trapped.`,
       `3. If ${gc} writes that you may pay ${us} directly, send us ${F.amount}. We cannot deposit a joint check, so please do not send one.`,
       `Do not send ${us} a check on your own unless ${gc} has agreed in writing.`,
+      F.supplyHouses,
+    F.conditionalRelease,
     ].join('\n\n')
   }
   return [
@@ -433,6 +479,8 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
     `• If ${gc} emails ${F.contact} written authorization for you to pay ${us} directly, you may send us ${F.amount} and deduct it from what you still owe ${gc}. We will send the release the same day.`,
     `Please do not send ${us} a check on your own. Without ${gc}’s written okay, that payment sits in the wrong contract.`,
     `Call ${F.contact} at ${F.phone} before the next payment to ${gc}. We would rather pick up a check than file a lien on your property.`,
+    F.supplyHouses,
+    F.conditionalRelease,
   ].join('\n\n')
 }
 
@@ -462,6 +510,8 @@ export function paidOutOwnerLetter(input: { gcName: string; claimantName: string
     `• the date the original contract was completed, if it is done.`,
     `If you still owe ${gc}, do not send ${gc} those dollars until this is cleared. If you want the notice released, the payment we can take is a check or wire payable only to ${us}. We cannot deposit a joint check. We will send you a release the day funds clear and mail a copy to ${gc}.`,
     `We would rather pick up a check than record an affidavit.`,
+    F.supplyHouses,
+    F.conditionalRelease,
   ].join('\n\n')
 }
 
@@ -482,6 +532,10 @@ export type CoverLetterFills = {
   affidavitMonth?: 'fourth' | 'third' | ''
   /** The job's service type name (v2.3849) — blank reads as plumbing. */
   trade?: string | null
+  /** The supply houses paragraph (v2.4725), or '' / absent — the paragraph then leaves the letter. */
+  supplyHouses?: string
+  /** The conditional release paragraph (v2.4729), or '' / absent. */
+  conditionalRelease?: string
 }
 
 /** Resolve the fills for one notice. Unknown fills are left as typed; a blank stale note leaves no gap. */
@@ -502,8 +556,10 @@ export function fillCoverLetter(template: string, fills: CoverLetterFills): stri
     .split(F.contact).join(fills.contact || 'our office')
     .split(F.phone).join(fills.phone || 'the number on our letterhead')
     .split(F.affidavitMonth).join(fills.affidavitMonth || 'fourth')
-  // A blank stale note leaves "… {{months}}. " with a trailing space: tidy it.
-  return out.replace(/[ \t]+$/gm, '')
+    .split(F.supplyHouses).join((fills.supplyHouses ?? '').trim())
+    .split(F.conditionalRelease).join((fills.conditionalRelease ?? '').trim())
+  // A blank stale note leaves "… {{months}}. " with a trailing space, and a blank houses paragraph a blank line at the end (v2.4725): tidy both.
+  return out.replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').trimEnd()
 }
 
 /** The letter's paragraphs — blank lines split them; whitespace-only ones drop. */

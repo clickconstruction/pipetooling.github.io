@@ -47,6 +47,27 @@ describe('plain words: a help guide', () => {
     expect(helpGuideLineForGlue('A sentence — glued.')).toMatch(PLAIN_WORDS_GLUE)
   })
 
+  it("a table row's pipes are cell walls, not words", () => {
+    // share-a-sub-their-portal's row is 19 words; its three pipes made it count 22.
+    const row = '| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |'
+    expect(helpGuideLineForCounting(row).split(/\s+/)).toHaveLength(19)
+    expect(helpGuidePlainWordsFailures(['---', 'title: x', '---', '| On Sub Labor | What the sub reads |', '| --- | --- |', row].join('\n'))).toEqual([])
+    // A row whose own words run over 20 still fails.
+    const long = '| A cell that keeps going | and a second cell that keeps going with more words until the row runs well over twenty |'
+    expect(helpGuidePlainWordsFailures(['---', 'title: x', '---', long].join('\n'))).toEqual([expect.stringMatching(/^22 words \(over 20\)/)])
+    // Pipes outside a table row are left alone.
+    expect(helpGuideLineForCounting('Pick Schedule / Inbox | Customers.')).toBe('Pick Schedule / Inbox | Customers.')
+  })
+
+  it('a table cell holding only — is an empty cell, not glue', () => {
+    // start-here-as-a-master's roles table: the controller has nothing hidden.
+    expect(helpGuideLineForGlue('| **Controller** | Everything an assistant sees, plus payroll and money detail | — |')).not.toMatch(PLAIN_WORDS_GLUE)
+    expect(helpGuideLineForGlue('| — | — |')).not.toMatch(PLAIN_WORDS_GLUE)
+    // A dash among a cell's words is still glue, and so is one outside a table.
+    expect(helpGuideLineForGlue('| Paid | The card leaves — Paid sets itself. |')).toMatch(PLAIN_WORDS_GLUE)
+    expect(helpGuideLineForGlue('Nothing — then something.')).toMatch(PLAIN_WORDS_GLUE)
+  })
+
   it('a guide written by the rules passes; one in the old voice names each failure with its line', () => {
     const plain = ['---', 'title: x', '---', 'A submittal is the list of products you will install. The GC approves it first.', '', '## Steps', '- Tap {{button:blue|Share}}. The link is copied.', ':::example SpaceX', '22 rows (8 alternates) — nothing retyped.', ':::'].join('\n')
     expect(helpGuidePlainWordsFailures(plain)).toEqual([])

@@ -3,7 +3,7 @@
  * aligned with the staff-side kernels (gcPackets.rollUpOutcome / setGcPacketOutcome semantics).
  */
 import { describe, it, expect } from 'vitest'
-import { planRoomOutcome, roomRollUpOutcome, isRoomDeclineCategory } from '../../../supabase/functions/_shared/bidRoomOutcome'
+import { planRoomOutcome, roomRollUpOutcome, isRoomDeclineCategory, wonVersionIdsForSignature } from '../../../supabase/functions/_shared/bidRoomOutcome'
 import { rollUpOutcome } from './gcPackets'
 import { BID_LOSS_CATEGORIES } from '../bidLossCategories'
 
@@ -101,5 +101,14 @@ describe('planRoomOutcome', () => {
     expect(isRoomDeclineCategory('project_died') && keys.includes('project_died')).toBe(true)
     expect(isRoomDeclineCategory('gc_lost')).toBe(false)
     expect(isRoomDeclineCategory('no_answer')).toBe(false)
+  })
+})
+
+describe('wonVersionIdsForSignature (v2.4728)', () => {
+  it('a signed option carrying its version wins that version alone; otherwise the whole packet', () => {
+    expect(wonVersionIdsForSignature(['tp', 've'], 've')).toEqual(['ve'])
+    expect(wonVersionIdsForSignature(['tp', 've'], null)).toEqual(['tp', 've'])
+    // A version not in the packet cannot be signed for: the packet wins as before.
+    expect(wonVersionIdsForSignature(['tp', 've'], 'other')).toEqual(['tp', 've'])
   })
 })

@@ -34,6 +34,11 @@ describe('pendingChaseDaysBetween', () => {
 })
 
 describe('bidNeedsChase', () => {
+  it('a bid parked on a call-again day still ahead needs no chase, however quiet (v2.4421)', () => {
+    expect(bidNeedsChase({ sentIso: '2026-02-11', lastContactIso: null, parked: true }, NOW)).toBe(false)
+    expect(bidNeedsChase({ sentIso: '2026-02-11', lastContactIso: null, parked: false }, NOW)).toBe(true)
+  })
+
   it('never contacted → needs chase', () => {
     expect(bidNeedsChase({ sentIso: '2026-08-10', lastContactIso: null }, NOW)).toBe(true)
   })

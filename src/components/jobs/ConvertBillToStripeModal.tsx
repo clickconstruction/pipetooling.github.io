@@ -150,12 +150,12 @@ export function ConvertBillToStripeModal({
       role="dialog"
       aria-modal="true"
       aria-label="Make this a Stripe bill"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(560px, 100%)', maxHeight: 'calc(100vh - 3rem)', overflowY: 'auto', padding: '1.15rem 1.35rem 1.25rem' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(560px, 100%)', maxHeight: 'min(calc(100vh - 3rem), 100%)', overflowY: 'auto', padding: '1.15rem 1.35rem 1.25rem' }}
       >
         <h3 style={{ margin: 0, fontSize: '1.02rem' }}>Make this a Stripe bill</h3>
         <p style={{ margin: '0.3rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

@@ -22,13 +22,14 @@ import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailS
 import type { GcReviewGroup } from './gcReviewRollup'
 import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
-import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
+import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail, buildLegalWelcomeEmail } from './legalEmails'
 import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { LEGAL_CONFIRMED_SAMPLE_PATH, LEGAL_PORTAL_SAMPLE_PATH, PAY_SAMPLE_PATH } from './customerJourneys'
 import { buildStripeBillEmail } from '../../supabase/functions/_shared/stripeBillEmail'
 import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
 import { SAMPLE_JOB } from './journeys/paperSamples'
+import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 
 export type { AppSettingRow }
 
@@ -257,11 +258,13 @@ export function buildSampleJobAccountEmail(ctx: SampleEmailContext): BuiltEmail 
 
 
 
-/** The firm's three emails (v2.3512): the senders' own builders over the sample firm. */
-export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal-digest', ctx: SampleEmailContext): BuiltEmail {
+/** The firm's emails (v2.3512; the welcome v2.4624): the senders' own builders over the sample firm. */
+export function buildSampleLegalEmail(id: 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest', ctx: SampleEmailContext): BuiltEmail {
   const portalUrl = `${ctx.origin}${LEGAL_PORTAL_SAMPLE_PATH}`
   const confirmUrl = `${ctx.origin}${LEGAL_CONFIRMED_SAMPLE_PATH}`
   const unsubscribeUrl = `${confirmUrl}&stop=1`
+  if (id === 'legal-welcome')
+    return buildLegalWelcomeEmail({ companyName: PORTAL_COMPANY.name, companyPhone: PORTAL_COMPANY.phone, firmName: SAMPLE_FIRM.name, greetName: SAMPLE_FIRM.handling, portalUrl, matterCount: 1, sender: ctx.sender })
   if (id === 'legal-confirm') return buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email: SAMPLE_FIRM.recipients[1].email, confirmUrl })
   if (id === 'legal-now')
     return buildLegalNowEmail({
@@ -274,11 +277,12 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
       portalUrl,
       unsubscribeUrl,
     })
+  // The digest reads instants (released_at, created_at), so the sample's days go in as instants on those days.
   return buildLegalDigestEmail({
     companyName: PORTAL_COMPANY.name,
     recipientName: SAMPLE_FIRM.recipients[1].name,
-    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'with_firm', handlingName: SAMPLE_FIRM.handling, releasedAt: ymdPlusDays(ctx.todayYmd, -3) }],
-    events: [{ createdAt: ymdPlusDays(ctx.todayYmd, -1), trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
+    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'referred', handlingName: SAMPLE_FIRM.handling, releasedAt: `${ymdPlusDays(ctx.todayYmd, -3)}T18:00:00Z` }],
+    events: [{ createdAt: `${ymdPlusDays(ctx.todayYmd, -1)}T18:00:00Z`, trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
     portalUrl,
     unsubscribeUrl,
   })
@@ -314,6 +318,20 @@ export function sampleEmailFrom(id: SampleEmailId): string {
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
+/** GC mode (v2.4799): the office's question about the plans to the project's architect, as `gc-plan-question-email` sends it. */
+export function buildSampleGcPlanQuestionEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildGcPlanQuestionEmail({
+    architectName: 'Avery Lin',
+    projectName: 'Fair Oaks Clinic',
+    projectAddress: '1 Sample Rd, Boerne',
+    askedByName: SAMPLE_GC.company,
+    about: 'S-101, S-102, Concrete',
+    text: 'The foundation plan shows 18 in. piers at grid C; the detail on S-102 shows 24 in. Which one do we price?',
+    signer: ctx.sender?.name || 'The project manager',
+    companyName: 'Click Construction',
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string; from: string } {
   return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
 }
@@ -330,7 +348,8 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-statement') return buildSampleGcStatementEmail(ctx)
   if (id === 'rfq-request') return buildSampleRfqEmail(ctx)
   if (id === 'job-account') return buildSampleJobAccountEmail(ctx)
-  if (id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
+  if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
+  if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

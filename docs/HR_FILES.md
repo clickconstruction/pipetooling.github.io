@@ -5,7 +5,7 @@ file: docs/HR_FILES.md
 type: Feature reference + agent writing convention
 purpose: The dev-only per-person HR files system — schema, access model, the People → HR tab, and (most importantly) the convention any agent or dev follows when writing to it.
 audience: Developers, AI Agents
-last_updated: 2026-09-09
+last_updated: 2026-10-05
 ---
 
 ## What this is
@@ -57,8 +57,9 @@ People → **HR** (dev-only cluster, next to Review/Scoreboard; `?tab=hr`, no UR
 
 Files attach to a person's HR file (and optionally a specific entry) via
 `person_file_attachments` + the **private `hr-files` bucket**. UI: Exhibits
-panel + composer "Attach files" on the Raw entries view; chips open 10-minute
-signed URLs. No UPDATE path — replace and note, like entry corrections.
+panel + composer "Attach files" on the Raw entries view; chips open a file the browser can show (a PDF,
+a picture) through a 10-minute signed URL and, since v2.4610, save any other kind from the
+app's own address (`storageSave.ts`, so Safari asks once). No UPDATE path — replace and note, like entry corrections.
 
 - **Agent uploads**: metadata inserts work as `hr_agent`; the byte upload needs
   the storage API (service key) — `POST /storage/v1/object/hr-files/<path>`.

@@ -79,3 +79,29 @@ describe('BilledPaymentConfirmationModal — part cash on a Stripe bill (v2.3695
     expect(screen.getByText('Record $500.00')).toBeTruthy()
   })
 })
+
+describe('BilledPaymentConfirmationModal — a check holds the Stripe close (v2.4801)', () => {
+  it('Check at the whole balance shows the hold note with the close day; Cash does not', () => {
+    renderWindow()
+    const type = screen.getByRole('combobox') as HTMLSelectElement
+    expect(screen.queryByTestId('held-stripe-mark-note')).toBeNull()
+    fireEvent.change(type, { target: { value: 'Check' } })
+    const dates = document.querySelectorAll('input[type="date"]')
+    fireEvent.change(dates[0] as HTMLInputElement, { target: { value: '2026-10-07' } })
+    const note = screen.getByTestId('held-stripe-mark-note')
+    expect(note.textContent).toContain('Stripe closes the invoice on Oct 14')
+    expect(note.textContent).toContain('moved to another job or taken off')
+    expect(screen.getByText('Record $1,500.00')).toBeTruthy()
+    fireEvent.change(type, { target: { value: 'Cash' } })
+    expect(screen.queryByTestId('held-stripe-mark-note')).toBeNull()
+  })
+
+  it('a part check keeps the credit-note path, not the hold', () => {
+    renderWindow()
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Check' } })
+    const box = screen.getAllByRole('textbox')[0] as HTMLInputElement
+    fireEvent.change(box, { target: { value: '1000' } })
+    expect(screen.queryByTestId('held-stripe-mark-note')).toBeNull()
+    expect(screen.getByTestId('stripe-part-payment-note')).toBeTruthy()
+  })
+})

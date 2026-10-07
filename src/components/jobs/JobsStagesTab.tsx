@@ -74,7 +74,6 @@ import {
 import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
-import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
@@ -104,7 +103,7 @@ import {
   type StagesContractFilter,
 } from '../../lib/jobs/jobContractCoverage'
 import { PipelineOverview } from './PipelineOverview'
-import type { LienDeskPile } from '../../lib/jobs/lienDesk'
+import { isLienLeader, type LienDeskPile } from '../../lib/jobs/lienDesk'
 import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
 import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
@@ -124,7 +123,8 @@ import NewReportModal from '../NewReportModal'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
-import { stripBillParts, stripDistancePhrase, stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
+import { stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
+import { phoneBillWords } from '../../lib/jobs/phoneBillWords'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
@@ -151,7 +151,9 @@ import PaymentForecastShareModal from './PaymentForecastShareModal'
 import JobBookModal from './JobBookModal'
 import LegalDeskModal from './legal/LegalDeskModal'
 import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
-import { stageIsWithFirm } from '../../lib/legal/legalMatters'
+import { matterIsWithFirm } from '../../lib/legal/legalMatters'
+import { uncollectibleFirmWarning } from '../../lib/legal/uncollectibleFirmWarning'
+import { payerForJob } from '../../lib/legal/legalPacket'
 import { newAskMeta, signoffStateForJob } from '../../lib/legal/legalAsks'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
@@ -211,6 +213,7 @@ import {
   stagesJobsWithoutCustomerFromFiltered,
   stagesSectionKeyForJobStatus,
   jobInCollections,
+  jobUncollectible,
   stagesReadyToBillJobsWithoutEmail,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
@@ -251,10 +254,16 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
-import { JobsStagesJumpStrip } from './JobsStagesJumpStrip'
+import { JobsStagesJumpStrip, StagesLienDeskShortcut, StagesSectionBandTitle } from './JobsStagesJumpStrip'
+import { stageColorVar } from '../../lib/jobs/stagesStageBar'
+import { readJobsMapHidden, writeJobsMapHidden } from '../../lib/jobs/jobsMap'
+import LienOwnerRecordsModal from './LienOwnerRecordsModal'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
+import { ownerRecordsFromDesk } from '../../lib/jobs/ownerRecordsDesk'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
+import { StagesUncollectibleConfirmModal } from './StagesUncollectibleConfirmModal'
 import { StagesSendBackInvoiceModal } from './StagesSendBackInvoiceModal'
 import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
@@ -273,6 +282,7 @@ import { fetchJobsLedgerWithDetailsForStages } from '../../lib/fetchJobsLedgerWi
 import {
   readStagesSectionOpenPrefs,
   scopeForStagesSection,
+  scopesForStagesSection,
   writeStagesSectionOpenPrefs,
   type StagesSectionOpenState,
   stagesSectionElementId,
@@ -282,10 +292,15 @@ import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsRecei
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
+import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
+import StagesCustomerTimelineChips from './StagesCustomerTimelineChips'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
+import { setJobUncollectible } from '../../lib/setJobUncollectible'
+import { invokeMarkStripeInvoiceUncollectible } from '../../lib/markStripeInvoiceUncollectible'
+import { uncollectibleFactsFor, uncollectiblePhoneLine } from '../../lib/jobs/uncollectible'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
   parseStagesIncludeScheduleTimePref,
@@ -678,7 +693,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!active) return
     for (const section of Object.keys(stagesSectionOpen) as Array<keyof StagesSectionOpenState>) {
       if (!stagesSectionOpen[section]) continue
-      void cacheFetchScopeIfNeeded(scopeForStagesSection(section), customerFilterForFetch)
+      // v2.4761: Billed and Ready to Bill ask for every non-paid scope — a bill rides its job's scope.
+      for (const scope of scopesForStagesSection(section)) void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
     }
   }, [active, stagesSectionOpen, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
 
@@ -828,6 +844,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
     /** The Lien desk's months for the notice (v2.3405). */
     noticeMonths?: string[] | null
+    /** Open with the last day of work's line editing (v2.4735). */
+    openLastWork?: boolean
   } | null>(null)
   // Jobs with a live SENT demand letter — the lien icon wears an amber box.
   const { demandOutJobIds, loadDemandOutJobIds } = useDemandOutJobIds()
@@ -930,7 +948,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
   const billedLienClockJobs = useMemo(
-    () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
+    // v2.4788: a job marked Uncollectible is off the Lien desk — no clock, no calendar row (punch list #94).
+    () => jobs.filter((j) => j.status === 'billed' && !jobUncollectible(j)).map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
     [jobs],
   )
   // v2.4153: the Lien calendar's pen bumps this after it writes a property kind, so the clocks re-read the kind.
@@ -1064,6 +1083,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const out: LienCalendarJob[] = []
     for (const job of jobs) {
       if (job.status !== 'billed') continue
+      if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the Deadlines list
       const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
       const runway = lienRunwayFor(job, billed.length === 1 ? billed[0]! : null)
       if (!runway || runway.state === 'none') continue
@@ -1185,6 +1205,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [collectionsConfirm, setCollectionsConfirm] = useState<{ job: JobWithDetails; direction: 'to' | 'from' } | null>(null)
   const [collectionsNoteDraft, setCollectionsNoteDraft] = useState('')
   const [collectionsSaving, setCollectionsSaving] = useState(false)
+  // Uncollectible (punch list #94, v2.4792): 'mark' = Collections → the band, with a required reason; 'unmark' = back.
+  const [uncollectibleConfirm, setUncollectibleConfirm] = useState<{ job: JobWithDetails; direction: 'mark' | 'unmark' } | null>(null)
+  const [uncollectibleReasonDraft, setUncollectibleReasonDraft] = useState('')
+  const [uncollectibleSaving, setUncollectibleSaving] = useState(false)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-ham-mode') === 'true'
@@ -1267,6 +1291,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       gcReview: () => setGcReviewModalOpen(true),
       gcNotice: (gcId) => setGcNotice({ gcId }),
       lienDesk: (link) => setLienDesk(link),
+      // The board may not hold the job yet (or at all): read it, as the desk's book rows do.
+      lienWindow: ({ jobId, tab }) => {
+        void fetchJobWithDetailsById(jobId).then((job) => {
+          if (job) setLienInstrumentsModal({ job, invoice: null, initialTab: tab })
+          else showToast('That job could not be loaded. Open it from the Pipeline board.', 'error')
+        })
+      },
+      // The Dashboard's "signed for the records" line (punch list #86): the window over the desk, as its own door opens it.
+      ownerRecords: (jobId) => {
+        setLienDesk({ jobId: null, kind: 'next', pile: null })
+        setOwnerRecordsJobId(jobId)
+        setOwnerRecordsOpen(true)
+      },
       round: (gcId) => {
         setGcReviewRoundGcId(gcId)
         setGcReviewModalOpen(true)
@@ -1274,7 +1311,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       chase: () => setChaseModalOpen(true),
       forecast: () => setBilledPaymentForecastOpen(true),
     }),
-    [],
+    [showToast],
   )
   const deepLinks = useStagesDeepLinkParams(searchParams, navigate, stagesDeepLinkDoors)
 
@@ -1483,7 +1520,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline' | 'calendar'; pile?: LienDeskPile | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'; pile?: LienDeskPile | null; aim?: number } | null>(null)
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
@@ -1648,6 +1685,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [stagesBoardLists, stagesSearchQuery, cacheMergedScopes, cacheHeaderStats])
 
+  /** The stage bar's dollars (v2.4512): the same live-or-cached totals the section headers print. */
+  const jumpStripTotals = useMemo(() => {
+    const searchActive = stagesSearchQuery.trim() !== ''
+    const total = (section: StagesSectionKey, liveTotal: number) =>
+      stagesSectionHeader({
+        useLive: searchActive || cacheMergedScopes.has(scopeForStagesSection(section)),
+        live: { count: 0, total: liveTotal },
+        cached: cacheHeaderStats?.[section],
+      }).total
+    return {
+      waiting: total('waiting', stagesJobsOpenBalanceTotal(stagesBoardLists.waiting)),
+      working: total('working', stagesJobsOpenBalanceTotal(stagesBoardLists.working)),
+      readyToBill: total('readyToBill', readyToBillRowsExposureTotal(stagesBoardLists.readyToBillRows)),
+      billed: total('billed', billedRowsRemainingTotal(stagesBoardLists.billedActiveRows)),
+      collections: total('collections', billedRowsRemainingTotal(stagesBoardLists.collectionsRows)),
+    }
+  }, [stagesBoardLists, stagesSearchQuery, cacheMergedScopes, cacheHeaderStats])
+
   /** #3 of the billing-email guardrails: soft heads-up the moment a job is marked Ready to Bill. */
   const nudgeMissingBillingEmail = useCallback(
     (jobId: string) => {
@@ -1709,15 +1764,35 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [stagesReadyToBillNoEmailJobs.length])
 
+  // An owner asked for our records (v2.4544): the window's open flag, and what it reads from the desk.
+  const [ownerRecordsOpen, setOwnerRecordsOpen] = useState(false)
+  /** The job a door asked the window to open on (punch list #86); null when opened from the desk's own button. */
+  const [ownerRecordsJobId, setOwnerRecordsJobId] = useState<string | null>(null)
+  const ownerRecordsDesk = useMemo(() => ownerRecordsFromDesk(ownerRecordsOpen ? lienDeskData : null), [ownerRecordsOpen, lienDeskData])
+
+  // The Jobs on a map card's hidden choice (per device, `lib/jobs/jobsMap`), held here since
+  // v2.4518 so the command bar can offer the way back.
+  const [jobsMapHidden, setJobsMapHidden] = useState<boolean>(() => readJobsMapHidden())
+  const toggleJobsMapHidden = useCallback(() => {
+    setJobsMapHidden((h) => {
+      writeJobsMapHidden(!h)
+      return !h
+    })
+  }, [])
+
   const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => {
-    setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
+    // The phone board shows one stage, the first open section in strip order — so a door that
+    // only opened the section landed on whichever earlier stage was open (punch list #93 D,
+    // v2.4759). Picking closes the rest, as the strip's own chips do.
+    if (phoneBoard) pickPhoneStage(key)
+    else setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
     const elId = stagesSectionElementId(key)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       })
     })
-  }, [])
+  }, [phoneBoard, pickPhoneStage])
 
   // `?rtb=1` (v2.2276): strip it and scroll Ready to Bill into view once the board holds still.
   useStagesRtbFocus(deepLinks, searchParams, navigate, focusStagesSection)
@@ -2050,6 +2125,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       showToast('Nothing to print in Billed Awaiting Payment.', 'warning')
       return
     }
+    // Our own list of who owes what: a working report, not a paper sent to anyone, so it is not filed.
     if (!openHtmlPrintWindow(buildBilledAwaitingPaymentReportHtml(rows, opts))) {
       showToast('Allow pop-ups to print the report.', 'error')
     }
@@ -2443,12 +2519,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         : null,
       upcoming: stagesUpcomingByJobId[job.id] ?? null,
       crew,
-      billDisplay: bDetail
-        ? (() => {
-            const bill = stripBillParts(bDetail, phoneTodayYmd)
-            return `${bill.label === 'Paid' ? 'paid' : 'billed'} ${stripDistancePhrase(bDetail.ymd, phoneTodayYmd) ?? bill.main}`
-          })()
-        : null,
+      // v2.4760: a Billed / Collections bill row reads the bill's own day, not the latest event.
+      billDisplay: phoneBillWords({ stage, inv, detail: bDetail, todayYmd: phoneTodayYmd }),
+      // v2.4792: a job the office gave up on reads its reason and wears the UNCOLLECTIBLE chip.
+      uncollectible: (() => {
+        const facts = stage === 'collections' ? uncollectibleFactsFor(job) : null
+        return facts ? { line: uncollectiblePhoneLine(facts) } : null
+      })(),
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
       lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
@@ -2641,6 +2718,32 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       invoiceBundleActionLabel: 'Send back to Billed',
       invoiceStandaloneActionLabel: 'Send back to Billed',
       jobNoteLine: collectionsNoteLine,
+      // v2.4792 (punch list #94): give up on the job — the typed confirm with a required reason.
+      onJobMarkUncollectible: stagesGates.canManageCollections(authRole)
+        ? (j) => {
+            setUncollectibleReasonDraft('')
+            setUncollectibleConfirm({ job: j, direction: 'mark' })
+          }
+        : undefined,
+    } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
+    // The Uncollectible band under Collections (v2.4792): Mark Paid and View Bill still work, no lien door,
+    // the stamp in place of the note line, and one way back.
+    uncollectible: {
+      actionLabel: 'Mark Paid',
+      onJobAction: (j) => setMarkPaidJob(j),
+      onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
+      onViewBill: (inv) => setViewBillInvoice(inv),
+      showClickTooling: false,
+      onJobSendBack: stagesGates.canManageCollections(authRole) ? (j) => setUncollectibleConfirm({ job: j, direction: 'unmark' }) : undefined,
+      onInvoiceSendBack: (inv) => setUncollectibleConfirm({ job: inv.job, direction: 'unmark' }),
+      showRemaining: true,
+      showTimeOpen: false,
+      sendBackBelowRemaining: true,
+      showCreatePartialInvoice: false,
+      jobSendBackLabel: 'Put it back in Collections',
+      invoiceBundleActionLabel: 'Put it back in Collections',
+      invoiceStandaloneActionLabel: 'Put it back in Collections',
+      rowStamp: uncollectibleFactsFor,
     } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
   }
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
@@ -2809,6 +2912,48 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       }
     } finally {
       setCollectionsSaving(false)
+    }
+  }
+  const closeUncollectibleConfirm = () => {
+    setUncollectibleConfirm(null)
+    setUncollectibleReasonDraft('')
+  }
+  /** Uncollectible (punch list #94, v2.4792): the RPC, then Stripe's own mark (the owner's call), the toast, the reload. */
+  const confirmUncollectible = async () => {
+    if (!uncollectibleConfirm || uncollectibleSaving) return
+    const { job, direction } = uncollectibleConfirm
+    setUncollectibleSaving(true)
+    try {
+      const res = await setJobUncollectible(job.id, direction === 'mark', direction === 'mark' ? uncollectibleReasonDraft : undefined)
+      if (!res.ok) {
+        showToast(res.error ?? 'Could not update Uncollectible.', 'error')
+        return
+      }
+      setUncollectibleConfirm(null)
+      setUncollectibleReasonDraft('')
+      showToast(direction === 'mark' ? 'Marked Uncollectible. It stays in Collections, stamped, and leaves every total.' : 'Put back in Collections.', 'success')
+      if (direction === 'mark') {
+        // Stripe's invoice is marked uncollectible too; a failure there never undoes the mark here.
+        const stripeInvoices = (job.invoices ?? []).filter((i) => i.status === 'billed' && (i.stripe_invoice_id ?? '').trim() !== '')
+        if (stripeInvoices.length > 0) {
+          const token = await getAccessTokenForEdgeFunctions()
+          if (!token) showToast('Marked here, but not in Stripe: not signed in for the Stripe call.', 'error')
+          else {
+            for (const inv of stripeInvoices) {
+              const r = await invokeMarkStripeInvoiceUncollectible({ invoiceId: inv.id, stripeModeForBilling: stripeModeForBillingFromRole(authRole), accessToken: token })
+              if (!r.ok) showToast(`Marked here, but Stripe could not be marked: ${r.message}`, 'error')
+            }
+          }
+        }
+      }
+      await loadJobs()
+      if (stagesFollowMoves) {
+        setStagesSectionOpen((prev) => ({ ...prev, collections: true }))
+        setPendingStagesJobFocusId(job.id)
+        setStagesJobFlashId(job.id)
+      }
+    } finally {
+      setUncollectibleSaving(false)
     }
   }
 
@@ -3000,6 +3145,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             onOpenFollowups={() => setFollowupOpen(true)}
             canSeeForecast={canSeeBilledExpectedPay}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
+            onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
             query={stagesSearchQuery}
             onQueryChange={setStagesSearchQuery}
             includeScheduleTimeInSearch={stagesIncludeScheduleTimeInSearch}
@@ -3108,7 +3254,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             ) : null}
             {!phoneBoard || phoneOverviewOpen ? (
               <>
+          {/* v2.4518: a hidden map is not drawn on a desktop (the command bar's Map button brings it
+              back); inside the phone's Overview it still folds to its title line. */}
+          {!phoneBoard && jobsMapHidden ? null : (
           <JobsMapCard
+            hidden={jobsMapHidden}
+            onToggleHidden={toggleJobsMapHidden}
             jobs={stagesBoardLists.filtered}
             isMobile={isMobile}
             loading={jobsListLoading}
@@ -3128,6 +3279,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               if (numberLabel && numberLabel !== '—') void jumpViaLeanLookup(numberLabel)
             }}
           />
+          )}
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
               Old/New pills retired v2.2012 — this is the only view now).
               v2.3184: steps aside while the search box has text, so the
@@ -3137,31 +3289,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             ) : null}
           </div>
           {phoneBoard ? null : (
-          <div
-            style={{
-              marginBottom: '0.75rem',
-              fontSize: '0.9375rem',
-              lineHeight: 1.5,
-              color: 'var(--text-700)',
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '0.5rem',
-              width: '100%',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flex: '1 1 auto',
-                gap: '0.35rem',
-                textAlign: 'center',
-                minWidth: 0,
-              }}
-            >
+            <JobsStagesJumpStrip
+              counts={jumpStripCounts}
+              totals={jumpStripTotals}
+              onFocusSection={focusStagesSection}
+              sectionElementId={stagesSectionElementId}
+              tail={lienDeskEligible ? <StagesLienDeskShortcut count={lienDeskCount} onOpen={() => setLienDesk({ jobId: null })} /> : null}
+              leading={
             <JobsStagesSectionToolsMenu
               inputs={{
       authRole,
@@ -3177,12 +3311,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               }}
               onSelect={sectionToolsOnSelect}
             />
-              <JobsStagesJumpStrip counts={jumpStripCounts} onFocusSection={focusStagesSection} />
-            </div>
-            {/* "Recently added" (v2.1809) lives in the ☰ tools menu since
-                v2.1973; this pill now renders ONLY while the flat view is
-                open, as the prominent way back to the board. */}
-            {stagesRecentViewOpen && (
+              }
+              /* "Recently added" (v2.1809) lives in the ☰ tools menu since
+                 v2.1973; this pill renders ONLY while the flat view is
+                 open, as the prominent way back to the board. */
+              trailing={stagesRecentViewOpen ? (
             <button
               type="button"
               onClick={() => setStagesRecentViewOpen((o) => !o)}
@@ -3206,15 +3339,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 whiteSpace: 'nowrap',
               }}
             >
-              <span aria-hidden>🕒</span>
+              <StagesToolsMenuGlyph name="history" inherit />
               {stagesRecentViewOpen ? 'Back to board' : 'Recently added'}
             </button>
-            )}
+              ) : null}
+            />
+          )}
             {/* The three data-gap alerts (No customer / No pictures / No email)
                 live in the money card's Fix-ups strip (v2.1961) — the toolbar
                 strip they used to dock in here retired with the Old view (v2.2012). */}
-          </div>
-          )}
           <StagesAlertJobListModal
             open={stagesNoEmailModalOpen}
             onClose={() => setStagesNoEmailModalOpen(false)}
@@ -3285,7 +3418,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             if (stagesRecentViewOpen) {
               return <JobsRecentlyAddedList onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })} />
             }
-            const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows } = stagesBoardLists
+            const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows, uncollectibleRows } = stagesBoardLists
 
             function toggleStages(key: keyof typeof stagesSectionOpen) {
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -3310,10 +3443,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const stagesSearchActive = stagesSearchQuery.trim() !== ''
             const sectionShown = (section: keyof StagesSectionOpenState) =>
               stagesSearchActive || (phoneBoard ? section === phoneActiveStage : stagesSectionOpen[section])
+            // v2.4761: a section is merged once every scope its rows come from has landed, so the
+            // header reads the cached count until the other statuses' bills are on the board too.
             const sectionMerged = (section: keyof StagesSectionOpenState) =>
-              cacheMergedScopes.has(scopeForStagesSection(section))
+              scopesForStagesSection(section).every((scope) => cacheMergedScopes.has(scope))
             const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
-              cacheScopeLoading.has(scopeForStagesSection(section))
+              scopesForStagesSection(section).some((scope) => cacheScopeLoading.has(scope))
             // The header numbers and the loading suffix — `lib/jobs/stagesSectionHeader` (v2.3863).
             const sectionHdr = (section: StagesSectionKey, liveCount: number, liveTotal: number) =>
               stagesSectionHeader({ useLive: stagesSearchActive || sectionMerged(section), live: { count: liveCount, total: liveTotal }, cached: cacheHeaderStats?.[section] })
@@ -3338,7 +3473,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ? waiting.map((job) => ({ job, row: null }))
                 : phoneActiveStage === 'working'
                   ? working.map((job) => ({ job, row: null }))
-                  : (phoneActiveStage === 'readyToBill' ? readyToBillRows : phoneActiveStage === 'billed' ? billedListRows : collectionsRows).map((row) => ({ job: row.job, row }))
+                  : (phoneActiveStage === 'readyToBill' ? readyToBillRows : phoneActiveStage === 'billed' ? billedListRows : [...collectionsRows, ...uncollectibleRows]).map((row) => ({ job: row.job, row }))
             const phoneNexts: JobNextLine[] = phoneStageRows.map(({ job, row }) => jobNextLine(phoneNextInput(job, row, phoneStageOf[phoneActiveStage])))
             const phoneFilterCounts = { all: phoneNexts.length, needs: phoneNexts.filter((n) => n.needsMe).length, today: phoneNexts.filter((n) => n.today).length }
             const phoneStageLine = !phoneBoard
@@ -3377,6 +3512,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     stageLine={phoneStageLine}
                   />
                 ) : null}
+                <StagesCustomerTimelineChips query={stagesSearchQuery} customers={customers} />
                 {paidSearchHint ? (
                   <div
                     role="status"
@@ -3414,7 +3550,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     )}
                   </div>
                 ) : null}
-                <div data-stages-section-header id={stagesSectionElementId('waiting')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('waiting')} style={{ ...(stageColorVar('waiting') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('waiting')}
@@ -3422,7 +3558,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('waiting') ? '▼' : '▶'}</span>
-                    Waiting ({waitingHdr.count}) - <span className="stagesMoney">${waitingHdr.total}</span>{sectionLoadingSuffix('waiting')}
+                    <StagesSectionBandTitle label="Waiting" count={waitingHdr.count} total={waitingHdr.total} />{sectionLoadingSuffix('waiting')}
                   </button>
                 </div>
                 {sectionShown('waiting') && !stagesSearchActive && !sectionMerged('waiting') && sectionBodyLoading('Waiting jobs')}
@@ -3437,7 +3573,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div data-stages-section-header id={stagesSectionElementId('working')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('working')} style={{ ...(stageColorVar('working') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('working')}
@@ -3445,7 +3581,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('working') ? '\u25BC' : '\u25B6'}</span>
-                    Working ({workingHdr.count}) - <span className="stagesMoney">${workingHdr.total}</span>{sectionLoadingSuffix('working')}
+                    <StagesSectionBandTitle label="Working" count={workingHdr.count} total={workingHdr.total} />{sectionLoadingSuffix('working')}
                   </button>
                   <div className="stagesWhenPills" role="group" aria-label="Show Working jobs by schedule">
                     {STAGES_WHEN_PILLS.map((pill) => (
@@ -3505,7 +3641,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ) : null}
 
                 {/* Header row mirrors the Paid in Full section: toggle left, gear flushed right. */}
-                <div data-stages-section-header id={stagesSectionElementId('readyToBill')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('readyToBill')} style={{ ...(stageColorVar('readyToBill') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('readyToBill')}
@@ -3513,7 +3649,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', flex: 1, minWidth: 0 }}
                   >
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
-                    Ready to Bill ({readyToBillHdr.count}) - <span className="stagesMoney">${readyToBillHdr.total}</span>{sectionLoadingSuffix('readyToBill')}
+                    <StagesSectionBandTitle label="Ready to Bill" count={readyToBillHdr.count} total={readyToBillHdr.total} />{sectionLoadingSuffix('readyToBill')}
                   </button>
                   {(stagesGates.isStagesOwnerRole(authRole)) && (
                     <button
@@ -3523,7 +3659,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Ready to Bill notification settings"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>{'\u2699'}</span>
+                      <StagesToolsMenuGlyph name="bell" inherit />
                       Ready to Bill notifications
                     </button>
                   )}
@@ -3540,7 +3676,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div data-stages-section-header id={stagesSectionElementId('billed')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('billed')} style={{ ...(stageColorVar('billed') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                     <button
                       type="button"
@@ -3549,7 +3685,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{sectionShown('billed') ? '▼' : '▶'}</span>
-                      Billed Awaiting Payment ({billedHdr.count}) - <span className="stagesMoney">${billedHdr.total}</span>{sectionLoadingSuffix('billed')}
+                      <StagesSectionBandTitle label="Billed Awaiting Payment" count={billedHdr.count} total={billedHdr.total} />{sectionLoadingSuffix('billed')}
                     </button>
                     {([
                       { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by bill date; a hand-set est. bill date wins) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
@@ -3604,7 +3740,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     aria-label="GC Review: Billed Awaiting Payment grouped by General Contractor"
                     style={billedHeaderActionStyle(billedActiveRows.length === 0 && collectionsRows.length === 0)}
                   >
-                    <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
+                    <StagesToolsMenuGlyph name="building" inherit />
                     GC Review
                   </button>
                   <div style={{ position: 'relative', flexShrink: 0, width: 'fit-content' }}>
@@ -3622,7 +3758,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       }}
                     >
                       {/* Same money mark as the Pipeline card's allocate-deposits move. */}
-                      <span aria-hidden>{'💵'}</span>
+                      <StagesToolsMenuGlyph name="bank" inherit />
                       Accounts Receivable
                     </button>
                     {typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0 ? (
@@ -3661,7 +3797,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Share or print billed awaiting payment report"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>⇪</span>
+                      <StagesToolsMenuGlyph name="share" inherit />
                       Share / Print
                     </button>
                   )}
@@ -3673,7 +3809,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Billed aging chart"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>{'📊'}</span>
+                      <StagesToolsMenuGlyph name="chart-bar" inherit />
                       Chart
                     </button>
                   )}
@@ -3685,7 +3821,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Payment forecast"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>{'📅'}</span>
+                      <StagesToolsMenuGlyph name="calendar-bars" inherit />
                       Payment forecast
                     </button>
                   )}
@@ -3697,7 +3833,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       aria-label="Payment email settings"
                       style={billedHeaderActionStyle(false)}
                     >
-                      <span aria-hidden>⚙</span>
+                      <StagesToolsMenuGlyph name="bell" inherit />
                       Paid notifications
                     </button>
                   )}
@@ -3759,7 +3895,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div data-stages-section-header id={stagesSectionElementId('collections')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('collections')} style={{ ...(stageColorVar('collections') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('collections')}
@@ -3767,7 +3903,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('collections') ? '▼' : '▶'}</span>
-                    Collections ({collectionsHdr.count}) - <span className="stagesMoney">${collectionsHdr.total}</span>{sectionLoadingSuffix('collections')}
+                    <StagesSectionBandTitle label="Collections" count={collectionsHdr.count} total={collectionsHdr.total} />{sectionLoadingSuffix('collections')}
                   </button>
                   <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment
@@ -3791,7 +3927,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           borderColor: legalEmpty ? undefined : 'var(--border-strong)',
                         }}
                       >
-                        <span aria-hidden>{'⚖'}</span>
+                        <StagesToolsMenuGlyph name="scales" inherit />
                         Legal
                       </button>
                     )
@@ -3808,29 +3944,63 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         borderColor: 'var(--border-strong)',
                       }}
                     >
-                      <span aria-hidden>{'⏱'}</span>
+                      <StagesToolsMenuGlyph name="gavel" inherit />
                       Lien desk{typeof lienDeskCount === 'number' && lienDeskCount > 0 ? ` · ${lienDeskCount}` : ''}
                     </button>
                   ) : null}
                 </div>
                 {sectionShown('collections') && !stagesSearchActive && !sectionMerged('collections') && sectionBodyLoading('Collections')}
-                {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (collectionsRows.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
-                    No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
-                  </p>
-                ) : (
-                  <StagesUnifiedSectionList
-                    {...stagesUnifiedTableShared}
-                    rows={collectionsRows}
-                    phoneRows={phoneRowsFor('collections')}
-                    onToggleProgressSort={onToggleProgressSort}
-                    {...stagesSectionActionProps.collections}
-                    openNewReportForJob={openNewReportForJob}
-                  />
-                ))}
+                {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (
+                  <>
+                    {collectionsRows.length === 0 && uncollectibleRows.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+                        No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
+                      </p>
+                    ) : collectionsRows.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+                        Nothing still chased in Collections. The jobs below are the ones the office gave up on.
+                      </p>
+                    ) : (
+                      <StagesUnifiedSectionList
+                        {...stagesUnifiedTableShared}
+                        rows={collectionsRows}
+                        phoneRows={phoneRowsFor('collections')}
+                        onToggleProgressSort={onToggleProgressSort}
+                        // B6 / J4-10's shell pill ("In Collections N days · no bill line") lives in this
+                        // renderer; until v2.4758 only the Billed site wired it, where no Collections shell sits.
+                        billedBillLine={billedBillLineRenderer}
+                        {...stagesSectionActionProps.collections}
+                        openNewReportForJob={openNewReportForJob}
+                      />
+                    )}
+                    {uncollectibleRows.length > 0 ? (
+                      <>
+                        {/* Uncollectible (punch list #94, v2.4792): the band under Collections — its own count and dollars, in no total. */}
+                        <div
+                          data-stages-uncollectible-band
+                          className="stagesSectionBand"
+                          style={{ ...(stageColorVar('collections') as CSSProperties), margin: '1rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', opacity: 0.92 }}
+                        >
+                          <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>Uncollectible</span>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)' }}>{uncollectibleRows.length}</span>
+                          <span style={{ fontWeight: 700 }}>{`$${formatCurrencyNoCents(billedRowsRemainingTotal(uncollectibleRows))}`}</span>
+                          <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>given up on — in no total, on no lien clock, still on the books</span>
+                        </div>
+                        <StagesUnifiedSectionList
+                          {...stagesUnifiedTableShared}
+                          rows={uncollectibleRows}
+                          phoneRows={phoneRowsFor('collections')}
+                          onToggleProgressSort={onToggleProgressSort}
+                          {...stagesSectionActionProps.uncollectible}
+                          openNewReportForJob={openNewReportForJob}
+                        />
+                      </>
+                    ) : null}
+                  </>
+                )}
 
                 {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
-                <div data-stages-section-header id={stagesSectionElementId('paid')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('paid')} style={{ ...(stageColorVar('paid') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -3878,7 +4048,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     aria-label="Paid profit chart"
                     style={billedHeaderActionStyle(false)}
                   >
-                    <span aria-hidden>{'📊'}</span>
+                    <StagesToolsMenuGlyph name="chart-bar" inherit />
                     Chart
                   </button>
                 )}
@@ -3890,7 +4060,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     aria-label="Paid in Full email settings"
                     style={billedHeaderActionStyle(false)}
                   >
-                    <span aria-hidden>⚙</span>
+                    <StagesToolsMenuGlyph name="bell" inherit />
                     Paid in Full notifications
                   </button>
                 )}
@@ -3960,7 +4130,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     })
                   }}
                   onPrint={(groups, groupBy) => {
-                    if (!openHtmlPrintWindow(buildGcStatementReportHtml(groups, { groupBy }))) {
+                    // A print counts as a send (docs/SENT_COPIES.md): the statement is filed on its jobs, and under the GC when it is for one.
+                    const one = groups.length === 1 ? groups[0]! : null
+                    const filing = { kind: 'gc_statement_print', title: one ? `Statement for ${one.gcName}` : `Statement for ${groups.length} ${groupBy === 'development' ? 'developments' : 'GCs'}`, recipientName: one?.gcName ?? '', jobIds: groups.flatMap((g) => g.rows.map((r) => r.jobId)), customerId: one && groupBy !== 'development' ? one.gcId : null }
+                    if (!printAndFile(buildGcStatementReportHtml(groups, { groupBy }), filing)) {
                       showToast('Allow pop-ups to print the report.', 'error')
                     }
                   }}
@@ -4271,7 +4444,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           canEmailMoneyWaiting={stagesGates.isStagesOfficeRole(authRole)}
           onOpenJobStacked={(jobId, onSaved) => {
             // v2.2311: the Job window (z 1010) stacks above the drill-down
-            // (z 80) — nothing closes, and every save refreshes the list.
+            // (z 780) — nothing closes, and every save refreshes the list.
             tryOpenEditJob(jobId, { initialTab: 'bill', onSaved })
           }}
           onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
@@ -4306,7 +4479,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setChaseModalOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
-          // B6 / J4-7: the board's typed confirm layers over call mode (z 80 > 70);
+          // B6 / J4-7: the board's typed confirm layers over call mode (z 780 > 770);
           // the session snapshot stays put while the flag writes.
           onMoveToCollections={
             // same office pool as the section's Collections button (server RPC is authoritative)
@@ -4363,6 +4536,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         open={legalDesk != null}
         onClose={() => setLegalDesk(null)}
         collectionsJobs={stagesBoardLists.collectionsJobs}
+        uncollectibleJobs={stagesBoardLists.uncollectibleJobs}
         jobsLoading={!NON_PAID_SCOPES.every((sc) => cacheMergedScopes.has(sc))}
         contractCoverage={jobContractCoverageByJobId}
         users={users}
@@ -4390,6 +4564,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         legal={legalMatters}
         canMarkReady={authRole === 'dev'}
         canEditReview={stagesGates.isStagesOfficeRole(authRole)}
+        canEditFirm={authRole === 'dev'}
       />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
@@ -4461,7 +4636,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         signerPhoneFor={lienDeskSignerPhoneFor}
         initialJobId={lienDesk?.jobId ?? null}
         // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.
-        initialKind={lienDesk?.kind ?? (lienDesk?.jobId ? 'notice' : 'calendar')}
+        // A plain open lands on Next up (punch list #82); a door that names a job or a pile keeps landing on Notices.
+        initialKind={lienDesk?.kind ?? (lienDesk?.jobId || lienDesk?.pile ? 'notice' : 'next')}
         calendarRows={lienCalendarRows}
         onCalendarChanged={(what) => {
           // The pen (v2.4153): a promise re-reads the pay dates; a kind re-reads the clocks; the desk's own queue follows either.
@@ -4471,13 +4647,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           } else setLienClocksRefresh((k) => k + 1)
           refetchLienDesk()
         }}
+        onOpenCalendarLastWork={(jobId) => {
+          const job = jobs.find((x) => x.id === jobId)
+          if (job) setLienInstrumentsModal({ job, invoice: null, openLastWork: true })
+        }}
+        // v2.4523: the desk stays open under a window one of its rows opens (the lien window, the GC
+        // notice), so closing that window lands back on the desk where it was, not on the board.
         onOpenCalendarJob={(jobId) => {
           const job = jobs.find((x) => x.id === jobId)
           if (!job) return
-          setLienDesk(null)
           setLienInstrumentsModal({ job, invoice: null })
         }}
+        onOpenOwnerRecords={() => setOwnerRecordsOpen(true)}
+        // v2.4531: a job's number (v2.4628: and the Next up row's name) opens the job itself, over the desk; the desk re-reads on a save and again when the window closes.
+        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk(), onClosed: () => refetchLienDesk() })}
         initialPile={lienDesk?.pile ?? null}
+        aimKey={lienDesk?.aim}
         onOpenLegalDesk={() => {
           setLienDesk(null)
           setLegalDesk({ payerKey: null })
@@ -4485,12 +4670,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         legalSignoff={legalMatters.available ? {
           stateFor: (jobId) => {
             const m = legalMatters.byJobId.get(jobId)
-            if (!m || !stageIsWithFirm(m.stage)) return null
+            if (!m || !matterIsWithFirm(m)) return null
             return signoffStateForJob(legalMatters.entriesByMatter.get(m.id) ?? [], jobId)
           },
           ask: async (jobId, text) => {
             const m = legalMatters.byJobId.get(jobId)
-            if (!m || !stageIsWithFirm(m.stage)) return 'This job is not with the firm — mark its account attorney-ready on the Legal desk first.'
+            if (!m || !matterIsWithFirm(m)) return 'This job is not with the firm — mark its account attorney-ready on the Legal desk first.'
             const job = jobs.find((j) => j.id === jobId)
             const jobLabel = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''
             const err = await legalRpc('legal_add_entry', { p_matter_id: m.id, p_kind: 'question', p_body: text, p_meta: newAskMeta({ flavor: 'signoff', jobId, jobLabel, askedBy: authProfileName?.trim() ?? '' }) })
@@ -4504,7 +4689,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             showToast('Open that job from the Pipeline board to file its affidavit — it is not loaded here yet.', 'info')
             return
           }
-          setLienDesk(null)
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
@@ -4513,7 +4697,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenLienInstruments={(jobId) => {
           const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
           const openWith = (job: JobWithDetails) => {
-            setLienDesk(null)
             setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
           }
           const loaded = jobs.find((j) => j.id === jobId)
@@ -4528,8 +4711,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           })
         }}
         onPutGcOnNotice={(gcId) => {
-          setLienDesk(null)
           setGcNotice({ gcId })
+        }}
+      />
+      {/* An owner asked for our records (v2.4544): over the desk, which stays open behind it. */}
+      <LienOwnerRecordsModal
+        open={ownerRecordsOpen}
+        properties={ownerRecordsDesk.properties}
+        seedFor={ownerRecordsDesk.seedFor}
+        claimsByJob={ownerRecordsDesk.claimsByJob}
+        company={lienDeskIssuer?.companyName ?? ''}
+        todayYmd={forecastTodayYmd}
+        authName={authProfileName?.trim() ?? ''}
+        isLeader={isLienLeader(authRole)}
+        isMobile={isMobile}
+        initialJobId={ownerRecordsJobId}
+        onClose={() => {
+          setOwnerRecordsOpen(false)
+          setOwnerRecordsJobId(null)
         }}
       />
       <GcOnNoticeModal
@@ -4555,8 +4754,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
+        openLastWork={lienInstrumentsModal?.openLastWork ?? false}
+        // v2.4735: a day set here moves the Deadlines row, so the clocks and the desk re-read.
+        onLastWorkSaved={() => {
+          setLienClocksRefresh((k) => k + 1)
+          refetchLienDesk()
+        }}
         signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
+        // The next step's door (punch list #82): the desk sits under this window, so this one closes and the desk opens on the job.
+        onOpenLienDesk={(jobId, deskKind) => {
+          setLienInstrumentsModal(null)
+          // `aim` changes every press (v2.4612), so a desk already on this job still switches to the tab.
+          setLienDesk({ jobId, kind: deskKind, aim: Date.now() })
+        }}
+        onOpenRelease={openLienReleaseFromRow ? (job) => openLienReleaseFromRow({ job, invoice: null }) : undefined}
         onRecorded={() => {
           void loadDemandOutJobIds()
           // A recorded notice that names the desk item's months sends the item (v2.3405).
@@ -4657,7 +4869,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         payments={markPaidInvoice?.job.payments}
         job={null}
         stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
-        billedYmd={markPaidInvoice?.billed_at ? markPaidInvoice.billed_at.slice(0, 10) : null}
+        billedYmd={calendarYmdInAppTzFromIso(markPaidInvoice?.billed_at ?? '') || null}
         existingPromiseYmd={markPaidInvoice ? (promisedPayDates?.[markPaidInvoice.job.id]?.promisedYmd ?? null) : null}
         onClose={() => setMarkPaidInvoice(null)}
         onSuccess={async () => {
@@ -4708,6 +4920,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           saving={collectionsSaving}
           onCancel={closeCollectionsConfirm}
           onConfirm={confirmCollectionsMove}
+        />
+      )}
+      {uncollectibleConfirm && (
+        <StagesUncollectibleConfirmModal
+          confirm={uncollectibleConfirm}
+          reasonDraft={uncollectibleReasonDraft}
+          onReasonDraftChange={setUncollectibleReasonDraft}
+          saving={uncollectibleSaving}
+          onCancel={closeUncollectibleConfirm}
+          onConfirm={confirmUncollectible}
+          firmWarning={uncollectibleFirmWarning(legalMatters.byPayerKey.get(payerForJob(uncollectibleConfirm.job).key))}
         />
       )}
       {quickAssignJob ? (

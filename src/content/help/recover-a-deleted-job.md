@@ -13,10 +13,10 @@ This is dev-only. It lives in **Settings → Data & recovery → Recently delete
 
 ## Put a deleted job or bid back
 
-1. You open **Settings → Data & recovery** and expand ***Recently deleted (dev)***.
-2. You find the entry. The filters above the list narrow it by type, by who deleted it, or by a word in its label. The types are **Job**, **Bid**, **Pay report**, **Bid rooms**, **Part of a job or bid** and more. Each entry shows what it was, like *J-1042 · Smith Remodel*. It shows who deleted it and when. It shows count chips for everything that went with it. Money records like {{chip:yellow|3 invoices}} stand out from quieter ones like {{chip:gray|12 line items}}. It shows the first few lines of what was inside. **What's inside?** still expands the complete contents. The full raw record is one more click down.
-3. You click {{button:outline|Preview restore}}. Nothing is changed yet. This reports exactly what would come back.
-4. You read the preview, then click {{button:blue|Restore}}.
+1. Open **Settings → Data & recovery** and expand ***Recently deleted (dev)***.
+2. Find the entry. The filters above the list narrow it by type, by who deleted it, or by a word in its label. The types are **Job**, **Bid**, **Pay report**, **Bid rooms**, **Part of a job or bid** and more. Each entry shows what it was, like *J-1042 · Smith Remodel*. It shows who deleted it and when. It shows count chips for everything that went with it. Money records like {{chip:yellow|3 invoices}} stand out from quieter ones like {{chip:gray|12 line items}}. It shows the first few lines of what was inside. **What's inside?** still expands the complete contents. The full raw record is one more click down.
+3. Click {{button:outline|Preview restore}}. Nothing is changed yet. This reports exactly what would come back.
+4. Read the preview, then click {{button:blue|Restore}}.
 
 :::example The preview is real, not a guess
 The preview actually performs the restore and then rolls it back, so the counts it shows you are the true ones. That is also why **Restore** stays greyed out until you have previewed — you can't commit a restore you haven't looked at.

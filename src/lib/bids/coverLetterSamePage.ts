@@ -7,7 +7,7 @@
  * alternate leads the letter — no more $0.00 letters — and the rest are listed against it.
  */
 
-import type { CoverLetterAlternateItem, CoverLetterAlternateOption, CoverLetterAlternatesBlock } from '../bidDocuments/coverLetter'
+import { COVER_LETTER_OPTIONS_INTRO_DEFAULT, type CoverLetterAlternateItem, type CoverLetterAlternateOption, type CoverLetterAlternatesBlock, type CoverLetterOptionItem, type CoverLetterOptionsBlock } from '../bidDocuments/coverLetter'
 
 export type SamePageSection = {
   name: string
@@ -114,27 +114,58 @@ export function customerFacingAlternateName(
   return deduped.join(' · ')
 }
 
+/** One of two or more base bids in a letter (v2.4723): its section and the offered prices on its own version. */
+export type SamePageOption = {
+  /** 1-based, in packet order; the first is the lead — the letter's headline, the Bid Board's value. */
+  n: number
+  section: SamePageSection
+  alternates: SamePageSection[]
+}
+
 export type SamePagePlan = {
-  /** Sections whose sum is the letter's proposed amount (bases; or the first alternate when no bases). */
+  /** Sections whose sum is the letter's proposed amount (bases; or the first alternate when no bases). With options, the lead option alone. */
   headline: SamePageSection[]
-  /** Sections listed in the Alternates block, in packet order. */
+  /** Sections listed in the Alternates block, in packet order. With options, only the in-lieu-of ones (none belongs to an option). */
   alternates: SamePageSection[]
   headlineRevenue: number
-  /** Headline sections' fixture rows merged (counts summed per fixture, first-seen order). */
+  /** Headline sections' fixture rows merged (counts summed per fixture, first-seen order). With options, the lead's. */
   fixtureRows: { fixture: string; count: number }[]
   /** True when no base section existed and the first alternate leads the letter. */
   alternateLeads: boolean
+  /**
+   * v2.4723: two or more base bids are OPTIONS the GC picks between — each its own proposal with its
+   * own alternates measured against it — never a sum. Read off prod (2026-10-06): every two-base
+   * letter ever sent was To Plans vs Value Engineered, none two scopes of one job. Null otherwise.
+   */
+  options: SamePageOption[] | null
 }
 
 /**
- * Split a packet's sections into the letter headline and the alternates list. Returns null when
- * there is nothing to combine — fewer than 2 sections, or no alternates (multi-base packets keep
- * today's one-letter-per-section document).
+ * Split a packet's sections into the letter headline and the alternates list. Two or more base
+ * sections plan as options (even with no alternates); otherwise returns null when there is nothing
+ * to combine — fewer than 2 sections, or no alternates.
  */
 export function planSamePageLetter(sections: SamePageSection[]): SamePagePlan | null {
-  if (sections.length < 2) return null
   const bases = sections.filter((s) => !s.isAlternate)
   const alts = sections.filter((s) => s.isAlternate)
+  if (bases.length >= 2) {
+    const options: SamePageOption[] = bases.map((b, i) => ({
+      n: i + 1,
+      section: b,
+      alternates: alts.filter((a) => !!a.offeredPricingId && a.bidVersionId != null && a.bidVersionId === b.bidVersionId),
+    }))
+    const owned = new Set(options.flatMap((o) => o.alternates))
+    const lead = bases[0]!
+    return {
+      headline: [lead],
+      alternates: alts.filter((a) => !owned.has(a)),
+      headlineRevenue: Number.isFinite(lead.revenueSum) ? lead.revenueSum : 0,
+      fixtureRows: lead.fixtureRows.map((r) => ({ fixture: r.fixture, count: r.count })),
+      alternateLeads: false,
+      options,
+    }
+  }
+  if (sections.length < 2) return null
   if (alts.length === 0) return null
   const alternateLeads = bases.length === 0
   const headline = alternateLeads ? alts.slice(0, 1) : bases
@@ -155,7 +186,65 @@ export function planSamePageLetter(sections: SamePageSection[]): SamePagePlan | 
       }
     }
   }
-  return { headline, alternates, headlineRevenue, fixtureRows, alternateLeads }
+  return { headline, alternates, headlineRevenue, fixtureRows, alternateLeads, options: null }
+}
+
+/** True when every option prints the same fixture list (same rows, counts and order) — it then prints once. */
+export function optionsShareFixtures(options: ReadonlyArray<SamePageOption>): boolean {
+  const first = options[0]
+  if (!first) return true
+  const key = (rows: ReadonlyArray<{ fixture: string; count: number }>) => rows.map((r) => `${r.fixture.trim().toLowerCase()}\u0001${r.count}`).join('\u0002')
+  const k0 = key(first.section.fixtureRows)
+  return options.every((o) => key(o.section.fixtureRows) === k0)
+}
+
+/** How many alternates the options block numbers, so the in-lieu-of block continues the count. */
+export function optionsAlternateCount(plan: SamePagePlan): number {
+  return plan.options ? plan.options.reduce((n, o) => n + o.alternates.length, 0) : 0
+}
+
+/**
+ * The letter's options block (v2.4723): "Option 1 — To Plans: <words> ($X)" with its alternates
+ * under it, each a deduct or add against THAT option. Alternates number across the whole letter
+ * (the in-lieu-of block continues from `optionsAlternateCount`). An offered price's internal
+ * scenario name never prints — it is a bare "Alternate N" until the estimator writes one (the same
+ * rule as the in-lieu-of block). A saved label on an option prints verbatim.
+ */
+export function buildOptionsBlock(
+  plan: SamePagePlan,
+  texts: CoverLetterAltTexts,
+  fmt: (n: number) => string,
+  toWords: (n: number) => string,
+  editable = false,
+  naming?: { gcName?: string | null; projectName?: string | null },
+): CoverLetterOptionsBlock | null {
+  if (!plan.options || plan.options.length < 2) return null
+  let n = 0
+  const items: CoverLetterOptionItem[] = plan.options.map((o) => {
+    const key = altSectionKey(o.section)
+    const saved = texts.sections?.[key]
+    const autoName = naming ? customerFacingAlternateName(o.section.name, naming.gcName, naming.projectName) : o.section.name
+    return {
+      label: saved?.label?.trim() || `Option ${o.n} — ${autoName}`,
+      amountWords: toWords(o.section.revenueSum).toUpperCase(),
+      amountFormatted: `$${fmt(o.section.revenueSum)}`,
+      fixtureRows: o.section.fixtureRows,
+      ...(editable ? { editKey: key } : {}),
+      alternates: o.alternates.map((a): CoverLetterAlternateItem => {
+        n += 1
+        const aKey = altSectionKey(a)
+        const aSaved = texts.sections?.[aKey]
+        return {
+          label: aSaved?.label?.trim() || `Alternate ${n}`,
+          deltaText: formatAlternateDeltaText(a.revenueSum, o.section.revenueSum, fmt),
+          amountFormatted: `$${fmt(a.revenueSum)}`,
+          note: aSaved?.note?.trim() || null,
+          ...(editable ? { editKey: aKey } : {}),
+        }
+      }),
+    }
+  })
+  return { intro: COVER_LETTER_OPTIONS_INTRO_DEFAULT, items, sharedFixtures: optionsShareFixtures(plan.options) }
 }
 
 /**
@@ -187,6 +276,8 @@ export function buildAlternatesBlock(
   editable = false,
   /** Auto labels read customer-facing (project, not GC) when the letter's names are passed. */
   naming?: { gcName?: string | null; projectName?: string | null },
+  /** v2.4723: numbering continues after the options' alternates ("Alternate 3 — …"). */
+  startAt = 1,
 ): CoverLetterAlternatesBlock {
   const scopeAlts = plan.alternates.filter((s) => !s.offeredPricingId)
   const optionSecs = plan.alternates.filter((s) => s.offeredPricingId)
@@ -215,7 +306,7 @@ export function buildAlternatesBlock(
     else standalone.push(sec)
   }
 
-  let n = 0
+  let n = startAt - 1
   const topLevel = (sec: SamePageSection, options?: CoverLetterAlternateOption[], nameless = false): CoverLetterAlternateItem => {
     n += 1
     const key = altSectionKey(sec)

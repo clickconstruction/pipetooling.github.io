@@ -3,7 +3,6 @@ import { supabase } from '../supabase'
 /**
  * What the house told us (v2.4411): the writes behind the Lien desk's card. One row per job
  * and house in `job_supply_house_words`; who wrote it and when are stamped by the database.
- * The table name is cast until the generated types carry it.
  */
 
 export type SupplierWordInput = {
@@ -29,15 +28,27 @@ export async function saveSupplierWord(input: SupplierWordInput): Promise<void> 
     note: input.note.trim(),
     noted_by_name: input.notedByName.trim(),
   }
-  const { error } = await supabase.from('job_supply_house_words' as never).upsert(row as never, { onConflict: 'job_id,supply_house_id' })
+  const { error } = await supabase.from('job_supply_house_words').upsert(row, { onConflict: 'job_id,supply_house_id' })
   if (error) throw error
 }
 
 export async function clearSupplierWord(jobId: string, houseId: string): Promise<void> {
-  const { error } = await supabase
-    .from('job_supply_house_words' as never)
-    .delete()
-    .eq('job_id' as never, jobId as never)
-    .eq('supply_house_id' as never, houseId as never)
+  const { error } = await supabase.from('job_supply_house_words').delete().eq('job_id', jobId).eq('supply_house_id', houseId)
+  if (error) throw error
+}
+
+/** Several houses' or jobs' words in one write (v2.4443): the Ask a house sheet saves a call's answers together. */
+export async function saveSupplierWords(inputs: ReadonlyArray<SupplierWordInput>): Promise<void> {
+  if (inputs.length === 0) return
+  const rows = inputs.map((input) => ({
+    job_id: input.jobId,
+    supply_house_id: input.houseId,
+    their_balance: input.balance,
+    notice_on: input.noticeYmd,
+    said_by: input.saidBy.trim(),
+    note: input.note.trim(),
+    noted_by_name: input.notedByName.trim(),
+  }))
+  const { error } = await supabase.from('job_supply_house_words').upsert(rows, { onConflict: 'job_id,supply_house_id' })
   if (error) throw error
 }

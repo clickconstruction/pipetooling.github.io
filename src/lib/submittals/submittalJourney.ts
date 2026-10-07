@@ -10,6 +10,8 @@
  * already calls.
  */
 
+import { resubmitLabel } from './reviewDecisions'
+
 export type JourneyStageKey = 'picks' | 'build' | 'rows' | 'package' | 'share' | 'review' | 'resubmit' | 'procure'
 export type JourneyStageStatus = 'done' | 'current' | 'waiting' | 'later'
 export type JourneyAction = 'open_pricing' | 'plug_in_schedule' | 'ask_robot_schedule' | 'choose_from_takeoff' | 'build_rev1' | 'drop_vendor_pdf' | 'build_package' | 'share' | 'copy_room_link' | 'resubmit'
@@ -50,11 +52,13 @@ export type SubmittalJourneyInput = {
     owesReason: number
     sheetsNeeded: number
     packageBuilt: boolean
+    /** v2.4705 · the office sent it outside the app (by email, on paper): Share is done, though not from here. */
+    sentOutside?: boolean
   } | null
   /** The bid's review room once minted. */
   room: { status: string; opens: number; identified: string[] } | null
   /** The revision's reviewer decisions (`summarizeDecisions`). */
-  decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[] } | null
+  decisions: { decided: number; approved: number; open: number; sentBack: number; byName: string[]; /** rows with no answer at all: a resubmit carries them beside the rows sent back (2026-10-03) */ noAnswer?: number; /** of those, rows with no product yet: said apart, as step 6 counts them (2026-10-05) */ noProduct?: number } | null
   /** The procurement log (v2.4083): rows released, ordered, delivered, late — null before any row is approved. */
   procurement?: { released: number; ordered: number; delivered: number; late: number } | null
 }
@@ -81,7 +85,8 @@ function stageAnchors(hasRevision: boolean): Record<JourneyStageKey, string> {
     rows: 'submittals-rows',
     package: 'submittals-package',
     share: 'submittals-share',
-    review: 'submittals-room',
+    // 2026-10-04 · the step itself: the pill used to ring the Share step's link box.
+    review: 'submittals-review',
     resubmit: 'submittals-resubmit',
     procure: 'submittals-procure',
   }
@@ -96,7 +101,8 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   else if (!pr && (input.decisions?.approved ?? 0) > 0) status.procure = 'current'
   const anchors = stageAnchors(input.rev != null)
   const finish = (next: JourneyNext): SubmittalJourney => ({
-    stages: ORDER.map((key, i) => ({ key, number: i + 1, label: LABELS[key], status: status[key], anchor: anchors[key] })),
+    // 2026-10-03 · once a revision exists, pill 2 names it: "Build Rev 1" on Rev 4 was the wrong number.
+    stages: ORDER.map((key, i) => ({ key, number: i + 1, label: key === 'build' && input.rev ? `Rev ${input.rev.number}` : LABELS[key], status: status[key], anchor: anchors[key] })),
     next,
   })
 
@@ -114,7 +120,7 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     if (input.picks === 0 && takeoffFixtures > 0) {
       status.picks = 'current'
       const withProduct = input.takeoff?.withProduct ?? 0
-      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}. ${withProduct} of them have a part. Tick the ones to submit, then build Rev 1 from them.${input.scheduleTags === 0 ? ' You can type the plans’ schedule later. Then each row is checked against it.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
+      return finish({ kind: 'next', text: `The takeoff has ${plural(takeoffFixtures, 'fixture')}. ${withProduct} of them have a part. Pick what the GC sees, then build Rev 1 from them.${input.scheduleTags === 0 ? ' You can type the plans’ schedule later. Then each row is checked against it.' : ''}`, action: 'choose_from_takeoff', actionLabel: 'Choose from the takeoff' })
     }
     if (input.scheduleTags > 0) {
       return finish({ kind: 'next', text: `${plural(input.scheduleTags, 'tag')} on the schedule. Nothing picked yet. Pick a house for each part on Pricing. Or build Rev 1 now and type each product with Edit.`, action: 'build_rev1', actionLabel: 'Build Rev 1 and type the products' })
@@ -127,33 +133,71 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     // An older revision is the record; the pills say how far the work got, the line says where it is.
     status.rows = 'done'
     status.package = rev.packageBuilt ? 'done' : 'later'
-    status.share = rev.status === 'draft' ? 'later' : 'done'
-    return finish({ kind: 'done', text: `Rev ${rev.number} was shared. It is the record now. Pick the newest version above to keep working.`, action: null, actionLabel: null })
+    // 2026-10-03 · a draft replaced by a newer one reads superseded: it was never shared, and the line must not say it was.
+    const wasShared = rev.status === 'shared' || rev.status === 'reviewed'
+    const answered = (input.decisions?.decided ?? 0) > 0
+    status.share = wasShared || rev.sentOutside ? 'done' : 'later'
+    if (answered) status.review = 'done'
+    const what = wasShared ? `Rev ${rev.number} was shared.` : rev.sentOutside ? `Rev ${rev.number} was sent outside the app.${answered ? ' Its answers were typed in.' : ''}` : answered ? `Rev ${rev.number} was not shared from the app. Its answers were typed in.` : `Rev ${rev.number} was replaced before it was shared.`
+    return finish({ kind: 'done', text: `${what} It is the record now. Pick the newest version above to keep working.`, action: null, actionLabel: null })
   }
 
   if (rev.status === 'draft') {
-    // A built package is done whatever the rows still owe (v2.4169): the pill says so, and the New revision door reads it.
+    // A built package is done whatever the rows still owe (v2.4169): the pill says so, and step 7's door reads it.
     if (rev.packageBuilt) status.package = 'done'
+    // v2.4705 · sent by email or on paper: Share is done, though nothing went through the room.
+    if (rev.sentOutside) status.share = 'done'
+    // 2026-10-03 · answers typed on a draft. The estimator emails the package and records what came back, so the
+    // revision never reads shared. The strip read answers only on a shared revision: on BP375 it pointed at six
+    // cut sheets while four rows were sent back, with Their call and Resubmit grey. Now the answers light those
+    // steps, and rows sent back are the next thing to do. Share stays as it is: nothing was shared from the app.
+    const typed = input.decisions && input.decisions.decided > 0 ? input.decisions : null
+    if (typed && rev.rows > 0) {
+      const stillOwes = rev.owesReason + rev.sheetsNeeded > 0
+      const waiting = typed.noAnswer ?? typed.open
+      status.review = waiting > 0 ? 'waiting' : 'done'
+      if (typed.sentBack > 0) {
+        status.rows = stillOwes ? 'current' : 'done'
+        status.resubmit = 'current'
+        return finish(sentBackNext(rev.number, typed))
+      }
+      if (waiting === 0) {
+        status.rows = stillOwes ? 'current' : 'done'
+        status.resubmit = 'done'
+        return finish({ kind: 'done', text: `${nameOf(typed)} approved every row. Next is the order log, Step 8.`, action: null, actionLabel: null })
+      }
+      // Some approved, the rest still with the GC: the draft's own next thing stands, with Their call lit as waiting.
+    }
     if (rev.rows === 0) {
       status.rows = 'current'
       return finish({ kind: 'next', text: 'This version has no rows. Pick a house for each part on Pricing. Then tap Rebuild rows from picks.', action: 'open_pricing', actionLabel: 'The picks on Pricing' })
     }
-    const owes = rev.owesReason + rev.sheetsNeeded
-    if (owes > 0) {
+    const sheets = rev.sheetsNeeded > 0 ? `${plural(rev.sheetsNeeded, 'row')} still ${rev.sheetsNeeded === 1 ? 'needs' : 'need'} a cut sheet` : ''
+    if (rev.owesReason > 0) {
       status.rows = 'current'
-      const parts: string[] = []
-      if (rev.owesReason > 0) parts.push(`${plural(rev.owesReason, 'row')} still ${rev.owesReason === 1 ? 'owes' : 'owe'} a reason`)
-      if (rev.sheetsNeeded > 0) parts.push(`${plural(rev.sheetsNeeded, 'row')} still ${rev.sheetsNeeded === 1 ? 'needs' : 'need'} a cut sheet`)
+      const parts = [`${plural(rev.owesReason, 'row')} still ${rev.owesReason === 1 ? 'owes' : 'owe'} a reason`]
+      if (sheets) parts.push(sheets)
       return finish({ kind: 'next', text: `${parts.join('. ')}. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows.`, action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
     }
-    status.rows = 'done'
+    // 2026-10-04 · a cut sheet no longer holds the package (the review's finding 5, the owner: "Build it"). BP375 has six
+    // small items with no page in the vendor's file, and the lock on them kept the whole Send half shut. The cover has
+    // always printed "to follow" for a row with no sheet; only a reason still holds the package back.
+    status.rows = sheets ? 'current' : 'done'
     if (!rev.packageBuilt) {
       status.package = 'current'
-      return finish({ kind: 'next', text: 'Every row has its reason and its cut sheet. Tap Build package to make the PDF for the GC.', action: 'build_package', actionLabel: 'Build package' })
+      return sheets
+        ? finish({ kind: 'next', text: `${sheets}. Tap Edit on a row to fill it in. Or drop the house’s PDF and put its pages on the rows. You can build the package now too. Those rows will read cut sheet to follow.`, action: 'drop_vendor_pdf', actionLabel: 'Drop a vendor PDF' })
+        : finish({ kind: 'next', text: 'Every row has its reason and its cut sheet. Tap Build package to make the PDF for the GC.', action: 'build_package', actionLabel: 'Build package' })
     }
     status.package = 'done'
+    if (rev.sentOutside) {
+      // v2.4705 · it went by email: Share is done, and the next thing is whatever the GC writes back.
+      status.share = 'done'
+      status.review = 'waiting'
+      return finish({ kind: 'waiting', text: `Rev ${rev.number} went out by email. Type in their answers on step 6 as they come.`, action: null, actionLabel: null })
+    }
     status.share = 'current'
-    return finish({ kind: 'next', text: 'The package is built. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
+    return finish({ kind: 'next', text: sheets ? `The package is built. ${plural(rev.sheetsNeeded, 'row')} in it ${rev.sheetsNeeded === 1 ? 'reads' : 'read'} cut sheet to follow. Tap Share to get a link for the GC.` : 'The package is built. Tap Share to get a link for the GC.', action: 'share', actionLabel: 'Share' })
   }
 
   // Shared (or any non-draft newest revision).
@@ -174,15 +218,10 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
     return finish({ kind: 'waiting', text: `Rev ${rev.number} is with the GC. The link was opened ${room.opens} time${room.opens === 1 ? '' : 's'}.${who} Their answers show up on the rows here.`, action: 'copy_room_link', actionLabel: 'Copy the room link' })
   }
   status.review = 'done'
-  const by = d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer'
+  const by = nameOf(d)
   if (d.sentBack > 0) {
     status.resubmit = 'current'
-    return finish({
-      kind: 'next',
-      text: `${by} approved ${d.approved} and sent ${d.sentBack} back. Fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Then tap the green button to start a new version with only ${d.sentBack === 1 ? 'that row' : 'those rows'}.`,
-      action: 'resubmit',
-      actionLabel: `Rev ${rev.number + 1} from the ${plural(d.sentBack, 'row')} sent back`,
-    })
+    return finish(sentBackNext(rev.number, d))
   }
   if (d.open > 0) {
     status.review = 'waiting'
@@ -190,6 +229,29 @@ export function submittalJourney(input: SubmittalJourneyInput): SubmittalJourney
   }
   status.resubmit = 'done'
   return finish({ kind: 'done', text: `${by} approved every row. Next is the order log, Step 8.`, action: null, actionLabel: null })
+}
+
+type Decisions = NonNullable<SubmittalJourneyInput['decisions']>
+
+const nameOf = (d: Decisions) => (d.byName.length > 0 ? d.byName.join(', ') : 'The reviewer')
+
+/** Rows came back marked Revise or Reject: start the next draft to fix them. The line says nothing is sent, because the button's name alone left that open. The same on a shared revision and on a draft answered by email. */
+function sentBackNext(revNumber: number, d: Decisions): JourneyNext {
+  const by = nameOf(d)
+  const waiting = d.noAnswer ?? 0
+  // The page's step 6 counts a row with no product apart from the rows waiting on the reviewer; so does this line.
+  const noProduct = Math.min(d.noProduct ?? 0, waiting)
+  const owed = waiting - noProduct
+  // "approved 0 and sent 4 back" read oddly: with nothing approved, say what came back.
+  const said = d.approved > 0 ? `${by} approved ${d.approved} and sent ${d.sentBack} back` : `${by} sent ${plural(d.sentBack, 'row')} back`
+  return {
+    kind: 'next',
+    text: waiting > 0
+      ? `${said}. ${owed > 0 ? `${plural(owed, 'row')} still ${owed === 1 ? 'has' : 'have'} no answer. ` : ''}${noProduct > 0 ? `${plural(noProduct, 'row')} ${noProduct === 1 ? 'has' : 'have'} no product yet. ` : ''}Start a Rev ${revNumber + 1} draft to fix what was sent back. The rows with no answer go on it too. Nothing is sent until you share.`
+      : `${said}. Start a Rev ${revNumber + 1} draft to fix ${d.sentBack === 1 ? 'that row' : 'those rows'}. Nothing is sent until you share.`,
+    action: 'resubmit',
+    actionLabel: resubmitLabel(revNumber + 1),
+  }
 }
 
 /**
@@ -222,15 +284,30 @@ export function groupJourneyStages(stages: JourneyStage[]): JourneyGroup[] {
  */
 export type StageGate = { on: boolean; why: string | null }
 
-export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 'resubmit'): StageGate {
+/**
+ * The dashed loop from step 7 back to step 2, marked "Next revision" (punch list #84). It shows
+ * only while Resubmit is the live step on the newest revision: that is when the button there is
+ * the next thing to do, and a press starts the next revision at step 2.
+ */
+export function showNextRevisionLoop(stages: ReadonlyArray<Pick<JourneyStage, 'key' | 'status'>>, isNewest: boolean): boolean {
+  return isNewest && stages.some((s) => s.key === 'resubmit' && s.status === 'current')
+}
+
+/** What the newest draft holds, for the two buttons whose step the strip may leave unlit (a draft answered by email lights Their call and Resubmit instead). */
+export type DraftFacts = { rows: number; owesReason: number; packageBuilt: boolean }
+
+export function stageGate(stages: JourneyStage[], key: 'package' | 'share' | 'resubmit', /** the newest draft's facts; absent on a shared or older revision */ draft?: DraftFacts | null): StageGate {
   const status = (k: JourneyStageKey) => stages.find((s) => s.key === k)?.status ?? 'later'
+  // 2026-10-04 · only a reason holds the package back; a row with no cut sheet prints "to follow" on the cover.
+  const reasonsDone = draft != null && draft.rows > 0 && draft.owesReason === 0
   switch (key) {
     case 'package':
-      return status('package') !== 'later' ? { on: true, why: null } : { on: false, why: 'Build package turns on when every row has its reason and its cut sheet.' }
+      return status('package') !== 'later' || reasonsDone ? { on: true, why: null } : { on: false, why: 'Build package turns on when every row that owes a reason has one.' }
     case 'share':
-      return status('share') !== 'later' ? { on: true, why: null } : { on: false, why: 'Share turns on once the package is built.' }
+      return status('share') !== 'later' || (reasonsDone && draft.packageBuilt) ? { on: true, why: null } : { on: false, why: 'Share turns on once the package is built.' }
     case 'resubmit':
       // Past building: a shared revision, or a draft whose package is built (v2.4090's supersede-the-draft path stays reachable there).
-      return status('share') === 'done' || status('package') === 'done' ? { on: true, why: null } : { on: false, why: 'New revision turns on once the package is built.' }
+      // 2026-10-03 · or a draft the GC has already answered by email: it is past building too.
+      return status('share') === 'done' || status('package') === 'done' || status('review') !== 'later' ? { on: true, why: null } : { on: false, why: 'You can start the next draft once the package is built.' }
   }
 }

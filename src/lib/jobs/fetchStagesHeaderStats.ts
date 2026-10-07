@@ -47,6 +47,7 @@ import {
   type StagesHeaderStats,
 } from './stagesHeaderStats'
 import { computeBillTruth, type BillTruth } from '../billing/billTruth'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type FetchStagesHeaderStatsResult =
   | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[]; billTruth: BillTruth }
@@ -65,7 +66,7 @@ export const LEAN_STATS_ACTIVE_INVOICE_STATUSES = ['ready_to_bill', 'billed'] as
 
 /** First day of the trailing collected window (payments fetch bound). */
 export function collectedWindowStartYmd(now = new Date()): string {
-  return addDaysYmd(now.toISOString().slice(0, 10), -(COLLECTED_DAYS - 1))
+  return addDaysYmd(todayYmdInAppTz(now), -(COLLECTED_DAYS - 1))
 }
 
 export async function fetchStagesHeaderStats(

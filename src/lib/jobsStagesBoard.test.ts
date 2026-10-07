@@ -23,6 +23,7 @@ import {
   jobBillingUnallocatedDollars,
   jobPartialInvoiceRemainingDollars,
   jobInCollections,
+  jobUncollectible,
   readyToBillRowsExposureTotal,
   stagesMergedBillingInvoiceId,
   sortStagesJobsByEffectiveNumberDesc,
@@ -67,6 +68,15 @@ function rtbInvoiceStub(overrides: Partial<Record<string, unknown>> & { id: stri
     agreed_write_down_note: null,
     agreed_write_down_previous_amount: null,
     agreed_write_down_stripe_credit_note_id: null,
+    lien_offer_applied_at: null,
+    lien_offer_by: null,
+    lien_offer_credit_cents: null,
+    lien_offer_credit_note_id: null,
+    lien_offer_ended_at: null,
+    lien_offer_filing_id: null,
+    lien_offer_pct: 0,
+    lien_offer_set_by: null,
+    lien_offer_taken_at: null,
     bill_to_email: null,
     bill_to_name: null,
     bill_to_phone: null,
@@ -205,6 +215,15 @@ describe('buildReadyToBillStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -312,6 +331,15 @@ describe('buildReadyToBillStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -692,6 +720,15 @@ describe('readyToBillRowsExposureTotal', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -799,6 +836,15 @@ describe('stagesMergedBillingInvoiceId', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -837,6 +883,15 @@ describe('stagesMergedBillingInvoiceId', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -884,6 +939,15 @@ describe('buildBilledStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -932,6 +996,15 @@ describe('buildBilledStageRows', () => {
       agreed_write_down_note: null,
       agreed_write_down_previous_amount: null,
       agreed_write_down_stripe_credit_note_id: null,
+      lien_offer_applied_at: null,
+      lien_offer_by: null,
+      lien_offer_credit_cents: null,
+      lien_offer_credit_note_id: null,
+      lien_offer_ended_at: null,
+      lien_offer_filing_id: null,
+      lien_offer_pct: 0,
+      lien_offer_set_by: null,
+      lien_offer_taken_at: null,
       bill_to_email: null,
       bill_to_name: null,
       bill_to_phone: null,
@@ -1020,6 +1093,19 @@ describe('collections partition in buildJobsStagesBoardLists', () => {
     expect(lists.collectionsRows).toHaveLength(2)
     expect(lists.collectionsRows.every((r) => r.kind === 'invoice')).toBe(true)
     expect(lists.billedActiveRows).toHaveLength(0)
+  })
+
+  it('a Collections job marked Uncollectible leaves collectionsRows for uncollectibleRows; billedRows still hold ALL billed (punch list #94, v2.4792)', () => {
+    const chased = jobStub({ id: 'job-1', status: 'billed', collections_at: '2026-07-01T00:00:00Z', invoices: [billedInvoiceStub('inv-1', 'job-1', 350)] })
+    const gone = { ...jobStub({ id: 'job-2', status: 'billed', collections_at: '2026-04-13T00:00:00Z', invoices: [billedInvoiceStub('inv-2', 'job-2', 7502)] }), uncollectible_at: '2026-10-07T00:00:00Z' }
+    const lists = buildJobsStagesBoardLists([chased, gone], '')
+    expect(lists.collectionsJobs.map((j) => j.id)).toEqual(['job-1'])
+    expect(lists.uncollectibleJobs.map((j) => j.id)).toEqual(['job-2'])
+    expect(lists.collectionsRows.map((r) => r.job.id)).toEqual(['job-1'])
+    expect(lists.uncollectibleRows.map((r) => r.job.id)).toEqual(['job-2'])
+    expect(lists.billedActiveRows).toHaveLength(0)
+    expect(lists.billedJobs.map((j) => j.id).sort()).toEqual(['job-1', 'job-2'])
+    expect(lists.billedRows).toHaveLength(2)
   })
 
   it('flagged non-billed job appears in no collections list', () => {
@@ -1484,5 +1570,15 @@ describe('v2.3775 — a partly paid billed line counts for what is still unpaid 
 
   it('the same job without its payment rows still reads the face amount (the bug this replaces)', () => {
     expect(jobBillingUnallocatedDollars({ ...job978, payments: [] })).toBe(0)
+  })
+})
+
+describe('jobUncollectible (punch list #94, v2.4788)', () => {
+  it('is in Collections AND marked; a mark outside Collections or off a billed job counts for nothing', () => {
+    expect(jobUncollectible({ status: 'billed', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })).toBe(true)
+    expect(jobUncollectible({ status: 'billed', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: null })).toBe(false)
+    expect(jobUncollectible({ status: 'billed', collections_at: '2026-08-01T00:00:00Z' })).toBe(false)
+    expect(jobUncollectible({ status: 'billed', collections_at: null, uncollectible_at: '2026-10-07T00:00:00Z' })).toBe(false)
+    expect(jobUncollectible({ status: 'paid', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })).toBe(false)
   })
 })

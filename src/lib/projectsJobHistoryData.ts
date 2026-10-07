@@ -15,6 +15,9 @@ export type ProjectsJobHistoryClockRow = {
   user_id: string
   work_date: string
   clocked_out_at: string | null
+  /** Since v2.4694, for the job window's Days on the job hours; absent on an older caller's rows. */
+  clocked_in_at?: string | null
+  quick_add_minutes?: number | null
 }
 
 export type ProjectsJobHistoryJob = {

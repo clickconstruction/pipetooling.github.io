@@ -8,14 +8,16 @@ import { gcOutcomeRowsForBid } from '../lib/bids/gcOutcomeRows'
 import { groupVersionsByGc } from '../lib/bids/gcPackets'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
 import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
+import { mapPageBidDueTone, mapPageJobSection, type BidBoardMapDueTone, type JobsMapSection } from '../lib/map/mapPageSections'
+import type { MapPageUnplaced } from '../lib/map/mapPageUnplaced'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
-  'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status'
+  'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status' | 'collections_at'
 >
 type BidRow = Pick<
   Database['public']['Tables']['bids']['Row'],
-  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent' | 'customer_id'
+  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent' | 'bid_due_date' | 'customer_id'
 >
 
 type EstimateRow = Pick<
@@ -37,8 +39,14 @@ export type MapPageEntity = {
   sublabel: string
   linkTo: string
   meta: string
+  /** The Pipeline section (jobs only, v2.4802); null for a status off the pipeline. */
+  jobSection?: JobsMapSection | null
+  /** Billed and flagged for Collections (jobs only, v2.4802) — the pin wears the red ring. */
+  inCollections?: boolean
   /** Bid Board section this bid falls in (bids only); same kernel as the board's buckets. */
   bidSection?: SubmissionSectionKey
+  /** The Bid Board's due ring for an unsent bid (bids only, v2.4802). */
+  bidDueTone?: BidBoardMapDueTone | null
   /** The bid's GC/Builder customer id (bids only) — drives /map?builder= focus (v2.1162). */
   bidCustomerId?: string
   /**
@@ -76,6 +84,8 @@ export function useMapPageData(enabled: boolean) {
   const [error, setError] = useState<string | null>(null)
   const [entities, setEntities] = useState<MapPageEntity[]>([])
   const [geocodeAddressRows, setGeocodeAddressRows] = useState<GeocodeAddressRow[]>([])
+  // The records with no address the geocoder can key (v2.4805) — the sheet lists them.
+  const [unplaced, setUnplaced] = useState<MapPageUnplaced[]>([])
   const loadGenerationRef = useRef(0)
 
   const load = useCallback(async () => {
@@ -90,11 +100,11 @@ export function useMapPageData(enabled: boolean) {
     try {
       const [jobRows, bidRows, estRows] = await Promise.all([
         withSupabaseRetry<JobRow[]>(
-          async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, status').order('job_name'),
+          async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, status, collections_at').order('job_name'),
           'map jobs_ledger'
         ),
         withSupabaseRetry<BidRow[]>(
-          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent, customer_id').order('project_name'),
+          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent, bid_due_date, customer_id').order('project_name'),
           'map bids'
         ),
         withSupabaseRetry<EstimateRow[]>(
@@ -136,11 +146,14 @@ export function useMapPageData(enabled: boolean) {
       if (gen !== loadGenerationRef.current) return
 
       const next: MapPageEntity[] = []
+      const skipped: MapPageUnplaced[] = []
       for (const j of jobRows) {
         const addr = j.job_address?.trim()
-        if (!addr) continue
-        const key = normalizeAddressForGeocodeKey(addr)
-        if (key.length < 3) continue
+        const key = addr ? normalizeAddressForGeocodeKey(addr) : ''
+        if (!addr || key.length < 3) {
+          skipped.push({ kind: 'job', id: j.id, tableLabel: j.job_name, sublabel: j.hcp_number, linkTo: `/jobs?edit=${encodeURIComponent(j.id)}`, addressLabel: addr || null })
+          continue
+        }
         next.push({
           kind: 'job',
           id: j.id,
@@ -152,14 +165,18 @@ export function useMapPageData(enabled: boolean) {
           sublabel: j.hcp_number,
           linkTo: `/jobs?edit=${encodeURIComponent(j.id)}`,
           meta: j.status,
+          jobSection: mapPageJobSection(j.status),
+          inCollections: j.collections_at != null && mapPageJobSection(j.status) === 'billed',
         })
       }
       for (const b of bidRows) {
         const addr = b.address?.trim()
-        if (!addr) continue
-        const key = normalizeAddressForGeocodeKey(addr)
-        if (key.length < 3) continue
+        const key = addr ? normalizeAddressForGeocodeKey(addr) : ''
         const title = b.project_name?.trim() || 'Bid'
+        if (!addr || key.length < 3) {
+          skipped.push({ kind: 'bid', id: b.id, tableLabel: title, sublabel: b.bid_number ?? '', linkTo: `/bids?bidId=${encodeURIComponent(b.id)}`, addressLabel: addr || null })
+          continue
+        }
         next.push({
           kind: 'bid',
           id: b.id,
@@ -172,15 +189,18 @@ export function useMapPageData(enabled: boolean) {
           linkTo: `/bids?bidId=${encodeURIComponent(b.id)}`,
           meta: b.outcome ?? '',
           bidSection: getSubmissionSectionKey(b) ?? undefined,
+          bidDueTone: mapPageBidDueTone(b.bid_due_date, b.outcome, b.bid_date_sent),
           bidCustomerId: b.customer_id ?? undefined,
           bidGcSections: gcSectionsByBid.get(b.id),
         })
       }
       for (const e of estRows) {
         const addr = resolveEstimateAddress(e)
-        if (!addr) continue
-        const key = normalizeAddressForGeocodeKey(addr)
-        if (key.length < 3) continue
+        const key = addr ? normalizeAddressForGeocodeKey(addr) : ''
+        if (!addr || key.length < 3) {
+          skipped.push({ kind: 'estimate', id: e.id, tableLabel: e.title, sublabel: `#${e.estimate_number}`, linkTo: `/estimates/${e.id}`, addressLabel: addr || null })
+          continue
+        }
         const total = (e.total_cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
         next.push({
           kind: 'estimate',
@@ -239,6 +259,7 @@ export function useMapPageData(enabled: boolean) {
       }
 
       setEntities(mergeCoords(next, byKey))
+      setUnplaced(skipped)
       setLoading(false)
 
       if (ordered.length > 0) {
@@ -339,6 +360,7 @@ export function useMapPageData(enabled: boolean) {
     geocodeBusy: geocodeInProgress,
     geocodeInProgress,
     geocodeAddressRows,
+    unplaced,
     reload: load,
   }
 }

@@ -3,7 +3,7 @@ import type { Bid } from '../../types/bids'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import { bidDisplayName, bidWorkflowTabHeading } from '../../lib/bids/bidFormatting'
-import { BidMarkButton, BidMarkForSomeone, BidMarkRequestStrip, BidMarkSentStatus } from './BidMarkControls'
+import { BidMarkRequestStrip, BidMarkSentStatus, BidMarkTitlePair } from './BidMarkControls'
 
 type BidWorkflowTabTitleWithPreviewProps = {
   bid: Bid
@@ -13,10 +13,10 @@ type BidWorkflowTabTitleWithPreviewProps = {
 }
 
 /**
- * The open bid's title on every workflow tab. After the name sits the bid's Mark button
- * (v2.4287): *Mark* / *Marked · today*, so a bid can be marked for later without closing
- * it and finding its row again; then *For someone…* (v2.4297), which marks it for a
- * teammate with a note, and where a mark you sent stands. When someone marked the bid for
+ * The open bid's title on every workflow tab. After the name sits one small control of two
+ * icons, `[ mark | for someone ]`: the ring marks the bid for later without closing it and
+ * finding its row again (v2.4287; filled when marked), the person marks it for a teammate
+ * with a note (v2.4297). Then, where a mark you sent stands. When someone marked the bid for
  * you, their note sits under the title on its own line with Done and Not for me — a sibling
  * of the heading, full width, so it wraps under the title in the host's header row.
  */
@@ -29,7 +29,7 @@ export function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPrev
   const mark = (
     <>
       {' '}
-      <BidMarkButton bidId={bid.id} /> <BidMarkForSomeone bid={bid} /> <BidMarkSentStatus bidId={bid.id} />
+      <BidMarkTitlePair bid={bid} /> <BidMarkSentStatus bidId={bid.id} />
     </>
   )
   const strip = <BidMarkRequestStrip bidId={bid.id} />

@@ -146,12 +146,12 @@ export default function SetPromisedPayDateModal({
       role="dialog"
       aria-modal="true"
       aria-label="They said — record a promised payment date"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, calc(100vw - 2rem))', maxHeight: '92vh', overflowY: 'auto', boxSizing: 'border-box' }}
+        style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(440px, calc(100vw - 2rem))', maxHeight: 'min(92vh, 100%)', overflowY: 'auto', boxSizing: 'border-box' }}
       >
         <h2 style={{ margin: 0, fontSize: '1.05rem' }}>They said…</h2>
         <p style={{ margin: '0.35rem 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

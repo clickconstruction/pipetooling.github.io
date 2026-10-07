@@ -32,7 +32,7 @@ const OVERLAY_STYLE: CSSProperties = {
   justifyContent: 'center',
   // Above the fullscreen Job activity / notes overlay (1001), which can open this modal.
   zIndex: 1002,
-  padding: '1rem',
+  padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
 }
 
 export function ManageJobPeopleModal({

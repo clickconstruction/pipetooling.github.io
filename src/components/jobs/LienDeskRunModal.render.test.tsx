@@ -19,7 +19,7 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [] }))
+const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
@@ -66,6 +66,24 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
   })
 
+  it('offers to undo the approval only when the opener says the run was just started (v2.4541)', async () => {
+    const onUndo = vi.fn()
+    const view = renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-undo')).toBeNull()
+    view.unmount()
+    renderWithProviders(
+      <LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} undo={{ words: 'You just approved this notice for Loberg Contracting. Pressed it by mistake?', busy: false, onUndo }} />,
+    )
+    await settle()
+    const strip = screen.getByTestId('run-undo')
+    expect(strip.textContent).toContain('You just approved this notice for Loberg Contracting. Pressed it by mistake?')
+    // It sits under the title and above the steps.
+    expect(strip.compareDocumentPosition(screen.getByTestId('run-steps')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Undo the approval…' }))
+    expect(onUndo).toHaveBeenCalledTimes(1)
+  })
+
   it('a recipient with no mailing address blocks the run and says so', async () => {
     const n = notice()
     n.recipients[0] = { ...n.recipients[0]!, name: '', address: '' }
@@ -83,7 +101,11 @@ describe('LienDeskRunModal', () => {
     await settle()
     expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
-    expect(screen.getByText(/share an envelope/)).toBeTruthy()
+    // What the packet is sits behind the ? beside the title (v2.4621).
+    expect(screen.queryByTestId('run-explainer')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'What the packet is' }))
+    expect(screen.getByTestId('run-explainer').textContent).toContain('share an envelope')
+    expect(screen.getByTestId('run-explainer').textContent).not.toContain('—')
     expect(screen.getByTestId('run-envelope-1').textContent).toContain('2 notices inside')
     expect(screen.getByTestId('run-row-j650-owner')).toBeTruthy()
     expect(screen.getByTestId('run-row-j651-owner')).toBeTruthy()
@@ -92,6 +114,56 @@ describe('LienDeskRunModal', () => {
     fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking'), { target: { value: '9407 2' } })
     expect((screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking') as HTMLInputElement).value).toBe('9407 2')
     expect(screen.getAllByLabelText(/— tracking$/)).toHaveLength(2)
+  })
+})
+
+describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch list #87 B)', () => {
+  const ticked = (partial: Partial<RunNotice> = {}) => {
+    const n = notice(partial)
+    return { ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: true } : r)) }
+  }
+  const tickLabel = 'Envelope 2 · Original contractor: Loberg Contracting — courtesy PDF by email'
+
+  it('the GC envelope carries the tick, on, naming the address; the owner envelope never does; unticking reaches the record', async () => {
+    recordMock.mockClear()
+    renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-courtesy-1')).toBeNull()
+    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@loberg.test, emailed when the run is recorded')
+    const tick = screen.getByLabelText(tickLabel) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    fireEvent.click(tick)
+    expect((screen.getByLabelText(tickLabel) as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    const [sent] = recordMock.mock.calls[0] as unknown as [RunNotice[]]
+    expect(sent[0]!.recipients.map((r) => [r.key, r.courtesy])).toEqual([
+      ['owner', undefined],
+      ['original_contractor', false],
+    ])
+  })
+
+  it('one GC envelope with two notices says one email per notice; switched to email, the tick goes because the email is the send', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[ticked(), ticked({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651', months: ['2026-07'] })]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-courtesy-2').textContent).toBe('Courtesy PDF to office@loberg.test, emailed when the run is recorded, one email per notice')
+    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method'), { target: { value: 'email' } })
+    expect(screen.queryByTestId('run-courtesy-2')).toBeNull()
+    expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
+  })
+
+  it('the record names the courtesy PDF that went, and warns when one did not', async () => {
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test' }], courtesyFailed: [] }))
+    const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    expect(await screen.findByText('1 notice recorded — the desk reads them as sent. Courtesy PDF emailed to office@loberg.test.')).toBeTruthy()
+    view.unmount()
+    recordMock.mockImplementationOnce(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [], courtesyFailed: [{ itemId: 'it1', label: '650 · ATI Schertz', email: 'office@loberg.test', reason: 'Resend 502' }] }))
+    renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-06" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    expect(await screen.findByText('Courtesy PDF not emailed: 650 · ATI Schertz to office@loberg.test (Resend 502). That notice is recorded all the same.')).toBeTruthy()
   })
 })
 
@@ -170,5 +242,36 @@ describe('LienDeskRunModal — the mailing (v2.4119)', () => {
     expect(recordedNotices.map((n) => n.itemId)).toEqual(['it1'])
     expect(opts.mailedOn).toBe('2026-09-29')
     expect(printed).toEqual([])
+  })
+})
+
+describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
+  it('Preview on a copy row opens the pages that copy prints, the arrows walk the packet, Esc closes only the preview', async () => {
+    const onClose = vi.fn()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={onClose} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('lien-run-preview')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-preview-j650-owner'))
+    const overlay = screen.getByTestId('lien-run-preview')
+    expect(screen.getByTestId('lien-run-preview-title').textContent).toBe('650 · ATI Schertz · owner of record')
+    expect(screen.getByTestId('lien-run-preview-envelope').textContent).toBe('Envelope 1 · Owner of record Elbel Holdings LLC · 4 Example Way, Schertz, TX')
+    expect(screen.getByTestId('lien-run-preview-count').textContent).toBe('1 of 2')
+    // The owner's copy: the cover note, then the form naming the copy.
+    expect(screen.getAllByTestId('lien-run-preview-page-label').map((el) => el.textContent)).toEqual(['Page 1 of 2 · Cover note', 'Page 2 of 2 · § 53.056 notice · copy for owner of record'])
+    expect(overlay.textContent).toContain('This is a routine notice…')
+    expect(overlay.textContent).toContain('Copy for: Owner of record')
+    // › walks to the original contractor's copy: the form alone.
+    fireEvent.click(screen.getByRole('button', { name: 'Next copy' }))
+    expect(screen.getByTestId('lien-run-preview-count').textContent).toBe('2 of 2')
+    expect(screen.getByTestId('lien-run-preview-title').textContent).toBe('650 · ATI Schertz · original contractor')
+    expect(screen.getAllByTestId('lien-run-preview-page-label').map((el) => el.textContent)).toEqual(['Page 1 of 1 · § 53.056 notice · copy for original contractor'])
+    expect((screen.getByRole('button', { name: 'Next copy' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByTestId('lien-run-preview-count').textContent).toBe('1 of 2')
+    // Esc closes the preview and leaves the run open.
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-run-preview')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

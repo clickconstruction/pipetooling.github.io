@@ -31,7 +31,7 @@ export default function CustomerAcceptanceRecordModal({ open, onClose, estimateI
   return (
     <div
       role="presentation"
-      style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 780, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -40,7 +40,7 @@ export default function CustomerAcceptanceRecordModal({ open, onClose, estimateI
         role="dialog"
         aria-modal="true"
         aria-labelledby="customer-acceptance-record-title"
-        style={{ width: '100%', maxWidth: 720, maxHeight: 'min(92vh, 900px)', overflow: 'auto', background: 'var(--surface)', borderRadius: 8, boxShadow: '0 16px 48px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}
+        style={{ width: '100%', maxWidth: 720, maxHeight: 'min(92vh, 900px, 100%)', overflow: 'auto', background: 'var(--surface)', borderRadius: 8, boxShadow: '0 16px 48px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div

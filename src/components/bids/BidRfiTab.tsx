@@ -223,10 +223,12 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Edit bid to change</span>
                 </div>
               </div>
+              {/* v2.4453: the label-and-field rows wrap, and their labels may break, so on a phone the
+                  field drops below its label. Held on one line, the date row pushed the page 105 px sideways. */}
               <div>
                 <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Company Information: Click Plumbing and Electrical</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem' }}>Project Lead Contact</label>
                   <input
                     type="text"
                     value={form.contactPerson}
@@ -235,8 +237,8 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
                     style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
                   />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact Phone/Email</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem' }}>Project Lead Contact Phone/Email</label>
                   <input
                     type="text"
                     value={form.phoneEmail}
@@ -247,8 +249,8 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
                 </div>
               </div>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Response request date (1 week by default)</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem' }}>Response request date (1 week by default)</label>
                   <input
                     type="date"
                     value={form.responseRequestDate}

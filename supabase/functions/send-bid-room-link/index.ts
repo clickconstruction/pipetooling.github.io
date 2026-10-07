@@ -49,7 +49,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
     const { data: room } = await admin
       .from('bid_proposal_rooms')
-      .select('id, public_token, closed_at')
+      .select('id, public_token, closed_at, bid_id, customer_id')
       .eq('id', roomId)
       .maybeSingle()
     if (!room || room.closed_at) return json({ error: 'Room is closed' }, 410)
@@ -94,7 +94,8 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     let emailed = false
     if (resendApiKey) {
-      const sent = await sendEmailViaResend(email, subject, text, html, resendApiKey, { from: COMPANY_EMAIL_FROM, ...(mail.replyTo ? { replyTo: mail.replyTo } : {}) })
+      // Sent copies (docs/SENT_COPIES.md): the email with the bid room's link is kept, under the room.
+      const sent = await sendEmailViaResend(email, subject, text, html, resendApiKey, { from: COMPANY_EMAIL_FROM, ...(mail.replyTo ? { replyTo: mail.replyTo } : {}), file: { kind: 'bid_room_link', bidId: (room as { bid_id?: string | null }).bid_id, customerId: (room as { customer_id?: string | null }).customer_id, source: { table: 'bid_proposal_rooms', id: roomId }, sentBy: userData.user.id } })
       if (!sent.success) return json({ ok: false, error: sent.error ?? 'Email failed' }, 502)
       emailed = true
     }

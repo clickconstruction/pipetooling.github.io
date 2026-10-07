@@ -8,8 +8,10 @@
 import type { CSSProperties } from 'react'
 import { groupJourneyStages, type JourneyAction, type JourneyStage, type SubmittalJourney } from '../../lib/submittals/submittalJourney'
 
-const pillBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 999, padding: '0.15rem 0.6rem 0.15rem 0.25rem', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 500, lineHeight: 1.3, color: 'var(--text-muted)', background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }
-const numBase: CSSProperties = { width: 18, height: 18, borderRadius: '50%', border: '1.5px solid var(--border-strong)', display: 'inline-grid', placeItems: 'center', fontSize: '0.62rem', fontWeight: 700 }
+// 2026-10-04 · the outline is three longhands, never the `border` shorthand: a lit pill sets its own borderColor, and when it went back
+// to grey React took that colour off and left the shorthand's colour blank, so the outline drew in the text colour.
+const pillBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.35rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 999, padding: '0.15rem 0.6rem 0.15rem 0.25rem', fontFamily: 'inherit', fontSize: '0.75rem', fontWeight: 500, lineHeight: 1.3, color: 'var(--text-muted)', background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }
+const numBase: CSSProperties = { width: 18, height: 18, borderRadius: '50%', borderWidth: 1.5, borderStyle: 'solid', borderColor: 'var(--border-strong)', display: 'inline-grid', placeItems: 'center', fontSize: '0.62rem', fontWeight: 700 }
 
 function pillStyle(status: JourneyStage['status']): { pill: CSSProperties; num: CSSProperties } {
   if (status === 'done') return { pill: { ...pillBase, borderColor: 'var(--text-green-600)', color: 'var(--text-green-700)' }, num: { ...numBase, borderColor: 'var(--text-green-600)', color: 'var(--text-green-700)' } }
@@ -23,7 +25,7 @@ const groupWord = (status: JourneyStage['status']): CSSProperties => ({
   color: status === 'done' ? 'var(--text-green-700)' : status === 'current' ? 'var(--text-blue-700)' : status === 'waiting' ? 'var(--text-amber-800)' : 'var(--text-muted)',
 })
 
-const btn: CSSProperties = { fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 500, lineHeight: 1.3, padding: '0.28rem 0.7rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', whiteSpace: 'nowrap' }
+const btn: CSSProperties = { fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 500, lineHeight: 1.3, padding: '0.28rem 0.7rem', borderRadius: 4, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff', fontWeight: 600 }
 
 export function SubmittalJourneyStrip({
@@ -53,19 +55,8 @@ export function SubmittalJourneyStrip({
   const lead = next.kind === 'next' ? 'Next: ' : next.kind === 'waiting' ? 'Waiting: ' : 'Done: '
   return (
     <div data-tour="submittals-journey" data-testid="submittal-journey" style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <span aria-hidden />
-        <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          {onSeeGc ? (
-            <button type="button" onClick={onSeeGc} aria-haspopup="dialog" style={btn} title="The GC's page for the rows as they stand, in a window" data-testid="see-gc">
-              See what the GC sees
-            </button>
-          ) : null}
-          <button type="button" onClick={onWalkThrough} style={btn} title="A one-minute walkthrough of every stage, from the schedule to the GC's approval">
-            Walk me through it ▶
-          </button>
-        </span>
-      </div>
+      {/* One row: the stages, and the GC's page beside them. The walkthrough's own button lives in the title's Help menu (2026-10-05). */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }}>
       <div role="list" aria-label="Submittal stages" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         {groupJourneyStages(stages).map((g, gi, groups) => (
           <div key={g.label} role="group" aria-label={g.label} data-testid="journey-group" data-status={g.status} style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -88,6 +79,12 @@ export function SubmittalJourneyStrip({
             </span>
           </div>
         ))}
+      </div>
+        {onSeeGc ? (
+          <button type="button" onClick={onSeeGc} aria-haspopup="dialog" style={btn} title="The GC's page for the rows as they stand, in a window" data-testid="see-gc">
+            See what the GC sees
+          </button>
+        ) : null}
       </div>
       <div data-testid="journey-next" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.8125rem', color: 'var(--text-base)' }}>
         <span>

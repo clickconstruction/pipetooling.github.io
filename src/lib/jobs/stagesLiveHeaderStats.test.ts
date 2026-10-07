@@ -26,6 +26,7 @@ describe('liveBilledStats', () => {
     const live = liveBilledStats(jobs, NOW)
     expect(live.billed).toEqual(cached.billed)
     expect(live.collections).toEqual(cached.collections)
+    expect(live.uncollectible).toEqual(cached.uncollectible)
     expect(live.billedAging).toEqual(cached.billedAging)
     expect(live.billedNoDate).toBe(cached.billedNoDate)
     expect(live.billed).toEqual({ count: 4, total: 700 + 2000 + 350 + 0 })
@@ -46,6 +47,7 @@ describe('liveBilledStats', () => {
     const shown = overlayLiveBilledStats(cached, live)!
     expect(shown.billed).toEqual(live.billed)
     expect(shown.collections).toEqual(live.collections)
+    expect(shown.uncollectible).toEqual(live.uncollectible)
     expect(shown.billedAging).toEqual(live.billedAging)
     // everything the rows cannot speak for stays cached
     expect(shown.capableToBill).toBe(cached.capableToBill)
@@ -59,5 +61,16 @@ describe('liveBilledStats', () => {
     const cached = computeStagesHeaderStats(jobs, NOW)
     expect(overlayLiveBilledStats(cached, null)).toBe(cached)
     expect(overlayLiveBilledStats(null, liveBilledStats(jobs, NOW))).toBeNull()
+  })
+})
+
+describe('liveBilledStats — Uncollectible (punch list #94, v2.4792)', () => {
+  it('a Collections job the office gave up on moves from collections to uncollectible on the board and in the cache alike', () => {
+    const rows = jobRows.map((j) => (j.id === 'coll' ? { ...j, uncollectible_at: '2026-10-07T00:00:00Z' } : j))
+    const jobs = assembleLeanStatsJobs(rows, invoiceRows, paymentRows)
+    const live = liveBilledStats(jobs, NOW)
+    expect(live.collections).toEqual({ count: 0, total: 0 })
+    expect(live.uncollectible).toEqual({ count: 1, total: 800 })
+    expect(computeStagesHeaderStats(jobs, NOW).uncollectible).toEqual(live.uncollectible)
   })
 })

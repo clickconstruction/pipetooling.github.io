@@ -29,7 +29,7 @@ import { ArReturnCasePane, type ArCaseCloseReason } from './ar/ArReturnCasePane'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
-import { arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
@@ -256,6 +256,8 @@ export default function BankPaymentsModal({
   /** One fetch at a time; a list refresh bumps the sequence so a stale result is dropped, never cancelled mid-flight. */
   const hiddenInFlightRef = useRef(false)
   const hiddenFetchSeqRef = useRef(0)
+  /** Bumped when a list refresh outdated a fetch mid-flight, so the search asks again (v2.4576). */
+  const [hiddenRefetch, setHiddenRefetch] = useState(0)
   /** v2.4277: the trail under each row, keyed by deposit; cleared on every list refresh (rows may have moved). */
   const [trailsById, setTrailsById] = useState<Map<string, ArDepositTrail | null>>(() => new Map())
   const trailsUnavailableRef = useRef(false)
@@ -455,9 +457,14 @@ export default function BankPaymentsModal({
         else lines.push({ id: crypto.randomUUID(), kind: 'billed', targetKey: key, amountStr: amt.toFixed(2) })
       }
       if (lines.length > 0) setAllocLines(lines)
-      replacingRef.current = { caseId, depositId }
+      // v2.4580: the deposit stands in for the case only when its bills filled, or it has none on record.
+      if (lines.length > 0 || v.billsItPaid.length === 0) replacingRef.current = { caseId, depositId }
+      else {
+        replacingRef.current = null
+        showToast('The bills it paid are not open now. Pick the bill yourself.', 'info')
+      }
     },
-    [caseViews, targetByKey],
+    [caseViews, targetByKey, showToast],
   )
 
   /** List is loading OR the first fetch is still held for the org sorting config (cold cache). */
@@ -897,9 +904,10 @@ export default function BankPaymentsModal({
       } finally {
         hiddenInFlightRef.current = false
         setHiddenLoading(false)
+        if (seq !== hiddenFetchSeqRef.current) setHiddenRefetch((n) => n + 1)
       }
     })()
-  }, [wantHiddenCandidates, hiddenCandidates, sortingConfig])
+  }, [wantHiddenCandidates, hiddenCandidates, sortingConfig, hiddenRefetch])
 
   /**
    * v2.4277: the trail under every row — where the deposit went, who, when. One read
@@ -1020,7 +1028,7 @@ export default function BankPaymentsModal({
                 )
           queueMicrotask(() => {
             setSelectedId((sel) =>
-              next.some((r) => r.mercury_transaction_id === sel)
+              next.some((r) => r.mercury_transaction_id === sel) || (sel != null && caseIdsRef.current.has(sel))
                 ? sel
                 : next[0]?.mercury_transaction_id ?? null,
             )
@@ -1159,14 +1167,22 @@ export default function BankPaymentsModal({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
+      if (e.key !== 'Escape') return
+      // One layer at a time (v2.4576): Esc closes what is open over the window before the window.
+      if (sortingConfigModalOpen) return
+      e.preventDefault()
+      if (theySaidJob) setTheySaidJob(null)
+      else if (sweepOpen) {
+        if (!sweepApplying) {
+          setSweepOpen(false)
+          setSweepResults(null)
+        }
+      } else if (markAsk) setMarkAsk(null)
+      else onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, onClose, sortingConfigModalOpen, theySaidJob, sweepOpen, sweepApplying, markAsk])
 
   useEffect(() => {
     if (!open) setBankTxSearchQuery('')
@@ -1837,6 +1853,8 @@ export default function BankPaymentsModal({
     setApplySubmitting(true)
     setApplyError(null)
     const allocations: Array<{ invoice_id?: string; job_id?: string; payment_id?: string; amount: number }> = []
+    /** The jobs this apply pays — what decides whether a replaced case closes (v2.4580). */
+    const appliedJobIds: string[] = []
     for (const line of allocLines) {
       if (line.kind === 'payment') {
         const p = line.targetKey ? recordedPaymentById.get(line.targetKey) : undefined
@@ -1845,12 +1863,14 @@ export default function BankPaymentsModal({
         if (!(amt > 0)) continue
         // Server uses the row's amount; amount is included for transparency only.
         allocations.push({ payment_id: p.payment_id, amount: amt })
+        appliedJobIds.push(p.job_id)
         continue
       }
       const t = line.targetKey ? targetByKey.get(line.targetKey) : undefined
       if (!t) continue
       const amt = parseBankPaymentAllocationAmount(line.amountStr)
       if (!Number.isFinite(amt) || amt <= 0) continue
+      appliedJobIds.push(t.jobId)
       if (t.invoiceId) allocations.push({ invoice_id: t.invoiceId, amount: amt })
       else allocations.push({ job_id: t.jobId, amount: amt })
     }
@@ -1887,10 +1907,12 @@ export default function BankPaymentsModal({
       // when the switch was on and nothing had labelled it — say so, once.
       showToast(arAppliedToast(applySentence.total, arApplyBooksIncome(bankLabel)), 'success')
       // v2.4325: this deposit was used as the new check for a case — the apply landed, so the case closes.
+      // v2.4580: only while the apply still pays a job the returned check paid.
       const replacing = replacingRef.current
       if (replacing && replacing.depositId === selected.mercury_transaction_id) {
         replacingRef.current = null
-        await closeReplacedCase(replacing.caseId, replacing.depositId)
+        const replacedBills = caseViews.find((x) => x.id === replacing.caseId)?.billsItPaid ?? []
+        if (arApplyClosesReplacedCase(replacedBills, appliedJobIds)) await closeReplacedCase(replacing.caseId, replacing.depositId)
       }
       // v2.1639: allocation applied — now close exactly-covered Stripe-hosted
       // bills in Stripe so the emailed links die. Failures keep the modal open
@@ -2053,8 +2075,9 @@ export default function BankPaymentsModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 70,
-        padding: fullScreen ? 0 : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
+        zIndex: 770,
+        // v2.4444: full screen still starts below an iPad's status bar (--app-top-chrome); the card is the full height.
+        padding: fullScreen ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
         boxSizing: 'border-box',
       }}
       role="dialog"

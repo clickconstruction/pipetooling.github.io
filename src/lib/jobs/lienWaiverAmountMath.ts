@@ -56,6 +56,7 @@ export type WaiverAmountMath = {
 
 const round2 = (n: number) => Math.round(n * 100) / 100
 
+/** A `date` column's day. An instant's day is `calendarYmdInAppTzFromIso` (its first ten characters are the UTC date). */
 function ymd(s: string | null | undefined): string | null {
   const d = (s ?? '').trim().slice(0, 10)
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null
@@ -76,7 +77,7 @@ function paymentsOn(job: JobWithDetails, invoiceId: string): WaiverMathPayment[]
     .filter((p: Payment) => p.invoice_id === invoiceId && Number(p.amount ?? 0) !== 0)
     .map((p: Payment) => ({
       id: p.id,
-      ymd: ymd(p.paid_on) ?? ymd(p.sent_on) ?? ymd(p.created_at),
+      ymd: ymd(p.paid_on) ?? ymd(p.sent_on) ?? (calendarYmdInAppTzFromIso(p.created_at ?? '') || null),
       label: waiverPaymentLabel(p.payment_type),
       amount: round2(Number(p.amount ?? 0)),
     }))
@@ -93,7 +94,7 @@ export function waiverMathBills(job: JobWithDetails, picked: Invoice[], numbered
       return {
         invoiceId: inv.id,
         n: Math.max(1, numbered.findIndex((x) => x.id === inv.id) + 1),
-        billedYmd: ymd(inv.billed_at) ?? ymd(inv.created_at),
+        billedYmd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || calendarYmdInAppTzFromIso(inv.created_at ?? '') || null,
         amount,
         payments,
         paid,

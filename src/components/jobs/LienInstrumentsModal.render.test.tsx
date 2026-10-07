@@ -6,7 +6,7 @@
  * only — the statement math lives in src/lib/jobsDocuments/demandLetter.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
 
@@ -90,7 +90,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     // and Save & record send… stays a panel at the foot, never the phone's sheet (v2.4414)
     fireEvent.click(screen.getByRole('button', { name: 'Save & record send…' }))
     expect(document.querySelector('[data-demand-record-panel]')).toBeTruthy()
-    expect(document.querySelector('[data-demand-record-sheet]')).toBeNull()
+    expect(document.querySelector('[data-lien-record-sheet="demand"]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
@@ -131,15 +131,15 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
       expect(foot()).toBeTruthy()
       // Save & record send… is a sheet over the whole card (v2.4414): no panel at the foot, the job named on it, Back to the letter
       fireEvent.click(screen.getByRole('button', { name: 'Save & record send…' }))
-      const sheet = document.querySelector('[data-demand-record-sheet]') as HTMLElement
+      const sheet = document.querySelector('[data-lien-record-sheet="demand"]') as HTMLElement
       expect(sheet).toBeTruthy()
       expect(document.querySelector('[data-demand-record-panel]')).toBeNull()
       expect(foot()).toBeNull()
-      expect(sheet.querySelector('[data-demand-record-summary]')!.textContent).toMatch(/^Demand letter · \$/)
-      expect(sheet.querySelector('[data-demand-record-summary]')!.textContent).toContain('Service Visit — 628 Terrell Rd (HCP 867)')
+      expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toMatch(/^Demand letter · \$/)
+      expect(sheet.querySelector('[data-lien-record-summary]')!.textContent).toContain('Service Visit — 628 Terrell Rd (HCP 867)')
       expect(sheet.querySelectorAll('[aria-pressed]').length).toBe(4)
       fireEvent.click(screen.getByRole('button', { name: 'Back' }))
-      expect(document.querySelector('[data-demand-record-sheet]')).toBeNull()
+      expect(document.querySelector('[data-lien-record-sheet="demand"]')).toBeNull()
       expect(foot()).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Close' }))
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -148,10 +148,64 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     }
   })
 
+  it('the LAST WORK stop’s change › opens the last day’s line editing under the timeline; Save the day opens the window that shows what moves; Cancel folds it away (v2.4735)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    const door = await waitFor(() => {
+      const el = document.querySelector('[data-lien-timeline-last-work-door]') as HTMLButtonElement | null
+      expect(el).toBeTruthy()
+      return el!
+    })
+    expect(door.textContent).toBe('change ›')
+    expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-last-work-editor')).toBeTruthy()
+    expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeNull()
+    fireEvent.click(screen.getByTestId('lien-last-work-save'))
+    expect(screen.getByTestId('lien-last-work-confirm')).toBeTruthy()
+    fireEvent.click(within(screen.getByTestId('lien-last-work-confirm')).getByRole('button', { name: 'Close' }))
+    expect(screen.queryByTestId('lien-last-work-confirm')).toBeNull()
+    fireEvent.click(within(screen.getByTestId('lien-last-work-editor')).getByRole('button', { name: 'Cancel' }))
+    expect(document.querySelector('[data-lien-window-last-work]')).toBeNull()
+    expect(document.querySelector('[data-lien-timeline-last-work-door]')).toBeTruthy()
+  })
+
+  it('reads a day set by hand on its timeline, and the Deadlines door opens it already editing (v2.4735)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ created_at: '2026-02-03T15:00:00Z', last_work_date: null, lien_last_work_on: '2026-08-11', lien_last_work_note: 'The crew’s last trip' })} openLastWork />)
+    await waitFor(() => expect(document.querySelector('[data-lien-timeline-step="last_work"]')).toBeTruthy())
+    const stop = document.querySelector('[data-lien-timeline-step="last_work"]') as HTMLElement
+    expect(stop.textContent).toContain('Aug 2026')
+    expect(stop.textContent).not.toMatch(/creation/)
+    expect(screen.getByTestId('lien-last-work-editor')).toBeTruthy()
+  })
+
+  it('names the next step above the papers, with its door, and links to Release of Lien (punch list #82)', async () => {
+    const onOpenLienDesk = vi.fn()
+    const onOpenRelease = vi.fn()
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} onOpenLienDesk={onOpenLienDesk} onOpenRelease={onOpenRelease} />)
+    await settle()
+    expect(screen.getByRole('dialog', { name: /^Liens on job / })).toBeTruthy()
+    // v2.4693: the step is said once, in the timeline's verdict band, with its door at the right; the box under the strip is a phone's.
+    const card = await waitFor(() => {
+      const el = document.querySelector('[data-lien-timeline-verdict]') as HTMLElement | null
+      expect(el).toBeTruthy()
+      return el!
+    })
+    expect(card.textContent).toContain('Next on the path')
+    expect(document.querySelector('[data-lien-window-next-step]')).toBeNull()
+    const door = card.querySelector('[data-lien-window-next-step-button]') as HTMLButtonElement | null
+    if (door) {
+      fireEvent.click(door)
+      // A notice step goes to the desk on this job; any other step switches this window's tab.
+      if (/Lien desk/.test(door.textContent ?? '')) expect(onOpenLienDesk).toHaveBeenCalledWith(job().id, expect.stringMatching(/notice|retainage/))
+    }
+    fireEvent.click(within(document.querySelector('[data-lien-window-waivers]') as HTMLElement).getByRole('button', { name: 'Waivers are their own paper ›' }))
+    expect(onOpenRelease).toHaveBeenCalledTimes(1)
+  })
+
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await settle()
-    expect(screen.getByRole('dialog', { name: 'Lien instruments' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: /^Liens on job / })).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/the GC on the job/)).toBeTruthy())
     const debtor = document.querySelector('[data-demand-debtor]') as HTMLElement
     expect(debtor.textContent).toContain('RMC- Dudley Mason')
@@ -167,8 +221,10 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(stmt.textContent).toContain('Balance due$1,710.00')
     expect(stmt.textContent).toContain('Fix it on the bill')
 
-    // The preview: the Re line names the bill's number and the balance; no id fragment.
-    expect(screen.getByText('Re: Final Demand for Payment — Invoice #1 · $1,710.00')).toBeTruthy()
+    // The preview: the subject names the bill's number, the box the balance; no id fragment.
+    expect(screen.getByText('Final demand for payment')).toBeTruthy()
+    expect(screen.getByText('Invoice #1')).toBeTruthy()
+    expect((document.querySelector('[data-demand-amount-box]') as HTMLElement).textContent).toContain('Balance due$1,710.00')
     expect(screen.getByText('Statement of account')).toBeTruthy()
     expect(screen.queryByText(/Details of Debt/)).toBeNull()
 
@@ -177,11 +233,12 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(enclosed.textContent).toContain('Exhibit A · Invoice #1, as sent August 18, 2026')
     expect(enclosed.textContent).toContain('always')
     expect(enclosed.textContent).toContain('Signed agreement — none on this job')
-    expect(enclosed.textContent).toContain('Exhibit C · Delivery record')
-    expect(screen.getByText('The invoice is enclosed as Exhibit A and the delivery record as Exhibit C. All payments and credits have been allowed.')).toBeTruthy()
+    // The labels run in order: with no agreement the delivery record is B, never C over a missing B.
+    expect(enclosed.textContent).toContain('Exhibit B · Delivery record')
+    expect(screen.getByText('The invoice is enclosed as Exhibit A and the delivery record as Exhibit B. All payments and credits have been allowed.')).toBeTruthy()
     expect(document.querySelector('[data-demand-exhibit="A"]')).toBeTruthy()
-    expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy()
-    expect(document.querySelector('[data-demand-exhibit="B"]')).toBeNull()
+    expect(document.querySelector('[data-demand-exhibit="B"]')).toBeTruthy()
+    expect(document.querySelector('[data-demand-exhibit="C"]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Print packet' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Download PDF · 3 documents' })).toBeTruthy()
   })
@@ -233,14 +290,62 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByRole('button', { name: 'Send · 3 documents' })).toBeTruthy()
   })
 
-  it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
+  it('Download PDF says it is downloading at its resting width, then goes back (v2.4584)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
-    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy())
+    const btn = await screen.findByRole('button', { name: /^Download PDF · \d+ documents$/ })
+    expect(btn.getAttribute('data-action-phase')).toBe('idle')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('data-action-phase')).toBe('busy')
+    expect(btn.textContent).toContain('Downloading…')
+    // The resting words stay in the layout, hidden, so the button does not change size.
+    expect(btn.textContent).toMatch(/Download PDF · \d+ documents/)
+    expect((btn as HTMLButtonElement).disabled).toBe(true)
+    // The hold is deliberate (1.5 s, then 2 s of Downloaded); a build that fails in jsdom returns at once.
+    await waitFor(() => expect(btn.getAttribute('data-action-phase')).toBe('idle'), { timeout: 6000 })
+    expect((btn as HTMLButtonElement).disabled).toBe(false)
+  }, 10000)
+
+  it('Print packet says it is opening at its resting width, and a blocked popup puts it straight back (v2.4584)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    const btn = await screen.findByRole('button', { name: 'Print packet' })
+    expect(btn.getAttribute('data-action')).toBe('print')
+    fireEvent.click(btn)
+    expect(btn.getAttribute('data-action-phase')).toBe('busy')
+    expect(btn.textContent).toContain('Opening…')
+    expect(btn.textContent).toContain('Print packet')
+    await waitFor(() => expect(btn.getAttribute('data-action-phase')).toBe('idle'), { timeout: 6000 })
+  }, 10000)
+
+  it('the email sheet’s Send keeps its words in the layout, and the footer’s Email button is the same kind of button', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ gc_customer_id: null, gcCustomer: null, bill_to_party: 'customer' })} />)
+    await waitFor(() => expect(screen.getByText(/the customer on the job/)).toBeTruthy())
+    const foot = screen.getByRole('button', { name: 'Email with the PDF…' })
+    expect(foot.getAttribute('data-action-phase')).toBe('idle')
+    fireEvent.click(foot)
+    const send = screen.getByRole('button', { name: /^Send · \d+ documents$/ })
+    expect(send.getAttribute('data-action')).toBe('email-send')
+    expect(send.getAttribute('data-action-phase')).toBe('idle')
+  })
+
+  it('unticking the delivery record drops its exhibit from the letter and the preview', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="B"]')).toBeTruthy())
     const boxes = (document.querySelector('[data-demand-enclosed]') as HTMLElement).querySelectorAll('input[type="checkbox"]')
     expect(boxes.length).toBe(1)
     fireEvent.click(boxes[0]!)
-    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="B"]')).toBeNull())
     expect(screen.getByText('The invoice is enclosed as Exhibit A. All payments and credits have been allowed.')).toBeTruthy()
+  })
+
+  it('an evening bill reads its own day on the statement, the exhibit and the notice history', async () => {
+    // Marked billed and sent at 7:30 pm CDT on Oct 2 (the UTC date is Oct 3).
+    const evening = makeInvoice({ ...INV, billed_at: '2026-10-03T00:30:00+00:00', sent_to_customer_at: '2026-10-03T00:30:10+00:00' })
+    renderWithProviders(<LienInstrumentsModal {...baseProps} invoice={evening} job={job({ invoices: [evening] })} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-demand-statement]')).toBeTruthy())
+    expect((document.querySelector('[data-demand-statement]') as HTMLElement).textContent).toContain('#1 — sent October 2, 2026')
+    expect((document.querySelector('[data-demand-enclosed]') as HTMLElement).textContent).toContain('Exhibit A · Invoice #1, as sent October 2, 2026')
+    await waitFor(() => expect(screen.getByText('October 2, 2026 — Invoice sent')).toBeTruthy())
   })
 
   it('a bill addressed to the customer is demanded of the customer, with no notice pointer', async () => {
@@ -249,5 +354,19 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     const debtor = document.querySelector('[data-demand-debtor]') as HTMLElement
     expect(debtor.textContent).toContain('Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima')
     expect(debtor.textContent).not.toContain('§ 53.056')
+  })
+
+  it("a stop's title on the timeline opens the window on what that stop sends; Esc closes it alone (v2.4793)", async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline] [data-lien-timeline-stop-door]')).toBeTruthy())
+    const door = document.querySelector('[data-lien-window-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-stop-paper')).toBeTruthy()
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
+    // Nothing filed yet: the act opens the Affidavit tab here.
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open the Affidavit tab ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+    expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy()
   })
 })

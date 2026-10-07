@@ -11,7 +11,7 @@ import { offerNextStageAfterPass } from '../../lib/subs/offerNextStage'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
 import { type SubSheetStage } from '../../lib/subSheetStage'
@@ -387,7 +387,7 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
   const label = sheet ? `${sheet.job_number ? `#${sheet.job_number}` : 'Sub sheet'}${story?.job?.customer_name ? ` · ${story.job.customer_name}` : ''}${sheet.address ? ` · ${sheet.address}` : ''}` : ''
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 56, overflowY: 'auto', padding: '2rem 1rem' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 756, overflowY: 'auto', padding: 'calc(2rem + var(--app-top-chrome, 0px)) 1rem 2rem' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label="Sheet story" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 12, width: 'min(780px, 100%)', boxShadow: '0 20px 60px rgba(0,0,0,.25)', border: '1px solid var(--border)', overflow: 'hidden' }}>
         <div style={{ padding: '0.9rem 1.1rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -405,7 +405,7 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
                   ['Agreed', story.money.unpriced ? 'unpriced' : money(story.money.agreed), false],
                   ['Paid', money(story.money.paid), false],
                   ['Open', story.money.unpriced ? '—' : money(story.money.open), story.money.open > 0 && story.rail.gap],
-                  ['Sheet dated', sheet?.job_date ?? (sheet?.created_at ?? '').slice(0, 10) ?? '—', false],
+                  ['Sheet dated', sheet?.job_date ?? (calendarYmdInAppTzFromIso(sheet?.created_at ?? '') || '—'), false],
                 ].map(([k, v, red]) => (
                   <div key={String(k)}>
                     <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{k}</div>

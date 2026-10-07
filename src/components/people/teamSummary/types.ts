@@ -122,10 +122,14 @@ export type TeamSummaryRow = {
   overheadWage: number
   /** Wheels on Labor (v2.2735): the person's vehicle deal; `none` when they have no deal. */
   vehicleArrangement: 'none' | 'own_fuel_paid' | 'company'
-  /** $/field hour the deal implies (own: fuel ÷ field h; company: the truck all-in), override wins; null when unknown. */
+  /** The deal's fixed $/field h (company truck: insurance + registration + service ÷ field h, 90-day; own: $0); the override wins. null when unknown. Fuel is never in it (v2.4653). */
   vehicleRate: number | null
   vehicleTruckName: string | null
-  /** −(field hours × vehicleRate), 0 when there is no deal or no rate. Stored negative like the other overhead costs. */
+  /** −(field hours × vehicleRate); 0 with no deal or no fixed rate. Stored negative. */
+  vehicleFixedCost: number
+  /** −(the person's fuel on no job in the period): their fuel on jobs is in the parts (v2.4653). Stored negative. */
+  vehicleFuelOffJobs: number
+  /** vehicleFixedCost + vehicleFuelOffJobs; 0 with no deal. Stored negative like the other overhead costs. */
   vehicleCost: number
   overheadLaborCost: number
   hoursBreakdown: HoursBreakdown
@@ -164,10 +168,14 @@ export type TeamSummaryBreakdown = {
   allocatedByTag: Record<string, number>
   /** Wheels on Labor (v2.2735): the person's vehicle deal; `none` when they have no deal. */
   vehicleArrangement: 'none' | 'own_fuel_paid' | 'company'
-  /** $/field hour the deal implies (own: fuel ÷ field h; company: the truck all-in), override wins; null when unknown. */
+  /** The deal's fixed $/field h (company truck: insurance + registration + service ÷ field h, 90-day; own: $0); the override wins. null when unknown. Fuel is never in it (v2.4653). */
   vehicleRate: number | null
   vehicleTruckName: string | null
-  /** −(field hours × vehicleRate), 0 when there is no deal or no rate. Stored negative like the other overhead costs. */
+  /** −(field hours × vehicleRate); 0 with no deal or no fixed rate. Stored negative. */
+  vehicleFixedCost: number
+  /** −(the person's fuel on no job in the period): their fuel on jobs is in the parts (v2.4653). Stored negative. */
+  vehicleFuelOffJobs: number
+  /** vehicleFixedCost + vehicleFuelOffJobs; 0 with no deal. Stored negative like the other overhead costs. */
   vehicleCost: number
   allocatedLabor: number
   /** Net Revenue (before overhead). Stored under `net` for backward-compat

@@ -50,7 +50,7 @@ const overlay: CSSProperties = {
   display: 'flex',
   alignItems: 'flex-start',
   justifyContent: 'center',
-  padding: '1.5rem 1rem',
+  padding: 'calc(1.5rem + var(--app-top-chrome, 0px)) 1rem 1.5rem',
   overflowY: 'auto',
 }
 

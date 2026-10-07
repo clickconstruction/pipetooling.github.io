@@ -17,6 +17,17 @@
  * - Money left after every sent bill is covered is the job's `surplus` — shown
  *   as a job-level line, never smeared onto a bill (that is the double credit
  *   v2.3498 removed).
+ * - **Off-bill work first** (v2.4534, the owner's call 2026-10-05). When the
+ *   caller gives the job's total, the part of the job that is on no sent bill
+ *   (`jobTotal − Σ sent bills`) takes unlinked money before any bill does: that
+ *   money paid work the app never billed. Job 273 again: a $56,365 job, three
+ *   open bills adding to $17,585, and $38,780 of unlinked payments made before
+ *   the first of them was sent. Oldest-first alone spent that money on the three
+ *   bills, so the bills, their papers and the demand letter read paid while the
+ *   job (and its § 53.056 notice) still owed $17,585. Jobs 473 and 251 were the
+ *   same shape, and job 102's $3,000 check was for the $3,000 of that job its
+ *   one bill left out. A caller that cannot give the total gets oldest-first
+ *   alone, as before.
  *
  * Pure, no imports: used by the client (re-exported from
  * `src/lib/jobs/paymentAttribution.ts`, tested there) and by `customer-portal`.
@@ -60,6 +71,8 @@ export type JobPaymentAttribution<P extends AttributionPayment = AttributionPaym
   unlinkedTotal: number
   /** Unlinked money no sent bill needed — a job-level line, never a bill's. */
   surplus: number
+  /** Unlinked money that paid the part of the job on no sent bill (0 when no job total is given). */
+  offBill: number
 }
 
 const round2 = (n: number): number => Math.round(n * 100) / 100
@@ -95,6 +108,8 @@ function paymentOrder(a: AttributionPayment, b: AttributionPayment): number {
 export function attributeJobPayments<P extends AttributionPayment>(
   bills: readonly AttributionBill[],
   payments: readonly P[],
+  /** The job's total price (`jobs_ledger.revenue`); null or absent → oldest-first alone. */
+  jobTotal?: number | string | null,
 ): JobPaymentAttribution<P> {
   const byBill = new Map<string, BillAttribution<P>>()
   for (const b of bills) byBill.set(b.id, { linked: 0, unlinked: 0, applied: 0, slices: [] })
@@ -115,17 +130,26 @@ export function attributeJobPayments<P extends AttributionPayment>(
     b.slices.push({ payment: p, amount: round2(amt), partial: false })
   }
 
-  // 2. Unlinked money walks the sent bills oldest first.
+  // 2. Unlinked money pays the part of the job on no sent bill, then walks the sent bills oldest first.
   const sent = bills.filter((b) => isSentBill(b.status)).sort(billOrder)
   const need = new Map<string, number>()
   for (const b of sent) need.set(b.id, Math.max(0, round2(num(b.amount) - (byBill.get(b.id)?.linked ?? 0))))
+  const sentTotal = sent.reduce((s, b) => round2(s + num(b.amount)), 0)
+  let offBillNeed = jobTotal == null || jobTotal === '' ? 0 : Math.max(0, round2(num(jobTotal) - sentTotal))
   const unlinked = payments.filter((p) => !p.invoice_id).sort(paymentOrder)
   let unlinkedTotal = 0
   let surplus = 0
+  let offBill = 0
   for (const p of unlinked) {
     let left = round2(num(p.amount))
     unlinkedTotal = round2(unlinkedTotal + left)
     if (left <= 0) continue
+    const offTake = round2(Math.min(offBillNeed, left))
+    if (offTake > 0) {
+      offBillNeed = round2(offBillNeed - offTake)
+      offBill = round2(offBill + offTake)
+      left = round2(left - offTake)
+    }
     const touched: Array<{ id: string; amount: number }> = []
     for (const b of sent) {
       if (left <= 0) break
@@ -136,7 +160,7 @@ export function attributeJobPayments<P extends AttributionPayment>(
       left = round2(left - take)
       touched.push({ id: b.id, amount: take })
     }
-    const split = touched.length > 1 || left > 0
+    const split = touched.length > 1 || left > 0 || offTake > 0
     for (const t of touched) {
       const b = byBill.get(t.id)!
       b.unlinked = round2(b.unlinked + t.amount)
@@ -145,16 +169,16 @@ export function attributeJobPayments<P extends AttributionPayment>(
     surplus = round2(surplus + left)
   }
   for (const b of byBill.values()) b.applied = round2(b.linked + b.unlinked)
-  return { byBill, unlinkedTotal, surplus }
+  return { byBill, unlinkedTotal, surplus, offBill }
 }
 
 /** What one bill has been paid under the rule; 0 for a bill the job does not carry. */
-export function paymentsAppliedToBill(bills: readonly AttributionBill[], payments: readonly AttributionPayment[], billId: string): number {
-  return attributeJobPayments(bills, payments).byBill.get(billId)?.applied ?? 0
+export function paymentsAppliedToBill(bills: readonly AttributionBill[], payments: readonly AttributionPayment[], billId: string, jobTotal?: number | string | null): number {
+  return attributeJobPayments(bills, payments, jobTotal).byBill.get(billId)?.applied ?? 0
 }
 
 /** The payments (and shares of payments) one bill shows on its paper, in ledger order. */
-export function billPaymentSlices<P extends AttributionPayment>(bills: readonly AttributionBill[], payments: readonly P[], billId: string): PaymentSlice<P>[] {
-  const slices = attributeJobPayments(bills, payments).byBill.get(billId)?.slices ?? []
+export function billPaymentSlices<P extends AttributionPayment>(bills: readonly AttributionBill[], payments: readonly P[], billId: string, jobTotal?: number | string | null): PaymentSlice<P>[] {
+  const slices = attributeJobPayments(bills, payments, jobTotal).byBill.get(billId)?.slices ?? []
   return [...slices].sort((a, b) => paymentOrder(a.payment, b.payment))
 }

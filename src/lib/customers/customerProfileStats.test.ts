@@ -92,8 +92,8 @@ describe('customerDaysToPay', () => {
     const jobs = [
       job({
         invoices: [
-          { id: 'a', status: 'paid', amount: 1, billed_at: '2026-06-01T00:00:00Z', estimated_bill_date: null },
-          { id: 'b', status: 'paid', amount: 1, billed_at: '2026-06-01T00:00:00Z', estimated_bill_date: null },
+          { id: 'a', status: 'paid', amount: 1, billed_at: '2026-06-01T15:00:00Z', estimated_bill_date: null },
+          { id: 'b', status: 'paid', amount: 1, billed_at: '2026-06-01T15:00:00Z', estimated_bill_date: null },
         ],
         payments: [
           { invoice_id: 'a', amount: 1, paid_on: '2026-05-30' }, // before billed → 0
@@ -107,7 +107,7 @@ describe('customerDaysToPay', () => {
   it('excludes job-level payments, unpaid-dated rows, and payments older than 12 months', () => {
     const jobs = [
       job({
-        invoices: [{ id: 'a', status: 'paid', amount: 1, billed_at: '2025-05-01T00:00:00Z', estimated_bill_date: null }],
+        invoices: [{ id: 'a', status: 'paid', amount: 1, billed_at: '2025-05-01T15:00:00Z', estimated_bill_date: null }],
         payments: [
           { invoice_id: null, amount: 1, paid_on: '2026-07-01' },
           { invoice_id: 'a', amount: 1, paid_on: null },
@@ -116,6 +116,14 @@ describe('customerDaysToPay', () => {
       }),
     ]
     expect(customerDaysToPay(jobs, TODAY)).toBeNull()
+  })
+
+  it('2026-10-02 · a bill marked billed at 7:30 pm Central counts from that day, not the UTC day after', () => {
+    const daysToPay = (billed_at: string) =>
+      customerDaysToPay([job({ invoices: [{ id: 'a', status: 'paid', amount: 1, billed_at, estimated_bill_date: null }], payments: [{ invoice_id: 'a', amount: 1, paid_on: '2026-10-12' }] })], '2026-10-12')
+    expect(daysToPay('2026-10-03T00:30:00Z')).toEqual({ medianDays: 10, samples: 1 })
+    expect(daysToPay('2026-10-03T00:30:00+00:00')).toEqual({ medianDays: 10, samples: 1 })
+    expect(daysToPay('2026-10-02T12:00:00Z')).toEqual({ medianDays: 10, samples: 1 })
   })
 })
 
@@ -191,6 +199,16 @@ describe('profileJobRowMoney / sortProfileJobsForList (v2.1985 jobs list)', () =
     expect(m.ageDays).toBe(155)
     expect(m.noBillDate).toBe(false)
     expect(m.unbilled).toBe(0)
+  })
+
+  it('2026-10-02 · with no estimated date, an open bill marked billed at 7:30 pm Central dates the row that day', () => {
+    const row = (billed_at: string) => profileJobRowMoney(job({ invoices: [{ id: 'i1', status: 'billed', amount: 500, billed_at, estimated_bill_date: null }] }), '2026-10-12')
+    expect(row('2026-10-03T00:30:00Z')).toMatchObject({ oldestOpenBillYmd: '2026-10-02', ageDays: 10, noBillDate: false })
+    expect(row('2026-12-02T00:30:00Z').oldestOpenBillYmd).toBe('2026-12-01')
+    expect(row('2026-10-02T12:00:00Z')).toMatchObject({ oldestOpenBillYmd: '2026-10-02', ageDays: 10 })
+    // The estimated bill date, a calendar day, still wins when there is one.
+    const est = profileJobRowMoney(job({ invoices: [{ id: 'i1', status: 'billed', amount: 500, billed_at: '2026-10-03T00:30:00Z', estimated_bill_date: '2026-09-30' }] }), '2026-10-12')
+    expect(est.oldestOpenBillYmd).toBe('2026-09-30')
   })
 
   it('billed shell with no invoices: open remainder, flagged no-bill-date', () => {

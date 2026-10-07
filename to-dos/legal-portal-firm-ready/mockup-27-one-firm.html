@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 27: one firm, said in the schema — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  pre { margin: 0; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
+  .toast { display: inline-block; background: #FEF3F2; color: #B42318; border: 1px solid #FDA29B; border-radius: 6px; padding: 8px 12px; font-size: 13px; }
+  .bad { color: #991B1B; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 27 · mockup</p><h1>One firm, said in the schema</h1>
+<p>The decision of 2026-10-05: one collections law firm. The guide already says "One firm at a time", the portal and the Lien grid serve that firm, and Settings edits the one active row. The table did not say it: two active rows were possible, and every reader picks "the first active firm" in its own way.</p></header>
+
+<h2>What a second active firm does</h2>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="pane">
+    <pre>legal_firms
+  id   name                    active
+  f1   Sample &amp; Partner, PLLC  true
+  f2   Second Firm LLP         true   <span class="bad">← allowed</span></pre>
+    <p class="lede" style="margin-top:10px">Settings shows f1 (oldest active). The desk's firm list orders by active, then age. The Lien desk's "copy the firm's link" reads the oldest active. A matter can be released to either, and each firm's portal shows only its own. Nothing says which one is "the firm".</p>
+  </div></div>
+  <div><div class="cap new">After</div><div class="pane">
+    <pre>CREATE UNIQUE INDEX legal_firms_one_active
+  ON public.legal_firms ((true)) WHERE active;
+
+insert … active = true
+→ ERROR: duplicate key value violates unique
+  constraint "legal_firms_one_active"</pre>
+    <p class="lede" style="margin-top:10px">Settings, when a race in another tab saves a firm first:</p>
+    <span class="toast">One firm at a time: another firm is already active. Reload Settings to edit it.</span>
+  </div></div>
+</div>
+
+<h2>Changing firms still works</h2>
+<p class="lede">Set the old firm's <code>active</code> to false, then add the new one. Inactive rows are unlimited, and their matters, links and recipients stay where they are.</p>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Index or trigger?</b> The index. A trigger is code that can be dropped, disabled or written wrong; a partial unique index on a constant is one line that Postgres enforces on every write, including a hand edit in the SQL editor.</li>
+  <li><b>What if prod already has two active firms?</b> The migration checks first and stops with a sentence that says how many and what to do. Nothing changes until someone picks the one firm.</li>
+  <li><b>Should the copy change too?</b> The guide already says "One firm at a time" and needed nothing. <code>docs/ACCESS_CONTROL.md</code> now says one active firm, and the table's comment names the index.</li>
+  <li><b>What does it lock?</b> Building a unique index takes a SHARE lock on <code>legal_firms</code> (a handful of rows) for an instant; the file starts with <code>SET lock_timeout = '3s'</code>.</li>
+</ul>
+</div></body></html>

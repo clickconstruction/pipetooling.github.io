@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import {
-  SHEET_DISCIPLINES,
-  nextSheetNumber,
-  readSheetLines,
-  readTitleBlock,
-  rowProblems,
-  sheetDiscipline,
-  type PdfTextItem,
-  type PlanSheet,
-  type SheetIndexRow,
-} from '../../lib/gcMode/gcModel'
+import { sheetDiscipline } from '../../lib/gc/plans'
+import { SHEET_DISCIPLINES, nextSheetNumber, readSheetLines, readTitleBlock, rowProblems, type PdfTextItem, type SheetIndexRow } from '../../lib/gc/sheets'
+import type { PlanSheet } from '../../lib/gc/types'
 import { getPdfLoadingTask } from '../../lib/pdfjsDocument'
 import { loadJsPDF } from '../../lib/loadJsPDF'
 import { Btn, Chip, input } from './gcUi'
@@ -144,10 +136,10 @@ export function SheetIndexTable({
 }: {
   rows: SheetIndexRow[]
   onRows: (rows: SheetIndexRow[]) => void
-  /** The made-up list "Paste a made-up sheet index" fills in. */
-  sampleText: string
-  /** The sheets drawn into the made-up plan PDF. */
-  sampleSheets: PlanSheet[]
+  /** The made-up list "Paste a made-up sheet index" fills in. Unset: no made-up list is offered. */
+  sampleText?: string
+  /** The sheets drawn into the made-up plan PDF. Unset: no made-up PDF is offered. */
+  sampleSheets?: PlanSheet[]
   projectName: string
   setLabel: string
 }) {
@@ -217,7 +209,7 @@ export function SheetIndexTable({
   const readMadeUpPdf = async () => {
     setPdf({ kind: 'reading', name: 'made-up plans.pdf', page: 0, of: 0 })
     try {
-      await readPdf('made-up plans.pdf', await madeUpPlanPdf(sampleSheets, projectName, setLabel))
+      await readPdf('made-up plans.pdf', await madeUpPlanPdf(sampleSheets ?? [], projectName, setLabel))
     } catch {
       setPdf({ kind: 'failed', name: 'made-up plans.pdf' })
     }
@@ -329,7 +321,11 @@ export function SheetIndexTable({
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <Btn onClick={() => undefined} disabled title="Coming soon">Choose the PDF</Btn>
-          <Btn kind="quiet" onClick={() => void readMadeUpPdf()} disabled={pdf.kind === 'reading'}>Read a made-up plan PDF</Btn>
+          {sampleSheets && (
+            <Btn kind="quiet" onClick={() => void readMadeUpPdf()} disabled={pdf.kind === 'reading'}>
+              Read a made-up plan PDF
+            </Btn>
+          )}
           {!pasteOpen && <Btn kind="quiet" onClick={() => setPasteOpen(true)}>Paste a sheet list</Btn>}
         </div>
         {pdfWords && (
@@ -393,7 +389,7 @@ export function SheetIndexTable({
             <Btn kind="primary" onClick={addPasted} disabled={readCount === 0}>
               {readCount === 0 ? 'No sheets read yet' : `Add the ${readCount} ${readCount === 1 ? 'sheet' : 'sheets'} read`}
             </Btn>
-            {pasteText.trim() === '' && <Btn kind="quiet" onClick={() => setPasteText(sampleText)}>Paste a made-up sheet index</Btn>}
+            {pasteText.trim() === '' && sampleText && <Btn kind="quiet" onClick={() => setPasteText(sampleText)}>Paste a made-up sheet index</Btn>}
             <Btn
               kind="quiet"
               onClick={() => {

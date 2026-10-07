@@ -1,6 +1,7 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { LIEN_DESK_SENT_DAYS, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
-import { monthFromCreation, type LienMonthSource } from './lienDesk'
+import { monthFromCreation, type LienMonthSource, monthSetByHand } from './lienDesk'
 
 /**
  * The Lien desk's second kind (pure kernel): the § 53.052 affidavit — one
@@ -52,6 +53,8 @@ export type LienAffidavitEntry = {
   lastMonth: string
   /** last_month is the job's creation month — no approved hours (v2.3747). */
   lastMonthFromCreation: boolean
+  /** last_month is the last day of work set by hand (v2.4676). */
+  lastMonthByHand?: boolean
   deadline: string
   daysLeft: number
   severity: LienDeskSeverity
@@ -77,7 +80,7 @@ export function affidavitGates(r: Pick<LienAffidavitRow, 'is_sub' | 'noticed' | 
   return [
     { key: 'owner', ok: r.has_owner, label: 'Owner of record with a mailing address' },
     { key: 'legal', ok: r.has_legal, label: 'County + legal description on the property record' },
-    { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job' : 'No monthly notice required (contracted with the owner)' },
+    { key: 'notice', ok: !r.is_sub || r.noticed, label: r.is_sub ? 'A § 53.056 notice recorded on the job — a late one counts while this window is open' : 'No monthly notice required (contracted with the owner)' },
     { key: 'homestead', ok: !r.homestead, label: r.homestead ? 'Homestead — lien rights need a pre-work contract signed by both spouses and recorded (§ 53.254); talk to your attorney' : 'Not a homestead' },
   ]
 }
@@ -110,7 +113,7 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
   for (const it of items) {
     if (it.kind !== 'affidavit' || it.voided_at) continue
     if (it.status === 'sent') {
-      const age = it.sent_at ? (daysBetweenYmd(it.sent_at.slice(0, 10), todayYmd) ?? 0) : 0
+      const age = it.sent_at ? (daysBetweenYmd(calendarYmdInAppTzFromIso(it.sent_at), todayYmd) ?? 0) : 0
       if (age <= LIEN_DESK_SENT_DAYS) sent.set(it.job_id, it)
     } else if (it.status !== 'missed') {
       const prev = live.get(it.job_id)
@@ -131,6 +134,7 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
       isSub: r.is_sub,
       lastMonth: r.last_month,
       lastMonthFromCreation: monthFromCreation(r),
+      lastMonthByHand: monthSetByHand(r),
       deadline: r.deadline,
       daysLeft,
       severity: pile === 'filed' ? 'quiet' : severityForDaysLeft(daysLeft),

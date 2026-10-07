@@ -20,15 +20,16 @@ const JOBS = [
   { id: 'j620', hcp_number: '620', click_number: null, job_name: 'z', job_address: '180 Go Away Rd, Blanco', status: 'paid', customer_id: 'p', gc_customer_id: null, bid_id: null, contract_not_needed_at: null, contract_not_needed_reason: null },
 ]
 
-const fileSpy = vi.fn((_input: { jobIds: string[]; link: string; signerName: string }) => Promise.resolve({ filed: _input.jobIds.length, uploadError: null }))
+const fileSpy = vi.fn((_input: { jobIds: string[]; link: string; signerName: string; coSignerName?: string }) => Promise.resolve({ filed: _input.jobIds.length, uploadError: null }))
+const contractRows = vi.hoisted(() => ({ current: [] as Array<Record<string, unknown>> }))
 const saveSpy = vi.fn((_input: { add: readonly string[]; remove: readonly string[] }) => Promise.resolve())
 vi.mock('../../lib/jobs/jobContractCoversWrite', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/jobContractCoversWrite')>('../../lib/jobs/jobContractCoversWrite')
   return {
     ...actual,
     loadPartyJobs: () => Promise.resolve(JOBS),
-    loadContractRowsForJobs: () => Promise.resolve([]),
-    fileContractForJobs: (input: { jobIds: string[]; link: string; signerName: string }) => fileSpy(input),
+    loadContractRowsForJobs: () => Promise.resolve(contractRows.current),
+    fileContractForJobs: (input: { jobIds: string[]; link: string; signerName: string; coSignerName?: string }) => fileSpy(input),
     saveCoveredJobs: (input: { add: readonly string[]; remove: readonly string[] }) => saveSpy(input),
   }
 })
@@ -54,7 +55,27 @@ describe('AddJobContractSheet', () => {
     await waitFor(() => expect(submit.disabled).toBe(false))
     fireEvent.click(submit)
     await waitFor(() => expect(onDone).toHaveBeenCalled())
-    expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobIds: ['j251', 'j825'], link: 'https://docs.google.com/document/d/abc', signerName: 'Michael Palmer' })
+    expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobIds: ['j251', 'j825'], link: 'https://docs.google.com/document/d/abc', signerName: 'Michael Palmer', coSignerName: '' })
+  })
+
+  it("v2.4657 · a paper signed by two: the Second signer box starts with the one the anchor job's draft names, and both names are filed", async () => {
+    fileSpy.mockClear()
+    contractRows.current = [{ id: 'd1', job_id: 'j251', status: 'draft', voided_at: null, co_signer_name: 'Grace Palmer', co_signed_at: null, co_signer_printed_name: null }]
+    try {
+      renderWithProviders(
+        <AddJobContractSheet open mode="add" onClose={() => undefined} anchorJob={{ id: 'j251', num: '251', where: '180 Go Away Rd' }} partyIds={['p']} signerName="Michael Palmer" subtitle="Job 251" />,
+      )
+      const second = (await screen.findByLabelText('Second signer')) as HTMLInputElement
+      await waitFor(() => expect(second.value).toBe('Grace Palmer'))
+      fireEvent.change(screen.getByLabelText('Link to the signed contract'), { target: { value: 'https://docs.google.com/document/d/abc' } })
+      const submit = screen.getByTestId('add-contract-submit') as HTMLButtonElement
+      await waitFor(() => expect(submit.disabled).toBe(false))
+      fireEvent.click(submit)
+      await waitFor(() => expect(fileSpy).toHaveBeenCalled())
+      expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobIds: ['j251'], signerName: 'Michael Palmer', coSignerName: 'Grace Palmer' })
+    } finally {
+      contractRows.current = []
+    }
   })
 
   it('v2.4342 · opened from a GC row, the sheet offers the Contract window instead; without the opener there is no link', async () => {

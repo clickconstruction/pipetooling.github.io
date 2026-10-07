@@ -362,3 +362,16 @@ describe('the basis and the closed window (v2.4265)', () => {
     expect(buildLienPayRunway({ ...base, lastWorkYmd: '2026-08-12' }).closedBy).toBeNull()
   })
 })
+
+describe('a job created in the evening keeps its day (v2.4468)', () => {
+  const base = { todayYmd: '2026-09-28', openBalance: 1000, propertyKind: 'residential', expectedPayYmd: null, filedYmd: null, releasedYmd: null, lastWorkYmd: null }
+  it('dates the creation basis by the Central day, as the Lien desk’s months do', () => {
+    // 00:30 UTC on Aug 1 is 7:30 pm CDT on Jul 31: a July job, so the residential lien is due Oct 15, not Nov 16.
+    const evening = buildLienPayRunway({ ...base, createdAt: '2026-08-01T00:30:00Z' })
+    expect(evening.basisYmd).toBe('2026-07-31')
+    expect(evening.lienByYmd).toBe('2026-10-15')
+    // 00:30 UTC on Dec 1 is 6:30 pm CST on Nov 30.
+    expect(buildLienPayRunway({ ...base, createdAt: '2026-12-01T00:30:00+00:00' }).basisYmd).toBe('2026-11-30')
+    expect(buildLienPayRunway({ ...base, createdAt: '2026-08-01T12:00:00Z' }).basisYmd).toBe('2026-08-01')
+  })
+})

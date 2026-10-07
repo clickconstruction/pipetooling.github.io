@@ -2,7 +2,7 @@
 title: follow up with builders on their bids
 category: Office
 roles: dev, master_technician, assistant, estimator, primary, superintendent
-keywords: followup, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom, won, undo won, waiting, open the job, board went quiet
+keywords: followup, call again, follow up date, next call, later, due, overdue, parked, budget next year, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom, won, undo won, waiting, open the job, board went quiet
 order: 69
 ---
 The Followup tab is where bid follow-up lives. It opens on the Call queue, the list of every builder worth a call.
@@ -11,9 +11,9 @@ Open **Bids → Followup**. The Bid Board deliberately goes colour-quiet once a 
 
 ## The Call queue (new)
 
-The newest lens is {{chip:green|new}} **Call queue**. It is Followup as one list: every builder worth a call, whoever has waited longest on top. The oldest last contact comes first. Among builders nobody has ever called, the one whose bid has sat quiet longest comes first. A note on a *lost* bid doesn't count as contact. Each card shows the relationship line. It reads *won · lost · pending · hit rate · pending $*. Each card also shows a plain **To do / Done** table with the same three rows on every card:
+The newest lens is {{chip:green|new}} **Call queue**. It is Followup as one list: every builder worth a call. Calls you promised for a day come first. After them comes whoever has waited longest, the oldest last contact first. Among builders nobody has ever called, the one whose bid has sat quiet longest comes first. A note on a *lost* bid doesn't count as contact. Each card shows the relationship line. It reads *won · lost · pending · hit rate · pending $*. Each card also shows a plain **To do / Done** table with the same three rows on every card:
 
-- **Chase**: pending bids nobody's talked to the GC about in over a week. GC means the general contractor.
+- **Chase**: pending bids that are due for a call. That is a day you picked that has come, or no contact in over a week. GC means the general contractor.
 - **Loss reasons**: lost bids with no reason recorded.
 - **Bid tabs**: tabs worth asking for. A bid tab is the GC's list of every bidder's number. Worth asking for means any lost bid without one, or a pending bid sent three weeks ago.
 
@@ -24,6 +24,37 @@ Tap **Won** under one builder on a multi-GC bid and the app asks first, in one s
 :::
 
 Filter chips narrow the list to one kind of gap. They are **To chase**, **Need a reason** and **Tab gettable**. {{button:blue|📞 Start call}} jumps to the builder card for a full call session.
+
+## Say when to call again
+
+A GC often tells you when to call back. You can write that day down, so the bid stays out of your way until then.
+
+You tap **Left message**, **Still pending** or **Rebid / RFQ** on a bid. Three questions open under the chip. Nothing is saved until you press {{button:blue|Save}}.
+
+- **Call again** is the day. You tap **Next week**, **2 weeks**, **Next month** or **3 months**. You tap **pick a date** to type any day. A day on a weekend moves to Monday.
+- **Ask for** is the person to ask for. It lists the people on the customer. **+ person** adds a new one to the customer for good.
+- **Waiting on** is the reason. You tap **Their budget**, **Owner deciding**, **Not awarded yet** or **Other**.
+
+Only **Call again** matters. With no day picked, the bid comes back in seven days, as it always did. **Ask for** and **Waiting on** show once you pick a day.
+
+:::example The city says call in January
+Tap **Still pending**. Type *Holding for the next budget year*. Tap **pick a date** and choose January 5. Tap the councilman under **Ask for** and **Their budget** under **Waiting on**. Press **Save**. The bid leaves the list. Its note reads *Still pending. Holding for the next budget year. Call again Tue, Jan 5, 2027. Ask for J. Rayburn. Waiting on their budget.*
+:::
+
+Four pills over the list count your open bids by when they are due. You tap a pill to see only those. You tap it again to see every call.
+
+- {{chip:yellow|Due}} is a day you picked that is today.
+- {{chip:red|Overdue}} is a day you picked that has passed.
+- {{chip:gray|No date yet}} is a bid with no day and no contact in over a week.
+- {{chip:blue|Later}} is a bid parked on a day still ahead.
+
+On its day the Dashboard's **Needs You** card says a bid follow-up is due. The **Calendar** shows the call on that day. The bid's account manager gets one notification on their phone that morning. With no account manager it goes to the estimator. The card comes back to the top of the queue with a **Due today** tag. You open **Chase** and the bid says who to ask for, with their number. It also says what the GC told you last time, and who took that call. Miss the day and the tag turns red and counts the days.
+
+The **Later** line over the cards unfolds the parked bids, the soonest day first. **change date** on a row opens the same three questions. {{button:blue|Save the date}} moves the day. **No date** removes it and the bid goes back in the queue. A changed date is a note in the bid's log. It is not a contact, so the Last Contact clock does not move.
+
+A day holds until you log a call on that day or after it. A call before the day leaves it alone. So a call in November does not erase January 5.
+
+A bid has one day, even when it went to several GCs. A parked bid is not asked for its bid tab either. The old lenses leave it alone too. **Waiting to hear** reads it as caught up. **By builder** and **By status** do not paint it red. The Bid Board and the **By builder** card show the day as a small chip. The builder's own date counts too. That is the **next follow-up** you promise at the end of a call session. A bid with no day of its own waits on its builder's.
 
 Everything below still works exactly as before, behind the **Old:** divider. That is the four original lenses:
 
@@ -128,7 +159,7 @@ The tab may arrive **in writing**, as a GC email listing every number. Then flip
 
 Every tap writes a bid note and stamps **Last Contact**. The pill goes green and the next bid opens. So the Bid Board and By builder queue stay current for free. On a multi-GC bid the tap remembers **which GC** you talked to. One rule to know: only real contacts move the Last Contact clock. A real contact is an entry with a method: call, text, email or in person. A plain note you write to yourself doesn't silence the gone-quiet nag.
 
-Need to record a call after the fact? **Edit Bid → Log contact…** takes the method, the time, the GC, and what was said. The time can be backdated. The rest of the form keeps saving on its own around it. Logging a contact is its own record, never lost to a form save. **Lost…** reveals the same six reason chips as the Why we lost lens. A loss you learn about on the chase call gets its reason recorded on the spot. It never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
+Need to record a call after the fact? **Edit Bid → Log contact…** takes the method, the time, the GC, and what was said. The time can be backdated. On a sent bid with no answer it also asks **Call again**, the same three questions as the Call queue. Under it, the **Call again** line shows the day the bid has. {{button:outline|Set a day…}} or {{button:outline|Change…}} moves the day with no call. The rest of the form keeps saving on its own around it. Logging a contact is its own record, never lost to a form save. **Lost…** reveals the same six reason chips as the Why we lost lens. A loss you learn about on the chase call gets its reason recorded on the spot. It never joins the unexplained backlog. Type **what they said** in the note box first and it saves with the tap.
 
 
 ## One bid, several GCs — every queue knows

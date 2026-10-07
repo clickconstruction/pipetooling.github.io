@@ -111,3 +111,12 @@ describe('JobFormHazmatRiderRows', () => {
     expect(screen.getByText('Re-email notice…')).toBeTruthy()
   })
 })
+
+describe('JobFormHazmatRiderRows · an evening incident and notice keep their day (v2.4473)', () => {
+  it('reads the incident and the emailed notice on their Central days', () => {
+    // TJ Brace's incident as stored: 00:31 UTC on Jul 21 is 7:31 pm CDT on Jul 20; 01:00 UTC on Jul 29 is 8 pm CDT on Jul 28.
+    renderRows(makeJob(), [makeIncident({ incident_at: '2026-07-21T00:31:00+00:00', notice_emailed_at: '2026-07-29T01:00:00.000Z', notice_emailed_to: 'brace.tj@example.com' } as Partial<JobHazmatIncidentRow>)])
+    expect(screen.getByText(/Biohazard remediation fee — incident Jul 20/)).toBeTruthy()
+    expect(screen.getByText(/Notice emailed Jul 28/)).toBeTruthy()
+  })
+})

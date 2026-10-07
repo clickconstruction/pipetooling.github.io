@@ -3,7 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { stripeApiKeyForMode } from '../_shared/stripeSecrets.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
-import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { lienOfferForPayLink, type LienOfferRow } from '../_shared/lienPayOffer.ts'
 import { buildPayLinkPayload, isPayLinkId, payLinkRowEligible, type PayLinkRow, type PayLinkStripeFacts } from '../_shared/payLink.ts'
 
 /**
@@ -77,11 +78,11 @@ serve(async (req) => {
 
     const { data: rowRaw, error: rowErr } = await admin
       .from('jobs_ledger_invoices')
-      .select('id, job_id, status, stripe_invoice_id, stripe_mode, hosted_invoice_url, stripe_invoice_status')
+      .select('id, job_id, status, stripe_invoice_id, stripe_mode, hosted_invoice_url, stripe_invoice_status, lien_offer_pct, lien_offer_by, lien_offer_credit_note_id, lien_offer_credit_cents, lien_offer_taken_at, lien_offer_ended_at')
       .eq('id', rawId)
       .maybeSingle()
     if (rowErr) throw new Error(rowErr.message)
-    const row = rowRaw as PayLinkRow | null
+    const row = rowRaw as (PayLinkRow & LienOfferRow) | null
     if (!payLinkRowEligible(row)) {
       console.log(JSON.stringify({ event: 'pay_link_open', id: rawId, state: 'not_found' }))
       return jsonResponse({ error: 'not_found' }, 404)
@@ -126,8 +127,10 @@ serve(async (req) => {
       console.warn(`pay-link: no Stripe key for ${mode} — answering from the row`)
     }
 
-    const payload = buildPayLinkPayload({ row, facts, jobName, company: PORTAL_COMPANY.name, phone: PORTAL_COMPANY.phone, paidOn })
-    console.log(JSON.stringify({ event: 'pay_link_open', id: row.id, state: payload.state, mode, stripe: facts ? 'answered' : 'skipped', refreshed }))
+    // The pay offer (v2.4704): Stripe already asks for the lower amount while the credit is on; the page says why, and until when.
+    const offer = lienOfferForPayLink(row, facts?.amount_remaining ?? null, todayYmdInAppTz())
+    const payload = buildPayLinkPayload({ row, facts, jobName, company: PORTAL_COMPANY.name, phone: PORTAL_COMPANY.phone, paidOn, offer })
+    console.log(JSON.stringify({ event: 'pay_link_open', id: row.id, state: payload.state, mode, stripe: facts ? 'answered' : 'skipped', refreshed, offer: offer?.state ?? 'none' }))
     return jsonResponse(payload)
   } catch (e) {
     console.error('pay-link failed', e)

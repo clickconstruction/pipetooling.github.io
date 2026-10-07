@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render smokes for the Lien desk's Share (v2.4311): the panel opens on the whole desk with the
- * message as it will go; What to send narrows it to one GC; Send… hands the share sheet the
+ * message as it will go; a To row says who it is for (v2.4722); Which liens narrows it to one GC; Send to a teammate… hands the share sheet the
  * subject, the text and the link (or copies where there is no sheet); counsel's line copies the
  * firm's live link; Email a teammate… starts on the leader when approvals wait and sends the
  * payload, never HTML; Email me a test goes to the sender; Escape closes.
@@ -25,7 +25,7 @@ const people = [
   { id: 'u-tau', name: 'Taunya', email: 'taunya@example.test', role: 'assistant' },
 ]
 const sendMock = vi.fn(async (_input: unknown) => ({ sentTo: ['Malachi'], failed: [] as string[] }))
-const firmMock = vi.fn(async (_origin: string) => ({ firmName: 'Smith Law', url: 'https://clicktooling.test/legal?t=abc' }) as { firmName: string; url: string } | null)
+const firmMock = vi.fn(async (_origin: string) => ({ firmName: 'Smith Law', url: 'https://clicktooling.test/legal?t=abc' }) as { firmName: string; url: string | null } | null)
 vi.mock('../../lib/jobs/lienDeskShareIo', () => ({
   fetchLienSharePeople: async () => people,
   fetchFirmPortalUrl: (origin: string) => firmMock(origin),
@@ -85,11 +85,24 @@ describe('LienDeskShare — the panel', () => {
     expect(screen.getByText(/^as of /)).toBeTruthy()
   })
 
-  it('What to send narrows the message to one GC', async () => {
+  it('says who it is for before anything else: someone in the office, never a customer or a GC (v2.4722)', async () => {
+    renderShare()
+    await settle()
+    const to = document.querySelector('[data-lien-share-to]')!
+    expect(to.textContent).toContain('Someone in the office')
+    expect(to.textContent).toContain('A master, a controller or an assistant. Never a customer or a GC.')
+    const scope = document.querySelector('[data-lien-share-scope]')!
+    expect(to.compareDocumentPosition(scope) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Which liens')).toBeTruthy()
+    expect(screen.queryByText('What to send')).toBeNull()
+    expect(screen.queryByText(/carries no names/)).toBeNull()
+  })
+
+  it('Which liens narrows the message to one GC', async () => {
     renderShare()
     await settle()
     fireEvent.click(document.querySelector('[data-lien-share-scope]')!)
-    const menu = screen.getByRole('menu', { name: 'What to send' })
+    const menu = screen.getByRole('menu', { name: 'Which liens' })
     expect(within(menu).getAllByRole('menuitemradio').map((b) => b.querySelector('strong')?.textContent)).toEqual(['Everything on the desk', 'Southern Post Construction', 'RMC- Dudley Mason', 'Knight Contracting'])
     fireEvent.click(document.querySelector('[data-lien-share-scope-option="gc-rmc"]')!)
     expect(preview()).toContain('RMC- Dudley Mason liens,')
@@ -98,13 +111,13 @@ describe('LienDeskShare — the panel', () => {
     expect(preview()).toContain(`liendeskJob=${id(258)}`)
   })
 
-  it('Send… hands the share sheet the subject, the text and the link, then closes', async () => {
+  it('Send to a teammate… hands the share sheet the subject, the text and the link, then closes', async () => {
     const share = vi.fn(async () => {})
     nav.share = share
     const onClose = renderShare()
     await settle()
     const send = document.querySelector('[data-lien-share-send]') as HTMLButtonElement
-    expect(send.textContent).toContain('Send…')
+    expect(send.textContent).toContain('Send to a teammate…')
     expect(document.activeElement).toBe(send)
     fireEvent.click(send)
     await settle()
@@ -148,6 +161,15 @@ describe('LienDeskShare — the panel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Copy the firm’s link/ }))
     await settle()
     expect(writeText).toHaveBeenCalledWith('https://clicktooling.test/legal?t=abc')
+  })
+
+  it('a live link whose address is no longer readable (item 22) points at the Legal desk instead of going quiet', async () => {
+    firmMock.mockResolvedValueOnce({ firmName: 'Smith Law', url: null })
+    renderShare()
+    await settle()
+    expect(document.querySelector('[data-lien-share-firm]')).not.toBeNull()
+    expect(screen.queryByRole('button', { name: /Copy the firm’s link/ })).toBeNull()
+    expect(document.querySelector('[data-lien-share-firm-desk]')?.textContent).toMatch(/Send the link on the Legal desk/)
   })
 
   it('no firm link, no counsel line', async () => {

@@ -167,7 +167,8 @@ export function RulingRunThroughSheet({ items, startIndex = 0, bidIdByNumber, bi
 
   return (
     <div role="dialog" aria-modal aria-label="Answer the robots' questions" data-testid="ruling-run-through" style={{ position: 'fixed', inset: 0, background: 'var(--surface)', zIndex: 1005, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)' }}>
+      {/* Below an iPhone's status bar: the sticky bar pads itself (a sticky bar ignores its scroller's padding, so the sheet cannot). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 1rem 0.75rem', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--surface)' }}>
         <b style={{ fontSize: '0.95rem' }}>{done ? 'Done' : progress.position}</b>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{done ? `${outcomes.length} answered · ${skipped} skipped` : progress.progress}</span>
         <button type="button" onClick={onClose} aria-label="Close" title="Close (Esc)" style={{ ...quietBtn, marginLeft: 'auto', fontSize: '1rem', lineHeight: 1 }}>✕</button>

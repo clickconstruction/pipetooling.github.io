@@ -4,6 +4,7 @@
  * one line with the headline when folding, the body kept mounted while
  * closed, and the open state remembered per device.
  */
+import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { PhoneFold } from './PhoneFold'
@@ -40,6 +41,27 @@ describe('PhoneFold', () => {
     expect(host.hidden).toBe(false)
     expect(btn.getAttribute('aria-expanded')).toBe('true')
     expect(localStorage.getItem('pipetooling_phone_fold_my-inbox_u1')).toBe('open')
+  })
+
+  it('keeps the children mounted when it starts or stops folding', () => {
+    let mounts = 0
+    function Section() {
+      useEffect(() => {
+        mounts += 1
+      }, [])
+      return <p data-testid="section">the section</p>
+    }
+    const fold = (on: boolean) => (
+      <PhoneFold fold={on} section="my-inbox" userId="u1" title="My Inbox" headline={null}>
+        <Section />
+      </PhoneFold>
+    )
+    const { rerender } = render(fold(true))
+    rerender(fold(false))
+    rerender(fold(true))
+    expect(screen.getByTestId('section')).toBeTruthy()
+    // A section that mounts again loads again. One that hides itself when empty then never settles.
+    expect(mounts).toBe(1)
   })
 
   it('opens as the device left it, and says only the name while the count loads', () => {

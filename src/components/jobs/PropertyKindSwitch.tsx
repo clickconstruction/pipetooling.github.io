@@ -17,12 +17,16 @@ type Props = {
   allowClear?: boolean
   /** What the switch is about, for a screen reader — "Property kind for 273 · Dudley". */
   label: string
+  /** What the app leans toward (v2.4727, Quickfill → Property kinds): that half is outlined and reads "looks right"; nothing is picked until the tap. */
+  hint?: Exclude<PropertyKind, ''> | null
 }
 
 /** Literal fill: a white label sits on it in both themes (v2.3656). */
 const PICKED_FILL = '#2563eb'
 
-export default function PropertyKindSwitch({ value, onPick, voice = 'lien', size = 'row', disabled = false, allowClear = false, label }: Props) {
+const HINT_RING = { residential: '#2563eb', non_residential: '#ea580c' } as const
+
+export default function PropertyKindSwitch({ value, onPick, voice = 'lien', size = 'row', disabled = false, allowClear = false, label, hint = null }: Props) {
   const unset = value === ''
   const edge = unset ? 'var(--border-amber)' : 'var(--border-strong)'
   const half = (on: boolean, first: boolean): CSSProperties => ({
@@ -41,9 +45,11 @@ export default function PropertyKindSwitch({ value, onPick, voice = 'lien', size
     <span role="group" aria-label={label} data-testid="property-kind-switch" data-kind={value || 'unset'} style={{ display: 'inline-flex', border: `1px solid ${edge}`, borderRadius: 7, overflow: 'hidden', verticalAlign: 'middle' }}>
       {PROPERTY_KIND_OPTIONS.map((o, i) => {
         const on = value === o.kind
+        const hinted = unset && hint === o.kind
         return (
-          <button key={o.kind} type="button" aria-pressed={on} disabled={disabled} onClick={() => (on ? (allowClear ? onPick('') : undefined) : onPick(o.kind))} style={half(on, i === 0)}>
+          <button key={o.kind} type="button" aria-pressed={on} disabled={disabled} onClick={() => (on ? (allowClear ? onPick('') : undefined) : onPick(o.kind))} style={hinted ? { ...half(on, i === 0), boxShadow: `inset 0 0 0 2px ${HINT_RING[o.kind]}`, color: HINT_RING[o.kind] } : half(on, i === 0)}>
             {o[voice]}
+            {hinted ? <span style={{ fontWeight: 500 }}> · looks right</span> : null}
           </button>
         )
       })}

@@ -6,6 +6,8 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { BY_HAND_METHODS, byHandClaimWords, byHandProblems, parsePrintedMonths, type ByHandInput, type ByHandJob, type ByHandMethod } from '../../lib/jobs/lienNoticeByHand'
 import { loadJobsAtProperty, recordLienNoticeByHand, type PropertyJobCandidate } from '../../lib/jobs/lienNoticeByHandIo'
 import { workMonthShort } from '../../lib/jobs/forecastWorkMonths'
+import LienRecordSheet from './LienRecordSheet'
+import { recordSheetField, recordSheetLabel, recordSheetTick } from './lienRecordSheetStyles'
 
 /**
  * Record a notice that already went out (#35 PR 2): the office printed the
@@ -14,6 +16,10 @@ import { workMonthShort } from '../../lib/jobs/forecastWorkMonths'
  * how, to whom, what the paper said, where the copy lives and which jobs it
  * covered, and writes one filing per job on one packet. Used by the Lien desk
  * pane and by the Lien window's notice tab.
+ *
+ * `layout: 'sheet'` (v2.4423) is the same step on the Lien window's record sheet, for a
+ * phone: as a box its 120 px fields cut off their own values and the second recipient ran
+ * off the edge. One component, one state, so the values hold if the layout changes.
  */
 export type ByHandPrimaryJob = {
   id: string
@@ -39,6 +45,8 @@ export default function LienNoticeByHandPane({
   userId,
   onClose,
   onRecorded,
+  layout = 'box',
+  onCloseWindow,
 }: {
   job: ByHandPrimaryJob
   /** The notice as the app would print it for this job — the record's snapshot, its claim replaced by the paper's. */
@@ -52,6 +60,10 @@ export default function LienNoticeByHandPane({
   userId: string | null
   onClose: () => void
   onRecorded: (result: { filingIds: string[]; jobs: number }) => void
+  /** `sheet` draws the step over the Lien window's card, for a phone; `box` (the default) in place. */
+  layout?: 'box' | 'sheet'
+  /** The sheet's ×: closes the whole window. */
+  onCloseWindow?: () => void
 }) {
   const { showToast } = useToastContext()
   const [sentOn, setSentOn] = useState(todayYmd)
@@ -105,6 +117,80 @@ export default function LienNoticeByHandPane({
     }
   }
 
+  const trackingHint = method === 'email' ? 'the address it went to' : method === 'hand' ? 'who signed for it' : '9407 1118 … (optional)'
+  const toggleOther = (id: string, on: boolean) => setTicked((prev) => { const next = new Set(prev); if (on) next.add(id); else next.delete(id); return next })
+
+  if (layout === 'sheet') {
+    return (
+      <LienRecordSheet
+        kind="notice_by_hand"
+        title="Notice already sent"
+        headline="§ 53.056 notice, mailed outside the run"
+        lines={[job.label, 'It is written as printed on every job it covered, and the desk stops asking for it.']}
+        action={{ label: `Record it on ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'}`, busyLabel: 'Recording…', busy, disabled: problems.length > 0, onClick: () => void record(), fill: '#b45309' }}
+        onBack={onClose}
+        onClose={onCloseWindow}
+      >
+        <div data-testid="lien-notice-by-hand" style={{ display: 'grid', gap: '0.85rem' }}>
+          <label style={{ display: 'block' }}>
+            <span style={recordSheetLabel}>Sent on</span>
+            <input type="date" value={sentOn} max={todayYmd} onChange={(e) => setSentOn(e.target.value)} aria-label="Sent on" style={recordSheetField} />
+          </label>
+          <label style={{ display: 'block' }}>
+            <span style={recordSheetLabel}>How it went</span>
+            <select value={method} onChange={(e) => setMethod(e.target.value as ByHandMethod)} aria-label="How it went" style={recordSheetField}>
+              {BY_HAND_METHODS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
+            </select>
+          </label>
+          <label style={{ display: 'block' }}>
+            <span style={recordSheetLabel}>Tracking</span>
+            <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={trackingHint} aria-label="Tracking" autoComplete="off" style={recordSheetField} />
+          </label>
+          <div role="group" aria-label="Who it went to" style={{ display: 'grid', gap: 8 }}>
+            <span style={{ ...recordSheetLabel, marginBottom: 0 }}>Who it went to</span>
+            <label style={recordSheetTick}><input type="checkbox" checked={toOwner} onChange={(e) => setToOwner(e.target.checked)} style={{ width: 20, height: 20, flexShrink: 0 }} /> owner of record</label>
+            <label style={recordSheetTick}><input type="checkbox" checked={toGc} onChange={(e) => setToGc(e.target.checked)} style={{ width: 20, height: 20, flexShrink: 0 }} /> original contractor</label>
+          </div>
+          <label style={{ display: 'block' }}>
+            <span style={recordSheetLabel}>The claim, as printed</span>
+            <input type="text" inputMode="decimal" value={claimText} onChange={(e) => setClaimText(e.target.value)} placeholder="the claim on the form" aria-label="Claim as printed" autoComplete="off" style={recordSheetField} />
+          </label>
+          <label style={{ display: 'block' }}>
+            <span style={recordSheetLabel}>The months, as printed</span>
+            <input type="text" value={monthsText} onChange={(e) => setMonthsText(e.target.value)} placeholder="e.g. Apr, Jun, Jul, Aug 2026" aria-label="Months as printed" autoComplete="off" style={recordSheetField} />
+            {printedMonths.length ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Months read as {printedMonths.map(workMonthShort).join(', ')}.</span> : null}
+          </label>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <span style={{ ...recordSheetLabel, marginBottom: 0 }}>
+              Saved copy <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>where the paper lives, once you saved it</span>
+            </span>
+            <input type="text" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Drive link (optional)" aria-label="Saved copy — link" autoComplete="off" style={recordSheetField} />
+            <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" autoComplete="off" style={recordSheetField} />
+          </div>
+          {others === null ? (
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Looking for other unpaid jobs at this property…</div>
+          ) : others.length > 0 ? (
+            <div data-testid="by-hand-other-jobs" style={{ display: 'grid', gap: 8 }}>
+              <span style={{ ...recordSheetLabel, marginBottom: 0 }}>Also on this paper <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>other unpaid jobs at this property</span></span>
+              {others.map((o) => {
+                const open = (Number(o.revenue) || 0) - (Number(o.payments_made) || 0)
+                return (
+                  <label key={o.id} style={recordSheetTick}>
+                    <input type="checkbox" checked={ticked.has(o.id)} onChange={(e) => toggleOther(o.id, e.target.checked)} aria-label={`Also covers ${effectiveJobLedgerNumber(o.hcp_number, o.click_number)}`} style={{ width: 20, height: 20, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0 }}>{effectiveJobLedgerNumber(o.hcp_number, o.click_number)} · {(o.job_name ?? '').trim() || (o.job_address ?? '').trim()}</span>
+                    <span style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '0.8125rem', textAlign: 'right' }}>{formatUsdNoCents(open)}{o.itemId ? ' · on the desk' : ''}</span>
+                  </label>
+                )
+              })}
+            </div>
+          ) : null}
+          {jobs.length > 1 ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{jobs.length} jobs · {formatUsdNoCents(coveredTotal)} open between them{diff ? ` · ${diff}` : ''}.</div> : diff ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }} data-testid="by-hand-claim-diff">{diff} — recorded as printed; the difference stays on the record.</div> : null}
+          {problems.length ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }} data-testid="by-hand-problems">Still needed: {problems.join(' · ')}</div> : null}
+        </div>
+      </LienRecordSheet>
+    )
+  }
+
   return (
     <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)', display: 'grid', gap: '0.45rem' }} data-testid="lien-notice-by-hand">
       <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>Record a notice that already went out</div>
@@ -116,7 +202,7 @@ export default function LienNoticeByHandPane({
           {BY_HAND_METHODS.map((m) => <option key={m.key} value={m.key}>{m.label}</option>)}
         </select>
         <span style={lbl}>Tracking</span>
-        <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={method === 'email' ? 'the address it went to' : method === 'hand' ? 'who signed for it' : '9407 1118 … (optional)'} aria-label="Tracking" style={input} />
+        <input type="text" value={tracking} onChange={(e) => setTracking(e.target.value)} placeholder={trackingHint} aria-label="Tracking" style={input} />
         <span style={{ display: 'flex', gap: '0.7rem', fontSize: '0.75rem' }}>
           <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}><input type="checkbox" checked={toOwner} onChange={(e) => setToOwner(e.target.checked)} /> owner of record</label>
           <label style={{ display: 'flex', gap: 4, alignItems: 'center' }}><input type="checkbox" checked={toGc} onChange={(e) => setToGc(e.target.checked)} /> original contractor</label>
@@ -138,7 +224,7 @@ export default function LienNoticeByHandPane({
             const open = (Number(o.revenue) || 0) - (Number(o.payments_made) || 0)
             return (
               <label key={o.id} style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.75rem', padding: '2px 0' }}>
-                <input type="checkbox" checked={ticked.has(o.id)} onChange={(e) => setTicked((prev) => { const next = new Set(prev); if (e.target.checked) next.add(o.id); else next.delete(o.id); return next })} aria-label={`Also covers ${effectiveJobLedgerNumber(o.hcp_number, o.click_number)}`} />
+                <input type="checkbox" checked={ticked.has(o.id)} onChange={(e) => toggleOther(o.id, e.target.checked)} aria-label={`Also covers ${effectiveJobLedgerNumber(o.hcp_number, o.click_number)}`} />
                 <span>{effectiveJobLedgerNumber(o.hcp_number, o.click_number)} · {(o.job_name ?? '').trim() || (o.job_address ?? '').trim()}</span>
                 <span style={{ color: 'var(--text-muted)' }}>{formatUsdNoCents(open)}{o.itemId ? ' · on the desk' : ''}</span>
               </label>

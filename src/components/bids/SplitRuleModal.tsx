@@ -1,3 +1,4 @@
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import type { CSSProperties } from 'react'
 import type { SplitExample } from '../../lib/submittals/takeoffCandidates'
 
@@ -12,9 +13,11 @@ const td: CSSProperties = { padding: '0.3rem 0.5rem', borderBottom: '1px solid v
  */
 export function SplitRuleModal({ examples, onClose }: { examples: ReadonlyArray<SplitExample>; onClose: () => void }) {
   const shown = examples.slice(0, 40)
+  // 2026-10-04 · a page to read: Esc closes it like Close.
+  useLeaveGuard({ dirty: false, onClose })
   return (
-    <div role="presentation" onClick={(e) => { e.stopPropagation(); onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-      <div role="dialog" aria-modal="true" aria-label="When a row can split" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 600, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+    <div role="presentation" onClick={(e) => { e.stopPropagation(); onClose() }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+      <div role="dialog" aria-modal="true" aria-label="When a row can split" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 600, width: '100%', maxHeight: 'min(85vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '1rem 1.25rem 0.5rem' }}>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>When a row can split</h3>
           <p style={{ ...quiet, margin: '0.3rem 0 0' }}>The app reads the tags off a fixture’s name. A name that spells out more than one tag — <i>WC 1&amp;2</i>, <i>UR 1, 2 &amp; 3</i> — gets the Split switch; the rest do not. Off, the row keeps every tag on one line. On, each tag gets its own row with the same product, house and count.</p>

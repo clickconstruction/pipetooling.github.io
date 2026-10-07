@@ -500,7 +500,7 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
 
   const card: CSSProperties = isMobile
     ? { background: 'var(--surface)', width: '100%', height: '100%', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }
-    : { background: 'var(--surface)', borderRadius: 10, width: 'min(1100px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }
+    : { background: 'var(--surface)', borderRadius: 10, width: 'min(1100px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-top-chrome, 0px) - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }
 
   return (
     <div
@@ -508,7 +508,8 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
       aria-modal="true"
       aria-label="Where everyone is"
       // Ends above the Dispatch / Job mode footer (--app-bottom-chrome) so the sheet's buttons are never under the bar.
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: CLOCKED_IN_MAP_Z, padding: isMobile ? 0 : '1rem' }}
+      // Starts below an iPhone's status bar (--app-top-chrome, v2.4444): a phone's sheet is the full height, so its title and × sat under the clock.
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: CLOCKED_IN_MAP_Z, padding: isMobile ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={onClose}
     >
       <div onClick={(e) => e.stopPropagation()} style={card}>

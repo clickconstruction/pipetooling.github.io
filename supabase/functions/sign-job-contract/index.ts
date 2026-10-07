@@ -215,7 +215,8 @@ serve(async (req) => {
           const url = signingUrl(appOrigin(body.public_origin), token)
           const subject = `✍ ${printedName} signed — your signature is next · Job #${jobNo}`
           const text = `${printedName} has signed ${heading} (Job #${jobNo}). The agreement is complete once you sign too.\n\nReview and sign here: ${url}\n`
-          await sendEmailViaResend(otherSigner.email, subject, text, text.replace(/\n/g, '<br>'), resendKey)
+          // Sent copies: the other signer's "your turn" email is kept on the job.
+          await sendEmailViaResend(otherSigner.email, subject, text, text.replace(/\n/g, '<br>'), resendKey, { file: { kind: 'job_contract_next_signer', recipientName: otherSigner.name, jobIds: [c.job_id], source: { table: 'job_contracts', id: c.id } } })
         }
       } catch (e) {
         console.error('sign-job-contract nudge failed', e)
@@ -332,6 +333,8 @@ serve(async (req) => {
           await sendEmailViaResend(c.recipient_email, subject, text, html, resendKey, {
             ...(ccList.length > 0 ? { cc: ccList } : {}),
             ...(pdfBase64 ? { attachments: [{ filename: pdfFilename, content: pdfBase64 }] } : {}),
+            // Sent copies: the customer's signed copy, email and PDF, is kept on the job.
+            file: { kind: 'job_contract_signed_copy', recipientName: c.recipient_name, jobIds: [c.job_id], source: { table: 'job_contracts', id: c.id } },
           })
         }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { placeTourCard, spotlightHole, type TourRect } from '../lib/spotlightTourPlacement'
@@ -14,6 +14,13 @@ export type SpotlightTourStep = {
    * it the caller should drop absent steps with `spotlightTourStepsPresent`.
    */
   missingBody?: string
+  /**
+   * A stop about no one control (2026-10-04): the card centers over the dimmed page, with no
+   * hole and nothing "missing". The anchor is only its name.
+   */
+  center?: boolean
+  /** Words and what they mean, listed under the body: a page of terms before the stops that use them. */
+  terms?: ReadonlyArray<{ word: string; means: string }>
   /**
    * Short lines shown as a list under the body, one idea each: a stop that names several things.
    * A line that starts with a label and a colon ("Building: the crews work") shows the label in bold.
@@ -143,6 +150,8 @@ const ANCHOR_LOOKS = 8
 const ANCHOR_LOOK_MS = 120
 
 const CARD_WIDTH = 400
+/** A stop that lists terms reads as a short page, not a caption. */
+const TERMS_CARD_WIDTH = 520
 const CARD_EST_HEIGHT = 170
 
 /**
@@ -189,6 +198,11 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
   // (covers the smooth scroll settling, sticky headers, and viewport resizes).
   useEffect(() => {
     if (!step) return
+    if (step.center) {
+      setAnchorRect(null)
+      setAnchorMissing(false)
+      return
+    }
     const el = document.querySelector(`[data-tour="${step.anchor}"]`)
     if (!(el instanceof HTMLElement)) {
       setAnchorRect(null)
@@ -232,7 +246,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
       window.removeEventListener('resize', measure)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step?.anchor, looks])
+  }, [step?.anchor, step?.center, looks])
 
   useLayoutEffect(() => {
     if (cardRef.current) setCardHeight(cardRef.current.offsetHeight)
@@ -258,7 +272,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
 
   const viewport = { width: window.innerWidth, height: window.innerHeight }
   const hole = anchorRect ? spotlightHole(anchorRect, viewport) : null
-  const cardWidth = Math.min(CARD_WIDTH, viewport.width - 16)
+  const cardWidth = Math.min(step.terms ? TERMS_CARD_WIDTH : CARD_WIDTH, viewport.width - 16)
   const placement = hole
     ? placeTourCard(hole, viewport, { width: cardWidth, height: cardHeight })
     : { top: viewport.height / 2 - cardHeight / 2, left: viewport.width / 2 - cardWidth / 2, side: 'below' as const }
@@ -276,6 +290,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
   }
 
   return createPortal(
+    // status-bar: allow — the hole and the card are placed from the control they point at, not from this layer
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000 }} onClick={onClose} data-page-scroll="allow" data-testid="spotlight-tour-overlay">
       {hole ? (
         <div
@@ -327,6 +342,17 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
         </div>
         <div style={{ fontSize: '0.82rem', color: 'var(--text-700)', margin: '0.35rem 0 0.7rem' }}>
           {step.body}
+          {step.terms ? (
+            // The list scrolls inside the card on a short screen; the title and the buttons hold still.
+            <dl data-testid="tour-terms" style={{ margin: '0.5rem 0 0', display: 'grid', gridTemplateColumns: 'minmax(5.5rem, auto) 1fr', gap: '0.3rem 0.75rem', maxHeight: 'calc(100vh - 15rem)', overflowY: 'auto', overscrollBehavior: 'contain' }}>
+              {step.terms.map((t) => (
+                <Fragment key={t.word}>
+                  <dt style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{t.word}</dt>
+                  <dd style={{ margin: 0 }}>{t.means}</dd>
+                </Fragment>
+              ))}
+            </dl>
+          ) : null}
           {step.bullets && step.bullets.length > 0 ? <TourBullets lines={step.bullets} numbered={step.numbered ?? false} /> : null}
           {anchorMissing && step.missingBody ? (
             <div data-testid="tour-missing" style={{ marginTop: '0.4rem', fontSize: '0.76rem', color: 'var(--text-muted)', borderLeft: '2px solid var(--border-strong)', paddingLeft: '0.5rem' }}>
@@ -370,5 +396,5 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
 
 /** The steps whose anchors are actually on the page right now, plus the ones that carry a `missingBody`. */
 export function spotlightTourStepsPresent(steps: SpotlightTourStep[]): SpotlightTourStep[] {
-  return steps.filter((s) => s.missingBody != null || document.querySelector(`[data-tour="${s.anchor}"]`) != null)
+  return steps.filter((s) => s.center === true || s.missingBody != null || document.querySelector(`[data-tour="${s.anchor}"]`) != null)
 }

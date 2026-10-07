@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { ActionPhaseButton } from '../ActionPhaseButton'
+import { useActionPhase } from '../../hooks/useActionPhase'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   addBusinessDays,
-  buildDemandLetterModel,
+  buildDemandLetterEmailHtml,
+  exhibitInvoiceDocument,
   buildDemandLetterPdfBlob,
   buildDemandLetterPrefill,
   buildDemandLetterPrintHtml,
@@ -26,7 +29,7 @@ import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../../lib/physical
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { parseStripeInvoiceDetailsResponse } from '../../lib/stripeInvoiceDetailsResponse'
-import { buildDemandLetterPacket, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
+import { buildDemandLetterPacket, exhibitKind, exhibitLabels, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRuleHref } from '../../lib/jobs/lienRuleCites'
@@ -38,14 +41,24 @@ import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import { LienLastWorkDayLine } from './LienLastWorkDayLine'
+import { isLienOffice } from '../../lib/jobs/lienDesk'
+import { lienWindowNextStep } from '../../lib/jobs/lienWindowNextStep'
 import LienWindowFoldedSteps from './LienWindowFoldedSteps'
 import DemandRecordSendSheet from './DemandRecordSendSheet'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useScrollEdgeFade } from '../../hooks/useScrollEdgeFade'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
+import { lienSupplierMark } from '../../lib/jobs/lienJobSuppliers'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
+import { filingSnapshotPage } from '../../lib/jobs/lienStopPaperPages'
+import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -53,7 +66,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -89,13 +102,21 @@ function exhibitATitle(invoiceNumber: string, sentYmd: string): string {
   return `Invoice ${invoiceNumber}${sentYmd ? `, as sent ${demandDate(sentYmd)}` : ''}`
 }
 
+function billDay(i: JobsLedgerInvoice): string {
+  return calendarYmdInAppTzFromIso(i.billed_at ?? '') || calendarYmdInAppTzFromIso(i.sent_to_customer_at ?? '') || calendarYmdInAppTzFromIso(i.created_at ?? '')
+}
+
 /** Billed lines with money still open — what a demand letter is about. Same payment rule as the letter's claim (v2.3515). */
 function demandableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
   return (job.invoices ?? [])
     .filter((i) => i.status === 'billed' && Number(i.amount ?? 0) - paymentsAppliedToInvoice(job, i.id) > 0.005)
     .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
+    // In the order they went out, so the statement and the exhibits read by date; the sequence breaks a tie.
+    .sort((a, b) => billDay(a).localeCompare(billDay(b)) || a.sequence_order - b.sequence_order)
 }
+
+/** A chip on the band under the timeline (v2.4693): one fact, one door. */
+const bandChip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
 
 export default function LienInstrumentsModal({
   open,
@@ -107,6 +128,10 @@ export default function LienInstrumentsModal({
   onRecorded,
   initialTab,
   noticeMonths,
+  onOpenLienDesk,
+  onOpenRelease,
+  openLastWork = false,
+  onLastWorkSaved,
 }: {
   open: boolean
   onClose: () => void
@@ -122,11 +147,24 @@ export default function LienInstrumentsModal({
   initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
   /** The Lien desk's months for the § 53.056 notice (v2.3405) — recorded as months_covered instead of the last work month alone. */
   noticeMonths?: string[] | null
+  /** The next step's door to the Lien desk on this job (punch list #82): notices and retainage are drafted, approved and sent there. Absent, the card has no desk button. */
+  onOpenLienDesk?: (jobId: string, kind: 'notice' | 'retainage') => void
+  /** *Waivers on the bills* (punch list #82): the Release of Lien window for this job, opened over this one. */
+  onOpenRelease?: (job: JobWithDetails) => void
+  /** Open with the last day of work's line already editing (v2.4735): the Deadlines grid's last-day label. */
+  openLastWork?: boolean
+  /** The last day of work was set or cleared here: the opener re-reads its clocks and the desk. */
+  onLastWorkSaved?: () => void
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [activeTab, setActiveTab] = useState<'demand' | 'notice' | 'affidavit' | 'release_record'>('demand')
   const [filings, setFilings] = useState<JobLienFilingRow[]>([])
+  // A stop's paper (v2.4793): the timeline stop whose window is open; null when closed, and closed with the window.
+  const [stopOpen, setStopOpen] = useState<number | null>(null)
+  useEffect(() => {
+    if (!open) setStopOpen(null)
+  }, [open])
   const [linkedAddress, setLinkedAddress] = useState<CustomerAddressRow | null>(null)
   const [jobOwnerRow, setJobOwnerRow] = useState<JobPropertyOwnerLike>(null)
   const [gcEmail, setGcEmail] = useState('')
@@ -137,8 +175,19 @@ export default function LienInstrumentsModal({
   const [customerAddress, setCustomerAddress] = useState('')
   const [propertyKind, setPropertyKind] = useState('')
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
+  // The last day of work (v2.4735): the timeline's *change ›* opens the All filings line here; a save re-reads the job's five columns.
+  const [lastWorkOpen, setLastWorkOpen] = useState(openLastWork)
+  const [lastWorkPatch, setLastWorkPatch] = useState<Partial<Pick<JobWithDetails, 'last_work_date' | 'lien_last_work_on' | 'lien_last_work_note' | 'lien_last_work_set_at' | 'lien_last_work_set_by'>> | null>(null)
+  useEffect(() => {
+    setLastWorkOpen(open && openLastWork)
+    setLastWorkPatch(null)
+  }, [open, job?.id, openLastWork])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
+  // The footer's three doors say what they are doing (v2.4584): busy for at least 1.5 s, then done for 2 s, at one width.
+  const printPhase = useActionPhase()
+  const downloadPhase = useActionPhase()
+  const emailPhase = useActionPhase()
   const [recordOpen, setRecordOpen] = useState(false)
   const [recordMethod, setRecordMethod] = useState('certified_mail')
   const [recordTracking, setRecordTracking] = useState('')
@@ -150,7 +199,7 @@ export default function LienInstrumentsModal({
   const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, { invoiceNumber: string | null; lines: { description: string; quantity: number | null; amount: number }[]; dueYmd: string | null }>>({})
   const [payerRows, setPayerRows] = useState<Record<string, { name: string; address: string; email: string }>>({})
   const [addressTouched, setAddressTouched] = useState(false)
-  // v2.3429 — the exhibits: the signed agreement when the job has one (Exhibit B), and the two switches.
+  // v2.3429 — the exhibits: the signed agreement when the job has one, and the two switches.
   const [signedAgreement, setSignedAgreement] = useState<{ path: string; title: string } | null>(null)
   const [includeAgreement, setIncludeAgreement] = useState(true)
   const [includeDeliveryRecord, setIncludeDeliveryRecord] = useState(true)
@@ -263,7 +312,7 @@ export default function LienInstrumentsModal({
             if (job.customer_id) setCustomerAddress(next[job.customer_id]?.address ?? '')
           }
         }
-        // Exhibit B: the job's signed agreement, when one exists as a PDF.
+        // The job's signed agreement, when one exists as a PDF.
         try {
           const { data: contracts } = await supabase
             .from('job_contracts')
@@ -276,7 +325,7 @@ export default function LienInstrumentsModal({
           if (!cancelled) {
             if (signed) {
               const path = (signed.signed_pdf_path ?? '').trim() || (signed.paper_upload_path ?? '').trim()
-              const when = (signed.signed_at ?? '').slice(0, 10) || (signed.paper_signed_on ?? '').slice(0, 10)
+              const when = calendarYmdInAppTzFromIso(signed.signed_at ?? '') || (signed.paper_signed_on ?? '').slice(0, 10)
               setSignedAgreement({ path, title: `Signed agreement — ${(signed.template_name ?? '').trim() || 'contract'}${when ? `, signed ${demandDate(when)}` : ''}` })
             } else {
               setSignedAgreement(null)
@@ -378,9 +427,10 @@ export default function LienInstrumentsModal({
     void (async () => {
       const notices: DemandPriorNotice[] = []
       for (const inv of selectedInvoices) {
-        const billed = (inv.billed_at ?? inv.created_at ?? '').slice(0, 10)
+        // Every notice below is an instant: its day in APP_CALENDAR_TZ, never its UTC date.
+        const billed = calendarYmdInAppTzFromIso(inv.billed_at ?? inv.created_at ?? '')
         if (/^\d{4}-\d{2}-\d{2}$/.test(billed)) notices.push({ date: billed, label: 'Invoice sent' })
-        const sentOut = (inv.sent_to_customer_at ?? '').slice(0, 10)
+        const sentOut = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '')
         if (/^\d{4}-\d{2}-\d{2}$/.test(sentOut) && sentOut !== billed)
           notices.push({ date: sentOut, label: 'Invoice delivered to customer' })
       }
@@ -390,7 +440,7 @@ export default function LienInstrumentsModal({
           .select('jobs_ledger_invoice_id, sent_at')
           .in('jobs_ledger_invoice_id', selectedInvoices.map((i) => i.id))
         for (const r of (resends ?? []) as { sent_at: string }[]) {
-          const d = (r.sent_at ?? '').slice(0, 10)
+          const d = calendarYmdInAppTzFromIso(r.sent_at ?? '')
           if (/^\d{4}-\d{2}-\d{2}$/.test(d)) notices.push({ date: d, label: 'Invoice re-sent by email' })
         }
       } catch {
@@ -402,7 +452,7 @@ export default function LienInstrumentsModal({
         const { data: promRaw } = await supabase.rpc('list_job_payment_promises' as never)
         for (const pr of parsePaymentPromisesRpc(promRaw as unknown) ?? []) {
           if (pr.jobId !== job.id) continue
-          const d = pr.createdAt.slice(0, 10)
+          const d = calendarYmdInAppTzFromIso(pr.createdAt)
           if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue
           const by =
             pr.source === 'customer'
@@ -419,9 +469,9 @@ export default function LienInstrumentsModal({
           .select('created_at, outcome')
           .eq('job_id', job.id)
         for (const t of (touches ?? []) as { created_at: string; outcome: string }[]) {
-          const d = (t.created_at ?? '').slice(0, 10)
+          const d = calendarYmdInAppTzFromIso(t.created_at ?? '')
           if (/^\d{4}-\d{2}-\d{2}$/.test(d))
-            notices.push({ date: d, label: `Collection call — ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
+            notices.push({ date: d, label: `Collection call: ${(t.outcome ?? '').replace(/_/g, ' ') || 'recorded'}` })
         }
       } catch {
         // fail-soft
@@ -507,11 +557,11 @@ export default function LienInstrumentsModal({
       })
       // The exhibits the letter names (v2.3429). Page counts arrive when the packet is built.
       const enclosures: DemandExhibit[] = []
-      ;(next.statement ?? []).forEach((st, i) => {
-        if (sources[i]?.doc) enclosures.push({ label: 'A', title: exhibitATitle(st.invoiceNumber, st.sentYmd), pages: 0 })
-      })
-      if (signedAgreement && includeAgreement) enclosures.push({ label: 'B', title: signedAgreement.title, pages: 0 })
-      if (includeDeliveryRecord) enclosures.push({ label: 'C', title: 'Delivery record', pages: 0 })
+      const withDoc = (next.statement ?? []).filter((_, i) => sources[i]?.doc)
+      const labels = exhibitLabels({ invoices: withDoc.length, agreement: Boolean(signedAgreement && includeAgreement), delivery: includeDeliveryRecord })
+      withDoc.forEach((st, i) => enclosures.push({ label: labels.invoices[i]!, kind: 'invoice', title: exhibitATitle(st.invoiceNumber, st.sentYmd), pages: 0 }))
+      if (signedAgreement && includeAgreement) enclosures.push({ label: labels.agreement, kind: 'agreement', title: signedAgreement.title, pages: 0 })
+      if (includeDeliveryRecord) enclosures.push({ label: labels.delivery, kind: 'delivery', title: 'Delivery record', pages: 0 })
       const nextWithExhibits = { ...next, enclosures }
       if (!prev) return nextWithExhibits
       return {
@@ -540,28 +590,32 @@ export default function LienInstrumentsModal({
     const today = todayYmdLocal()
     const statement = fields.statement ?? []
     const inputs: DemandExhibitInput[] = []
-    for (let i = 0; i < sources.length; i++) {
-      const doc = sources[i]?.doc
-      const st = statement[i]
-      if (!doc || !st) continue
-      inputs.push({ label: 'A', title: exhibitATitle(st.invoiceNumber, st.sentYmd), blob: await buildPhysicalInvoicePdfBlob(doc) })
-    }
+    const bills = sources.flatMap((src, i) => (src.doc && statement[i] ? [{ doc: src.doc, st: statement[i]! }] : []))
+    let agreementBlob: Blob | null = null
     if (signedAgreement && includeAgreement) {
       try {
         const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).download(signedAgreement.path)
-        if (data) inputs.push({ label: 'B', title: signedAgreement.title, blob: data })
+        agreementBlob = data ?? null
       } catch {
-        // the letter still goes without it; the enclosures line follows what was actually merged
+        // the letter still goes without it; the labels and the enclosures follow what was actually merged
       }
     }
+    const labels = exhibitLabels({ invoices: bills.length, agreement: agreementBlob != null, delivery: includeDeliveryRecord })
+    for (let i = 0; i < bills.length; i++) {
+      const { doc, st } = bills[i]!
+      // The exhibit carries the letter's number and due day for this bill.
+      inputs.push({ label: labels.invoices[i]!, kind: 'invoice', title: exhibitATitle(st.invoiceNumber, st.sentYmd), blob: await buildPhysicalInvoicePdfBlob(exhibitInvoiceDocument(doc, st)) })
+    }
+    if (signedAgreement && agreementBlob) inputs.push({ label: labels.agreement, kind: 'agreement', title: signedAgreement.title, blob: agreementBlob })
     if (includeDeliveryRecord) {
       inputs.push({
-        label: 'C',
+        label: labels.delivery,
+        kind: 'delivery',
         title: 'Delivery record',
         blob: await buildDeliveryRecordPdfBlob({ businessName: fields.businessName, invoicesPhrase: demandInvoicesPhrase(statement), recipientName: fields.recipientName, rows: fields.priorNotices, todayYmd: today }),
       })
     }
-    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, title: i.title, pages: 0 })) }, today), inputs)
+    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, kind: i.kind, title: i.title, pages: 0 })) }, today), inputs)
     const letter = await buildDemandLetterPdfBlob({ ...fields, enclosures: first.exhibits }, today)
     return buildDemandLetterPacket(letter, inputs)
   }, [fields, sources, signedAgreement, includeAgreement, includeDeliveryRecord])
@@ -578,6 +632,15 @@ export default function LienInstrumentsModal({
 
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
   const isSub = Boolean(job?.gc_customer_id)
+  const lastWorkJob = useMemo(() => (job ? { ...job, ...(lastWorkPatch ?? {}) } : null), [job, lastWorkPatch])
+  const canSetLastWork = isLienOffice(authRole)
+  const reReadLastWork = useCallback(async () => {
+    if (!job) return
+    const { data } = await supabase.from('jobs_ledger').select('last_work_date, lien_last_work_on, lien_last_work_note, lien_last_work_set_at, lien_last_work_set_by').eq('id', job.id).maybeSingle()
+    if (data) setLastWorkPatch(data as NonNullable<typeof lastWorkPatch>)
+    setLastWorkOpen(false)
+    onLastWorkSaved?.()
+  }, [job, onLastWorkSaved])
   const clock = useMemo(
     () => computeJobLienClock({ lastWorkYmd: job?.last_work_date ?? null, propertyKind, isSub }),
     [job?.last_work_date, propertyKind, isSub],
@@ -587,29 +650,21 @@ export default function LienInstrumentsModal({
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
+  // The band under the timeline, folded (v2.4693): on a computer the waivers and the supply house are chips, and the supply-house card opens under *Details*.
+  const [bandDetailsOpen, setBandDetailsOpen] = useState(false)
   // Supply houses on this job (v2.4404): one folded line in the header, the desk's card when opened.
   const supplierJobIds = useMemo(() => (job ? [job.id] : []), [job])
   const suppliers = useLienJobSuppliers(supplierJobIds, open && job != null)
   const supplierJob = job ? suppliers.byJob.get(job.id) : undefined
-  const tabBarRef = useRef<HTMLDivElement | null>(null)
-  const [tabBarMore, setTabBarMore] = useState(false)
-  const readTabBar = useCallback(() => {
-    const el = tabBarRef.current
-    setTabBarMore(el ? el.scrollWidth - el.clientWidth - el.scrollLeft > 4 : false)
-  }, [])
-  // Read after every render: the bar's width changes with the tabs it holds and with the window (the same value is no update).
-  useEffect(() => {
-    readTabBar()
-    window.addEventListener('resize', readTabBar)
-    return () => window.removeEventListener('resize', readTabBar)
-  })
+  const papersBar = useScrollEdgeFade<HTMLDivElement>()
   const timeline = useMemo(
     () =>
       job
         ? buildLienTimelineFromWindow({
             workMonths: windowWorkMonths?.[job.id] ?? null,
             filings,
-            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: job.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null },
+            // v2.4735: the day set by hand reaches the window's timeline too (it read the clock hours and the creation day only).
+            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: lastWorkJob?.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null, lien_last_work_on: lastWorkJob?.lien_last_work_on ?? null },
             isSub,
             propertyKind,
             openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
@@ -617,8 +672,49 @@ export default function LienInstrumentsModal({
             demandLetters: historyRows,
           })
         : null,
-    [job, windowWorkMonths, filings, isSub, propertyKind, historyRows],
+    [job, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows],
   )
+
+  // A stop's paper (v2.4793): what the window shows for each stop, from the job's Lien window — a filing's own snapshot once it
+  // went out, else the tab here that prints it; the notice and the retainage notice are drafted and sent on the Lien desk.
+  const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
+    const none: LienStopPaper = { pages: [], envelope: null, before: [], record: null, act: null }
+    if (!job) return none
+    const live = filings.filter((f) => !f.voided_at)
+    const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
+    const asSent = (f: JobLienFilingRow, words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
+      const page = filingSnapshotPage(f, { issuer, jobNumber })
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+    }
+    const tab = (t: 'notice' | 'affidavit' | 'release_record', label: string) => ({ label, onPress: () => { setStopOpen(null); setActiveTab(t) } })
+    const kind = lienStopPaperKind(step)
+    if (kind === 'notice') {
+      const sent = step.monthKey ? live.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
+      if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`)
+      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      return { ...none, act: tab('notice', 'Open the Notice tab ›'), note: 'The notice is drafted, approved and sent on the Lien desk. The Notice tab here prints it and records a mailing by hand.' }
+    }
+    if (kind === 'retainage') {
+      const sent = live.find((f) => f.kind === 'retainage_53_057')
+      if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`)
+      return { ...none, act: onOpenLienDesk ? { label: 'Open it on the Lien desk ›', onPress: () => { setStopOpen(null); onOpenLienDesk(job.id, 'retainage') } } : null, note: 'The § 53.057 retainage notice is drafted and sent on the Lien desk, under Retainage.' }
+    }
+    if (kind === 'affidavit' || kind === 'serve') {
+      const filed = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0]
+      if (filed) {
+        const words = kind === 'serve' ? (filed.served_at ? `Served ${when(filed.served_at, filed.created_at)}` : `Filed ${formatYmdMonthDay(filed.filed_at!)} · a copy to the owner and the GC is still owed`) : `Filed ${formatYmdMonthDay(filed.filed_at!)}${filed.recording_number ? ` · ${filed.recording_number}` : ''}`
+        return asSent(filed, words, { envelope: kind === 'serve' ? 'A copy of the filed affidavit to the owner and the GC' : null })
+      }
+      return { ...none, act: tab('affidavit', 'Open the Affidavit tab ›'), note: kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope, within five days of filing.' : 'The Affidavit tab here draws the affidavit as it would file today, prints it for notarization and records the filing.' }
+    }
+    if (kind === 'release') {
+      const filed = live.find((f) => f.kind === 'release_of_record')
+      if (filed) return asSent(filed, `Released ${when(filed.filed_at, filed.created_at)}`)
+      return { ...none, act: tab('release_record', 'Open the Release tab ›'), note: 'The release of record is made once the job is paid.' }
+    }
+    if (kind === 'demand') return { ...none, act: { label: 'Open the Demand letter tab ›', onPress: () => { setStopOpen(null); setActiveTab('demand') } }, note: 'The demand letter is sent from this window; its reply day is on the strip.' }
+    return none
+  }
   const originalContractorName = isSub
     ? (job?.gcCustomer?.name ?? '').trim() || (job?.customer_name ?? '').trim()
     : (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical'
@@ -629,29 +725,31 @@ export default function LienInstrumentsModal({
   }
 
   // Print opens the packet PDF (letter + exhibits) in a new tab — one print, every page.
-  const printLetter = useCallback(async () => {
-    if (!fields || pdfBusy) return
+  const printLetter = useCallback(async (): Promise<boolean> => {
+    if (!fields || pdfBusy) return false
     setPdfBusy(true)
     try {
       const packet = await buildPacket()
-      if (!packet) return
+      if (!packet) return false
       const url = URL.createObjectURL(packet.blob)
       const win = window.open(url, '_blank', 'noopener')
       if (!win) showToast('Popup blocked — allow popups to print.', 'error')
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      return Boolean(win)
     } catch {
       showToast('Could not build the packet.', 'error')
+      return false
     } finally {
       setPdfBusy(false)
     }
   }, [fields, pdfBusy, buildPacket, showToast])
 
-  const downloadPdf = useCallback(async () => {
-    if (!fields || pdfBusy) return
+  const downloadPdf = useCallback(async (): Promise<boolean> => {
+    if (!fields || pdfBusy) return false
     setPdfBusy(true)
     try {
       const packet = await buildPacket()
-      if (!packet) return
+      if (!packet) return false
       const blob = packet.blob
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -661,8 +759,10 @@ export default function LienInstrumentsModal({
       a.click()
       a.remove()
       URL.revokeObjectURL(url)
+      return true
     } catch {
       showToast('Could not build the PDF.', 'error')
+      return false
     } finally {
       setPdfBusy(false)
     }
@@ -761,12 +861,14 @@ export default function LienInstrumentsModal({
       if (err) throw err
       const resendId = ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '').trim()
       await recordSend({ method: 'email', tracking: `${resendId ? `resend:${resendId}` : 'emailed'} → ${to}`, sentOn: todayYmdLocal(), exhibits: packet.exhibits })
+      // The sheet has closed; the footer's Email button says it went.
+      emailPhase.flashDone()
     } catch (e) {
       showToast(e instanceof Error && e.message ? `Could not email the letter: ${e.message}` : 'Could not email the letter.', 'error')
     } finally {
       setEmailBusy(false)
     }
-  }, [fields, job, emailBusy, emailTo, buildPacket, jobNumber, recordSend, showToast])
+  }, [fields, job, emailBusy, emailTo, buildPacket, jobNumber, recordSend, showToast, emailPhase])
 
   const viewHistoryLetter = useCallback(
     (r: JobDemandLetterRow) => {
@@ -775,7 +877,7 @@ export default function LienInstrumentsModal({
         showToast('This record has no stored letter snapshot.', 'error')
         return
       }
-      const ok = openHtmlPreviewWindow(buildDemandLetterPrintHtml(snap, (r.sent_at ?? r.created_at).slice(0, 10), jobNumber))
+      const ok = openHtmlPreviewWindow(buildDemandLetterPrintHtml(snap, r.sent_at ? r.sent_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at), jobNumber))
       if (!ok) showToast('Popup blocked — allow popups to view the letter.', 'error')
     },
     [jobNumber, showToast],
@@ -802,7 +904,9 @@ export default function LienInstrumentsModal({
   if (!open || !job || !fields) return null
 
   const liveHistory = liveDemandLetters(historyRows)
-  const model = buildDemandLetterModel(fields, todayYmdLocal())
+  const letterHtml = buildDemandLetterEmailHtml(fields, todayYmdLocal())
+  // The Enclosed panel names each exhibit by the letter it will wear: in order, no gap.
+  const panelLabels = exhibitLabels({ invoices: sources.filter((src) => src.doc).length, agreement: Boolean(signedAgreement && includeAgreement), delivery: includeDeliveryRecord })
   // `extraHref` (v2.3594): a basis line that names a section links to that rule's row in the guide.
   const toggle = (key: keyof DemandLetterFields, label: string, extra?: string, extraHref?: string) => (
     <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'pointer' }}>
@@ -820,6 +924,23 @@ export default function LienInstrumentsModal({
     </label>
   )
 
+  // The next step, named (punch list #82): the timeline's own Next on the path, with the one door that goes there.
+  const nextStep = timeline ? lienWindowNextStep(timeline.next, timeline.waitingOn) : null
+  const nextDoor = nextStep?.button?.door ?? null
+  const nextStepButton =
+    nextStep?.button && nextDoor && (nextDoor.to === 'tab' || onOpenLienDesk) ? (
+      <button
+        type="button"
+        data-lien-window-next-step-button
+        onClick={() => {
+          if (nextDoor.to === 'tab') setActiveTab(nextDoor.tab)
+          else if (job) onOpenLienDesk?.(job.id, nextDoor.kind)
+        }}
+        style={{ flexShrink: 0, padding: '6px 14px', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', ...(isMobile ? { width: '100%', padding: '9px 14px' } : {}) }}
+      >
+        {nextStep.button.label} ›
+      </button>
+    ) : null
   const paperTabs = [
     ['demand', 'Demand letter'],
     ['notice', '§ 53.056 notice'],
@@ -856,8 +977,7 @@ export default function LienInstrumentsModal({
           maxWidth: 920,
           width: '100%',
           maxHeight: 'min(92vh, 100%)',
-          // The phone's record sheet is drawn over the card (v2.4414), so the card holds its full height while the sheet is up.
-          height: recordSheetOpen ? 'min(92vh, 100%)' : undefined,
+          // A phone's record sheet is drawn over the card (v2.4414); index.css keeps the card at its full height while one is up.
           position: 'relative',
           display: 'flex',
           flexDirection: 'column',
@@ -884,12 +1004,12 @@ export default function LienInstrumentsModal({
             onRecord={() => void recordSend()}
           />
         ) : null}
-        {/* The title bar. On a phone (v2.4398) the title, § The rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
+        {/* The title bar. On a phone (v2.4398) the title, § Rules and × share one line and the steps fold to a strip, so the paper below gets the window; a computer keeps the steps as a row and gains the ×. */}
         <div style={{ position: 'relative', padding: isMobile ? '0.35rem 1rem 0.65rem' : '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           {isMobile ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minHeight: 44 }}>
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, flex: 1, minWidth: 0 }}>
-                Lien instruments
+                Liens on job {jobNumber}
               </h2>
               <LienRulesDoor where={rulesWhere} style={{ minHeight: 34, padding: '0 0.65rem' }} />
               <button type="button" onClick={onClose} aria-label="Close" style={{ flexShrink: 0, width: 44, height: 44, marginRight: '-0.6rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
@@ -897,7 +1017,7 @@ export default function LienInstrumentsModal({
           ) : (
             <>
               <h2 id="lien-instruments-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, paddingRight: '2rem' }}>
-                Lien instruments
+                Liens on job {jobNumber}
               </h2>
               <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.7rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
             </>
@@ -908,16 +1028,85 @@ export default function LienInstrumentsModal({
           </p>
           {timeline ? (
             isMobile ? (
-              <LienWindowFoldedSteps timeline={timeline} />
+              <>
+                <LienWindowFoldedSteps timeline={timeline} />
+                {canSetLastWork && !lastWorkOpen ? (
+                  <button type="button" data-lien-window-last-work-door onClick={() => setLastWorkOpen(true)} style={{ marginTop: '0.3rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', minHeight: 32 }}>
+                    Change the last day of work ›
+                  </button>
+                ) : null}
+              </>
             ) : (
               <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
-                <LienTimelineStrip timeline={timeline} />
+                <LienTimelineStrip timeline={timeline} nextDoor={nextStepButton} onChangeLastWork={canSetLastWork && !lastWorkOpen ? () => setLastWorkOpen(true) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
+                {stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`} paperFor={stopPaperFor} timeline={timeline} /> : null}
               </div>
             )
           ) : null}
-          {supplierJob ? (
+          {lastWorkOpen && lastWorkJob ? (
+            // The All filings line, already editing: Save the day opens the window that shows what moves (v2.4717) before anything is written.
+            <div data-lien-window-last-work style={{ marginTop: '0.5rem' }}>
+              <LienLastWorkDayLine
+                jobId={lastWorkJob.id}
+                job={lastWorkJob}
+                todayYmd={todayYmdLocal()}
+                canEdit={canSetLastWork}
+                userId={authUser?.id ?? null}
+                onSaved={() => void reReadLastWork()}
+                startEditing
+                onCancel={() => setLastWorkOpen(false)}
+                jobLabel={`${jobNumber} · ${(lastWorkJob.job_name ?? '').trim()}`}
+                clockMonths={(windowWorkMonths?.[lastWorkJob.id]?.months ?? []).map((m) => m.key)}
+                noticedMonths={[...new Set(filings.filter((f) => f.kind === 'notice_53_056' && f.voided_at == null).flatMap((f) => f.months_covered ?? []))]}
+                propertyKind={propertyKind}
+              />
+            </div>
+          ) : null}
+          {nextStep && (isMobile || !timeline) ? (
+            <div data-lien-window-next-step data-tone={nextStep.tone} style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', border: `1px solid ${nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--border-strong)'}`, borderRadius: 9, padding: '0.55rem 0.8rem', background: nextStep.tone === 'red' ? 'var(--bg-red-tint)' : nextStep.tone === 'amber' ? 'var(--bg-amber-tint)' : nextStep.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                  Your next step{nextStep.daysWords ? <span style={{ color: nextStep.tone === 'red' ? 'var(--text-red-600)' : 'var(--text-700)' }}> · {nextStep.daysWords}</span> : null}
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, marginTop: 2 }}>{nextStep.words}</div>
+                {nextStep.waitingWords ? <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{nextStep.waitingWords}</div> : null}
+              </div>
+              {nextStepButton}
+            </div>
+          ) : null}
+          {!isMobile && (onOpenRelease || supplierJob) ? (
+            // v2.4693: the two single facts as chips on one line; the supply-house card unfolds under Details.
+            <div data-lien-window-chips style={{ marginTop: '0.45rem', display: 'flex', gap: '0.4rem 0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {onOpenRelease ? (
+                <span data-lien-window-waivers>
+                  <button type="button" onClick={() => onOpenRelease(job)} title="Waivers on the bills are their own paper — the Release of Lien window" style={bandChip}>
+                    Waivers are their own paper ›
+                  </button>
+                </span>
+              ) : null}
+              {supplierJob ? (
+                <button type="button" data-lien-window-supply onClick={() => setBandDetailsOpen((o) => !o)} title={lienSupplierMark(supplierJob)?.title ?? 'Supply houses on this job'} aria-expanded={bandDetailsOpen} style={bandChip}>
+                  <span aria-hidden>🏪</span> {lienSupplierMark(supplierJob)?.words ?? 'Supply houses on this job'} ›
+                </button>
+              ) : null}
+              {supplierJob ? (
+                <button type="button" data-lien-window-details onClick={() => setBandDetailsOpen((o) => !o)} aria-expanded={bandDetailsOpen} style={{ ...bandChip, marginLeft: 'auto', color: 'var(--text-muted)' }}>
+                  Details {bandDetailsOpen ? '∧' : '∨'}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {isMobile && onOpenRelease ? (
+            <div data-lien-window-waivers style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <span>Waivers on the bills are their own paper.</span>
+              <button type="button" onClick={() => onOpenRelease(job)} style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                Open Release of Lien ›
+              </button>
+            </div>
+          ) : null}
+          {supplierJob && (isMobile || bandDetailsOpen) ? (
             // The header does not scroll, so the opened card scrolls inside its own height and the paper keeps the window.
-            <div style={{ marginTop: isMobile ? '0.4rem' : '0.6rem', maxHeight: '42dvh', overflowY: 'auto' }}>
+            <div style={{ marginTop: isMobile ? '0.4rem' : '0.5rem', maxHeight: '42dvh', overflowY: 'auto' }}>
               <LienJobSuppliersCard
                 job={supplierJob}
                 propertyKind={propertyKind}
@@ -926,7 +1115,7 @@ export default function LienInstrumentsModal({
                 payerName={(job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim()}
                 jobLabel={`${jobNumber} · ${(job.job_name ?? '').trim() || 'Job'}`}
                 isMobile={isMobile}
-                startFolded
+                startFolded={isMobile}
               />
             </div>
           ) : null}
@@ -936,12 +1125,12 @@ export default function LienInstrumentsModal({
           // The papers as one bar (v2.4398): three fill the width; a fourth (Release of record) makes the bar scroll, its cut edge faded until the end is in view.
           <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)' }}>
             <div
-              ref={tabBarRef}
+              ref={papersBar.ref}
               role="tablist"
               aria-label="Paper"
               data-lien-window-papers
-              onScroll={readTabBar}
-              style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(max-content, 1fr)', minHeight: 40, border: '1px solid var(--border-strong)', borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', ...(tabBarMore ? { WebkitMaskImage: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)', maskImage: 'linear-gradient(to right, #000 calc(100% - 28px), transparent)' } : {}) }}
+              onScroll={papersBar.onScroll}
+              style={{ display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'minmax(max-content, 1fr)', minHeight: 40, border: '1px solid var(--border-strong)', borderRadius: 8, overflowX: 'auto', overflowY: 'hidden', ...papersBar.style }}
             >
               {paperTabs.map(([value, label]) => (
                 <button key={value} type="button" role="tab" aria-selected={activeTab === value} onClick={() => setActiveTab(value)} style={{ border: 'none', background: activeTab === value ? '#2563eb' : 'var(--surface)', color: activeTab === value ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0 0.5rem', whiteSpace: 'nowrap', cursor: 'pointer' }}>
@@ -1131,25 +1320,25 @@ export default function LienInstrumentsModal({
                   sources[i]?.doc ? (
                     <div key={`a-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
                       <span>
-                        <b>Exhibit A</b> · {exhibitATitle(st.invoiceNumber, st.sentYmd)}
+                        <b>Exhibit {panelLabels.invoices[sources.slice(0, i).filter((src) => src.doc).length]}</b> · {exhibitATitle(st.invoiceNumber, st.sentYmd)}
                       </span>
                       <span style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }}>always</span>
                     </div>
                   ) : (
                     <div key={`a-${i}`} style={{ color: 'var(--text-muted)' }}>
-                      <b>Exhibit A</b> · {st.invoiceNumber} — the bill could not be rendered from this job; open it from Bill Customer and try again
+                      <b>Not enclosed</b> · {st.invoiceNumber} — the bill could not be rendered from this job; open it from Bill Customer and try again
                     </div>
                   ),
                 )}
                 <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', cursor: signedAgreement ? 'pointer' : 'default', color: signedAgreement ? undefined : 'var(--text-muted)' }}>
                   <span>
-                    <b>Exhibit B</b> · {signedAgreement ? signedAgreement.title : 'Signed agreement — none on this job'}
+                    {panelLabels.agreement ? <><b>Exhibit {panelLabels.agreement}</b> · </> : null}{signedAgreement ? signedAgreement.title : 'Signed agreement — none on this job'}
                   </span>
                   {signedAgreement ? <input type="checkbox" checked={includeAgreement} onChange={(e) => setIncludeAgreement(e.target.checked)} /> : <span style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>no contract</span>}
                 </label>
                 <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
                   <span>
-                    <b>Exhibit C</b> · Delivery record — {priorNotices.length === 0 ? 'the invoice date only' : `${priorNotices.length} dated send${priorNotices.length === 1 ? '' : 's'} and contact${priorNotices.length === 1 ? '' : 's'}`}
+                    {panelLabels.delivery ? <><b>Exhibit {panelLabels.delivery}</b> · </> : null}Delivery record — {priorNotices.length === 0 ? 'the invoice date only' : `${priorNotices.length} dated send${priorNotices.length === 1 ? '' : 's'} and contact${priorNotices.length === 1 ? '' : 's'}`}
                   </span>
                   <input type="checkbox" checked={includeDeliveryRecord} onChange={(e) => setIncludeDeliveryRecord(e.target.checked)} />
                 </label>
@@ -1235,95 +1424,8 @@ export default function LienInstrumentsModal({
 
           {/* Live preview — pinned light like the printed letter. */}
           <div data-theme="light" style={{ flex: '1 1 22rem', minWidth: '19rem', padding: '1.25rem', background: 'var(--bg-subtle)', borderLeft: '1px solid var(--border)' }}>
-            <div style={{ background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.2rem 1.35rem', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.78rem', lineHeight: 1.65, boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
-              {model.map((b, i) => {
-                switch (b.kind) {
-                  case 'senderBlock':
-                    return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', margin: '0 0 0.9em', paddingBottom: '0.6em', borderBottom: '1px solid #cfcbc2' }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '1.12em' }}>{b.company}</div>
-                          {b.licenseLine ? <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.72em', color: '#7a756c', marginTop: '0.15em' }}>{b.licenseLine}</div> : null}
-                        </div>
-                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", flex: '0 0 auto', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.8em', color: '#5f5a52', lineHeight: 1.45 }}>
-                          {b.contactLines.map((l, j) => (
-                            <span key={j}>
-                              {l}
-                              <br />
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  case 'meta':
-                    return (
-                      <p key={i} style={{ margin: '0 0 0.4em' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'reLine':
-                    return (
-                      <p key={i} style={{ textAlign: 'center', fontWeight: 700, margin: '0.7em 0' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'heading':
-                    return (
-                      <p key={i} style={{ fontWeight: 700, margin: '0.8em 0 0.25em' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'paragraph':
-                    return (
-                      <p key={i} style={{ margin: '0 0 0.6em' }}>
-                        {b.text}
-                      </p>
-                    )
-                  case 'listItem':
-                    return (
-                      <p key={i} style={{ margin: '0 0 0.2em 1.1em' }}>
-                        • {b.text}
-                      </p>
-                    )
-                  case 'signature':
-                    return (
-                      <p key={i} style={{ margin: '1em 0 0' }}>
-                        {b.lines.map((l, j) => (
-                          <span key={j}>
-                            {l}
-                            <br />
-                          </span>
-                        ))}
-                      </p>
-                    )
-                  case 'statement':
-                    return (
-                      <table key={i} style={{ borderCollapse: 'collapse', width: '100%', margin: '0.3em 0 0.8em', fontSize: '0.95em' }}>
-                        <tbody>
-                          {statementRows(b).map((r, j) => {
-                            const strong = r.kind === 'invoice' || r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1)
-                            const rule = r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? '2px solid #333' : '1px solid #e3ded2'
-                            return (
-                              <tr key={j}>
-                                <td style={{ padding: r.kind === 'invoice' ? '0.6em 0.4em 0.25em 0' : '0.25em 0.4em 0.25em 0', borderBottom: rule, fontWeight: strong ? 700 : 400, color: r.kind === 'paid' ? '#555' : undefined }}>{r.left}</td>
-                                <td style={{ padding: '0.25em 0 0.25em 0.6em', borderBottom: rule, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: strong ? 700 : 400, color: r.kind === 'paid' ? '#555' : undefined }}>{r.right}</td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
-                    )
-                  case 'notarial':
-                    return (
-                      <p key={i} style={{ margin: '1.6em 0 0', color: 'var(--text-muted)' }}>
-                        STATE OF TEXAS · COUNTY OF ___ · notarial block
-                      </p>
-                    )
-                  default:
-                    return null
-                }
-              })}
-            </div>
+            {/* The letter as it prints: the print and PDF renderers' own HTML, so the preview cannot drift from the paper. */}
+            <div style={{ background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.2rem 1.35rem', fontFamily: "Georgia, 'Times New Roman', serif", fontSize: '0.78rem', lineHeight: 1.65, boxShadow: '0 4px 14px rgba(0,0,0,0.08)', overflowX: 'auto' }} dangerouslySetInnerHTML={{ __html: letterHtml }} />
             {/* The exhibits, as the pages they will be (v2.3429). */}
             {(fields.enclosures ?? []).map((ex, i) => {
               const stamp = (
@@ -1337,12 +1439,13 @@ export default function LienInstrumentsModal({
                   {children}
                 </div>
               )
-              if (ex.label === 'A') {
-                const aIndex = (fields.enclosures ?? []).slice(0, i).filter((e) => e.label === 'A').length
-                const doc = sources[aIndex]?.doc ?? null
+              if (exhibitKind(ex) === 'invoice') {
+                const aIndex = (fields.enclosures ?? []).slice(0, i).filter((e) => exhibitKind(e) === 'invoice').length
+                const bill = sources.flatMap((src, k) => (src.doc ? [{ doc: src.doc, st: (fields.statement ?? [])[k] }] : []))[aIndex]
+                const doc = bill ? (bill.st ? exhibitInvoiceDocument(bill.doc, bill.st) : bill.doc) : null
                 return card(doc ? <PhysicalInvoicePreview document={doc} /> : <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ex.title}</div>)
               }
-              if (ex.label === 'B') {
+              if (exhibitKind(ex) === 'agreement') {
                 return card(
                   <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.8rem', paddingRight: '6rem' }}>
                     <div style={{ fontWeight: 700 }}>{ex.title}</div>
@@ -1384,9 +1487,19 @@ export default function LienInstrumentsModal({
               <button type="button" onClick={() => setEmailOpen(false)} style={{ padding: '0.45rem 0.8rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
                 Back
               </button>
-              <button type="button" onClick={() => void emailPacket()} disabled={emailBusy || recordBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: emailBusy ? 'wait' : 'pointer', fontWeight: 600 }}>
-                {emailBusy ? 'Sending…' : `Send · ${1 + (fields.enclosures ?? []).length} documents`}
-              </button>
+              <ActionPhaseButton
+                action="email-send"
+                phase={emailBusy ? 'busy' : 'idle'}
+                onClick={() => void emailPacket()}
+                disabled={recordBusy}
+                busyLabel="Sending…"
+                doneLabel="Sent"
+                busyBackground="#1d4ed8"
+                outlined={false}
+                style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+              >
+                Send · {1 + (fields.enclosures ?? []).length} documents
+              </ActionPhaseButton>
             </div>
           </div>
         ) : null}
@@ -1428,24 +1541,27 @@ export default function LienInstrumentsModal({
                 Cancel
               </button>
             )}
-            <button type="button" onClick={() => void printLetter()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
+            <ActionPhaseButton action="print" phase={printPhase.phase} onClick={() => void printPhase.run(printLetter)} disabled={pdfBusy} busyLabel="Opening…" doneLabel="Opened" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
               Print packet
-            </button>
-            <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
-              {pdfBusy ? 'Building…' : 'Download PDF'}{pdfBusy ? '' : ` · ${1 + (fields.enclosures ?? []).length} documents`}
-            </button>
-            <button
-              type="button"
+            </ActionPhaseButton>
+            <ActionPhaseButton action="download" phase={downloadPhase.phase} onClick={() => void downloadPhase.run(downloadPdf)} disabled={pdfBusy} busyLabel="Downloading…" doneLabel="Downloaded" style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer', ...phoneFootButton }}>
+              Download PDF · {1 + (fields.enclosures ?? []).length} documents
+            </ActionPhaseButton>
+            <ActionPhaseButton
+              action="email"
+              phase={emailPhase.phase}
               onClick={() => {
                 setEmailTo((prev) => prev || fields.recipientEmail.trim())
                 setEmailOpen(true)
                 setRecordOpen(false)
               }}
               disabled={pdfBusy || emailBusy}
+              busyLabel="Sending…"
+              doneLabel="Emailed"
               style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer', ...phoneFootButton }}
             >
               Email with the PDF…
-            </button>
+            </ActionPhaseButton>
             <button type="button" onClick={() => setRecordOpen(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, ...phoneFootButton }}>
               Save &amp; record send…
             </button>
@@ -1473,6 +1589,7 @@ export default function LienInstrumentsModal({
               void loadFilings()
               onRecorded?.()
             }}
+            onClose={onClose}
           />
         )}
       </div>

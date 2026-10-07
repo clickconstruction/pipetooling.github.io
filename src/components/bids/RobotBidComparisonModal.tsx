@@ -119,7 +119,7 @@ export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRob
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1005,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
     >
@@ -132,7 +132,7 @@ export function RobotBidComparisonModal({ pair, onClose, onOpenBidTab, onOpenRob
           width: '100%',
           padding: '1.25rem',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}

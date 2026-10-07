@@ -1,5 +1,7 @@
 /** Stages `j:` (field) / `b:` (billing reference: invoice/payment activity) — pure date helpers for Jobs.tsx. */
 
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+
 export type StagesBillingJobSlice = {
   invoices: Array<{
     sent_to_customer_at: string | null
@@ -19,7 +21,8 @@ function trimYmd(s: string | null | undefined): string | null {
 }
 
 /**
- * Normalize DB timestamps or YYYY-MM-DD to local calendar YMD (matches {@link formatEstimatedCompletionDisplay} style parsing).
+ * A calendar YMD from a `date` column (YYYY-MM-DD, or the first ten characters of a longer value);
+ * other shapes parse in the device zone. An instant's own day is `calendarYmdInAppTzFromIso`.
  */
 export function timestampOrDateToYmd(value: string | null | undefined): string | null {
   const ymd = trimYmd(value ?? null)
@@ -62,9 +65,10 @@ type BillingCand = { ymd: string; label: string }
 function collectBillingCandidates(job: StagesBillingJobSlice): BillingCand[] {
   const cands: BillingCand[] = []
   for (const inv of job.invoices ?? []) {
-    const y1 = timestampOrDateToYmd(inv.sent_to_customer_at)
+    // Both are instants: their day in APP_CALENDAR_TZ, not their first ten characters (the UTC date).
+    const y1 = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '')
     if (y1) cands.push({ ymd: y1, label: 'Invoice sent' })
-    const y2 = timestampOrDateToYmd(inv.billed_at)
+    const y2 = calendarYmdInAppTzFromIso(inv.billed_at ?? '')
     if (y2) cands.push({ ymd: y2, label: 'Invoice billed' })
   }
   for (const p of job.payments ?? []) {

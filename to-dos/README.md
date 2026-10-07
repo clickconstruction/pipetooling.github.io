@@ -26,8 +26,9 @@ PR like any other.
    check:todos` prints it: one past the highest number ever assigned — the folder, the
    `docs/recent-features/` fragments' "punch list #N" citations and every `number:` git history
    has seen, so deleting the newest to-do does not hand its number to the next one; a retired
-   to-do's number is never refilled, so "#16" always means the same work). **Change** — edit that
-   front matter (`status`,
+   to-do's number is never refilled, so "#16" always means the same work; it reads `main` only, so
+   first scan the open PRs' `+number:` lines and skip any number one of them already holds).
+   **Change** — edit that front matter (`status`,
    `next`, `group`, …) and the prose under it. **Retire** — delete the file or folder; the release
    notes and `docs/recent-features/` carry the record from then on.
 2. **A mock-up is a file beside the to-do** — `mockup.html`, `before-after-pr2.html`, any `.html`
@@ -105,6 +106,10 @@ shared file would rebuild the parallel-session conflict that the release-notes a
 
 The open to-dos, grouped and ordered by readiness, are the board itself: Settings → *Punch list* (the chip under the rail's search)
 (`/punch-list`). On GitHub, this folder's listing is the index.
+
+Closed 2026-10-07 (folder deleted; the plan and the mock-up live in git history at the deleting commit): `map-page-refresh` (#96) — proposed and built the same day as five PRs, the owner's four calls taken as recommended: v2.4791 the first view is the office (the anchor and rings, the home fit, Fit all, the far addresses listed, one draw tool); v2.4796 the page on the shared pins canvas (a children slot for its draw tool, court layer and fly-to; the pin card with Open and Directions; the phone bar; the scroll gate); v2.4802 pins by status, the chips as the key and the switches with counts, Paid / Lost / Estimates off, Cluster; v2.4804 one pin per address and the rail in place of the table; v2.4805 the address sheet (no address, not found, far) and the header's geocoding list and the Debug corner gone; v2.4807 the Precincts chip and the justice court on a place's card. Left for the office: the two wrong addresses the sheet names (a job whose address is "Ranch", pinned in California; "Zack's house", pinned in Assam) and the 66 records with no address. Not built, by design: typing an address in the sheet itself.
+
+Closed 2026-10-05 (file deleted): `lien-defects` (#83) — all 28 rows fixed the day the card was written, each confirmed against the code first: v2.4563 the saved copy link, v2.4558 the run's printed stamp, v2.4571 the leader approves what the office wrote (with the Bill link, the grid pill and the label), v2.4564 the unconditional waits for the check and keeps its kind, v2.4582 every route into Unconditional asks (the owner's call), v2.4561 and v2.4562 the Dashboard doors and the `?lienwindow=` link, v2.4568 the Lien desk's dead ends, v2.4565 four labels, v2.4569 the strip's View and Void, v2.4570 the Legal desk's Write down, and three guide PRs (rows 25 to 28). The one question it raised was answered the same day: a payment to a sub also counts as settled after seven days (v2.4578).
 
 Closed 2026-09-30 (file deleted): `plain-words-elsewhere` (#58) — the three items shipped the day after it opened: v2.4228 the Pricing Workbench walkthrough's five stops, v2.4229 the guide *build a submittal package*, and v2.4233 the convention, the owner's call taken as *new and changed only*: the rules moved from the to-do to `src/lib/plainWords.ts` (their one home; `CLAUDE.md` → Help guides carries the clause), every guide not on `LEGACY_PLAIN_WORDS_GUIDES` is held by `helpGuidePlainWords.test.ts`, and `npm run check:plain-words` fails CI when a PR touches a guide still on the list. The 302 guides written before the rules stay on the list until each is rewritten; the owner asked to go back through them, and that sweep is #75 (`plain-words-sweep.md`).
 

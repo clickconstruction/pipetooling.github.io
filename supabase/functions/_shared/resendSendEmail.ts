@@ -2,6 +2,7 @@
 
 import { logEmailSendBestEffort } from './logEmailSend.ts'
 import { EMAIL_FROM } from './emailFrom.ts'
+import { type SentEmailFiling, fileSentEmailBestEffort } from './fileSentCopy.ts'
 
 export async function sendEmailViaResend(
   to: string,
@@ -9,7 +10,7 @@ export async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
-  options?: { replyTo?: string; cc?: string[]; attachments?: Array<{ filename: string; content: string; /** Set on an inline image: the HTML loads it as `cid:<content_id>`. */ content_id?: string }>; /** EMAIL_CATALOG id stamped on email_send_log (v2.3359). */ emailType?: string; /** The sender mailbox — `COMPANY_EMAIL_FROM` for a customer-facing email (v2.4127); defaults to `EMAIL_FROM`. */ from?: string },
+  options?: { replyTo?: string; cc?: string[]; attachments?: Array<{ filename: string; content: string; /** Set on an inline image: the HTML loads it as `cid:<content_id>`. */ content_id?: string }>; /** EMAIL_CATALOG id stamped on email_send_log (v2.3359). */ emailType?: string; /** The sender mailbox — `COMPANY_EMAIL_FROM` for a customer-facing email (v2.4127); defaults to `EMAIL_FROM`. */ from?: string; /** Sent copies (docs/SENT_COPIES.md): an email that goes outside the company names what it is here, and the message and its attachments are kept in `sent_documents`. Left out for mail to our own staff. */ file?: SentEmailFiling },
 ): Promise<{ success: boolean; error?: string; resendEmailId?: string }> {
   const from = options?.from?.trim() || EMAIL_FROM
   const resendResponse = await fetch('https://api.resend.com/emails', {
@@ -36,5 +37,6 @@ export async function sendEmailViaResend(
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
   await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to, ...(options?.cc ?? [])], from, subject, emailType: options?.emailType ?? null })
+  if (options?.file) await fileSentEmailBestEffort(options.file, { to: [to], cc: options.cc, from, subject, html: htmlBody, attachments: options.attachments, resendEmailId: sent.id ?? null })
   return { success: true, resendEmailId: sent.id }
 }

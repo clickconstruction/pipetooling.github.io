@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienDeskGatesInput } from './lienDeskGates'
+import { lienFootBlockedSentence, buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sabra Texas Holdings Lp',
@@ -65,8 +65,8 @@ describe('the sections under the gates (v2.3670)', () => {
   })
 
   it('gate 1 says where a filed owner came from', () => {
-    expect(ownerSourceWords('property_record')).toBe('From the property record — every job at this property uses it.')
-    expect(ownerSourceWords('job_override')).toBe('Set on this job — the property record’s owner is not used here.')
+    expect(ownerSourceWords('property_record')).toBe('From the property record · every job here uses it.')
+    expect(ownerSourceWords('job_override')).toBe('Set on this job · the property record’s owner is not used here.')
     expect(ownerSourceWords('none')).toBe('')
   })
 
@@ -83,5 +83,43 @@ describe('a job with no clock hours is dated from its creation month (v2.3747)',
     expect(gates[3]!.title).toContain('dated from the job’s creation · no clock hours')
     expect(verdict.ready).toBe(true)
     expect(buildLienDeskGates({ ...clear, pickedMonthsCount: 0, datedFromCreation: true }).gates[3]).toMatchObject({ label: 'Dated from creation', tone: 'blocker' })
+  })
+
+  it('gate 3 as one line (v2.4718): the kind and county, the rule under it, the warning while the chooser is open, and who shares the record', () => {
+    expect(propertyKindLine('residential', 'Bexar')).toBe('Residential · Bexar County')
+    expect(propertyKindLine('non_residential', '')).toBe('Commercial')
+    expect(propertyKindLine('', 'Comal')).toBe('Not set · Comal County')
+    expect(propertyKindRuleWords('residential')).toBe('Notice due the 15th of the 2nd month after the work')
+    expect(propertyKindRuleWords('non_residential')).toBe('Notice due the 15th of the 3rd month after the work')
+    expect(propertyKindSwitchWarning('residential')).toBe('Commercial makes each notice due the 15th of the 3rd month after the work, and the affidavit a month later. Every date on the job moves.')
+    expect(propertyKindSwitchWarning('non_residential')).toMatch(/^Residential makes each notice due the 15th of the 2nd month/)
+    expect(sharedWithWords(['273', '866', '1009', '858'])).toBe('shared with 273, 866, 1009, 858')
+    expect(sharedWithWords([])).toBe('')
+  })
+})
+
+describe('lienFootBlockedSentence (v2.4797)', () => {
+  it('says the stop and the one thing to do, for each gate', () => {
+    expect(lienFootBlockedSentence({ key: 'owner', value: 'Missing', label: 'Owner of record', n: 1 }, 2)).toBe("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
+    expect(lienFootBlockedSentence({ key: 'owner', value: 'No mailing address', label: 'Owner of record', n: 1 }, 2)).toBe("Don't send yet. Add the owner's mailing address on the property record first.")
+    expect(lienFootBlockedSentence({ key: 'owner', value: 'Public property', label: 'Owner of record', n: 1 }, 2)).toContain('public property, so no lien notice can go')
+    expect(lienFootBlockedSentence({ key: 'gc', value: 'No GC on the job', label: 'Original contractor', n: 2 }, 2)).toBe("Don't send yet. Set the GC on the job first.")
+    expect(lienFootBlockedSentence({ key: 'months', value: 'No month picked', label: 'Approved hours', n: 4 }, 0)).toBe("Don't send yet. Pick at least one month first.")
+    expect(lienFootBlockedSentence(null, 0)).toBe("Don't send yet. Pick at least one month first.")
+    expect(lienFootBlockedSentence(null, 1)).toBe("Don't send yet. Clear what the gates show first.")
+  })
+
+  it('the stop window’s hold chip and the affidavit’s hold sentence (v2.4806)', () => {
+    expect(lienGateShortWords({ key: 'owner', value: 'Missing', label: 'Owner of record' })).toBe('owner of record missing')
+    expect(lienGateShortWords({ key: 'owner', value: 'No mailing address', label: 'Owner of record' })).toBe('owner has no mailing address')
+    expect(lienGateShortWords({ key: 'gc', value: 'No GC on the job', label: 'Original contractor' })).toBe('no GC on the job')
+    expect(lienGateShortWords({ key: 'months', value: 'No month picked', label: 'Approved hours' })).toBe('no month picked')
+    expect(lienGateShortWords({ key: 'kind', value: 'Unknown', label: 'Property kind' })).toBe('property kind unknown')
+    expect(lienAffidavitFootBlockedSentence({ key: 'owner', label: '' })).toBe("Don't file yet. Enter the owner of record and a mailing address on the property record first.")
+    expect(lienAffidavitFootBlockedSentence({ key: 'legal', label: '' })).toBe("Don't file yet. Add the county and the legal description on the property record first.")
+    expect(lienAffidavitFootBlockedSentence({ key: 'notice', label: '' })).toBe("Don't file yet. Send the § 53.056 notice first. A late one counts while this window is open.")
+    expect(lienAffidavitFootBlockedSentence({ key: 'homestead', label: '' })).toContain('§ 53.254')
+    expect(lienAffidavitFootBlockedSentence(null)).toBe("Don't file yet. Clear what the gates show first.")
+    expect(lienAffidavitGateShortWords({ key: 'legal' })).toBe('county or legal description missing')
   })
 })

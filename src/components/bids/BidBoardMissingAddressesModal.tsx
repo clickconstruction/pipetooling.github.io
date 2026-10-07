@@ -51,7 +51,7 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
       aria-labelledby="bid-map-missing-title"
       onClick={onClose}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 1005, padding: isMobile ? 0 : '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', zIndex: 1005, padding: isMobile ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="document"
@@ -61,7 +61,7 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
           borderRadius: isMobile ? '12px 12px 0 0' : 8,
           maxWidth: 720,
           width: '100%',
-          maxHeight: isMobile ? '92vh' : '85vh',
+          maxHeight: isMobile ? 'min(92vh, 100%)' : 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.18)',

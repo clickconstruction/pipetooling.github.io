@@ -123,7 +123,8 @@ export default function ChecklistItemMuteModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >

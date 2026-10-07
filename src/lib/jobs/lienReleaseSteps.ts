@@ -98,11 +98,17 @@ export function releaseStepPagePart(n: number): ReleasePagePart | null {
 
 /**
  * The line an opened, folded step shows: why it cannot be changed here, and the way to change it.
- * A requested signature locks the waiver until the request is cancelled; a signed one stays as he
- * signed it, so a change is a new waiver he signs again. Null while nothing is folded.
+ * A requested signature locks the waiver until the request is cancelled, and Cancel request makes
+ * it a draft again (#87 C) — unless it was printed for a paper signature first, when it stays
+ * issued and a change is a new waiver. A signed one stays as he signed it, so a change is a new
+ * waiver he signs again. Null while nothing is folded.
  */
-export function releaseStepLookNote(rowStatus: ReleaseStepsInput['rowStatus'], sent: boolean): string | null {
-  if (rowStatus === 'awaiting_signature') return 'Read only while it waits for his signature. To change it, click Cancel request in step 5 first.'
+export function releaseStepLookNote(rowStatus: ReleaseStepsInput['rowStatus'], sent: boolean, cancelUnlocks = true): string | null {
+  if (rowStatus === 'awaiting_signature') {
+    return cancelUnlocks
+      ? 'Read only while it waits for his signature. To change it, click Cancel request in step 5 first.'
+      : 'Read only while it waits for his signature. It was printed for a paper signature, so to change it, click Void this waiver at the bottom and make a new one.'
+  }
   if (rowStatus === 'signed' && sent) return 'Read only. It is signed and sent. To change it, click Void this waiver at the bottom and send a new one.'
   if (rowStatus === 'signed') return 'Read only. It is signed. To change it, click Void this waiver at the bottom and make a new one. He signs it again.'
   return null

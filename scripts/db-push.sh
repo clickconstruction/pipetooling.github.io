@@ -33,4 +33,6 @@ if [ "$push_ok" != true ]; then
   fi
 fi
 npm run gen-types:linked
+# The dev-mcp catalog is generated from database.ts: a types PR without it fails devMcpCatalog.test.ts.
+node scripts/build-dev-mcp-catalog.mjs
 npm run check:migration-drift

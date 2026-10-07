@@ -5,6 +5,21 @@ import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { toDatetimeLocal, fromDatetimeLocal } from '../../utils/datetimeLocal'
 import { ContactMethodQuickPicks } from '../shared/ContactMethodQuickPicks'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import {
+  EMPTY_FOLLOWUP_PICK,
+  bidFollowupColumns,
+  bidIsParked,
+  buildFollowupChangeEntry,
+  followupDateLabel,
+  followupDayStands,
+  followupEntryColumns,
+  followupReasonLabel,
+  withFollowupSentence,
+  type BidFollowupColumns,
+  type FollowupPick,
+} from '../../lib/bids/bidNextFollowup'
+import { FollowupPickPanel, type FollowupPickPerson } from './FollowupPickPanel'
 
 /**
  * Edit Bid → "Last Contact" (Per-GC bids Phase 1, docs/PER_GC_BID_PLAN.md): the raw
@@ -12,6 +27,10 @@ import { ContactMethodQuickPicks } from '../shared/ContactMethodQuickPicks'
  * (method required; the entries sync trigger derives `bids.last_contact` from method
  * entries). This control shows the derived value read-only and logs new contacts.
  * On multi-GC bids a GC picker attributes the entry (own GC = null, the ledger's rule).
+ *
+ * v2.4421 (punch list #80): a sent bid with no answer also shows its **call-again day**. Logging
+ * a contact can set it (the same three questions as the Call queue), and **Set a day…** /
+ * **Change…** moves it with no contact: a method-less note, so the clock above does not move.
  */
 
 type GcOption = { id: string | null; name: string }
@@ -39,6 +58,22 @@ export function BidLogContactControl({
   const [gcOptions, setGcOptions] = useState<GcOption[] | null>(null)
   const [gcId, setGcId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // Call again (v2.4421): the bid's day off its row, the customer's people, and the pick in hand.
+  const [bidRow, setBidRow] = useState<{ customer_id: string | null; bid_date_sent: string | null; outcome: string | null; last_contact: string | null } | null>(null)
+  const [dayCols, setDayCols] = useState<BidFollowupColumns | null>(null)
+  const [people, setPeople] = useState<Array<FollowupPickPerson & { customer_id: string }>>([])
+  const [pick, setPick] = useState<FollowupPick>(EMPTY_FOLLOWUP_PICK)
+  const [changingDay, setChangingDay] = useState(false)
+  const todayYmd = todayYmdInAppTz()
+
+  /** The bid's row: the derived last contact and the derived call-again day, read together. */
+  async function readBid(): Promise<string | null> {
+    const { data } = await supabase.from('bids').select('*').eq('id', bidId).maybeSingle()
+    if (!data) return null
+    setBidRow({ customer_id: data.customer_id ?? null, bid_date_sent: data.bid_date_sent ?? null, outcome: data.outcome ?? null, last_contact: data.last_contact ?? null })
+    setDayCols(bidFollowupColumns(data))
+    return data.last_contact ?? null
+  }
 
   // A form submit while the editor is open would discard the half-entered contact —
   // keep the parent informed so it can gate its Save, and release it on unmount.
@@ -53,10 +88,9 @@ export function BidLogContactControl({
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const { data } = await supabase.from('bids').select('last_contact').eq('id', bidId).maybeSingle()
-      if (cancelled || !data) return
-      const local = data.last_contact ? toDatetimeLocal(data.last_contact) : ''
-      onLogged(local)
+      const lastContactIso = await readBid().catch(() => undefined)
+      if (cancelled || lastContactIso === undefined) return
+      onLogged(lastContactIso ? toDatetimeLocal(lastContactIso) : '')
     })()
     return () => {
       cancelled = true
@@ -64,8 +98,70 @@ export function BidLogContactControl({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bidId])
 
+  // The people a day can name: everyone on the bid's customer (and on the GC picked for a contact).
+  const peopleCustomerId = gcId ?? bidRow?.customer_id ?? null
+  useEffect(() => {
+    if (!peopleCustomerId) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('customer_contact_persons').select('id, customer_id, name, phone, note').eq('customer_id', peopleCustomerId).order('name')
+      if (!cancelled && Array.isArray(data)) setPeople((prev) => [...prev.filter((p) => p.customer_id !== peopleCustomerId), ...(data as Array<FollowupPickPerson & { customer_id: string }>)])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [peopleCustomerId])
+  const peopleHere = people.filter((p) => p.customer_id === peopleCustomerId)
+
+  async function addPerson(name: string, phone: string): Promise<FollowupPickPerson | null> {
+    if (!peopleCustomerId) return null
+    try {
+      const rows = await withSupabaseRetry(
+        async () => supabase.from('customer_contact_persons').insert({ customer_id: peopleCustomerId, name, phone: phone || null }).select('id, customer_id, name, phone, note'),
+        'add contact person',
+      )
+      const made = Array.isArray(rows) ? (rows[0] as (FollowupPickPerson & { customer_id: string }) | undefined) : undefined
+      if (!made) throw new Error('nothing was saved')
+      setPeople((prev) => [...prev, made])
+      return made
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not add the person'), 'error')
+      return null
+    }
+  }
+
+  /** The day moved, or removed, with no contact: a method-less note in the log. */
+  async function saveDay(next: FollowupPick) {
+    if (!authUser?.id) {
+      showToast('You must be signed in to change the date.', 'error')
+      return
+    }
+    setSaving(true)
+    try {
+      const entry = buildFollowupChangeEntry({ bidId, userId: authUser.id, nowIso: new Date().toISOString(), pick: next, todayYmd })
+      await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(entry), 'save call-again date')
+      await readBid()
+      window.dispatchEvent(new Event('bid-gc-notes-changed'))
+      showToast(next.ymd ? `Call again ${followupDateLabel(next.ymd, todayYmd)}.` : 'Call-again date removed.', 'success')
+      setChangingDay(false)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the date'), 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function openDayEditor() {
+    const person = dayCols?.personId ? people.find((p) => p.id === dayCols.personId) : null
+    setPick({ ymd: dayCols?.nextYmd ?? null, personId: person?.id ?? dayCols?.personId ?? null, personName: person?.name ?? null, reason: dayCols?.reason ?? null })
+    setOpen(false)
+    setChangingDay(true)
+  }
+
   async function openEditor() {
     setOpen(true)
+    setChangingDay(false)
+    setPick(EMPTY_FOLLOWUP_PICK)
     setMethod(null)
     setNote('')
     setWhenLocal(toDatetimeLocal(new Date().toISOString()))
@@ -111,18 +207,16 @@ export function BidLogContactControl({
             bid_id: bidId,
             gc_customer_id: gcId,
             contact_method: method,
-            notes: note.trim() || null,
+            // A picked day rides this row: its columns, and a plain sentence in the note.
+            notes: (pick.ymd ? withFollowupSentence(note, pick, todayYmd) : note.trim()) || null,
             occurred_at: iso,
             created_by: authUser?.id ?? null,
+            ...(pick.ymd ? followupEntryColumns(pick) : {}),
           }),
         'log bid contact',
       )
-      // The entry insert fired the sync trigger — read the derived value back for the form.
-      const fresh = await withSupabaseRetry(
-        async () => supabase.from('bids').select('last_contact').eq('id', bidId).maybeSingle(),
-        'bid last-contact re-read',
-      )
-      const derivedIso = (fresh as { last_contact: string | null } | null)?.last_contact ?? iso
+      // The entry insert fired the sync triggers — read the derived values back for the form.
+      const derivedIso = (await readBid().catch(() => null)) ?? iso
       onLogged(toDatetimeLocal(derivedIso))
       window.dispatchEvent(new Event('bid-gc-notes-changed'))
       showToast('Contact logged.', 'success')
@@ -135,6 +229,12 @@ export function BidLogContactControl({
   }
 
   const multiGc = (gcOptions?.length ?? 0) > 1
+  // A call-again day belongs to a sent bid still waiting on its answer.
+  const tracksDay = bidRow != null && bidRow.bid_date_sent != null && bidRow.outcome == null
+  // A day a later contact has spent is no day: the row shows it as unset.
+  const dayStands = followupDayStands(dayCols?.nextYmd, bidRow?.last_contact ?? null)
+  const parked = dayStands && bidRow != null && bidIsParked({ next_followup_on: dayCols?.nextYmd }, bidRow.last_contact, todayYmd)
+  const dayPerson = dayCols?.personId ? people.find((p) => p.id === dayCols.personId) ?? null : null
 
   return (
     <div>
@@ -169,6 +269,18 @@ export function BidLogContactControl({
             ) : null}
           </div>
           <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was said (optional — lands in the bid's notes)" rows={2} style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical' }} />
+          {tracksDay ? (
+            <FollowupPickPanel
+              todayYmd={todayYmd}
+              value={pick}
+              onChange={setPick}
+              people={peopleHere}
+              onAddPerson={peopleCustomerId ? addPerson : undefined}
+              saving={saving}
+              actions={false}
+              noDayHint={dayCols?.nextYmd ? 'No day picked: the bid keeps the day it has.' : 'No day picked: back in the call queue in 7 days.'}
+            />
+          ) : null}
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={() => setOpen(false)} disabled={saving} style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
               Cancel
@@ -182,6 +294,48 @@ export function BidLogContactControl({
       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
         Contacts land in the bid's notes; only real contacts (with a method) move this clock.
       </div>
+      {tracksDay ? (
+        <div data-testid="bid-call-again" style={{ marginTop: '0.6rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
+            <span style={{ fontWeight: 600 }}>Call again</span>
+            <span style={{ color: dayStands ? 'var(--text-strong)' : 'var(--text-muted)' }}>
+              {dayStands && dayCols?.nextYmd
+                ? [
+                    followupDateLabel(dayCols.nextYmd, todayYmd),
+                    dayPerson ? `ask for ${dayPerson.name}` : null,
+                    dayCols.reason && dayCols.reason !== 'other' ? followupReasonLabel(dayCols.reason) : null,
+                    parked ? null : 'due',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : 'No day set. The bid comes back to the call queue seven days after a contact.'}
+            </span>
+            {!changingDay ? (
+              <button type="button" onClick={openDayEditor} style={{ font: 'inherit', fontSize: '0.75rem', padding: '0.2rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {dayStands ? 'Change…' : 'Set a day…'}
+              </button>
+            ) : null}
+          </div>
+          {changingDay ? (
+            <FollowupPickPanel
+              todayYmd={todayYmd}
+              value={pick}
+              onChange={setPick}
+              people={peopleHere}
+              onAddPerson={peopleCustomerId ? addPerson : undefined}
+              saving={saving}
+              saveLabel="Save the date"
+              onSave={() => {
+                if (pick.ymd) void saveDay(pick)
+                else showToast('Pick a day to call again, or use No date.', 'error')
+              }}
+              onCancel={() => setChangingDay(false)}
+              noDayHint="Pick a day. This is a note in the bid's log, not a contact."
+              onRemove={dayStands ? () => void saveDay(EMPTY_FOLLOWUP_PICK) : undefined}
+            />
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

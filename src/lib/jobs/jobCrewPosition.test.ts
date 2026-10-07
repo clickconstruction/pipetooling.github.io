@@ -118,3 +118,12 @@ describe('newestPercent / percentIsStale — the v2.3372 rule on the row', () =>
     expect(percentIsStale(p({ last_work_date: '2026-09-12', pct_set_at: '2026-09-12T20:00:00Z', pct_source: 'manual' }), 55)).toBe(false)
   })
 })
+
+describe('percentIsStale · a percent typed in the evening keeps its day (v2.4472)', () => {
+  it('is stale once the crew worked the next day', () => {
+    const p = (over: Partial<JobCrewPositionRpcRow>) => crewPositionsFromRpc([row({ job_ledger_id: 'j', ...over })], today).get('j')!
+    // 01:00 UTC on Sep 12 is 8 pm CDT on Sep 11; the crew was on site Sep 12.
+    expect(percentIsStale(p({ last_work_date: '2026-09-12', pct_manual_at: '2026-09-12T01:00:00Z' }), 90)).toBe(true)
+    expect(percentIsStale(p({ last_work_date: '2026-09-12', pct_manual_at: '2026-09-12T12:00:00Z' }), 90)).toBe(false)
+  })
+})

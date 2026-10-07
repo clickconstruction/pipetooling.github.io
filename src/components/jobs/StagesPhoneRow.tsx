@@ -222,7 +222,7 @@ export function StagesPhoneRow({
         <div
           role="presentation"
           onClick={() => setConfirmOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1200 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1200, paddingTop: 'var(--app-top-chrome, 0px)' }}
         >
           <div
             role="dialog"

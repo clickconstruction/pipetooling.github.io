@@ -202,12 +202,12 @@ export function PersonContractSignedRecordModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 80,
+        zIndex: 780,
         background: 'rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -221,7 +221,7 @@ export function PersonContractSignedRecordModal({
         style={{
           width: '100%',
           maxWidth: 720,
-          maxHeight: 'min(92vh, 900px)',
+          maxHeight: 'min(92vh, 900px, 100%)',
           overflow: 'auto',
           background: 'var(--surface)',
           borderRadius: 8,

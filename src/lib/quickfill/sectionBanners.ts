@@ -14,6 +14,7 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   'dispatch-inbox': 'Has every field request been answered or sent on?',
   warnings: 'Is anything flashing that nobody owns?',
   'no-customer-stages': 'Can every job be billed — customer, pictures, email?',
+  'property-kinds': 'Is every unpaid job’s property marked residential or commercial?',
   'jobs-cleanup': "Is every sub labor sheet attached to a job, and is today's money moving? Link each sheet, then work the cards — they're the same ones on Jobs → Pipeline.",
   'people-hours-new': "Are yesterday's and today's hours right?",
   'unassigned-field-time': 'Is every paid field hour tied to a job?',

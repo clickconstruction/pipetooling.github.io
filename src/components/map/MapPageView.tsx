@@ -1,45 +1,74 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-// Leaflet / react-leaflet / Geoman: import only from this file so they stay in the lazy Map route chunk.
-import {
-  CircleMarker,
-  MapContainer,
-  TileLayer,
-  Popup,
-  useMap,
-} from 'react-leaflet'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+// Leaflet / react-leaflet / Geoman: import only from this file (and the lazy pins canvas) so they stay in the lazy Map route chunk.
+import { useMap } from 'react-leaflet'
 import { booleanPointInPolygon, point } from '@turf/turf'
 import type { Feature, Polygon } from 'geojson'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css'
 import '@geoman-io/leaflet-geoman-free'
-import { useMapPageData, type GeocodeAddressRow, type MapPageEntity } from '../../hooks/useMapPageData'
+import { useMapPageData, type MapPageEntity } from '../../hooks/useMapPageData'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { MapGeocodeReviewModal } from './MapGeocodeReviewModal'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
-import {
-  DEFAULT_MAP_FALLBACK_CENTER,
-  DEFAULT_MAP_FALLBACK_ZOOM,
-  fetchMapDefaultViewFromAppSettings,
-} from '../../lib/mapDefaultViewSettings'
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
 import { DEFAULT_MAP_BID_STAGES, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
 import {
-  BID_STAGE_MARKER_COLOR,
   BUILDER_FOCUS_BID_STAGES,
   builderBidOutcomeCounts,
 } from '../../lib/map/builderBidMapFocus'
 import { supabase } from '../../lib/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { CourtAreasLayer } from './CourtAreasLayer'
+import { CourtAreasPanel, type CourtAreaListed } from './CourtAreasPanel'
+import { courtCoverage, type CourtAreaDraft } from '../../lib/legal/courtAreasDraft'
+import { classifyCourtPoint, courtClassificationWords, type CourtAreaPolygon } from '../../lib/legal/courtAreas'
+import { insertCourtArea, listCourtAreas, retireCourtArea, updateCourtArea } from '../../lib/legal/courtAreasIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
+import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
+import { BID_BOARD_MAP_RING_MILES } from '../../lib/bids/bidBoardMap'
+import type { MapCanvasAnchor } from '../../lib/map/mapCanvasTypes'
+import { mapPageDirectionsUrl } from '../../lib/map/mapPagePins'
+import { mapPageBands, mapPageNearest, mapPagePlacePins, mapPagePlaces, mapPageTotalsLine, placesInBands, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/map/mapPagePlaces'
+import { DEFAULT_DISTANCE_BUCKETS } from '../../lib/bids/bidBoardMapRail'
+import { MapPageRail, PlaceCard, type MapPagePlaceOfEntity } from './MapPageRail'
+import {
+  BID_BOARD_MAP_DUE_RING_COLOR,
+  BID_STAGE_META,
+  JOBS_MAP_COLLECTIONS_RING_COLOR,
+  JOBS_MAP_SECTIONS,
+  JOBS_MAP_SECTION_COLOR,
+  JOBS_MAP_SECTION_LABEL,
+  MAP_PAGE_CLUSTER_RING_PRIORITY,
+  MAP_PAGE_DEFAULT_JOB_SECTIONS,
+  MAP_PAGE_ESTIMATE_COLOR,
+  mapPageLegendCounts,
+  readMapPageClustered,
+  writeMapPageClustered,
+  type JobsMapSection,
+} from '../../lib/map/mapPageSections'
+import { BID_STAGE_MARKER_COLOR } from '../../lib/map/builderBidMapFocus'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+
+// The shared pins canvas (v2.4796): the Dashboard, Bid Board, Pipeline and clocked-in maps draw on it too.
+const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
+import { farFromOfficePlaces, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
+import { farShortLine, mapPageNotFound, unplacedLine } from '../../lib/map/mapPageUnplaced'
+import { MapAddressSheet, type OpenableRecord } from './MapAddressSheet'
 
 const openLinkLikeStyle: CSSProperties = {
   color: 'var(--text-link)',
@@ -51,143 +80,28 @@ const openLinkLikeStyle: CSSProperties = {
   font: 'inherit',
 }
 
-const KIND_COLOR: Record<MapPageEntity['kind'], string> = {
-  job: '#2563eb',
-  bid: '#ea580c',
-  estimate: '#16a34a',
-}
 
-const KIND_LABEL: Record<MapPageEntity['kind'], string> = {
-  job: 'Jobs',
-  bid: 'Bids',
-  estimate: 'Estimates',
-}
-
-/** Color key overlaid on the map corner; layers toggled off in the header show dimmed. */
-function MapLegend({ show }: { show: Record<MapPageEntity['kind'], boolean> }) {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        zIndex: 1000,
-        pointerEvents: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.3rem',
-        padding: '0.45rem 0.7rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        fontSize: '0.75rem',
-        fontWeight: 500,
-        lineHeight: 1.2,
-        color: 'var(--text-700)',
-      }}
-    >
-      {(Object.keys(KIND_LABEL) as MapPageEntity['kind'][]).map((kind) => (
-        <div
-          key={kind}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', opacity: show[kind] ? 1 : 0.35 }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              boxSizing: 'border-box',
-              background: KIND_COLOR[kind],
-              opacity: 0.85,
-            }}
-          />
-          {KIND_LABEL[kind]}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const KIND_PILL_ACTIVE: Record<MapPageEntity['kind'], { bg: string; text: string }> = {
-  job: { bg: 'var(--bg-blue-tint)', text: 'var(--text-blue-700)' },
-  bid: { bg: 'var(--bg-orange-tint)', text: 'var(--text-orange-700)' },
-  estimate: { bg: 'var(--bg-green-tint)', text: 'var(--text-green-600)' },
-}
-
-/** Header toggle for one map layer; the dot matches that kind's marker color. */
-function LayerPill({
-  kind,
+/**
+ * One chip over the map (v2.4802): the key and the switch for a job section, a bid stage or the
+ * estimates. The dot is the pin's color; `ring` draws the ring the section's pins can wear
+ * (Collections red on Billed, the due ring on Unsent). The count is the placed records it stands for.
+ */
+function SectionChip({
   label,
+  color,
+  count,
   active,
-  onToggle,
-}: {
-  kind: MapPageEntity['kind']
-  label: string
-  active: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={active}
-      title={active ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        padding: '0.3rem 0.8rem',
-        borderRadius: 999,
-        border: `1px solid ${active ? KIND_COLOR[kind] : 'var(--border)'}`,
-        background: active ? KIND_PILL_ACTIVE[kind].bg : 'transparent',
-        color: active ? KIND_PILL_ACTIVE[kind].text : 'var(--text-muted)',
-        fontSize: '0.8125rem',
-        fontWeight: 600,
-        lineHeight: 1.2,
-        cursor: 'pointer',
-        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          background: active ? KIND_COLOR[kind] : 'var(--text-faint-300)',
-          transition: 'background 120ms ease',
-        }}
-      />
-      {label}
-    </button>
-  )
-}
-
-/** Bid stage sub-filters; keys and meanings match the Bid Board sections (submissionSections kernel). */
-const BID_STAGE_META: { key: SubmissionSectionKey; label: string; title: string }[] = [
-  { key: 'unsent', label: 'Unsent', title: 'Unsent / Working Bids' },
-  { key: 'pending', label: 'Pending', title: 'Not yet won or lost' },
-  { key: 'won', label: 'Won', title: 'Won' },
-  { key: 'startedOrComplete', label: 'Started', title: 'Started or Complete' },
-  { key: 'lost', label: 'Lost', title: 'Lost' },
-]
-
-const BID_STAGE_TITLE: Record<SubmissionSectionKey, string> = Object.fromEntries(
-  BID_STAGE_META.map((m) => [m.key, m.title])
-) as Record<SubmissionSectionKey, string>
-
-/** Compact toggle for one bid stage; shown only while the Bids layer is on. */
-function BidStageChip({
-  label,
   title,
-  active,
+  ring,
   onToggle,
 }: {
   label: string
-  title: string
+  color: string
+  /** The placed records the chip stands for; omitted while unknown. */
+  count?: number
   active: boolean
+  title: string
+  ring?: string | null
   onToggle: () => void
 }) {
   return (
@@ -199,22 +113,42 @@ function BidStageChip({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        padding: '0.2rem 0.6rem',
+        gap: '0.4rem',
+        padding: '0.25rem 0.7rem',
         borderRadius: 999,
-        border: `1px solid ${active ? KIND_COLOR.bid : 'var(--border)'}`,
-        background: active ? KIND_PILL_ACTIVE.bid.bg : 'transparent',
-        color: active ? KIND_PILL_ACTIVE.bid.text : 'var(--text-muted)',
-        fontSize: '0.75rem',
-        fontWeight: 500,
+        border: `1px solid ${active ? color : 'var(--border)'}`,
+        background: active ? 'var(--surface)' : 'transparent',
+        color: active ? 'var(--text-700)' : 'var(--text-muted)',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
         lineHeight: 1.2,
         cursor: 'pointer',
-        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+        whiteSpace: 'nowrap',
+        transition: 'border-color 120ms ease, color 120ms ease',
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: active ? color : 'var(--text-faint-300)',
+          boxShadow: active && ring ? `0 0 0 2px ${ring}` : undefined,
+          transition: 'background 120ms ease',
+        }}
+      />
       {label}
+      {count != null ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{count}</span> : null}
     </button>
   )
 }
+
+/** The precincts layer's chip — the tint the layer uses for its first county. */
+const MAP_PAGE_PRECINCT_COLOR = '#0ea5e9'
+
+const chipRowStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }
+const chipSepStyle: CSSProperties = { width: 1, height: 18, background: 'var(--border-strong)', margin: '0 0.15rem' }
 
 const headerToolbarButtonStyle: CSSProperties = {
   display: 'inline-flex',
@@ -231,22 +165,7 @@ const headerToolbarButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-function FitBoundsToEntities({ points }: { points: [number, number][] }) {
-  const map = useMap()
-  const doneRef = useRef(false)
-  useEffect(() => {
-    if (points.length === 0) return
-    const b = L.latLngBounds(points.map(([lat, lng]) => L.latLng(lat, lng)))
-    if (!b.isValid()) return
-    if (!doneRef.current) {
-      map.fitBounds(b, { padding: [32, 32], maxZoom: 12 })
-      doneRef.current = true
-    }
-  }, [map, points])
-  return null
-}
-
-/** One-shot fly-to from geocode / table actions; does not remount MapContainer. */
+/** One-shot fly-to from the table, the geocode list, the far list and the court areas panel. Mounted inside the canvas. */
 function MapFlyTo({
   target,
   onConsumed,
@@ -272,23 +191,41 @@ function MapFlyTo({
 function GeomanDraw({
   onFilterPolygon,
   clearSignal,
+  paused = false,
 }: {
   onFilterPolygon: (poly: Feature<Polygon> | null) => void
   clearSignal: number
+  /** While the Court areas mode is on (v2.4769), a drawn shape is an area, not a filter. */
+  paused?: boolean
 }) {
   const map = useMap()
   const layerRef = useRef<L.Layer | null>(null)
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
 
   useEffect(() => {
     const m = map as L.Map & {
       pm: { addControls: (o: Record<string, unknown>) => void; removeControls: () => void }
     }
+    // Only the polygon tool: the area filter and the Court areas mode both draw polygons (v2.4791).
     m.pm.addControls({
       position: 'topleft',
       oneBlock: true,
+      drawMarker: false,
+      drawCircleMarker: false,
+      drawPolyline: false,
+      drawRectangle: false,
+      drawCircle: false,
+      drawText: false,
+      editMode: false,
+      dragMode: false,
+      cutPolygon: false,
+      removalMode: false,
+      rotateMode: false,
     })
 
     const onCreate = (ev: { layer: L.Layer }) => {
+      if (pausedRef.current) return
       if (layerRef.current) {
         map.removeLayer(layerRef.current)
         layerRef.current = null
@@ -333,194 +270,9 @@ function filterEntitiesByPolygon(entities: MapPageEntity[], poly: Feature<Polygo
   })
 }
 
-/** Shown when geocoding runs; `open` follows progress until all rows are terminal. */
-function GeocodeProgressList({
-  rows,
-  entities,
-  onAddressOpen,
-}: {
-  rows: GeocodeAddressRow[]
-  entities: MapPageEntity[]
-  onAddressOpen: (addressNormalized: string) => void
-}) {
-  if (rows.length === 0) return null
-  const done = rows.filter((r) => r.status === 'ok' || r.status === 'error').length
-  const anyActive = rows.some((r) => r.status === 'pending' || r.status === 'in_progress')
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'flex-start',
-        margin: 0,
-        minWidth: 0,
-        maxWidth: '100%',
-      }}
-    >
-      <details
-        open={anyActive}
-        style={{
-          fontSize: '0.875rem',
-          color: 'var(--text-700)',
-          margin: 0,
-          minWidth: 'min(18rem, 100%)',
-        }}
-      >
-        <summary style={{ cursor: 'pointer', userSelect: 'none' }}>{`Geocoding (${done}/${rows.length})`}</summary>
-        <ul
-          aria-live="polite"
-          style={{
-            margin: '0.5rem 0 0 0',
-            padding: '0 0 0 1.1rem',
-            listStyle: 'none',
-            maxHeight: 'min(40vh, 240px)',
-            overflowY: 'auto',
-          }}
-        >
-        {rows.map((r) => {
-          const icon = r.status === 'ok' ? '✓' : r.status === 'error' ? '✗' : r.status === 'in_progress' ? '…' : '·'
-          const matched = entities.filter((e) => e.addressKey === r.address_normalized)
-          const hasEntity = matched.length > 0
-          // Job/bid/estimate numbers for this address; several entities can share one address.
-          const ids = [...new Set(matched.map((e) => e.sublabel.trim()).filter((s) => s.length > 0))]
-          const idPrefix = ids.slice(0, 3).join(', ') + (ids.length > 3 ? ` +${ids.length - 3} more` : '')
-          return (
-            <li
-              key={r.address_normalized}
-              style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.25rem' }}
-            >
-              <span aria-hidden="true" style={{ width: '0.9rem' }}>
-                {icon}
-              </span>
-              {idPrefix.length > 0 ? (
-                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{idPrefix}</span>
-              ) : null}
-              <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{r.addressLabel}</span>
-              {hasEntity ? (
-                <button
-                  type="button"
-                  onClick={() => onAddressOpen(r.address_normalized)}
-                  style={openLinkLikeStyle}
-                  aria-label={`Open job, bid, or estimate for this address: ${r.addressLabel}`}
-                >
-                  Open
-                </button>
-              ) : null}
-              {r.errorMessage ? <span style={{ color: 'var(--text-red-700)' }}>{r.errorMessage}</span> : null}
-            </li>
-          )
-        })}
-        </ul>
-      </details>
-    </div>
-  )
-}
-
-function MapEntityTable({
-  rows,
-  title,
-  titleRight,
-  emptyHint,
-  onOpenJob,
-}: {
-  rows: MapPageEntity[]
-  title: string
-  /** e.g. filter search — shown to the right of the title on wide viewports. */
-  titleRight?: ReactNode
-  emptyHint: string
-  /** When set, job rows open Edit Job in place instead of navigating to Jobs. */
-  onOpenJob?: (jobId: string) => void
-}) {
-  return (
-    <div>
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '0.5rem',
-          marginBottom: '0.5rem',
-        }}
-      >
-        <h2 style={{ fontSize: '1rem', margin: 0, flex: '1 1 auto', minWidth: 0 }}>{title}</h2>
-        {titleRight != null ? (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              alignItems: 'center',
-              gap: '0.5rem',
-              justifyContent: 'flex-end',
-              flex: '1 1 200px',
-              minWidth: 0,
-            }}
-          >
-            {titleRight}
-          </div>
-        ) : null}
-      </div>
-      <div
-        style={{
-          border: '1px solid var(--border)',
-          borderRadius: 4,
-          maxHeight: 'min(50vh, 360px)',
-          overflow: 'auto',
-        }}
-      >
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            fontSize: '0.8125rem',
-          }}
-        >
-          <thead>
-            <tr style={{ background: 'var(--bg-subtle)' }}>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Kind</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Name</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Address</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Info</th>
-              <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Open</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
-                  {emptyHint}
-                </td>
-              </tr>
-            ) : (
-              rows.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '0.35rem 0.5rem', textTransform: 'capitalize' }}>{r.kind}</td>
-                  <td style={{ padding: '0.35rem 0.5rem' }}>{r.tableLabel}</td>
-                  <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-700)' }}>{r.addressLabel}</td>
-                  <td style={{ padding: '0.35rem 0.5rem' }}>{r.meta || '—'}</td>
-                  <td style={{ padding: '0.35rem 0.5rem' }}>
-                    {r.kind === 'job' && onOpenJob ? (
-                      <button type="button" onClick={() => onOpenJob(r.id)} style={openLinkLikeStyle}>
-                        Open
-                      </button>
-                    ) : (
-                      <Link to={r.linkTo} style={{ color: 'var(--text-link)' }}>
-                        Open
-                      </Link>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 export function MapPageView() {
   const navigate = useNavigate()
-  const { loading, error, entities, geocodeAddressRows, geocodeInProgress, reload } = useMapPageData(true)
+  const { loading, error, entities, geocodeAddressRows, geocodeInProgress, unplaced, reload } = useMapPageData(true)
   const jobFormModal = useJobFormModal()
   const openJobOnMap = useCallback(
     (jobId: string) => {
@@ -532,9 +284,13 @@ export function MapPageView() {
   )
   const [mapFlyTo, setMapFlyTo] = useState<{ lat: number; lng: number } | null>(null)
   const clearMapFlyTo = useCallback(() => setMapFlyTo(null), [])
-  const [geocodeChooserMatches, setGeocodeChooserMatches] = useState<MapPageEntity[] | null>(null)
+  // The place the office clicked (v2.4796; places v2.4804): its popup on a desktop, the card in the rail.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [hoverKey, setHoverKey] = useState<string | null>(null)
+  const [bandsOn, setBandsOn] = useState<DistanceBucketVisibility>(DEFAULT_DISTANCE_BUCKETS)
+  const toggleBand = useCallback((key: DistanceBucketKey) => setBandsOn((prev) => ({ ...prev, [key]: !prev[key] })), [])
   const openEntity = useCallback(
-    (e: MapPageEntity) => {
+    (e: OpenableRecord) => {
       if (e.kind === 'job' && jobFormModal) {
         openJobOnMap(e.id)
       } else {
@@ -542,28 +298,32 @@ export function MapPageView() {
       }
       if (e.lat != null && e.lng != null) {
         setMapFlyTo({ lat: e.lat, lng: e.lng })
+        setSelectedId(e.addressKey ?? null)
       }
     },
     [jobFormModal, navigate, openJobOnMap]
   )
-  const onGeocodeAddressOpen = useCallback(
-    (addressNormalized: string) => {
-      const matches = entities.filter((en) => en.addressKey === addressNormalized)
-      if (matches.length === 0) return
-      if (matches.length === 1) {
-        openEntity(matches[0]!)
-        return
-      }
-      setGeocodeChooserMatches(matches)
-    },
-    [entities, openEntity]
-  )
+  const directionsTo = useCallback((place: { addressLabel: string }) => openInExternalBrowser(mapPageDirectionsUrl(place.addressLabel)), [])
+  const pickPlace = useCallback((place: MapPagePlaceOfEntity) => {
+    setSelectedId(place.key)
+    setMapFlyTo({ lat: place.lat, lng: place.lng })
+  }, [])
   const [reviewOpen, setReviewOpen] = useState(false)
+  // The address sheet (v2.4805): the records the map cannot place and the far ones, in one window.
+  const [sheetOpen, setSheetOpen] = useState(false)
   const narrow = useNarrowViewport640()
-  const [showJobs, setShowJobs] = useState(true)
-  const [showBids, setShowBids] = useState(true)
-  const [showEst, setShowEst] = useState(true)
+  // The chips (v2.4802): job sections, bid stages and estimates; Paid, Lost and Estimates start off.
+  const [jobSections, setJobSections] = useState<Record<JobsMapSection, boolean>>(MAP_PAGE_DEFAULT_JOB_SECTIONS)
+  const [showEst, setShowEst] = useState(false)
   const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(DEFAULT_MAP_BID_STAGES)
+  const [clustered, setClustered] = useState(() => readMapPageClustered())
+  const toggleClustered = useCallback(() => {
+    setClustered((c) => {
+      writeMapPageClustered(!c)
+      return !c
+    })
+  }, [])
+  const legendCounts = useMemo(() => mapPageLegendCounts(entities.filter((e) => e.lat != null && e.lng != null)), [entities])
   // Builder-focus mode (v2.1162): /map?builder=<customerId> shows ONLY that
   // GC's bids, markers colored by outcome, with a scoreboard banner.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -607,51 +367,101 @@ export function MapPageView() {
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)
-  const [mapView, setMapView] = useState<{
-    lat: number
-    lng: number
-    zoom: number
-  }>(() => ({
-    lat: DEFAULT_MAP_FALLBACK_CENTER.lat,
-    lng: DEFAULT_MAP_FALLBACK_CENTER.lng,
-    zoom: DEFAULT_MAP_FALLBACK_ZOOM,
-  }))
-
-  const loadMapDefaultView = useCallback(() => {
-    void (async () => {
-      try {
-        const v = await fetchMapDefaultViewFromAppSettings()
-        if (v) {
-          setMapView({ lat: v.centerLat, lng: v.centerLng, zoom: v.zoom })
-        } else {
-          setMapView({
-            lat: DEFAULT_MAP_FALLBACK_CENTER.lat,
-            lng: DEFAULT_MAP_FALLBACK_CENTER.lng,
-            zoom: DEFAULT_MAP_FALLBACK_ZOOM,
-          })
-        }
-      } catch {
-        // keep current mapView
-      }
-    })()
-  }, [])
-
+  // Court areas mode (v2.4769): the office draws its justice precincts on this map.
+  const { role: authRole, user: authUser } = useAuth()
+  const canDrawCourtAreas = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const [courtMode, setCourtMode] = useState(false)
+  // Precincts as a layer (v2.4807): the court areas drawn for anyone on the page, without the mode.
+  const [precinctsOn, setPrecinctsOn] = useState(false)
+  const [courtAreas, setCourtAreas] = useState<CourtAreaListed[]>([])
+  const [courtAreasLoaded, setCourtAreasLoaded] = useState(false)
+  const [courtPending, setCourtPending] = useState<CourtAreaPolygon | null>(null)
+  const [courtClear, setCourtClear] = useState(0)
+  const [courtBusy, setCourtBusy] = useState(false)
+  const [courtError, setCourtError] = useState<string | null>(null)
+  const courtDb = supabase as unknown as SupabaseClient
+  const reloadCourtAreas = useCallback(async () => {
+    try {
+      setCourtAreas(await listCourtAreas(courtDb))
+      setCourtAreasLoaded(true)
+      setCourtError(null)
+    } catch (e) {
+      setCourtError(formatErrorMessage(e, 'Could not load the court areas.'))
+    }
+  }, [courtDb])
   useEffect(() => {
-    loadMapDefaultView()
-  }, [loadMapDefaultView])
-
+    if (courtMode || precinctsOn) void reloadCourtAreas()
+  }, [courtMode, precinctsOn, reloadCourtAreas])
+  const precinctsShown = courtMode || precinctsOn
+  // The place card's county and precinct, from the layer when it is on screen (v2.4807).
+  const precinctWords = useCallback(
+    (place: { lat: number; lng: number }) => (precinctsShown && courtAreasLoaded ? courtClassificationWords(classifyCourtPoint(place, courtAreas)) : null),
+    [precinctsShown, courtAreasLoaded, courtAreas],
+  )
+  const onCourtDrawn = useCallback((polygon: CourtAreaPolygon) => setCourtPending(polygon), [])
+  const courtAct = useCallback(async (fallback: string, act: () => Promise<void>) => {
+    setCourtBusy(true)
+    try {
+      await act()
+      await reloadCourtAreas()
+      setCourtError(null)
+    } catch (e) {
+      setCourtError(formatErrorMessage(e, fallback))
+    } finally {
+      setCourtBusy(false)
+    }
+  }, [reloadCourtAreas])
+  const saveCourtArea = useCallback((draft: CourtAreaDraft) => {
+    const polygon = courtPending
+    if (!polygon) return
+    void courtAct('Could not save the area.', async () => {
+      await insertCourtArea(courtDb, draft, polygon, authUser?.id ?? null)
+      setCourtPending(null)
+      setCourtClear((c) => c + 1)
+    })
+  }, [courtAct, courtDb, courtPending, authUser?.id])
+  const discardCourtShape = useCallback(() => {
+    setCourtPending(null)
+    setCourtClear((c) => c + 1)
+  }, [])
+  const renameCourtArea = useCallback((id: string, draft: CourtAreaDraft) => void courtAct('Could not change the area.', () => updateCourtArea(courtDb, id, draft)), [courtAct, courtDb])
+  const confirmDialog = useConfirmDialog()
+  const removeCourtArea = useCallback((a: CourtAreaListed) => {
+    void (async () => {
+      if (!(await confirmDialog({ title: 'Remove this area?', message: `${a.county} precinct ${a.precinct} comes off the map. Addresses inside it lose their precinct on the next classification.`, confirmLabel: 'Remove', danger: true }))) return
+      await courtAct('Could not remove the area.', () => retireCourtArea(courtDb, a.id))
+    })()
+  }, [confirmDialog, courtAct, courtDb])
+  // Classify now (v2.4770): the night's job by hand, under the office user's own session.
+  const [classifyWords, setClassifyWords] = useState('')
+  const classifyNow = useCallback(() => {
+    void courtAct('The classification could not run.', async () => {
+      const { data, error } = await supabase.functions.invoke('court-precinct-nightly', { body: {} })
+      if (error) throw error
+      const r = (data ?? {}) as { placed?: number; outside?: number; onLine?: number; noPoint?: number; written?: number; error?: string }
+      if (r.error) throw new Error(r.error)
+      setClassifyWords(`${r.placed ?? 0} placed · ${r.outside ?? 0} outside · ${r.onLine ?? 0} on a line · ${r.noPoint ?? 0} with no point · ${r.written ?? 0} ${r.written === 1 ? 'record' : 'records'} written`)
+    })
+  }, [courtAct])
+  const focusCourtArea = useCallback((a: CourtAreaListed) => {
+    const ring = (a.polygon.type === 'Polygon' ? a.polygon.coordinates[0] : a.polygon.coordinates[0]?.[0]) ?? []
+    if (ring.length === 0) return
+    const lat = ring.reduce((sum, c) => sum + (c[1] ?? 0), 0) / ring.length
+    const lng = ring.reduce((sum, c) => sum + (c[0] ?? 0), 0) / ring.length
+    setMapFlyTo({ lat, lng })
+  }, [])
   const onFilterPolygon = useCallback((poly: Feature<Polygon> | null) => {
     setFilterPoly(poly)
   }, [])
 
   const visible = useMemo(() => {
     if (builderFocusId) {
-      const f = { showJobs: false, showBids: true, showEst: false, bidStages }
+      const f = { jobSections: { waiting: false, working: false, readyToBill: false, billed: false, paid: false }, showEst: false, bidStages }
       return builderFocusEntities.filter((e) => mapEntityPassesLayerFilter(e, f))
     }
-    const f = { showJobs, showBids, showEst, bidStages }
+    const f = { jobSections, showEst, bidStages }
     return entities.filter((e) => mapEntityPassesLayerFilter(e, f))
-  }, [entities, showJobs, showBids, showEst, bidStages, builderFocusId, builderFocusEntities])
+  }, [entities, jobSections, showEst, bidStages, builderFocusId, builderFocusEntities])
 
   const mapSearchTrim = useMemo(() => mapSearchQuery.trim(), [mapSearchQuery])
 
@@ -660,33 +470,71 @@ export function MapPageView() {
     return visible.filter((e) => mapEntityMatchesSearch(mapSearchTrim, e))
   }, [visible, mapSearchTrim])
 
+  // The drawn area (v2.4804) narrows the map and the rail, not a table.
+  const inArea = useMemo(() => filterEntitiesByPolygon(searchFiltered, filterPoly), [searchFiltered, filterPoly])
   const withCoords = useMemo(
-    () => searchFiltered.filter((e) => e.lat != null && e.lng != null),
-    [searchFiltered]
+    () => inArea.filter((e) => e.lat != null && e.lng != null),
+    [inArea]
   )
-  const points = useMemo((): [number, number][] => withCoords.map((e) => [e.lat!, e.lng!]), [withCoords])
-  const tableRows = useMemo(
-    () => filterEntitiesByPolygon(searchFiltered, filterPoly),
-    [searchFiltered, filterPoly]
+  // The first view (v2.4791): the office and its rings; pins far from the office are drawn but
+  // never fitted, and listed under the map to have their addresses checked.
+  const officeAnchor = useOfficeAnchor(true)
+  const anchorPoint = useMemo(() => (officeAnchor ? { lat: officeAnchor.lat, lng: officeAnchor.lng } : null), [officeAnchor])
+  const canvasAnchor = useMemo(
+    (): MapCanvasAnchor | null => (anchorPoint ? { ...anchorPoint, label: 'Office', ringMiles: BID_BOARD_MAP_RING_MILES } : null),
+    [anchorPoint],
   )
-
-  const tableTitle = useMemo(() => {
-    if (mapSearchTrim.length > 0) return 'Search results'
-    if (filterPoly) return 'In drawn area'
-    return 'All visible layers'
-  }, [mapSearchTrim, filterPoly])
-
-  const tableEmptyHint = useMemo(() => {
-    if (mapSearchTrim.length > 0 && searchFiltered.length === 0) {
-      return visible.length > 0
-        ? 'No matches for this search.'
-        : 'No items in the selected layers.'
-    }
-    if (filterPoly) {
-      return 'No pins in this area. Clear the draw or pick another region.'
-    }
-    return 'No rows with a geocoded address. Use Reload after geocoding finishes, or add addresses to jobs/bids/estimates.'
-  }, [mapSearchTrim, searchFiltered.length, visible.length, filterPoly])
+  const placed = useMemo(() => withCoords.map((e) => ({ ...e, lat: e.lat!, lng: e.lng! })), [withCoords])
+  // The misses (v2.4805): over every entity, not the chips' selection — a record the map cannot place is a miss whatever is on.
+  const notFoundInfo = useMemo(() => mapPageNotFound(entities, geocodeAddressRows), [entities, geocodeAddressRows])
+  const missLine = useMemo(
+    () => unplacedLine({ noAddress: unplaced.length, notFoundRecords: notFoundInfo.notFound.reduce((n, g) => n + g.items.length, 0), resolving: notFoundInfo.resolving }),
+    [unplaced.length, notFoundInfo],
+  )
+  // The far addresses for the sheet and its line are over every placed record, whatever the chips show.
+  const farAllPlaces = useMemo(() => {
+    const all = entities.filter((e) => e.lat != null && e.lng != null).map((e) => ({ ...e, lat: e.lat!, lng: e.lng! }))
+    return farFromOfficePlaces(splitFarFromOffice(all, anchorPoint).far)
+  }, [entities, anchorPoint])
+  const farLine = useMemo(() => farShortLine(farAllPlaces.length), [farAllPlaces.length])
+  // Places (v2.4804): one pin per address; the bands from the office double as filters.
+  const placesAll = useMemo(() => mapPagePlaces(placed), [placed])
+  const bands = useMemo(() => mapPageBands(placesAll, anchorPoint), [placesAll, anchorPoint])
+  const places = useMemo(() => placesInBands(placesAll, anchorPoint, bandsOn), [placesAll, anchorPoint, bandsOn])
+  const nearPlaces = useMemo(() => splitFarFromOffice(places, anchorPoint).near, [places, anchorPoint])
+  const homeFitPoints = useMemo(() => mapPageHomeFitPoints(nearPlaces, anchorPoint), [nearPlaces, anchorPoint])
+  const fitAllPoints = useMemo(() => mapPageFitAllPoints(nearPlaces, anchorPoint), [nearPlaces, anchorPoint])
+  // The map opens on the home fit; Fit all widens to every near pin and stays wide (the Bid Board map's rule).
+  const [fitAll, setFitAll] = useState(false)
+  const [fitSignal, setFitSignal] = useState(0)
+  const fitPoints = fitAll ? fitAllPoints : homeFitPoints
+  const pins = useMemo(
+    () => mapPagePlacePins(places, { builderFocus: !!builderFocusId, focusSection: focusSectionOf }),
+    [places, builderFocusId, focusSectionOf],
+  )
+  const byKey = useMemo(() => new Map(places.map((p) => [p.key, p])), [places])
+  const selected = selectedId ? (byKey.get(selectedId) ?? null) : null
+  useEffect(() => {
+    if (selectedId && !byKey.has(selectedId)) setSelectedId(null)
+  }, [byKey, selectedId])
+  const renderPopup = useCallback(
+    (id: string) => {
+      const place = byKey.get(id)
+      return place ? <PlaceCard place={place} anchor={anchorPoint} compact isMobile={false} focusSection={focusSectionOf} onOpen={openEntity} onDirections={directionsTo} precinctWords={precinctWords} /> : null
+    },
+    [byKey, anchorPoint, focusSectionOf, openEntity, directionsTo, precinctWords],
+  )
+  const nearest = useMemo(() => mapPageNearest(places, anchorPoint), [places, anchorPoint])
+  const totalsLine = useMemo(() => mapPageTotalsLine(places), [places])
+  const courtCover = useMemo(() => courtCoverage(withCoords.map((e) => ({ label: e.tableLabel, lat: e.lat, lng: e.lng })), courtAreas), [withCoords, courtAreas])
+  const emptyHint = useMemo(() => {
+    if (places.length > 0) return null
+    if (mapSearchTrim.length > 0) return visible.length > 0 ? 'No matches for this search.' : 'Every chip is off — tap one above to show its pins.'
+    if (filterPoly) return 'No pins in the drawn area. Clear the draw or draw another.'
+    if (visible.length === 0 && entities.length > 0) return 'Every chip is off — tap one above to show its pins.'
+    if (placesAll.length > 0) return 'Every band is off — tap a box below to show its places.'
+    return loading ? 'Loading…' : 'Nothing has a map location yet. Add addresses to jobs, bids and estimates.'
+  }, [places.length, mapSearchTrim, visible.length, filterPoly, entities.length, placesAll.length, loading])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
@@ -733,29 +581,85 @@ export function MapPageView() {
             </button>
           </span>
         ) : (
-          <>
-            <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
-            <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
-          </>
-        )}
-        {builderFocusId || showBids ? (
-          <div role="group" aria-label="Bid stages" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-            {BID_STAGE_META.map((m) => (
-              <BidStageChip
-                key={m.key}
-                label={m.label}
-                title={m.title}
-                active={bidStages[m.key]}
-                onToggle={() => setBidStages((prev) => ({ ...prev, [m.key]: !prev[m.key] }))}
+          <div role="group" aria-label="Job sections" style={chipRowStyle}>
+            {JOBS_MAP_SECTIONS.map((key) => (
+              <SectionChip
+                key={key}
+                label={JOBS_MAP_SECTION_LABEL[key]}
+                color={JOBS_MAP_SECTION_COLOR[key]}
+                count={legendCounts.jobs[key]}
+                active={jobSections[key]}
+                title={key === 'billed' && legendCounts.collections > 0 ? `Billed — ${legendCounts.collections} in Collections wear the red ring` : `${jobSections[key] ? 'Hide' : 'Show'} ${JOBS_MAP_SECTION_LABEL[key].toLowerCase()} jobs`}
+                ring={key === 'billed' && legendCounts.collections > 0 ? JOBS_MAP_COLLECTIONS_RING_COLOR : null}
+                onToggle={() => setJobSections((prev) => ({ ...prev, [key]: !prev[key] }))}
               />
             ))}
+            <span aria-hidden="true" style={chipSepStyle} />
           </div>
-        ) : null}
-        {!builderFocusId && (
-          <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
         )}
-        <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
+        <div role="group" aria-label="Bid stages" style={chipRowStyle}>
+          {BID_STAGE_META.map((m) => (
+            <SectionChip
+              key={m.key}
+              label={m.label}
+              color={BID_STAGE_MARKER_COLOR[m.key]}
+              count={legendCounts.bids[m.key]}
+              active={bidStages[m.key]}
+              title={m.key === 'unsent' ? 'Unsent — a due ring is amber when due soon, red when overdue' : m.title}
+              ring={m.key === 'unsent' ? BID_BOARD_MAP_DUE_RING_COLOR.soon : null}
+              onToggle={() => setBidStages((prev) => ({ ...prev, [m.key]: !prev[m.key] }))}
+            />
+          ))}
+        </div>
+        {!builderFocusId && (
+          <div role="group" aria-label="Estimates" style={chipRowStyle}>
+            <span aria-hidden="true" style={chipSepStyle} />
+            <SectionChip label="Estimates" color={MAP_PAGE_ESTIMATE_COLOR} count={legendCounts.estimates} active={showEst} title={showEst ? 'Hide estimates' : 'Show estimates'} onToggle={() => setShowEst((v) => !v)} />
+            <SectionChip
+              label="Precincts"
+              color={MAP_PAGE_PRECINCT_COLOR}
+              count={courtAreasLoaded ? courtAreas.length : undefined}
+              active={precinctsShown}
+              title={precinctsShown ? 'Hide the justice precincts' : 'Draw the justice precincts the office filed — a place card then names its county and precinct'}
+              onToggle={() => setPrecinctsOn((v) => !v)}
+            />
+          </div>
+        )}
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
+          {canDrawCourtAreas ? (
+            <button
+              type="button"
+              data-court-areas-toggle
+              aria-pressed={courtMode}
+              onClick={() => { setCourtMode((m) => !m); setCourtPending(null); setCourtClear((c) => c + 1) }}
+              title={courtMode ? 'Back to the map' : 'Draw the justice precincts the office files in'}
+              style={{ ...headerToolbarButtonStyle, ...(courtMode ? { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)' } : null) }}
+            >
+              Court areas{courtAreas.length ? ` · ${courtAreas.length}` : ''}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={toggleClustered}
+            aria-pressed={clustered}
+            title={clustered ? 'Draw every pin on its own' : 'Group pins that overlap at this zoom into count discs'}
+            style={{ ...headerToolbarButtonStyle, fontWeight: clustered ? 700 : 500 }}
+          >
+            {clustered ? 'Clustered ✓' : 'Cluster'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setFitAll(true); setFitSignal((c) => c + 1) }}
+            disabled={fitAllPoints.length === 0}
+            title="Frame every pin and the office"
+            style={{
+              ...headerToolbarButtonStyle,
+              opacity: fitAllPoints.length === 0 ? 0.45 : 1,
+              cursor: fitAllPoints.length === 0 ? 'default' : 'pointer',
+            }}
+          >
+            Fit all
+          </button>
           <button
             type="button"
             onClick={() => setClearDraw((c) => c + 1)}
@@ -774,10 +678,7 @@ export function MapPageView() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              void reload()
-              loadMapDefaultView()
-            }}
+            onClick={() => void reload()}
             disabled={loading}
             style={{
               ...headerToolbarButtonStyle,
@@ -794,6 +695,20 @@ export function MapPageView() {
         </div>
       </div>
 
+      <MapAddressSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        noAddress={unplaced}
+        notFound={notFoundInfo.notFound}
+        resolving={notFoundInfo.resolving}
+        far={farAllPlaces}
+        anchor={anchorPoint}
+        canRecheck={canDrawCourtAreas}
+        onOpen={(r) => { setSheetOpen(false); openEntity(r) }}
+        onShow={(lat, lng) => { setSheetOpen(false); setMapFlyTo({ lat, lng }) }}
+        onAfterRecheck={() => void reload()}
+        onReviewAll={() => { setSheetOpen(false); setReviewOpen(true) }}
+      />
       <MapGeocodeReviewModal
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}
@@ -801,236 +716,89 @@ export function MapPageView() {
         onAfterRefresh={() => void reload()}
       />
 
-      {geocodeChooserMatches && geocodeChooserMatches.length > 0 ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-          }}
-          role="dialog"
-          aria-modal
-          aria-labelledby="geocode-chooser-title"
-        >
-          <div
-            style={{
-              background: 'var(--surface)',
-              padding: '1.25rem',
-              borderRadius: 8,
-              minWidth: 280,
-              maxWidth: 'min(96vw, 420px)',
-              maxHeight: 'min(80vh, 400px)',
-              overflow: 'auto',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-            }}
-          >
-            <h2 id="geocode-chooser-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
-              Multiple records at this address
-            </h2>
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>Choose which to open.</p>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {geocodeChooserMatches.map((e) => (
-                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGeocodeChooserMatches(null)
-                      openEntity(e)
-                    }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '0.65rem 0.25rem',
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    <span style={{ textTransform: 'capitalize', fontWeight: 600, marginRight: '0.35rem' }}>{e.kind}</span>
-                    <span>{e.tableLabel}</span>
-                    {e.sublabel ? <span style={{ color: 'var(--text-muted)' }}>{` ${e.sublabel}`}</span> : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => setGeocodeChooserMatches(null)}
-              style={{ marginTop: '0.75rem', padding: '0.5rem 0.9rem', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {!loading && geocodeInProgress ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Resolving addresses…</p>
-      ) : null}
-
       {error ? <p style={{ color: 'var(--text-red-700)', margin: 0 }}>{error}</p> : null}
       {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-          flex: 1,
-          minHeight: 420,
-          minWidth: 0,
-        }}
+        style={narrow
+          ? { display: 'flex', flexDirection: 'column', gap: '0.75rem', minWidth: 0 }
+          : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.75rem', alignItems: 'start', minWidth: 0 }}
       >
         {/* isolation contains Leaflet's internal z-indexes (panes 200-700, controls 1000) so they can't paint over header dropdowns */}
         <div style={{ position: 'relative', flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', isolation: 'isolate' }}>
-          <MapContainer
-            key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
-            center={[mapView.lat, mapView.lng] as L.LatLngExpression}
-            zoom={mapView.zoom}
-            style={{ width: '100%', height: narrow ? 360 : 520 }}
-            scrollWheelZoom
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
-            {points.length > 0 ? <FitBoundsToEntities points={points} /> : null}
-            <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} />
-            {withCoords.map((e) => (
-              <CircleMarker
-                key={`${e.kind}-${e.id}`}
-                center={[e.lat!, e.lng!]}
-                radius={7}
-                pathOptions={(() => {
-                  const fs = e.kind === 'bid' ? focusSectionOf(e) : undefined
-                  const c = builderFocusId && fs
-                    ? BID_STAGE_MARKER_COLOR[fs]
-                    : KIND_COLOR[e.kind]
-                  return { color: c, fillColor: c, fillOpacity: 0.8, weight: 1 }
-                })()}
-              >
-                <Popup>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                      {e.kind}
-                      {e.kind === 'bid' && e.bidSection ? (
-                        <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)' }}>
-                          {` — ${BID_STAGE_TITLE[e.bidSection]}`}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div>{e.tableLabel}</div>
-                    <div style={{ color: 'var(--text-muted)' }}>{e.addressLabel}</div>
-                    {e.kind === 'job' && jobFormModal ? (
-                      <button type="button" onClick={() => openJobOnMap(e.id)} style={openLinkLikeStyle}>
-                        Open
-                      </button>
-                    ) : (
-                      <Link to={e.linkTo}>Open</Link>
-                    )}
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
-          </MapContainer>
-          <MapLegend show={{ job: showJobs, bid: showBids, estimate: showEst }} />
+          <Suspense fallback={<div style={{ height: narrow ? 360 : 520 }} />}>
+            <PinsMapCanvas
+              pins={pins}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              renderPopup={renderPopup}
+              fitSignal={fitSignal}
+              height={narrow ? 360 : 520}
+              isMobile={narrow}
+              anchor={canvasAnchor}
+              fitPoints={fitPoints}
+              cluster={clustered}
+              clusterRingPriority={MAP_PAGE_CLUSTER_RING_PRIORITY}
+              clusterNoun="places"
+              pulseId={narrow ? null : hoverKey}
+              // The map sits above the table: the wheel scrolls the page until the map is clicked once
+              scrollZoomAfterClick
+              // Leaflet ignores a height change after mount — remount when the form flips
+              key={narrow ? 'phone' : 'desktop'}
+            >
+              <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
+              <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
+              {precinctsShown ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
+            </PinsMapCanvas>
+          </Suspense>
         </div>
-        <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
-          <MapEntityTable
-            rows={tableRows}
-            title={tableTitle}
-            titleRight={
-              <>
-                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                  Filter
-                </label>
-                <input
-                  id="map-page-search"
-                  type="search"
-                  name="map-page-search"
-                  value={mapSearchQuery}
-                  onChange={(e) => setMapSearchQuery(e.target.value)}
-                  autoComplete="off"
-                  placeholder="Filter by name, address, number…"
-                  aria-label="Filter map and list"
-                  style={{
-                    flex: '1 1 200px',
-                    minWidth: 0,
-                    maxWidth: '100%',
-                    padding: '0.35rem 0.5rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                  }}
-                />
-                {mapSearchTrim ? (
-                  <button
-                    type="button"
-                    onClick={() => setMapSearchQuery('')}
-                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-                  >
-                    Clear
+        <MapPageRail
+          selected={selected}
+          anchor={anchorPoint}
+          bands={bands}
+          bandsOn={bandsOn}
+          onToggleBand={toggleBand}
+          nearest={nearest}
+          onPickPlace={pickPlace}
+          onHoverPlace={setHoverKey}
+          focusSection={focusSectionOf}
+          onOpen={openEntity}
+          onDirections={directionsTo}
+          precinctWords={precinctWords}
+          search={mapSearchQuery}
+          onSearch={setMapSearchQuery}
+          totalsLine={totalsLine}
+          emptyHint={emptyHint}
+          isMobile={narrow}
+        />
+      </div>
+      <div style={{ minWidth: 0, width: '100%' }}>
+          {missLine || farLine ? (
+            <div data-map-misses style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem', alignItems: 'baseline' }}>
+              {missLine ? (
+                geocodeInProgress ? (
+                  <span style={{ color: 'var(--text-muted)' }}>{missLine}</span>
+                ) : (
+                  <button type="button" onClick={() => setSheetOpen(true)} style={openLinkLikeStyle}>
+                    {`${missLine} · fix their addresses`}
                   </button>
-                ) : null}
-              </>
-            }
-            emptyHint={tableEmptyHint}
-            onOpenJob={jobFormModal ? openJobOnMap : undefined}
-          />
-        </div>
+                )
+              ) : null}
+              {missLine && farLine ? <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>·</span> : null}
+              {farLine ? (
+                <button type="button" onClick={() => setSheetOpen(true)} style={openLinkLikeStyle}>
+                  {`${farLine} · check them`}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {courtMode ? (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <CourtAreasPanel areas={courtAreas} coverage={courtCover} pending={courtPending !== null} busy={courtBusy} error={courtError} onSave={saveCourtArea} onCancelPending={discardCourtShape} onRename={renameCourtArea} onRemove={removeCourtArea} onFocus={focusCourtArea} onClassify={classifyNow} classifyWords={classifyWords} />
+            </div>
+          ) : null}
       </div>
 
-      <details
-        style={{
-          position: 'fixed',
-          zIndex: 300,
-          right: 'max(1rem, env(safe-area-inset-right, 0px))',
-          bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
-          maxWidth: 'min(100vw - 2rem, 240px)',
-          margin: 0,
-        }}
-      >
-        <summary
-          style={{
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            padding: '0.35rem 0.6rem',
-            background: 'var(--bg-muted)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            listStyle: 'none',
-            userSelect: 'none',
-          }}
-          aria-label="Debug tools"
-        >
-          Debug
-        </summary>
-        <div
-          style={{
-            marginTop: 6,
-            padding: '0.5rem',
-            background: 'var(--surface)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setReviewOpen(true)}
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer', width: '100%' }}
-          >
-            Review geocodes
-          </button>
-        </div>
-      </details>
     </div>
   )
 }

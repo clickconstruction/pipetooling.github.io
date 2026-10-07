@@ -18,7 +18,7 @@ import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDis
 import { APP_SETTINGS_KEY_BID_BOARD_VALUE_RULE } from '../../lib/appSettingsKeys'
 import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendByVersion, parseBoardValueRule, type BoardValueRule, type VersionSendRow } from '../../lib/bids/versionSends'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { BidRoomPanel, BidRoomSetupButton } from './BidRoomPanel'
 import { BidBasisCard } from './BidBasisCard'
 import { useBidBasisExports } from '../../hooks/useBidBasisExports'
@@ -61,7 +61,8 @@ import type {
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
 import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
-import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout } from '../../lib/bids/coverLetterSamePage'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
+import { roomSectionsForLetterOptions } from '../../lib/bids/wonOption'
 import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../../lib/bids/coverLetterDocument'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
@@ -288,6 +289,64 @@ export function BidsCoverLetterTab({
     if (error) showToast('Could not save the letter wording: ' + error.message, 'error')
     else if (bidUpdateRefused(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
   }
+
+  // v2.4737 (bid history PR 0a): the three boxes — Additional inclusions, Exclusions and scope,
+  // Terms and warranty — are saved on the bid (bids.cover_letter_inclusions / _exclusions / _terms).
+  // They were React state only: typed, shown, and gone on a reload. On opening a bid the saved
+  // text seeds a box nobody has typed in this session (a typed box keeps its text); a change
+  // writes back after a pause. null in the column means nobody typed: the letter falls back to the
+  // org default and then the built-in wording, as before.
+  const letterTextsLoadedFor = useRef<string | null>(null)
+  // The same fact as state, so the save below runs once the read lands and writes a box typed before it.
+  const [letterTextsLoadedBid, setLetterTextsLoadedBid] = useState<string | null>(null)
+  const letterTextsSavedRef = useRef<{ inclusions: string | undefined; exclusions: string | undefined; terms: string | undefined }>({ inclusions: undefined, exclusions: undefined, terms: undefined })
+  useEffect(() => {
+    letterTextsLoadedFor.current = null
+    setLetterTextsLoadedBid(null)
+    const bid = selectedBidForPricing
+    if (!bid) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bids').select('cover_letter_inclusions, cover_letter_exclusions, cover_letter_terms').eq('id', bid.id).maybeSingle()
+      if (cancelled) return
+      const row = (data ?? null) as { cover_letter_inclusions?: string | null; cover_letter_exclusions?: string | null; cover_letter_terms?: string | null } | null
+      const seed = (setter: Dispatch<SetStateAction<Record<string, string>>>, saved: string | null | undefined) => {
+        if (saved == null) return
+        setter((prev) => (bid.id in prev ? prev : { ...prev, [bid.id]: saved }))
+      }
+      seed(setCoverLetterInclusionsByBid, row?.cover_letter_inclusions)
+      seed(setCoverLetterExclusionsByBid, row?.cover_letter_exclusions)
+      seed(setCoverLetterTermsByBid, row?.cover_letter_terms)
+      letterTextsSavedRef.current = { inclusions: row?.cover_letter_inclusions ?? undefined, exclusions: row?.cover_letter_exclusions ?? undefined, terms: row?.cover_letter_terms ?? undefined }
+      letterTextsLoadedFor.current = bid.id
+      setLetterTextsLoadedBid(bid.id)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on bid id; the setters are stable
+  }, [selectedBidForPricing?.id])
+  const letterInclusionsTyped = selectedBidForPricing ? coverLetterInclusionsByBid[selectedBidForPricing.id] : undefined
+  const letterExclusionsTyped = selectedBidForPricing ? coverLetterExclusionsByBid[selectedBidForPricing.id] : undefined
+  const letterTermsTyped = selectedBidForPricing ? coverLetterTermsByBid[selectedBidForPricing.id] : undefined
+  useEffect(() => {
+    const bidId = selectedBidForPricing?.id
+    if (!bidId || letterTextsLoadedBid !== bidId || letterTextsLoadedFor.current !== bidId) return
+    const saved = letterTextsSavedRef.current
+    const patch: Record<string, string> = {}
+    if (letterInclusionsTyped !== undefined && letterInclusionsTyped !== saved.inclusions) patch.cover_letter_inclusions = letterInclusionsTyped
+    if (letterExclusionsTyped !== undefined && letterExclusionsTyped !== saved.exclusions) patch.cover_letter_exclusions = letterExclusionsTyped
+    if (letterTermsTyped !== undefined && letterTermsTyped !== saved.terms) patch.cover_letter_terms = letterTermsTyped
+    if (Object.keys(patch).length === 0) return
+    const handle = window.setTimeout(() => {
+      if (letterTextsLoadedFor.current !== bidId) return
+      void supabase.from('bids').update(patch).eq('id', bidId).select('id').then(({ data: rows, error }) => {
+        if (error) showToast('Could not save the letter text: ' + error.message, 'error')
+        else if (bidUpdateRefused(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+        else letterTextsSavedRef.current = { inclusions: letterInclusionsTyped ?? saved.inclusions, exclusions: letterExclusionsTyped ?? saved.exclusions, terms: letterTermsTyped ?? saved.terms }
+      })
+    }, 800)
+    return () => window.clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showToast is stable; the save keys on the bid, its read landing, and the three typed texts
+  }, [selectedBidForPricing?.id, letterTextsLoadedBid, letterInclusionsTyped, letterExclusionsTyped, letterTermsTyped])
 
   // Reset quick-add when the selected bid changes
   useEffect(() => {
@@ -619,7 +678,7 @@ export function BidsCoverLetterTab({
   // letter's amount — the Takeoffs tab has no priced total, so the column is offered from here.
   function printScheduleOfValuesOfContract(bid: BidWithBuilder, amountDollars: number, split: SovSplitInput | null) {
     if (sovShape === 'lines') {
-      printHtmlInNewWindow(
+      printAndFile(
         buildSovLinesSheetHtml({
           title: `${bidDisplayName(bid) || 'Bid'} — Schedule of values`,
           subtitle: `${bid.project_name ?? ''}${bid.project_name ? ' · ' : ''}contract $${formatCurrency(amountDollars)} · for progress billing only`,
@@ -628,6 +687,7 @@ export function BidsCoverLetterTab({
           split: sovSplitEnabled,
           ruleLaborPct: sovRuleLaborPct,
         }),
+        bidFiling(bid, 'bid_schedule_of_values', 'Schedule of values'),
       )
       return
     }
@@ -636,7 +696,7 @@ export function BidsCoverLetterTab({
     const letter = scheduleOfValuesLetter(summary, amountDollars)
     const splitRows = letter && split ? splitStageValues(letter, split) : null
     const factorNote = materialsByStageDoc.factorIsBidOverride ? `Factor ${summary.factor} is this bid's own.` : `Factor ${summary.factor} is the company default.`
-    printHtmlInNewWindow(
+    printAndFile(
       buildScheduleOfValuesHtml({
         title: `${bidDisplayName(bid) || 'Bid'} — Schedule of values`,
         subtitle: `$${formatCurrency(amountDollars)} by stage, from the takeoff's stage shares · ${summary.stagedFixtureCount} of ${summary.costedFixtureCount} costed fixtures staged`,
@@ -646,6 +706,7 @@ export function BidsCoverLetterTab({
         unstagedNames: summary.fixtures.filter((f) => f.raw <= 0 && f.fixture.trim()).map((f) => f.fixture),
         factorNote,
       }),
+      bidFiling(bid, 'bid_schedule_of_values', 'Schedule of values'),
     )
   }
 
@@ -977,12 +1038,15 @@ export function BidsCoverLetterTab({
     }
   }
 
-  function printCoverLetterDocument(combinedHtml: string) {
+  // A print counts as a send (docs/SENT_COPIES.md): what a bid's papers say about themselves when filed.
+  const bidFiling = (bid: BidWithBuilder, kind: string, what: string) => ({ kind, title: `${what} · ${bidDisplayName(bid) || 'Bid'}`, bidId: bid.id, customerId: (bid as { customer_id?: string | null }).customer_id ?? null })
+
+  function printCoverLetterDocument(combinedHtml: string, bid: BidWithBuilder) {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cover Letter</title><style>
   body { font-family: sans-serif; margin: 1in; font-size: 12pt; }
   @media print { body { margin: 0.5in; } }
 </style></head><body>${combinedHtml}</body></html>`
-    printHtmlInNewWindow(html)
+    printAndFile(html, bidFiling(bid, 'bid_cover_letter', 'Cover letter'))
   }
 
   async function handleSaveBidSubmissionQuickAdd(bidId: string, value: string) {
@@ -1173,7 +1237,10 @@ export function BidsCoverLetterTab({
         })
         const unpricedLeftOff = bundlePricings.length - pricedBundle.length
         const newLetterTotal = letterTotal(pricedBundle)
-        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        // Options (v2.4723): two or more base bids are proposals the GC picks between, so the bid's
+        // value — Mark sent, the Bid Board, the best effort — is the lead option's ★, never the sum.
+        const letterOptions = samePagePlan?.options ?? null
+        const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : letterOptions ? samePagePlan!.headlineRevenue : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
         // v2.4199: the best effort is the WHOLE — the headline (base) plus every offered alternate's
         // add-on — because the robot priced the alternate's rows too and is scored against it.
         const bestEffortAmount = headlineAmount + (addAltSplit ? offeredAdd.reduce((sum, g) => sum + g.revenueSum, 0) : 0)
@@ -1258,7 +1325,7 @@ export function BidsCoverLetterTab({
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue))
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(editable, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, editable, { gcName: letterCustomerName, projectName: projectNameVal }))
             : null
         const finalCoverLetterHtml = selectedGcPacket
           ? samePagePlan
@@ -1271,7 +1338,7 @@ export function BidsCoverLetterTab({
         const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : combinedHtmlEditable && !selectedGcPacket ? combinedHtmlEditable : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
           ? samePagePlan
-            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(false, samePagePlan.headlineRevenue))
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }, optionsAlternateCount(samePagePlan) + 1), bidBasisForLetter, materialsByStageForLetter, scheduleOfValuesForLetter(samePagePlan.headlineRevenue), addAltsBlock(false, samePagePlan.headlineRevenue), buildOptionsBlock(samePagePlan, altTexts, formatCurrency, numberToWords, false, { gcName: letterCustomerName, projectName: projectNameVal }))
             : selectedGcPacket.sections.length > 1
               ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
               : packetSectionText(selectedGcPacket.sections[0]!)
@@ -1386,7 +1453,7 @@ export function BidsCoverLetterTab({
                 </button>
                 <button
                   type="button"
-                  onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
+                  onClick={() => printCoverLetterDocument(finalCoverLetterHtml, bid)}
                   disabled={!totalsResolved}
                   aria-busy={!totalsResolved || undefined}
                   title={totalsResolved ? 'Print combined document' : totalsPendingTitle}
@@ -1516,7 +1583,7 @@ export function BidsCoverLetterTab({
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                   {bid.bid_date_sent
                                     ? <>sent {bid.bid_date_sent.slice(5).replace('-', '/')} · sending the room link keeps this date; only this button moves it</>
-                                    : <>stamps the bid with today as its sent date and this letter's amount as its value — or the bid room's first link send does it for you</>}
+                                    : <>stamps the bid with today as its sent date and {letterOptions ? "Option 1's amount" : "this letter's amount"} as its value — or the bid room's first link send does it for you</>}
                                 </span>
                               </div>
                               <BidRoomPanel
@@ -1527,9 +1594,20 @@ export function BidsCoverLetterTab({
                                 projectAddress={projectAddressVal}
                                 serviceTypeName={serviceTypeName}
                                 sections={
-                                  bundlePricings.length > 0
-                                    ? bundlePricings.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))
-                                    : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
+                                  letterOptions
+                                    // Options (v2.4728): every signable combination is a pickable proposal — Option 1, Option 1 with each
+                                    // of its alternates, each other option, each with its alternates — carrying its version so the
+                                    // signature records the option taken. The letter's own labels name them.
+                                    ? (() => {
+                                        const block = buildOptionsBlock(samePagePlan!, altTexts, formatCurrency, numberToWords, false, { gcName: letterCustomerName, projectName: projectNameVal })
+                                        return roomSectionsForLetterOptions(letterOptions, samePagePlan!.alternates, {
+                                          option: (o) => block?.items[o.n - 1]?.label ?? `Option ${o.n} — ${o.section.name}`,
+                                          alternate: (o, _a, j) => block?.items[o.n - 1]?.alternates[j]?.label ?? `Alternate ${j + 1}`,
+                                        })
+                                      })()
+                                    : bundlePricings.length > 0
+                                      ? bundlePricings.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))
+                                      : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
                                 }
                                 addOns={roomAddOns}
                                 inclusions={inclusions}
@@ -1586,7 +1664,7 @@ export function BidsCoverLetterTab({
                                       </span>
                                     </span>
                                     <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}>
-                                      <button type="button" disabled={!v.include_in_submission} onClick={() => void setVersionAlternate(vx, false)} style={studioSegBtnStyle(!isAlt, v.include_in_submission)} title="Adds to the letter total">Base</button>
+                                      <button type="button" disabled={!v.include_in_submission} onClick={() => void setVersionAlternate(vx, false)} style={studioSegBtnStyle(!isAlt, v.include_in_submission)} title="A base bid — on its own when it is the only one, an option the GC picks when two or more are in the letter">Base</button>
                                       <button type="button" disabled={!v.include_in_submission || (loneInLetter && !isAlt)} onClick={() => void setVersionAlternate(vx, true)} style={studioSegBtnStyle(isAlt, v.include_in_submission && !(loneInLetter && !isAlt))} title={loneInLetter && !isAlt ? 'An alternate is offered in lieu of a base — add another bid to send first' : 'Offered in lieu of the base bids'}>Alternate</button>
                                     </span>
                                     <button type="button" onClick={() => void reorderVersion(vx, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', padding: '0 0.15rem' }}>▲</button>
@@ -1686,7 +1764,8 @@ export function BidsCoverLetterTab({
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', background: 'var(--bg-green-tint)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
                         <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-green-600)', fontVariantNumeric: 'tabular-nums' }}>{displayHeadlineNumber}</span>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          {useCustomAmount ? 'custom amount' : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                          {useCustomAmount ? 'custom amount' : letterOptions ? `Option 1 leads · ${letterOptions.length} options · ${letterOptions.reduce((n, o) => n + o.alternates.length, 0) + samePagePlan!.alternates.length} alternate${letterOptions.reduce((n, o) => n + o.alternates.length, 0) + samePagePlan!.alternates.length === 1 ? '' : 's'}` : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
+                          {letterOptions && !useCustomAmount ? letterOptions.slice(1).map((o) => <span key={o.n} data-testid="cover-letter-option-line" style={{ display: 'block' }}>Option {o.n} · ${formatCurrency(o.section.revenueSum)}</span>) : null}
                         </span>
                       </div>
                       {/* Frozen bid prices, PR 2: the letter recomputes from the price copy; the quote is what went out. */}
@@ -2038,8 +2117,9 @@ export function BidsCoverLetterTab({
                         </div>
                       )}
                       <div style={{ marginBottom: '0.7rem' }}>
-                        <label style={studioFieldLabelStyle}>Additional inclusions (one per line → bullets)</label>
+                        <label htmlFor={`cover-letter-inclusions-${bid.id}`} style={studioFieldLabelStyle}>Additional inclusions (one per line → bullets)</label>
                         <textarea
+                          id={`cover-letter-inclusions-${bid.id}`}
                           value={inclusionsDisplay}
                           onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                           rows={3}
@@ -2048,8 +2128,9 @@ export function BidsCoverLetterTab({
                         />
                       </div>
                       <div style={{ marginBottom: '0.7rem' }}>
-                        <label style={studioFieldLabelStyle}>Exclusions and scope</label>
+                        <label htmlFor={`cover-letter-exclusions-${bid.id}`} style={studioFieldLabelStyle}>Exclusions and scope</label>
                         <textarea
+                          id={`cover-letter-exclusions-${bid.id}`}
                           value={exclusionsDisplay}
                           onChange={(e) => setCoverLetterExclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                           rows={3}
@@ -2058,8 +2139,9 @@ export function BidsCoverLetterTab({
                         />
                       </div>
                       <div>
-                        <label style={studioFieldLabelStyle}>Terms and warranty</label>
+                        <label htmlFor={`cover-letter-terms-${bid.id}`} style={studioFieldLabelStyle}>Terms and warranty</label>
                         <textarea
+                          id={`cover-letter-terms-${bid.id}`}
                           value={termsDisplay}
                           onChange={(e) => setCoverLetterTermsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                           rows={3}
@@ -2074,7 +2156,7 @@ export function BidsCoverLetterTab({
                     {bundlePricings.length > 1 ? (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)' }}>
                         {(pricedBundle.length > 0
-                            ? <>In the letter: {bundleSummary(pricedBundle)} — {(() => {
+                            ? <>In the letter: {letterOptions ? `${letterOptions.length} options, pick one` : bundleSummary(pricedBundle)} — {(() => {
                                 // v2.2422: offered prices fold into their scope's entry ("(alternate, 2 prices)")
                                 // instead of repeating the version name once per price.
                                 const optCount = new Map<string, number>()
@@ -2103,7 +2185,8 @@ export function BidsCoverLetterTab({
                     `}</style>
                     {altTextEditor && (samePagePlan || offeredAdd.length > 0) ? (() => {
                       const isHeading = altTextEditor.editKey === 'heading'
-                      const autoSec = isHeading ? null : samePagePlan?.alternates.find((s) => altSectionKey(s) === altTextEditor.editKey)
+                      const editableSecs = samePagePlan ? [...samePagePlan.alternates, ...(samePagePlan.options ?? []).flatMap((o) => [o.section, ...o.alternates])] : []
+                      const autoSec = isHeading ? null : editableSecs.find((s) => altSectionKey(s) === altTextEditor.editKey)
                       // v2.4195: a with-and-without alternate edits under its group key; its automatic name is numbered among the offered ones.
                       const autoGroup = isHeading ? null : offeredAdd.find((g) => g.key === altTextEditor.editKey)
                       const autoName = autoSec?.name ?? (autoGroup ? `Alternate ${offeredAdd.indexOf(autoGroup) + 1} — ${autoGroup.label}` : undefined)
@@ -2190,7 +2273,7 @@ export function BidsCoverLetterTab({
                         if (editKey === 'heading') {
                           setAltTextEditor({ editKey, label: altTexts.heading ?? COVER_LETTER_ALTS_HEADING_DEFAULT, note: '' })
                         } else {
-                          const sec = samePagePlan.alternates.find((s) => altSectionKey(s) === editKey)
+                          const sec = [...samePagePlan.alternates, ...(samePagePlan.options ?? []).flatMap((o) => [o.section, ...o.alternates])].find((s) => altSectionKey(s) === editKey)
                           const saved = altTexts.sections?.[editKey]
                           setAltTextEditor({ editKey, label: saved?.label ?? sec?.name ?? '', note: saved?.note ?? '' })
                         }
@@ -2221,7 +2304,7 @@ export function BidsCoverLetterTab({
                       </button>
                       <button
                         type="button"
-                        onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
+                        onClick={() => printCoverLetterDocument(finalCoverLetterHtml, bid)}
                         disabled={!totalsResolved}
                         aria-busy={!totalsResolved || undefined}
                         title={totalsResolved ? 'Print combined document' : totalsPendingTitle}

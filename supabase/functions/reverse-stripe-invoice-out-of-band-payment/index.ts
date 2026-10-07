@@ -275,6 +275,8 @@ serve(async (req) => {
           invoice: stripeInvId,
           amount: cnAmount,
           reason: 'order_change',
+          // v2.4803: the office's reason is the note's memo, so Stripe's record says why.
+          memo: reason.slice(0, 500),
           metadata: { pt_oob_revert: '1' },
         }
         if (amountPaidFromStripe <= 0 && cnAmount > 0) {

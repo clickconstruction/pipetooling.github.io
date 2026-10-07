@@ -19,6 +19,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useJobThreadNotes } from '../../hooks/useJobThreadNotes'
 import { useJobsStagesMutations } from '../../hooks/useJobsStagesMutations'
 import type { Database } from '../../types/database'
+import type { UncollectibleFacts } from '../../lib/jobs/uncollectible'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useWideViewport1100 } from '../../hooks/useWideViewport1100'
 import { useSessionNotesOpener } from './sessionNotesOpenerContext'
@@ -83,6 +84,10 @@ export type JobsStagesUnifiedTableProps = {
   onJobMoveToCollections?: (j: JobWithDetails) => void
   /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
   jobNoteLine?: (j: JobWithDetails) => string | null
+  /** Collections (punch list #94, v2.4792): give up on the row's job — the typed confirm with a required reason. */
+  onJobMarkUncollectible?: (j: JobWithDetails) => void
+  /** The Uncollectible band (v2.4792): the stamp's facts for a row the office gave up on; null = no stamp. */
+  rowStamp?: (j: JobWithDetails) => UncollectibleFacts | null
   /** Billed Awaiting Payment: expected-payment chip for the row (bill date + customer pay speed). */
   /** v2.4130: the bill's story for the words line under the bar, plus what still sits under the cell (bank-returned, the no-bill-line pill, the reliability line). */
   billedBillLine?: (row: StageRow) => BilledRowBillLine | null

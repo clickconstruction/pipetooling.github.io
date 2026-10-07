@@ -30,6 +30,7 @@ vi.mock('../hooks/useAuth', async () => {
   const { makeUseAuthValue } = await import('../test/renderSmokeMocks')
   return {
     useAuth: () => makeUseAuthValue({ role: mockRole }),
+    useOptionalAuth: () => makeUseAuthValue({ role: mockRole }),
     AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   }
 })
@@ -82,6 +83,22 @@ function Opener() {
   )
 }
 
+const onClosedSpy = vi.fn()
+/** A door that opens the job with `onClosed` (v2.4628), as the Lien desk's doors do. */
+function OpenerWithClosed() {
+  const ctx = useJobDetailModal()
+  return (
+    <>
+      <button type="button" onClick={() => ctx?.openJobDetail({ jobId: 'job-1', assignedJobsRows: [], onClosed: onClosedSpy })}>
+        open job with onClosed
+      </button>
+      <button type="button" onClick={() => ctx?.closeJobDetail()}>
+        close it
+      </button>
+    </>
+  )
+}
+
 function renderTree(role: string) {
   mockRole = role
   recordNavClick.mockClear()
@@ -91,6 +108,7 @@ function renderTree(role: string) {
       <JobsListCacheProvider>
         <JobDetailModalProvider>
           <Opener />
+          <OpenerWithClosed />
         </JobDetailModalProvider>
       </JobsListCacheProvider>
     </UpdateFocusOpenerBridgeProvider>,
@@ -145,5 +163,22 @@ describe('JobDetailModalProvider role branch', () => {
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Edit' })).toBeTruthy())
     expect(screen.getByRole('tab', { name: 'Bill' })).toBeTruthy()
     expect(recordNavClick).toHaveBeenCalledWith(expect.any(String), 'dev', 'job_window_opened', '#window')
+  })
+})
+
+describe('JobDetailModalProvider · onClosed (v2.4628)', () => {
+  it('fires once when the window closes by any route, and never on open', async () => {
+    onClosedSpy.mockClear()
+    renderTree('superintendent')
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'open job with onClosed' }))
+    await screen.findByRole('dialog')
+    expect(onClosedSpy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'close it' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(onClosedSpy).toHaveBeenCalledTimes(1)
+    // A second close finds nothing to call.
+    fireEvent.click(screen.getByRole('button', { name: 'close it' }))
+    expect(onClosedSpy).toHaveBeenCalledTimes(1)
   })
 })

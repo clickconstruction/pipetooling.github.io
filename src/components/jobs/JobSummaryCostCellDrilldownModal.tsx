@@ -13,7 +13,7 @@ const overlay: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '1rem',
+  padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
 }
 
 const panel: CSSProperties = {
@@ -21,7 +21,7 @@ const panel: CSSProperties = {
   borderRadius: 8,
   maxWidth: 800,
   width: '100%',
-  maxHeight: 'min(78vh, 700px)',
+  maxHeight: 'min(78vh, 700px, 100%)',
   display: 'flex',
   flexDirection: 'column',
   boxShadow: '0 10px 40px rgba(0,0,0,0.2)',

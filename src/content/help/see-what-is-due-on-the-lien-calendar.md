@@ -4,11 +4,11 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien calendar, lien desk, overdue, this month, next month, later, due, deadline, notice, lien, 15th, draft the notices, property kind, key, search
 ---
-The Calendar tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
+The Deadlines tab on the Lien desk shows when each lien deadline falls. Pills at the top sort the jobs by month. Each job is counted once, at its next date.
 
-## Open the Calendar
+## Open Deadlines
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1). It opens on the {{button:blue|Calendar}} tab. Every billed job with money still owed is on it.
+Open the Lien desk from the orange gavel on the Pipeline. Press the {{button:blue|Deadlines}} tab, beside Do now. Every billed job with money still owed is on it.
 
 ## Read the pills
 
@@ -27,6 +27,8 @@ Press a pill to see only that month. Press it again to see every month.
 ## Read a month
 
 With **All** picked, each month is a section with a bar on top. The bar says the date, the days left and what falls due. **Overdue** starts folded at the top. Press its bar to open it.
+
+An overdue job is listed with its property when that property has a date still ahead. It sits under the property's address, greyed, after the jobs that are still on the clock. Its amount reads *still owed*. So one property reads in one place. The Overdue bar says how many of its jobs are listed that way. The Overdue count and its dollars do not change. Press the {{chip:red|Overdue}} pill to see every overdue job in one list.
 
 :::example the bar on top of this month
 This month by Oct 15, in 14 days. 24 notices across 9 GCs.
@@ -52,15 +54,16 @@ Office users on a computer can press it. Everyone else sees the count.
 
 ## Read the key
 
-The key runs along the bottom of the Calendar. Press a mark to read what it means. Press it again or press Esc to close it.
+The key runs along the bottom of the Deadlines tab. Press a mark to read what it means. Press it again or press Esc to close it.
 
 ## On a phone
 
-A phone shows the same pills and months without the time line. Press the magnifier to search. Each job shows its dates under its name.
+A phone shows the same pills with their counts only, and the months without the time line. Press the magnifier to search. Each job shows its dates under its name.
 
 ## Good to know
 
 - Press a job's row to open its Lien window.
+- Press the job's number to open the job itself. That window has its history, its bills and **Edit**. Close it and you are back on the desk.
 - Office users can press a pay dot to record when they said they will pay.
-- A storefront on a row means a supply house is still owed on that job. Press the storefront button beside the pills to see only those jobs. See [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
+- A storefront on a row means a supply house is still owed on that job. Press the storefront button beside the search box to see only those jobs. See [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
 - The whole flow of the desk is in [send lien notices from the Lien desk](/help/send-lien-notices-from-the-lien-desk).

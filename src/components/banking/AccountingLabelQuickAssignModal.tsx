@@ -313,7 +313,7 @@ export function AccountingLabelQuickAssignModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1260,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -330,7 +330,7 @@ export function AccountingLabelQuickAssignModal({
           borderRadius: 10,
           maxWidth: personOnly ? 400 : wide ? 640 : 420,
           width: '100%',
-          maxHeight: 'min(90vh, 620px)',
+          maxHeight: 'min(90vh, 620px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',

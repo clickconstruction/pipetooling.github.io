@@ -7,6 +7,11 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('tab=settings-people', '')).toEqual({ tabId: 'settings-people', anchorId: null })
   })
 
+  it('lands the collections law firm block on Jobs & billing, from the Legal desk’s firm window', () => {
+    expect(resolveSettingsDeepLink('?tab=settings-jobs', '#settings-legal-firm')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-legal-firm' })
+    expect(resolveSettingsDeepLink('', '#settings-legal-firm')).toEqual({ tabId: 'settings-jobs', anchorId: 'settings-legal-firm' })
+  })
+
   it('lands the Dev MCP keys anchor on Your account', () => {
     expect(resolveSettingsDeepLink('', '#settings-dev-mcp-keys')).toEqual({ tabId: 'settings-account', anchorId: 'settings-dev-mcp-keys' })
   })

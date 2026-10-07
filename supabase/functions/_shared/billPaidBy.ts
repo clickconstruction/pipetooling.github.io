@@ -115,7 +115,7 @@ const labelOf = paymentLabelWords
  * what is left on the bill is within it, the line says so.
  */
 export function billPaidByWords(
-  job: { bills: readonly PaidByBill[]; payments: readonly PaidByPayment[]; retainageHeld?: number | string | null },
+  job: { bills: readonly PaidByBill[]; payments: readonly PaidByPayment[]; retainageHeld?: number | string | null; total?: number | string | null },
   invoice: { id: string; amount: number | string | null | undefined } | null,
 ): string {
   if (!invoice) {
@@ -124,7 +124,8 @@ export function billPaidByWords(
     const labels = [...new Set(job.payments.map(labelOf))]
     return `paid ${money(total)} so far by ${joinList(labels)}`
   }
-  const attribution = attributeJobPayments<PaidByPayment>(job.bills, job.payments)
+  // v2.4534: `total` is the job's price; with it, money that paid the part of the job on no bill is not this bill's.
+  const attribution = attributeJobPayments<PaidByPayment>(job.bills, job.payments, job.total)
   const bill = attribution.byBill.get(invoice.id)
   const applied = round2(bill?.applied ?? 0)
   if (applied <= 0.005) return 'nothing applied yet'

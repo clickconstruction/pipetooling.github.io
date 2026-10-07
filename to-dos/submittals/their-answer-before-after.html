@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Submittals — entering their answer on a row — before and after</title>
+<style>
+  html, body { margin: 0; }
+  /* Layout: a short verdict, then the real window drawn as it is (numbered to the findings), then the proposed window, working. Drawn in the app's own tokens so it reads like the screen. */
+  :root {
+    --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --muted-bg: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --strong: #111827; --base: #1a1a1a; --muted: #6b7280; --faint: #767f8d;
+    --link: #2563eb; --amber: #b45309; --red: #b91c1c;
+    --blue-tint: #eff6ff; --border-blue: #bfdbfe; --blue-700: #1d4ed8;
+    --green-tint: #f0fdf4; --amber-tint: #fffbeb; --red-tint: #fef2f2;
+    --ok: #1f7a3a; --revise: #b0662f; --no: #b42318; --save: #16a34a;
+    --bar: #5F6B7A; --bar-after: #1d4ed8; --mark: #7c3aed; --mark-ink: #ffffff;
+    --shadow: 0 6px 18px rgba(0,0,0,0.10);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #4b5563;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414;
+    --ok: #2f9d55; --revise: #c97c3f; --no: #d2473a; --save: #16a34a;
+    --bar: #4b5563; --bar-after: #1e40af; --mark: #a78bfa; --mark-ink: #111827;
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #4b5563;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414;
+    --ok: #2f9d55; --revise: #c97c3f; --no: #d2473a; --save: #16a34a;
+    --bar: #4b5563; --bar-after: #1e40af; --mark: #a78bfa; --mark-ink: #111827;
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--base); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 24px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; color: var(--strong); text-wrap: balance; }
+  h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .screen { color: var(--muted); font-size: 14px; }
+  .head { display: flex; flex-direction: column; gap: 6px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+  .note p { margin: 0; max-width: 72ch; }
+  .verdict { font-size: 17px; color: var(--strong); font-weight: 600; max-width: 60ch; }
+  .finds { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px 24px; }
+  .finds li { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; min-width: 0; }
+  .finds b { color: var(--strong); }
+  .finds span.why { display: block; color: var(--muted); font-size: 13.5px; }
+  .n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--mark); color: var(--mark-ink); font-size: 12px; font-weight: 700; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .board { border-radius: 8px; box-shadow: var(--shadow); background: var(--bg-200); overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-height: 36px; padding: 6px 16px; background: var(--bar); color: #fff; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+  .bar.after { background: var(--bar-after); }
+  .bar span + span { opacity: 0.8; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .stage { padding: 20px 16px 24px; display: flex; justify-content: center; background: rgba(0,0,0,0.28); }
+  /* the app's window */
+  .win { background: var(--surface); border-radius: 8px; width: 100%; max-width: 760px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 18px 20px 14px; display: flex; flex-direction: column; gap: 12px; font-size: 13px; min-width: 0; }
+  .win h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--strong); }
+  .lbl { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  .q { font-size: 12px; color: var(--muted); }
+  .row { display: flex; gap: 6px 8px; flex-wrap: wrap; align-items: center; min-width: 0; }
+  .in { padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: 4px; background: var(--surface); color: var(--strong); font: inherit; font-size: 13px; min-width: 0; }
+  .in.ph { color: var(--faint); }
+  .in.focus { border: 2px solid #2563eb; padding: 5px 7px; }
+  select.in, input.in { height: 32px; }
+  .folded { border: 1px dashed var(--border-strong); border-radius: 6px; padding: 8px 10px; color: var(--muted); font-size: 12.5px; background: var(--subtle); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+  .seg button, .seg span { padding: 6px 12px; border: none; font: inherit; font-size: 13px; background: var(--surface); color: var(--muted); font-weight: 500; }
+  .seg button { cursor: pointer; }
+  .seg button:focus-visible, .btn:focus-visible, .in:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+  .seg .on-ok { background: var(--ok); color: #fff; font-weight: 700; }
+  .seg .on-rev { background: var(--revise); color: #fff; font-weight: 700; }
+  .seg .on-no { background: var(--no); color: #fff; font-weight: 700; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 10px; }
+  .btn { padding: 7px 14px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--muted-bg); color: var(--strong); font: inherit; cursor: pointer; }
+  .btn.save { background: var(--save); border-color: var(--save); color: #fff; font-weight: 600; }
+  .btn.off { background: var(--bg-200); border-color: var(--bg-200); color: var(--faint); font-weight: 600; cursor: not-allowed; }
+  .btn.quiet { background: var(--surface); padding: 4px 10px; font-size: 12.5px; }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; background: var(--blue-tint); color: var(--blue-700); }
+  .amber { color: var(--amber); font-size: 12px; }
+  .tag { position: relative; }
+  .tag > .n { position: absolute; left: -11px; top: -11px; box-shadow: 0 0 0 2px var(--surface); }
+  .checks { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+  .checks label { display: inline-flex; gap: 5px; align-items: center; }
+  /* after: the parts list */
+  .parts { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .part { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--border); background: var(--surface); }
+  .part:first-child { border-top: none; }
+  .part .name { font-weight: 600; color: var(--strong); overflow-wrap: anywhere; }
+  .part .name small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .part .why { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
+  .part .why input { flex: 1; }
+  .part[data-v="approved"] { background: var(--green-tint); }
+  .part[data-v="revise"] { background: var(--amber-tint); }
+  .part[data-v="rejected"] { background: var(--red-tint); }
+  .sum { font-size: 12.5px; color: var(--muted); min-width: 0; }
+  .sum b { color: var(--strong); }
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .mini { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 0; }
+  .menu { border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+  .menu div { padding: 7px 10px; border-top: 1px solid var(--border); }
+  .menu div:first-child { border-top: none; background: var(--blue-tint); color: var(--strong); font-weight: 600; }
+  .menu small { display: block; color: var(--muted); font-weight: 400; }
+  .trow { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 10px; padding: 8px 0; border-top: 1px solid var(--border); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-top: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-top: none; }
+  .tablewrap { overflow-x: auto; }
+  .small { font-size: 12px; color: var(--muted); }
+  @media (max-width: 520px) { .part { grid-template-columns: 1fr; } h1 { font-size: 23px; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="head">
+    <div class="eyebrow">ClickTooling · mock-up · drawn 2026-10-02 · not built</div>
+    <h1>Entering a reviewer's answer on a submittal row</h1>
+    <div class="screen">Bids → Submittals → BP375 SPACEX BA-02N Architectural → Edit WC-1, WC-2 → Their call · on behalf of a reviewer</div>
+  </div>
+
+  <div class="note">
+    <h2>Is this section built well?</h2>
+    <p class="verdict">The record it keeps is sound. The form that fills it is not the best we can do.</p>
+    <p>The record is right: who answered, who typed it, the day, a line on the thread, and nothing sent to anyone. The form was built for one call on one row, before rows listed their parts. Parts were added to it later as a list of tick boxes. Wendi's screenshot shows the cost: to reject one flush valve she unticked four parts, was asked for an email she did not want to give, and typed the company in the name box.</p>
+    <ul class="finds">
+      <li><span class="n">1</span><div><b>It is at the bottom of another job.</b><span class="why">The window is for the product we submit. Their answer sits under five parts, the status, the note, the lead time and the cut sheet.</span></div></li>
+      <li><span class="n">2</span><div><b>It asks for a person. She knows a company.</b><span class="why">A name and an email are required, and the role starts on architect. BP375's only reviewer on file is "structura", a company typed as a person.</span></div></li>
+      <li><span class="n">3</span><div><b>One answer per Save.</b><span class="why">"Approved, except the flush valve" takes two trips through the window: tick four, save, open it again, tick one, save.</span></div></li>
+      <li><span class="n">4</span><div><b>Tick boxes hide what each part already has.</b><span class="why">A part's own answer shows only as a grey "now Rejected" beside its box. Taking an answer back clears every part on the row at once.</span></div></li>
+      <li><span class="n">5</span><div><b>The reason Save is grey is far from Save.</b><span class="why">The amber line sits above the buttons, away from the two boxes it is about. The date has no label but "on".</span></div></li>
+      <li><span class="n">6</span><div><b>The words are ours, not hers.</b><span class="why">"On behalf of a reviewer", "not on the room": the room is something she never opened on this bid.</span></div></li>
+    </ul>
+  </div>
+
+  <!-- BEFORE -->
+  <div class="board">
+    <div class="bar"><span>Before</span><span>Edit WC-1, WC-2, scrolled to the bottom, as Wendi had it (with today's "nobody is emailed" line, v2.4432)</span></div>
+    <div class="stage">
+      <div class="win">
+        <div><h3>WC-1, WC-2 · WC 1&amp;2</h3></div>
+        <div class="folded tag"><span class="n">1</span>Above this, in the same window: 5 parts with their houses, lead times and stages · Status · Note · Lead time · Cut sheet (SPACEX BA-2 CORE &amp; SHELL.pdf, pages 19–24)</div>
+        <div class="row" style="justify-content: space-between; border-top: 1px solid var(--border); padding-top: 10px;">
+          <span class="lbl tag"><span class="n">6</span>&nbsp;&nbsp;Their call · on behalf of a reviewer</span>
+        </div>
+        <div class="row tag"><span class="n">2</span>
+          <span class="in" style="flex: 0 1 200px;">a reviewer not on the room… ▾</span>
+          <span class="in" style="flex: 1 1 110px;">spacex</span>
+          <span class="in ph focus" style="flex: 1.4 1 150px;">their email</span>
+          <span class="in" style="flex: 0 0 auto;">architect ▾</span>
+        </div>
+        <div class="q">Only for the record. Nobody is emailed or contacted. The email stays in the office. It tells the room who they are if they open it later.</div>
+        <div class="row">
+          <span class="seg"><span>Approved</span><span>Revise</span><span class="on-no">Rejected</span></span>
+          <span class="q">on</span><span class="in">10/02/2026</span>
+          <span class="in" style="flex: 1 1 160px;">TET2UA31#SS</span>
+        </div>
+        <div class="tag"><span class="n">3</span>
+          <div class="q" style="margin-bottom: 4px; padding-left: 14px;">The parts this call covers</div>
+          <div class="checks">
+            <label><input type="checkbox" disabled id="b1"> TOTO CT728CUVG#01</label>
+            <label class="tag"><span class="n" style="left: auto; right: -30px; top: -3px;">4</span><input type="checkbox" checked disabled id="b2"> TOTO TET2UB31#SS</label>
+            <label style="margin-left: 26px;"><input type="checkbox" disabled id="b3"> MAINLINE ML1055SSC000</label>
+            <label><input type="checkbox" disabled id="b4"> ZURN Z1201-NR4-CL12-RYK17</label>
+            <label><input type="checkbox" disabled id="b5"> JOSAM 12694</label>
+          </div>
+        </div>
+        <div class="amber tag"><span class="n" style="left: auto; right: 0; top: -4px;">5</span>A name and an email, so the record says whose call it is.</div>
+        <div class="foot">
+          <span class="chip">Proposed</span>
+          <span class="row"><span class="btn">Cancel</span><span class="btn off">Save</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER -->
+  <div class="board">
+    <div class="bar after"><span>After</span><span>A window of its own. This one works: tap the answers.</span></div>
+    <div class="stage">
+      <div class="win" id="after">
+        <div>
+          <h3>WC-1, WC-2 · what did they say?</h3>
+          <div class="q">Rev 1 · 5 parts the GC sees · Only for the record. Nobody is emailed or contacted.</div>
+        </div>
+        <div class="row">
+          <label class="row" for="who"><span class="lbl">Who answered</span>
+            <select class="in" id="who">
+              <option>Structura · the GC on this bid</option>
+              <option>A person at Structura…</option>
+              <option>Someone else…</option>
+            </select>
+          </label>
+          <label class="row" for="day"><span class="lbl">The day they answered</span>
+            <input class="in" id="day" type="date" value="2026-10-02">
+          </label>
+        </div>
+        <div class="row" style="justify-content: space-between;">
+          <span class="lbl">Each part</span>
+          <span class="row"><button type="button" class="btn quiet" id="allok">All approved</button><button type="button" class="btn quiet" id="allclear">Clear all</button></span>
+        </div>
+        <div class="parts" id="parts"></div>
+        <div class="foot">
+          <span class="sum" id="sum"></span>
+          <span class="row"><button type="button" class="btn" id="cancel">Cancel</button><button type="button" class="btn save" id="save">Save</button></span>
+        </div>
+        <div class="q" id="said" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cols">
+    <div class="mini">
+      <h2>Who answered, opened</h2>
+      <div class="menu">
+        <div>Structura · the GC on this bid<small>No name or email needed. The record reads "Structura".</small></div>
+        <div>A person at Structura…<small>Picked from the customer's contacts the app already has.</small></div>
+        <div>Someone on this submittal's room<small>Shown only when the room has people.</small></div>
+        <div>Someone else…<small>A name. An email only if you have one.</small></div>
+      </div>
+      <div class="small">The bid's GC is the first pick, so the common case is zero typing.</div>
+    </div>
+    <div class="mini">
+      <h2>Where the door is</h2>
+      <div>
+        <div class="trow" style="border-top: none;"><b>WC-1, WC-2</b><div>
+          <div><span class="dot" style="background: var(--ok);"></span>4 approved · <span class="dot" style="background: var(--no);"></span>1 rejected</div>
+          <div class="small">Structura · entered by Wendi · Oct 2 · <span style="color: var(--link); text-decoration: underline;">Change</span></div>
+        </div></div>
+        <div class="trow"><b>UTILITY SINK</b><div><span class="btn quiet" style="display: inline-block;">Enter their answer</span></div></div>
+      </div>
+      <div class="small">On each row of the table, in the Their call column, and on a line of the procurement log. Edit keeps one line that reads the answer and opens this window.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <h2>What stays, what goes, and your calls</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th style="width: 22%;">Finding</th><th>After</th><th style="width: 24%;">Cost</th></tr></thead>
+      <tbody>
+        <tr><td><span class="n">1</span> Buried</td><td>Its own window, opened from the row and from the log. Edit goes back to being about the product.</td><td>Client only</td></tr>
+        <tr><td><span class="n">3</span> <span class="n">4</span> One answer per Save</td><td>One line per part with its own answer and note. One Save writes them all. "No answer" on a part takes that one back.</td><td>Client only. The same writes as today, grouped.</td></tr>
+        <tr><td><span class="n">2</span> A person and an email</td><td>The bid's GC first, then its contacts on file, then a typed name. Email optional.</td><td>One migration. <b>Your call.</b></td></tr>
+        <tr><td><span class="n">5</span> <span class="n">6</span> Words</td><td>"What did they say?", "Who answered", "The day they answered". The Save button says what it will record.</td><td>Client only, with the guide</td></tr>
+      </tbody>
+    </table></div>
+    <p><b>Kept as it is:</b> the record (who answered, who typed it, the day, the thread line), the day feeding Released on the procurement log, They approved all of it, and nothing being sent.</p>
+    <p><b>Your calls before it is built:</b></p>
+    <p>1. May the record name a company ("Structura") with no person? It is what Wendi reached for. A GC who keeps their own log may want a name.</p>
+    <p>2. May a typed reviewer have no email? Today the room needs one to know a person who comes back. Without it, a person who later opens the room is a second entry.</p>
+    <p>3. Should They approved all of it become this same window with every row listed, or stay the one-line entry it is?</p>
+    <p class="small">Read from the app on 2026-10-02: BP375's WC-1, WC-2 row and its five parts, the reviewer "structura · builder / GC", the call "Rejected · structura · entered by Wendi". The contacts in the menu are places, not names: none were read.</p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var parts = [
+    { id: 'p1', name: 'TOTO CT728CUVG#01', v: '', note: '' },
+    { id: 'p2', name: 'TOTO TET2UB31#SS', v: 'rejected', note: 'They want TET2UA31#SS' },
+    { id: 'p3', name: 'MAINLINE ML1055SSC000', sub: 'WHT ELONG', v: '', note: '' },
+    { id: 'p4', name: 'ZURN Z1201-NR4-CL12-RYK17', sub: 'NH DURA-COAT CI ADJ HORIZONTAL SIPHON JET EZCARRY', v: '', note: '' },
+    { id: 'p5', name: 'JOSAM 12694', sub: '4" NH double adjustable horizontal closet carrier', v: '', note: '' }
+  ];
+  var opts = [['approved', 'Approved', 'on-ok'], ['revise', 'Revise', 'on-rev'], ['rejected', 'Rejected', 'on-no']];
+  var host = document.getElementById('parts'), sum = document.getElementById('sum'), save = document.getElementById('save'), said = document.getElementById('said');
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function draw() {
+    host.textContent = '';
+    parts.forEach(function (p) {
+      var row = el('div', 'part'); if (p.v) row.setAttribute('data-v', p.v);
+      var name = el('div', 'name', p.name); if (p.sub) name.appendChild(el('small', '', p.sub));
+      var seg = el('div', 'seg'); seg.setAttribute('role', 'group'); seg.setAttribute('aria-label', 'Their answer on ' + p.name);
+      opts.forEach(function (o) {
+        var b = el('button', p.v === o[0] ? o[2] : '', o[1]); b.type = 'button'; b.id = p.id + '-' + o[0];
+        b.setAttribute('aria-pressed', p.v === o[0] ? 'true' : 'false');
+        b.addEventListener('click', function () { p.v = p.v === o[0] ? '' : o[0]; said.hidden = true; draw(); var again = document.getElementById(b.id); if (again) again.focus(); });
+        seg.appendChild(b);
+      });
+      row.appendChild(name); row.appendChild(seg);
+      if (p.v === 'revise' || p.v === 'rejected') {
+        var why = el('div', 'why');
+        var inp = el('input', 'in'); inp.id = p.id + '-note'; inp.type = 'text'; inp.value = p.note; inp.placeholder = 'what they need instead';
+        inp.setAttribute('aria-label', 'Their note on ' + p.name);
+        inp.addEventListener('input', function () { p.note = inp.value; });
+        why.appendChild(inp); row.appendChild(why);
+      }
+      host.appendChild(row);
+    });
+    var c = { approved: 0, revise: 0, rejected: 0 }, n = 0;
+    parts.forEach(function (p) { if (p.v) { c[p.v]++; n++; } });
+    var bits = [];
+    if (c.approved) bits.push(c.approved + ' approved'); if (c.revise) bits.push(c.revise + ' revise'); if (c.rejected) bits.push(c.rejected + ' rejected');
+    var open = parts.length - n;
+    sum.textContent = '';
+    if (n === 0) { sum.textContent = 'No answer picked yet. Tap an answer on a part.'; }
+    else { var b = el('b', '', bits.join(' · ')); sum.appendChild(b); sum.appendChild(document.createTextNode(open ? ' · ' + open + ' still open' : ' · every part answered')); }
+    save.textContent = n === 0 ? 'Save' : 'Record ' + n + (n === 1 ? ' answer' : ' answers');
+    save.className = n === 0 ? 'btn off' : 'btn save';
+    save.disabled = n === 0;
+  }
+  document.getElementById('allok').addEventListener('click', function () { parts.forEach(function (p) { if (!p.v) p.v = 'approved'; }); said.hidden = true; draw(); });
+  document.getElementById('allclear').addEventListener('click', function () { parts.forEach(function (p) { p.v = ''; }); said.hidden = true; draw(); });
+  document.getElementById('cancel').addEventListener('click', function () { parts.forEach(function (p, i) { p.v = i === 1 ? 'rejected' : ''; }); said.hidden = true; draw(); });
+  save.addEventListener('click', function () {
+    var who = document.getElementById('who').value.split(' · ')[0].replace('…', '');
+    said.textContent = 'In the app this would close the window and the row would read: ' + sum.textContent.split(' · ').slice(0, -1).join(' · ') + ' · ' + who + ' · entered by Wendi. Nothing is sent.';
+    said.hidden = false;
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -3,6 +3,7 @@ import {
   buildPayLinkPayload,
   formatPayLinkCents,
   isPayLinkId,
+  parsePayLinkOffer,
   parsePayLinkResponse,
   payLinkDisplay,
   payLinkPath,
@@ -89,6 +90,7 @@ describe('payLink — the payload', () => {
       amountRemainingCents: 466000,
       currency: 'usd',
       paidOn: null,
+      offer: null,
     })
   })
 
@@ -128,11 +130,27 @@ describe('payLink — the client read', () => {
 
   it('tolerates missing optional fields and a fractional cents value', () => {
     const p = parsePayLinkResponse({ ok: true, state: 'open', amountRemainingCents: 12.6, currency: 'USD' })
-    expect(p).toEqual({ ok: true, state: 'open', url: null, number: null, jobName: '', company: '', phone: '', amountRemainingCents: 13, currency: 'usd', paidOn: null })
+    expect(p).toEqual({ ok: true, state: 'open', url: null, number: null, jobName: '', company: '', phone: '', amountRemainingCents: 13, currency: 'usd', paidOn: null, offer: null })
   })
 
   it('formats cents as dollars', () => {
     expect(formatPayLinkCents(466000)).toBe('$4,660.00')
     expect(formatPayLinkCents(5)).toBe('$0.05')
+  })
+})
+
+describe('payLink — the pay offer on the payload (v2.4704)', () => {
+  it('rides on the payload as given and reads back only when whole', () => {
+    const offer = { pct: 10, by: '2026-11-15', state: 'live' as const, fullCents: 624000 }
+    const facts = { number: '650-1', status: 'open', hosted_invoice_url: 'https://invoice.stripe.com/i/fresh', amount_remaining: 561600, currency: 'usd' }
+    expect(buildPayLinkPayload({ row: row(), facts, jobName: 'ATI', company: 'Click', phone: '', paidOn: null, offer }).offer).toEqual(offer)
+    expect(buildPayLinkPayload({ row: row(), facts, jobName: 'ATI', company: 'Click', phone: '', paidOn: null }).offer).toBeNull()
+    expect(parsePayLinkOffer(offer)).toEqual(offer)
+    expect(parsePayLinkOffer({ ...offer, fullCents: null })).toEqual({ ...offer, fullCents: null })
+    expect(parsePayLinkOffer({ ...offer, state: 'maybe' })).toBeNull()
+    expect(parsePayLinkOffer({ ...offer, pct: 0 })).toBeNull()
+    expect(parsePayLinkOffer(null)).toBeNull()
+    const parsed = parsePayLinkResponse({ ok: true, state: 'open', url: 'https://x', number: null, jobName: '', company: '', phone: '', amountRemainingCents: 1, currency: 'usd', paidOn: null, offer })
+    expect(parsed?.offer).toEqual(offer)
   })
 })

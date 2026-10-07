@@ -455,7 +455,7 @@ export default function TeamReviewSection({
 
       {subTab === 'rate' && scheduleOpen ? (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
           onClick={() => setScheduleOpen(false)}
         >
           <div
@@ -463,7 +463,7 @@ export default function TeamReviewSection({
             aria-modal="true"
             aria-label="Upcoming reviews"
             onClick={(e) => e.stopPropagation()}
-            style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(420px, 100%)', maxHeight: '82vh', overflowY: 'auto', padding: '1rem 1rem 0.75rem' }}
+            style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(420px, 100%)', maxHeight: 'min(82vh, 100%)', overflowY: 'auto', padding: '1rem 1rem 0.75rem' }}
           >
             <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)' }}>Upcoming reviews</h3>
             <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>

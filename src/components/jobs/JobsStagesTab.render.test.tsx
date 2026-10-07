@@ -36,6 +36,18 @@ vi.mock('../../contexts/JobsListCacheContext', async () => {
   }
 })
 
+const uncollectibleRpc = vi.hoisted(() => ({ calls: [] as unknown[][] }))
+vi.mock('../../lib/setJobUncollectible', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/setJobUncollectible')>('../../lib/setJobUncollectible')
+  return {
+    ...actual,
+    setJobUncollectible: async (...args: unknown[]) => {
+      uncollectibleRpc.calls.push(args)
+      return { ok: true }
+    },
+  }
+})
+
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
@@ -131,6 +143,13 @@ function boardJobs() {
 const byJobName = (name: string) => (_: string, el: Element | null) =>
   el?.textContent === name && el.children.length <= 3 && !['TR', 'TD', 'TBODY', 'TABLE'].includes(el.tagName)
 
+/** A section's header toggle (v2.4512: the name, the count in its pill, the dollars — "Working 2 $0"). */
+const sectionHeader = (label: string, count: number): HTMLElement => {
+  const hit = [...document.querySelectorAll<HTMLElement>('[data-stages-section-header] button[aria-expanded]')].find((b) => new RegExp(`${label} ${count}( |$)`).test(b.textContent ?? ''))
+  if (!hit) throw new Error(`no section header reads "${label} ${count}"`)
+  return hit
+}
+
 describe('JobsStagesTab render smoke', () => {
   beforeEach(() => {
     // The v2.1824 per-device default opens Ready to Bill only; these smokes
@@ -147,7 +166,7 @@ describe('JobsStagesTab render smoke', () => {
     renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ active: false })} />)
     await settle()
     expect(screen.queryByPlaceholderText(SEARCH_PLACEHOLDER)).toBeNull()
-    expect(screen.queryByText(/Waiting \(/)).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Waiting \d/ })).toBeNull()
   })
 
   it('renders the board with section headers when active', async () => {
@@ -156,11 +175,11 @@ describe('JobsStagesTab render smoke', () => {
     )
     await settle()
     expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toBeTruthy()
-    expect(screen.getByText(/Waiting \(1\)/)).toBeTruthy()
-    expect(screen.getByText(/Working \(2\)/)).toBeTruthy()
-    expect(screen.getByText(/Ready to Bill \(0\)/)).toBeTruthy()
-    expect(screen.getByText(/Billed Awaiting Payment \(0\)/)).toBeTruthy()
-    expect(screen.getByText(/Collections \(0\)/)).toBeTruthy()
+    expect(sectionHeader('Waiting', 1)).toBeTruthy()
+    expect(sectionHeader('Working', 2)).toBeTruthy()
+    expect(sectionHeader('Ready to Bill', 0)).toBeTruthy()
+    expect(sectionHeader('Billed Awaiting Payment', 0)).toBeTruthy()
+    expect(sectionHeader('Collections', 0)).toBeTruthy()
     expect(screen.getByText(/Paid in Full \(/)).toBeTruthy()
     // Working opens by default → its rows render
     expect(screen.getByText('Working Duplex')).toBeTruthy()
@@ -173,7 +192,7 @@ describe('JobsStagesTab render smoke', () => {
     )
     await settle()
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Villa' } })
-    expect(screen.getByText(/Working \(1\)/)).toBeTruthy()
+    expect(sectionHeader('Working', 1)).toBeTruthy()
     expect(screen.queryByText('Working Duplex')).toBeNull()
     expect(screen.getAllByText(byJobName('Working Villa'))[0]).toBeTruthy()
   })
@@ -183,14 +202,14 @@ describe('JobsStagesTab render smoke', () => {
       <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: boardJobs() })} />,
     )
     await settle()
-    const workingHeader = screen.getByText(/Working \(2\)/)
+    const workingHeader = sectionHeader('Working', 2)
     expect(workingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(workingHeader)
     expect(screen.queryByText('Working Duplex')).toBeNull()
-    fireEvent.click(screen.getByText(/Working \(2\)/))
+    fireEvent.click(sectionHeader('Working', 2))
     expect(screen.getByText('Working Duplex')).toBeTruthy()
     // Waiting starts closed; opening it reveals its rows
-    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    const waitingHeader = sectionHeader('Waiting', 1)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('false')
     expect((screen.queryAllByText(byJobName('Waiting Casa'))[0] ?? null)).toBeNull()
     fireEvent.click(waitingHeader)
@@ -203,7 +222,7 @@ describe('JobsStagesTab render smoke', () => {
     const view = renderWithProviders(<JobsStagesTab ref={ref} {...props} />)
     await settle()
     // Set state: open the Waiting section and type a search
-    fireEvent.click(screen.getByText(/Waiting \(1\)/))
+    fireEvent.click(sectionHeader('Waiting', 1))
     expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
     const search = screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement
     fireEvent.change(search, { target: { value: 'Casa' } })
@@ -215,7 +234,7 @@ describe('JobsStagesTab render smoke', () => {
     view.rerender(<JobsStagesTab ref={ref} {...props} active={true} />)
     const searchAgain = screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement
     expect(searchAgain.value).toBe('Casa')
-    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    const waitingHeader = sectionHeader('Waiting', 1)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
   })
@@ -236,7 +255,7 @@ describe('JobsStagesTab render smoke', () => {
     // focusJob for an unknown id falls back to a toast
     expect(showToast).toHaveBeenCalledWith('That job isn’t on the Pipeline board right now.', 'info')
     // Billed section opened by focusSection stays expanded
-    const billedHeader = screen.getByText(/Billed Awaiting Payment \(0\)/)
+    const billedHeader = sectionHeader('Billed Awaiting Payment', 0)
     expect(billedHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     // Total by Name modal opened via the handle
     expect(screen.getByText('take me to Job: Stages: Billed')).toBeTruthy()
@@ -252,13 +271,13 @@ describe('JobsStagesTab render smoke', () => {
     await settle()
     // A search that hides the waiting job entirely
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Duplex' } })
-    expect(screen.getByText(/Waiting \(0\)/)).toBeTruthy()
+    expect(sectionHeader('Waiting', 0)).toBeTruthy()
     act(() => {
       ref.current!.focusJob('job-new')
     })
     // Search cleared, Waiting opened, and the job row is on screen
     expect((screen.getByPlaceholderText(SEARCH_PLACEHOLDER) as HTMLInputElement).value).toBe('')
-    const waitingHeader = screen.getByText(/Waiting \(1\)/)
+    const waitingHeader = sectionHeader('Waiting', 1)
     expect(waitingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByText('Fresh Casa')).toBeTruthy()
   })
@@ -396,6 +415,36 @@ describe('JobsStagesTab render smoke', () => {
     expect(document.body.textContent).toContain('Accounts Receivable')
   })
 
+  it('a hidden map is a Map button in the command bar, not a folded card; the button brings the card back and Hide map puts it away (v2.4518)', async () => {
+    localStorage.setItem('pipetooling_jobs_map_hidden', '1')
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: boardJobs() })} />)
+    await settle()
+    expect(document.getElementById('jobs-map-card')).toBeNull()
+    expect(screen.queryByText('Show map')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the map' }))
+    await settle()
+    expect(document.getElementById('jobs-map-card')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Show the map' })).toBeNull()
+    expect(localStorage.getItem('pipetooling_jobs_map_hidden')).toBeNull()
+    fireEvent.click(screen.getByText('Hide map'))
+    await settle()
+    expect(document.getElementById('jobs-map-card')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show the map' })).toBeTruthy()
+    expect(localStorage.getItem('pipetooling_jobs_map_hidden')).toBe('1')
+    localStorage.removeItem('pipetooling_jobs_map_hidden')
+  })
+
+  it('the section headers\u2019 buttons wear the menu\u2019s icons (v2.4527)', async () => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: boardJobs() })} />)
+    await settle()
+    const glyphs = [...document.querySelectorAll<HTMLElement>('[data-stages-section-header] button [data-tools-glyph]')].map((g) => g.dataset.toolsGlyph)
+    // Ready to Bill · Billed Awaiting Payment (six) · Collections' Legal and Lien desk · Paid in Full (two), in board order.
+    expect(glyphs).toEqual(['bell', 'building', 'bank', 'share', 'chart-bar', 'calendar-bars', 'bell', 'scales', 'gavel', 'chart-bar', 'bell'])
+    // No header button is left with an emoji mark the menu no longer uses.
+    const marks = [...document.querySelectorAll('[data-stages-section-header] button')].map((b) => b.textContent ?? '').join(' ')
+    expect(marks).not.toMatch(/[⚙📊📅💵⇪⏱⚖]/u)
+  })
+
   it('the Lien desk asks for the billed jobs the board has not loaded; its Calendar reads the board until they land (v2.4321)', async () => {
     // The phone board's shape: one stage loaded, Billed folded, no map asking for every scope.
     localStorage.setItem(
@@ -412,15 +461,145 @@ describe('JobsStagesTab render smoke', () => {
     await act(async () => {
       ref.current!.openLienDesk()
     })
+    // A plain open lands on Do now (punch list #82); Deadlines is one tab over.
+    fireEvent.click(await screen.findByRole('tab', { name: 'Deadlines' }))
     expect(cache.asked).toContain('billed_all')
     expect(screen.getByText('Reading the board…')).toBeTruthy()
     expect(screen.queryByText('Nothing billed is on a lien clock.')).toBeNull()
     // The scope lands: the billed job is on the board and the Calendar counts it.
     cache.merged = ['working', 'billed_all']
-    view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })]} />)
-    expect(await screen.findByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
+    // v2.4788 (punch list #94): the job the office gave up on is billed and open, and on no clock.
+    // A Collections job still chased stays on its clock (the control); the one given up on does not.
+    const parked = makeJob({ job_name: 'Parked', status: 'billed', revenue: 500, collections_at: '2026-08-01T00:00:00Z' })
+    const givenUp = makeJob({ job_name: 'Given Up', status: 'billed', revenue: 2000, collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })
+    view.rerender(<JobsStagesTab ref={ref} {...props} jobs={[...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' }), parked, givenUp]} />)
+    expect(await screen.findByRole('button', { name: 'All · 2 jobs · $1,500' })).toBeTruthy()
     expect(screen.queryByText('Reading the board…')).toBeNull()
     localStorage.removeItem('pipetooling_jobs_map_hidden')
+  })
+
+  it('a Lien desk row opens the job’s lien window over the desk; closing it lands back on the desk, not the board (v2.4523)', async () => {
+    cache.merged = ['working', 'billed_all']
+    const ref = createRef<JobsStagesTabHandle>()
+    renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs: [...boardJobs(), makeJob({ job_name: 'Billed Lennox', status: 'billed' })] })} />)
+    await settle()
+    await act(async () => {
+      ref.current!.openLienDesk()
+    })
+    // A plain open lands on Do now (punch list #82); Deadlines is one tab over.
+    fireEvent.click(await screen.findByRole('tab', { name: 'Deadlines' }))
+    const desk = await screen.findByRole('dialog', { name: 'Lien desk' })
+    await within(desk).findByRole('button', { name: 'All · 1 job · $1,000' })
+    // The calendar folds its groups: open Overdue, then the job's row is there to click.
+    fireEvent.click([...desk.querySelectorAll('button')].find((b) => b.textContent?.startsWith('▸Overdue'))!)
+    await settle()
+    const row = [...desk.querySelectorAll<HTMLElement>('button, [role="button"]')].find((b) => b.textContent?.includes('Billed Lennox'))
+    expect(row).toBeTruthy()
+    fireEvent.click(row!)
+    await settle()
+    const lienWindow = document.querySelector('[aria-labelledby="lien-instruments-title"]') as HTMLElement
+    expect(lienWindow).toBeTruthy()
+    // The desk is still there, under the window.
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    fireEvent.click(within(lienWindow).getAllByRole('button', { name: 'Close' })[0]!)
+    await settle()
+    expect(document.querySelector('[aria-labelledby="lien-instruments-title"]')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    expect(within(screen.getByRole('dialog', { name: 'Lien desk' })).getByRole('button', { name: 'All · 1 job · $1,000' })).toBeTruthy()
+  })
+
+  it('a Collections job with no bill line wears the shell pill — In Collections N days · no bill line (B6 / J4-10, wired in v2.4758)', async () => {
+    const flaggedDaysAgo = 12
+    const flaggedAt = new Date(Date.now() - flaggedDaysAgo * 86_400_000).toISOString()
+    const jobs = [
+      makeJob({ job_name: 'Parked Shell', status: 'billed', revenue: 1200, payments_made: 0, collections_at: flaggedAt, invoices: [] }),
+      makeJob({ job_name: 'Billed Shell', status: 'billed', revenue: 800, payments_made: 0, invoices: [] }),
+    ]
+    renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs })} />)
+    await settle()
+    // The Collections shell ages from the flag day; the Billed shell keeps its plain pill.
+    const parked = screen.getByText(new RegExp(`^In Collections ${flaggedDaysAgo} days · no bill line$`))
+    expect(parked.getAttribute('title')).toMatch(/^Flagged difficult to collect \d{4}-\d{2}-\d{2}\./)
+    expect(screen.getByText('No bill line')).toBeTruthy()
+  })
+
+  it('on the phone board, focusSection picks the stage — ?stagesSection=collections lands on Collections, not the first open stage (punch list #93 D, v2.4759)', async () => {
+    const realMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(max-width: 640px)' || query === '(max-width: 559px)',
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+    try {
+      localStorage.setItem('jobs-stages-mobile-cards', 'true')
+      localStorage.setItem(
+        'pipetooling_stages_sections_v2',
+        JSON.stringify({ waiting: false, working: false, readyToBill: true, billed: false, collections: false, paid: false }),
+      )
+      const ref = createRef<JobsStagesTabHandle>()
+      const jobs = [...boardJobs(), makeJob({ job_name: 'Parked', status: 'billed', revenue: 500, payments_made: 0, collections_at: '2026-09-01T00:00:00Z', invoices: [] })]
+      renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs })} />)
+      await settle()
+      expect(screen.getByRole('tab', { name: /^Ready/ }).getAttribute('aria-selected')).toBe('true')
+      await act(async () => {
+        ref.current!.focusSection('collections')
+      })
+      expect(screen.getByRole('tab', { name: /^Coll\./ }).getAttribute('aria-selected')).toBe('true')
+      expect(screen.getByRole('tab', { name: /^Ready/ }).getAttribute('aria-selected')).toBe('false')
+    } finally {
+      window.matchMedia = realMatchMedia
+      localStorage.removeItem('jobs-stages-mobile-cards')
+    }
+  })
+
+  describe('Uncollectible (punch list #94, v2.4792)', () => {
+    const chased = () => makeJob({ job_name: 'Still Chased', status: 'billed', revenue: 350, payments_made: 0, collections_at: '2026-08-01T00:00:00Z', invoices: [] })
+    const givenUp = () =>
+      makeJob({ job_name: 'Given Up', status: 'billed', revenue: 7502, payments_made: 0, collections_at: '2026-04-13T00:00:00Z', uncollectible_at: '2026-10-07T03:30:00Z', uncollectible_reason: 'Customer is engaging in theft of service.', invoices: [] })
+
+    it('the band under Collections carries the given-up job with its stamp; the Collections header counts only what is still chased', async () => {
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: [...boardJobs(), chased(), givenUp()] })} />)
+      await settle()
+      expect(sectionHeader('Collections', 1)).toBeTruthy()
+      const band = document.querySelector('[data-stages-uncollectible-band]')!
+      expect(band.textContent).toContain('Uncollectible')
+      expect(band.textContent).toContain('$7,502')
+      const stamp = screen.getByRole('note', { name: /^Uncollectible\. Customer is engaging in theft of service\. Oct 6, 2026/ })
+      expect(stamp.textContent).toContain('$7,502 given up on')
+      expect(document.querySelectorAll('tr[data-stages-row-stamped]')).toHaveLength(1)
+      // The stamped row keeps Mark Paid and offers the way back; the chased row offers the door.
+      expect(screen.getByRole('button', { name: 'Put it back in Collections' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Uncollectible…' })).toBeTruthy()
+    })
+
+    it('Uncollectible… asks for a reason and writes it; Put it back asks and unmarks', async () => {
+      uncollectibleRpc.calls = []
+      const jobs = [...boardJobs(), chased(), givenUp()]
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs })} />)
+      await settle()
+      fireEvent.click(screen.getByRole('button', { name: 'Uncollectible…' }))
+      const dialog = screen.getByRole('dialog', { name: 'Mark the job Uncollectible' })
+      const confirmBtn = within(dialog).getByRole('button', { name: 'Mark Uncollectible' })
+      expect((confirmBtn as HTMLButtonElement).disabled).toBe(true)
+      fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Refused the bill, will not answer, not worth a suit.' } })
+      expect((confirmBtn as HTMLButtonElement).disabled).toBe(false)
+      await act(async () => {
+        fireEvent.click(confirmBtn)
+      })
+      expect(uncollectibleRpc.calls).toEqual([[jobs[3]!.id, true, 'Refused the bill, will not answer, not worth a suit.']])
+      expect(screen.queryByRole('dialog', { name: 'Mark the job Uncollectible' })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Put it back in Collections' }))
+      const back = screen.getByRole('dialog', { name: 'Put the job back in Collections' })
+      await act(async () => {
+        fireEvent.click(within(back).getByRole('button', { name: 'Put it back' }))
+      })
+      expect(uncollectibleRpc.calls[1]).toEqual([jobs[4]!.id, false, undefined])
+    })
   })
 
   describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {

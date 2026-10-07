@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal desk: the firm's door</title>
+<style>
+  :root { color-scheme: light; --ink: #111827; --text: #1F2937; --muted: #6B7280; --faint: #9CA3AF; --line: #E5E7EB; --line-strong: #D1D5DB; --paper: #F3F4F6; --surface: #FFFFFF; --primary: #1F2937; --blue: #1D4ED8; --blue-tint: #EFF6FF; --amber: #92400E; --amber-tint: #FFFBEB; --red: #B42318; --red-tint: #FEF3F2; --green: #027A48; --green-tint: #ECFDF3; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 72px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 92ch; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: var(--ink); color: #fff; }
+  .frame { background: rgba(0,0,0,.38); border-radius: 0 0 10px 10px; padding: 16px; }
+  .frame.flat { background: #E9EBEF; }
+
+  /* the desk, drawn */
+  .desk { background: var(--surface); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+  .bar { display: flex; align-items: center; gap: 10px 12px; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .bar .t { flex: 1 1 260px; min-width: 0; }
+  .bar .t b { font-weight: 600; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; white-space: nowrap; }
+  .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .btn.x { width: 30px; height: 30px; padding: 0; justify-content: center; }
+  .btn.small { padding: 3px 9px; font-size: 12px; }
+  .firm-chip { display: inline-flex; align-items: center; gap: 6px; padding: 1px 8px 1px 7px; border: 1px solid #BFDBFE; background: var(--blue-tint); color: var(--blue); border-radius: 999px; font-weight: 600; font-size: 12.5px; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  .firm-chip.none { border-color: #FDE68A; background: var(--amber-tint); color: var(--amber); }
+  .ring { outline: 2px solid #DC2626; outline-offset: 3px; border-radius: 999px; }
+  .ring.sq { border-radius: 6px; }
+  .body { display: grid; grid-template-columns: 250px 1fr; min-height: 230px; }
+  .list { border-right: 1px solid var(--line); padding: 12px; }
+  .list .k { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .acct { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; font-size: 12.5px; }
+  .acct.on { border-color: #9CA3AF; background: #F9FAFB; }
+  .acct .r { display: flex; justify-content: space-between; font-weight: 600; font-size: 13px; }
+  .acct .m { color: var(--muted); }
+  .pane { padding: 14px 16px; }
+  .pane h3 { margin: 0; font-size: 17px; }
+  .pane .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .pill { font-size: 12px; padding: 2px 8px; border-radius: 999px; background: var(--red-tint); color: var(--red); }
+
+  /* the firm window */
+  .win { background: var(--surface); border-radius: 10px; box-shadow: 0 16px 48px rgba(0,0,0,.32); max-width: 760px; margin: 0 auto; overflow: hidden; }
+  .win .head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .win .head .t { flex: 1; font-weight: 600; font-size: 15px; }
+  .win .sec { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .win .sec:last-child { border-bottom: none; }
+  .win h4 { margin: 0 0 2px; font-size: 14px; }
+  .win .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  label.f { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .in { border: 1px solid var(--line-strong); border-radius: 5px; padding: 6px 8px; font-size: 13.5px; color: var(--text); background: #fff; min-height: 32px; }
+  .in.ph { color: var(--faint); }
+  .in.ro { background: #F9FAFB; border-style: dashed; }
+  .actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .facts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .fact { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; background: #F9FAFB; }
+  .fact b { font-weight: 600; }
+  .warn { background: var(--amber-tint); border: 1px solid #FDE68A; color: var(--amber); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .info { background: var(--blue-tint); border: 1px solid #BFDBFE; color: #1E3A8A; border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .count { font-size: 12px; font-weight: 600; color: var(--amber); background: var(--amber-tint); border: 1px solid #FDE68A; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+  .link { color: var(--blue); font-weight: 600; }
+  ul.steps { margin: 6px 0 0; padding-left: 18px; }
+  ul.steps li { margin: 3px 0; }
+
+  /* notes */
+  .notes { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin-top: 14px; }
+  .notes h3 { margin: 0 0 6px; font-size: 15px; }
+  .notes ol, .notes ul { margin: 0; padding-left: 20px; color: #374151; }
+  .notes li { margin: 6px 0; }
+  .q { font-weight: 700; color: var(--ink); }
+  table.plan { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 6px; }
+  table.plan th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-strong); padding: 6px 8px; }
+  table.plan td { border-bottom: 1px solid var(--line); padding: 8px; vertical-align: top; }
+  code { background: #EEF2FF; color: var(--blue); padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }
+  @media (max-width: 640px) { .firm-chip { display: inline-block; white-space: normal; overflow: visible; border-radius: 10px; line-height: 1.4; padding: 2px 8px; } .win .head { flex-wrap: wrap; } .frame { padding: 10px; } }
+</style>
+</head>
+<body><div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #85 · proposal · mockup</p>
+  <h1>Set the firm from the Legal desk</h1>
+  <p><b>Where it is today:</b> Settings, then Jobs &amp; billing, then the <b>Collections law firm</b> block. Only a dev can change it, and the desk only names the firm in small grey text. This proposal makes the firm's name on the desk the door, opens the same form in a window over the desk, and adds a clean way to <b>replace</b> a stand-in firm like ZZ Test Firm with the real one. Sample names throughout; the counts and the stand-in’s email are made up for the drawing.</p>
+</header>
+
+<!-- 1 -->
+<h2><span class="num">1</span> The header: the firm's name becomes the door</h2>
+<p class="lede">No new button. The name sits where you already looked for it, as a chip you can press. With no firm, the chip turns amber and says so.</p>
+<div class="two">
+  <div>
+    <div class="cap old">Today</div>
+    <div class="frame flat"><div class="desk"><div class="bar">
+      <span aria-hidden>⚖</span>
+      <div class="t"><b>Legal · Collections accounts</b><div class="sub">Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. Firm: ZZ Test Firm (temp — replace with the real firm).</div></div>
+      <span class="btn">✉ Firm’s emails</span><span class="btn">🌐 Firm’s link</span><span class="btn x">✕</span>
+    </div></div></div>
+  </div>
+  <div>
+    <div class="cap new">Proposed</div>
+    <div class="frame flat"><div class="desk"><div class="bar">
+      <span aria-hidden>⚖</span>
+      <div class="t"><b>Legal · Collections accounts</b><div class="sub">Two exits: attorney-ready (a dev puts it with the firm) or write it down. &nbsp;<span class="firm-chip ring">⚖ ZZ Test Firm (temp — replace with the real firm) ✎</span></div></div>
+      <span class="btn">✉ Firm’s emails</span><span class="btn">🌐 Firm’s link</span><span class="btn x">✕</span>
+    </div></div></div>
+    <div class="frame flat" style="border-radius:10px;margin-top:10px"><div class="desk"><div class="bar">
+      <span aria-hidden>⚖</span>
+      <div class="t"><b>Legal · Collections accounts</b><div class="sub">Two exits: attorney-ready (a dev puts it with the firm) or write it down. &nbsp;<span class="firm-chip none ring">No firm yet · Set up the firm…</span></div></div>
+      <span class="btn x">✕</span>
+    </div></div></div>
+    <p class="hint" style="margin:6px 2px 0;color:var(--muted);font-size:12.5px">Below: with no firm, Firm’s emails and Firm’s link stay hidden as today, and the chip is the one way forward. The release sheet’s red line <i>No firm is set up</i> gets the same <b>Set up the firm…</b> button.</p>
+  </div>
+</div>
+
+<!-- 2 -->
+<h2><span class="num">2</span> The firm window, over the desk</h2>
+<p class="lede">Pressing the chip opens this window on top of the desk, so you keep your place in the account list. It is the Settings block itself, mounted here, so the two can never disagree. Saving refreshes the desk at once: the header, <i>Click keeps</i> and the release sheet show the new firm.</p>
+<div class="frame">
+  <div class="win">
+    <div class="head"><span aria-hidden>⚖</span><div class="t">The collections law firm</div><span class="btn small">Open in Settings ↗</span><span class="btn x">✕</span></div>
+
+    <div class="sec">
+      <h4>Who we release accounts to</h4>
+      <p class="hint">One firm at a time. The name and handling person print on every release and on the firm’s portal.</p>
+      <div class="grid">
+        <label class="f">Firm<div class="in">ZZ Test Firm (temp — replace with the real firm)</div></label>
+        <label class="f">Handling person<div class="in ph">A. Attorney</div></label>
+        <label class="f">Email (the firm’s contact)<div class="in">test-firm@example.com</div></label>
+        <label class="f">Phone<div class="in ph">(512) 555-0100</div></label>
+        <label class="f">Contingency %<div class="in">33</div></label>
+        <label class="f">Filing cost ($)<div class="in">350</div></label>
+      </div>
+      <div class="facts">
+        <span class="fact">On this firm now:</span>
+        <span class="fact"><b>0</b> accounts with the firm</span>
+        <span class="fact"><b>2</b> people get its emails</span>
+        <span class="fact">portal link <b>off</b></span>
+      </div>
+      <div class="actions">
+        <span class="btn primary">Save changes</span>
+        <span class="sub">Fixes the details of this firm. Its people, its link and its accounts stay with it.</span>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h4>Replace this firm</h4>
+      <p class="hint">For a stand-in like this one. You add the real firm, and the stand-in is retired: its link stops working, its people stop getting emails, and its history stays.</p>
+      <div class="actions" style="margin-top:0"><span class="btn ring sq">Replace with a new firm…</span></div>
+    </div>
+
+    <div class="sec">
+      <h4>Our particulars for filing <span class="count">4 of 8 filled</span></h4>
+      <p class="hint">What a petition or lien affidavit needs from us. The firm reads these on its portal and in every printed packet.</p>
+      <div class="grid">
+        <label class="f">Legal entity<div class="in">Click Plumbing and Electrical, LLC</div></label>
+        <label class="f">License<div class="in">TX RMP M-41207</div></label>
+        <label class="f">Registered agent<div class="in ph">not filled</div></label>
+        <label class="f">Custodian of records<div class="in ph">not filled</div></label>
+        <label class="f">Affiant for sworn accounts<div class="in ph">not filled</div></label>
+        <label class="f">Office phone<div class="in">(512) 360-0599</div></label>
+        <label class="f">Office email<div class="in">office@example.com</div></label>
+        <label class="f">W-9 / EIN note<div class="in ph">on request from the office</div></label>
+      </div>
+      <div class="actions"><span class="btn">Save particulars</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- 3 -->
+<h2><span class="num">3</span> Replace with a new firm</h2>
+<p class="lede">The window says exactly what happens before anything changes. One database call retires the old firm and adds the new one together, so there is never a moment with no firm, or with two.</p>
+<div class="two">
+  <div>
+    <div class="cap new">Nothing is with the stand-in</div>
+    <div class="frame"><div class="win">
+      <div class="head"><span aria-hidden>⚖</span><div class="t">Replace ZZ Test Firm</div><span class="btn x">✕</span></div>
+      <div class="sec">
+        <div class="info">When you press <b>Replace the firm</b>:<ul class="steps"><li>ZZ Test Firm is retired. Its portal link stops working.</li><li>Its 2 people stop getting emails. They stay on its record.</li><li>The new firm starts with no link and no people. You create its link and send it from the desk.</li></ul></div>
+        <div class="grid" style="margin-top:12px">
+          <label class="f">Firm<div class="in">Example Law Firm, PLLC</div></label>
+          <label class="f">Handling person<div class="in">Ann Example</div></label>
+          <label class="f">Email<div class="in">ann@examplelaw.example</div></label>
+          <label class="f">Phone<div class="in">(512) 555-0188</div></label>
+          <label class="f">Contingency %<div class="in">33</div></label>
+          <label class="f">Filing cost ($)<div class="in">350</div></label>
+        </div>
+        <div class="actions"><span class="btn primary">Replace the firm</span><span class="btn">Cancel</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div>
+    <div class="cap new">Accounts are still with the stand-in</div>
+    <div class="frame"><div class="win">
+      <div class="head"><span aria-hidden>⚖</span><div class="t">Replace ZZ Test Firm</div><span class="btn x">✕</span></div>
+      <div class="sec">
+        <div class="warn"><b>2 accounts are with ZZ Test Firm.</b> Pull them back first, so no account is left with a firm that is gone.<ul class="steps"><li>Brazos Ridge Contracting · $14,400.00 · <span class="link">Pull back…</span></li><li>Creekside Holdings · $2,150.00 · <span class="link">Pull back…</span></li></ul></div>
+        <div class="actions"><span class="btn primary" style="opacity:.45">Replace the firm</span><span class="sub">Ready once both are pulled back.</span></div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+<!-- 4 -->
+<h2><span class="num">4</span> Everyone else on the desk sees it, read only</h2>
+<p class="lede">The office and masters open the Legal desk too, but the database lets only a dev change the firm. They get the same window with the details as text and one line saying who can change it. <i>Open in Settings</i> is a dev’s only, since Settings shows that block to devs alone.</p>
+<div class="frame flat" style="border-radius:10px"><div class="win">
+  <div class="head"><span aria-hidden>⚖</span><div class="t">The collections law firm</div><span class="btn x">✕</span></div>
+  <div class="sec">
+    <div class="grid">
+      <label class="f">Firm<div class="in ro">Example Law Firm, PLLC</div></label>
+      <label class="f">Handling person<div class="in ro">Ann Example</div></label>
+      <label class="f">Email<div class="in ro">ann@examplelaw.example</div></label>
+      <label class="f">Contingency %<div class="in ro">33</div></label>
+    </div>
+    <div class="actions"><span class="sub">Only a dev can change the firm. Ask a dev to update it.</span></div>
+  </div>
+</div></div>
+
+<!-- plan -->
+<h2><span class="num">5</span> The plan</h2>
+<div class="notes">
+  <table class="plan">
+    <thead><tr><th>PR</th><th>What it does</th><th>Touches</th><th>Deploy</th></tr></thead>
+    <tbody>
+      <tr><td><b>1 · The door</b><br>client only</td><td>The firm chip in the desk header and the amber <i>Set up the firm…</i> state. The firm window over the desk, mounting the Settings block with an <code>onSaved</code> that reloads the desk. Read only for non-devs. The release sheet’s red line gets the same button. <i>Open in Settings</i> lands on the block: the anchor <code>settings-legal-firm</code> is registered for the Jobs &amp; billing tab. Esc closes the window before the desk.</td><td><code>LegalDeskModal.tsx</code>, <code>LegalFirmSettingsBlock.tsx</code>, a small <code>LegalFirmWindow.tsx</code>, <code>settingsDeepLink.ts</code>, two guides</td><td>The site only</td></tr>
+      <tr><td><b>2 · Replace the firm</b><br>migration + client</td><td>A dev-only database call that retires the old firm, revokes its link, stops its people’s emails and adds the new one in one transaction, and refuses while accounts are with the old firm. The email dispatcher skips a retired firm’s people. The window’s <i>Replace with a new firm…</i> path with its two states.</td><td>one migration, <code>legal_replace_firm</code>, the window, ACCESS_CONTROL, GLOSSARY, a migration page</td><td>Push the migration, then the site</td></tr>
+      <tr><td><b>3 · Later, maybe</b></td><td>Fold <i>Firm’s emails</i> and <i>Firm’s link</i> into this window as tabs, so the header carries one firm control instead of three.</td><td>the desk header, the link card, the emails modal</td><td>The site only</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- best we can do -->
+<h2><span class="num">6</span> Is this the best we can do?</h2>
+<div class="notes"><ol>
+  <li><span class="q">A new tab to Settings, or a window over the desk?</span> A window. You are mid-review when you notice the firm is wrong, and leaving loses your place. Every other tool on the lien and legal desks opens as a window over them. <i>Open in Settings</i> stays for the full page.</li>
+  <li><span class="q">A third button in the header?</span> No. Two firm buttons already sit there, and the name is where you looked. Folding all three into one firm control is the cleaner end state, so it is PR 3, after the demo.</li>
+  <li><span class="q">Rename the stand-in, or replace it?</span> Renaming is right for fixing a typo, but it keeps the firm’s people, its link and its accounts. A stand-in’s test people would then get the real firm’s emails. So the window shows what is on the firm now, and offers Replace as its own path. For ZZ Test Firm, replace it.</li>
+  <li><span class="q">Can Replace be two saves from the page?</span> No. Between retiring the old firm and adding the new one, no firm is active, and a failed add would leave none. The database allows one active firm, so one call must do both or neither.</li>
+  <li><span class="q">What about accounts already with the stand-in?</span> Replace waits until they are pulled back, and lists them with their own <i>Pull back…</i>. Moving them silently to the new firm would hand a firm accounts it never agreed to take.</li>
+  <li><span class="q">Why the particulars in the same window?</span> They are the other half of setting up the firm side, and the firm reads them on every packet. The count, like <i>4 of 8 filled</i>, makes the gaps obvious before the meeting.</li>
+  <li><span class="q">Who may change the firm?</span> Today only a dev, and the database enforces it. Opening it to masters is one policy line. That is your call, so the mockup keeps it dev only.</li>
+</ol></div>
+
+</div></body>
+</html>

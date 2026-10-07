@@ -143,7 +143,7 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 65,
+        zIndex: 765,
       }}
     >
       {/* This panel is the scroller — the title bar sticks so the × stays reachable

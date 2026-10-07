@@ -31,7 +31,7 @@ describe('the owner’s call → counsel’s piles', () => {
   })
 
   it('the latest call per job comes off the notice items, and turns letter two off', () => {
-    const item = (id: string, at: string, c: OwnerCall | null): LienDeskItemRow => ({ id, job_id: 'j1', kind: 'notice_53_056', status: 'sent', sent_at: '2026-09-05T15:00:00Z', months: ['2026-07'], fields: { notice: { noticeDate: '2026-09-05', projectDescription: '', claimantName: 'Click', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '1.00', contactPerson: '', claimantAddress: '' }, gcEmail: '', ...(c ? { ownerCall: c } : {}) }, cover_note: true, drafted_by: null, drafted_at: at, submitted_at: null, approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, created_at: at, updated_at: at, voided_at: null, printed_at: null, printed_by: null }) as LienDeskItemRow
+    const item = (id: string, at: string, c: OwnerCall | null): LienDeskItemRow => ({ id, job_id: 'j1', kind: 'notice_53_056', status: 'sent', sent_at: '2026-09-05T15:00:00Z', months: ['2026-07'], fields: { notice: { noticeDate: '2026-09-05', projectDescription: '', claimantName: 'Click', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '1.00', contactPerson: '', claimantAddress: '' }, gcEmail: '', ...(c ? { ownerCall: c } : {}) }, cover_note: true, drafted_by: null, drafted_at: at, submitted_at: null, approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, created_at: at, updated_at: at, voided_at: null, printed_at: null, printed_by: null, offer_pct: 0, offer_by: null, offer_set_by: null, offer_set_at: null }) as LienDeskItemRow
     const older = item('a', '2026-09-01T10:00:00Z', call({ at: '2026-09-10T10:00:00Z', owesGc: 'no', reserved: 'never' }))
     const newer = item('b', '2026-09-02T10:00:00Z', call())
     expect(ownerCallByJobFrom([older, newer]).j1?.owesGc).toBe('yes')
@@ -50,5 +50,14 @@ describe('the owner’s call → counsel’s piles', () => {
     expect(html).toContain('no call yet')
     expect(html).toContain('counsel reads the original contract')
     expect(html).toContain('10% hold ends 2026-09-21')
+  })
+})
+
+describe('an owner’s call taken in the evening keeps its day (v2.4468)', () => {
+  it('reads the Central day', () => {
+    // 00:30 UTC on Sep 18 is 7:30 pm CDT on Sep 17; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(ownerCallWords(call({ at: '2026-09-18T00:30:00Z' }), fmt.day, fmt.money)).toBe('owner called 2026-09-17 · still owes the GC ($14,000) · 10% held')
+    expect(ownerCallWords(call({ at: '2026-12-02T00:30:00+00:00' }), fmt.day, fmt.money)).toMatch(/^owner called 2026-12-01 · /)
+    expect(ownerCallWords(call({ at: '2026-09-18T12:00:00Z' }), fmt.day, fmt.money)).toMatch(/^owner called 2026-09-18 · /)
   })
 })

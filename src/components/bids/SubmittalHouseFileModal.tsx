@@ -6,7 +6,9 @@
  * carries can be added as a row; a row found by its parts can take the file's tag. Use the
  * file's parts hands the choices back; the tab writes them.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 import { defaultFileChoice, fileMatchCounts, type FileTagChoice, type FileTagMatch, type HouseFileRead } from '../../lib/submittals/houseFileParts'
 import { formatPages } from '../../lib/submittals/submittalRevision'
 import { splitPartLabel, type SubmittalPartRow } from '../../lib/submittals/itemParts'
@@ -48,18 +50,22 @@ export function SubmittalHouseFileModal({
 }) {
   const [choices, setChoices] = useState<FileTagChoice[]>(() => matches.map(defaultFileChoice))
   const [houseId, setHouseId] = useState<string | null>(givenHouseId)
+  // 2026-10-04 · choices changed and not applied: a stray click outside asks before it loses them.
+  const typed = JSON.stringify([choices, houseId])
+  const opened = useRef(typed)
+  const guard = useLeaveGuard({ dirty: typed !== opened.current, onClose, busy })
   const counts = useMemo(() => fileMatchCounts(matches), [matches])
   const rowTag = (id: string) => rows.find((r) => r.id === id)?.tag.trim() || 'a row with no tag'
   const set = (i: number, patch: Partial<FileTagChoice>) => setChoices((cs) => cs.map((c, k) => (k === i ? { ...c, ...patch } : c)))
   const using = choices.filter((c, i) => c.use && (matches[i]!.itemIds.length > 0 || c.addRow)).length
 
   return (
-    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.6rem', overflowY: 'auto' }}>
-      <div role="dialog" aria-modal="true" aria-label={`What ${fileName} says`} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth: 880, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 2rem)' }} onMouseDown={(e) => e.stopPropagation()}>
+    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget) guard.requestClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.6rem 1rem', overflowY: 'auto' }}>
+      <div role="dialog" aria-modal="true" aria-label={`What ${fileName} says`} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth: 880, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'min(calc(100vh - 2rem), 100%)' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '1rem 1.1rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
             <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>What {fileName} says</h3>
-            <button type="button" aria-label="Close" disabled={busy} onClick={onClose} style={{ ...btn, minHeight: 32, padding: '0.2rem 0.6rem' }}>×</button>
+            <button type="button" aria-label="Close" disabled={busy} onClick={guard.requestClose} style={{ ...btn, minHeight: 32, padding: '0.2rem 0.6rem' }}>×</button>
           </div>
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
             The file lists {read.parts.length} parts under {read.tags.length} tags, each with its pages. Each row can take the file’s parts. The takeoff’s part stays beside it as what was priced.
@@ -157,10 +163,11 @@ export function SubmittalHouseFileModal({
           })}
         </div>
 
+        {guard.asking ? <div style={{ padding: '0 1.1rem 0.6rem' }}><LeaveQuestion what="Your choices for this file are not applied yet." onLeave={onClose} onKeep={guard.keep} /></div> : null}
         <div style={{ padding: '0.7rem 1.1rem 0.9rem', borderTop: '1px solid var(--border-strong)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ ...quiet, flex: '1 1 16rem' }}>A part that is not what was priced shows the takeoff’s part beside it. Say why on the row with Edit.</span>
           <span style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" disabled={busy} onClick={onClose} style={btn}>Cancel</button>
+            <button type="button" disabled={busy} onClick={guard.requestClose} style={btn}>Cancel</button>
             <button type="button" disabled={busy || using === 0} onClick={() => onApply(choices, houseId)} style={{ ...btnPrimary, opacity: using === 0 ? 0.5 : 1 }} data-testid="house-file-apply">
               {busy ? 'Writing…' : `Use the file’s parts on ${using} row${using === 1 ? '' : 's'}`}
             </button>

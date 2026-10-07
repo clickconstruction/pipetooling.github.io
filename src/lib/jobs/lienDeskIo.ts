@@ -113,26 +113,37 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
   )
 }
 
-/** The office accepts the forfeit for these months (the row stays as the record of the decision). */
-export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; userName?: string; kind?: LienDeskItemKind }): Promise<void> {
-  const who = (input.userName ?? '').trim()
-  const fields = draftJson({ ...input.fields, skipReason: input.reason.trim(), ...(who ? { skippedBy: { name: who, at: new Date().toISOString() } } : {}) })
-  if (input.itemId) {
-    await withSupabaseRetry(
-      () => supabase.from('job_lien_desk_items').update({ status: 'missed', fields, months: input.months } as never).eq('id', input.itemId as string),
-      'lien desk: skip',
-    )
-    return
-  }
-  await withSupabaseRetry(
+/**
+ * Undo a run's approval (v2.4541): every notice the click approved, or sent to the leader, goes
+ * back to the office's draft, and the printed stamp goes with it. Only rows still approved or
+ * awaiting approval move, so a notice already recorded as sent is never touched. Returns how many moved.
+ */
+export async function undoLienDeskApprovals(itemIds: ReadonlyArray<string>, userId: string | null): Promise<number> {
+  if (itemIds.length === 0) return 0
+  const rows = await withSupabaseRetry(
     () =>
       supabase
         .from('job_lien_desk_items')
-        .insert({ job_id: input.jobId, kind: input.kind ?? 'notice_53_056', status: 'missed', months: input.months, fields, drafted_by: input.userId } as never)
-        .select('id')
-        .single(),
-    'lien desk: skip',
+        .update({
+          status: 'drafted',
+          approval_mode: null,
+          approved_by: null,
+          approved_at: null,
+          word_note: '',
+          word_channel: '',
+          hold_reason: '',
+          hold_until: null,
+          printed_at: null,
+          printed_by: null,
+          pulled_back_by: userId,
+          pulled_back_at: new Date().toISOString(),
+        } as never)
+        .in('id', [...itemIds])
+        .in('status', ['approved', 'awaiting_approval'])
+        .select('id'),
+    'lien desk: undo approvals',
   )
+  return ((rows ?? []) as unknown as Array<{ id: string }>).length
 }
 
 /**
@@ -178,6 +189,14 @@ export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, u
   await withSupabaseRetry(
     () => supabase.from('job_lien_desk_items').update({ printed_at: new Date().toISOString(), printed_by: userId } as never).in('id', [...itemIds]),
     'lien desk: mark printed',
+  )
+}
+
+/** Back to Ready to send (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
+export async function clearLienDeskItemPrinted(itemId: string): Promise<void> {
+  await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').update({ printed_at: null, printed_by: null } as never).eq('id', itemId),
+    'lien desk: clear printed',
   )
 }
 

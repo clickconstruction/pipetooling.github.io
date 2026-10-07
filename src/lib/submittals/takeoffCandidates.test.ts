@@ -193,6 +193,20 @@ describe('the candidates', () => {
     expect(candidateToItemInsert(none, 'rev-1', 1)).toMatchObject({ submitted_label: null, status: 'missing' })
     expect(withProductKeys(def, ['l2', 'l1'])).toMatchObject({ productKeys: ['l1', 'l2'], supplyHouseId: 'h-reece', supplyHouseName: 'Reece' })
   })
+
+  it('2026-10-02 · a line left off the fixture is not one of its pieces: no row, no refresh and no order reads it, and it is kept aside to bring back', () => {
+    const lav = [line({ id: 'l1', countRowId: 'c-lav', sequenceOrder: 1, sourceTemplateId: 't-hs', unitPrice: 500 }), line({ id: 'l2', countRowId: 'c-lav', sequenceOrder: 2, partId: 'p-stop', unitPrice: 15, sourceMaterialPartPriceId: 'pr-1' })]
+    const base = { countRows: [{ id: 'c-lav', fixture: 'LAV 1', count: 2 }], lines: lav, parts, templates, houses }
+    const c = takeoffCandidates({ ...base, leftOut: new Map([['c-lav', ['l2']]]), orderOnly: new Map([['c-lav', true]]) })[0]!
+    expect(c.pieces.map((p) => p.key)).toEqual(['l1'])
+    expect(c.leftOutPieces!.map((p) => p.key)).toEqual(['l2'])
+    expect(c.storedOrderOnly).toBe(true)
+    // Nothing left out: the fixture reads as before, with no aside list.
+    const plain = takeoffCandidates(base)[0]!
+    expect(plain.pieces).toHaveLength(2)
+    expect(plain.leftOutPieces).toBeUndefined()
+    expect(plain.storedOrderOnly).toBe(false)
+  })
 })
 
 describe('parts, not assemblies (2026-10-01): an assembly line opens into the parts inside it', () => {

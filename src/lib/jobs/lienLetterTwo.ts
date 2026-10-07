@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import type { LienDeskItemRow } from './lienDesk'
 import { parseLienNoticeSentFacts } from './lienNoticeDraft'
@@ -74,15 +75,15 @@ export function letterTwoStatus(input: { items: ReadonlyArray<LetterTwoItemLike>
   const gcAuthorized = first.draft?.gcAuthorizedDirectPay ?? null
   // The owner's call (v2.3767) rides on the first packet too; a caller may still pass it.
   const ownerCalledAt = input.ownerCalledAt ?? first.draft?.ownerCall?.at ?? null
-  const day = daysBetweenYmd(firstSentAt.slice(0, 10), input.todayYmd) ?? 0
+  const day = daysBetweenYmd(calendarYmdInAppTzFromIso(firstSentAt), input.todayYmd) ?? 0
   const base = { day, firstItemId: first.item.id, firstSentAt, gcAuthorized, letterTwo: two ? { itemId: two.item.id, kind: two.draft!.letterTwo!.kind, status: two.item.status, sentAt: two.item.sent_at } : null }
   if (two) {
-    if (two.item.status === 'sent') return { ...base, state: 'sent', words: `letter two sent ${two.item.sent_at ? fmt(two.item.sent_at.slice(0, 10)) : ''} · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)}` }
+    if (two.item.status === 'sent') return { ...base, state: 'sent', words: `letter two sent ${two.item.sent_at ? fmt(calendarYmdInAppTzFromIso(two.item.sent_at)) : ''} · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)}` }
     return { ...base, state: 'in_flight', words: `letter two · ${letterTwoKindLabel(two.draft!.letterTwo!.kind)} · ${two.item.status === 'awaiting_approval' ? 'awaiting the leader' : two.item.status === 'approved' ? 'in the run' : two.item.status === 'held' ? 'held' : 'drafting'}` }
   }
   if (input.openBalance <= 0.005) return { ...base, state: 'paid', words: 'paid' }
-  if (gcAuthorized) return { ...base, state: 'gc_authorized', words: `GC authorized direct pay ${fmt(gcAuthorized.at.slice(0, 10))}` }
-  if (ownerCalledAt) return { ...base, state: 'owner_called', words: `owner called ${fmt(ownerCalledAt.slice(0, 10))}` }
+  if (gcAuthorized) return { ...base, state: 'gc_authorized', words: `GC authorized direct pay ${fmt(calendarYmdInAppTzFromIso(gcAuthorized.at))}` }
+  if (ownerCalledAt) return { ...base, state: 'owner_called', words: `owner called ${fmt(calendarYmdInAppTzFromIso(ownerCalledAt))}` }
   if (day >= LETTER_TWO_BY_DAY) return { ...base, state: 'overdue', words: `day ${day} · letter two overdue` }
   if (day >= LETTER_TWO_FROM_DAY) return { ...base, state: 'due', words: `day ${day} · letter two` }
   return { ...base, state: 'waiting', words: `day ${day}` }

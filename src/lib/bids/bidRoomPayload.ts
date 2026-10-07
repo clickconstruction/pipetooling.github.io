@@ -20,6 +20,8 @@ export type RoomOption = {
   /** True for the merged base option — pre-selected, badged "Proposed" on the room page. */
   is_base: boolean
   total_cents: number
+  /** v2.4728: the bid version this option is (a letter with options); absent on older revisions and on a merged base. */
+  bid_version_id?: string | null
   fixture_rows: RoomFixtureRow[]
 }
 
@@ -63,6 +65,8 @@ export type RoomSectionInput = {
   isAlternate: boolean
   revenueSum: number
   fixtureRows: RoomFixtureRow[]
+  /** v2.4728: the section's bid version, carried onto its option so a signature can record the option taken. */
+  bidVersionId?: string | null
 }
 
 function centsFromDollars(n: number): number {
@@ -104,6 +108,8 @@ export function buildBidRoomRevisionPayload(input: {
     name: baseName,
     is_base: true,
     total_cents: base.reduce((sum, s) => sum + centsFromDollars(s.revenueSum), 0),
+    // v2.4728: one base carries its version; a merged base is nobody's option.
+    ...(base.length === 1 && base[0]!.bidVersionId ? { bid_version_id: base[0]!.bidVersionId } : {}),
     fixture_rows: base.flatMap((s) => s.fixtureRows),
   }
   const options: RoomOption[] = [
@@ -113,6 +119,7 @@ export function buildBidRoomRevisionPayload(input: {
       name: s.name.trim() || `Alternate ${i + 1}`,
       is_base: false,
       total_cents: centsFromDollars(s.revenueSum),
+      ...(s.bidVersionId ? { bid_version_id: s.bidVersionId } : {}),
       fixture_rows: s.fixtureRows,
     })),
   ]
@@ -157,6 +164,7 @@ export function parseBidRoomRevisionPayload(raw: unknown): BidRoomRevisionPayloa
       name: typeof opt.name === 'string' ? opt.name : '',
       is_base: opt.is_base === true,
       total_cents: Number.isFinite(total) ? Math.round(total) : 0,
+      ...(typeof opt.bid_version_id === 'string' && opt.bid_version_id.trim() ? { bid_version_id: opt.bid_version_id.trim() } : {}),
       fixture_rows: Array.isArray(opt.fixture_rows)
         ? opt.fixture_rows
             .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')

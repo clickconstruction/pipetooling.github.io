@@ -20,6 +20,7 @@
  * packet print all read these, so the three never disagree on a date.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { noticeDeadlineForMonth } from '../jobs/lienDeadlines'
 import { buildLienTimelineFromWindow } from '../jobs/lienTimelineDesk'
@@ -84,11 +85,38 @@ export function workMonthsFromSessions(jobId: string, sessions: ReadonlyArray<Le
   }
 }
 
+/**
+ * Where a job's last day of work comes from (item 25: one fallback chain for the lien clock and the
+ * Paper tab, the same as the timeline kernel's): the last approved clock session, else the job's last
+ * work date, else the day the job was created (the timeline runs its creation month), else nothing.
+ */
+export type LegalLastWorkSource = 'sessions' | 'last_work_date' | 'created' | 'none'
+
+export function legalLastWorkBasis(approvedSessionDays: ReadonlyArray<string>, job: { last_work_date?: string | null; created_at?: string | null }): { ymd: string | null; source: LegalLastWorkSource } {
+  const days = [...approvedSessionDays].filter(Boolean).sort()
+  if (days.length) return { ymd: days[days.length - 1] ?? null, source: 'sessions' }
+  const lw = /^\d{4}-\d{2}-\d{2}/.test(job.last_work_date ?? '') ? String(job.last_work_date).slice(0, 10) : ''
+  if (lw) return { ymd: lw, source: 'last_work_date' }
+  const created = calendarYmdInAppTzFromIso(job.created_at ?? '')
+  if (created) return { ymd: created, source: 'created' }
+  return { ymd: null, source: 'none' }
+}
+
+/** The Paper tab's words for that day, saying where it came from. */
+export function legalLastWorkWords(ymd: string | null, source: LegalLastWorkSource | undefined): string {
+  if (!ymd || source === 'none') return ''
+  if (source === 'last_work_date') return `last work date on the job ${ymd} (no approved clock session)`
+  if (source === 'created') return `no work date on file: dated from the job's creation month, ${ymd.slice(0, 7)}`
+  return `last approved clock day ${ymd}`
+}
+
 export type LegalJobTimeline = {
   jobId: string
   jobLabel: string
-  /** 'YYYY-MM-DD' of the last approved session, else the ledger's last_work_date; null when neither. */
+  /** 'YYYY-MM-DD' of the last approved session, else the ledger's last_work_date, else the job's creation day (`legalLastWorkBasis`); null when none. */
   lastWorkYmd: string | null
+  /** Which of those it is. */
+  lastWorkSource?: LegalLastWorkSource
   openBalance: number
   timeline: LienTimeline
   /** The § 53.057 facts the job row carries — `contract ended Nov 30 · retainage held $2,400 · payment bond on the project`; '' when the row holds none. */
@@ -125,24 +153,29 @@ export function buildLegalJobTimelines(args: {
   labelOf: (jobId: string) => string
   openBalanceOf: (jobId: string) => number
   lastWorkOf: (jobId: string) => string | null
+  /** Where `lastWorkOf`'s day came from (item 25); absent for an older caller. */
+  lastWorkSourceOf?: (jobId: string) => LegalLastWorkSource
   sessions: ReadonlyArray<LegalPaperSessionLike>
   filings: ReadonlyArray<JobLienFilingRow>
   propertyKind: string
+  /** Each job's own property kind (#85 item 6); `propertyKind` is the fallback for an older caller. */
+  propertyKindOf?: (jobId: string) => string
   isSub: boolean
   todayYmd: string
 }): LegalJobTimeline[] {
   return args.jobs.map((j) => {
     const openBalance = args.openBalanceOf(j.id)
+    const propertyKind = args.propertyKindOf ? args.propertyKindOf(j.id) : args.propertyKind
     const timeline = buildLienTimelineFromWindow({
-      workMonths: workMonthsFromSessions(j.id, args.sessions, { isSub: args.isSub, propertyKind: args.propertyKind }),
+      workMonths: workMonthsFromSessions(j.id, args.sessions, { isSub: args.isSub, propertyKind }),
       filings: args.filings,
       job: { id: j.id, created_at: j.created_at ?? null, last_work_date: j.last_work_date ?? null, lien_contract_ended_on: j.lien_contract_ended_on ?? null },
       isSub: args.isSub,
-      propertyKind: args.propertyKind,
+      propertyKind,
       openBalance,
       todayYmd: args.todayYmd,
     })
-    return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
+    return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), lastWorkSource: args.lastWorkSourceOf?.(j.id), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
   })
 }
 
@@ -187,6 +220,7 @@ export type LegalEnvelope = {
 const RECIPIENT_LABEL: Record<string, string> = { owner: 'owner of record', original_contractor: 'original contractor' }
 const KIND_LABEL: Record<string, string> = { notice_53_056: '§ 53.056 notice', retainage_53_057: '§ 53.057 retainage notice', affidavit: "Mechanic's lien affidavit", release_of_record: 'Release of record' }
 
+/** A `date` column's YYYY-MM-DD (`filed_at`, `served_at`). Not for a `timestamptz`: its day is `calendarYmdInAppTzFromIso`. */
 function ymdOf(iso: string | null | undefined): string | null {
   if (!iso) return null
   const s = String(iso)
@@ -221,7 +255,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
  * rows belong (the caller has already dropped voided ones). Ordered by the day
  * the paper went out, oldest first, lettered in that order.
  */
-export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, opts: { labelOf: (jobId: string) => string; propertyKind: string }): LegalEnvelope[] {
+export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, opts: { labelOf: (jobId: string) => string; propertyKind: string; /** The first job's own kind dates the paper's months (#85 item 6). */ propertyKindOf?: (jobId: string) => string }): LegalEnvelope[] {
   type Group = { key: string; rows: JobLienFilingRow[] }
   const groups = new Map<string, Group>()
   for (const f of filings) {
@@ -236,17 +270,18 @@ export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, op
     const first = g.rows.slice().sort((a, b) => a.created_at.localeCompare(b.created_at))[0]
     if (!first) continue
     const sends = parseSends(first.sends)
-    const wentOutYmd = sends.map((s) => s.sentOn).filter(Boolean).sort()[0] ?? ymdOf(first.filed_at) ?? ymdOf(first.created_at)
+    const wentOutYmd = sends.map((s) => s.sentOn).filter(Boolean).sort()[0] ?? ymdOf(first.filed_at) ?? (calendarYmdInAppTzFromIso(first.created_at) || null)
     const shares: LegalEnvelopeShare[] = g.rows
       .map((r) => ({ jobId: r.job_id, jobLabel: opts.labelOf(r.job_id), amount: Number(r.amount ?? 0) }))
       .sort((a, b) => a.jobLabel.localeCompare(b.jobLabel, undefined, { numeric: true }))
     const printed = (first as unknown as { printed_claim?: number | null }).printed_claim
     const claim = typeof printed === 'number' && printed > 0 ? printed : shares.reduce((s, x) => s + x.amount, 0)
     const monthKeys = [...new Set(g.rows.flatMap((r) => r.months_covered ?? []))].sort()
+    const kind = opts.propertyKindOf ? opts.propertyKindOf(first.job_id) : opts.propertyKind
     const months: LegalEnvelopeMonth[] = monthKeys.map((key) => ({
       key,
       label: workMonthShort(key),
-      asInformation: first.kind === 'notice_53_056' && wentOutYmd != null && noticeDeadlineForMonth(`${key}-01`, opts.propertyKind) < wentOutYmd,
+      asInformation: first.kind === 'notice_53_056' && wentOutYmd != null && noticeDeadlineForMonth(`${key}-01`, kind) < wentOutYmd,
     }))
     const doc = first as unknown as { document_url?: string | null; document_note?: string | null; by_hand?: boolean | null }
     envelopes.push({
@@ -390,7 +425,7 @@ function letterTwoClockWords(s: LetterTwoStatus, day: (ymd: string) => string): 
     case 'gc_authorized': return 'not needed — the GC authorized direct pay'
     case 'owner_called': return `day ${s.day} · turned off by the owner's call`
     case 'in_flight': return `${letterTwoKindLabel(s.letterTwo!.kind)} · drafted at the office, not yet sent`
-    case 'sent': return `sent${s.letterTwo?.sentAt ? ` ${day(s.letterTwo.sentAt.slice(0, 10))}` : ''} · ${letterTwoKindLabel(s.letterTwo!.kind)}`
+    case 'sent': return `sent${s.letterTwo?.sentAt ? ` ${day(calendarYmdInAppTzFromIso(s.letterTwo.sentAt))}` : ''} · ${letterTwoKindLabel(s.letterTwo!.kind)}`
   }
 }
 
@@ -408,7 +443,7 @@ export function envelopeAnswersWords(a: LegalEnvelopeAnswers, opts: { todayYmd: 
   const c = a.ownerCall
   if (!c) owner = 'no call recorded yet — the three answers the letter asks for are still owed'
   else {
-    const when = `${day(c.at.slice(0, 10))}${c.name ? `, ${c.name}` : ''}`
+    const when = `${day(calendarYmdInAppTzFromIso(c.at))}${c.name ? `, ${c.name}` : ''}`
     const owes = c.owesGc === 'yes' ? `still owes ${gc}${c.owesAmount != null ? ` ${fmt(c.owesAmount)}` : ''}` : c.owesGc === 'no' ? `owes ${gc} nothing` : `whether they still owe ${gc}: unknown`
     const reserved = c.reserved === 'held' ? 'reserved the 10% and still holds it' : c.reserved === 'released' ? 'reserved the 10% and released it to the GC' : c.reserved === 'never' ? 'never reserved the 10%' : 'the 10%: unknown'
     const done = c.originalContractCompletedOn ? `their contract ${c.originalContractCompletedOn <= opts.todayYmd ? 'completed' : 'completes'} ${day(c.originalContractCompletedOn)}` : 'their contract is still open or undated'
@@ -420,6 +455,6 @@ export function envelopeAnswersWords(a: LegalEnvelopeAnswers, opts: { todayYmd: 
   const distinct = [...new Set(clocks.map((x) => x.words))]
   const letterTwo = clocks.length === 0 ? '—' : distinct.length === 1 ? distinct[0]! : clocks.map((x) => `${x.label}: ${x.words}`).join(' · ')
   const g = a.gcAuthorized
-  const gcOkay = g ? `${day(g.at.slice(0, 10))}${g.name ? ` · ${g.name}` : ''}${g.note.trim() ? ` · ${g.note.trim()}` : ''}` : 'none'
+  const gcOkay = g ? `${day(calendarYmdInAppTzFromIso(g.at))}${g.name ? ` · ${g.name}` : ''}${g.note.trim() ? ` · ${g.note.trim()}` : ''}` : 'none'
   return { owner, letterTwo, gcOkay }
 }

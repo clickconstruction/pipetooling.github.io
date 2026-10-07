@@ -4,7 +4,7 @@ import { buildGcChecksReport, checkAppliedSentence, checkHeadline, checkMoveWord
 import { fetchGcChecksInputs, type GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
 import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName } from '../../lib/jobsDocuments/gcChecksAppliedReport'
 
 type Props = {
@@ -60,7 +60,8 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
 
   function printSheet() {
     if (!sheet) return
-    const ok = openHtmlPrintWindow(buildGcChecksAppliedReportHtml(gcName, sheet, { asOfYmd: todayYmd }))
+    // A print counts as a send (docs/SENT_COPIES.md): the checks sheet is filed under the GC.
+    const ok = printAndFile(buildGcChecksAppliedReportHtml(gcName, sheet, { asOfYmd: todayYmd }), { kind: 'gc_checks_applied', title: `Checks applied for ${gcName}`, recipientName: gcName, customerId: gcId })
     setNote(ok ? null : 'The browser blocked the print window — allow pop-ups for this site and try again.')
   }
 
@@ -93,11 +94,11 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
           onClose()
         }
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764, paddingTop: 'var(--app-top-chrome, 0px)' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(680px, 94vw)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(680px, 94vw)', maxHeight: 'min(88vh, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
       >
         <div style={{ padding: '0.85rem 1.1rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>

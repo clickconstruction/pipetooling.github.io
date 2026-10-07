@@ -8,6 +8,7 @@
  * site Fri" and know whether a typed 40% is older than the last clock-in.
  * Pure; dates are company-calendar `YYYY-MM-DD` strings and ISO instants.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type JobCrewPositionRpcRow = {
   job_ledger_id: string
@@ -159,5 +160,5 @@ export function percentIsStale(p: JobCrewPosition | null | undefined, typedPct: 
   const n = newestPercent(p, typedPct)
   if (!n || !p?.lastWorkYmd) return false
   if (!n.at) return true // a percent with no date on record and a crew on site since: treat as stale
-  return n.at.slice(0, 10) < p.lastWorkYmd
+  return calendarYmdInAppTzFromIso(n.at) < p.lastWorkYmd
 }

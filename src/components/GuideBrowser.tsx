@@ -104,7 +104,7 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
     [selectedGuide],
   )
   // Heading anchors (v2.3594): the sanitizer strips ids, so they are stamped on the rendered
-  // article, and a `#fragment` on the address (the Lien desk's § The rules door) scrolls to it.
+  // article, and a `#fragment` on the address (the Lien desk's § Rules door) scrolls to it.
   const articleRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const root = articleRef.current
@@ -177,7 +177,14 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
             onClick={(e) => {
               // A guide-to-guide link (`/help/<slug>` in the markdown) comes through
               // helpGuideHtml as `a[data-guide]`; open it in place instead of reloading.
-              const link = (e.target as HTMLElement).closest('a[data-guide], a[data-app]')
+              const link = (e.target as HTMLElement).closest('a[data-guide], a[data-app], a[data-anchor]')
+              // v2.4529: a link to a heading of this guide (`[The month rule](#the-month-rule)`) scrolls to it.
+              const anchor = link?.getAttribute('data-anchor')
+              if (anchor) {
+                e.preventDefault()
+                articleRef.current?.querySelector<HTMLElement>(`[id="${CSS.escape(anchor)}"]`)?.scrollIntoView?.({ block: 'start' })
+                return
+              }
               const slug = link?.getAttribute('data-guide')
               if (slug) {
                 e.preventDefault()

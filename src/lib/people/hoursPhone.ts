@@ -3,6 +3,7 @@
  * two tables and a grid. Pure — who is in, who left today, and who has hours
  * waiting, each as rows with one number.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export interface HoursPhoneSession {
   id: string
@@ -89,7 +90,7 @@ export function approvalsPhonePeople(pending: ReadonlyArray<HoursPhoneSession>):
   const byUser = new Map<string, ApprovalsPhonePerson & { dayKeys: Set<string> }>()
   for (const s of pending) {
     if (!s.clocked_out_at) continue
-    const day = (s.work_date ?? s.clocked_in_at).slice(0, 10)
+    const day = s.work_date ? s.work_date.slice(0, 10) : calendarYmdInAppTzFromIso(s.clocked_in_at)
     const g = byUser.get(s.user_id) ?? { userId: s.user_id, name: s.name, sessions: 0, days: 0, hours: 0, oldestYmd: day, noJob: 0, dayKeys: new Set<string>() }
     g.sessions += 1
     g.hours += hoursBetween(s.clocked_in_at, Date.parse(s.clocked_out_at))

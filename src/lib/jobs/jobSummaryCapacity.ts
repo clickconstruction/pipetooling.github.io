@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobDayLedger } from './jobDayLedger'
 import { dayNumberToYmd, mondayOfYmd, ymdToDayNumber } from './jobRunningTimeline'
 
@@ -61,7 +62,7 @@ function isWeekday(ymd: string): boolean {
 
 function activeOn(p: CapacityPerson, ymd: string): boolean {
   if (!CAPACITY_FIELD_KINDS.has(p.kind)) return false
-  if (p.archived_at && p.archived_at.slice(0, 10) <= ymd) return false
+  if (p.archived_at && calendarYmdInAppTzFromIso(p.archived_at) <= ymd) return false
   if (p.start_date && p.start_date.slice(0, 10) > ymd) return false
   if (p.end_date && p.end_date.slice(0, 10) < ymd) return false
   return true

@@ -75,7 +75,7 @@ describe('deriveStagesFieldTooltip', () => {
 describe('billing activity (Stages b: and the Job Detail middle row)', () => {
   const job = {
     invoices: [
-      { sent_to_customer_at: '2026-08-20T15:00:00+00:00', billed_at: '2026-08-19' },
+      { sent_to_customer_at: '2026-08-20T15:00:00+00:00', billed_at: '2026-08-19T18:00:00Z' },
       { sent_to_customer_at: null, billed_at: '2026-08-28T09:00:00Z' },
     ],
     payments: [{ paid_on: '2026-08-25' }, { paid_on: null }],
@@ -89,10 +89,20 @@ describe('billing activity (Stages b: and the Job Detail middle row)', () => {
     const paid = { ...job, payments: [{ paid_on: '2026-09-02' }] }
     expect(deriveStagesBillingActivityDetail(paid)).toEqual({ ymd: '2026-09-02', tooltip: 'Latest: Payment recorded (2026-09-02)', labels: ['Payment recorded'] })
   })
+  it('an invoice sent or billed in a Central evening reads that day, not the UTC date', () => {
+    // 7:30 pm CDT on Oct 2 (also as +00:00); 6:30 pm CST on Dec 1; noon UTC is its own day.
+    const one = (inv: { sent_to_customer_at: string | null; billed_at: string | null }) => deriveStagesBillingActivityDetail({ invoices: [inv], payments: [] })
+    expect(one({ sent_to_customer_at: null, billed_at: '2026-10-03T00:30:00Z' })).toEqual({ ymd: '2026-10-02', tooltip: 'Latest: Invoice billed (2026-10-02)', labels: ['Invoice billed'] })
+    expect(one({ sent_to_customer_at: '2026-10-03T00:30:00.123+00:00', billed_at: null })?.ymd).toBe('2026-10-02')
+    expect(one({ sent_to_customer_at: '2026-12-02T00:30:00Z', billed_at: null })?.ymd).toBe('2026-12-01')
+    expect(one({ sent_to_customer_at: null, billed_at: '2026-10-03T12:00:00Z' })?.ymd).toBe('2026-10-03')
+    // A payment recorded that day ties with the evening bill.
+    expect(deriveStagesBillingActivityDetail({ invoices: [{ sent_to_customer_at: null, billed_at: '2026-10-03T00:30:00Z' }], payments: [{ paid_on: '2026-10-02' }] })?.labels).toEqual(['Invoice billed', 'Payment recorded'])
+  })
   it('a same-day tie lists every distinct label once, in sent → billed → payment order', () => {
     const tied = {
       invoices: [
-        { sent_to_customer_at: '2026-09-03T12:00:00Z', billed_at: '2026-09-03' },
+        { sent_to_customer_at: '2026-09-03T12:00:00Z', billed_at: '2026-09-03T18:00:00Z' },
         { sent_to_customer_at: '2026-09-03T18:00:00Z', billed_at: null },
       ],
       payments: [{ paid_on: '2026-09-03' }],

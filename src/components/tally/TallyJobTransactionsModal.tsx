@@ -79,7 +79,7 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1160,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
     >
@@ -92,7 +92,7 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
           borderRadius: 8,
           maxWidth: 640,
           width: '100%',
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

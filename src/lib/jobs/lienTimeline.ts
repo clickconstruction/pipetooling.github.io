@@ -3,6 +3,7 @@ import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling,
 
 export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
+import { LAST_DAY_SET_BY_HAND_WORDS } from './lienLastWorkDay'
 import { workMonthShort } from './forecastWorkMonths'
 
 /**
@@ -127,7 +128,7 @@ export interface LienTimelineDemandLetter {
   paidAt?: string | null
 }
 
-export type LienTimelineNextKind = 'lien_gone' | 'release' | 'serve' | 'notice' | 'retainage' | 'affidavit' | 'suit' | 'none'
+export type LienTimelineNextKind = 'lien_gone' | 'late_notice' | 'release' | 'serve' | 'notice' | 'retainage' | 'affidavit' | 'suit' | 'none'
 
 export interface LienTimelineNext {
   kind: LienTimelineNextKind
@@ -165,7 +166,7 @@ export interface LienTimelineMonth {
   deadline: string
   fromCreation: boolean
   outcome: LienTimelineMonthOutcome
-  /** sent: the send date-time; skipped: when; missed: when it was noted ('' = nobody has). */
+  /** 'YYYY-MM-DD' in the company calendar: sent: the send day; skipped: when; missed: when it was noted ('' = nobody has). The adapters read each instant's day. */
   at: string
   /** True when the reader cannot know whether a miss was noted (the Lien window has no desk items) — the words say *window closed* and nothing more. */
   noteUnknown?: boolean
@@ -180,6 +181,8 @@ export interface LienTimelineInput {
   /** 'YYYY-MM' — the last month worked, or the creation month; '' unknown. */
   lastMonth: string
   lastMonthFromCreation: boolean
+  /** The last month is the day set by hand (v2.4676) — the node says so. */
+  lastMonthByHand?: boolean
   months: ReadonlyArray<LienTimelineMonth>
   /** Where the job's live notice sits on the desk, for the due node's words. */
   noticeState: LienTimelineNoticeState
@@ -198,6 +201,7 @@ export interface LienTimelineInput {
   } | null
   /** The § 53.101 clock: null until the job carries the fact (#33 §3). */
   originalContractCompletedOn: string | null
+  /** 'YYYY-MM-DD': the release's `filed_at`, else the day its row was made in the company calendar. */
   releasedAt: string | null
   paid: boolean
   /** The job's demand letters (v2.3877); absent when the caller has not loaded them — the strip then draws no letter. */
@@ -205,6 +209,17 @@ export interface LienTimelineInput {
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/**
+ * A date never breaks across lines (v2.4633, the owner's ask: *Aug 1 goes to the second line if the 1 does*):
+ * the spaces inside `Aug 1`, `Jan 17, 2028` and `Sep 2026` become no-break spaces, so a narrow
+ * column wraps before the date, never inside it. The words around the date still wrap.
+ */
+export function keepDatesWhole(text: string): string {
+  return text
+    .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2})(, (\d{4}))?\b/g, (_m, mon: string, day: string, _y, year?: string) => `${mon}\u00a0${day}${year ? `,\u00a0${year}` : ''}`)
+    .replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g, '$1\u00a0$2')
+}
 
 /** `Oct 15`, or `Oct 15, 2027` when the year is not this one. */
 export function lienDateWords(ymd: string, todayYmd: string): string {
@@ -339,7 +354,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       date: `${input.lastMonth}-01`,
       dateWords: `${workMonthShort(input.lastMonth)} ${input.lastMonth.slice(0, 4)}`,
       state: 'done',
-      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : 'clock hours',
+      words: input.lastMonthFromCreation ? DATED_FROM_CREATION_WORDS : input.lastMonthByHand ? LAST_DAY_SET_BY_HAND_WORDS : 'clock hours',
       daysLeft: null,
       door: null,
     })
@@ -375,11 +390,17 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     steps.push({ kind: 'notice', key: 'notice', cite: '§ 53.056', label: '§ 53.056 notice', date: '', dateWords: 'none', state: 'done', words: 'not required · contracted with the owner', daysLeft: null, door: null })
   }
 
-  const lienGone = input.isSub && months.length > 0 && openMonths.length === 0 && !anySent && !input.affidavit?.filedAt
-
-  // 3 · affidavit facts, needed by the retainage/hold choice
+  // 3 · affidavit facts, needed by the lien-gone call and the retainage/hold choice
   const filingDeadline = input.affidavit?.deadline || (input.lastMonth ? filingDeadlineForMonth(`${input.lastMonth}-01`, input.propertyKind) : '')
   const filedAt = input.affidavit?.filedAt ? input.affidavit.filedAt.slice(0, 10) : ''
+
+  // Every notice window closed with nothing sent. While the affidavit's OWN window is still open, a
+  // LATE § 53.056 notice can still go out and the affidavit follow it — the owner's reading of
+  // 2026-10-06 (v2.4708; counsel's 2026-09-22 memo, answer 6, read a closed month as information
+  // only — that question is back with counsel). Once the affidavit window closes too, the lien is gone.
+  const noNoticeAllClosed = input.isSub && months.length > 0 && openMonths.length === 0 && !anySent && !filedAt
+  const lateNoticeOpen = noNoticeAllClosed && Boolean(filingDeadline) && filingDeadline >= todayYmd
+  const lienGone = noNoticeAllClosed && !lateNoticeOpen
   const releasedAt = input.releasedAt ? input.releasedAt.slice(0, 10) : ''
 
   // 4 · § 53.057 retainage — before the affidavit; drawn undated until the contract-end date exists
@@ -421,7 +442,10 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       state = openMonths.length ? 'later' : 'due'
       words = [daysWords(left), missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
       // The first day (v2.3815): a sub's lien follows its notice; an original contractor's the month after the work.
-      if (input.isSub) {
+      if (lateNoticeOpen) {
+        words = [daysWords(left), 'send the late notice first', missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
+        opensWords = 'opens when the late notice is mailed'
+      } else if (input.isSub) {
         const sentOn = months.filter((m) => m.outcome === 'sent' && m.at).map((m) => m.at.slice(0, 10)).sort()[0] ?? ''
         opensOn = sentOn
         opensWords = sentOn ? lienOpensWords(sentOn, todayYmd) : anySent ? 'open · the notice is out' : 'opens when the notice is mailed'
@@ -529,6 +553,17 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     next = { kind: 'none', words: `Released ${lienDateWords(releasedAt, todayYmd)} — the clock stopped.`, aside: '', date: releasedAt, daysLeft: null, tone: 'green' }
   } else if (lienGone) {
     next = { kind: 'lien_gone', words: 'Lien: gone. Money: still owed — chase it in Collections.', aside: unnotedMisses.length ? 'Write the closed window down with your name so the Dashboard stops naming it.' : '', date: '', daysLeft: null, tone: 'red' }
+  } else if (lateNoticeOpen) {
+    const a = steps.find((x) => x.kind === 'affidavit')!
+    const closedKeys = months.filter((m) => m.outcome !== 'sent' && m.outcome !== 'skipped').map((m) => m.key)
+    next = {
+      kind: 'late_notice',
+      words: `Send the ${monthsPhrase(closedKeys)} notice late, then file the affidavit — ${daysWords(a.daysLeft)}.`,
+      aside: `The notice window closed; the affidavit can still be filed by ${a.dateWords}.`,
+      date: a.date,
+      daysLeft: a.daysLeft,
+      tone: (a.daysLeft ?? 99) <= 7 ? 'red' : (a.daysLeft ?? 99) <= 14 ? 'amber' : 'quiet',
+    }
   } else if (filedAt && input.paid) {
     next = { kind: 'release', words: 'Paid — file the release of record.', aside: 'The owner is waiting for the paper; promise it the day funds clear.', date: '', daysLeft: 0, tone: 'green' }
   } else if (filedAt && !input.affidavit?.servedAt) {
@@ -568,7 +603,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
 
   // The Windows view's second sentence (v2.3815): once the notice is out, the lien may follow it.
   const aff = steps.find((x) => x.kind === 'affidavit')
-  const windowsAside = next.kind === 'notice' && input.isSub && aff && aff.state !== 'done' && aff.state !== 'missed' && aff.date
+  const windowsAside = (next.kind === 'notice' || next.kind === 'late_notice') && input.isSub && aff && aff.state !== 'done' && aff.state !== 'missed' && aff.date
     ? `Once it is mailed, the lien can be filed any day until ${aff.dateWords}. Filing it is the leader’s call.`
     : ''
 
@@ -660,6 +695,8 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
   switch (next.kind) {
     case 'notice':
       return { who: 'ours', words: noticeWaitWords(input.noticeState) }
+    case 'late_notice':
+      return { who: 'ours', words: `the late notice, then the affidavit by ${next.date ? lienDateWords(next.date, todayYmd) : 'its last day'}` }
     case 'retainage':
       return { who: 'ours', words: 'the § 53.057 retainage notice to be sent' }
     case 'affidavit':
@@ -675,6 +712,30 @@ function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimeline
     default:
       return null
   }
+}
+
+/**
+ * The path as the law firm reads it (punch list #85, item 3). The desk's words name the office's
+ * own screens (*Collections*, *the Legal desk*) and call the office *us*; the firm's page says
+ * *the office*, calls counsel *you*, and names no screen. Keyed off the same `kind`, so the
+ * desk's sentences stay as they are.
+ */
+export function lienFirmMoveWords(move: LienTimelineMove): string {
+  if (move === 'ours') return 'the office'
+  if (move === 'counsel') return 'you'
+  return lienMoveWords(move)
+}
+
+/** Next on the path in the firm's words: a lien that is gone reads as the fact, with no office chore beside it. */
+export function lienFirmNext(next: Pick<LienTimelineNext, 'kind' | 'words' | 'aside'>): { words: string; aside: string } {
+  if (next.kind === 'lien_gone') return { words: 'The lien window closed with nothing filed. The lien is gone; the money is still owed.', aside: 'The office referred the account to you.' }
+  return { words: next.words, aside: next.aside }
+}
+
+/** The *Waiting on* line in the firm's words; null when there is none, or when the lien is gone (the Next line already says the money is still owed). */
+export function lienFirmWaitingOn(t: Pick<LienTimeline, 'waitingOn' | 'next'>): { who: string; words: string } | null {
+  if (!t.waitingOn || t.next.kind === 'lien_gone') return null
+  return { who: lienFirmMoveWords(t.waitingOn.who), words: t.waitingOn.words }
 }
 
 /** The one-line form for a sticky strip or a list row: `Next on the path · Approve the Aug notice — 22 days`. */

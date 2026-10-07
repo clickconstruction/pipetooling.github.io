@@ -11,7 +11,7 @@ import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenFor
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, denverCalendarDayKey, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, denverCalendarDayKey, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 import { formatStripeCents } from '../../lib/stripeInvoicePreview'
 import {
   parseStripeInvoiceDetailsResponse,
@@ -182,7 +182,7 @@ export function HostedStripeBillPanel({
   onAfterStripeDetailsLoaded,
   onAfterOobUnwindSuccess,
   onAfterVoidStripeInvoiceSuccess,
-  voidConfirmOverlayZIndex = 120,
+  voidConfirmOverlayZIndex = 820,
   viewBillOnClose,
 }: {
   invoice: InvoiceWithJobForBillView
@@ -499,7 +499,7 @@ export function HostedStripeBillPanel({
                 {inv.sent_to_customer_at ? (
                   <div>
                     <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
-                    {String(inv.sent_to_customer_at).slice(0, 10)}
+                    {calendarYmdInAppTzFromIso(String(inv.sent_to_customer_at))}
                   </div>
                 ) : null}
               </div>
@@ -848,7 +848,7 @@ export function HostedStripeBillPanel({
             {inv.sent_to_customer_at ? (
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
-                {String(inv.sent_to_customer_at).slice(0, 10)}
+                {calendarYmdInAppTzFromIso(String(inv.sent_to_customer_at))}
               </div>
             ) : null}
             {inv.external_send_note ? (

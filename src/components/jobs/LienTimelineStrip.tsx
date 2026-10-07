@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
+import { windowsAxis } from '../../lib/jobs/lienWindowsAxis'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
 
 /**
@@ -22,6 +23,14 @@ import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from 
  * the owner · county · counsel — and a *Waiting on* line under Next on the path. The demand
  * letter is a square node, because it is our paper and not a Chapter 53 step. The mini row
  * carries neither word nor line.
+ *
+ * One story (v2.4652): the row, the list and the calendar lead with a **verdict band** — Next
+ * on the path, its aside and Waiting on, tinted by tone — because that sentence decides how
+ * the rest is read. The calendar draws **every** window, the closed ones too (a grey bar struck
+ * at its last day), a blocked lien as a dotted ghost of the window it never got, no date on a
+ * step that cannot happen, the today line only across bar rows, an axis of at least three
+ * months, a legend of only the marks drawn, and the papers that follow a filing as one quiet
+ * sentence. The Job History box fixes the calendar and hides the switch.
  */
 
 export type LienTimelineLayout = 'auto' | 'row' | 'list' | 'mini'
@@ -66,6 +75,18 @@ function miniDateWords(words: string): string {
 
 function nextColor(tone: LienTimeline['next']['tone']): string {
   return tone === 'red' ? 'var(--text-red-600)' : tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-800)' : 'var(--text-strong)'
+}
+
+/** The verdict band's tint per tone (v2.4652) — the Next line's own colours, as a wash. */
+function verdictBg(tone: LienTimeline['next']['tone']): string {
+  return tone === 'red' ? 'var(--bg-red-tint)' : tone === 'amber' ? 'var(--bg-amber-tint)' : tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)'
+}
+
+const LABEL: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
+
+/** One stop's node, exported for the stop window's folded dots (v2.4806). */
+export function LienTimelineNode({ s, size }: { s: LienTimelineStep; size: number }) {
+  return <Node s={s} size={size} />
 }
 
 function Node({ s, size }: { s: LienTimelineStep; size: number }) {
@@ -173,10 +194,10 @@ function FoldTray({ s, todayYmd }: { s: LienTimelineStep; todayYmd: string }) {
 }
 
 /** The pill's word and tint per move: ours reads in the link blue, the GC in violet, the owner in amber, the county and counsel in quiet grey. */
-function moveLook(move: LienTimelineMove): { word: string; color: string; background: string; border: string } {
+function moveLook(move: LienTimelineMove, voice: LienTimelineVoice = 'office'): { word: string; color: string; background: string; border: string } {
   switch (move) {
     case 'ours':
-      return { word: 'ours', color: 'var(--text-link)', background: 'var(--bg-blue-tint)', border: 'transparent' }
+      return { word: voice === 'firm' ? 'the office' : 'ours', color: 'var(--text-link)', background: 'var(--bg-blue-tint)', border: 'transparent' }
     case 'gc':
       return { word: 'the GC', color: 'var(--text-violet-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
     case 'owner':
@@ -184,12 +205,12 @@ function moveLook(move: LienTimelineMove): { word: string; color: string; backgr
     case 'county':
       return { word: 'county', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
     default:
-      return { word: 'counsel', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
+      return { word: voice === 'firm' ? 'you' : 'counsel', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
   }
 }
 
-function MovePill({ move, style }: { move: LienTimelineMove; style?: CSSProperties }) {
-  const l = moveLook(move)
+function MovePill({ move, voice, style }: { move: LienTimelineMove; voice?: LienTimelineVoice; style?: CSSProperties }) {
+  const l = moveLook(move, voice)
   return (
     <span data-lien-timeline-move={move} style={{ display: 'inline-block', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 5px', borderRadius: 999, lineHeight: '14px', whiteSpace: 'nowrap', color: l.color, background: l.background, border: `1px solid ${l.border}`, ...style }}>
       {l.word}
@@ -197,8 +218,13 @@ function MovePill({ move, style }: { move: LienTimelineMove; style?: CSSProperti
   )
 }
 
+/** Whose words the strip speaks (punch list #85, item 3): the office's own, or the law firm's on its portal (`lienFirmNext`). */
+export type LienTimelineVoice = 'office' | 'firm'
+
 export type LienTimelineStripProps = {
   timeline: LienTimeline
+  /** `firm` on the law firm's page: *the office* for *us*, *you* for counsel, no office screen named. */
+  voice?: LienTimelineVoice
   layout?: LienTimelineLayout
   /** A dashed step's door — `contract_end` opens Edit Job on the contract row; the desk passes it only once the job carries that field (v2.3753). */
   onDoor?: (door: NonNullable<LienTimelineStep['door']>) => void
@@ -206,11 +232,23 @@ export type LienTimelineStripProps = {
   withNext?: boolean
   /** Force a view instead of the remembered one (tests, print); the switch hides when set. */
   view?: LienTimelineView
+  /** The one door to the next step (v2.4693): the Lien window's button, drawn at the verdict band's right so the step is said once. */
+  nextDoor?: ReactNode
+  /** The last day of work's door (v2.4735): *change ›* under the LAST WORK stop; the Lien window opens its last-day line. */
+  onChangeLastWork?: () => void
+  /** A stop's paper (v2.4793): with it, every stop's title is a door, and a press hands the step over — the host opens `LienStopPaperWindow`. */
+  onOpenStep?: (step: LienTimelineStep) => void
+  /** The stop a window is open on (v2.4806): its node wears a blue ring — *this preview*. */
+  lit?: string | null
+  /** What blocks the lit stop (v2.4806): a red chip under it — *✗ owner of record missing*. */
+  blocked?: { key: string; words: string } | null
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, style }: LienTimelineStripProps) {
-  const { steps, next, todayIndex, kindUnknown } = timeline
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, style }: LienTimelineStripProps) {
+  const { steps, todayIndex, kindUnknown } = timeline
+  const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
+  const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
   const rememberedView = useLienTimelineView()
   const n = Math.max(1, steps.length)
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -218,6 +256,30 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
   // Which folded node is fanned open (v2.4111); the mini row never fans.
   const [openFold, setOpenFold] = useState<string | null>(null)
   const openFoldStep = steps.find((s) => s.key === openFold && s.fold) ?? null
+  // The stop's title (v2.4793): a door to its paper when the host opens one, else the plain label.
+  const stopLabel = (s: LienTimelineStep, labelStyle: CSSProperties) =>
+    onOpenStep ? (
+      <button type="button" className="lienStopDoor" data-lien-timeline-stop-door={s.key} onClick={() => onOpenStep(s)} title={`What this stop sends — ${s.label}`} style={labelStyle}>
+        {s.label}
+      </button>
+    ) : (
+      <span style={labelStyle}>{s.label}</span>
+    )
+  // The lit stop's node (v2.4806): a blue ring says *this preview is here*.
+  const node = (s: LienTimelineStep, size: number) =>
+    lit === s.key ? (
+      <span data-lien-timeline-lit style={{ display: 'inline-flex', borderRadius: '50%', boxShadow: '0 0 0 3px var(--surface), 0 0 0 5px var(--text-link)', flex: 'none' }}>
+        <Node s={s} size={size} />
+      </span>
+    ) : (
+      <Node s={s} size={size} />
+    )
+  const blockedChip = (s: LienTimelineStep) =>
+    blocked && blocked.key === s.key ? (
+      <span data-lien-timeline-blocked style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3, padding: '1px 7px', borderRadius: 999, background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)', color: 'var(--text-red-700)', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'none', letterSpacing: 0 }}>
+        ✗ {blocked.words}
+      </span>
+    ) : null
   const foldDoor = (s: LienTimelineStep) =>
     s.fold ? (
       <button
@@ -244,30 +306,41 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
   const layout: Exclude<LienTimelineLayout, 'auto'> = layoutProp === 'auto' ? (narrow ? 'list' : 'row') : layoutProp
   const view: LienTimelineView = layout === 'mini' ? 'steps' : viewProp ?? rememberedView
   const switchRow = layout === 'mini' || viewProp ? null : <ViewSwitch view={view} />
-  const waitLine = withNext && layout !== 'mini' && timeline.waitingOn ? (
-    <div data-lien-timeline-waiting style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: '0.1rem' }}>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Waiting on</span>
-      <strong style={{ color: 'var(--text-strong)' }}>{lienMoveWords(timeline.waitingOn.who)}</strong>
-      <span style={{ color: 'var(--text-muted)' }}>— {timeline.waitingOn.words}</span>
+  // The verdict band (v2.4652): Next on the path, its aside and Waiting on, ABOVE the drawing on the
+  // row, the list and the calendar. The mini row keeps the one quiet line under its rail.
+  const mini = layout === 'mini'
+  const waitLine = withNext && !mini && waiting ? (
+    <div data-lien-timeline-waiting style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem' }}>
+      <span style={LABEL}>Waiting on</span>
+      <strong style={{ color: 'var(--text-strong)' }}>{waiting.who}</strong>
+      <span style={{ color: 'var(--text-muted)' }}>— {waiting.words}</span>
     </div>
   ) : null
-  const nextLine = withNext ? (
-    <div data-lien-timeline-next style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: layout === 'list' ? '0.4rem' : '0.35rem', borderTop: layout === 'mini' ? 'none' : '1px solid var(--border)', marginTop: layout === 'mini' ? 0 : '0.3rem' }}>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Next on the path</span>
-      <strong style={{ color: nextColor(next.tone) }}>{next.words}</strong>
+  const nextWords = (
+    <div data-lien-timeline-next style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: mini ? '0.35rem' : 0 }}>
+      <span style={LABEL}>Next on the path</span>
+      <strong style={{ color: nextColor(next.tone), fontSize: mini ? undefined : '0.875rem' }}>{next.words}</strong>
       {next.aside ? <span style={{ color: 'var(--text-muted)' }}>{next.aside}</span> : null}
       {view === 'windows' && timeline.windowsAside ? <span data-lien-timeline-windows-aside style={{ color: 'var(--text-muted)' }}>{timeline.windowsAside}</span> : null}
       {kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>{LIEN_KIND_UNKNOWN_WORDS}</span> : null}
     </div>
-  ) : null
+  )
+  const nextLine = !withNext ? null : mini ? nextWords : (
+    <div data-lien-timeline-verdict data-tone={next.tone} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 1rem', flexWrap: 'wrap', padding: '0.5rem 0.7rem', marginBottom: '0.55rem', border: '1px solid var(--border)', borderRadius: 8, background: verdictBg(next.tone) }}>
+      <div style={{ display: 'grid', gap: '0.25rem', flex: '1 1 18rem', minWidth: 0 }}>
+        {nextWords}
+        {waitLine}
+      </div>
+      {nextDoor ? <div data-lien-timeline-verdict-door style={{ flex: 'none', marginLeft: 'auto' }}>{nextDoor}</div> : null}
+    </div>
+  )
 
   if (view === 'windows') {
     return (
       <div ref={hostRef} data-lien-timeline data-layout={layout} data-view="windows" style={{ display: 'grid', gap: 0, minWidth: 0, ...style }}>
         {switchRow}
-        <WindowsChart timeline={timeline} onDoor={onDoor} />
         {nextLine}
-        {waitLine}
+        <WindowsChart timeline={timeline} onDoor={onDoor} voice={voice} />
       </div>
     )
   }
@@ -276,22 +349,28 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
     return (
       <div ref={hostRef} data-lien-timeline data-layout="list" data-view="steps" style={{ display: 'grid', gap: 0, ...style }}>
         {switchRow}
+        {nextLine}
         <div style={{ position: 'relative', display: 'grid', gap: 0 }}>
           <span aria-hidden style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 2, background: 'var(--border-strong)' }} />
           {steps.map((s, i) => (
             <div key={s.key} data-lien-timeline-step={s.key} style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gap: '0 0.6rem', alignItems: 'start', padding: '0.28rem 0', borderTop: i === todayIndex && i > 0 ? '2px dashed var(--text-link)' : 'none', position: 'relative' }}>
               {i === todayIndex && i > 0 ? <span style={{ position: 'absolute', right: 0, top: -9, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', background: 'var(--surface)', padding: '0 4px' }}>today</span> : null}
-              <Node s={s} size={16} />
+              {node(s, 16)}
               <div style={{ minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.3 }}>
-                {s.move ? <MovePill move={s.move} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
-                <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{s.label}</span>
+                {s.move ? <MovePill move={s.move} voice={voice} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
+                {stopLabel(s, { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' })}
                 <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
-                {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{s.opensWords} ·</span> : null}
-                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : s.words}</span>
+                {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{keepDatesWhole(s.opensWords)} ·</span> : null}
+                <span style={{ color: wordsColor(s) }}>{s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}</span>
                 {s.fold ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem' }}>{foldDoor(s)}</span> : null}
                 {s.door && onDoor ? (
                   <button type="button" onClick={() => onDoor(s.door!)} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
                     set the date ›
+                  </button>
+                ) : null}
+                {s.kind === 'last_work' && onChangeLastWork ? (
+                  <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} style={{ marginLeft: '0.4rem', border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                    change ›
                   </button>
                 ) : null}
               </div>
@@ -299,18 +378,16 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
           ))}
         </div>
         {openFoldStep ? <FoldTray s={openFoldStep} todayYmd={timeline.todayYmd} /> : null}
-        {nextLine}
-        {waitLine}
       </div>
     )
   }
 
-  const mini = layout === 'mini'
   const nodeSize = mini ? 12 : 14
   const railTop = mini ? 5 : 6
   return (
     <div ref={hostRef} data-lien-timeline data-layout={layout} data-view="steps" style={{ display: 'grid', gap: 0, minWidth: 0, ...style }}>
       {switchRow}
+      {mini ? null : nextLine}
       <div style={{ position: 'relative', padding: mini ? '0 4px' : '0 6px' }}>
         <span aria-hidden style={{ position: 'absolute', left: `calc(${100 / n / 2}% + 2px)`, right: `calc(${100 / n / 2}% + 2px)`, top: railTop, height: 2, background: 'var(--border-strong)' }} />
         {todayIndex > 0 && todayIndex < n ? (
@@ -321,13 +398,13 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, position: 'relative' }}>
           {steps.map((s) => (
             <div key={s.key} data-lien-timeline-step={s.key} title={s.fold ? foldTitle(s, timeline.todayYmd) : `${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
-              <Node s={s} size={nodeSize} />
-              {mini ? null : <span style={{ marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.label}</span>}
-              {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{s.opensWords}</span> : null}
+              {node(s, nodeSize)}
+              {mini ? null : stopLabel(s, { marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' })}
+              {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{keepDatesWhole(s.opensWords)}</span> : null}
               <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
               {mini ? null : (
                 <span style={{ color: wordsColor(s), maxWidth: '100%' }}>
-                  {s.fold ? <FoldWords s={s} /> : s.words}
+                  {s.fold ? <FoldWords s={s} /> : keepDatesWhole(s.words)}
                   {s.fold ? (
                     <>
                       <br />
@@ -342,16 +419,24 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
                       </button>
                     </>
                   ) : null}
+                  {s.kind === 'last_work' && onChangeLastWork ? (
+                    <>
+                      {' '}
+                      <button type="button" data-lien-timeline-last-work-door onClick={onChangeLastWork} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                        change ›
+                      </button>
+                    </>
+                  ) : null}
                 </span>
               )}
-              {!mini && s.move ? <MovePill move={s.move} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
+              {!mini && s.move ? <MovePill move={s.move} voice={voice} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
+              {mini ? null : blockedChip(s)}
             </div>
           ))}
         </div>
         {!mini && openFoldStep ? <FoldTray s={openFoldStep} todayYmd={timeline.todayYmd} /> : null}
       </div>
-      {nextLine}
-      {waitLine}
+      {mini ? nextLine : null}
     </div>
   )
 }
@@ -374,7 +459,7 @@ function ViewSwitch({ view }: { view: LienTimelineView }) {
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.3rem' }}>
       <div role="group" aria-label="Timeline view" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
         {btn('steps', 'Steps', 'Each paper as a step, dated by its last day')}
-        {btn('windows', 'Windows', 'Each paper as a window, from the first day it can go out to the last — remembered on this device')}
+        {btn('windows', 'Windows', 'Each paper as a window on one calendar, from the first day it can go out to the last, the closed ones too — remembered on this device')}
       </div>
     </div>
   )
@@ -382,149 +467,266 @@ function ViewSwitch({ view }: { view: LienTimelineView }) {
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
+type BarTone = 'amber' | 'green' | 'violet' | 'closed' | 'ghost'
+
 type WindowRow =
-  | { key: string; label: string; sub: string; kind: 'bar'; start: string; end: string; tone: 'amber' | 'green' | 'violet'; waits: boolean; hatchTo: string; title: string }
-  | { key: string; label: string; sub: string; kind: 'text'; words: string; tone: 'muted' | 'red' | 'green'; door: LienTimelineStep['door'] }
+  | {
+      key: string
+      label: string
+      sub: string
+      kind: 'bar'
+      start: string
+      end: string
+      tone: BarTone
+      /** Dashed: a window that opens on another paper (the lien on the notice's mailing). */
+      waits: boolean
+      /** Hatch the days from `start` to here — the days already spent of an open window. */
+      hatchTo: string
+      /** The words under the bar, from its first day. */
+      caption: string
+      captionTone: 'red' | 'amber' | 'green' | 'violet' | 'muted'
+      /** A small chip after the caption — `not noted`. */
+      chip: string
+      title: string
+      /** The row's name reads muted — a step that cannot happen. */
+      dim: boolean
+    }
+  | { key: string; label: string; sub: string; kind: 'text'; words: string; tone: 'muted' | 'red' | 'green'; door: LienTimelineStep['door']; undated: boolean }
 
 function spanWords(from: string, to: string, todayYmd: string): string {
   return `${lienDateWords(from, todayYmd)} → ${lienDateWords(to, todayYmd)}`
 }
 
-/** The kernel's steps as calendar rows: which get a bar, which a line of words. */
-function windowRows(steps: ReadonlyArray<LienTimelineStep>, todayYmd: string): { rows: WindowRow[]; closed: string[]; also: string[] } {
+/** A closed month's own words after `window closed` — `noted`, `not noted`, `dated from creation`; '' when none. */
+function closedRest(words: string): string {
+  return words.replace(/^window closed(?: · )?/, '')
+}
+
+/** A closed § 53.056 month as a bar struck at its last day (v2.4652) — the fact, not a footnote. */
+function closedNoticeRow(s: LienTimelineStep, todayYmd: string): WindowRow | null {
+  if (!s.opensOn || !s.date) return null
+  const rest = closedRest(s.words)
+  const notNoted = / ?not noted/.test(rest)
+  const more = rest.split(' · ').filter((p) => p && !/not noted/.test(p))
+  return {
+    key: s.key,
+    label: s.label,
+    sub: 'closed',
+    kind: 'bar',
+    start: s.opensOn,
+    end: s.date,
+    tone: 'closed',
+    waits: false,
+    hatchTo: '',
+    caption: [`open ${spanWords(s.opensOn, s.date, todayYmd)} · closed, nothing sent`, ...more].join(' · '),
+    captionTone: notNoted ? 'red' : 'muted',
+    chip: notNoted ? 'not noted' : '',
+    title: `${s.label} · closed ${lienDateWords(s.date, todayYmd)} · ${s.words}`,
+    dim: true,
+  }
+}
+
+const AFTER_FILING = new Set<LienTimelineStepKind>(['serve', 'hold', 'suit', 'release'])
+
+/** The kernel's steps as calendar rows (v2.4652): every window a bar, the closed ones too; a step with no window a line of words; the papers that follow a filing one quiet sentence. */
+function windowRows(timeline: LienTimeline): { rows: WindowRow[]; after: string } {
+  const { todayYmd, lienGone } = timeline
   const rows: WindowRow[] = []
-  const closed: string[] = []
   const also: string[] = []
-  for (const s of steps) {
+  // The last day of the latest closed notice — where a blocked lien's ghost window would have begun.
+  let lastClosed = ''
+  const undatedText = (s: LienTimelineStep, label: string): WindowRow => ({ key: s.key, label, sub: '', kind: 'text', words: s.words, tone: 'muted', door: s.door, undated: true })
+  for (const s of timeline.steps) {
     if (s.fold) {
-      for (const f of s.fold.steps) {
-        if (f.opensOn && f.date) closed.push(`${f.label.replace('§ 53.056 · ', '')} closed ${lienDateWords(f.date, todayYmd)} — it was open ${spanWords(f.opensOn, f.date, todayYmd)}`)
+      // Up to three closed months get a bar each; more fold into one bar across the run, with the fold's own count.
+      if (s.fold.count <= 3) {
+        for (const f of s.fold.steps) {
+          const r = closedNoticeRow(f, todayYmd)
+          if (r) rows.push(r)
+          if (f.date > lastClosed) lastClosed = f.date
+        }
+      } else {
+        const first = s.fold.steps[0]
+        const last = s.fold.steps[s.fold.steps.length - 1]
+        if (first && last && first.opensOn && last.date) {
+          rows.push({ key: s.key, label: s.label, sub: 'closed', kind: 'bar', start: first.opensOn, end: last.date, tone: 'closed', waits: false, hatchTo: '', caption: [`open ${spanWords(first.opensOn, last.date, todayYmd)}`, s.dateWords, ...s.words.split(' · ').filter((p) => p && !/to note/.test(p))].join(' · '), captionTone: s.fold.unnoted ? 'red' : 'muted', chip: s.fold.unnoted ? `${s.fold.unnoted} to note` : '', title: foldTitle(s, todayYmd), dim: true })
+        }
+        if (last && last.date > lastClosed) lastClosed = last.date
       }
       continue
     }
     if (s.kind === 'notice' && s.monthKey && s.opensOn && s.date) {
       if (s.state === 'due') {
         const span = lienWindowSpan(s.opensOn, s.date, todayYmd)
-        rows.push({ key: s.key, label: s.label, sub: span ? `${spanWords(s.opensOn, s.date, todayYmd)} · ${span.leftDays} of ${span.totalDays} days left` : '', kind: 'bar', start: s.opensOn, end: s.date, tone: 'amber', waits: false, hatchTo: todayYmd, title: [s.opensWords, `mail by ${s.dateWords}`, s.words].filter(Boolean).join(' · ') })
+        rows.push({ key: s.key, label: s.label, sub: '', kind: 'bar', start: s.opensOn, end: s.date, tone: 'amber', waits: false, hatchTo: todayYmd, caption: [`open ${spanWords(s.opensOn, s.date, todayYmd)}`, span ? `${span.leftDays} of ${span.totalDays} days left` : '', s.words].filter(Boolean).join(' · '), captionTone: 'amber', chip: '', title: [s.opensWords, `mail by ${s.dateWords}`, s.words].filter(Boolean).join(' · '), dim: false })
       } else if (s.state === 'done') {
-        rows.push({ key: s.key, label: s.label, sub: s.words, kind: 'bar', start: s.opensOn, end: s.date, tone: 'green', waits: false, hatchTo: '', title: `${s.words} · the window ran ${spanWords(s.opensOn, s.date, todayYmd)}` })
+        rows.push({ key: s.key, label: s.label, sub: '', kind: 'bar', start: s.opensOn, end: s.date, tone: 'green', waits: false, hatchTo: '', caption: s.words, captionTone: 'green', chip: '', title: `${s.words} · the window ran ${spanWords(s.opensOn, s.date, todayYmd)}`, dim: false })
       } else {
-        closed.push(`${s.label.replace('§ 53.056 · ', '')} closed ${lienDateWords(s.date, todayYmd)} — it was open ${spanWords(s.opensOn, s.date, todayYmd)}`)
+        const r = closedNoticeRow(s, todayYmd)
+        if (r) rows.push(r)
+        if (s.date > lastClosed) lastClosed = s.date
       }
       continue
     }
     if (s.kind === 'retainage' || s.kind === 'affidavit') {
       const name = s.kind === 'affidavit' ? '§ 53.052 lien' : s.label
-      if (s.state === 'done' || s.state === 'missed' || s.state === 'blocked' || s.state === 'undated' || !s.date) {
-        rows.push({ key: s.key, label: name, sub: s.dateWords === '—' ? '' : s.dateWords, kind: 'text', words: s.words, tone: s.state === 'done' ? 'green' : s.state === 'missed' || s.state === 'blocked' ? 'red' : 'muted', door: s.door })
+      if (s.state === 'done') {
+        rows.push({ key: s.key, label: name, sub: s.dateWords === '—' ? '' : s.dateWords, kind: 'text', words: s.words, tone: 'green', door: null, undated: false })
+      } else if (s.state === 'undated' || !s.date) {
+        rows.push(undatedText(s, name))
+      } else if (s.state === 'blocked') {
+        // The lien that cannot follow: a dotted ghost of the window it never got, no date printed.
+        const from = lastClosed || todayYmd
+        const start = from < s.date ? from : s.date
+        rows.push({ key: s.key, label: name, sub: s.kind === 'affidavit' ? '↳ needs the notice above' : '', kind: 'bar', start, end: s.date, tone: 'ghost', waits: false, hatchTo: '', caption: start < s.date ? `blocked — it would have run ${spanWords(start, s.date, todayYmd)}, once the notice was mailed` : 'blocked — no notice went out', captionTone: 'muted', chip: '', title: s.words, dim: true })
+      } else if (s.state === 'missed') {
+        const start = s.opensOn || lastClosed
+        if (start && start < s.date) {
+          rows.push({ key: s.key, label: name, sub: 'closed', kind: 'bar', start, end: s.date, tone: 'closed', waits: false, hatchTo: '', caption: `open ${spanWords(start, s.date, todayYmd)} · ${s.words}`, captionTone: 'red', chip: '', title: `${name} · ${s.dateWords} · ${s.words}`, dim: true })
+        } else {
+          rows.push({ key: s.key, label: name, sub: s.dateWords, kind: 'text', words: s.words, tone: 'red', door: null, undated: false })
+        }
       } else if (s.opensOn) {
-        rows.push({ key: s.key, label: name, sub: spanWords(s.opensOn, s.date, todayYmd), kind: 'bar', start: s.opensOn, end: s.date, tone: s.kind === 'affidavit' ? 'violet' : 'amber', waits: false, hatchTo: s.kind === 'retainage' ? todayYmd : '', title: [s.opensWords, `last day ${s.dateWords}`, s.words].filter(Boolean).join(' · ') })
+        rows.push({ key: s.key, label: name, sub: '', kind: 'bar', start: s.opensOn, end: s.date, tone: s.kind === 'affidavit' ? 'violet' : 'amber', waits: false, hatchTo: s.kind === 'retainage' ? todayYmd : '', caption: [`open ${spanWords(s.opensOn, s.date, todayYmd)}`, s.kind === 'affidavit' ? `file by ${s.dateWords}` : `send by ${s.dateWords}`, s.words].filter(Boolean).join(' · '), captionTone: s.kind === 'affidavit' ? 'violet' : 'amber', chip: '', title: [s.opensWords, `last day ${s.dateWords}`, s.words].filter(Boolean).join(' · '), dim: false })
       } else {
-        rows.push({ key: s.key, label: name, sub: `${s.opensWords || 'opens later'} · by ${s.dateWords}`, kind: 'bar', start: todayYmd, end: s.date, tone: 'violet', waits: true, hatchTo: '', title: [s.opensWords, `last day ${s.dateWords}`, s.words].filter(Boolean).join(' · ') })
+        rows.push({ key: s.key, label: name, sub: s.kind === 'affidavit' ? '↳ after the notice above' : '', kind: 'bar', start: todayYmd, end: s.date, tone: 'violet', waits: true, hatchTo: '', caption: `${s.opensWords || 'opens later'} · by ${s.dateWords}`, captionTone: 'violet', chip: '', title: [s.opensWords, `last day ${s.dateWords}`, s.words].filter(Boolean).join(' · '), dim: false })
       }
       continue
     }
     if (s.kind === 'demand') {
-      rows.push({ key: s.key, label: s.label, sub: s.dateWords, kind: 'text', words: s.words, tone: s.state === 'done' ? 'green' : s.state === 'missed' ? 'red' : 'muted', door: null })
+      rows.push({ key: s.key, label: s.label, sub: s.dateWords, kind: 'text', words: s.words, tone: s.state === 'done' ? 'green' : s.state === 'missed' ? 'red' : 'muted', door: null, undated: false })
       continue
     }
-    if (s.kind === 'notice') continue
-    if (s.kind === 'last_work') continue
-    also.push([s.label, s.dateWords, s.words].filter((x) => x && x !== '—').join(' · '))
+    if (s.kind === 'notice' || s.kind === 'last_work') continue
+    if (AFTER_FILING.has(s.kind)) {
+      if (s.state === 'due' || s.state === 'missed' || s.state === 'done') {
+        rows.push({ key: s.key, label: s.label, sub: s.dateWords === '—' ? '' : s.dateWords, kind: 'text', words: s.words, tone: s.state === 'done' ? 'green' : s.state === 'missed' ? 'red' : 'muted', door: s.door, undated: false })
+      } else {
+        const date = s.date && s.dateWords !== '—' ? s.dateWords : ''
+        const words = s.words === 'after filing' ? '' : s.words
+        also.push([s.label, date, words].filter(Boolean).join(' · '))
+      }
+    }
   }
-  return { rows, closed, also }
+  const after = lienGone
+    ? '§ 53.055 serve · § 53.158 suit follow a filing. None can follow on this job.'
+    : also.length
+      ? `After a filing: ${also.join(' · ')}.`
+      : ''
+  return { rows, after }
 }
 
-function monthStart(ymd: string): string {
-  return `${ymd.slice(0, 7)}-01`
+const BAR_TONE: Record<BarTone, { bg: string; line: string }> = {
+  amber: { bg: 'var(--bg-amber-tint)', line: 'var(--text-amber-800)' },
+  green: { bg: 'var(--bg-green-tint)', line: 'var(--text-green-800)' },
+  violet: { bg: 'var(--bg-violet-100)', line: 'var(--text-violet-700)' },
+  closed: { bg: 'var(--bg-subtle)', line: 'var(--text-red-600)' },
+  ghost: { bg: 'transparent', line: 'var(--border-strong)' },
 }
 
-function monthEnd(ymd: string): string {
-  const y = Number(ymd.slice(0, 4))
-  const m = Number(ymd.slice(5, 7))
-  return new Date(Date.UTC(y, m, 0, 12)).toISOString().slice(0, 10)
+function captionColor(tone: Extract<WindowRow, { kind: 'bar' }>['captionTone']): string {
+  return tone === 'red' ? 'var(--text-red-600)' : tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-800)' : tone === 'violet' ? 'var(--text-violet-700)' : 'var(--text-muted)'
 }
 
-/** Windows (v2.3815): each paper's first day to its last on one calendar, today marked. */
-function WindowsChart({ timeline, onDoor }: { timeline: LienTimeline; onDoor?: LienTimelineStripProps['onDoor'] }) {
+/** The calendar (v2.3815, redrawn v2.4652): each paper's first day to its last on one axis, today marked, the closed windows drawn too. */
+function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onDoor?: LienTimelineStripProps['onDoor']; voice?: LienTimelineVoice }) {
   const { todayYmd } = timeline
-  const { rows, closed, also } = windowRows(timeline.steps, todayYmd)
+  const { rows, after } = windowRows(timeline)
+  // Whose move, by row key — the folded months' own steps included (their moves are null).
+  const moveOf = (key: string): LienTimelineMove | null => {
+    for (const s of timeline.steps) {
+      if (s.key === key) return s.move ?? null
+      if (s.fold) for (const f of s.fold.steps) if (f.key === key) return f.move ?? null
+    }
+    return null
+  }
   const bars = rows.filter((r): r is Extract<WindowRow, { kind: 'bar' }> => r.kind === 'bar')
-  const first = monthStart([todayYmd, ...bars.map((b) => b.start)].sort()[0] ?? todayYmd)
-  const last = monthEnd([todayYmd, ...bars.map((b) => b.end)].sort().slice(-1)[0] ?? todayYmd)
+  const { first, last, ticks } = windowsAxis(todayYmd, bars)
   const total = Math.max(1, daysBetweenYmd(first, last) ?? 1)
   const pct = (ymd: string) => Math.max(0, Math.min(100, ((daysBetweenYmd(first, ymd) ?? 0) / total) * 100))
-  const ticks: string[] = []
-  for (let y = Number(first.slice(0, 4)), m = Number(first.slice(5, 7)); `${y}-${String(m).padStart(2, '0')}-01` <= last; m === 12 ? ((m = 1), (y += 1)) : (m += 1)) ticks.push(`${y}-${String(m).padStart(2, '0')}-01`)
-  const nameCol = 'minmax(96px, 30%)'
+  const nameCol = 'minmax(110px, 30%)'
   const todayAt = pct(todayYmd)
-  const tone = {
-    amber: { bg: 'var(--bg-amber-tint)', line: 'var(--text-amber-800)' },
-    green: { bg: 'var(--bg-green-tint)', line: 'var(--text-green-800)' },
-    violet: { bg: 'var(--bg-violet-100)', line: 'var(--text-violet-700)' },
-  } as const
+  const legend: string[] = []
+  if (bars.some((b) => b.tone === 'closed')) legend.push('▭ a window that closed')
+  if (bars.some((b) => b.hatchTo && b.hatchTo > b.start)) legend.push('▨ days already gone')
+  if (bars.some((b) => b.waits)) legend.push('┄ opens when the notice is mailed')
+  if (bars.some((b) => b.tone === 'ghost')) legend.push('┈ a window that never opened')
+  legend.push('│ today')
   return (
     <div data-lien-timeline-windows style={{ display: 'grid', gap: 0, fontSize: '0.75rem', minWidth: 0 }}>
       <div style={{ display: 'grid', gridTemplateColumns: `${nameCol} minmax(0, 1fr)` }}>
         <span />
-        <div style={{ position: 'relative', height: 26, borderBottom: '1px solid var(--border-strong)', color: 'var(--text-muted)', fontSize: '0.68rem' }}>
+        <div data-lien-timeline-windows-axis style={{ position: 'relative', height: 26, borderBottom: '1px solid var(--border-strong)', color: 'var(--text-muted)', fontSize: '0.68rem' }}>
           {ticks.map((t) => (
-            <span key={t} style={{ position: 'absolute', left: `${pct(t)}%`, bottom: 2, paddingLeft: 3, borderLeft: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{MONTH_SHORT[Number(t.slice(5, 7)) - 1]}</span>
+            <span key={t} data-lien-timeline-windows-tick={t.slice(0, 7)} style={{ position: 'absolute', left: `${pct(t)}%`, bottom: 2, paddingLeft: 3, borderLeft: '1px solid var(--border)', whiteSpace: 'nowrap' }}>{MONTH_SHORT[Number(t.slice(5, 7)) - 1]}</span>
           ))}
-          <span style={{ position: 'absolute', left: `${todayAt}%`, top: 0, paddingLeft: 4, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', transform: todayAt > 75 ? 'translateX(-100%)' : undefined }}>today</span>
+          <span style={{ position: 'absolute', left: `${todayAt}%`, top: 0, paddingLeft: 4, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', whiteSpace: 'nowrap', transform: todayAt > 75 ? 'translateX(-100%)' : undefined }}>today · {lienDateWords(todayYmd, todayYmd)}</span>
         </div>
       </div>
       {rows.map((r) => (
-        <div key={r.key} data-lien-timeline-window={r.key} style={{ display: 'grid', gridTemplateColumns: `${nameCol} minmax(0, 1fr)`, alignItems: 'center', minHeight: 34, borderBottom: '1px dashed var(--border)' }}>
+        <div key={r.key} data-lien-timeline-window={r.key} data-lien-timeline-window-kind={r.kind === 'bar' ? r.tone : r.undated ? 'undated' : 'text'} style={{ display: 'grid', gridTemplateColumns: `${nameCol} minmax(0, 1fr)`, alignItems: 'center', minHeight: r.kind === 'bar' ? 48 : 36, borderBottom: '1px dashed var(--border)' }}>
           <div style={{ minWidth: 0, paddingRight: 6, lineHeight: 1.25 }}>
-            <div style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{r.label}</div>
+            <div style={{ fontWeight: 700, color: r.kind === 'bar' && r.dim ? 'var(--text-muted)' : 'var(--text-strong)' }}>{r.label}</div>
             {r.sub ? <div style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>{r.sub}</div> : null}
+            {moveOf(r.key) ? <MovePill move={moveOf(r.key)!} voice={voice} style={{ marginTop: 3 }} /> : null}
           </div>
-          <div style={{ position: 'relative', minHeight: 34, height: r.kind === 'bar' ? 34 : undefined }}>
-            <span aria-hidden style={{ position: 'absolute', left: `${todayAt}%`, top: 0, bottom: 0, borderLeft: '2px solid var(--text-link)', zIndex: 2 }} />
-            {r.kind === 'bar' ? (
+          {r.kind === 'bar' ? (
+            <div style={{ position: 'relative', height: 48 }}>
+              <span aria-hidden data-lien-timeline-today style={{ position: 'absolute', left: `${todayAt}%`, top: 0, bottom: 0, borderLeft: '2px solid var(--text-link)', zIndex: 2 }} />
               <span
                 title={r.title}
                 style={{
                   position: 'absolute',
-                  top: 10,
+                  top: 9,
                   height: 14,
                   left: `${pct(r.start)}%`,
                   width: `${Math.max(1.5, pct(r.end) - pct(r.start))}%`,
                   borderRadius: 4,
-                  border: `1px ${r.waits ? 'dashed' : 'solid'} ${tone[r.tone].line}`,
-                  background: r.waits ? 'transparent' : tone[r.tone].bg,
+                  border: `1px ${r.waits ? 'dashed' : r.tone === 'ghost' ? 'dotted' : 'solid'} ${BAR_TONE[r.tone].line}`,
+                  background: r.waits ? 'transparent' : BAR_TONE[r.tone].bg,
+                  boxSizing: 'border-box',
                   overflow: 'hidden',
                   opacity: r.tone === 'green' ? 0.75 : 1,
                 }}
               >
                 {r.hatchTo && r.hatchTo > r.start ? (
-                  <span aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, ((pct(r.hatchTo) - pct(r.start)) / Math.max(0.1, pct(r.end) - pct(r.start))) * 100)}%`, background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${tone[r.tone].line} 40%, transparent) 0 3px, color-mix(in srgb, ${tone[r.tone].line} 12%, transparent) 3px 6px)` }} />
+                  <span aria-hidden data-lien-timeline-hatch style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, ((pct(r.hatchTo) - pct(r.start)) / Math.max(0.1, pct(r.end) - pct(r.start))) * 100)}%`, background: `repeating-linear-gradient(135deg, color-mix(in srgb, ${BAR_TONE[r.tone].line} 40%, transparent) 0 3px, color-mix(in srgb, ${BAR_TONE[r.tone].line} 12%, transparent) 3px 6px)` }} />
                 ) : null}
               </span>
-            ) : (
-              <div style={{ position: 'relative', padding: '0.45rem 0 0.45rem 8px', lineHeight: 1.3, color: r.tone === 'red' ? 'var(--text-red-600)' : r.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
-                {r.words}
-                {r.door && onDoor ? (
-                  <>
-                    {' '}
-                    <button type="button" onClick={() => onDoor(r.door!)} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
-                      set the date ›
-                    </button>
-                  </>
-                ) : null}
-              </div>
-            )}
-          </div>
+              {r.tone === 'closed' ? (
+                <span aria-hidden data-lien-timeline-struck style={{ position: 'absolute', top: 6, left: `${pct(r.end)}%`, marginLeft: -8, width: 16, height: 16, borderRadius: '50%', background: 'var(--text-red-600)', color: '#fff', fontSize: 10, fontWeight: 800, lineHeight: '16px', textAlign: 'center', border: '2px solid var(--surface)', boxSizing: 'border-box', zIndex: 3 }}>
+                  ✗
+                </span>
+              ) : null}
+              <span
+                data-lien-timeline-caption
+                style={{ position: 'absolute', top: 27, ...(pct(r.start) > 55 ? { right: 0, textAlign: 'right' } : { left: `${pct(r.start)}%` }), maxWidth: '100%', fontSize: '0.7rem', lineHeight: 1.3, color: captionColor(r.captionTone), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+              >
+                {r.caption}
+                {r.chip ? <span data-lien-timeline-chip style={{ marginLeft: 6, fontSize: '0.62rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, lineHeight: '15px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', verticalAlign: 1 }}>{r.chip}</span> : null}
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.35rem 0', lineHeight: 1.3, color: r.tone === 'red' ? 'var(--text-red-600)' : r.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-muted)' }}>
+              {r.undated ? <span aria-hidden style={{ width: 12, height: 12, borderRadius: '50%', border: '2px dashed var(--border-strong)', boxSizing: 'border-box', flex: 'none' }} /> : null}
+              <span>{r.words}</span>
+              {r.door && onDoor ? (
+                <button type="button" onClick={() => onDoor(r.door!)} style={{ border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                  set the date ›
+                </button>
+              ) : null}
+            </div>
+          )}
         </div>
       ))}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.9rem', color: 'var(--text-muted)', fontSize: '0.68rem', paddingTop: '0.35rem' }}>
-        <span>▭ the window: first day → last day</span>
-        <span>▨ days already gone</span>
-        <span>┆ opens when the notice is mailed</span>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.2rem 0.9rem', color: 'var(--text-muted)', fontSize: '0.68rem', paddingTop: '0.4rem' }}>
+        {after ? <span data-lien-timeline-windows-after>{after}</span> : <span />}
+        <span data-lien-timeline-windows-legend style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.9rem' }}>
+          {legend.map((l) => (
+            <span key={l}>{l}</span>
+          ))}
+        </span>
       </div>
-      {closed.length ? <div data-lien-timeline-windows-closed style={{ color: 'var(--text-red-600)', fontSize: '0.72rem', paddingTop: '0.2rem' }}>{closed.join(' · ')}</div> : null}
-      {also.length ? <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', paddingTop: '0.2rem' }}>{also.join(' · ')}</div> : null}
     </div>
   )
 }

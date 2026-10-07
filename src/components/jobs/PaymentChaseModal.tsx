@@ -25,6 +25,7 @@ import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripe
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import type { UserRole } from '../../hooks/useAuth'
 import { telHrefFor } from '../../lib/phoneContact'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Payment follow-up call mode (owner-approved "Payment Chase Loop" v2 mockup,
@@ -539,7 +540,7 @@ export default function PaymentChaseModal({
       role="dialog"
       aria-modal="true"
       aria-label="Payment follow-up call mode"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
       <div
@@ -549,7 +550,7 @@ export default function PaymentChaseModal({
           borderRadius: 12,
           border: '1px solid var(--border)',
           width: 'min(860px, calc(100vw - 2rem))',
-          maxHeight: 'min(88vh, 940px)',
+          maxHeight: 'min(88vh, 940px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -681,7 +682,7 @@ export default function PaymentChaseModal({
                   <div style={{ fontSize: '0.95rem', fontWeight: 700 }}>⚠ {currentDispute.customerName} — dispute</div>
                   <div style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
                     {currentDispute.bill ? `${currentDispute.bill.label} · ${formatUsdNoCents(currentDispute.bill.open)} open` : 'Bill'} · flagged{' '}
-                    {formatYmdMonthDay(currentDispute.touch.createdAt.slice(0, 10))} by {currentDispute.touch.createdByName}
+                    {formatYmdMonthDay(calendarYmdInAppTzFromIso(currentDispute.touch.createdAt))} by {currentDispute.touch.createdByName}
                     {currentDispute.touch.note ? ` · "${currentDispute.touch.note}"` : ''}
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>

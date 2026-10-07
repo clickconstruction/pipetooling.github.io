@@ -216,7 +216,7 @@ export default function JobsContractSweepModal({
   const [sendingAll, setSendingAll] = useState(false)
   const [detail, setDetail] = useState<{ job: JobWithDetails; filing: boolean } | null>(null)
   const [filter, setFilter] = useState<SweepFilter>('to_send')
-  /** The Drive pass (refresh, to-dos/contract-sweep-refresh): contract-looking files in the jobs Drive, read once per open. Null = not read (yet, or not allowed). */
+  /** The Drive pass (refresh, docs/recent-features/v2.3669.md): contract-looking files in the jobs Drive, read once per open. Null = not read (yet, or not allowed). */
   const [driveFiles, setDriveFiles] = useState<DriveScanFile[] | null>(null)
   const [driveChecking, setDriveChecking] = useState(false)
   /** v2.3709: when the scan the office shares was made — the ⋯ item says it, so a stale read is a known thing. */
@@ -922,7 +922,7 @@ export default function JobsContractSweepModal({
         data-testid="sweep-paper"
       >
         <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: fullScreen ? 'auto' : isMobile ? '60vh' : '54vh', ...(fullScreen ? { flex: '1 1 auto', minHeight: 0 } : {}), border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
-        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>Exactly what the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
+        <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>The agreement the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
       </div>
     ) : null
 
@@ -1165,7 +1165,9 @@ export default function JobsContractSweepModal({
                   layout="inline"
                   inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
                   jobId={selected.id}
-                  defaultSignerName={(selected.customer_name ?? '').trim()}
+                  // v2.4657: the builder's subcontract is signed by the GC, with no second signer of ours on it.
+                  defaultSignerName={(selState?.flags.includes('gc_job') && gcName ? gcName : selected.customer_name ?? '').trim()}
+                  defaultCoSignerName={selState?.flags.includes('gc_job') && gcName ? '' : undefined}
                   existingDraft={draftRow && (draftRow.status === 'draft' || isAwaitingPaperCopy(draftRow)) ? draftRow : null}
                   basePayload={buildJobContractDraftPayload({
                     jobId: selected.id,

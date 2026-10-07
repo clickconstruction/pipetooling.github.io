@@ -7,8 +7,11 @@ import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 import { promiseBackfillChoices, shouldAskPromiseBackfill } from '../../lib/jobs/promiseBackfillPrompt'
+import { waitUntilLanded } from '../../lib/jobs/waitUntilLanded'
+import { useToastContext } from '../../contexts/ToastContext'
 import {
   stripeCreditLineText,
   stripePartPaymentNote,
@@ -16,6 +19,7 @@ import {
   stripePaymentButtonLabel,
   stripePaymentPlan,
 } from '../../lib/jobs/stripePartPayment'
+import { heldStripeMarkNote, markPaidHoldsStripeClose } from '../../lib/jobs/heldStripeMark'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -32,6 +36,19 @@ export type JobLikeForPayment = {
 export type InvoiceWithJobLike = JobsLedgerInvoice & { job: JobLikeForPayment }
 
 const PAYMENT_TYPES = ['Cash', 'Check', 'Wire', 'ACH', 'Card (external)', 'Other'] as const
+
+/** How long the window waits for Stripe's webhook to write the ledger before it lets the office go on. */
+const STRIPE_LANDING_POLL_MS = 350
+const STRIPE_LANDING_WAIT_MS = 10_000
+/** After that it keeps watching in the background this long, and refreshes the board when the write lands. */
+const STRIPE_LANDING_FOLLOW_POLL_MS = 2_000
+const STRIPE_LANDING_FOLLOW_MS = 60_000
+
+/** True once our ledger shows the bill paid (the webhook's `mark_invoice_paid_from_stripe` has run). */
+async function billReadsPaid(invoiceId: string): Promise<boolean> {
+  const { data } = await supabase.from('jobs_ledger_invoices').select('status').eq('id', invoiceId).maybeSingle()
+  return (data as { status?: string | null } | null)?.status === 'paid'
+}
 
 function todayIsoDate(): string {
   const d = new Date()
@@ -115,6 +132,9 @@ export default function BilledPaymentConfirmationModal({
   const [backfillCustom, setBackfillCustom] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // A Stripe bill's full close: paid at Stripe, waiting for the webhook to write our ledger.
+  const [confirming, setConfirming] = useState(false)
+  const { showToast } = useToastContext()
   const askBackfill = open && !(mode === 'job' && job != null && Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)) <= 0)
     && shouldAskPromiseBackfill({ billedYmd: billedYmd ?? null, paidOnYmd: paidOn.trim(), existingPromiseYmd: existingPromiseYmd ?? null })
   const backfillChoices = askBackfill ? promiseBackfillChoices(paidOn.trim(), billedYmd ?? null) : []
@@ -150,6 +170,8 @@ export default function BilledPaymentConfirmationModal({
     stripePlan && stripePlan.kind === 'part'
       ? stripeCreditLineText(paymentType, paidOn.trim(), stripePlan.amount, referenceNumber)
       : null
+  // v2.4801: a check at the whole balance is a ledger row only; Stripe closes once it has cleared.
+  const holdsStripeClose = markPaidHoldsStripeClose({ stripeHosted: Boolean(stripeInvoicePath), paymentType, planKind: stripePlan?.kind ?? null })
 
   useEffect(() => {
     if (!open) return
@@ -231,7 +253,7 @@ export default function BilledPaymentConfirmationModal({
     }
     try {
       if (mode === 'invoice' && inv) {
-        if (stripeInvoicePath) {
+        if (stripeInvoicePath && !holdsStripeClose) {
           const plan = stripePaymentPlan(amountStr, invoiceRemaining)
           const blocker = stripePaymentBlocker(plan)
           if (blocker || plan.kind === 'empty' || plan.kind === 'over') {
@@ -269,8 +291,23 @@ export default function BilledPaymentConfirmationModal({
           }
           // A full close lands through the webhook; a part payment's row is
           // written by the function itself, so there is nothing to wait for.
-          if (!payload?.partial) await new Promise((r) => setTimeout(r, 700))
+          // v2.4521: wait for the ledger to read paid (it was a fixed 700 ms), so the
+          // refresh below moves the row out of Billed or Collections with no page reload.
+          if (!payload?.partial) {
+            setConfirming(true)
+            const read = () => billReadsPaid(inv.id)
+            const landed = await waitUntilLanded({ read, intervalMs: STRIPE_LANDING_POLL_MS, timeoutMs: STRIPE_LANDING_WAIT_MS })
+            if (!landed) {
+              // Still on its way: refresh once more when it lands.
+              showToast('Stripe is still confirming this payment. The row will move when it lands.', 'info')
+              void waitUntilLanded({ read, intervalMs: STRIPE_LANDING_FOLLOW_POLL_MS, timeoutMs: STRIPE_LANDING_FOLLOW_MS }).then((late) => {
+                if (late) void onSuccess()
+              })
+            }
+          }
         } else {
+          // A non-Stripe bill, or (v2.4801) a check on a Stripe bill: the row only. The sweep
+          // closes the Stripe invoice CHECK_CLEAR_DAYS after the check's date.
           const data = await withSupabaseRetry(
             async () =>
               supabase.rpc('mark_invoice_paid', {
@@ -314,6 +351,7 @@ export default function BilledPaymentConfirmationModal({
       }
     } finally {
       setSubmitting(false)
+      setConfirming(false)
     }
   }
 
@@ -353,7 +391,7 @@ export default function BilledPaymentConfirmationModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: zIndex ?? 60,
+        zIndex: zIndex ?? 760,
       }}
     >
       <div role="dialog" aria-modal="true"
@@ -393,7 +431,12 @@ export default function BilledPaymentConfirmationModal({
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
               </div>
-              {stripeInvoicePath && stripePlan?.kind !== 'part' && (
+              {holdsStripeClose ? (
+                <p data-testid="held-stripe-mark-note" style={{ margin: '0.35rem 0 0', color: 'var(--text-700)', fontSize: '0.8125rem', lineHeight: 1.4 }}>
+                  {heldStripeMarkNote(paidOn.trim())}
+                </p>
+              ) : null}
+              {stripeInvoicePath && !holdsStripeClose && stripePlan?.kind !== 'part' && (
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                   Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
                   received outside Stripe (check, cash, etc.), so the pay link stops working and no reminder goes out.
@@ -403,7 +446,7 @@ export default function BilledPaymentConfirmationModal({
               {inv.sent_to_customer_at && (
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
-                  {String(inv.sent_to_customer_at).slice(0, 10)}
+                  {calendarYmdInAppTzFromIso(String(inv.sent_to_customer_at))}
                 </div>
               )}
               {inv.external_send_note && (
@@ -635,7 +678,7 @@ export default function BilledPaymentConfirmationModal({
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
-            {submitting ? '…' : jobFullyPaid ? 'Move to Paid' : stripePlan ? stripePaymentButtonLabel(stripePlan) : 'Confirm'}
+            {confirming ? 'Confirming with Stripe…' : submitting ? '…' : jobFullyPaid ? 'Move to Paid' : stripePlan ? stripePaymentButtonLabel(stripePlan) : 'Confirm'}
           </button>
         </div>
       </div>

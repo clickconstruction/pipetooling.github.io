@@ -225,7 +225,8 @@ describe('buildLienDeskQueue · a job with no clock hours is dated from its crea
     // J858: created 2026-08-18, never clocked — the RPC hands back one 'job_created' row with the August window (Oct 15).
     const q = buildLienDeskQueue([row({ job_id: 'j858', work_month: '2026-08', deadline: '2026-10-15', approved_hours: 0, open_balance: 7_902, month_source: 'job_created' })], [], {}, TODAY)
     const e = q.entries[0]!
-    expect(e.months).toEqual([{ key: '2026-08', approvedHours: 0, deadline: '2026-10-15', daysLeft: 31, noticed: false, fromCreation: true }])
+    expect(e.months).toEqual([{ key: '2026-08', approvedHours: 0, deadline: '2026-10-15', daysLeft: 31, noticed: false, fromCreation: true, byHand: false }])
+    expect(e.datedByHand).toBe(false)
     expect(e.datedFromCreation).toBe(true)
     expect(e.dueMonths).toEqual(['2026-08'])
     expect(e.pile).toBe('to_draft')
@@ -256,5 +257,19 @@ describe('the printed pile (v2.4119)', () => {
     expect(printed.entries[0]!.pile).toBe('printed')
     expect(printed.counts.printed).toBe(1)
     expect(printed.counts.ready).toBe(0)
+  })
+})
+
+describe('a notice sent in the evening keeps its day (v2.4468)', () => {
+  // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1. Sent stays LIEN_DESK_SENT_DAYS (30).
+  it('stays in Sent for 30 days from the Central day', () => {
+    const evening = item({ job_id: 'j2', status: 'sent', sent_at: '2026-10-03T00:30:00Z' })
+    expect(buildLienDeskQueue([], [evening], {}, '2026-11-01').entries.map((e) => e.jobId)).toEqual(['j2'])
+    expect(buildLienDeskQueue([], [evening], {}, '2026-11-02').entries).toEqual([])
+    const winter = item({ job_id: 'j3', status: 'sent', sent_at: '2026-12-02T00:30:00Z' })
+    expect(buildLienDeskQueue([], [winter], {}, '2026-12-31').entries.map((e) => e.jobId)).toEqual(['j3'])
+    expect(buildLienDeskQueue([], [winter], {}, '2027-01-01').entries).toEqual([])
+    const noon = item({ job_id: 'j4', status: 'sent', sent_at: '2026-10-03T12:00:00Z' })
+    expect(buildLienDeskQueue([], [noon], {}, '2026-11-02').entries.map((e) => e.jobId)).toEqual(['j4'])
   })
 })

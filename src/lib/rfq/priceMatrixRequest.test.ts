@@ -143,10 +143,35 @@ describe('buildPricerRequestPrompt', () => {
   it('pins the kickoff to the request: id, bid, who asked, sources, row count, the rules', () => {
     const p = buildPricerRequestPrompt(req(), { bid_number: '359', project_name: 'SPACEX BA-2 CORE AND SHELL' }, 'Wendi')
     expect(p).toContain('twin-pricer-1')
-    expect(p).toContain('request req-1 on b359 (SPACEX BA-2 CORE AND SHELL; asked by Wendi 2026-09-10 19:14)')
+    // 19:14 UTC is 2:14 pm CDT: the prompt prints the office's clock.
+    expect(p).toContain('request req-1 on b359 (SPACEX BA-2 CORE AND SHELL; asked by Wendi 2026-09-10 14:14)')
     expect(p).toContain('1 source (National Wholesale Supply)')
     expect(p).toContain('The 1 fixture rows in the request snapshot are the only rows you price.')
     expect(p).toContain('every bid verb is refused to you')
     expect(p).toContain("ask_question(kind: 'choice', audience: 'estimator')")
+  })
+})
+
+describe('buildPriceMatrixSources · a request with no day of its own keeps its Central day (v2.4470)', () => {
+  it('dates it from the day its row was made, in the company calendar', () => {
+    // 00:30 UTC on Sep 10 is 7:30 pm CDT on Sep 9; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const { readable, waiting } = buildPriceMatrixSources(
+      [
+        { id: 'a', status: 'quoted', sent_via: 'app', supply_house_id: 'h-nws', sent_to: null, created_at: '2026-09-10T00:30:00Z', quote_url: 'https://drive.google.com/file/d/abc' },
+        { id: 'b', status: 'sent', sent_via: 'app', supply_house_id: 'h-ferg', sent_to: null, created_at: '2026-12-02T00:30:00+00:00', quote_url: null },
+        { id: 'c', status: 'sent', sent_via: 'app', supply_house_id: null, sent_to: 'Hajoca', created_at: '2026-09-10T12:00:00Z', quote_url: null },
+      ] as never,
+      new Map([['h-nws', 'National Wholesale Supply'], ['h-ferg', 'Ferguson']]),
+    )
+    expect(readable.map((s) => s.requested_on)).toEqual(['2026-09-09'])
+    expect(waiting.map((w) => [w.house_name, w.requested_on])).toEqual([['Ferguson', '2026-12-01'], ['Hajoca', '2026-09-10']])
+  })
+})
+
+describe('buildPricerRequestPrompt · an evening request keeps its day and the office’s clock (v2.4476)', () => {
+  it('prints the Central date and time', () => {
+    // 00:30 UTC on Sep 11 is 7:30 pm CDT on Sep 10.
+    const p = buildPricerRequestPrompt(req({ requested_at: '2026-09-11T00:30:00Z' }), { bid_number: '359', project_name: 'SPACEX' }, 'Wendi')
+    expect(p).toContain('asked by Wendi 2026-09-10 19:30)')
   })
 })

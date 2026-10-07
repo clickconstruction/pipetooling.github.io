@@ -1,16 +1,23 @@
 import { useMemo, useState } from 'react'
+import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienAffidavitBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
+import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
+import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
+import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
@@ -71,6 +78,8 @@ export default function LienDeskAffidavitPane({
   signerNameFor,
   onChanged,
   onOpenEditJob,
+  onFixProperty,
+  onOpenJob,
   onOpenLienAffidavit,
   onOpenLegalDesk,
   onShowNotices,
@@ -92,6 +101,10 @@ export default function LienDeskAffidavitPane({
   signerNameFor: (masterUserId: string | null) => string
   onChanged: () => void
   onOpenEditJob: (jobId: string) => void
+  /** Fill in the property record in a window over the desk (v2.4724); without it the gate's door opens Edit Job. */
+  onFixProperty?: (jobId: string, focus: 'owner' | 'legal') => void
+  /** The heading's job number opens the job itself (v2.4535). */
+  onOpenJob?: (jobId: string) => void
   /** The Lien window on its affidavit tab — print for notarization, file, record. */
   onOpenLienAffidavit: (jobId: string) => void
   onOpenLegalDesk?: () => void
@@ -115,6 +128,8 @@ export default function LienDeskAffidavitPane({
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
+  // A stop's paper (v2.4793): the timeline stop whose window is open; null when closed.
+  const [stopOpen, setStopOpen] = useState<number | null>(null)
 
   const job = data.jobsById[entry.jobId]
   const gc = entry.gcCustomerId ? data.gcsById[entry.gcCustomerId] : undefined
@@ -172,6 +187,56 @@ export default function LienDeskAffidavitPane({
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
     [fields, issuer, job, entry.lastMonth, todayYmd],
   )
+
+  // A stop's paper (v2.4793): what the window shows for each stop, from the affidavit's side — this pane's own affidavit,
+  // the retainage notice as its pane prints it, a filing's snapshot once it went out; the notice is read on Notices.
+  const stopPaperFor = (step: LienTimelineStep): LienStopPaper => {
+    const none: LienStopPaper = { pages: [], envelope: null, before: [], record: null, act: null }
+    const filings = (data.filingsByJob[entry.jobId] ?? []).filter((f) => !f.voided_at)
+    const jobNo = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''
+    const when = (ymd: string | null, iso: string) => formatYmdMonthDay(ymd ?? calendarYmdInAppTzFromIso(iso))
+    const asSent = (f: (typeof filings)[number], words: string, extra: Partial<LienStopPaper> = {}): LienStopPaper => {
+      const page = filingSnapshotPage(f, { issuer, jobNumber: jobNo })
+      return { ...none, pages: page ? [page] : [], record: { words, href: f.document_url || null }, note: page ? 'The paper as it went out, from the record.' : null, ...extra }
+    }
+    const envelope = `To ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'} by certified mail`
+    const copyEnvelope = `A copy of the filed affidavit to ${ownerName || 'the owner of record'} and ${gc?.name || 'the original contractor'}, within five days of filing`
+    const kind = lienStopPaperKind(step)
+    if (kind === 'notice') {
+      const sent = step.monthKey ? filings.find((f) => f.kind === 'notice_53_056' && (f.months_covered ?? []).includes(step.monthKey!)) : undefined
+      if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`, { envelope })
+      if (step.state === 'missed' || step.fold) return { ...none, note: 'The window closed with nothing sent. The lien right on that work is gone; the money is still owed.' }
+      return { ...none, envelope, act: { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } }, note: 'The notice is drafted and read on Notices, where its pages are.' }
+    }
+    if (kind === 'retainage') {
+      const sent = filings.find((f) => f.kind === 'retainage_53_057')
+      if (sent) return asSent(sent, `Mailed ${when(sent.filed_at, sent.created_at)}`, { envelope })
+      const pages = retainageStopPages({ data, jobId: entry.jobId, issuer, signerNameFor, todayYmd }) ?? []
+      return { ...none, pages, envelope: pages.length ? envelope : null, note: pages.length ? null : 'No retainage is recorded on this job, so there is no § 53.057 notice to show.' }
+    }
+    if (kind === 'affidavit' || kind === 'serve') {
+      const filed = filings.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0]
+      if (filed) {
+        const words = kind === 'serve' ? (filed.served_at ? `Served ${when(filed.served_at, filed.created_at)}` : `Filed ${formatYmdMonthDay(filed.filed_at!)} · a copy to the owner and the GC is still owed`) : `Filed ${formatYmdMonthDay(filed.filed_at!)}${filed.recording_number ? ` · ${filed.recording_number}` : ''}`
+        return asSent(filed, words, { envelope: kind === 'serve' ? copyEnvelope : null })
+      }
+      return {
+        pages: [{ key: 'affidavit', label: 'Page 1 of 1 · the affidavit', html: docHtml }],
+        envelope: kind === 'serve' ? copyEnvelope : null,
+        before: entry.gates.filter((g) => !g.ok).map((g) => ({ key: g.key, words: g.label })),
+        record: null,
+        act: { label: 'Open it in the Lien window ›', onPress: () => { setStopOpen(null); onOpenLienAffidavit(entry.jobId) } },
+        note: kind === 'serve' ? 'Served as filed: the same affidavit, a copy in each envelope.' : null,
+      }
+    }
+    if (kind === 'release') {
+      const filed = filings.find((f) => f.kind === 'release_of_record')
+      if (filed) return asSent(filed, `Released ${when(filed.filed_at, filed.created_at)}`)
+      return { ...none, note: 'The release of record is made in the Release of Lien window once the job is paid.' }
+    }
+    if (kind === 'demand') return { ...none, note: 'The demand letter is sent from the job’s Lien window; its reply day is on the strip.' }
+    return none
+  }
 
   const run = async (labelText: string, fn: () => Promise<void>, done: string) => {
     if (busy) return
@@ -257,7 +322,7 @@ export default function LienDeskAffidavitPane({
       )
     ) : (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Waiting on the leader since {item?.submitted_at ? demandDate(item.submitted_at.slice(0, 10)) : '—'}. {forfeit}</span>
+        <span>Waiting on the leader since {item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(item.submitted_at)) : '—'}. {forfeit}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
       </div>
@@ -285,7 +350,7 @@ export default function LienDeskAffidavitPane({
   } else if (entry.pile === 'filed') {
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Filed{item?.sent_at ? ` ${demandDate(item.sent_at.slice(0, 10))}` : ''} · a copy must reach the owner and the contractor by the 5th day after filing (§ 53.055) — the Lien window records the service. {entry.openBalance > 0 ? 'Still unpaid: the account is the Legal desk’s next.' : ''}</span>
+        <span>Filed{item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(item.sent_at))}` : ''} · a copy must reach the owner and the contractor by the 5th day after filing (§ 53.055) — the Lien window records the service. {entry.openBalance > 0 ? 'Still unpaid: the account is the Legal desk’s next.' : ''}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={() => onOpenLienAffidavit(entry.jobId)} style={btn('plain')}>Record service ›</button>
         {onOpenLegalDesk && entry.openBalance > 0 ? <button type="button" onClick={onOpenLegalDesk} style={btn('primary')}>Refer to the Legal desk ›</button> : null}
@@ -299,11 +364,30 @@ export default function LienDeskAffidavitPane({
     {footerEl && footer ? createPortal(footer, footerEl) : null}
     <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: '1rem' }}>{label}</strong>
+        <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{entry.isSub ? `· GC ${gc?.name ?? ''}` : '· contracted with the owner'} {job?.job_address ? `· ${job.job_address}` : ''}</span>
       </div>
       <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
-        <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} />
+        <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
+        {stopOpen != null ? (
+          <LienStopPaperWindow
+            steps={timeline.steps}
+            index={stopOpen}
+            onIndex={setStopOpen}
+            onClose={() => setStopOpen(null)}
+            jobLabel={label}
+            paperFor={stopPaperFor}
+            timeline={timeline}
+            holdFor={(step) => {
+              // The hold line (v2.4806): the affidavit's first gate not clear, with the property record's door where that is the fix.
+              if ((step.kind !== 'affidavit' && step.kind !== 'serve') || step.state === 'done' || step.state === 'missed') return null
+              const gate = entry.gates.find((g) => !g.ok) ?? null
+              if (!gate) return null
+              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : gate.key === 'notice' ? { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : null
+              return { words: lienAffidavitFootBlockedSentence(gate), short: lienAffidavitGateShortWords(gate), act: fix }
+            }}
+          />
+        ) : null}
       </div>
       <div style={boxStyle}>
         <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? 'the month the job was created — it has no clock hours' : 'the last month worked'})</div>
@@ -312,7 +396,7 @@ export default function LienDeskAffidavitPane({
             <div key={g.key} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 700, color: g.ok ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{g.ok ? '✓' : '✗'}</span>
               <span>{g.label}{g.key === 'owner' && ownerName ? ` — ${ownerName}` : ''}{g.key === 'legal' && property.county ? ` — ${property.county}` : ''}</span>
-              {!g.ok && (g.key === 'owner' || g.key === 'legal') ? <button type="button" onClick={() => onOpenEditJob(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Property record ›</button> : null}
+              {!g.ok && (g.key === 'owner' || g.key === 'legal') ? <button type="button" onClick={() => (onFixProperty ? onFixProperty(entry.jobId, g.key === 'owner' ? 'owner' : 'legal') : onOpenEditJob(entry.jobId))} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{onFixProperty ? 'Fill in the record ›' : 'Property record ›'}</button> : null}
               {!g.ok && g.key === 'notice' ? <button type="button" onClick={() => onShowNotices(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Send the notice first ›</button> : null}
             </div>
           ))}

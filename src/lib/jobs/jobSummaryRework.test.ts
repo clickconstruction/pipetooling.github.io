@@ -72,3 +72,13 @@ describe('rework (v2.2831)', () => {
     expect(s.ratePct).toBeCloseTo((3 / 6) * 100)
   })
 })
+
+describe('rework · a return made in the evening keeps its day (v2.4472)', () => {
+  it('counts the days to a return from the Central day it was made', () => {
+    const second = mk('r2', { addrId: 'A9', created: '2026-06-22' })
+    // 00:30 UTC on Jun 23 is 7:30 pm CDT on Jun 22.
+    second.job.created_at = '2026-06-23T00:30:00Z'
+    const enriched = enrichJobSummaryRows({ rows: [mk('r1', { addrId: 'A9', created: '2026-06-01', billed: '2026-06-05' }), second], reportPctByJobId: new Map(), ledger: null, method: 'day' })
+    expect(findReworkPairs(enriched, null, 90).map((p) => [p.first.number, p.second.number, p.daysAfter])).toEqual([['r1', 'r2', 17]])
+  })
+})

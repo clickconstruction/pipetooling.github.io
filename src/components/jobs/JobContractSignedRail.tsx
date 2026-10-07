@@ -13,7 +13,7 @@ import IpAddressMapButton from '../estimates/IpAddressMapButton'
 import type { EstimateRecordRow } from '../estimates/CustomerAcceptanceRecordBody'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { formatContractStamp, jobContractSigningUrl, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { abbreviateUa, signedDoors, signedHowLine, signedShareLine, type SignedSource } from '../../lib/jobs/contractSignedDoors'
 import { isGoogleDocsUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
@@ -22,6 +22,7 @@ import { acceptedEstimateOptionKeys, describeAcceptedEstimateRecord } from '../.
 import { buildJobContractRecordHtml, type JobContractRecordJob } from './JobContractRecordModal'
 import JobContractShareSheet, { type ShareTarget } from './JobContractShareSheet'
 import { RailGroup } from './ContractRailGroup'
+import { signerNamesLine } from '../../lib/jobs/jobContractSigners'
 
 export type JobContractSignedRailProps = {
   job: JobContractRecordJob & { id: string; customer_phone?: string | null; customer_email?: string | null }
@@ -33,7 +34,7 @@ export type JobContractSignedRailProps = {
   estimate: { estimateId: string | null; estimateNumber: number | null; signerName: string | null; signedAt: string | null } | null
   /** The estimates row, once the acceptance record on the left has loaded it. */
   estimateRow: EstimateRecordRow | null
-  urls: { signatureUrl: string | null; pdfUrl: string | null; paperUrl: string | null }
+  urls: { signatureUrl: string | null; pdfUrl: string | null; paperUrl: string | null; coSignatureUrl?: string | null }
   /** The deliberate door back to a fresh draft — a new signature supersedes this one. */
   onStartNew: (() => void) | null
   onOpenJob: (() => void) | null
@@ -102,10 +103,9 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
     void loadLastShare(job.id)
   }, [job.id, row?.id, estimate?.estimateId])
 
-  // v2.4186: a two-frame agreement names both signers.
+  // v2.4186: a two-frame agreement names both signers — in the kernel's words since v2.4590.
   const primaryName = (row?.signer_printed_name ?? '').trim()
-  const coName = row?.co_signer_name && row.co_signed_at ? (row.co_signer_printed_name ?? row.co_signer_name ?? '').trim() : ''
-  const signerName = (isContract ? (coName ? `${primaryName} and ${coName}` : primaryName) : (estimateRow?.acceptor_printed_name ?? estimate?.signerName ?? '')).trim()
+  const signerName = (isContract ? (row ? signerNamesLine(row) : '') : (estimateRow?.acceptor_printed_name ?? estimate?.signerName ?? '')).trim()
   const signedAt = isContract ? row?.signed_at ?? null : estimateRow?.acceptor_consented_at ?? estimate?.signedAt ?? null
   const phone = (job.customer_phone ?? row?.recipient_phone ?? '').replace(/[^\d+]/g, '')
   const signLink = isContract && row?.public_token ? jobContractSigningUrl(window.location.origin, row.public_token) : null
@@ -143,7 +143,8 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
     window.location.href = `sms:${phone}?&body=${encodeURIComponent(`Here is your signed agreement for ${job.job_address || 'your project'}: ${signLink}`)}`
   }
   const print = () => {
-    if (row && !openHtmlPrintWindow(buildJobContractRecordHtml(row, job, urls.signatureUrl))) showToast('Allow pop-ups to print the agreement.', 'error')
+    // A print counts as a send (docs/SENT_COPIES.md): the signed agreement is filed on the job as it printed.
+    if (row && !printAndFile(buildJobContractRecordHtml(row, job, urls.signatureUrl, urls.coSignatureUrl ?? null), { kind: 'job_contract_print', title: `Contract${row.template_name ? ` · ${row.template_name}` : ''}`, recipientName: row.recipient_name ?? '', jobIds: [row.job_id], source: { table: 'job_contracts', id: row.id } })) showToast('Allow pop-ups to print the agreement.', 'error')
   }
   const copyDocLink = () => {
     const url = row?.signed_document_url
@@ -342,6 +343,7 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
         target={shareTarget}
         heading={`${isContract ? 'Contract' : source === 'bid_room' ? 'Proposal' : 'Estimate'} · J${jobNumber}${job.job_address ? ` · ${job.job_address}` : ''}`}
         signerName={primaryName || signerName}
+        signedBy={signerName}
         signerEmail={isContract ? row?.recipient_email ?? job.customer_email ?? null : estimateRow?.customer_email ?? job.customer_email ?? null}
         contractRow={isContract ? row : null}
         filenameHint={doors.emailCopy?.attachment === 'link' && row?.signed_document_url ? shortDocumentLabel(row.signed_document_url) : pdfFilename}

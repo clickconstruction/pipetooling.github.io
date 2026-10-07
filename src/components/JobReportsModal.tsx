@@ -43,7 +43,7 @@ export default function JobReportsModal({
   authUserId,
   userRole,
   filterCreatedByUserId,
-  zIndex = 55,
+  zIndex = 755,
   onReportSaved,
 }: Props) {
   const [reports, setReports] = useState<ReportForView[]>([])

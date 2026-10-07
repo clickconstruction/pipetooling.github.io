@@ -14,7 +14,7 @@ import {
   hazmatNoticePdfFilename,
 } from '../../lib/jobsDocuments/hazmatFeeNoticePdf'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
-import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
 import { useAuth } from '../../hooks/useAuth'
 import {
@@ -180,7 +180,7 @@ export function JobFormHazmatRiderRows({
                     ? 'Paid'
                     : inv.status
               : 'Invoice removed'
-          const incidentDay = formatWorkDateYmdMonthDayShort(String(row.incident_at).slice(0, 10))
+          const incidentDay = formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(String(row.incident_at)))
           return (
             <tr key={row.id} style={{ background: row.voided_at ? 'var(--bg-subtle)' : 'var(--bg-red-tint)', opacity: row.voided_at ? 0.75 : 1 }}>
               {/* One full-width cell (v2.1032): the title owns the whole line so it
@@ -222,7 +222,7 @@ export function JobFormHazmatRiderRows({
                   }
                 >
                   {row.notice_emailed_at
-                    ? `Notice emailed ${formatWorkDateYmdMonthDayShort(String(row.notice_emailed_at).slice(0, 10))}`
+                    ? `Notice emailed ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(String(row.notice_emailed_at)))}`
                     : 'Notice not emailed'}
                 </span>
               ) : null}

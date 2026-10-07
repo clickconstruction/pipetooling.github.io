@@ -134,7 +134,8 @@ export default function Bridge() {
     for (const item of fin.data.ar.items) {
       if (item.amount <= 0) continue
       const promise = item.jobId && data.promisedByJob ? data.promisedByJob[item.jobId] : undefined
-      const model = billedExpectedPayModel({ billedAtIso: item.dateYmd, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
+      // item.dateYmd is already a day: read as an instant it would be midnight UTC, the evening before.
+      const model = billedExpectedPayModel({ billedAtIso: null, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
       let expectedYmd: string
       let source: string
       if (model) {

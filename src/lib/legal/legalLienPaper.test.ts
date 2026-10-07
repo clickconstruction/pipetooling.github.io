@@ -224,3 +224,27 @@ describe('envelopeAnswersWords', () => {
     expect(envelopeAnswersWords({ ...base, gcAuthorized: { at: '2026-09-30T12:00:00Z', name: 'Dana', note: 'email from Lenox' } }, opts).gcOkay).toBe('Sep 30 · Dana · email from Lenox')
   })
 })
+
+describe('an evening instant keeps its day on the packet (v2.4468)', () => {
+  // 00:30 UTC is 7:30 pm CDT (6:30 pm CST in winter) the evening before.
+  const base = { ownerCall: null, pile: null, holdEndsOn: '', gcAuthorized: null, letterTwo: [] }
+  const opts = { todayYmd: '2026-10-06', gcName: 'Lenox' }
+  it('dates a paper with no send day by the day its row was made, so a month mailed on its last day is not information', () => {
+    const row = filing({ id: 'f-e', months_covered: ['2026-07'], created_at: '2026-09-16T00:30:00Z' })
+    const [evening] = buildLegalEnvelopes([row], { labelOf, propertyKind: 'residential' })
+    expect(evening!.wentOutYmd).toBe('2026-09-15')
+    expect(evening!.months).toEqual([{ key: '2026-07', label: 'Jul', asInformation: false }])
+    const [noon] = buildLegalEnvelopes([filing({ ...row, created_at: '2026-09-16T12:00:00Z' })], { labelOf, propertyKind: 'residential' })
+    expect(noon!.wentOutYmd).toBe('2026-09-16')
+    expect(noon!.months[0]!.asInformation).toBe(true)
+  })
+  it('words the owner’s call, the GC’s okay and a sent letter two by the Central day', () => {
+    const w = envelopeAnswersWords({ ...base, ownerCall: { ...OWNER_CALL, at: '2026-10-02T00:30:00Z', owesGc: 'yes' as const, reserved: 'held' as const }, gcAuthorized: { at: '2026-12-02T00:30:00+00:00', name: 'Dana', note: '' } }, opts)
+    expect(w.owner).toMatch(/^Oct 1, Taunya — /)
+    expect(w.gcOkay).toBe('Dec 1 · Dana')
+    const sent = { state: 'sent' as const, day: 15, firstItemId: 'x', firstSentAt: null, letterTwo: { itemId: 't', kind: 'paid_out' as const, status: 'sent', sentAt: '2026-10-03T00:30:00Z' }, gcAuthorized: null, words: '' }
+    expect(envelopeAnswersWords({ ...base, letterTwo: [{ jobId: 'a', jobLabel: '273', status: sent }] }, opts).letterTwo).toBe('sent Oct 2 · paid-out')
+    const noon = envelopeAnswersWords({ ...base, ownerCall: { ...OWNER_CALL, at: '2026-10-02T12:00:00Z', owesGc: 'yes' as const, reserved: 'held' as const } }, opts)
+    expect(noon.owner).toMatch(/^Oct 2, Taunya — /)
+  })
+})

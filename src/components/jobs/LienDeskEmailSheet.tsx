@@ -11,8 +11,8 @@ import { LIEN_STATUS_NOTE_MAX, lienStatusEmailHtml, lienStatusFacts, lienStatusS
 
 const PRIMARY = '#2563eb'
 
-/** Where the email comes from and where replies go; outside mail is the user's own (the owner's rule). */
-const FROM_WORDS = 'Sends from ClickTooling, and replies come to you. Mail to anyone outside the company goes from your own inbox, so use Send… for that.'
+/** Where the email comes from and where replies go. The list is the desk's own people, so the email never leaves the office (v2.4722). */
+const FROM_WORDS = 'Sends from ClickTooling, and replies come to you. Only people who use the Lien desk are on the list.'
 
 const label: CSSProperties = { padding: '9px 0 9px 18px', color: 'var(--text-muted)', fontSize: '0.8rem' }
 const cell: CSSProperties = { padding: '7px 18px 7px 0', fontSize: '0.84rem', minWidth: 0 }
@@ -129,7 +129,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
 
   return (
     <>
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', zIndex: 40, background: 'rgba(17,24,39,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'left', fontWeight: 400 }} onClick={p.onClose}>
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', paddingTop: 'var(--app-top-chrome, 0px)', zIndex: 740, background: 'rgba(17,24,39,0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'left', fontWeight: 400 }} onClick={p.onClose}>
       <div role="dialog" aria-modal="true" aria-label="Email where the liens stand" data-lien-share-email-sheet onClick={(e) => e.stopPropagation()} style={{ ...card, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', gridTemplateColumns: 'minmax(0, 1fr)', overflow: 'hidden', background: 'var(--surface)', color: 'var(--text-base)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 18px 10px', borderBottom: '1px solid var(--border)' }}>
           <button type="button" onClick={p.onBack} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }}>
@@ -189,7 +189,7 @@ export default function LienDeskEmailSheet(p: LienDeskEmailSheetProps) {
 
           <div style={{ padding: '12px 18px 0', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
-              <div style={boxHead}>What to send</div>
+              <div style={boxHead}>Which liens</div>
               <LienShareScopeMenu options={p.options} value={p.scope} onChange={(s) => { setSubjectTyped(null); p.onScope(s) }} big={p.isMobile} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>

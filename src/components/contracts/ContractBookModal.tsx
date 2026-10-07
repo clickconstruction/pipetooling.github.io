@@ -1139,12 +1139,12 @@ export function ContractBookModal({
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 13,
+            zIndex: 713,
             background: 'rgba(0,0,0,0.45)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => {
             if (e.target === e.currentTarget) setBookEntryDeleteConfirmOpen(false)
@@ -1228,7 +1228,7 @@ export function ContractBookModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 12,
+        zIndex: 712,
         padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
       }}
     >

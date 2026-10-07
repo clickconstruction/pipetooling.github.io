@@ -353,7 +353,7 @@ export function StripeInvoiceSendFromStripeButton({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '1rem',
+              padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
             }}
             onClick={(e) => {
               // The confirm is drawn inside a Pipeline row that opens its thread on a click, and

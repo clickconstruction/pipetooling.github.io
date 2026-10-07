@@ -13,15 +13,14 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
+import { LeafletOfficeAnchor } from './LeafletOfficeAnchor'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { leafletScrollWheelZoom } from '../../lib/map/scrollZoomGate'
 import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
 import {
-  MAP_CANVAS_ANCHOR_COLOR,
   MAP_CANVAS_SELECTED_COLOR,
-  METERS_PER_MILE,
   mapCanvasFitPoints,
   type MapCanvasAnchor,
   type MapCanvasPin,
@@ -49,6 +48,10 @@ export type PinsMapCanvasProps = {
   pulseId?: string | null
   /** For a map inside a scrolling page: the wheel scrolls the page until the map is clicked once (desktop; + / − and dragging work from the start). */
   scrollZoomAfterClick?: boolean
+  /** Leaflet only (v2.4796): more react-leaflet layers mounted inside the map — the Map page's draw tool, court layer and fly-to. The Google canvas ignores them. */
+  children?: ReactNode
+  /** What a cluster disc counts, for its hover title (v2.4802): "bids" unless the caller says. */
+  clusterNoun?: string
 }
 
 /**
@@ -90,14 +93,14 @@ function clusterIcon(c: PinCluster<MapCanvasPin>): L.DivIcon {
   })
 }
 
-function ClusterMarker({ cluster }: { cluster: PinCluster<MapCanvasPin> }) {
+function ClusterMarker({ cluster, noun }: { cluster: PinCluster<MapCanvasPin>; noun: string }) {
   const map = useMap()
   const icon = useMemo(() => clusterIcon(cluster), [cluster])
   return (
     <Marker
       position={[cluster.lat, cluster.lng]}
       icon={icon}
-      title={`${cluster.count} bids here — click to zoom in`}
+      title={`${cluster.count} ${noun} here — click to zoom in`}
       eventHandlers={{
         click: () => {
           const b = clusterBounds(cluster)
@@ -133,14 +136,7 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   })
 }
 
-const ANCHOR_ICON = L.divIcon({
-  className: 'pins-map-anchor',
-  html: `<div style="width:12px;height:12px;transform:rotate(45deg);background:${MAP_CANVAS_ANCHOR_COLOR};border:2px solid var(--surface);box-shadow:0 0 0 1px ${MAP_CANVAS_ANCHOR_COLOR}"></div>`,
-  iconSize: [16, 16],
-  iconAnchor: [8, 8],
-})
-
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = 'bids' }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
   const [mapClicked, setMapClicked] = useState(false)
@@ -160,24 +156,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
       {scrollZoomAfterClick && !isMobile ? <ScrollZoomGate wheelZooms={wheelZooms} onMapClick={markMapClicked} /> : null}
       <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
       {cluster ? <ZoomTracker onZoom={setZoom} /> : null}
-      {anchor ? (
-        <>
-          {(anchor.ringMiles ?? []).map((mi) => (
-            <Circle
-              key={mi}
-              center={[anchor.lat, anchor.lng]}
-              radius={mi * METERS_PER_MILE}
-              interactive={false}
-              pathOptions={{ color: MAP_CANVAS_SELECTED_COLOR, weight: 1, opacity: 0.5, dashArray: '5 5', fillOpacity: 0 }}
-            />
-          ))}
-          <Marker position={[anchor.lat, anchor.lng]} icon={ANCHOR_ICON} title={anchor.label} interactive={false}>
-            <Tooltip permanent direction="right" offset={[8, 0]}>
-              {anchor.label}
-            </Tooltip>
-          </Marker>
-        </>
-      ) : null}
+      {anchor ? <LeafletOfficeAnchor anchor={anchor} /> : null}
       {pulse ? (
         // Keyed on the mark so a new target mounts a fresh path — Leaflet applies `className` only at creation.
         <CircleMarker
@@ -189,7 +168,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
         />
       ) : null}
       {clusters.map((c) => (
-        <ClusterMarker key={c.id} cluster={c} />
+        <ClusterMarker key={c.id} cluster={c} noun={clusterNoun} />
       ))}
       {singlePins.map((p) => {
         const selected = p.id === selectedId
@@ -218,6 +197,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
           </CircleMarker>
         )
       })}
+      {children}
     </MapContainer>
   )
 }

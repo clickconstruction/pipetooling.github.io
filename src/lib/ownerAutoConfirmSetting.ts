@@ -6,7 +6,7 @@ import { APP_SETTINGS_KEY_OWNER_AUTO_CONFIRM_FROM_ROLL_V1 } from './appSettingsK
  * decision 5 — v2.3450). One `app_settings` row, `value_text` 'true' |
  * 'false', inserted 'false' by the migration. When it is on, the nightly
  * `owner-confirm-nightly` function writes the roll's answer on every GC job
- * with approved hours and no owner, as *from the roll · unconfirmed*; the
+ * with no owner, hours or not (v2.3747), as *from the roll · unconfirmed*; the
  * Lien desk drafts on it and a person confirms before Record the run.
  * Master and dev may flip it (a key-scoped UPDATE policy); everyone reads.
  */

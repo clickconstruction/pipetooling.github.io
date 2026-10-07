@@ -1,17 +1,30 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
+// Item 7 (#85): a thrown error is logged; the firm reads one plain sentence.
+import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
+import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
+import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
+import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 
 /**
  * The firm's acts on its portal (Legal portal train, PR 4): one POST endpoint,
  * token-authenticated like submit-sub-portal, five kinds (six with `answer`, #41 PR 3) —
  *
  *   fee · cost          — an amount and a note; rolls into the matter's total demand
- *   step                — demand · suit · judgment · settled (+ detail); moves the matter's stage
+ *   step                — demand · suit · judgment · post_judgment · payment_plan · settled ·
+ *                         uncollectible · dismissed (+ detail); moves the matter's stage.
+ *                         Since #85 item 16 an end (settled) moves the stage but not closed_at — the
+ *                         matter stays here for the check until the office closes it — and a step that
+ *                         would move the stage backward is recorded with meta.proposed and waits on
+ *                         the office (_shared/legalStages.ts firmStepDecision).
  *   question            — free text for the office
  *   payment_received    — money the firm received; the office applies it to the job
  *
@@ -19,8 +32,13 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
  * acknowledged_at NULL — the office's Needs You reads exactly those. The firm
  * never marks anything paid, edits a job, or emails the customer through us.
  *
- * Guards: honeypot `website`, length caps, the matter must belong to the
- * firm and be in the with-firm set, 30 acts per firm per hour.
+ * Guards: the link is the key, length caps, the matter must belong to the
+ * firm and be in the with-firm set, 60 acts per matter per hour (#85 item 18; 30 per firm
+ * before), twelve people. No honeypot (v2.4622): the page is behind a private link, and a
+ * hidden box a password manager fills would have made a real act vanish behind "Saved".
+ * Since item 18 every matter act may carry `occurredOn` (the date the firm sets,
+ * not in the future), `clientId` (a uuid: a retry or double click saves once, the first
+ * entry is answered) and `recordedById` (a person on the firm's list → meta.recordedBy).
  */
 
 const corsHeaders = {
@@ -29,14 +47,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Item 22 (#85): an answer about one firm's matters. No cache holds it, and no page learns where it came from.
+const privateHeaders = { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
+
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact the office.'
-const WITH_FIRM_STAGES = ['referred', 'demand', 'suit', 'judgment']
-const MAX_PER_HOUR = 30
 const MAX_BODY = 2000
 const MAX_AMOUNT = 1_000_000
 
 function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, ...privateHeaders, 'Content-Type': 'application/json' } })
 }
 
 async function sha256Hex(value: string): Promise<string> {
@@ -47,11 +66,9 @@ async function sha256Hex(value: string): Promise<string> {
 type Link = { firm_id: string; revoked_at: string | null }
 
 async function resolveLink(admin: SupabaseClient, token: string): Promise<Link | null> {
-  let { data: link } = await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', token).maybeSingle()
-  if (!link) {
-    const hash = await sha256Hex(token)
-    link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', hash).maybeSingle()).data
-  }
+  // The hash first (item 22): the raw column is on its way out; it stays as the fallback for a link minted before the hash existed.
+  let { data: link } = await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()
+  if (!link) link = (await admin.from('legal_portal_links').select('firm_id, revoked_at').eq('token', token).maybeSingle()).data
   const l = link as Link | null
   return l && !l.revoked_at ? l : null
 }
@@ -59,22 +76,28 @@ async function resolveLink(admin: SupabaseClient, token: string): Promise<Link |
 const str = (v: unknown, max = MAX_BODY): string => (typeof v === 'string' ? v.trim().slice(0, max) : '')
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: { ...corsHeaders, ...privateHeaders } })
   if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405)
   try {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
     if (!body || typeof body !== 'object') return jsonResponse({ error: 'Bad request' }, 400)
-    if (str(body.website, 100)) return jsonResponse({ ok: true }) // honeypot: pretend success, write nothing
     const token = str(body.token, 128)
-    if (token.length < 16) return jsonResponse({ error: 'Missing token' }, 400)
+    // 5 and up: since v2.4756 the short address (`snell-law-f6a`, 13) is the key.
+    if (token.length < 5) return jsonResponse({ error: 'Missing token' }, 400)
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
-    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
+    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
+    // The guess gate (v2.4756): wrong keys are counted by caller; ten in an hour and the caller is refused.
+    const ip = clientIpFromEdgeRequest(req)
+    if ((await askGuessGate(admin, ip, false)).locked) return jsonResponse({ error: GUESS_LOCKED_MSG }, 429)
     const link = await resolveLink(admin, token)
-    if (!link) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    if (!link) {
+      await askGuessGate(admin, ip, true)
+      return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    }
 
     // --- The firm's people and their email rules (PR 5) ---------------------
     if (RECIPIENT_KINDS.includes(kind)) {
@@ -83,12 +106,21 @@ serve(async (req) => {
         const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
         await admin.from('legal_firm_recipients').update({ confirm_token_hash: await sha256Hex(raw), updated_at: nowIso }).eq('id', id)
         const key = Deno.env.get('RESEND_API_KEY')
-        if (!key) return false
+        // v2.4662: a confirmation that does not go marks the person "not reaching" (send_failed_since), as the dispatcher does.
+        const note = async (res: { success: boolean; error?: string }) => {
+          const { data: prev } = await admin.from('legal_firm_recipients').select('send_failed_since').eq('id', id).maybeSingle()
+          await admin.from('legal_firm_recipients').update(legalRecipientSendPatch((prev as { send_failed_since?: string | null } | null)?.send_failed_since ?? null, res, new Date().toISOString())).eq('id', id)
+        }
+        if (!key) {
+          await note({ success: false, error: 'Email is not set up on the server.' })
+          return false
+        }
         // v2.3521: the link lands on the app's page; the function's GET is what that page calls.
         const confirmUrl = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm?t=${raw}`
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
         const mail = buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email, confirmUrl })
         const res = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, key, { from: COMPANY_EMAIL_FROM })
+        await note(res)
         return res.success
       }
       if (kind === 'recipient_add') {
@@ -125,7 +157,11 @@ serve(async (req) => {
         return jsonResponse({ ok: true })
       }
       if (kind === 'recipient_resume') {
+        // v2.4662: turning emails back on is the one rotation of the stop link — a new salt, so a stop link
+        // in an old (perhaps forwarded) email no longer pauses them. The dispatcher mints the new one.
+        // Two writes: the resume never waits on the salt column.
         await admin.from('legal_firm_recipients').update({ paused_at: null, updated_at: nowIso }).eq('id', r.id)
+        await admin.from('legal_firm_recipients').update({ unsubscribe_salt: crypto.randomUUID().replace(/-/g, ''), unsubscribe_token_hash: null }).eq('id', r.id)
         return jsonResponse({ ok: true })
       }
       // recipient_resend
@@ -135,23 +171,68 @@ serve(async (req) => {
 
     if (!matterId) return jsonResponse({ error: 'Missing matter' }, 400)
 
-    const { data: matter } = await admin.from('legal_matters').select('id, firm_id, stage, payer_name').eq('id', matterId).maybeSingle()
-    const m = matter as { id: string; firm_id: string | null; stage: string; payer_name: string } | null
-    if (!m || m.firm_id !== link.firm_id || !WITH_FIRM_STAGES.includes(m.stage)) return jsonResponse({ error: 'That matter is not with your firm.' }, 403)
+    // select('*'): the settlement floor columns (#85 item 20) arrive with their migration; until then they read as no floor.
+    const { data: matter } = await admin.from('legal_matters').select('*').eq('id', matterId).maybeSingle()
+    const m = matter as { id: string; firm_id: string | null; stage: string; payer_name: string; closed_at: string | null; settlement_floor_amount?: unknown; settlement_floor_pct?: unknown } | null
+    // #85 item 16: a working stage, or an end (settled …) the office has not closed yet.
+    if (!m || m.firm_id !== link.firm_id || !legalMatterOnPortal(m)) return jsonResponse({ error: 'That matter is not with your firm.' }, 403)
 
-    // Rate limit: portal acts across the firm's matters in the last hour.
+    // #85 item 18 (d): one save per act. A retry or a double click carries the same key and gets the first entry back.
+    const clientId = isLegalClientId(body.clientId) ? (body.clientId as string).toLowerCase() : null
+    if (clientId) {
+      const { data: dup } = await admin.from('legal_matter_entries').select('id').eq('matter_id', matterId).eq('meta->>clientId', clientId).limit(1).maybeSingle()
+      if (dup) return jsonResponse({ ok: true, entryId: (dup as { id: string }).id, duplicate: true })
+    }
+
+    // #85 item 18 (e): the hourly limit is per matter, and the refusal names it and when it lifts.
     const since = new Date(Date.now() - 3_600_000).toISOString()
-    const { data: matterIds } = await admin.from('legal_matters').select('id').eq('firm_id', link.firm_id)
-    const ids = ((matterIds ?? []) as Array<{ id: string }>).map((r) => r.id)
-    const { count } = await admin.from('legal_matter_entries').select('id', { count: 'exact', head: true }).in('matter_id', ids.length ? ids : [matterId]).eq('via_portal', true).gte('created_at', since)
-    if ((count ?? 0) >= MAX_PER_HOUR) return jsonResponse({ error: 'Too many changes in the last hour. Please try again later.' }, 429)
+    const { data: recent, count } = await admin.from('legal_matter_entries').select('created_at', { count: 'exact' }).eq('matter_id', matterId).eq('via_portal', true).gte('created_at', since).order('created_at').limit(1)
+    if ((count ?? 0) >= LEGAL_ACTS_PER_MATTER_PER_HOUR) {
+      const oldest = ((recent ?? []) as Array<{ created_at: string }>)[0]?.created_at
+      const retryAt = oldest ? new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, hour: 'numeric', minute: '2-digit' }).format(new Date(new Date(oldest).getTime() + 3_600_000)) : null
+      return jsonResponse({ error: legalRateLimitMessage(m.payer_name, retryAt) }, 429)
+    }
 
+    // #85 item 18 (c): the date the firm sets; today when it sends none.
     const today = todayYmdInAppTz()
-    const occurredOn = /^\d{4}-\d{2}-\d{2}$/.test(str(body.occurredOn, 10)) ? str(body.occurredOn, 10) : today
+    const typedOn = str(body.occurredOn, 10)
+    if (typedOn) {
+      const problem = legalActDateProblem(typedOn, today)
+      if (problem) return jsonResponse({ error: problem }, 400)
+    }
+    const occurredOn = typedOn || today
     const note = str(body.note)
     let amount: number | null = null
     let entryBody = note
     const meta: Record<string, unknown> = {}
+    let entryKind = kind
+    let notice: string | null = null
+    if (clientId) meta.clientId = clientId
+    // #85 item 18 (b): who recorded it — a person on the firm's own list, never free text.
+    const recordedById = str(body.recordedById, 64)
+    if (recordedById) {
+      const { data: who } = await admin.from('legal_firm_recipients').select('id, name').eq('id', recordedById).eq('firm_id', link.firm_id).is('removed_at', null).maybeSingle()
+      // An id that names nobody on this firm's list is refused, never saved as "the firm".
+      if (!who) return jsonResponse({ error: 'Pick who recorded this from the list.' }, 400)
+      meta.recordedBy = { id: (who as { id: string }).id, name: (who as { name: string }).name }
+    }
+
+    // #85 item 18 (a): the firm undoes its own act, with a reason both sides read. Nothing is deleted.
+    if (kind === 'void') {
+      const entryId = str(body.entryId, 64)
+      if (!note) return jsonResponse({ error: 'Say why you are undoing it.' }, 400)
+      const { data: row } = await admin.from('legal_matter_entries').select('id, matter_id, kind, via_portal, voided_at, voided_via_portal, void_reason, acknowledged_at, meta').eq('id', entryId).maybeSingle()
+      const target = row as { id: string; matter_id: string; kind: string; via_portal: boolean; voided_at: string | null; voided_via_portal: boolean | null; void_reason: string | null; acknowledged_at: string | null; meta: Record<string, unknown> | null } | null
+      if (!target || target.matter_id !== matterId) return jsonResponse({ error: 'That entry is not on this matter.' }, 400)
+      // A retried undo (a double press, a timeout) is the same act: answer ok when the firm already undid it for the same reason.
+      if (voidIsRetry(target, note)) return jsonResponse({ ok: true, entryId: target.id, notice: 'Undone. It stays on the record, struck through, out of every total.' })
+      const problem = firmVoidProblem(target)
+      if (problem) return jsonResponse({ error: problem }, 400)
+      const nextMeta = { ...(target.meta ?? {}), ...(meta.recordedBy ? { voidedBy: meta.recordedBy } : {}) }
+      const { error: vErr } = await admin.from('legal_matter_entries').update({ voided_at: new Date().toISOString(), voided_via_portal: true, void_reason: note, meta: nextMeta }).eq('id', target.id).is('voided_at', null)
+      if (vErr) return jsonResponse({ error: 'Could not undo that.' }, 500)
+      return jsonResponse({ ok: true, entryId: target.id, notice: 'Undone. It stays on the record, struck through, out of every total.' })
+    }
 
     if (kind === 'fee' || kind === 'cost') {
       const n = Number(body.amount)
@@ -165,18 +246,64 @@ serve(async (req) => {
       meta.applied = false
       entryBody = note || 'Payment received by counsel'
     } else if (kind === 'step') {
-      const stage = str(body.stage, 20)
-      if (!['demand', 'suit', 'judgment', 'settled'].includes(stage)) return jsonResponse({ error: 'Pick a step.' }, 400)
-      const label = { demand: 'Demand sent on firm letterhead', suit: 'Suit filed', judgment: 'Judgment entered', settled: 'Settled' }[stage as 'demand' | 'suit' | 'judgment' | 'settled']
+      // Every step the firm records (#85 item 16; the CHECK takes them since migration 20261006150000).
+      const step = str(body.stage, 20)
+      if (!isLegalFirmStep(step)) return jsonResponse({ error: 'Pick a step.' }, 400)
+      const label = LEGAL_FIRM_STEP_WORDS[step]
       entryBody = note ? `${label} — ${note}` : label
-      meta.stage = stage
-      const patch: Record<string, unknown> = { stage, updated_at: new Date().toISOString() }
-      if (stage === 'settled') {
-        patch.closed_at = new Date().toISOString()
-        patch.closed_reason = 'Settled — reported by the firm'
+      meta.stage = step
+      const decision = firmStepDecision(m.stage, step)
+      // #85 item 20: settlement authority as a threshold. Under the office's floor, the settled step is a settlement ask.
+      const floor = step === 'settled' && decision !== 'ask' ? settlementFloorOf(m) : null
+      const proposed = Number(body.amount)
+      const hasAmount = Number.isFinite(proposed) && proposed > 0 && proposed <= MAX_AMOUNT
+      if (floor && !hasAmount) return jsonResponse({ error: 'Enter the settlement amount. The office set a floor on this matter.' }, 400)
+      if (step === 'settled' && hasAmount) {
+        amount = Math.round(proposed * 100) / 100
+        meta.settlementAmount = amount
       }
-      const { error: upErr } = await admin.from('legal_matters').update(patch).eq('id', matterId)
-      if (upErr) return jsonResponse({ error: 'Could not record the step.' }, 500)
+      let balance = 0
+      // A percent floor needs the balance. When it cannot be read, or the matter has no jobs, the floor is
+      // unknown: the settlement goes to the office as an ask, never through at $0 (item 20 review).
+      let floorUnknown = false
+      if (floor?.pct != null && amount != null) {
+        const { data: links, error: linkErr } = await admin.from('legal_matter_jobs').select('job_id').eq('matter_id', matterId)
+        const jobIds = ((links ?? []) as Array<{ job_id: string }>).map((l) => l.job_id)
+        if (linkErr || !jobIds.length) floorUnknown = true
+        else {
+          const [jr, ir, pr] = await Promise.all([
+            admin.from('jobs_ledger').select('id, revenue, payments_made').in('id', jobIds),
+            admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, sequence_order, billed_at, agreed_write_down_at, agreed_write_down_previous_amount').in('job_id', jobIds),
+            admin.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
+          ])
+          if (jr.error || ir.error || pr.error || !(jr.data ?? []).length) floorUnknown = true
+          else balance = matterOpenBalance((jr.data ?? []) as Array<{ id: string }>, (ir.data ?? []) as Array<{ id: string; job_id: string }>, (pr.data ?? []) as Array<{ job_id: string }>)
+        }
+      }
+      if (floor && amount != null && (floorUnknown || settlementBelowFloor(amount, floor, balance))) {
+        const floorDollars = settlementFloorDollars(floor, balance) ?? 0
+        const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        entryKind = 'question'
+        entryBody = `Proposed settlement ${money(amount)}${note ? ` — ${note}` : ''}`
+        meta.flavor = SETTLEMENT_ASK_FLAVOR
+        meta.proposedAmount = amount
+        meta.floor = floorDollars
+        if (floor.pct != null) meta.floorPct = floor.pct
+        delete meta.settlementAmount
+        notice = floorUnknown
+          ? `The office's floor could not be worked out just now, so ${money(amount)} went to the office as a settlement ask. The stage moves when they sign off.`
+          : `${money(amount)} is below the office's floor of ${money(floorDollars)}. It went to the office as a settlement ask. The stage moves when they sign off.`
+        if (floorUnknown) meta.floorUnknown = true
+      } else if (decision === 'ask') {
+        // Backward (judgment → demand, or anything after an end): recorded, the stage waits for the office.
+        meta.proposed = true
+        meta.from = m.stage
+        notice = 'Recorded. That step would move the stage back, so the stage stays where it is until the office agrees.'
+      } else if (decision === 'move') {
+        const { error: upErr } = await admin.from('legal_matters').update({ stage: step, updated_at: new Date().toISOString() }).eq('id', matterId)
+        if (upErr) return jsonResponse({ error: 'Could not record the step.' }, 500)
+        if (step === 'settled') notice = 'Recorded. The matter stays here until the office closes it, so you can still record the payment and your last costs.'
+      }
     } else if (kind === 'question') {
       if (!note) return jsonResponse({ error: 'Type your question.' }, 400)
     } else if (kind === 'answer') {
@@ -197,13 +324,19 @@ serve(async (req) => {
 
     const { data: inserted, error } = await admin
       .from('legal_matter_entries')
-      .insert({ matter_id: matterId, kind, amount, body: entryBody, occurred_on: occurredOn, meta, via_portal: true })
+      .insert({ matter_id: matterId, kind: entryKind, amount, body: entryBody, occurred_on: occurredOn, meta, via_portal: true })
       .select('id')
       .single()
-    if (error) return jsonResponse({ error: 'Could not save that.' }, 500)
-    return jsonResponse({ ok: true, entryId: (inserted as { id: string }).id })
+    if (error) {
+      // #85 item 18 (d): the unique index on (matter_id, meta->>'clientId') caught a same-instant twin — answer the first.
+      if ((error as { code?: string }).code === '23505' && clientId) {
+        const { data: twin } = await admin.from('legal_matter_entries').select('id').eq('matter_id', matterId).eq('meta->>clientId', clientId).limit(1).maybeSingle()
+        if (twin) return jsonResponse({ ok: true, entryId: (twin as { id: string }).id, duplicate: true })
+      }
+      return jsonResponse({ error: 'Could not save that.' }, 500)
+    }
+    return jsonResponse({ ok: true, entryId: (inserted as { id: string }).id, ...(notice ? { notice } : {}) })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    return jsonResponse({ error: message }, 500)
+    return jsonResponse(unexpectedErrorBody('submit-legal-portal', e), 500)
   }
 })

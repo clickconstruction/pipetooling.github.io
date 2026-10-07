@@ -13,8 +13,8 @@ import type { JobAccountStripEntry } from '../../lib/jobs/jobAccountStrip'
 
 type RepContact = { id: string; name: string | null; email: string; phone: string | null; label: string }
 
-const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300, padding: '1rem' }
-const box: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, width: 'min(560px, 100%)', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem 1.1rem' }
+const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }
+const box: CSSProperties = { background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 12, width: 'min(560px, 100%)', maxHeight: 'min(92vh, 100%)', overflowY: 'auto', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem 1.1rem' }
 const kv: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.25rem 0.75rem', fontSize: '0.8125rem' }
 const k: CSSProperties = { color: 'var(--text-muted)' }
 const btn: CSSProperties = { padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 7, font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }

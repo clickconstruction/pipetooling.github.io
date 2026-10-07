@@ -10,7 +10,7 @@
  * the change so the total matches — it reads only the three stage strings this form already
  * holds, so it moved with the JSX.
  *
- * Sits above the Price book drawer (z 80 over 70): the drawer's ✎ and *Add entry* open this
+ * Sits above the Price book drawer (z 780 over 770): the drawer's ✎ and *Add entry* open this
  * form, and on narrow screens a lower z put it behind the drawer (v2.2445).
  */
 import type { FormEvent } from 'react'
@@ -53,9 +53,10 @@ export function PricingEntryFormModal(props: PricingEntryFormProps) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // Above the book drawer (70): its ✎/Add entry open this form, and on narrow
+        // Above the book drawer (770): its ✎/Add entry open this form, and on narrow
         // screens a lower z put the form behind the drawer (v2.2445).
-        zIndex: 80,
+        zIndex: 780,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={props.onClose}
     >

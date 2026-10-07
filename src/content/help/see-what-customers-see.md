@@ -71,8 +71,8 @@ Every card opens, including a **Next release** card. Under the step's name the e
 
 ## Open a step large
 
-1. You tap a step. It opens below its strip.
-2. You switch {{button:outline|Phone}} / {{button:outline|Desktop}} in the toolbar to see it at either width.
+1. Tap a step. It opens below its strip.
+2. Switch {{button:outline|Phone}} / {{button:outline|Desktop}} in the toolbar to see it at either width.
 3. {{button:outline|Open in new tab}} opens a page on its own. Emails show their plain-text part underneath.
 
 Pages open with a **sample token** and carry an orange *Sample* strip. You can click through them. You pick an option, sign, decline, send a request, or accept an offer. Nothing is saved. The sample customer is **Sam Sample**. The sample bid is **Cedar Bend Apartments** for **Sample Contracting**. The sample sub is **Sam's Plumbing LLC**. None of them exist in the database.
@@ -87,4 +87,4 @@ You press {{button:outline|Refresh all}}. The tab re-reads Settings and reloads 
 
 ## The submittal review room
 
-A bid's submittals travel as one link, `/submittal?t=…`. The GC forwards it to the customer's architect. You share it from Bids → Submittals → Share. You open it from the tab's {{button:outline|Copy link}} in a private window to see it the way they do. You see the product rows in plain words, the package download, and no money anywhere. Your own signed-in opens never count as theirs. There is no sample token for the room yet. You use BP398 ZZ Test.
+A bid's submittals travel as one link, `/submittal?t=…`. The GC forwards it to the customer's architect. You share it from Bids → Submittals → Share. You open it from the tab's {{button:outline|Open their page ↗}} to see it the way they do. The page says you are looking as the office. Nothing you do there is counted or saved. You see the product rows in plain words, the package download, and no money anywhere. Your own signed-in opens never count as theirs. The General contractor strip shows the room with sample rows. In the open room, three products wait on an answer. One of them is a fixture of parts. After the review, each part carries its own answer. The sample rows run through the same code as a real room. So the sample says only what a real room can.

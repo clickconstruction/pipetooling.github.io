@@ -8,6 +8,9 @@
  * `src/lib/billing/payLink.ts` and tested from `src/lib/billing/payLink.test.ts`.
  */
 
+import type { PayLinkOffer } from './lienPayOffer.ts'
+export type { PayLinkOffer }
+
 /** What the scan lands on. `draft` never leaves the function (a billed row is finalized). */
 export type PayLinkState = 'open' | 'paid' | 'void'
 
@@ -46,6 +49,8 @@ export type PayLinkPayload = {
   currency: string
   /** YYYY-MM-DD in the company's calendar, when the bill is paid and Stripe said when. */
   paidOn: string | null
+  /** The pay offer (v2.4704): the leader's discount on this bill, while live, after it ended, or once taken; null when the bill carries none. */
+  offer: PayLinkOffer | null
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -97,6 +102,8 @@ export function buildPayLinkPayload(input: {
   company: string
   phone: string
   paidOn: string | null
+  /** The pay offer (v2.4704), already read off the row for today; absent or null = none. */
+  offer?: PayLinkOffer | null
 }): PayLinkPayload {
   const { row, facts } = input
   const state = payLinkStateFrom(row, facts)
@@ -112,6 +119,7 @@ export function buildPayLinkPayload(input: {
     amountRemainingCents: state === 'paid' ? 0 : facts && typeof facts.amount_remaining === 'number' ? Math.max(0, Math.round(facts.amount_remaining)) : null,
     currency: ((facts?.currency ?? '').trim() || 'usd').toLowerCase(),
     paidOn: state === 'paid' ? input.paidOn : null,
+    offer: input.offer ?? null,
   }
 }
 
@@ -135,7 +143,20 @@ export function parsePayLinkResponse(body: unknown): PayLinkPayload | null {
     amountRemainingCents: typeof cents === 'number' && Number.isFinite(cents) ? Math.max(0, Math.round(cents)) : null,
     currency: str(b.currency)?.toLowerCase() ?? 'usd',
     paidOn: str(b.paidOn),
+    offer: parsePayLinkOffer(b.offer),
   }
+}
+
+/** The offer as the page reads it back; null for anything that is not one. */
+export function parsePayLinkOffer(raw: unknown): PayLinkOffer | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const o = raw as Record<string, unknown>
+  const pct = typeof o.pct === 'number' && Number.isFinite(o.pct) ? Math.round(o.pct) : 0
+  const by = typeof o.by === 'string' ? o.by.trim() : ''
+  const state = o.state === 'live' || o.state === 'ended' || o.state === 'taken' ? o.state : null
+  if (!(pct > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(by) || !state) return null
+  const full = o.fullCents
+  return { pct, by, state, fullCents: typeof full === 'number' && Number.isFinite(full) ? Math.max(0, Math.round(full)) : null }
 }
 
 /** "$4,660.00" from cents; the page never shows a currency other than dollars today. */

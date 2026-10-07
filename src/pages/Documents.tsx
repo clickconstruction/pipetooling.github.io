@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -20,6 +21,8 @@ import DocumentsAddDriveLinkModal, {
 } from '../components/documents/DocumentsAddDriveLinkModal'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
+import { canReadSentCopies } from '../lib/sent/sentCopies'
+import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import {
@@ -29,7 +32,7 @@ import {
   type JobLienReleaseRow,
 } from '../lib/jobs/lienReleaseTracking'
 import { lienReleaseChipColors, lienReleaseChips } from '../lib/jobs/lienReleaseLifecycle'
-import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignatureAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
+import { formatContractStamp, jobContractChipColors, jobContractChips, jobContractSignersAuditLine, type JobContractRow } from '../lib/jobs/jobContractLifecycle'
 import JobContractModal from '../components/jobs/JobContractModal'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { buildJobContractRecordHtml } from '../components/jobs/JobContractRecordModal'
@@ -45,6 +48,7 @@ import SettingsCompanyDocumentsSection from '../components/settings/SettingsComp
 import { useTestReportModalOptional } from '../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { testReportDocumentChipColors, testReportDocumentRow, type TestReportDocumentRow, type TestReportDocumentRowSource } from '../lib/jobsDocuments/testReportDocumentRow'
+import { testReportPdfSignedUrl } from '../lib/jobs/testReportDocumentOpen'
 import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
@@ -505,8 +509,6 @@ type LedgerJobRow = Pick<
 }
 
 type DocumentsJobLedgerInvoiceRow = Tables<'jobs_ledger_invoices'>
-/** The private bucket the send function files test-report PDFs in (v2.3331: office reads via a storage policy). */
-const TEST_REPORT_BUCKET = 'job-test-reports'
 
 function jobLedgerCustomerLines(r: LedgerJobRow): { primary: string; secondary: string | null } {
   const cust = r.customers
@@ -819,9 +821,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const openTestReportDocument = async (jobId: string, tr: TestReportDocumentRow) => {
     if (tr.door.kind === 'pdf') {
       try {
-        const { data, error } = await supabase.storage.from(TEST_REPORT_BUCKET).createSignedUrl(tr.door.path, 300)
-        if (error || !data?.signedUrl) throw error ?? new Error('No link')
-        openInExternalBrowser(data.signedUrl)
+        openInExternalBrowser(await testReportPdfSignedUrl(tr.door.path))
       } catch (e) {
         showToast(formatErrorMessage(e, 'Could not open the report PDF'), 'error')
       }
@@ -1024,7 +1024,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                       <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>{formatJobRevenueUsd(r.revenue)}</td>
                     </tr>
                     {jobInvoices.map((inv) => {
-                      const sent = (inv.sent_to_customer_at ?? '').trim().slice(0, 10)
+                      const sent = calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? '').trim())
                       return (
                         <tr key={inv.id}>
                           <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
@@ -1076,7 +1076,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                             )
                           })}
                           {con.signed_at ? (
-                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignatureAuditLine(con)}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>{jobContractSignersAuditLine(con)}</span>
                           ) : con.last_sent_at ? (
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {formatContractStamp(con.last_sent_at)}</span>
                           ) : null}
@@ -1843,6 +1843,9 @@ export default function Documents() {
     documentsAuthRole === 'controller' ||
     documentsAuthRole === 'estimator'
 
+  /** Sent copies are the office's to read (matches sent_documents RLS) — hide the tab for other roles. */
+  const sentTabVisible = canReadSentCopies(documentsAuthRole)
+
   function setDocumentsTab(next: DocumentsPageTab) {
     const nextParams = new URLSearchParams(searchParams)
     nextParams.set('tab', next)
@@ -1899,6 +1902,11 @@ export default function Documents() {
         >
           Supply invoices
         </button>
+        {sentTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'sent')} onClick={() => setDocumentsTab('sent')}>
+            Sent
+          </button>
+        ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
           Upload
         </button>
@@ -1915,6 +1923,7 @@ export default function Documents() {
       {documentsTab === 'bid-proposals' ? <DocumentsBidProposalsLedger /> : null}
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}
       {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
+      {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
     </div>
   )
 }

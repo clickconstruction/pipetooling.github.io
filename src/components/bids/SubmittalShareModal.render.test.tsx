@@ -40,7 +40,7 @@ function builder(table: string) {
 const invokeSpy = vi.fn(() => Promise.resolve({ data: { ok: true }, error: null }))
 vi.mock('../../lib/supabase', () => ({ supabase: { from: (t: string) => builder(t), functions: { invoke: (...a: unknown[]) => invokeSpy(...(a as [])) } } }))
 
-const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], reviewer_files: [], drive_file_id: null, drive_file_url: null, drive_filed_at: null, shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
+const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], reviewer_files: [], drive_file_id: null, drive_file_url: null, drive_filed_at: null, sent_outside_at: null, shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
 
 describe('SubmittalShareModal', () => {
   it('mints the room, names a person, runs the before-it-goes steps, marks the revision shared', async () => {
@@ -94,5 +94,24 @@ describe('SubmittalShareModal', () => {
     await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittals')).toBe(true))
     expect(state.writes.some((w) => w.table === 'bid_submittal_rooms' && w.op === 'insert')).toBe(false)
     expect(state.writes.some((w) => w.table === 'bid_submittal_people' && w.op === 'insert')).toBe(false)
+  })
+  it('2026-10-04 · a person typed and not shared: a click outside asks first; with nobody typed it closes at once', async () => {
+    const onClose = vi.fn()
+    const { unmount } = renderWithProviders(<SubmittalShareModal bidId="b398" revision={revision} room={null} untrimmedFiles={0} onClose={onClose} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    unmount()
+    renderWithProviders(<SubmittalShareModal bidId="b398" revision={revision} room={null} untrimmedFiles={0} onClose={onClose} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={() => {}} />)
+    await settle()
+    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Dana Whitfield' } })
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('leave-question').textContent).toContain('The people you typed are not on the room yet.')
+    fireEvent.click(screen.getByTestId('leave-keep'))
+    expect((screen.getByLabelText('Name 1') as HTMLInputElement).value).toBe('Dana Whitfield')
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
+    fireEvent.click(screen.getByTestId('leave-confirm'))
+    expect(onClose).toHaveBeenCalledTimes(2)
   })
 })

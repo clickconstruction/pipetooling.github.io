@@ -43,8 +43,8 @@ import {
  */
 
 /**
- * Above the nav chrome (50), BELOW the page's modal band (confirm modals 60,
- * popovers 120, Job window 1010, …) — the deck is a page-level takeover, and
+ * Above the nav chrome (50), BELOW the dock (700) and the page's modal band (confirm
+ * modals 760, popovers 820, Job window 1010, …) — the deck is a page-level takeover, and
  * every modal an embedded Pipeline row action opens must float over it
  * (v2.1739; at the old 1040 the Job window opened invisibly underneath).
  */
@@ -509,6 +509,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
   )
 
   return (
+    // window-z: allow — a page-level takeover, not a window: the dock stays on top of it and its last 6rem are left clear for it.
     <div
       role="dialog"
       aria-modal="true"
@@ -521,7 +522,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
         background: 'var(--bg-slate-tint)',
         overflowY: 'auto',
         // Safe-area padding keeps the header out from under the phone's status bar;
-        // the extra bottom clears the Dispatch Mode tab bar (z 1000, above the deck since v2.1739).
+        // the extra bottom clears the Dispatch Mode tab bar (above the deck since v2.1739).
         padding: `calc(${isNarrow ? '0.5rem' : '1.2rem'} + env(safe-area-inset-top, 0px)) ${isNarrow ? '0.6rem' : '1rem'} calc(6rem + env(safe-area-inset-bottom, 0px))`,
       }}
     >

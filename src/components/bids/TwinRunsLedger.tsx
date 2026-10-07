@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { describeTwinRun, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 import { CARD, CARD_TITLE, CHIP, MUTED, STEP_REF } from './twinConsoleStyles'
+import { toDatetimeLocal } from '../../utils/datetimeLocal'
 
 /**
  * The run ledger, translated to plain English (v2.2433 kernel `twinConsoleDisplay`):
@@ -78,7 +79,7 @@ export function TwinRunsLedger() {
                 : { text: 'RUN', bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-800)' }
         return (
           <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', fontSize: '0.76rem', padding: '0.26rem 0', borderBottom: i < runs.length - 1 ? '1px solid var(--border)' : 'none', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', width: '4.5rem', flex: 'none' }} title={r.started_at.slice(0, 16).replace('T', ' ')}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', width: '4.5rem', flex: 'none' }} title={toDatetimeLocal(r.started_at).replace('T', ' ')}>
               {relativeTimeFrom(r.started_at, nowMs)}
             </span>
             <span style={{ ...CHIP, padding: '0.08rem 0.45rem', background: chip.bg, color: chip.fg, flex: 'none', width: '3.6rem', textAlign: 'center' }}>{chip.text}</span>

@@ -5,17 +5,19 @@ roles: all
 keywords: share job, text a job, send job, message, link, address, job number, teammate, imessage, share sheet, copy link
 order: 84
 ---
-Every job has a **Share** button (the square-with-arrow icon) that texts the job's number, name, and address to a teammate, along with a link that opens the job right in the app.
+Every job has a **Share** button that texts a teammate the job's number, name and address. A link in the text opens the job right in the app.
 
 ## Where to find it
 
-- **Jobs → Pipeline** — every row's icon cluster has a Share icon next to the Job detail icon.
-- **Job detail** — the Share icon sits in the header, next to the calendar and edit icons.
-- **On a phone** (Pipeline cards) — open a card's **⋯** menu and tap **Share job**.
+The Share button is the icon of a square with an arrow.
+
+- In **Jobs → Pipeline**, every row's icons include a Share icon, next to the Job detail icon.
+- In **Job detail**, the Share icon sits in the header, next to the calendar and edit icons.
+- **On a phone**, the Pipeline shows cards. Open a card's **⋯** menu and tap **Share job**.
 
 ## What happens when you tap it
 
-1. On your phone, the normal iPhone/Android share sheet opens with the job info already filled in:
+1. On your phone, the normal iPhone or Android share sheet opens. The share sheet is the phone's own menu for sending things. The job info is already filled in:
 
 :::example the message your teammate gets
 Job #951 — Shearer Pinpoint
@@ -23,9 +25,9 @@ Job #951 — Shearer Pinpoint
 …plus a link that opens this exact job.
 :::
 
-2. Pick Messages (or any app) and send it. In Messages, the link unfurls into a **preview card** showing the job # and name, the address, and a street photo of the address when one exists — and tapping it opens the exact job in the app.
-3. On a desktop browser without a share sheet, the same text and link are **copied to your clipboard** instead — a {{chip:green|Job info + link copied}} toast confirms it. Paste it anywhere.
+2. Pick Messages, or any app, and send it. In Messages, the link turns into a **preview card**. The card shows the job # and name and the address. The card also shows a street photo of the address when one exists. Tapping the card opens the exact job in the app.
+3. On a desktop browser without a share sheet, the same text and link are **copied to your clipboard** instead. A {{chip:green|Job info + link copied}} message pops up to confirm it. Paste it anywhere.
 
 ## What the link does
 
-The link opens the app at that job's detail view. Your teammate signs in as themselves — the link carries **no special access**, so they see exactly what their own account is allowed to see. If they can't normally view that job, the link won't show it to them.
+The link opens the app at that job's detail view. Your teammate signs in as themselves. The link carries **no special access**. Your teammate sees exactly what their own account is allowed to see. If they can't normally view that job, the link won't show it to them.

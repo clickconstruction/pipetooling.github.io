@@ -295,7 +295,7 @@ export default function CustomerSummaryModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1004,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
       role="presentation"
@@ -310,7 +310,7 @@ export default function CustomerSummaryModal({
           padding: '1rem',
           maxWidth: 640,
           width: '96%',
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.65rem',

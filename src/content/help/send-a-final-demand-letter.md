@@ -1,16 +1,16 @@
 ---
 title: send a final demand letter
 category: Billing & Money
-keywords: demand letter, final demand, collections, certified mail, tracking number, deadline, escalate, lien instruments, lien window, theft of services, chapter 53, attorney's fees, exhibits, statement of account, delivery record
+keywords: demand letter, final demand, collections, certified mail, tracking number, deadline, escalate, liens on job, lien window, theft of services, chapter 53, attorney's fees, exhibits, statement of account, delivery record
 roles: dev, master_technician, assistant, controller
 ---
 A final demand letter gives a late payer one last dated deadline in writing. The app writes it from the job's own bills and history. Then it watches the deadline for you.
 
 Send one when calls and re-sent bills have not brought the money in.
 
-## Open Lien instruments
+## Open the job's Lien window
 
-Find the job's row under **Billed Awaiting Payment** or **Collections** on the Jobs Pipeline. Press the orange lien icon on the row. The **Lien instruments** window opens on its **Demand letter** tab.
+Find the job's row under **Billed Awaiting Payment** or **Collections** on the Jobs Pipeline. Press the orange lien icon on the row. The window opens on its **Demand letter** tab. Its title reads *Liens on job* and the job's number.
 
 On a phone, open the job card's menu and press *Lien window · timeline*.
 
@@ -21,7 +21,7 @@ The window has one tab for each paper.
 - **Mechanic's lien** is the lien affidavit. It is covered in [file a lien and never miss its deadlines](/help/file-a-lien-and-never-miss-its-deadlines).
 - **Release of record** shows only once a lien affidavit is filed on the job.
 
-{{button:outline|§ The rules}} sits beside the tabs. It opens [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows) in a new tab, at attorney's fees.
+{{button:outline|§ Rules}} sits beside the tabs. It opens [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows) in a new tab, at attorney's fees.
 
 ## The job's timeline
 
@@ -32,7 +32,7 @@ Once your letter is out, the letter is a square step at its reply by day. **Wait
 On a phone, the timeline folds to one strip, so the letter gets the room.
 
 - **Next** on the strip names the step to do now.
-- The strip also says who you wait on. A red chip names any notice window that closed.
+- The strip also says who you wait on. A red chip counts the notice windows that closed.
 - Press **Steps** to drop the steps down over the letter. Press **Hide** to put them away.
 - The tabs become one bar under the strip. With four papers, slide the bar sideways to reach the last one.
 
@@ -51,7 +51,7 @@ On a phone, the timeline folds to one strip, so the letter gets the room.
 - **The fee date** sits under the deadline. It is the day attorney's fees become recoverable, 30 days after the letter. Texas wants a claim presented before fees can be claimed, and the letter is that step. The letter says both dates.
 - *Payment method line (optional)* adds one line on how to pay, like who a check is made out to.
 
-**What counts as paid.** The claim subtracts every payment recorded against the bills it covers. A payment recorded on the job with no bill attached pays the oldest bill first. It fills the earliest bill up to what that bill still needs, then the next one. Anything left over sits on the job as a surplus, on no bill.
+**What counts as paid.** The claim subtracts every payment recorded against the bills it covers. Some payments are recorded on the job with no bill attached. That money first pays any part of the job that is on no bill. That part is the job's total minus the bills sent for it. What is left of the payment pays the oldest bill first. It fills the earliest bill up to what that bill still needs, then the next one. Anything left over sits on the job as a surplus, on no bill.
 
 The letter, its enclosed invoice, the Bill tab and the customer's portal all read that same rule. So they cannot disagree about a balance. If a payment was meant for one bill, link it to that bill. Every reader then follows.
 
@@ -76,11 +76,13 @@ A letter sent September 14 names September 28 as the pay-by day. It names Octobe
 
 The letter never goes alone. The **Enclosed** box lists its exhibits.
 
-- **Exhibit A** is the invoice, and it always goes. It is the bill as the customer received it. There is one per bill the demand covers.
-- **Exhibit B** is the signed agreement, when the job has one on file. Untick it to leave it out. With none on file, the row reads {{chip:gray|no contract}}.
-- **Exhibit C** is the delivery record. It puts the dated sends, re-sends, calls and promises the letter cites on one page. The payer can check it against their own inbox. Untick it to leave it out.
+- **Exhibit A** is the invoice, and it always goes. It is the bill as the customer received it. A letter that covers several bills labels them A-1, A-2 and so on. Each one prints the invoice number and the due date the letter states.
+- **The signed agreement** goes next, when the job has one on file. Untick it to leave it out. With none on file, the row reads {{chip:gray|no contract}}.
+- **The delivery record** goes last. It puts the dated sends, re-sends, calls and promises the letter cites on one page. The payer can check it against their own inbox. Untick it to leave it out.
 
-Every exhibit page is stamped with its letter. The letter names the exhibits under the statement, and again in an *Enclosures* line at the foot. The preview on the right shows the letter, then each exhibit as the page it will be.
+The exhibit letters run in order with no gap. With no agreement, the delivery record is Exhibit B.
+
+Every exhibit page is stamped with its letter. The letter names the exhibits under the statement, and again in an *Enclosures* list at the foot. The letter opens with a box that holds the balance due and the day to pay by. The preview on the right shows the letter, then each exhibit as the page it will be.
 
 {{button:outline-blue|Print packet}} opens one PDF in a new tab. It holds the letter, then every exhibit. {{button:outline-blue|Download PDF}} saves the same file. That button also counts the documents in the file.
 

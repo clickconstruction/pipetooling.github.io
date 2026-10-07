@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 16: a matter's lifecycle — before / after</title>
+<style>
+  :root { color-scheme: light; --ink:#16283c; --paper:#f6f3ec; --card:#fdfcf9; --muted:#5a6b7e; --faint:#8a97a6; --hair:#ddd6c8; --copper:#b0662f; --band:#f1ece2; --green:#1f7a3a; --red:#b42318; --legal:#7a2e2e; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1640px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 18px; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .frame { border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 16px; overflow-x: auto; }
+  .frame.portal { background: var(--paper); color: var(--ink); }
+  .frame.desk { background: #fff; color: #111827; }
+  .pcard { background: var(--card); border: 1px solid var(--hair); border-radius: 6px; padding: 14px 16px; }
+  .ph { margin: 16px 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .dh { margin: 16px 0 6px; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--hair); padding: 5px 8px; font-weight: 700; }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--hair); vertical-align: top; font-size: 13px; }
+  .desk th { color: #6B7280; border-color: #E5E7EB; } .desk td { border-color: #F3F4F6; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.void td { color: var(--faint); } tr.void td.strike { text-decoration: line-through; }
+  .band { background: var(--band); border-radius: 6px; padding: 8px 10px; font-size: 12.5px; margin-bottom: 8px; }
+  .muted { color: var(--muted); } .faint { color: var(--faint); }
+  .pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .p-warn { background: rgba(154,103,0,.14); color: #9a6700; } .p-ok { background: rgba(31,122,58,.14); color: #1f7a3a; } .p-stop { background: rgba(180,35,24,.12); color: #b42318; } .p-neutral { background: #F3F4F6; color: #6B7280; } .p-legal { background: rgba(122,46,46,.12); color: #7a2e2e; } .p-blue { background: #EFF6FF; color: #1D4ED8; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--copper); color: var(--copper); background: var(--card); }
+  .btn.solid { background: var(--copper); color: #fff; }
+  .dbtn { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border: 1px solid #D1D5DB; border-radius: 4px; background: #fff; color: #374151; font-size: 12px; font-weight: 500; }
+  .dbtn.dark { background: #374151; color: #fff; border-color: #374151; }
+  .field { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); }
+  .input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--hair); border-radius: 4px; background: #fff; color: var(--ink); width: 100%; }
+  .row { display: grid; gap: 8px; align-items: end; margin-top: 8px; }
+  .chg { outline: 2px dashed #2563EB; outline-offset: 3px; border-radius: 4px; }
+  .ind { padding-left: 22px; position: relative; } .ind::before { content: '↳'; position: absolute; left: 6px; color: var(--faint); }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .qa dt { font-weight: 700; margin-top: 10px; } .qa dd { margin: 2px 0 0 0; color: #374151; max-width: 100ch; }
+  .legend { font-size: 12px; color: #2563EB; margin-top: 6px; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 16 · mockup</p><h1>A matter's lifecycle</h1>
+<p>Four gaps a firm hits in its first month. Recording <b>Settled</b> takes the matter off the portal before the check arrives. The step list stops at four stages. A step can move the stage backward with no one noticing. A pulled-back matter vanishes with no reason. Left: today. Right: proposed. The matter is the sample's Lenox Builders, at judgment.</p></header>
+
+<h2>The firm records "Settled"</h2>
+<div class="two">
+<div><div class="cap old">Today</div><div class="frame portal"><div class="pcard">
+  <div class="row" style="grid-template-columns:1fr 2fr auto"><label class="field">Record a step<span class="input">Settled</span></label><label class="field">Detail<span class="input">$14,000 lump sum by 10-20</span></label><span class="btn">Record step</span></div>
+  <p style="margin:14px 0 0;font-size:13px"><b>Saved.</b> On the next load:</p>
+  <div class="band" style="text-align:center;padding:18px"><b>No matters yet.</b><br><span class="muted">Accounts appear here the moment the office marks them attorney-ready.</span></div>
+  <p class="faint" style="font-size:11.5px">The step closed the matter. When the check comes on 10-20, Record payment answers "That matter is not with your firm." So does the courier cost.</p>
+</div></div></div>
+<div><div class="cap new">Proposed</div><div class="frame portal"><div class="pcard">
+  <div class="row" style="grid-template-columns:1fr 2fr auto"><label class="field">Record a step<span class="input">Settled</span></label><label class="field">Detail<span class="input">$14,000 lump sum by 10-20</span></label><span class="btn">Record step</span></div>
+  <div class="band chg" style="margin-top:12px"><b>Lenox Builders</b> <span class="pill p-legal">settled · open until the office closes it</span><div class="muted">Record the payment when it arrives. Costs can still be added.</div></div>
+  <div class="row" style="grid-template-columns:1fr 2fr auto"><label class="field">Payment received<span class="input">14,000.00</span></label><label class="field">Check no., date, from whom<span class="input">Check 2207 from Lenox, 10-20</span></label><span class="btn">Record payment</span></div>
+</div></div></div>
+</div>
+
+<h2>The step list</h2>
+<div class="two">
+<div><div class="cap old">Today</div><div class="frame portal"><div class="pcard">
+  <label class="field">Record a step
+  <select class="input" size="4"><option>Demand sent on firm letterhead</option><option>Suit filed</option><option>Judgment entered</option><option>Settled</option></select></label>
+</div></div></div>
+<div><div class="cap new">Proposed</div><div class="frame portal"><div class="pcard">
+  <label class="field">Record a step
+  <select class="input chg" size="9"><optgroup label="Working it"><option>Demand sent on firm letterhead</option><option>Suit filed</option><option>Judgment entered</option><option>After judgment: abstract or garnishment</option><option>On a payment plan</option></optgroup><optgroup label="How it ended"><option>Settled</option><option>Uncollectible</option><option>Dismissed</option></optgroup></select></label>
+  <p class="faint" style="font-size:11.5px;margin:6px 0 0">The three ends move the stage. The office closes the matter once the money is applied.</p>
+</div></div></div>
+</div>
+
+<h2>A step that would move the stage back</h2>
+<div class="two">
+<div><div class="cap old">Today</div><div class="frame desk">
+  <p style="margin:0">The firm records <b>Demand sent</b> on a matter at <b>judgment</b> (a second demand after judgment). The Pipeline chip drops to <span class="pill p-legal">⚖ demand sent</span> and the judgment is gone from the board. Nobody is asked.</p>
+</div></div>
+<div><div class="cap new">Proposed: the office desk</div><div class="frame desk">
+  <div class="dh">On the matter · 1 from the firm waiting on you</div>
+  <table><thead><tr><th>Date</th><th>Kind</th><th>What happened</th><th></th></tr></thead><tbody>
+    <tr class="chg"><td>10-06</td><td><span class="pill p-legal">step · asks to go back</span></td><td>Demand sent on firm letterhead · second demand after judgment<div class="muted" style="font-size:11.5px">The stage stays at judgment until you choose.</div></td><td><span class="dbtn">Move it back to demand</span> <span class="dbtn">Keep judgment</span></td></tr>
+  </tbody></table>
+  <p class="muted" style="font-size:12px">On the firm's side the step shows with "asks the office to move the stage back".</p>
+</div></div>
+</div>
+
+<h2>The office pulls a matter back</h2>
+<div class="two">
+<div><div class="cap old">Today</div><div class="frame portal"><div class="pcard">
+  <p style="margin:0">The matter disappears from the list. The email says it "no longer shows on the portal." The firm loses its own fee ledger for that matter, and no reason is given.</p>
+</div></div></div>
+<div><div class="cap new">Proposed: the firm's portal</div><div class="frame portal"><div class="pcard chg">
+  <div class="ph">Pulled back · read only</div>
+  <div><b>Ridgeway Dental</b> <span class="faint">· with you 09-12 to 10-04</span></div>
+  <div class="band" style="margin-top:6px"><b>Why:</b> The customer paid us in full on 10-03. Thank you.</div>
+  <div class="ph">Your fees and costs</div>
+  <table><thead><tr><th>Date</th><th>Kind</th><th>Note</th><th style="text-align:right">Amount</th></tr></thead><tbody>
+    <tr><td>09-18</td><td>fee</td><td>Demand letter on firm letterhead</td><td class="num">$450.00</td></tr>
+  </tbody></table>
+  <p class="faint" style="font-size:11.5px;margin:6px 0 0">The customer's records leave the portal. The firm keeps its ledger, the conversation and the reason.</p>
+</div></div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<dl class="qa">
+  <dt>Should "settled" close the matter if the office never closes it?</dt>
+  <dd>No timer. The desk's With the firm list shows a settled matter with a Close button, and the Pipeline chip reads "settled · close it". An open settled matter costs nothing, and closing it too early is the bug we are fixing.</dd>
+  <dt>Should a backward step be refused?</dt>
+  <dd>No. The firm did the thing, so the entry is recorded with its date. Only the stage waits for the office. Refusing would lose the record of a second demand.</dd>
+  <dt>Is "payment plan" a step on the ladder?</dt>
+  <dd>It sits beside it. A plan can start after a demand or after a judgment, and when it defaults the firm sues. So moving into or out of a payment plan is never treated as moving back.</dd>
+  <dt>Should a pulled-back matter keep showing the whole packet?</dt>
+  <dd>First draft kept it. Refined: the customer's records leave the portal the moment the office pulls the matter back, because counsel no longer represents us on it. The firm keeps what is its own: its fees and costs, the conversation and the reason.</dd>
+  <dt>Can this ship without a migration?</dt>
+  <dd>Half of it. Settled staying open and the backward guard need only the functions and the page, so they ship first. The four new stages need the stage check widened. The pull-back reason needs two columns. Those ship second, after the page already knows the new stage names.</dd>
+</dl>
+</div></body></html>

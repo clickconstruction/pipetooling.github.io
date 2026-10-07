@@ -288,14 +288,14 @@ export default function BackfillHcpPaymentsModal({
       role="dialog"
       aria-modal="true"
       aria-label="Backfill payment history from HouseCall Pro"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={() => {
         if (!saving) onClose()
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(720px, 100%)', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(720px, 100%)', maxHeight: 'min(85vh, 100%)', display: 'flex', flexDirection: 'column' }}
       >
         <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.98rem' }}>

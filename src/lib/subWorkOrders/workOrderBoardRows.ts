@@ -14,6 +14,7 @@
  * anchored to a job (no sheet) covers every sheet on that job. Pure.
  */
 import { subLaborJobBalance } from '../subLaborOutstanding'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { laborItemsSubtotal } from '../peopleLaborJobItemLineCost'
 import { splitAssignedToNames } from '../people/laborJobPersonMatch'
 import { normalizePersonNameKey } from '../personNameKey'
@@ -163,7 +164,7 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
       paid: bal.paid,
       open,
       unpriced,
-      sheetDate: (sheet.job_date ?? sheet.created_at ?? '').slice(0, 10) || null,
+      sheetDate: sheet.job_date ? sheet.job_date.slice(0, 10) : calendarYmdInAppTzFromIso(sheet.created_at ?? '') || null,
       coverage,
       rail,
       next,

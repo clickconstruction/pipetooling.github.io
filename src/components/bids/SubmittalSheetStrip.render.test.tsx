@@ -13,7 +13,7 @@ import type { SourceFile, SubmittalItemRow } from '../../lib/submittals/submitta
 
 const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   id: 'x', submittal_id: 'rev-1', tag: 'X-1', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
-  supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, status: 'alternate', reason_kind: null, reason_note: null, lead_time_days: null, sheet_file: null, sheet_pages: [], sheet_source: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null,
+  supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, status: 'alternate', reason_kind: null, reason_note: null, lead_time_days: null, sheet_file: null, sheet_pages: [], sheet_source: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, order_only: false,
   review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_by_email: null, reviewed_at: null, created_at: '', updated_at: '', ...o,
 })
 const items = [
@@ -74,6 +74,20 @@ describe('SubmittalSheetStrip', () => {
     expect(screen.getAllByTestId('file-standing')[1]!.textContent).toBe('trimmed · 2 pages kept · Sep 15')
     // a trimmed file has neither Done nor Remove
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1)
+  })
+
+  it('v2.4579 · Save PDF saves the whole file: drawn only with a handler, named for the file, still there once trimmed', () => {
+    mount()
+    expect(screen.queryByTestId('save-file')).toBeNull()
+    const onSaveFile = vi.fn()
+    const h = mount({ onSaveFile })
+    const save = screen.getByRole('button', { name: 'Save NWS.pdf as a PDF' })
+    expect(save.textContent).toBe('Save PDF')
+    expect(save.getAttribute('title')).toBe('Save the whole file as one PDF, all 4 pages as it was dropped')
+    fireEvent.click(save)
+    expect(onSaveFile).toHaveBeenCalledWith(0)
+    render(<SubmittalSheetStrip files={[{ ...files[0]!, name: 'KEPT.pdf', path: 'b/r/1.pdf', pages: 2, trimmedAt: '2026-09-15T20:00:00Z', droppedPages: 24 }]} items={[item({ id: 'k', tag: 'K-1', sheet_file: 0, sheet_pages: [1, 2] })]} thumbnails={{}} busy={false} onNeedThumbnails={h.onNeedThumbnails} onAssign={h.onAssign} onUnassign={h.onUnassign} onDone={h.onDone} onRemove={h.onRemove} onSaveFile={onSaveFile} />)
+    expect(screen.getByRole('button', { name: 'Save KEPT.pdf as a PDF' }).getAttribute('title')).toBe('Save the 2 pages kept from this file as one PDF')
   })
 
   it('the arrow folds the pages out and asks for thumbnails it does not have; a file the reader could not place says so', () => {

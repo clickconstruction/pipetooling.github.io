@@ -22,13 +22,16 @@ import {
   paymentRowLinkedToInvoice,
   stripeBillInvoiceForPaymentRow,
   stripeHoldsPaymentReason,
+  stripeOwnsPaymentRow,
   unlinkLeavesStripeBillUntouched,
 } from '../../lib/jobs/jobFormPaymentPredicates'
+import { heldStripeMarkLineWords, paymentRowOnHeldStripeMark } from '../../lib/jobs/heldStripeMark'
+import { stripeHeldMoveOffered } from '../../lib/jobs/stripeHeldPaymentMove'
 import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersCheckDidNotClear } from '../../lib/jobs/stripeOobSendBack'
 import { paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { autoApplyInvoiceId } from '../../lib/jobs/paymentInvoiceLinking'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** The host's doors a payment line opens — the same seven the ③ table always had. */
 export type PaymentLineActions = {
@@ -130,10 +133,14 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
   const amountText = `$${formatCurrency(amount)}`
   const linkable = (job?.invoices ?? []).filter((i) => i.status === 'billed' && !jobsLedgerInvoiceIsStripeLinked(i))
   const moveBlock = paymentMoveBlock(row, job, persisted)
-  const moveShown = moveBlock !== 'unsaved' && moveBlock !== 'stripe'
+  // v2.4803: a check Stripe holds by our mark moves too — through the credit note and a fresh bill.
+  const stripeHeldMove = moveBlock === 'stripe' && stripeHeldMoveOffered(row, job)
+  const moveShown = (moveBlock !== 'unsaved' && moveBlock !== 'stripe') || stripeHeldMove
   const moveDisabled = moveBlock === 'sent-bill'
   const moveBill = moveDisabled && row.invoice_id ? (job?.invoices ?? []).find((i) => i.id === row.invoice_id) ?? null : null
-  const canRemove = canRemovePaymentRowFromForm(row, job) || Boolean(job && persisted && paymentRowLinkedToInvoice(row) && !stripeInv)
+  // v2.4801: a saved row on a bill comes off through the remove RPC unless Stripe holds it.
+  const canRemove = canRemovePaymentRowFromForm(row, job) || Boolean(job && persisted && paymentRowLinkedToInvoice(row) && !stripeOwnsPaymentRow(row, job))
+  const heldMark = paymentRowOnHeldStripeMark(row, job)
   const unlinkShown = source.kind === 'bank' && canUnlinkMercuryPayment(authRole) && !mercuryUnlinkBlockedByStripeHostedInvoice(row, job)
   const undoShown = Boolean(stripeInv && row.stripe_credit_note_id && actions.requestUndoPartPayment && stripeInv.status === 'billed')
   const checkDidNotClearShown = Boolean(
@@ -148,6 +155,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
   if (words.checkDated) sub.push(<span key="dated">{words.checkDated}</span>)
   if (words.detail) sub.push(<span key="detail">{words.detail}</span>)
   if (futureReceived) sub.push(<span key="future" className="warn">The received date is in the future.</span>)
+  if (heldMark) sub.push(<span key="held" data-testid="held-stripe-mark-line">{heldStripeMarkLineWords(row.paid_on ? String(row.paid_on).slice(0, 10) : null, todayYmd)}</span>)
 
   return (
     <div className="jobPaymentLine" data-testid="payment-line" data-payment-id={row.id} data-source={source.kind}>
@@ -250,11 +258,11 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
                   disabled={moveDisabled}
                   aria-disabled={moveDisabled}
                   onClick={() => { if (moveDisabled) return; closeMenu(); actions.requestMovePaymentRow(row) }}
-                  title={moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : 'Move this payment to the job it belongs on — it keeps its date, amount and bank link'}
+                  title={moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : stripeHeldMove ? 'Stripe holds this check as paid. Moving it reverses that mark with a credit note, sends this bill back for a fresh one, and lands the check on the job you pick.' : 'Move this payment to the job it belongs on — it keeps its date, amount and bank link'}
                   style={menuItem({ disabled: moveDisabled })}
                 >
                   <span>Move to job…</span>
-                  <span style={MENU_SUB}>{moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : 'it keeps its date, amount and bank link'}</span>
+                  <span style={MENU_SUB}>{moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : stripeHeldMove ? 'reverses the Stripe mark; this bill goes out again' : 'it keeps its date, amount and bank link'}</span>
                 </button>
               ) : null}
               {unlinkShown ? (
@@ -402,7 +410,7 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
                 <option value="">Job (no bill picked)</option>
                 {linkable.map((inv) => (
                   <option key={inv.id} value={inv.id}>
-                    {`$${formatCurrency(Number(inv.amount ?? 0))} bill${inv.sent_to_customer_at ? ` · sent ${String(inv.sent_to_customer_at).slice(0, 10)}` : ''}`}
+                    {`$${formatCurrency(Number(inv.amount ?? 0))} bill${inv.sent_to_customer_at ? ` · sent ${calendarYmdInAppTzFromIso(String(inv.sent_to_customer_at))}` : ''}`}
                   </option>
                 ))}
               </select>

@@ -103,6 +103,16 @@ export function ownerShareWrites(jobs: ReadonlyArray<OwnerShareJob>, invoices: R
   return { jobIds, invoiceIds, on }
 }
 
+/**
+ * The rows a share really turns on (v2.4541): the jobs whose memory was off and the open bills
+ * not yet shown. An undo of the share takes back exactly these, and leaves what was already on.
+ */
+export function ownerShareTurnedOn(jobs: ReadonlyArray<OwnerShareJob>, invoices: ReadonlyArray<OwnerShareInvoice>): OwnerShareWrites {
+  const w = ownerShareWrites(jobs, invoices, true)
+  const wasOn = new Set(jobs.filter((j) => j.show_bills_to_other_party === true).map((j) => j.id))
+  return { jobIds: w.jobIds.filter((id) => !wasOn.has(id)), invoiceIds: w.invoiceIds, on: true }
+}
+
 /** The chip's words: `owner sees $0` · `owner sees the bills` · `owner sees some bills`. */
 export function ownerShareChipWords(state: OwnerShareState): string {
   return state === 'on' ? 'owner sees the bills' : state === 'partly' ? 'owner sees some bills' : 'owner sees $0'

@@ -533,7 +533,7 @@ export function SubSheetWorkOrderPanel({
     <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
       {msa ? (
         <>
-          {personName} signed the Master Subcontract Agreement on {fmtDate(msa.signed_at)}. This work order binds under it.
+          {personName} signed the Master Subcontract Agreement on {fmtYmd(msa.signed_at)}. This work order binds under it.
         </>
       ) : (
         <>No signed Master Subcontract Agreement on file for {personName} — assign the Subs packet on People → Contracts first.</>

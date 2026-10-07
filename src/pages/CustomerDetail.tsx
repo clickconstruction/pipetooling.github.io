@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
+import { useCustomerProfileModal } from '../contexts/CustomerProfileModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { denverWorkDateToday } from '../lib/salaryScheduleSync'
@@ -32,6 +33,7 @@ import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActiv
 import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 import { telHrefFor } from '../lib/phoneContact'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 /**
  * Customer Hub — the dedicated page per customer at /customers/:id.
@@ -168,6 +170,7 @@ export default function CustomerDetail() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const editCustomer = useEditCustomerModal()
+  const customerProfile = useCustomerProfileModal()
   const jobDetail = useJobDetailModal()
 
   const [data, setData] = useState<CustomerProfileData | null>(null)
@@ -214,7 +217,8 @@ export default function CustomerDetail() {
   const address = (data?.customer.address ?? '').trim()
 
   const sinceLabel = useMemo(() => {
-    const dm = (data?.customer.date_met ?? data?.customer.created_at ?? '').slice(0, 10)
+    // date_met is a `date`; created_at is an instant, read as its day in the company calendar.
+    const dm = data?.customer.date_met ? data.customer.date_met.slice(0, 10) : calendarYmdInAppTzFromIso(data?.customer.created_at ?? '')
     if (!dm) return null
     const d = new Date(`${dm}T12:00:00Z`)
     if (Number.isNaN(d.getTime())) return null
@@ -283,7 +287,27 @@ export default function CustomerDetail() {
         ) : null}
         {customer.archived_at ? <TypeChip label="Archived" bg="var(--bg-muted)" fg="var(--text-muted)" /> : null}
         {sinceLabel ? <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Customer since {sinceLabel}</span> : null}
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8 }}>
+          {customerProfile ? (
+            <button
+              type="button"
+              onClick={() => customerProfile.openCustomerProfile(customerId, { view: 'timeline' })}
+              title="Every job, bill, payment and crew day on one timeline"
+              style={{
+                height: 30,
+                padding: '0 0.8rem',
+                border: '1px solid var(--border-indigo-soft)',
+                borderRadius: 5,
+                background: 'var(--surface)',
+                color: 'var(--text-link)',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Timeline
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() =>

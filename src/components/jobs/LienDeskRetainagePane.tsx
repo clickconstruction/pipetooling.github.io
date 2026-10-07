@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
+import { LienJobHeading } from './LienJobNumber'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
@@ -57,6 +59,7 @@ export default function LienDeskRetainagePane({
   signerPhoneFor,
   onChanged,
   onOpenEditJob,
+  onOpenJob,
   onOpenRun,
   onShowNotices,
   footerEl,
@@ -75,6 +78,8 @@ export default function LienDeskRetainagePane({
   onChanged: () => void
   /** Edit Job — on its Property record row (the owner), or on *Our contract on this job* (the clock, the retainage). */
   onOpenEditJob: (jobId: string, focus: 'property-record' | 'lien-contract') => void
+  /** The heading's job number opens the job itself (v2.4535). */
+  onOpenJob?: (jobId: string) => void
   /** The desk's run — approved retainage notices go out with the monthly ones. */
   onOpenRun: () => void
   /** Switch the desk to the notices kind on this job — where the retainage rides inside the § 53.056 claim. */
@@ -219,7 +224,7 @@ export default function LienDeskRetainagePane({
       )
     ) : (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        <span>Waiting on the leader since {item?.submitted_at ? demandDate(item.submitted_at.slice(0, 10)) : '—'}. {fuse}</span>
+        <span>Waiting on the leader since {item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(item.submitted_at)) : '—'}. {fuse}</span>
         <span style={{ flex: 1 }} />
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
       </div>
@@ -245,7 +250,7 @@ export default function LienDeskRetainagePane({
   } else if (entry.pile === 'sent') {
     footer = (
       <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Sent{entry.item?.sent_at ? ` ${demandDate(entry.item.sent_at.slice(0, 10))}` : ''} · the notice is on the job's lien instruments.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Affidavits tab is watching this job.'}
+        Sent{entry.item?.sent_at ? ` ${demandDate(calendarYmdInAppTzFromIso(entry.item.sent_at))}` : ''} · the notice is in the job's Lien window.{entry.inClaim ? '' : ' The owner may withhold this retainage once they receive a copy of the filed affidavit (§ 53.081(c)) — the Affidavits tab is watching this job.'}
       </div>
     )
   } else if (entry.pile === 'missed') {
@@ -258,7 +263,7 @@ export default function LienDeskRetainagePane({
     {footerEl && footer ? createPortal(footer, footerEl) : null}
     <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }} data-lien-retainage-pane>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
-        <strong style={{ fontSize: '1rem' }}>{label}</strong>
+        <LienJobHeading label={label} onOpenJob={onOpenJob ? () => onOpenJob(entry.jobId) : undefined} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>· GC {gc?.name ?? ''} {job?.job_address ? `· ${job.job_address}` : ''}</span>
         <span style={tone}>§ 53.057 · {retainageDeadlineWords(entry, formatYmdMonthDay)}</span>
         <span style={chip(entry.paymentBond === 'yes' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', entry.paymentBond === 'yes' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>{paymentBondWords(entry.paymentBond)}</span>

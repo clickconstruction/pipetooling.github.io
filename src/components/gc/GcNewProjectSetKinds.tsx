@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { SET_KIND_HELP } from '../../lib/gcMode/gcModel'
+import { SET_KIND_HELP } from '../../lib/gc/setKinds'
 
 /**
  * GC mode design spike: what the kinds of plan sets are (the owner, 2026-10-04: "Perhaps as a

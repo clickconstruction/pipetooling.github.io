@@ -83,8 +83,8 @@ export default function ClassifyCustomersModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
-        padding: '1rem',
+        zIndex: 760,
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={() => {
         if (!saving) onClose()
@@ -97,7 +97,7 @@ export default function ClassifyCustomersModal({
           border: '1px solid var(--border)',
           borderRadius: 10,
           width: 'min(560px, 100%)',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
         }}

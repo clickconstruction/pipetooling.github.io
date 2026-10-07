@@ -7,7 +7,9 @@
  * `CLAUDE.md` → Help guides ship with features). This file is their one home.
  *
  * 1. One idea per sentence. No sentence over 20 words.
- * 2. Start with what the person does: *you* + a verb, and the control's exact name.
+ * 2. Start with what the person does, and name the control exactly. A numbered step gives
+ *    each instruction as a command, like *Press* {{button}} or *Open the estimate*. A
+ *    sentence that describes, and running prose, keep *you* + a verb.
  * 3. No dashes, semicolons, parentheses or `·` lists inside a sentence.
  * 4. A trade word gets a plain word beside it the first time: *a cut sheet, the maker's
  *    page for the product*.
@@ -17,12 +19,19 @@
  * Rules 1 and 3 are mechanical and live here. Rules 2, 4 and 5 are each surface's own test
  * cases (`submittalTour.test.ts`, `workbenchHelp.test.ts`), since the verbs, the trade
  * words and the shape belong to the surface. `helpGuidePlainWords.test.ts` holds every
- * guide not on `LEGACY_PLAIN_WORDS_GUIDES` (`plainWordsLegacy.ts`), and
- * `npm run check:plain-words` fails CI when a PR touches a guide still on that list.
+ * guide, a new one from its first commit. The guides written before the rules were all
+ * rewritten by 2026-10-05 (punch list #75), so no guide is exempt.
+ *
+ * One habit the test cannot judge is warned about instead: a sentence that opens on a bare
+ * pronoun pointing back across a full stop ("It shows…", "That means…"). `pronounOpeners.ts`
+ * finds them and `npm run check:pronouns` prints the ones on the lines a change writes in a guide,
+ * counting the rest; it never fails, because only the writer can tell whether the pronoun has one
+ * noun it could mean.
  *
  * What is quoted is not held: a mock-UI token is the control's exact name whatever it
  * contains, an italic span in a guide is what the screen prints, quoted as printed, and a
- * guide's `:::example` panels quote real bids and are kept as written.
+ * guide's `:::example` panels quote real bids and are kept as written. A table row's pipes
+ * are its cell walls, not words, and a cell holding only "—" is an empty cell, not glue.
  */
 
 export const PLAIN_WORDS_MAX_SENTENCE_WORDS = 20
@@ -57,34 +66,47 @@ export function plainWordsFailures(text: string): string[] {
  * not the headings, not the `:::example` panels, not blank lines.
  */
 export function helpGuideProseLines(source: string): string[] {
-  const body = source.replace(/^---\n[\s\S]*?\n---\n/, '')
-  const lines: string[] = []
+  return helpGuideProseLinesNumbered(source).map((l) => l.text)
+}
+
+/** The same prose lines, each with its 1-based line number in the file, for a checker that points at a line. */
+export function helpGuideProseLinesNumbered(source: string): Array<{ line: number; text: string }> {
+  const frontmatter = /^---\n[\s\S]*?\n---\n/.exec(source)?.[0] ?? ''
+  const offset = frontmatter.split('\n').length - 1
+  const lines: Array<{ line: number; text: string }> = []
   let inExample = false
-  for (const raw of body.split('\n')) {
-    const line = raw.trim()
-    if (line.startsWith(':::')) {
-      inExample = line.length > 3
-      continue
-    }
-    if (inExample || !line || line.startsWith('#')) continue
-    lines.push(line.replace(/^-\s+/, ''))
-  }
+  source
+    .slice(frontmatter.length)
+    .split('\n')
+    .forEach((raw, i) => {
+      const line = raw.trim()
+      if (line.startsWith(':::')) {
+        inExample = line.length > 3
+        return
+      }
+      if (inExample || !line || line.startsWith('#')) return
+      lines.push({ line: offset + i + 1, text: line.replace(/^-\s+/, '') })
+    })
   return lines
 }
 
-/** For counting: a link is its text, a token becomes its label, bold marks go, an italic span is one quoted word. */
+/** A table row (`| a | b |`): its pipes are cell walls, not words. */
+const TABLE_ROW = /^\|/
+
+/** For counting: a link is its text, a token becomes its label, bold marks go, an italic span is one quoted word, a table row's pipes go. */
 export function helpGuideLineForCounting(line: string): string {
-  return line
+  const counted = line
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\{\{[a-z]+:[^|}]*\|([^}]*)\}\}/g, '$1')
     .replace(/\{\{[a-z]+:[^|}]*\}\}/g, 'icon')
     .replace(/\*\*/g, '')
     .replace(/\*[^*]+\*/g, 'quoted')
+  return TABLE_ROW.test(line) ? counted.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim() : counted
 }
 
-/** For the glue rule: a link's target, tokens and italic spans are not prose, read around. */
+/** For the glue rule: a link's target, tokens and italic spans are not prose, read around, and a table cell holding only "—" is empty. */
 export function helpGuideLineForGlue(line: string): string {
-  return line
+  return (TABLE_ROW.test(line) ? line.replace(/\|[ \t]*—[ \t]*(?=\|)/g, '| ') : line)
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\{\{[^}]*\}\}/g, '')
     .replace(/\*\*/g, '')

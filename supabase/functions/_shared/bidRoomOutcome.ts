@@ -90,3 +90,13 @@ export const ROOM_DECLINE_CATEGORIES = ['price', 'other_sub', 'project_died'] as
 export function isRoomDeclineCategory(v: unknown): v is (typeof ROOM_DECLINE_CATEGORIES)[number] {
   return typeof v === 'string' && (ROOM_DECLINE_CATEGORIES as readonly string[]).includes(v)
 }
+
+/**
+ * v2.4728: a letter with options — the signed option carries its bid version, so the win lands on
+ * THAT version alone and the other options in the packet stay as they were (not taken is not
+ * lost). Without a version on the option, the whole packet wins as before.
+ */
+export function wonVersionIdsForSignature(packetVersionIds: readonly string[], chosenVersionId: string | null | undefined): string[] {
+  if (chosenVersionId && packetVersionIds.includes(chosenVersionId)) return [chosenVersionId]
+  return [...packetVersionIds]
+}

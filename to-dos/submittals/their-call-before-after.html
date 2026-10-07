@@ -1,0 +1,263 @@
+<meta charset="utf-8">
+<title>Their Call Redraw</title>
+<style>
+  /* Layout: the question first, then the live section and the redraw side by side at the same width, then the second look, then the same design in two other states. Drawn in the app's own tokens so the mock-ups read like the screen. */
+  :root {
+    --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --muted-bg: #f3f4f6;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --strong: #111827; --base: #1a1a1a; --muted: #6b7280; --faint: #8a93a1;
+    --link: #2563eb; --amber: #b45309; --red: #b91c1c; --green: #15803d; --violet: #7c3aed;
+    --blue-tint: #eff6ff; --blue: #2563eb; --blue-700: #1d4ed8;
+    --green-tint: #f0fdf4; --amber-tint: #fffbeb; --red-tint: #fef2f2;
+    --cell-wait: #c5ccd6; --cell-red: #dc2626; --cell-green: #16a34a;
+    --bar: #5f6b7a; --bar-after: #1d4ed8; --on-bar: #ffffff;
+    --shadow: 0 6px 18px rgba(0,0,0,0.10);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --blue: #3b82f6; --blue-700: #93c5fd;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414;
+    --cell-wait: #56606f; --cell-red: #ef4444; --cell-green: #22c55e;
+    --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --blue: #3b82f6; --blue-700: #93c5fd;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414;
+    --cell-wait: #56606f; --cell-red: #ef4444; --cell-green: #22c55e;
+    --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--base); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 26px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; color: var(--strong); text-wrap: balance; }
+  h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  p { margin: 0; }
+  .head { display: flex; flex-direction: column; gap: 8px; }
+  .verdict { font-size: 17px; color: var(--strong); font-weight: 600; max-width: 66ch; }
+  .lede { max-width: 72ch; }
+  .muted { color: var(--muted); }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .pair, .trio { grid-template-columns: minmax(0, 1fr); } }
+  .side { border-radius: 8px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+  .bar { padding: 6px 14px; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--on-bar); background: var(--bar); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .bar span { font-weight: 500; letter-spacing: 0.02em; text-transform: none; opacity: 0.9; }
+  .side.after .bar { background: var(--bar-after); }
+  .mock { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 0; background: var(--page); }
+  .note { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .note.bad { background: var(--red-tint); }
+  .note.good { background: var(--green-tint); }
+  .note ol, .note ul { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .panel.best { border-left: 4px solid var(--violet); }
+  .panel h3 { margin: 0; font-size: 16px; color: var(--strong); }
+  .panel ol, .panel ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; max-width: 78ch; }
+  .panel b { color: var(--strong); }
+  .cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+  h4 { margin: 0 0 4px; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  /* mock pieces, the app's own shapes */
+  .b { display: inline-block; font-size: 12.5px; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); font-weight: 500; white-space: nowrap; }
+  .b.sm { font-size: 11.5px; padding: 2px 8px; }
+  .b.q { border-radius: 50%; width: 18px; height: 18px; padding: 0; text-align: center; line-height: 17px; font-size: 11px; color: var(--blue-700); border-color: var(--blue); }
+  .rowf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .between { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .small { font-size: 12px; color: var(--muted); }
+  .strong { color: var(--strong); font-weight: 600; }
+  .step-title { font-size: 15px; font-weight: 700; color: var(--strong); }
+  .dot6 { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #d97706; color: var(--amber); display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; box-sizing: border-box; flex-shrink: 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .line { border: 1px solid var(--border); border-radius: 6px; background: var(--subtle); padding: 7px 10px; }
+  .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .lbl.red { color: var(--red); }
+  .chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .chip.red { background: var(--red-tint); color: var(--red); }
+  .chip.grn { background: var(--green-tint); color: var(--green); }
+  .cells { display: flex; gap: 3px; flex-wrap: wrap; }
+  .cells i { width: 22px; height: 14px; border-radius: 3px; background: var(--cell-wait); display: block; }
+  .cells i.r { background: var(--cell-red); }
+  .cells i.g { background: var(--cell-green); }
+  .cells i.none { background: transparent; border: 1.5px dashed var(--border-strong); box-sizing: border-box; }
+  .counts { display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .counts b { font-size: 17px; color: var(--strong); margin-right: 4px; }
+  .counts .r b { color: var(--red); }
+  .counts .g b { color: var(--green); }
+  .back { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; padding: 6px 0; border-top: 1px dotted var(--border); }
+  .back:first-of-type { border-top: none; }
+  .back .tag { font-weight: 700; color: var(--strong); }
+  .back .parts { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .tagbtn { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); white-space: nowrap; }
+  .foot { display: flex; gap: 6px 16px; flex-wrap: wrap; border-top: 1px solid var(--border); padding-top: 8px; font-size: 12px; color: var(--muted); }
+  .foot u { text-underline-offset: 3px; }
+  .tile { flex: 1 1 90px; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; background: var(--subtle); }
+  .tile b { display: block; font-size: 20px; color: var(--strong); }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Bids → Submittals · step 6, Their call · drawn Oct 5, 2026 · built the same day</div>
+    <h1>Their call, so she does not have to work it out</h1>
+    <p class="verdict">Today the step gives one dense sentence and a button phrased as a statement. It says how many came back, but not which ones or what to do about them.</p>
+    <p class="lede">The left side is the live SpaceX bid (BP375) as it looked on Oct 5, read only. The right side is the drawing the build was made from, of the same bid in the same state.</p>
+  </header>
+
+  <section class="panel" style="border-left:4px solid var(--green)">
+    <p><b>Shipped as v2.4560.</b> As built, the foot keeps the names the guide already uses: “Drop a reviewer’s file” and “Copy their decisions as text”. The history line reads “Messages and history”, because it also holds the reviewers’ questions. The Next line at the top now says “9 rows still have no answer. 1 row has no product yet.”</p>
+  </section>
+
+  <section class="pair">
+    <div class="side">
+      <div class="bar">Current <span>the live step</span></div>
+      <div class="mock">
+        <div class="rowf"><span class="dot6">6</span><span class="step-title">6 · Their call <span class="small" style="font-weight:400">on Rev 1</span></span></div>
+        <span class="small">The GC or the architect answers each row: Approve, Revise or Reject. If they answer by email, type it in with Their answer. <span class="b q">?</span></span>
+        <div class="card">
+          <div class="line between"><span><span class="strong">Their call:</span> 4 with a part rejected · by structura · 4 entered by Wendi <span class="small">· 9 still open</span></span><span class="b sm">Copy their decisions as text</span></div>
+          <div class="rowf"><span class="b">They approved the other 9…</span><span class="small">One entry for every row with no answer yet. You say who approved them and on what day.</span></div>
+          <div class="line between"><span class="strong">Thread</span><span class="small">5 entries · last: the office entered their answers Oct 2 ▾</span></div>
+        </div>
+      </div>
+      <div class="note bad"><b>What she has to work out herself</b>
+        <ol>
+          <li>Which four? The step does not name them. She scrolls back to step 3 and reads fourteen rows.</li>
+          <li>What did they say? The reviewer’s words are in step 3 too.</li>
+          <li>“4 entered by Wendi” and “by structura” are two facts about the same four answers, written as if they were separate counts.</li>
+          <li>“They approved the other 9…” reads like a statement, not something to press.</li>
+          <li>“Type it in with Their answer” names a button that is not in this step.</li>
+          <li>“9 still open” here, “10 rows still have no answer” at the top of the page. The tenth is the sink with no product.</li>
+          <li>“Thread” does not say what it holds. It is a log of the answers typed in.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="side after">
+      <div class="bar">Proposed <span>a drawing · same bid, same state</span></div>
+      <div class="mock">
+        <div class="rowf"><span class="dot6">6</span><span class="step-title">6 · Their call <span class="small" style="font-weight:400">on Rev 1</span></span></div>
+        <span class="small">The GC or the architect answers each fixture: Approve, Revise or Reject. <span class="b q">?</span></span>
+        <div class="card">
+          <div class="cells" aria-label="13 fixtures: 4 sent back, 9 waiting, and 1 with no product">
+            <i class="r"></i><i class="r"></i><i class="r"></i><i class="r"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="none"></i>
+          </div>
+          <div class="counts"><span class="g"><b>0</b>approved</span><span class="r"><b>4</b>sent back</span><span><b>9</b>waiting</span><span class="muted"><b style="color:var(--muted)">1</b>no product yet</span></div>
+          <span class="small">structura answered by email. Wendi typed the answers in on Oct 2.</span>
+
+          <div>
+            <div class="between"><span class="lbl red">Sent back · 4 fixtures, 5 parts</span><span class="small">change these parts</span></div>
+            <div class="back"><span class="tag">LAV-1</span><div class="parts"><span><span class="strong">TOTO</span> T25S51E#CP <span class="chip red">Rejected</span> <span class="small">they wrote “TEL145”</span></span></div><span class="b sm">Edit</span></div>
+            <div class="back"><span class="tag">LAV-2</span><div class="parts"><span><span class="strong">KOHLER</span> 2215-0 <span class="chip red">Rejected</span> <span class="small">they wrote “KOHLER 2215-0”</span></span><span><span class="strong">TOTO</span> T25S51E#CP <span class="chip red">Rejected</span> <span class="small">they wrote “TEL145”</span></span></div><span class="b sm">Edit</span></div>
+            <div class="back"><span class="tag">WC-1, WC-2</span><div class="parts"><span><span class="strong">TOTO</span> TET2UB31#SS <span class="chip red">Rejected</span> <span class="small">they wrote “TET2UA31#SS”</span></span></div><span class="b sm">Edit</span></div>
+            <div class="back"><span class="tag">12" DEEP MOP SINK</span><div class="parts"><span><span class="strong">FIAT</span> 830AA000 <span class="chip red">Rejected</span> <span class="small">they wrote “830AA”</span></span></div><span class="b sm">Edit</span></div>
+            <span class="small">When they are changed, start Rev 2 in step 7.</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span class="lbl">Waiting on structura · 9 fixtures</span>
+            <span class="small">Got an answer by email? Press the fixture and type it in.</span>
+            <div class="rowf" style="gap:5px"><span class="tagbtn">DWH-1</span><span class="tagbtn">EWC-1</span><span class="tagbtn">FCO</span><span class="tagbtn">FD</span><span class="tagbtn">HB-3</span><span class="tagbtn">UR-1, UR-2</span><span class="tagbtn">WHA-200</span><span class="tagbtn">WHA-300</span><span class="tagbtn">WHA-500</span></div>
+            <div class="rowf"><span class="b">Mark all 9 approved…</span><span class="small">when they said yes to the rest in one go</span></div>
+          </div>
+
+          <span class="small"><span class="strong">UTILITY SINK</span> has no product yet, so there is nothing for them to answer. <u>Add the product</u></span>
+
+          <div class="foot"><u>History · 5 entries ▾</u><u>Keep their email or marked-up PDF</u><u>Copy the answers as text</u></div>
+        </div>
+      </div>
+      <div class="note good"><b>What the step now says without being asked</b>
+        <ul>
+          <li>Where it stands: one square a fixture, red for sent back, grey for waiting.</li>
+          <li>Which ones came back, the part, and the reviewer’s own words, with the door to change each.</li>
+          <li>Who is still owed an answer, and the two ways to record one.</li>
+          <li>Why the count is 13 and not 14.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel best">
+    <h3>Is this the best we can do?</h3>
+    <div class="cols">
+      <div>
+        <h4>The first draft, and what the second look changed</h4>
+        <div class="rowf" style="margin-bottom:10px;align-items:stretch">
+          <div class="tile"><b>0</b><span class="small">approved</span></div><div class="tile"><b style="color:var(--red)">4</b><span class="small">sent back</span></div><div class="tile"><b>9</b><span class="small">waiting</span></div>
+        </div>
+        <ol>
+          <li><b>The first draft was three number tiles.</b> They look tidy and answer nothing new. She still had to go to step 3 to find the four. The list of what came back is the real content, so it moved into the step.</li>
+          <li><b>One square a fixture, not a bar.</b> A plain bar shows a share. Thirteen squares show the fixtures themselves, and the fourteenth, dashed, is the sink with no product. That settles 13 against 14 and 9 against 10 at a glance.</li>
+          <li><b>The reviewer’s words are labelled.</b> The first draft showed “TEL145” in quotes and left her to guess whose words they were. “they wrote” says it.</li>
+          <li><b>The waiting fixtures are buttons that look like buttons,</b> under a line that says to press them. The first draft made them plain labels with one shared Their answer button, which then had to ask which fixture.</li>
+          <li><b>Buttons start with a verb.</b> “Mark all 9 approved…” for “They approved the other 9…”.</li>
+          <li><b>The step does not repeat the Rev 2 button.</b> The first draft ended with a third copy of it. One plain line points to step 7.</li>
+        </ol>
+      </div>
+      <div>
+        <h4>Looked at and left out</h4>
+        <ul>
+          <li>Typing answers right in this step. Their answer already has a window that goes part by part. A second way to do the same thing would drift from it.</li>
+          <li>Guessing that “TEL145” is the model they want and offering to swap it in. It usually is, but the app cannot know, and a wrong swap goes to the GC.</li>
+          <li>Folding the waiting fixtures behind a count. Nine names fit on two lines and save a trip to step 3.</li>
+        </ul>
+        <h4 style="margin-top:14px">What it costs</h4>
+        <ul>
+          <li>The step is taller when something came back: about eleven lines here against three. It is shorter than the trip to step 3 it replaces.</li>
+          <li>On a version that was shared, parts are locked. There the list has no Edit, and its last line reads “Start Rev 2 in step 7 to change them.”</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>The same design in two other states <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">· examples, not a real bid</span></h2>
+    <div class="pair">
+      <div class="side after">
+        <div class="bar">Shared, nothing back yet</div>
+        <div class="mock">
+          <div class="card">
+            <div class="cells"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <div class="counts"><span class="g"><b>0</b>approved</span><span class="r"><b style="color:var(--muted)">0</b>sent back</span><span><b>13</b>waiting</span></div>
+            <span class="small">Shared with structura on Sep 16. They opened it twice, last on Sep 18. No answers yet.</span>
+            <div style="display:flex;flex-direction:column;gap:6px">
+              <span class="lbl">Waiting on structura · 13 fixtures</span>
+              <span class="small">Got an answer by email? Press the fixture and type it in.</span>
+              <div class="rowf" style="gap:5px"><span class="tagbtn">DWH-1</span><span class="tagbtn">EWC-1</span><span class="tagbtn">FCO</span><span class="tagbtn">FD</span><span class="tagbtn">HB-3</span><span class="tagbtn">LAV-1</span><span class="tagbtn">LAV-2</span><span class="small">and 6 more</span></div>
+              <div class="rowf"><span class="b">Mark all 13 approved…</span></div>
+            </div>
+            <div class="foot"><u>History · 1 entry ▾</u><u>Keep their email or marked-up PDF</u></div>
+          </div>
+        </div>
+      </div>
+      <div class="side after">
+        <div class="bar">Everything approved</div>
+        <div class="mock">
+          <div class="card">
+            <div class="cells"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i></div>
+            <div class="counts"><span class="g"><b>13</b>approved</span></div>
+            <span><span class="strong">All 13 approved</span> by structura on Oct 9. Nothing is left to do here. Order them in step 8.</span>
+            <div class="foot"><u>History · 14 entries ▾</u><u>Copy the answers as text</u></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>What it took</h3>
+    <ul>
+      <li><b>Size: small to medium.</b> Step 6 is its own small file since the split. It needs the fixtures and their parts handed to it, which the tab already has.</li>
+      <li><b>Nothing new is stored.</b> Every number and name here is already on the page in step 3. Edit and Their answer are the windows that exist today.</li>
+      <li><b>One thing it fixes on the way:</b> the top of the page says 10 rows have no answer and this step says 9. Both would say 9 waiting and 1 with no product.</li>
+    </ul>
+  </section>
+</div>

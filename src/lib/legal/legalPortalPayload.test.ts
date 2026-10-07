@@ -40,13 +40,22 @@ describe('parseLegalPortalPayload', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-11', firm, particulars: { entity: 'Click, LLC' }, matters: [{ ...matterRaw(), sharedOverrides: { 'contact:c0': false, junk: 'x' } }] })
     expect(p?.matters).toHaveLength(1)
     expect(p?.matters[0]?.sharedOverrides).toEqual({ 'contact:c0': false })
+    // #85 item 29: the count of entries the office held back, as the function counted them; 0 from an older function.
+    expect(p?.matters[0]?.heldCount).toBe(0)
+    expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), heldCount: 2 }] })?.matters[0]?.heldCount).toBe(2)
+    // #85 item 16: pulled-back matters, slim; [] from an older function.
+    expect(p?.pulledMatters).toEqual([])
+    expect(parseLegalPortalPayload({ firm, matters: [], pulledMatters: [{ id: 'm9', payerName: 'Ridgeway Dental', pulledAt: '2026-10-04', reason: 'Paid in full', entries: [] }, { payerName: 'no id' }] })?.pulledMatters).toEqual([{ id: 'm9', payerName: 'Ridgeway Dental', pulledAt: '2026-10-04', reason: 'Paid in full', entries: [] }])
+    // #85 item 20: the settlement floor; none from an older function.
+    expect(p?.matters[0]?.settlementFloor).toBeNull()
+    expect(parseLegalPortalPayload({ firm, matters: [{ ...matterRaw(), settlementFloor: { amount: null, pct: 70 } }] })?.matters[0]?.settlementFloor).toEqual({ amount: null, pct: 70 })
     expect(p?.particulars.entity).toBe('Click, LLC')
     expect(portalFeeModel(p!)).toEqual({ contingencyPct: 0.3, filingCost: 400 })
   })
 })
 
 describe('buildMatterPacket', () => {
-  it('runs one matter through the same kernel the desk uses, honoring the shared pre-bill entry and the firm’s fee model', () => {
+  it('runs one matter through the same kernel the desk uses, sharing the pre-bill entry like every other (#85 item 29) and honoring the firm’s fee model', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-11', firm, particulars: {}, matters: [matterRaw()] })!
     const packet = buildMatterPacket(p.matters[0]!, '2026-09-11', portalFeeModel(p))!
     expect(packet.account.payer.name).toBe('The Learning Experience')
@@ -54,7 +63,7 @@ describe('buildMatterPacket', () => {
     expect(packet.worth.contingencyPct).toBe(0.3)
     expect(packet.worth.filingCost).toBe(400)
     const c0 = packet.theirWord.timeline.find((e) => e.key === 'contact:c0')
-    expect(c0).toEqual(expect.objectContaining({ sharedByDefault: false, shared: true }))
+    expect(c0).toEqual(expect.objectContaining({ sharedByDefault: true, shared: true }))
     expect(packet.theirWord.timeline.find((e) => e.key === 'promise:pr1')?.text).toContain('broken')
   })
 })
@@ -73,5 +82,14 @@ describe('the notice desk items (#41 PR 1b)', () => {
   it('read as no answers from an older function that sends none', () => {
     const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-20', firm, particulars: {}, matters: [matterRaw()] })
     expect(p?.matters[0]?.lienDeskItems).toEqual([])
+  })
+})
+
+describe('officeContacts (v2.4755)', () => {
+  const base = { company: { name: 'Click', phone: '(512) 360-0599' }, preparedOn: '2026-10-06', firm, particulars: {}, recipients: [], firmPaused: false, matters: [] }
+  it('reads who the firm calls, and falls back to the letterhead number from an older function', () => {
+    const full = parseLegalPortalPayload({ ...base, officeContacts: { phone: '(512) 360-0599', assistants: ['Robin Ortega', 7, ''], controllers: [{ name: 'Robert Douglas', phone: '+1 617 939 6295' }, { name: ' ' }, { name: 'Lee Park', phone: '' }] } })!
+    expect(full.officeContacts).toEqual({ phone: '(512) 360-0599', assistants: ['Robin Ortega'], controllers: [{ name: 'Robert Douglas', phone: '+1 617 939 6295' }, { name: 'Lee Park', phone: null }] })
+    expect(parseLegalPortalPayload(base)!.officeContacts).toEqual({ phone: '(512) 360-0599', assistants: [], controllers: [] })
   })
 })

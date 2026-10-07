@@ -79,12 +79,12 @@ export default function GcReviewCertifyModal({
       role="dialog"
       aria-modal="true"
       aria-label={`Certify ${group.gcName}`}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose()
       }}
     >
-      <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.4rem', width: 'min(620px, calc(100vw - 2rem))', maxHeight: '85vh', overflow: 'auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.4rem', width: 'min(620px, calc(100vw - 2rem))', maxHeight: 'min(85vh, 100%)', overflow: 'auto', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0, fontSize: '1.15rem' }}>Certify {group.gcName}</h2>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Week of Mon, {weekLabel}</span>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 6: property per job — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 12px; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .paper { background: #FBF8F2; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; color: #16283c; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 5px 8px; }
+  td { padding: 6px 8px; border-bottom: 1px solid #ece6da; vertical-align: top; }
+  .bad { background: #FEE2E2; }
+  .flag { color: #b42318; font-size: 12px; }
+  .muted { color: #8a97a6; font-size: 12.5px; }
+  ul.notes { margin: 12px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 6 · mockup</p><h1>Property per job</h1>
+<p>A GC-paid matter, the shape most of the firm's matters will have. Sample Contracting pays; it keeps two office addresses on its customer record. Job 1042 is a tenant finish-out at 1200 Sample Pkwy, Kyle. That property record sits on the owner's customer (Sample Holdings LLC, Hays County, non-residential), and the job carries an owner override naming the owner of record. Job 1189 is a house at 88 Oak Hollow, Buda, linked to its own record (residential, Hays County). Before is the current kernel; after is the proposed one.</p></header>
+
+<h2>1 · The matter card</h2>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="paper">
+    <div style="font-size:18px;font-weight:700">Sample Contracting</div>
+    <div class="muted">410 Sample Commerce Dr, Austin, TX 78744 · <span class="bad">Travis County · owner of record: Sample Contracting</span> · theory: Signed contract</div>
+    <p class="flag">The county and the owner come from the GC's first office address. The firm would file in the wrong county and name the GC as the owner.</p>
+  </div></div>
+  <div><div class="cap new">After</div><div class="paper">
+    <div style="font-size:18px;font-weight:700">Sample Contracting</div>
+    <div class="muted">410 Sample Commerce Dr, Austin, TX 78744 · Hays County · owner of record: Sample Holdings LLC (job 1042) · theory: Signed contract</div>
+    <ul class="notes"><li>The county and owner line reads the first job's own property. The job number says which one, because a two-job matter can sit in two counties.</li></ul>
+  </div></div>
+</div>
+
+<h2>2 · Account tab · Property record</h2>
+<div class="two">
+  <div><div class="cap old">Before: the payer's address list</div><div class="paper">
+    <table><thead><tr><th>Address</th><th>County</th><th>Owner of record</th><th>Legal description</th><th>Parcel</th><th>Kind</th></tr></thead><tbody>
+      <tr class="bad"><td>410 Sample Commerce Dr, Austin</td><td>Travis</td><td>Sample Contracting</td><td>—</td><td>—</td><td>non-residential</td></tr>
+      <tr class="bad"><td>9 Yard Rd, Manor</td><td>Travis</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+    </tbody></table>
+    <p class="flag">Neither row is a job site. The two real properties are missing, so the lien paper and the lien clock read the wrong kind of property.</p>
+  </div></div>
+  <div><div class="cap new">After: one row per property the jobs stand on</div><div class="paper">
+    <table><thead><tr><th>Job</th><th>Address</th><th>County</th><th>Owner of record</th><th>Legal description</th><th>Parcel</th><th>Kind</th></tr></thead><tbody>
+      <tr><td><b>1042</b></td><td>1200 Sample Pkwy, Kyle</td><td>Hays</td><td>Sample Holdings LLC</td><td>Lot 4, Block B, Sample Commons</td><td>R12345</td><td>non-residential</td></tr>
+      <tr><td><b>1189</b></td><td>88 Oak Hollow, Buda</td><td>Hays</td><td>Jordan Example</td><td>—</td><td>—</td><td>residential</td></tr>
+    </tbody></table>
+    <ul class="notes">
+      <li>Each job's property comes from the job's own link to a property record, whoever's record it is. The job's owner override wins for the owner, as on the lien paper (<code>resolveLienProperty</code>).</li>
+      <li>Two jobs at one property share a row: <b>1042, 1043</b>.</li>
+      <li>A job with no linked record shows its job address with "no property record linked". The desk lists that as a gap with an Edit job door, so the office fixes it before the firm asks.</li>
+    </ul>
+  </div></div>
+</div>
+
+<h2>3 · Paper tab · Where each job stands</h2>
+<div class="two">
+  <div><div class="cap old">Before: one property kind for every job</div><div class="paper">
+    <table><thead><tr><th>Job</th><th>Reads as</th><th>§ 53.056 notice</th></tr></thead><tbody>
+      <tr><td>1042</td><td>non-residential · subcontractor</td><td>15th day of the 3rd month</td></tr>
+      <tr class="bad"><td>1189</td><td>non-residential · subcontractor</td><td>15th day of the 3rd month</td></tr>
+    </tbody></table>
+    <p class="flag">The clock ran both jobs from <code>properties[0]</code>, the GC's office. The house at 88 Oak Hollow is residential: its notice is due on the 15th day of the 2nd month, a month earlier. The firm would be told a window is open after it has closed.</p>
+  </div></div>
+  <div><div class="cap new">After: each job's clock from its own property</div><div class="paper">
+    <table><thead><tr><th>Job</th><th>Reads as</th><th>§ 53.056 notice</th></tr></thead><tbody>
+      <tr><td>1042</td><td>non-residential · subcontractor</td><td>15th day of the 3rd month</td></tr>
+      <tr><td>1189</td><td>residential · subcontractor</td><td>15th day of the 2nd month</td></tr>
+    </tbody></table>
+  </div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Keep the payer's other addresses somewhere?</b> No. The payer's own address is already in Who owes. The office addresses are not properties the jobs stand on, and showing them under Property record is what misled.</li>
+  <li><b>Guess a job's property from its address when nothing is linked?</b> Only on an exact address match against the payer's records, and the row says it was matched. A street-only match stays a suggestion for a person to confirm; legal identity is never guessed.</li>
+  <li><b>Send the override owner's email?</b> No. The firm needs the owner of record and the mailing address. The email is the office's courtesy channel and stays out of the payload.</li>
+  <li><b>An older function?</b> The page reads a payload without the new fields. Linked records are then simply absent and each job falls back to an exact match or its job address. Nothing crashes, and the deploy brings the records.</li>
+</ul>
+</div></body></html>

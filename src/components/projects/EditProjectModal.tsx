@@ -49,7 +49,7 @@ export default function EditProjectModal() {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: EDIT_PROJECT_MODAL_Z_INDEX,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={(e) => {
@@ -65,7 +65,7 @@ export default function EditProjectModal() {
           padding: '1.25rem 1.5rem',
           borderRadius: 8,
           width: 'min(640px, 96vw)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           overflow: 'auto',
           boxSizing: 'border-box',
           border: '1px solid var(--border)',

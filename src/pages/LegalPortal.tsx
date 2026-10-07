@@ -1,38 +1,51 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
-import { sampleStateFromToken } from '../lib/customerSampleMode'
+import { LEGAL_SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
+import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED, PORTAL_FONT } from '../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
-import { buildLegalPacketPrintHtml } from '../lib/legal/legalPacketPrint'
+import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
-import { legalStageLabel } from '../lib/legal/legalMatters'
-import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
+import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
+import { PORTAL_QUIET_RELOAD_FAILED, portalPayloadIsStale } from '../lib/legal/legalPortalFreshness'
+import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalPulledMatter, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
-import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
+import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
+import { FirmMatterView, PortalTable } from '../components/jobs/legal/LegalFirmMatterView'
+import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
-import { askKindWords, openAsks } from '../lib/legal/legalAsks'
+import LegalPortalReachStrip from '../components/jobs/legal/LegalPortalReachStrip'
+import { askKindWords, conversationRows, conversationWho, entryRecordedByWords, openAsks } from '../lib/legal/legalAsks'
+import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
+import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
+import { portalSmall } from '../lib/legal/legalPortalCards'
+import { isLegalFirmStep, LEGAL_FIRM_STEP_GROUPS, LEGAL_FIRM_STEP_WORDS, type LegalFirmStep } from '../../supabase/functions/_shared/legalStages'
 
 /**
  * The collections law firm's portal (Legal portal PR 3): the no-login page
  * behind the firm's capability link (`/legal?t=<token>`). Every matter the
  * office marked attorney-ready, each as the same five-section packet the
- * office desk shows — Account · Paper · Their word · Evidence · Fees & steps —
+ * office desk shows — Account · Paper · Record of contact · Evidence · Fees & steps —
  * built by the one packet kernel from the records `legal-portal` returns (held
- * entries never arrive). Plus Click's particulars for filing and the exhibits
- * as links. Read-only; the firm's own acts (fees, steps, questions, payments
+ * entries never arrive). Plus the company's particulars for filing and the exhibits
+ * as links. Every word here is the firm's (`legalFirmWords.ts`, punch list #85 item 3), not the office's. Read-only; the firm's own acts (fees, steps, questions, payments
  * received) land with PR 4. Same paper as the customer statement, pinned light.
  */
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
 type PageState = { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; payload: LegalPortalPayload }
+/** One act on the portal; `said` words the line shown after a success (the default is `firmSavedWords`, what happens next for that act). */
+type Act = (payload: Record<string, unknown>, said?: (answer: LegalActAnswer) => LegalActNotice) => Promise<boolean>
 
 const card: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }
-const cap: CSSProperties = { fontSize: 11, color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
+const cap: CSSProperties = { fontSize: portalSmall(11), color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
 const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, padding: '6px 12px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer' }
 
@@ -41,32 +54,66 @@ export default function LegalPortal() {
   const token = params.get('t') || params.get('token') || ''
   const sample = sampleStateFromToken(token)
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  /** The office's preview by firm id (item 22): signed in, no key; nothing the page does is saved. */
+  const officeFirm = !token ? (params.get('firm') ?? '').trim() : ''
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [tab, setTab] = useState<FirmTab>('account')
+  // Narrative first when the office wrote one (v2.4812); the view falls back to Account when it did not.
+  const [tab, setTab] = useState<FirmTab>('narrative')
   const [panel, setPanel] = useState<'matters' | 'grid' | 'notifications'>('matters')
   const [reloadTick, setReloadTick] = useState(0)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [noticeWarn, setNoticeWarn] = useState(false)
+  /** When the payload last arrived (item 22): the PDF links in it open for fifteen minutes. */
+  const loadedAtRef = useRef<number | null>(null)
+  /** True while the load in flight is the quiet ten-minute reload: it never swaps the page for the error card. */
+  const quietRef = useRef(false)
+  /** The page-level notice line a failed quiet reload leaves; cleared by the next load that works. */
+  const [refreshNote, setRefreshNote] = useState<string | null>(null)
+  /** #85 item 18 (b): who at the firm is recording — a person on their own list, remembered on this browser. */
+  const [recordedById, setRecordedById] = useState<string>(() => {
+    try {
+      return window.localStorage.getItem(RECORDED_BY_KEY) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  /** #85 item 18 (d): one key per act, kept until it saves — a retry after a dropped connection reuses it, so it saves once. */
+  const pendingKeys = useRef(new Map<string, string>())
 
   /** One POST to submit-legal-portal; reloads the payload on success. */
-  const act = async (payload: Record<string, unknown>): Promise<boolean> => {
+  const act: Act = async (payload, said) => {
     // What customers see (v2.3512): the sample portal saves nothing.
     if (sample) {
       setNotice('Sample — nothing is saved here.')
+      setNoticeWarn(false)
       return true
+    }
+    if (officeFirm) {
+      setNotice('Office preview: the firm’s acts are not saved from here.')
+      return false
     }
     setBusy(true)
     setNotice(null)
+    setNoticeWarn(false)
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload }) })
-      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      const sig = JSON.stringify(payload)
+      const clientId = typeof payload.matterId === 'string' ? (pendingKeys.current.get(sig) ?? newClientId()) : null
+      if (clientId) pendingKeys.current.set(sig, clientId)
+      const extra = typeof payload.matterId === 'string' ? { ...(clientId ? { clientId } : {}), ...(recordedById ? { recordedById } : {}) } : {}
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload, ...extra }) })
+      const body = (await res.json().catch(() => null)) as LegalActAnswer | null
       if (!res.ok || !body?.ok) {
-        setNotice(body?.error ?? 'Could not save that. Please try again.')
+        setNotice(res.ok ? 'Could not save that. Please try again.' : firmFacingErrorLine(res.status, body))
         return false
       }
+      pendingKeys.current.delete(JSON.stringify(payload))
       setReloadTick((t) => t + 1)
-      setNotice('Saved — the office sees it on their Needs You list.')
+      // #85 item 16: the function says when a step did not move the stage, or kept a settled matter open.
+      const line = said ? said(body) : { text: body.notice ?? firmSavedWords(payload), warn: false }
+      setNotice(line.text)
+      setNoticeWarn(line.warn)
       return true
     } catch {
       setNotice('Could not reach the office. Check your connection and try again.')
@@ -77,36 +124,92 @@ export default function LegalPortal() {
   }
 
   useEffect(() => {
-    if (!token) {
+    if (!token && !officeFirm) {
       setState({ kind: 'error', message: 'This link is missing its key. Please use the exact link the office sent you.' })
       return
     }
+    // The sample (item 9, #85): the page builds the function's own sample answer from the shared fixture, so the
+    // sample matter shows the moment the page ships, without a function deploy, and the demo never waits on the network.
+    if (sample) {
+      const samplePayload = parseLegalPortalPayload(sampleLegalPortalResponse(PORTAL_COMPANY, todayYmdInAppTz()))
+      if (samplePayload) {
+        setState({ kind: 'ready', payload: samplePayload })
+        setSelectedId((prev) => prev ?? samplePayload.matters[0]?.id ?? null)
+        return
+      }
+    }
     let cancelled = false
+    // The quiet reload (item 22) keeps the page it already shows when it fails, and says so on the notice line.
+    const quiet = quietRef.current
+    quietRef.current = false
+    const fail = (message: string) => {
+      if (quiet) {
+        setRefreshNote(PORTAL_QUIET_RELOAD_FAILED)
+        return
+      }
+      setState({ kind: 'error', message })
+    }
     void (async () => {
       try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/legal-portal?token=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders() })
+        // `refresh=1`: the quiet reload is not a new visit, so the function writes no page-view row for it.
+        const query = officeFirm ? `firm=${encodeURIComponent(officeFirm)}&${PUBLIC_PREVIEW_PARAM}=1` : `token=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`
+        const res = await fetch(`${supabaseUrl}/functions/v1/legal-portal?${query}${quiet ? '&refresh=1' : ''}`, { headers: await staffAwarePublicHeaders() })
         const body = (await res.json().catch(() => null)) as unknown
         if (cancelled) return
         if (!res.ok) {
-          const msg = body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string' ? (body as { error: string }).error : 'We could not open the portal.'
-          setState({ kind: 'error', message: msg })
+          // Item 7 (#85): a 4xx keeps the words written for the firm; an unexpected 5xx reads as one plain sentence.
+          fail(firmFacingErrorLine(res.status, body))
           return
         }
         const payload = parseLegalPortalPayload(body)
         if (!payload) {
-          setState({ kind: 'error', message: 'The portal answered in a shape this page does not understand. Please contact the office.' })
+          fail('The portal answered in a shape this page does not understand. Please contact the office.')
           return
         }
         setState({ kind: 'ready', payload })
-        setSelectedId((prev) => prev ?? payload.matters[0]?.id ?? null)
+        setRefreshNote(null)
+        loadedAtRef.current = Date.now()
+        // The first matter in the page's order opens by itself and stays pinned (the effect below).
       } catch {
-        if (!cancelled) setState({ kind: 'error', message: 'We could not open the portal. Please check your connection and try again.' })
+        if (!cancelled) fail('We could not open the portal. Please check your connection and try again.')
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [token, preview, reloadTick])
+  }, [token, preview, reloadTick, officeFirm])
+
+  // Item 22 (#85): reload quietly before the signed PDF links run out — when the tab comes back into view,
+  // and on a one-minute check while it is in view. The selected matter and tab stay as they are.
+  useEffect(() => {
+    if (sample) return
+    const check = () => {
+      if (document.visibilityState === 'visible' && portalPayloadIsStale(loadedAtRef.current, Date.now())) {
+        loadedAtRef.current = Date.now()
+        quietRef.current = true
+        setReloadTick((t) => t + 1)
+      }
+    }
+    const timer = window.setInterval(check, 60_000)
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [sample])
+
+  // Item 22 (#85): the address bar carries the firm's key, so no page this one opens learns it.
+  useEffect(() => {
+    const meta = document.createElement('meta')
+    meta.name = 'referrer'
+    meta.content = 'no-referrer'
+    document.head.appendChild(meta)
+    return () => {
+      meta.remove()
+    }
+  }, [])
 
   const payload = state.kind === 'ready' ? state.payload : null
   const fee = useMemo(() => (payload ? portalFeeModel(payload) : { contingencyPct: 0.33, filingCost: 350 }), [payload])
@@ -116,28 +219,39 @@ export default function LegalPortal() {
     for (const m of payload.matters) out.set(m.id, buildMatterPacket(m, payload.preparedOn, fee))
     return out
   }, [payload, fee])
-  const selected: LegalPortalMatter | null = payload?.matters.find((m) => m.id === selectedId) ?? payload?.matters[0] ?? null
+  /** Largest balance first, the newest referral breaking a tie; the function's order (oldest referral first) after that (punch list #85, item 11). */
+  const matters = useMemo(() => (payload ? orderFirmMatters(payload.matters, (m) => packets.get(m.id)?.account.totals.balance ?? null) : []), [payload, packets])
+  // Pin the first matter in the page's order on first load, so a refetch after an act that changes a
+  // balance (and so the order) cannot swap the matter the firm has open.
+  const firstMatterId = matters[0]?.id ?? null
+  useEffect(() => {
+    if (selectedId == null && firstMatterId != null) setSelectedId(firstMatterId)
+  }, [selectedId, firstMatterId])
+  const selected: LegalPortalMatter | null = matters.find((m) => m.id === selectedId) ?? matters[0] ?? null
   const packet = selected ? (packets.get(selected.id) ?? null) : null
 
   return (
-    <div data-theme="light" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT, padding: '26px 20px 60px' }}>
+    <div data-theme="light" className="legalPortalPage" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT }}>
       <div style={{ maxWidth: 1040, margin: '0 auto' }}>
-        {sample ? <SampleModeBanner /> : null}
+        {sample ? <SampleModeBanner text={LEGAL_SAMPLE_BANNER_TEXT} /> : null}
+        {officeFirm ? <div data-legal-office-preview style={{ ...card, marginBottom: 14, fontSize: 13, color: MUTED }}><b style={{ color: INK }}>Office preview.</b> This is the firm’s portal as the firm sees it. Nothing you do here is saved, and it does not count as the firm’s visit.</div> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${COPPER}`, paddingBottom: 10, marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Click Plumbing and Electrical'}</div>
+            <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Legal portal'}</div>
             <div style={{ fontSize: 12, color: MUTED }}>Collections referred to counsel{payload ? ` · prepared ${payload.preparedOn}` : ''} · no sign-in, one revocable link</div>
           </div>
           {payload ? (
-            <div style={{ textAlign: 'right', fontSize: 12.5, color: MUTED }}>
+            <div className="legalPortalHeadAside" style={{ textAlign: 'right', fontSize: 12.5, color: MUTED }}>
               For <b style={{ color: INK }}>{payload.firm.name}</b>{payload.firm.handling_name ? ` · ${payload.firm.handling_name}` : ''}<br />
               {payload.matters.length} matter{payload.matters.length === 1 ? '' : 's'} · {formatLegalMoney(payload.matters.reduce((s, m) => s + (packets.get(m.id)?.account.totals.balance ?? 0), 0))} in balance
             </div>
           ) : null}
         </div>
 
+        {payload ? <LegalPortalReachStrip contacts={payload.officeContacts} /> : null}
+
         {payload ? (
-          <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
             {(payload.lienBook ? (['matters', 'grid', 'notifications'] as const) : (['matters', 'notifications'] as const)).map((p) => (
               <button key={p} type="button" onClick={() => setPanel(p)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
                 {p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
@@ -145,8 +259,9 @@ export default function LegalPortal() {
             ))}
           </div>
         ) : null}
-        {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} /> : null}
-        {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} /> : null}
+        {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /> : null}
+        {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /> : null}
+        {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
 
@@ -154,36 +269,42 @@ export default function LegalPortal() {
           <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>No matters yet.</b><br /><span style={{ color: MUTED }}>Accounts appear here the moment the office marks them attorney-ready.</span></div>
         ) : null}
 
+        {payload && panel === 'matters' && payload.pulledMatters.length ? <PulledMattersSection pulled={payload.pulledMatters} companyName={payload.company.name} /> : null}
+
         {payload && panel === 'matters' && selected && packet ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
-            <div>
+          <div className="legalPortalSplit">
+            <div className="legalPortalMain">
               <FirmMatterView
                 packet={packet}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries }}
+                companyName={payload.company.name}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, settlementFloor: selected.settlementFloor, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
                 tab={tab}
                 onTab={setTab}
-                acts={<><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} /></>}
-                onPrint={() => { if (!openHtmlPrintWindow(buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name }))) alert('Your browser blocked the print window. Allow pop-ups and try again.') }}
+                onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
+                acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} todayYmd={payload.preparedOn} /></>}
+                onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
-            <div>
-              <div style={cap}>Matters</div>
-              {payload.matters.map((m) => {
+            <div className="legalPortalList">
+              <div style={cap}>Matters{matters.length > 1 ? ' · largest balance first' : ''}</div>
+              {matters.map((m) => {
                 const p = packets.get(m.id)
                 const on = m.id === selected.id
                 return (
-                  <button key={m.id} type="button" onClick={() => { setSelectedId(m.id); setTab('account') }} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 12px', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 12px', marginTop: 8, background: CARD, border: `1px solid ${on ? COPPER : HAIR}`, borderRadius: 6, color: INK, cursor: 'pointer', font: 'inherit' }}>
+                  <button key={m.id} type="button" onClick={() => { setSelectedId(m.id); setTab('narrative') }} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 12px', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 12px', marginTop: 8, background: CARD, border: `1px solid ${on ? COPPER : HAIR}`, borderRadius: 6, color: INK, cursor: 'pointer', font: 'inherit' }}>
                     <b style={{ fontSize: 13.5 }}>{m.payer.name}</b>
                     <span style={{ ...num, fontSize: 13.5, fontWeight: 600 }}>{p ? formatLegalMoney(p.account.totals.balance) : '—'}</span>
-                    <span style={{ fontSize: 11.5, color: MUTED }}>{m.jobs.length} job{m.jobs.length === 1 ? '' : 's'}{m.releasedAt ? ` · since ${m.releasedAt}` : ''}{m.handling ? ` · handling ${m.handling}` : ''}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: NOTE_BAND, color: MUTED, justifySelf: 'end' }}>{legalStageLabel(m.stage).replace('With the firm · ', '')}</span>
+                    <span style={{ fontSize: portalSmall(11.5), color: MUTED }}>{m.jobs.length} job{m.jobs.length === 1 ? '' : 's'}{m.releasedAt ? ` · referred ${m.releasedAt}` : ''}{m.handling ? ` · handling ${m.handling}` : ''}</span>
+                    <span style={{ fontSize: portalSmall(10.5), fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: NOTE_BAND, color: MUTED, justifySelf: 'end' }}>{legalFirmStageWords(m.stage)}</span>
                   </button>
                 )
               })}
+            </div>
+            <div className="legalPortalAside">
               <div style={{ ...card, marginTop: 14, fontSize: 12.5, color: MUTED }}>
-                <b style={{ color: INK }}>Click’s particulars for filing</b>
+                <b style={{ color: INK }}>Particulars for filing</b>
                 <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 10px', marginTop: 6 }}>
-                  <span>Entity</span><span style={{ color: INK }}>{payload.particulars.entity || payload.company.name}</span>
+                  <span>Legal entity</span><span style={{ color: INK }}>{payload.particulars.entity || payload.company.name}</span>
                   <span>License</span><span style={{ color: INK }}>{payload.particulars.license || '—'}</span>
                   <span>Registered agent</span><span style={{ color: INK }}>{payload.particulars.agent || '—'}</span>
                   <span>Custodian of records</span><span style={{ color: INK }}>{payload.particulars.custodian || '—'}</span>
@@ -193,8 +314,8 @@ export default function LegalPortal() {
                 </div>
               </div>
               <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
-                <b style={{ color: INK }}>What you get</b><br />The account, every agreement and notice, Click’s contact history with the customer, their promises, the field evidence, and the steps so far — as one lettered packet. Print packet is the PDF.<br /><br />
-                <b style={{ color: INK }}>What you can do</b><br />On Fees &amp; steps: add fees and costs, record a step (demand · suit · judgment · settled), record a payment you received, ask the office. Each lands on the office's Needs You list.<br /><br /><b style={{ color: INK }}>What you cannot do</b><br />Mark anything paid, edit a job, email the customer through Click, or see any account not released to you.
+                <b style={{ color: INK }}>What is here</b><br />Each account referred to you, as one lettered packet. The statement of account, the agreements and notices, the record of contact, the field evidence and the account history. Print packet makes the PDF.<br /><br />
+                <b style={{ color: INK }}>What you can record</b><br />On Fees &amp; steps you add fees and costs and record a step. A step is demand sent, suit filed, judgment entered or settled. You can also record a payment you received and ask the office a question. The office sees each one and answers here.<br /><br /><b style={{ color: INK }}>What stays with the office</b><br />Applying payments, changing a job, and contacting the customer. Only accounts referred to you are listed here. The Lien grid shows dates and dollars for each job with a lien month, and nothing anyone said.
               </div>
             </div>
           </div>
@@ -204,8 +325,60 @@ export default function LegalPortal() {
   )
 }
 
+/**
+ * Matters the office pulled back (#85 item 16): read-only, with the office's reason, the firm's own fees and
+ * costs and the conversation. The customer's records are gone from the portal: counsel no longer has the matter.
+ */
+function PulledMattersSection({ pulled, companyName }: { pulled: ReadonlyArray<LegalPortalPulledMatter>; companyName: string }) {
+  return (
+    <div data-legal-pulled style={{ marginBottom: 16 }}>
+      <div style={cap}>Pulled back · read only</div>
+      {pulled.map((m) => {
+        const fees = m.entries.filter((e) => e.kind === 'fee' || e.kind === 'cost')
+        const talk = conversationRows(m.entries)
+        return (
+          <details key={m.id} style={{ ...card, marginTop: 8 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13.5 }}><b>{m.payerName}</b><span style={{ color: MUTED }}>{m.pulledAt ? ` · pulled back ${m.pulledAt}` : ''}</span></summary>
+            <div style={{ fontSize: 12.5, marginTop: 8, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}><b>Why:</b> {m.reason || `${companyName} gave no reason.`}</div>
+            <div style={portalH}>Your fees and costs</div>
+            <PortalTable head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, entryRecordedByWords(e, 'firm'), formatLegalMoney(Number(e.amount ?? 0))])} empty="None recorded." />
+            {talk.length ? (<><div style={portalH}>The conversation</div><PortalTable head={['Date', 'Who', 'What was said']} rows={talk.map((r) => [r.entry.occurred_on, `${r.isAnswer ? '↳ ' : ''}${conversationWho(r, 'firm')}`, r.entry.body])} empty="" /></>) : null}
+            <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: '8px 0 0' }}>The account's records left the portal when {companyName} pulled it back. Ask the office if you need anything from it.</p>
+          </details>
+        )
+      })}
+    </div>
+  )
+}
+
+const RECORDED_BY_KEY = 'legalPortal.recordedBy'
+
+function newClientId(): string | null {
+  try {
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : null
+  } catch {
+    return null
+  }
+}
+
+/** #85 item 18 (b): every act names who at the firm recorded it, picked from the firm's own Notifications list. */
+function RecordedByPicker({ recipients, value, onChange }: { recipients: ReadonlyArray<LegalPortalRecipient>; value: string; onChange: (id: string) => void }) {
+  const live = recipients.filter((r) => !r.paused || r.id === value)
+  const known = live.some((r) => r.id === value)
+  return (
+    <label data-legal-recorded-by style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 12.5, color: MUTED, marginTop: 12 }}>
+      Recorded by
+      <select value={known ? value : ''} onChange={(e) => onChange(e.target.value)} style={{ font: 'inherit', fontSize: 13, padding: '4px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK }}>
+        <option value="">the firm</option>
+        {live.map((r) => <option key={r.id} value={r.id}>{r.name}{r.role ? ` · ${r.role}` : ''}</option>)}
+      </select>
+      <span style={{ fontSize: portalSmall(11.5), color: FAINT }}>{live.length ? 'Your pick is remembered on this browser.' : 'Add your people on the Notifications page to sign each act.'}</span>
+    </label>
+  )
+}
+
 /** From the office (#41 PR 3): the office's open asks — a question, or a sign-off on one job — answered here. */
-function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean }) {
+function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: Act; busy: boolean }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const asks = openAsks(matter.entries)
   if (asks.length === 0) return null
@@ -243,17 +416,33 @@ function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: (payl
 }
 
 /** The firm's four acts (PR 4): add a fee or cost, record a step, record a payment received, ask the office. */
-function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
+function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortalMatter; act: Act; busy: boolean; notice: string | null; todayYmd: string }) {
   const [feeKind, setFeeKind] = useState<'fee' | 'cost'>('fee')
   const [feeAmount, setFeeAmount] = useState('')
   const [feeNote, setFeeNote] = useState('')
-  const [stage, setStage] = useState<'demand' | 'suit' | 'judgment' | 'settled'>('demand')
+  const [stage, setStage] = useState<LegalFirmStep>('demand')
   const [stepNote, setStepNote] = useState('')
+  /** #85 item 20: the settlement amount, checked against the office's floor. */
+  const [settleAmount, setSettleAmount] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [question, setQuestion] = useState('')
+  // #85 item 18 (c): the date it happened, today unless the firm says otherwise.
+  const [feeOn, setFeeOn] = useState(todayYmd)
+  const [stepOn, setStepOn] = useState(todayYmd)
+  const [payOn, setPayOn] = useState(todayYmd)
+  // A page left open past midnight reloads with a new preparedOn: a date nobody changed follows it, so it never defaults to yesterday.
+  const seededFor = useRef(todayYmd)
+  useEffect(() => {
+    const was = seededFor.current
+    if (was === todayYmd) return
+    seededFor.current = todayYmd
+    setFeeOn((d) => (d === was ? todayYmd : d))
+    setStepOn((d) => (d === was ? todayYmd : d))
+    setPayOn((d) => (d === was ? todayYmd : d))
+  }, [todayYmd])
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
-  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: portalSmall(11.5), color: MUTED }
   const submit = (payload: Record<string, unknown>, after: () => void) => async (e: FormEvent) => {
     e.preventDefault()
     if (await act({ ...payload, matterId: matter.id })) after()
@@ -261,65 +450,71 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
   return (
     <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
       {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}>{notice}</div> : null}
-      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote }, () => { setFeeAmount(''); setFeeNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 8, alignItems: 'end' }}>
-        <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden />
-        <label style={lab}>Kind<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
+      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote, occurredOn: feeOn }, () => { setFeeAmount(''); setFeeNote('') })} className="legalPortalForm legalPortalForm--fee">
+        <label style={lab}>Fee or cost<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
         <label style={lab}>Amount<input type="number" min={1} step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} placeholder="450" required style={input} /></label>
+        <label style={lab}>Date<input type="date" value={feeOn} max={todayYmd} onChange={(e) => setFeeOn(e.target.value)} required style={input} /></label>
         <label style={lab}>Note<input value={feeNote} onChange={(e) => setFeeNote(e.target.value)} placeholder="Demand letter on firm letterhead" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>+ Add fee or cost</button>
       </form>
-      <form onSubmit={submit({ kind: 'step', stage, note: stepNote }, () => setStepNote(''))} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
-        <label style={lab}>Record a step<select value={stage} onChange={(e) => setStage(e.target.value as 'demand' | 'suit' | 'judgment' | 'settled')} style={input}><option value="demand">Demand sent on firm letterhead</option><option value="suit">Suit filed</option><option value="judgment">Judgment entered</option><option value="settled">Settled</option></select></label>
+      <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn, ...(stage === 'settled' && settleAmount ? { amount: Number(settleAmount) } : {}) }, () => { setStepNote(''); setSettleAmount('') })} className={`legalPortalForm ${stage === 'settled' ? 'legalPortalForm--fee' : 'legalPortalForm--note'}`}>
+        <label style={lab}>Record a step<select value={stage} onChange={(e) => { if (isLegalFirmStep(e.target.value)) setStage(e.target.value) }} style={input}>{LEGAL_FIRM_STEP_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.steps.map((s) => <option key={s} value={s}>{LEGAL_FIRM_STEP_WORDS[s]}</option>)}</optgroup>)}</select></label>
+        <label style={lab}>Date<input type="date" value={stepOn} max={todayYmd} onChange={(e) => setStepOn(e.target.value)} required style={input} /></label>
+        {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder={matter.settlementFloor ? 'required' : 'optional'} required={Boolean(matter.settlementFloor)} style={input} /></label> : null}
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record step</button>
       </form>
-      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote }, () => { setPayAmount(''); setPayNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
+      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote, occurredOn: payOn }, () => { setPayAmount(''); setPayNote('') })} className="legalPortalForm legalPortalForm--note">
         <label style={lab}>Payment received<input type="number" min={1} step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Amount" required style={input} /></label>
-        <label style={lab}>Check no., date, from whom<input value={payNote} onChange={(e) => setPayNote(e.target.value)} style={input} /></label>
+        <label style={lab}>Received on<input type="date" value={payOn} max={todayYmd} onChange={(e) => setPayOn(e.target.value)} required style={input} /></label>
+        <label style={lab}>Check no., from whom<input value={payNote} onChange={(e) => setPayNote(e.target.value)} style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record payment</button>
       </form>
-      <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+      <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} className="legalPortalForm legalPortalForm--ask">
         <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Send</button>
       </form>
-      <p style={{ fontSize: 11.5, color: FAINT, margin: 0 }}>You never mark anything paid: the office applies a payment you report to the job and records your share. Steps move the matter's stage on the office's board.</p>
+      <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
     </div>
   )
 }
 
 /** The firm runs its own inbox (PR 5): people, one rule each — right away or a weekly digest — and only-my-matters. */
-function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPortalPayload; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
+function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payload: LegalPortalPayload; act: Act; busy: boolean; notice: string | null; noticeWarn: boolean }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('paralegal')
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK, width: '100%' }
-  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: portalSmall(11.5), color: MUTED }
   const small: CSSProperties = { ...btn, padding: '3px 9px', fontSize: 12 }
   const ghost: CSSProperties = { ...small, borderColor: HAIR, color: MUTED }
   const rule = (r: LegalPortalRecipient, patch: Record<string, unknown>) => void act({ kind: 'recipient_rules', recipientId: r.id, mode: r.mode, scope: r.scope, digestWeekday: r.digestWeekday, digestTime: r.digestTime, ...patch })
   const onAdd = async (e: FormEvent) => {
     e.preventDefault()
-    if (await act({ kind: 'recipient_add', name, email, role })) {
+    const who = name.trim()
+    const address = email.trim().toLowerCase()
+    if (await act({ kind: 'recipient_add', name, email, role }, (answer) => confirmationNotice(who, address, answer))) {
       setName('')
       setEmail('')
     }
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
+    <div className="legalPortalPair">
       <div>
         {payload.firmPaused ? <div style={{ ...card, borderColor: PAPER_RED, color: PAPER_RED, marginBottom: 12, fontSize: 13 }}>{payload.company.name} has paused all emails to the firm. The portal still works; ask the office to resume.</div> : null}
-        {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10 }}>{notice}</div> : null}
+        {notice ? <div role={noticeWarn ? 'alert' : 'status'} data-legal-notice={noticeWarn ? 'warn' : 'ok'} style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10, color: noticeWarn ? PAPER_RED : undefined, fontWeight: noticeWarn ? 600 : undefined }}>{notice}</div> : null}
         {payload.recipients.length === 0 ? <div style={card}><b>Nobody at the firm is on the list yet.</b><br /><span style={{ color: MUTED, fontSize: 13 }}>Add the people who should hear from {payload.company.name}. Each gets one confirmation email and nothing else until they click it.</span></div> : null}
         {payload.recipients.map((r) => (
           <div key={r.id} style={{ ...card, marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <div><b>{r.name}</b> <span style={{ color: MUTED, fontSize: 12.5 }}>{r.email}{r.role ? ` · ${r.role}` : ''}</span></div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{r.paused ? 'stopped' : r.confirmed ? 'confirmed' : 'waiting for their click'}</span>
+              <span style={{ fontSize: portalSmall(11.5), fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{firmRecipientStatusWords(r)}</span>
             </div>
+            {r.failingSince && !r.paused ? <div data-legal-not-reaching style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{legalNotReachingLine({ email: r.email, sinceYmd: r.failingSince, confirmed: r.confirmed, mode: r.mode }, 'firm')}</div> : null}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
-              <span style={{ color: MUTED }}>Tell me</span>
-              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: 11.5, fontWeight: 700 }}>
-                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: 700 }}>{m === 'now' ? 'Right away' : 'Weekly digest'}</button>)}
+              <span style={{ color: MUTED }}>Emails</span>
+              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: portalSmall(11.5), fontWeight: 700 }}>
+                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: portalSmall(11.5), fontWeight: 700 }}>{FIRM_EMAIL_MODE_WORDS[m]}</button>)}
               </span>
               {r.mode === 'digest' ? (
                 <>
@@ -329,13 +524,13 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
                   </select>
                 </>
               ) : null}
-              <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+              <span className="legalRecipientScope" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
                 <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'mine' })} style={r.scope === 'mine' ? small : ghost}>Only my matters</button>
                 <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'all' })} style={r.scope === 'all' ? small : ghost}>Every matter</button>
               </span>
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-              {!r.confirmed ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resend', recipientId: r.id })} style={ghost}>Resend the confirmation</button> : null}
+              {!r.confirmed ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resend', recipientId: r.id }, (answer) => confirmationNotice(r.name, r.email, answer, true))} style={ghost}>Resend the confirmation</button> : null}
               {r.paused ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resume', recipientId: r.id })} style={small}>Turn emails back on</button> : <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_stop', recipientId: r.id })} style={{ ...ghost, color: PAPER_RED, borderColor: PAPER_RED }}>Stop emails to this person</button>}
             </div>
           </div>
@@ -345,7 +540,6 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
         <div style={card}>
           <div style={cap}>Add a person at the firm</div>
           <form onSubmit={onAdd} style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-            <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden />
             <label style={lab}>Name<input value={name} onChange={(e) => setName(e.target.value)} required style={input} /></label>
             <label style={lab}>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={input} /></label>
             <label style={lab}>Role<select value={role} onChange={(e) => setRole(e.target.value)} style={input}><option value="paralegal">paralegal</option><option value="attorney">attorney</option><option value="billing">billing</option></select></label>
@@ -353,8 +547,8 @@ function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPort
           </form>
         </div>
         <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
-          <b style={{ color: INK }}>How this behaves</b><br />Each person chooses right away or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
-          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering a question, an account pulled back — right away or in the digest. The digest also lists every open matter.
+          <b style={{ color: INK }}>How this behaves</b><br />Each person chooses an email for each event or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
+          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering or asking you something, a note from the office, a payment the office applied, and a referral withdrawn and why: each as its own email or in the digest. A fee or cost the office saw rides the digest only. The digest also lists every open matter.
         </div>
       </div>
     </div>

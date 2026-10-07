@@ -36,7 +36,7 @@ export type SubLaborPaymentMoveRemoveModalsProps = {
   removeLaborJobPayment: (paymentId: string, reason: string | null) => Promise<boolean>
 }
 
-const overlay: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }
+const overlay: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }
 const panel: CSSProperties = { background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth: 560, maxHeight: 'min(92vh, 100%)', overflow: 'auto', padding: '1.25rem 1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '0.85rem' }
 const h2: CSSProperties = { margin: 0, fontSize: '1.25rem', fontWeight: 700 }
 const btn: CSSProperties = { font: 'inherit', padding: '0.6rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 6, cursor: 'pointer', fontSize: '0.9rem' }

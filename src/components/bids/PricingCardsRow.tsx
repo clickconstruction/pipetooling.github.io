@@ -94,7 +94,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
   const doorOptStyle: CSSProperties = { display: 'flex', gap: '0.7rem', alignItems: 'flex-start', width: '100%', textAlign: 'left', font: 'inherit', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.8rem', background: 'var(--surface)', cursor: 'pointer', marginBottom: '0.55rem' }
   const doorModal = doorOpen ? (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onCloseDoor}
     >
       <div
@@ -186,7 +186,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
   // v2.2404: name the own-takeoff alternate — the door's teal choice lands here.
   const ownTakeoffModal = ownTakeoff ? (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={() => !creatingOwnTakeoff && onCancelOwnTakeoff()}
     >
       <div

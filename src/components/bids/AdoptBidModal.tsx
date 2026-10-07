@@ -145,13 +145,13 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={() => !busy && onClose()}
     >
       <div
         role="dialog"
         aria-label="Adopt an existing bid"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 640, width: '94%', maxHeight: '88vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 640, width: '94%', maxHeight: 'min(88vh, 100%)', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Adopt existing bids into BP{targetBid.bid_number ?? ''} {targetBid.project_name ?? ''}</h3>

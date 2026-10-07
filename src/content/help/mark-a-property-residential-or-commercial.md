@@ -20,10 +20,10 @@ You hover any of them for the words. Some jobs have an address typed on the job 
 
 ## Setting it
 
-You tap the circle. Office roles can do this: dev, master and assistant. A small card asks *What kind of property is 8507 Culebra Road?* with {{button:outline|Residential}} {{button:outline|Commercial}}. It is the same switch the Lien desk and the customer's property sheet use. You pick one and the badge changes at once. The property is saved. Every job at that address follows it. The job's lien clock reads the right deadline from then on. When the job had no saved property, the card says so: *Not one of Dudley Mason's saved properties yet*. Then the pick saves the address as a property on that customer. It links the job before it marks it.
+You tap the circle. Office roles can do this: dev, master, assistant and controller. A small card asks *What kind of property is 8507 Culebra Road?* with {{button:outline|Residential}} {{button:outline|Commercial}}. It is the same switch the Lien desk and Edit Job's Property record row use. You pick one and the badge changes at once. The property is saved. Every job at that address follows it. The job's lien clock reads the right deadline from then on. When the job had no saved property, the card says so: *Not one of Dudley Mason's saved properties yet*. Then the pick saves the address as a property on that customer. It links the job before it marks it.
 
 :::example A ? on a service visit
-HCP 863 at 628 Terrell Rd shows a red ?. Taunya taps it, picks Residential, and the badge turns to a blue R — on this job and on the other two jobs at the same address. The notice deadline on their Billed rows moves up a month, as the law has it.
+HCP 863 at 628 Terrell Rd shows a red ?. Taunya taps it, picks Residential, and the badge turns to a blue R — on this job and on the other two jobs at the same address. The notice deadline in their Lien window moves up a month, as the law has it.
 :::
 
 Picked wrong? You tap the C or the R and pick the other one. A commercial pick also clears the property's Homestead tick. A homestead is an owner's own home, and a non-residential property cannot be one.

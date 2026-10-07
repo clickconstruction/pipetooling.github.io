@@ -8,6 +8,7 @@ import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
+import UncollectibleListSettingsBlock from './UncollectibleListSettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
 import TxCountyMapSettingsBlock from './TxCountyMapSettingsBlock'
 import DevelopmentsSettingsBlock from './DevelopmentsSettingsBlock'
@@ -70,6 +71,7 @@ export default function SettingsJobsTab({
       <HideHcpFieldSettingsBlock />
       <SubPortalPaySettingsBlock />
       <LegalFirmSettingsBlock />
+      <UncollectibleListSettingsBlock />
       {/* Company owner account (one company, v2.2972) + bulk job re-assign */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button
@@ -220,7 +222,7 @@ export default function SettingsJobsTab({
       </div>
 
       {reassignConfirmOpen && reassignSourceUserId && reassignTargetUserId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Re-assign jobs</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>

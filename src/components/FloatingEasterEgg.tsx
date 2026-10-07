@@ -313,6 +313,7 @@ export function FloatingEasterEggVisit({ src, tuning, catchCfg, onDone }: { src:
         @keyframes easterEggRingSwish { 0% { transform: scale(1) } 35% { transform: scale(1.16) } 70% { transform: scale(0.96) } 100% { transform: scale(1) } }
         @keyframes easterEggRingClank { 0%,100% { transform: translate(0,0) } 25% { transform: translate(-3px,0) } 60% { transform: translate(2px,0) } }
       `}</style>
+      {/* status-bar: allow — a drawing layer in screen coordinates, not a window */}
       <svg className="easter-egg-layer" aria-hidden="true" style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 8999, overflow: 'visible' }}>
         <line ref={bandRef} x1={0} y1={0} x2={0} y2={0} stroke="#c25f1c" strokeWidth={3} strokeLinecap="round" opacity={0} />
         <g ref={dotsRef} fill="#2f6fe4" />

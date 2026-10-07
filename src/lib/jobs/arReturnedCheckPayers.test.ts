@@ -28,6 +28,14 @@ describe('arReturnsByPayer — a bounce counts against whoever pays the bill', (
     expect(m.get('gc-sp')?.count).toBe(1)
     expect(m.has('homeowner')).toBe(false)
   })
+  it('a check that came back in a Central evening reads that day, and its month', () => {
+    // 7:30 pm CDT on Oct 31 is Nov 1 in UTC; 6:30 pm CST on Dec 1; noon UTC reads its own day.
+    const last = (at: string) => arReturnsByPayer([row({ came_back_at: at })]).get('cust-poolcorp')?.lastYmd
+    expect(last('2026-11-01T00:30:00+00:00')).toBe('2026-10-31')
+    expect(payerReturnsWords({ count: 1, lastYmd: last('2026-11-01T00:30:00Z') ?? null }, '2026-11-20')).toBe('1 check came back · Oct')
+    expect(last('2026-12-02T00:30:00Z')).toBe('2026-12-01')
+    expect(last('2026-10-03T12:00:00Z')).toBe('2026-10-03')
+  })
   it('a bill sent to someone else by email counts no customer', () => {
     expect(arReturnsByPayer([row({ invoice_bill_to_email: 'ap@other.com' })]).size).toBe(0)
   })

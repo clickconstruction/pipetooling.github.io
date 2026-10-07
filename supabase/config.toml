@@ -489,11 +489,23 @@ verify_jwt = false
 [functions.sign-job-contract]
 verify_jwt = false
 
+# An owner signs the acknowledgment of a records request on their portal (punch list #86): the
+# portal link is the capability, as on customer-portal.
+[functions.sign-owner-records]
+verify_jwt = false
+
 [functions.send-job-contract]
 verify_jwt = false
 
 # Contract Desk PR 5 (v2.2690): hourly reminder lane — pg_cron with X-Cron-Secret.
 [functions.remind-job-contracts]
+verify_jwt = false
+
+[functions.close-held-stripe-marks]
+verify_jwt = false
+
+# Bid call-again reminders (v2.4427): cron-called, X-Cron-Secret is the credential.
+[functions.remind-bid-followups]
 verify_jwt = false
 
 # Signed agreement view PR B (v2.2712): share validates the staff JWT in-body.
@@ -823,6 +835,8 @@ verify_jwt = false
 
 # Dial B (v2.3316): pg_cron every 10 minutes → sends hydrostatic PASS drafts whose job has a Stripe bill and a GC email; X-Cron-Secret in the function.
 [functions.auto-send-test-reports]
+verify_jwt = false
+
 # The collections law firm's no-login portal (Legal portal train, PR 3) — token-authenticated
 # like customer-portal / sub-portal; the handler resolves legal_portal_links itself.
 [functions.legal-portal]
@@ -841,12 +855,20 @@ verify_jwt = false
 [functions.legal-notify-dispatch]
 verify_jwt = false
 
+# Send the firm its portal link (v2.4624): the Legal desk's link card; staff JWT validated in the
+# handler + the office role check (legal_office_can_read), the send-bid-room-link pattern.
+[functions.legal-send-firm-link]
+verify_jwt = false
+
 # The Contract sweep's Drive pass (v2.3390): staff JWT validated in-body (office roles); read-only Drive listing with the intake service account.
 [functions.drive-contract-scan]
 verify_jwt = false
 
 # Owner of record, the nightly save-from-the-roll (v2.3450): cron POST with X-Cron-Secret + service role; no-op while the Settings switch is off.
 [functions.owner-confirm-nightly]
+verify_jwt = false
+# Which court (v2.4770): the nightly precinct classification from the office's court map; cron POST with X-Cron-Secret, or a signed-in office user's JWT (the function checks is_office_staff() itself).
+[functions.court-precinct-nightly]
 verify_jwt = false
 # Stripe links (v2.3589): the nightly sweep that re-fetches every open Stripe bill's hosted link before Stripe's 30-days-past-due expiry; cron POST with X-Cron-Secret + service role.
 [functions.refresh-stripe-invoice-links]
@@ -856,4 +878,31 @@ verify_jwt = false
 verify_jwt = false
 # Pay links (v2.3754): what a scanned pay code opens — GET ?id=<bill id>, no auth (the id is the capability, as Stripe's own link is); rate-limited in memory.
 [functions.pay-link]
+verify_jwt = false
+# The pay offer (v2.4704): apply = the office's JWT checked in the function; expire = pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT.
+[functions.lien-pay-offer]
+verify_jwt = false
+
+[functions.gc-drive-access]
+verify_jwt = false
+
+# Validates the JWT in-body (getUser) like the other Stripe functions; deployed with --no-verify-jwt (scripts/deploy-functions.sh), so the file says what prod does.
+[functions.mark-stripe-invoice-uncollectible]
+verify_jwt = false
+
+[functions.gc-plan-question-email]
+verify_jwt = false
+
+# pg_cron callers: the call carries X-Cron-Secret and no JWT, and each function checks the secret itself.
+# Without these blocks a plain `supabase functions deploy` turns the gateway check on and every cron call is refused (v2.4817).
+[functions.crew-day-email-dispatch]
+verify_jwt = false
+
+[functions.money-waiting-email-dispatch]
+verify_jwt = false
+
+[functions.schedule-share-dispatch]
+verify_jwt = false
+
+[functions.statement-round-email-dispatch]
 verify_jwt = false

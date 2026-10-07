@@ -189,3 +189,15 @@ describe('SignedQueue', () => {
     expect(a.openMakePayment).toHaveBeenCalledWith(expect.objectContaining({ id: 'sheet-pay', contractor: 'Behar Kraja', outstanding: 1000 }), '1000')
   })
 })
+
+describe('OffersQueue · an evening portal visit keeps its day (v2.4469)', () => {
+  it('reads the last outside open on its Central day', async () => {
+    const live = order({ id: 'new' })
+    const board = [row({ key: 'order:new', commitmentId: 'new', recordId: 'WO-880-new', subName: 'Behar Kraja', subNames: ['Behar Kraja'], personId: 'p-behar', group: 'sent', rail: rail('signed', 'sent', 'Sent'), coverage: { kind: 'sent', id: 'new', subName: 'Behar Kraja', amount: 3800, sentAt: '2026-09-04', expiresOn: '2026-09-11', expired: false } })]
+    // 01:00 UTC on Sep 6 is 8 pm CDT on Sep 5.
+    const visits = new Map([['p-behar', { personId: 'p-behar', outsideOpens: 3, firstOutsideAt: null, lastOutsideAt: '2026-09-06T01:00:00Z', staffLooks: 0, lastStaffAt: null, lastStaffUserId: null, lastStaffName: null }]])
+    renderWithProviders(<OffersQueue board={board} ordersById={new Map([['new', live]])} stageByOrderId={new Map()} jobs={jobs} contacts={new Map()} visits={visits} authUserId="u-1" todayYmd={TODAY} actions={actions()} onClose={vi.fn()} />)
+    await settle()
+    expect(screen.getByText(/opened Sep 5 · 3×/)).toBeTruthy()
+  })
+})

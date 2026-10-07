@@ -40,6 +40,12 @@ const LABELS: Array<{ field: Field; re: RegExp }> = [
 const STOP_LABELS =
   /^(?:geographic\s*id|geo\s*id|type|agent(?:\s*code)?|property\s*use(?:\s*code)?|neighborhood(?:\s*cd)?|map\s*id|deed\s*date|deed\s*book|deed\s*page|abstract\/subdivision|abstract|subdivision|acreage|land\s*value|improvement\s*value|market\s*value|appraised\s*value|assessed\s*value|total\s*value|values?|taxing\s*jurisdictions?|jurisdiction|protest|arb|year|tax\s*year|%\s*ownership|ownership|percent|dba|doing\s*business\s*as|history|sales?\s*history|improvements?|land|segments?|sketch|map)\s*:?\s*$/i
 
+/** Rows that start like a kept label but are not one: BIS esearch's "Owner ID:" sits right above "Name:" (v2.4724). */
+const NOT_A_LABEL = /^(?:owner\s*id|owner\s*(?:%|percent)|ownership\s*%?)\s*:/i
+
+/** An esearch page's way of saying it hides exemptions: the homestead is unknown, not absent (v2.4724). */
+const EXEMPTIONS_HIDDEN = /privacy|not\s+all\s+exemptions/i
+
 function stripLineNoise(line: string): string {
   return line.replace(/^[\s•\-\*\|\t]+/, '').replace(/[\s\|\t]+$/, '').trim()
 }
@@ -85,6 +91,10 @@ export function parseCadPagePaste(text: string): CadPasteResult {
       current = null
       continue
     }
+    if (NOT_A_LABEL.test(line)) {
+      current = null
+      continue
+    }
     const hit = matchLabel(line)
     if (hit) {
       if (seen.has(hit.field)) {
@@ -98,13 +108,14 @@ export function parseCadPagePaste(text: string): CadPasteResult {
       current = hit.field
       continue
     }
-    if (STOP_LABELS.test(line) || /^[A-Za-z][A-Za-z /&%#()\-]{1,40}:\s*$/.test(line) || /^[A-Za-z][A-Za-z /&%#()\-]{1,40}:\s+\S/.test(line)) {
+    if (STOP_LABELS.test(line) || /^[A-Za-z%][A-Za-z /&%#()\-]{1,40}:\s*$/.test(line) || /^[A-Za-z%][A-Za-z /&%#()\-]{1,40}:\s+\S/.test(line)) {
       // Another labelled row we do not keep — the current value ends.
       current = null
       continue
     }
     if (current) {
-      raw[current] = raw[current] ? `${raw[current]} ${line}` : line
+      // An address's lines are its parts ("P O BOX 1225" / "MINERALWELLS, TX 76068"); a legal description just wraps.
+      raw[current] = raw[current] ? `${raw[current]}${current === 'mailingAddress' ? ', ' : ' '}${line}` : line
       // Single-line facts stop after their first line; addresses and legal descriptions may wrap.
       if (current === 'propId' || current === 'ownerName' || current === 'exemptions') current = null
     }
@@ -116,7 +127,7 @@ export function parseCadPagePaste(text: string): CadPasteResult {
   out.situsAddress = tidy(raw.situsAddress)
   if (seen.has('exemptions')) {
     const ex = raw.exemptions.trim()
-    out.homestead = /\b(?:HS|HOMESTEAD|OV65|DP)\b/i.test(ex) && /\b(?:HS|HOMESTEAD)\b/i.test(ex) ? 'yes' : 'no'
+    out.homestead = /\b(?:HS|HOMESTEAD)\b/i.test(ex) ? 'yes' : EXEMPTIONS_HIDDEN.test(ex) ? 'unknown' : 'no'
   }
   return out
 }

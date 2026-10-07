@@ -1772,6 +1772,7 @@ export function DashboardMyTimeDayEditorModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1200,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={handleBackdropClose}
       role="presentation"
@@ -1783,7 +1784,7 @@ export function DashboardMyTimeDayEditorModal({
           borderRadius: 8,
           minWidth: 360,
           maxWidth: 'min(920px, 96vw)',
-          maxHeight: '94vh',
+          maxHeight: 'min(94vh, 100%)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',

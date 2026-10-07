@@ -43,7 +43,7 @@ export default function GcWordAskDialog({ ownerName, ownerHasEmail, gcNames, ask
       aria-modal="true"
       aria-label={`Ask ${ownerName} by link`}
       onClick={() => (busy ? undefined : onClose())}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 764, paddingTop: 'var(--app-top-chrome, 0px)' }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(520px, 92vw)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>

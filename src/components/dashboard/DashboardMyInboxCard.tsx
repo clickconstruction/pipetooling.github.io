@@ -1156,8 +1156,8 @@ export function DashboardMyInboxCard({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
-            padding: '1rem',
+            zIndex: 750,
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={(e) => e.target === e.currentTarget && setFwdInstance(null)}
         >

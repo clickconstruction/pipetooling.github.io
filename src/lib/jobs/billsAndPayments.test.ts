@@ -48,10 +48,13 @@ describe('paymentSource — the chip comes from where the row came from', () => 
     expect(paymentSource(payment({ mercury_transaction_id: 'mt1' }), job([invoice()]), null).chip).toBe('Bank deposit')
   })
   it('a row on a Stripe bill is a card unless the office recorded a check or cash through Stripe', () => {
-    const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe' } as Partial<JobsLedgerInvoiceRow>)])
+    const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe', stripe_invoice_status: 'paid' } as Partial<JobsLedgerInvoiceRow>)])
     expect(paymentSource(payment({ note: 'Stripe' }), stripeJob).chip).toBe('Card · Stripe')
     expect(paymentSource(payment({ payment_type: 'check', stripe_credit_note_id: 'cn_1' }), stripeJob).chip).toBe('Check · recorded in Stripe')
     expect(paymentSource(payment({ payment_type: 'Cash' }), stripeJob).chip).toBe('Cash · recorded in Stripe')
+    // v2.4801: a check Mark Paid holds until it clears sits on an open Stripe bill as a hand-typed row.
+    const heldJob = job([invoice({ status: 'paid', stripe_invoice_id: 'in_1', external_send_channel: 'stripe', stripe_invoice_status: 'open' } as Partial<JobsLedgerInvoiceRow>)])
+    expect(paymentSource(payment({ payment_type: 'Check' }), heldJob).chip).toBe('Check · typed by hand')
   })
   it('anything else was typed by hand, with the type word when there is one', () => {
     expect(paymentSource(payment({ payment_type: 'Cheque' }), job([invoice()])).chip).toBe('Check · typed by hand')
@@ -62,9 +65,13 @@ describe('paymentSource — the chip comes from where the row came from', () => 
 
 describe('daysAfterBill and billSentYmd', () => {
   it('counts whole days from the bill going out, from the sent stamp else the billed stamp', () => {
-    expect(billSentYmd({ sent_to_customer_at: '2026-07-15T12:00:00Z', billed_at: '2026-07-10T00:00:00Z' })).toBe('2026-07-15')
-    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-07-10T00:00:00Z' })).toBe('2026-07-10')
+    expect(billSentYmd({ sent_to_customer_at: '2026-07-15T12:00:00Z', billed_at: '2026-07-10T17:00:00Z' })).toBe('2026-07-15')
+    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-07-10T17:00:00Z' })).toBe('2026-07-10')
     expect(billSentYmd({ sent_to_customer_at: null, billed_at: null })).toBeNull()
+    // An evening stamp is its own Central day: 7:30 pm CDT on Oct 2 (also as +00:00), 6:30 pm CST on Dec 1, noon UTC.
+    expect(billSentYmd({ sent_to_customer_at: '2026-10-03T00:30:00+00:00', billed_at: null })).toBe('2026-10-02')
+    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-12-02T00:30:00Z' })).toBe('2026-12-01')
+    expect(billSentYmd({ sent_to_customer_at: null, billed_at: '2026-10-03T12:00:00Z' })).toBe('2026-10-03')
     expect(daysAfterBill('2026-07-15', '2026-09-14')).toBe(61)
     expect(daysAfterBill('2026-07-15', '2026-09-28')).toBe(75)
     expect(daysAfterBill(null, '2026-09-28')).toBeNull()
@@ -105,7 +112,7 @@ describe('paymentLineWords — the line under a bill', () => {
     const row = payment({ mercury_transaction_id: 'mt1' })
     const bank = { ...bankCheck, status: 'failed', failureReason: 'Insufficient funds' }
     expect(paymentLineWords({ slice: { payment: row, amount: 3000, partial: false }, source: paymentSource(row, null, bank), billSentYmd: null, bank }).returned).toBe('Returned by the bank · Insufficient funds')
-    const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe' } as Partial<JobsLedgerInvoiceRow>)])
+    const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe', stripe_invoice_status: 'paid' } as Partial<JobsLedgerInvoiceRow>)])
     const card = payment({ note: 'Stripe' })
     expect(paymentLineWords({ slice: { payment: card, amount: 2500, partial: false }, source: paymentSource(card, stripeJob), billSentYmd: '2026-07-30' }).detail).toBe('Stripe wrote this row')
   })
@@ -141,6 +148,17 @@ describe('splitBillsAndPayments — where every payment is drawn', () => {
     expect(split.onNoBill.map((p) => p.id)).toEqual(['extra', 'elsewhere'])
     expect(split.surplus).toBeCloseTo(350, 2)
   })
+  // v2.4534 — job 102: an $8,355 job whose one bill is the $5,355 left after a $3,000 check.
+  it('with the job total, money that paid the part of the job on no bill stays on no bill', () => {
+    const invoices = [invoice({ id: 'a', amount: 5355 })]
+    const payments = [payment({ id: 'check', amount: 3000, invoice_id: null })]
+    const split = splitBillsAndPayments(invoices, payments, null, 8355)
+    expect(split.slicesByBill.get('a')).toEqual([])
+    expect(split.onNoBill.map((p) => p.id)).toEqual(['check'])
+    expect(split.surplus).toBe(3000)
+    // No total: the bill takes it, as before.
+    expect(splitBillsAndPayments(invoices, payments).slicesByBill.get('a')!.map((s) => s.payment.id)).toEqual(['check'])
+  })
   it('a row not yet saved stays on no bill while it is typed, even when the rule would count it toward a bill', () => {
     const invoices = [invoice({ id: 'old', amount: 1000, sent_to_customer_at: '2026-07-01T00:00:00Z' })]
     const payments = [payment({ id: 'saved', amount: 400, invoice_id: null }), payment({ id: 'draft', amount: 600, invoice_id: null })]
@@ -170,7 +188,7 @@ describe('orderMoneyByDate — the By date reading', () => {
 
 describe('sourceWords — the line in a sentence', () => {
   it('names the payer on a bank row, the channel on a Stripe row, and the hand on the rest', () => {
-    const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe' } as Partial<JobsLedgerInvoiceRow>)])
+    const stripeJob = job([invoice({ stripe_invoice_id: 'in_1', external_send_channel: 'stripe', stripe_invoice_status: 'paid' } as Partial<JobsLedgerInvoiceRow>)])
     expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, bankCheck), bankCheck)).toBe('check from Loberg Contracting')
     expect(sourceWords(paymentSource(payment({ mercury_transaction_id: 'mt1' }), null, { ...bankCheck, counterparty: null }), { ...bankCheck, counterparty: null })).toBe('check · bank deposit')
     expect(sourceWords(paymentSource(payment({ note: 'Stripe' }), stripeJob))).toBe('card through Stripe')

@@ -1218,7 +1218,7 @@ export default function SettingsCatalogsTab({
             </>
           )}
           {countsFixtureGroupFormOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, paddingTop: 'var(--app-top-chrome, 0px)' }}>
               <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureGroup ? 'Edit Group' : 'Add Group'}</h3>
                 {countsFixtureGroupError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureGroupError}</div>}
@@ -1234,7 +1234,7 @@ export default function SettingsCatalogsTab({
             </div>
           )}
           {countsFixtureItemFormOpen && editingCountsFixtureGroupForItem && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, paddingTop: 'var(--app-top-chrome, 0px)' }}>
               <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureItem ? 'Edit Fixture' : 'Add Fixture'}</h3>
                 <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Group: {editingCountsFixtureGroupForItem.label}</p>

@@ -8,7 +8,7 @@ covers:
   - src/components/bids/BidsTakeoffTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-28
+last_updated: 2026-10-05
 ---
 
 ## What this surface is
@@ -185,7 +185,7 @@ All four are **extracted** thin mounts (2966–2983, 2984–2997, 3077–3084, 3
 | Surface | Tests | Gap |
 |---|---|---|
 | Tab wiring | `BidsTakeoffTab.render.test.tsx` — 10 smokes: picker; a bid flagged By Stage opens on One at a time with no Materials pills (v2.4389); Combined default One at a time + chooser; new1; hop new1→new2 remembered; chooser first open; remembered view (incl. a stored Old → One at a time); new2; a bid flagged By Stage follows the stored view; null `materials_model` is Combined | no interaction smokes for line edits, numpad, remove, PO, print, stages |
-| Kernels the tab calls | `bidTakeoffHelpers`, `takeoffView`, `takeoffHop`, `bidTabRowJump`, `bidFlow`, `takeoffCoverage`, `takeoffOrderRounding`, `materialsByStage`, `takeoffBookFill`, `takeoffBookMatch`, `takeoffBookLearn`, `takeoffFixtureHistory`, `partFormSaveTarget`, `partAssemblyIndex`, `partAssemblyIndexIo`, `assemblyBundleBreakdown`, `materialPartCatalogPrice`, `poItemsSummary`, `mergeTemplateItemDrafts`, `materials/partsCatalog`, `materialPOUtils`, `bidDocuments/takeoffBreakdown`, `scheduleOfValues`, `costEstimatePage` (all `*.test.ts`) | — |
+| Kernels the tab calls | `bidTakeoffHelpers`, `takeoffView`, `takeoffHop`, `bidTabRowJump`, `bidFlow`, `takeoffCoverage`, `takeoffOrderRounding`, `materialsByStage`, `takeoffBookFill`, `takeoffBookMatch`, `takeoffBookLearn`, `takeoffFixtureHistory`, `partFormSaveTarget`, `partAssemblyIndex`, `partAssemblyIndexIo`, `assemblyBundleBreakdown`, `materialPartCatalogPrice`, `mergeTemplateItemDrafts`, `materials/partsCatalog`, `materialPOUtils`, `bidDocuments/takeoffBreakdown`, `scheduleOfValues`, `costEstimatePage` (all `*.test.ts`) | — |
 | Child render tests | `StageSplitChips`, `TakeoffStagesPanel`, `TakeoffOrderListPanel`, `TakeoffItemSearchCombobox` | none for `SortableRoughPartLineRow`, `TakeoffFocusView`, `TakeoffCostRailView`, `TakeoffAssemblyAuthoringModals`, `TakeoffBookAdminSection`, `BidsTakeoffMaterialsSummarySection`, `TakeoffPartPricesModal`, `TakeoffBundleBreakdownModal`, `RfqComposeModal` |
 | **Untested money paths (risk flags)** | — | `useTakeoffRoughLines` (every rough-line write, qty clamp, lowest bundle price pick, copy at today's lowest prices); `materialsByStageIo.ts` (split writes + the paper's summary loader); tab-inline `createPOFromTakeoff`/`addTakeoffToExistingPO` (PO qty rounding, `cost_estimates` PO linking), `setTakeoffMapping`/`saveTakeoffMapping`, the exact book-apply loop (quantity = `Number(row.count)`), `setBidSovFactor`, the `stageSummary` input assembly |
 

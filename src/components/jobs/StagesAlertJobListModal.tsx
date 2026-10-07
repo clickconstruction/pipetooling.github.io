@@ -43,8 +43,8 @@ export default function StagesAlertJobListModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
-        padding: '1rem',
+        zIndex: 760,
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
       onKeyDown={(e) => {
@@ -62,7 +62,7 @@ export default function StagesAlertJobListModal({
           minWidth: 320,
           maxWidth: 520,
           width: '100%',
-          maxHeight: '80vh',
+          maxHeight: 'min(80vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxSizing: 'border-box',

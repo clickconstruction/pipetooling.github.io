@@ -25,8 +25,9 @@ function job(over: Partial<PortalJobRow> & { id: string }): PortalJobRow {
   }
 }
 
-function inv(id: string, job_id: string, amount: number, billed_at: string) {
-  return { id, job_id, amount, status: 'billed', billed_at, sequence_order: 1, hosted_invoice_url: `https://pay.example/${id}` }
+// billed_at is an instant; a day typed in by the office is stamped 18:00 UTC (`billedAtIsoFromYmd`).
+function inv(id: string, job_id: string, amount: number, billedOn: string) {
+  return { id, job_id, amount, status: 'billed', billed_at: `${billedOn}T18:00:00Z`, sequence_order: 1, hosted_invoice_url: `https://pay.example/${id}` }
 }
 
 describe('portal bill membership (one rule, same as the GC statement payload RPC)', () => {

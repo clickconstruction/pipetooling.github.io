@@ -85,6 +85,7 @@ export function PayrollCatchUpModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >
@@ -95,7 +96,7 @@ export function PayrollCatchUpModal({
           borderRadius: 10,
           maxWidth: 660,
           width: 'calc(100% - 2rem)',
-          maxHeight: '82vh',
+          maxHeight: 'min(82vh, 100%)',
           overflow: 'auto',
           margin: '1rem',
           boxShadow: '0 10px 40px rgba(0,0,0,0.2)',

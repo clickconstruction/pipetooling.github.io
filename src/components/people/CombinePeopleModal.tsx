@@ -83,9 +83,9 @@ export default function CombinePeopleModal({
       aria-modal="true"
       aria-label={`Combine ${source.name} into another person`}
       onClick={() => (running ? null : onClose())}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1030, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1030, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: 8, padding: '1rem', boxSizing: 'border-box' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 520, maxHeight: 'min(88vh, 100%)', overflowY: 'auto', background: 'var(--surface)', borderRadius: 8, padding: '1rem', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
           <span style={{ fontWeight: 700 }}>Combine {source.name} into…</span>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '1.1rem', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}>

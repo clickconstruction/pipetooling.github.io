@@ -98,7 +98,9 @@ export function PricingCompositionBar({ rows, marginColor, onJumpToRow }: Props)
         })}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${comp.buckets.length}, minmax(120px, 1fr))`, gap: '0.6rem', marginTop: '0.55rem' }}>
+      {/* v2.4453: auto-fit, so the tiles wrap into rows on a phone. One fixed column per bucket,
+          each at least 120 px, pushed the whole page sideways; where they fit, they still share one row. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(120px, 100%), 1fr))', gap: '0.6rem', marginTop: '0.55rem' }}>
         {comp.buckets.map((b) => (
           <div key={b.kind} onMouseEnter={() => setHover(b.kind)} onMouseLeave={() => setHover(null)} style={{ borderLeft: `3px solid ${COLORS[b.kind].bg}`, paddingLeft: '0.55rem', fontSize: '0.76rem', lineHeight: 1.35 }}>
             <div style={{ color: 'var(--text-muted)' }}>{b.name} · {b.rows} row{b.rows === 1 ? '' : 's'}</div>

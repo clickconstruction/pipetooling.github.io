@@ -114,7 +114,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
       }}
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >

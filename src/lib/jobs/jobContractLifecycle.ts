@@ -7,7 +7,9 @@
 import type { Database } from '../../types/database'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { esignAuditSuffix } from '../esignConsent'
-import { framesLabel, type SignerFramesRow } from './jobContractSigners'
+import { signedRecordId } from '../signedRecordId'
+import type { JobContractRenderInput } from './jobContractDocument'
+import { frameAsSignerRow, framesLabel, joinSignerNames, signerFrames, signerNamesLine, type SignerFrame, type SignerFramesRow } from './jobContractSigners'
 
 export type JobContractRow = Database['public']['Tables']['job_contracts']['Row']
 
@@ -105,8 +107,94 @@ export function jobContractSignatureAuditLine(row: {
   const stamp = formatContractStamp(row.signed_at)
   const who = (row.signer_printed_name ?? '').trim()
   if (row.signer_mode === 'paper') return `Signed on paper${who ? ` by ${who}` : ''}${stamp ? ` · recorded ${stamp} CT` : ''}`
-  const how = row.signer_mode === 'draw' ? 'drawn' : row.signer_mode === 'in_person' ? 'in person' : 'typed'
-  return `Signed electronically${who ? ` by ${who}` : ''} (${how})${stamp ? ` · ${stamp} CT` : ''}${
+  return `Signed electronically${who ? ` by ${who}` : ''} (${signedHowWord(row.signer_mode)})${stamp ? ` · ${stamp} CT` : ''}${
     row.signer_consented_at ? ` · consent recorded${esignAuditSuffix(row.esign_consent ?? null)}` : ''
   }`
+}
+
+function signedHowWord(mode: string | null | undefined): string {
+  return mode === 'draw' ? 'drawn' : mode === 'in_person' ? 'in person' : 'typed'
+}
+
+/**
+ * The names a paper record's *Signed on paper* line carries (v2.4657): every filled frame filed
+ * from the paper. That is the first frame, and the second when it was filed with it. A second
+ * frame signed through the link before the paper came back keeps its own mark.
+ */
+function paperSignerNames(row: SignerFramesRow): string {
+  return joinSignerNames(
+    signerFrames(row)
+      .filter((f) => f.mode === 'paper' && f.signedAt && (f.printedName ?? '').trim())
+      .map((f) => f.printedName),
+  )
+}
+
+/**
+ * The agreement's audit line in a list — the window's History, Documents, the Job window's
+ * Documents tab (v2.4590): every signer named. One frame reads `jobContractSignatureAuditLine`
+ * unchanged (that one stays the line under ONE signature block); two frames name both and each
+ * way they signed: *(typed and drawn)*. A paper record names the frames filed from the paper
+ * (v2.4657): *Signed on paper by Sam Owner and Alex Owner*.
+ */
+export function jobContractSignersAuditLine(row: Parameters<typeof jobContractSignatureAuditLine>[0] & SignerFramesRow): string | null {
+  const frames = signerFrames(row)
+  if (row.signer_mode === 'paper') return jobContractSignatureAuditLine({ ...row, signer_printed_name: paperSignerNames(row) || row.signer_printed_name })
+  if (frames.length < 2) return jobContractSignatureAuditLine(row)
+  if (!row.signed_at) return null
+  const filled = frames.filter((f) => f.signedAt && (f.printedName ?? '').trim())
+  const who = signerNamesLine(row)
+  const hows = [...new Set(filled.map((f) => signedHowWord(f.mode)))]
+  const stamp = formatContractStamp(row.signed_at)
+  const consented = filled.length > 0 && filled.every((f) => f.consentedAt)
+  return `Signed electronically${who ? ` by ${who}` : ''} (${hows.join(' and ') || 'typed'})${stamp ? ` · ${stamp} CT` : ''}${
+    consented ? ` · consent recorded${esignAuditSuffix(row.esign_consent ?? null)}` : ''
+  }`
+}
+
+type SignatureBlock = NonNullable<JobContractRenderInput['signature']>
+
+/**
+ * The signature blocks a printed agreement draws (v2.4590), read by every print path (the record's
+ * Print, Open full size, a sent row opened from Documents): the first frame, and a second when the
+ * office named a second signer — each signed with its own stamp, or left open for a pen. One frame
+ * reads exactly as before. A paper record draws one *Signed on paper* block: the signatures are on
+ * the scan. Its name and line carry every frame filed from the paper (v2.4657), and a second frame
+ * signed through the link before the paper came back draws its own block. `record` adds the record
+ * id and the stamp beside the name (the record's print).
+ */
+export function jobContractSignatureBlocks(
+  row: Pick<JobContractRow, 'id' | 'signed_at' | 'signer_printed_name' | 'signer_mode' | 'signer_consented_at'> & SignerFramesRow,
+  opts: { signatureUrl?: string | null; coSignatureUrl?: string | null; record?: { jobNumber: string } | null } = {},
+): { signature: SignatureBlock | null; coSignerName: string | null; coSignature: SignatureBlock | null } {
+  const paper = row.signer_mode === 'paper'
+  const stamps = (at: string | null): Pick<SignatureBlock, 'recordId' | 'whenLabel'> => {
+    if (!opts.record) return {}
+    const when = formatContractStamp(at)
+    return { recordId: signedRecordId('J', opts.record.jobNumber || '0', row.id), whenLabel: when ? `${when} CT` : null }
+  }
+  const frames = signerFrames(row)
+  const block = (f: SignerFrame, imageUrl: string | null): SignatureBlock | null =>
+    f.signedAt && (f.printedName ?? '').trim()
+      ? { printedName: (f.printedName ?? '').trim(), auditLine: jobContractSignatureAuditLine(frameAsSignerRow(f)) ?? '', imageUrl, ...stamps(f.signedAt), paper: false }
+      : null
+  if (frames.length < 2 || paper) {
+    // A second frame signed through the link before the paper came back is its own signature (v2.4657).
+    const linkSigned = paper ? frames.find((f) => f.key === 'co' && f.mode !== 'paper') : undefined
+    const coSignature = linkSigned ? block(linkSigned, opts.coSignatureUrl ?? null) : null
+    return {
+      signature: row.signed_at
+        ? {
+            printedName: (paper ? paperSignerNames(row) : '') || (row.signer_printed_name ?? ''),
+            auditLine: (paper ? jobContractSignersAuditLine(row) : jobContractSignatureAuditLine(row)) ?? '',
+            imageUrl: opts.signatureUrl ?? null,
+            ...stamps(row.signed_at),
+            paper,
+          }
+        : null,
+      coSignerName: coSignature ? linkSigned!.expectedName : null,
+      coSignature,
+    }
+  }
+  const [primary, co] = frames as [SignerFrame, SignerFrame]
+  return { signature: block(primary, opts.signatureUrl ?? null), coSignerName: co.expectedName, coSignature: block(co, opts.coSignatureUrl ?? null) }
 }

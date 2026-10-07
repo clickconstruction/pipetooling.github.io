@@ -1,6 +1,7 @@
 /**
  * The review room, public fetch (Submittals stage 4a — to-dos/submittals/README.md,
- * decisions 8–12). GET ?t=<token> serves the bid's shared submittal revisions in the
+ * decisions 8–12). GET ?t=<token> serves the bid's submittal revisions on the GC's record (shared,
+ * or answered by email with a package: `_shared/submittalRecord.ts`, 2026-10-06) in the
  * customer's words: the token is either the room's (the link the GC forwards) or a
  * person's (minted when the office named them or when they identified themselves).
  * No JWT — the token is the credential; service role behind it. Nothing about money,
@@ -15,12 +16,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
 import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage, type RoomPartSource,
-  type RoomProcurement, type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
+  type RoomProcurement, type SubmittalRoomPayload, gcRoomItems, officeOnlyTags } from '../_shared/submittalRoomPayload.ts'
 import { stageDatesFromJob } from '../_shared/procurementStageDates.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { answeredByEmailAt, loadRevisionStandings, onRecord, type RecordRoomRevision } from '../_shared/submittalRecord.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,24 +87,23 @@ serve(async (req) => {
     const closed = room.status === 'closed' || !!room.closed_at || !!person?.closed_at
     if (closed) return json({ status: 'closed', closedAt: room.closed_at ?? person?.closed_at ?? null, ...base, revisions: [] } satisfies SubmittalRoomPayload, 410)
 
-    // Every revision the office has shared, newest first; the newest is current.
-    const { data: revs } = await admin
-      .from('bid_submittals')
-      .select('id, rev_number, shared_at, package_path')
-      .eq('bid_id', room.bid_id)
-      .not('shared_at', 'is', null)
-      .order('rev_number', { ascending: false })
-    const revRows = (revs ?? []) as Array<{ id: string; rev_number: number; shared_at: string | null; package_path: string | null }>
+    // Every revision on the GC's record, newest first; the newest is current. Shared, or answered by
+    // email with its package built (2026-10-06, `_shared/submittalRecord.ts`).
+    const revRows = onRecord(await loadRevisionStandings(admin, room.bid_id))
     if (revRows.length === 0) return json({ error: 'Nothing shared yet.', code: 'empty' }, 404)
     const ids = revRows.map((r) => r.id)
     const { data: items } = await admin
       .from('bid_submittal_items')
-      .select('id, submittal_id, tag, sequence_order, specified_manufacturer, specified_model, specified_description, submitted_manufacturer, submitted_model, submitted_label, status, reason_kind, reason_note, lead_time_days, sheet_pages, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at')
+      .select('id, submittal_id, tag, sequence_order, specified_manufacturer, specified_model, specified_description, submitted_manufacturer, submitted_model, submitted_label, status, reason_kind, reason_note, lead_time_days, sheet_pages, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, order_only')
       .in('submittal_id', ids)
+    // 2026-10-02 · an order-only row is the office's alone: it never leaves this function, and neither do its parts or its log lines.
+    const allItems = (items ?? []) as Array<RoomItemSource & { submittal_id: string }>
+    const gcItems = gcRoomItems(allItems)
+    const hiddenTags = officeOnlyTags(allItems, ids[0])
     const byRev = new Map<string, RoomItemSource[]>()
-    for (const it of (items ?? []) as Array<RoomItemSource & { submittal_id: string }>) byRev.set(it.submittal_id, [...(byRev.get(it.submittal_id) ?? []), it])
+    for (const it of gcItems) byRev.set(it.submittal_id, [...(byRev.get(it.submittal_id) ?? []), it])
     // The rows' parts the GC sees, each with its own call (2026-10-01); a missing table reads as none.
-    const itemIds = ((items ?? []) as Array<{ id: string }>).map((it) => it.id)
+    const itemIds = gcItems.map((it) => it.id)
     const partsByItem = new Map<string, RoomPartSource[]>()
     for (let i = 0; i < itemIds.length; i += 200) {
       const { data: partRows, error: partErr } = await admin
@@ -113,9 +114,9 @@ serve(async (req) => {
       if (partErr) break
       for (const p of (partRows ?? []) as RoomPartSource[]) partsByItem.set(p.item_id, [...(partsByItem.get(p.item_id) ?? []), p])
     }
-    const revisions: RoomRevision[] = revRows.map((r, i) => {
+    const revisions: RecordRoomRevision[] = revRows.map((r, i) => {
       const rows = roomRowsFrom(byRev.get(r.id) ?? [], partsByItem)
-      return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows) }
+      return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, answeredByEmailAt: answeredByEmailAt(r), current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows) }
     })
 
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
@@ -186,7 +187,7 @@ serve(async (req) => {
         stageDates = stageDatesFromJob((fixtures ?? []) as Array<{ id: string; name: string; stage_kind: string | null }>, (windows ?? []) as Array<{ fixture_id: string; window_start: string | null }>) as Record<string, string>
       }
       // Never the PO or the house: the card carries status and dates. A part's line keeps its key (2026-10-01).
-      const records = ((recs.data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+      const records = ((recs.data ?? []) as Array<Record<string, unknown>>).filter((r) => !(typeof r.tag === 'string' && hiddenTags.has(r.tag))).map((r) => ({
         tag: (r.tag as string | null) ?? null,
         partKey: (r.part_key as string | null | undefined) ?? null,
         label: String(r.label ?? ''),
@@ -198,7 +199,8 @@ serve(async (req) => {
         note: String(r.note ?? ''),
         sortOrder: Number(r.sort_order ?? 0),
       }))
-      const hasReleased = revisions[0]?.rows.some((r) => r.decision?.kind === 'approved') ?? false
+      // 2026-10-02 · a resubmit from the rows sent back leaves the approved rows on the revision before, so every shared revision counts.
+      const hasReleased = revisions.some((rev) => rev.rows.some((r) => r.decision?.kind === 'approved'))
       if (records.length > 0 || hasReleased) {
         procurement = {
           records,

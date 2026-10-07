@@ -5,15 +5,16 @@
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PaymentRow } from './jobFormTypes'
-import { canRemovePaymentRowFromForm, mercuryLinkedPaymentRow, paymentRowLinkedToInvoice, stripeBillInvoiceForPaymentRow } from './jobFormPaymentPredicates'
+import { canRemovePaymentRowFromForm, mercuryLinkedPaymentRow, paymentRowLinkedToInvoice, stripeOwnsPaymentRow } from './jobFormPaymentPredicates'
 
 /**
- * An edit to a payment line. A line on a Stripe bill or matched to a bank deposit keeps its
+ * An edit to a payment line. A line Stripe holds (v2.4801: a credit note or a bill marked paid in
+ * Stripe — a check held until it clears is an ordinary line) or matched to a bank deposit keeps its
  * amount, its date and both links whatever the edit says; the rest of the edit lands.
  */
 export function mergePaymentRowUpdate(row: PaymentRow, updates: Partial<PaymentRow>, job: JobWithDetails | null): PaymentRow {
   const merged = { ...row, ...updates }
-  if (stripeBillInvoiceForPaymentRow(row, job) || mercuryLinkedPaymentRow(row)) {
+  if (stripeOwnsPaymentRow(row, job) || mercuryLinkedPaymentRow(row)) {
     merged.amount = row.amount
     merged.paid_on = row.paid_on
     merged.mercury_transaction_id = row.mercury_transaction_id
@@ -29,7 +30,7 @@ export function mergePaymentRowUpdate(row: PaymentRow, updates: Partial<PaymentR
 export function paymentRowsAfterRemove(rows: PaymentRow[], id: string, job: JobWithDetails | null, newEmptyRow: () => PaymentRow): PaymentRow[] {
   const row = rows.find((r) => r.id === id)
   if (!row) return rows
-  if (mercuryLinkedPaymentRow(row) || paymentRowLinkedToInvoice(row) || stripeBillInvoiceForPaymentRow(row, job)) return rows
+  if (mercuryLinkedPaymentRow(row) || paymentRowLinkedToInvoice(row) || stripeOwnsPaymentRow(row, job)) return rows
   const next = rows.filter((r) => r.id !== id)
   if (next.length === 0) return [newEmptyRow()]
   return next
@@ -45,7 +46,7 @@ export type PaymentRemoveRequest = 'confirm' | 'mercury-linked' | 'stripe-bill' 
  */
 export function planPaymentRemoveRequest(row: PaymentRow, job: JobWithDetails | null, persistedPaymentIds: ReadonlySet<string>): PaymentRemoveRequest {
   if (mercuryLinkedPaymentRow(row)) return 'mercury-linked'
-  if (stripeBillInvoiceForPaymentRow(row, job)) return 'stripe-bill'
+  if (stripeOwnsPaymentRow(row, job)) return 'stripe-bill'
   const persisted = Boolean(job && persistedPaymentIds.has(row.id))
   if (canRemovePaymentRowFromForm(row, job) || (persisted && paymentRowLinkedToInvoice(row))) return 'confirm'
   return paymentRowLinkedToInvoice(row) ? 'invoice-linked' : 'nothing'
@@ -63,7 +64,7 @@ export function paymentRemoveRefusalWords(refusal: 'mercury-linked' | 'stripe-bi
  * nor on a Stripe bill; any other line only leaves the form.
  */
 export function paymentRemoveWritesNow(row: PaymentRow, job: JobWithDetails | null, persistedPaymentIds: ReadonlySet<string>): boolean {
-  return persistedPaymentIds.has(row.id) && !mercuryLinkedPaymentRow(row) && !stripeBillInvoiceForPaymentRow(row, job)
+  return persistedPaymentIds.has(row.id) && !mercuryLinkedPaymentRow(row) && !stripeOwnsPaymentRow(row, job)
 }
 
 /** How `remove_jobs_ledger_payment_and_reconcile` answered. */

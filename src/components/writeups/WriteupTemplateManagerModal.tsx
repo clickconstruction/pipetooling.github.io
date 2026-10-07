@@ -226,7 +226,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
   if (!open) return null
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div role="dialog" aria-modal="true"
         style={{
           background: 'var(--surface)',
@@ -234,7 +234,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
           borderRadius: 8,
           minWidth: 440,
           maxWidth: '92vw',
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflow: 'auto',
         }}
       >

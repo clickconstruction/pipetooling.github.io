@@ -63,6 +63,16 @@ export function stripeHoldsPaymentWords(reason: 'credit_note' | 'paid_in_stripe'
     : 'This bill is marked paid in Stripe — unwind the out-of-band payment on the bill first.'
 }
 
+/**
+ * Stripe owns the row (v2.4801): it holds a record of it — a credit note, or the bill marked paid
+ * in Stripe. Such a row is read-only here and leaves only through Stripe's own doors. A row on a
+ * Stripe bill Stripe has NOT heard of — a check Mark Paid holds until it clears (`heldStripeMark`),
+ * a deposit matched in Accounts Receivable — is an ordinary payment: it edits, moves and comes off.
+ */
+export function stripeOwnsPaymentRow(row: PaymentRow, job: JobWithDetails | null): boolean {
+  return stripeHoldsPaymentReason(row, job) != null
+}
+
 /** Mercury unlink is refused while Stripe holds a record of the payment (`stripeHoldsPaymentReason`); hide/disable unlink when this applies. */
 export function mercuryUnlinkBlockedByStripeHostedInvoice(row: PaymentRow, job: JobWithDetails | null): boolean {
   return stripeHoldsPaymentReason(row, job) != null

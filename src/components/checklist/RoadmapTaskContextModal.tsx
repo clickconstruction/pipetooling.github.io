@@ -165,7 +165,7 @@ export default function RoadmapTaskContextModal({
         aria-modal="true"
         aria-label="Where this task fits in the roadmap"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 14, width: 'min(34rem, 100%)', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)' }}
+        style={{ background: 'var(--surface)', borderRadius: 14, width: 'min(34rem, 100%)', maxHeight: 'min(88vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border)' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.9rem 1.2rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, padding: '0.16rem 0.6rem', borderRadius: 8, background: 'var(--bg-purple-tint, var(--bg-blue-tint))', color: 'var(--text-purple-800, var(--text-blue-800))', whiteSpace: 'nowrap' }}>

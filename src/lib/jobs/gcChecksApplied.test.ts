@@ -167,6 +167,43 @@ describe('buildGcChecksReport', () => {
     expect(checkMoveWords(c.wasOn[0]!)).toBe('$12,000.00 moved from maple Main St · MAPLE Job maple to oak Main St · OAK Job oak on Sep 26')
   })
 
+  describe('2026-10-02 · a move and a deposit read as their day in the company’s zone', () => {
+    // 7:30 pm CDT on Oct 2 is 00:30 UTC on Oct 3: the UTC date of either is the day after.
+    const elm = job('elm', {
+      invoices: [inv('elm-1', 'elm', 1, 5000)],
+      payments: [pay('pe', 'elm', 5000, { invoice_id: 'elm-1', payment_type: 'ach', reference_number: null, paid_on: '2026-10-02', mercury_transaction_id: 'dep-e' })],
+    })
+    const check = (postedAt: string, movedAt: string) =>
+      buildGcChecksReport({
+        gcId: GC,
+        jobs: [elm, job('ash')],
+        deposits: [{ id: 'dep-e', posted_at: postedAt, amount: 5000, applied: 5000 }],
+        events: [{ id: 'm1', kind: 'moved', payment_id: 'pe', from_job_id: 'ash', to_job_id: 'elm', amount: 5000, created_at: movedAt }],
+      }).checks[0]!
+
+    it('a move recorded at 7:30 pm Central reads that day, not the UTC day after', () => {
+      const c = check('2026-10-02T15:00:00Z', '2026-10-03T00:30:00Z')
+      expect(c.wasOn[0]!.onYmd).toBe('2026-10-02')
+      expect(checkMoveWords(c.wasOn[0]!)).toBe('$5,000.00 moved from ash Main St · ASH Job ash to elm Main St · ELM Job elm on Oct 2')
+    })
+
+    it('a deposit posted at 7:30 pm Central, in the shape the database hands back, was deposited that day', () => {
+      const c = check('2026-10-03T00:30:00+00:00', '2026-10-02T15:00:00Z')
+      expect(c.depositedYmd).toBe('2026-10-02')
+      expect(checkHeadline(c)).toBe('ACH · $5,000.00 · received Oct 2, 2026 · deposited Oct 2')
+    })
+
+    it('in winter, 6:30 pm Central is still that day', () => {
+      const c = check('2026-12-02T00:30:00Z', '2026-12-02T00:30:00Z')
+      expect([c.depositedYmd, c.wasOn[0]!.onYmd]).toEqual(['2026-12-01', '2026-12-01'])
+    })
+
+    it('noon UTC reads its own day, as does a deposit typed in by hand (stamped noon UTC)', () => {
+      const c = check('2026-10-02T12:00:00Z', '2026-10-02T12:00:00Z')
+      expect([c.depositedYmd, c.wasOn[0]!.onYmd]).toEqual(['2026-10-02', '2026-10-02'])
+    })
+  })
+
   it('keeps only the period asked for and counts what it left out; undated checks stay', () => {
     const undated = job('u', { invoices: [inv('u-1', 'u', 1, 50)], payments: [pay('pu', 'u', 50, { invoice_id: 'u-1', paid_on: null, reference_number: '7' })] })
     const r = buildGcChecksReport({ gcId: GC, jobs: [oak, maple, undated], sinceYmd: '2026-09-20' })
@@ -245,6 +282,12 @@ describe('billPaidByWords', () => {
   it('a job balance with no bill reads what the job has been paid so far', () => {
     expect(billPaidByWords(j, null)).toBe('paid $21,750.00 so far by #48102 on Sep 10 and #48211 on Sep 24')
     expect(billPaidByWords({ ...j, payments: [] }, null)).toBe('nothing applied yet')
+  })
+  // v2.4534: the job's total rides on the job, and money that paid work on no bill is not a bill's.
+  it('with the job total, an unlinked payment for the part of the job on no bill is on no bill', () => {
+    const u = job('u', { revenue: 2100, invoices: [inv('u-1', 'u', 1, 500), inv('u-2', 'u', 2, 700)], payments: [pay('pu', 'u', 900, { payment_type: 'ach', reference_number: null, paid_on: '2026-09-03' })] })
+    expect(billPaidByWords(u, u.invoices[0]!)).toBe('nothing applied yet')
+    expect(billPaidByWords({ ...u, revenue: 1700 }, u.invoices[0]!)).toBe('$400.00 paid by ACH on Sep 3 · $100.00 still open')
   })
   it('an unlinked payment counts for the oldest bill that needed it', () => {
     const u = job('u', { invoices: [inv('u-1', 'u', 1, 500), inv('u-2', 'u', 2, 700)], payments: [pay('pu', 'u', 900, { payment_type: 'ach', reference_number: null, paid_on: '2026-09-03' })] })

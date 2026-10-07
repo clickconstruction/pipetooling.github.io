@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { cleanName, decideVerdict, decisionCounts, normalizeEmail, parseDecideBody, planDecideWrites, parseIdentifyBody, resolveIdentify, askTitle, decisionEntryBody, messageVerdict, parseMessageBody, MESSAGES_PER_HOUR } from '../../../supabase/functions/_shared/submittalReviewActions'
+import { cleanName, decideVerdict, decisionCounts, normalizeEmail, parseDecideBody, planDecideWrites, parseIdentifyBody, resolveIdentify, askTitle, decisionEntryBody, messageVerdict, parseMessageBody, MESSAGES_PER_HOUR, OFFICE_REFUSAL, OFFICE_ROLES, PREVIEW_REFUSAL, officeRoleOf, officeWriteVerdict, type RoomWriteAction } from '../../../supabase/functions/_shared/submittalReviewActions'
+import { canOpenBids } from '../bids/bidsTabAccess'
 
 describe('identify', () => {
   it('cleans the name and email, reads the role, spots the honeypot and the forwarded token', () => {
@@ -20,6 +21,9 @@ describe('identify', () => {
     expect(resolveIdentify({ existingByEmail: null, viaPerson: { id: 'p1', email: 'Dana@x.com' }, email: 'dana@x.com' })).toEqual({ kind: 'existing', personId: 'p1' })
     expect(resolveIdentify({ existingByEmail: null, viaPerson: { id: 'p1', email: 'dana@x.com' }, email: 'tom@x.com' })).toEqual({ kind: 'new', how: 'forwarded' })
     expect(resolveIdentify({ existingByEmail: null, viaPerson: null, email: 'tom@x.com' })).toEqual({ kind: 'new', how: 'identified' })
+    // 2026-10-02 · a person the office named without an email is the visitor who arrives on that person's own link.
+    expect(resolveIdentify({ existingByEmail: null, viaPerson: { id: 'named', email: null }, email: 'pm@gc.com' })).toEqual({ kind: 'existing', personId: 'named', claimEmail: true })
+    expect(resolveIdentify({ existingByEmail: { id: 'other' }, viaPerson: { id: 'named', email: null }, email: 'pm@gc.com' })).toEqual({ kind: 'existing', personId: 'other' })
   })
 })
 
@@ -32,12 +36,12 @@ describe('decide', () => {
   })
 
   it('the verdict: closed, not on this link, watching, stale, then ok', () => {
-    const base = { roomStatus: 'open', personClosed: false, mayDecide: true, submittalBelongs: true, submittalShared: true, currentSubmittalId: 's2', submittalId: 's2' }
+    const base = { roomStatus: 'open', personClosed: false, mayDecide: true, submittalBelongs: true, submittalOnRecord: true, currentSubmittalId: 's2', submittalId: 's2' }
     expect(decideVerdict(base)).toEqual({ ok: true })
     expect(decideVerdict({ ...base, roomStatus: 'closed' })).toMatchObject({ ok: false, status: 410, code: 'closed' })
     expect(decideVerdict({ ...base, personClosed: true })).toMatchObject({ ok: false, status: 410 })
     expect(decideVerdict({ ...base, submittalBelongs: false })).toMatchObject({ ok: false, status: 404, code: 'not_found' })
-    expect(decideVerdict({ ...base, submittalShared: false })).toMatchObject({ ok: false, status: 404 })
+    expect(decideVerdict({ ...base, submittalOnRecord: false })).toMatchObject({ ok: false, status: 404 })
     expect(decideVerdict({ ...base, mayDecide: false })).toMatchObject({ ok: false, status: 403, code: 'watching' })
     expect(decideVerdict({ ...base, submittalId: 's1' })).toMatchObject({ ok: false, status: 409, code: 'stale_revision' })
     expect(decisionCounts([{ decision: 'approved' }, { decision: 'approved' }, { decision: 'revise' }])).toEqual({ approved: 2, revise: 1, rejected: 0 })
@@ -94,3 +98,70 @@ describe('a call on a part (2026-10-01)', () => {
     expect(plan.itemsWithParts).toEqual(['wc'])
   })
 })
+
+describe('the office is never the GC (v2.4599, #62)', () => {
+  const actions: RoomWriteAction[] = ['identify', 'message', 'decide']
+
+  it('a verified office session is refused on every write, with the reason the page shows; the office wins over the preview', () => {
+    for (const action of actions) {
+      expect(officeWriteVerdict(action, { preview: false, officeRole: 'estimator' })).toEqual({ ok: false, status: 403, code: 'office', error: OFFICE_REFUSAL[action] })
+      expect(officeWriteVerdict(action, { preview: true, officeRole: 'assistant' })).toMatchObject({ ok: false, code: 'office' })
+    }
+    expect(OFFICE_REFUSAL.decide).toBe('You are signed in as the office. Enter their answer from the Submittals tab.')
+    expect(OFFICE_REFUSAL.message).toBe('You are signed in as the office. Answer their questions from the Submittals tab.')
+  })
+
+  it('the office’s preview is refused on every write; a reviewer with neither signal goes ahead as before', () => {
+    for (const action of actions) {
+      expect(officeWriteVerdict(action, { preview: true, officeRole: null })).toEqual({ ok: false, status: 403, code: 'preview', error: PREVIEW_REFUSAL })
+      expect(officeWriteVerdict(action, { preview: false, officeRole: null })).toEqual({ ok: true })
+    }
+  })
+
+  it('the office is every role that opens Bids, and no other', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers']) {
+      expect(OFFICE_ROLES.includes(role)).toBe(canOpenBids(role))
+    }
+  })
+
+  describe('officeRoleOf: verified by the function, never read off a header', () => {
+    const anon = 'anon-key'
+    const fake = (o: { user?: { id: string } | null; role?: string | null; usersThrow?: boolean } = {}) => {
+      const calls = { getUser: 0, users: 0 }
+      const admin = {
+        auth: { getUser: async (_jwt: string) => { calls.getUser += 1; return o.user ? { data: { user: o.user }, error: null } : { data: { user: null }, error: { message: 'invalid JWT' } } } },
+        from: (table: string) => {
+          if (table !== 'users') throw new Error(`read ${table}`)
+          calls.users += 1
+          if (o.usersThrow) throw new Error('boom')
+          return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: o.role === undefined ? null : { role: o.role } }) }) }) }
+        },
+      }
+      return { admin, calls }
+    }
+    const req = (authorization?: string) => ({ headers: { get: (name: string) => (name.toLowerCase() === 'authorization' ? authorization ?? null : null) } })
+
+    it('no header, or the anon key a reviewer’s page sends: no session, and the auth server is never asked', async () => {
+      for (const header of [undefined, `Bearer ${anon}`]) {
+        const { admin, calls } = fake({ user: { id: 'u1' }, role: 'dev' })
+        expect(await officeRoleOf(req(header), admin, anon)).toBeNull()
+        expect(calls).toEqual({ getUser: 0, users: 0 })
+      }
+    })
+
+    it('a token the auth server does not resolve is no session, whatever role it claims', async () => {
+      const { admin, calls } = fake({ user: null, role: 'dev' })
+      expect(await officeRoleOf(req('Bearer forged'), admin, anon)).toBeNull()
+      expect(calls).toEqual({ getUser: 1, users: 0 })
+    })
+
+    it('a resolved user is the office only when their users.role is an office role', async () => {
+      expect(await officeRoleOf(req('Bearer jwt'), fake({ user: { id: 'u1' }, role: 'estimator' }).admin, anon)).toBe('estimator')
+      expect(await officeRoleOf(req('Bearer jwt'), fake({ user: { id: 'u1' }, role: 'subcontractor' }).admin, anon)).toBeNull()
+      expect(await officeRoleOf(req('Bearer jwt'), fake({ user: { id: 'u1' }, role: 'helpers' }).admin, anon)).toBeNull()
+      expect(await officeRoleOf(req('Bearer jwt'), fake({ user: { id: 'u1' } }).admin, anon)).toBeNull()
+      expect(await officeRoleOf(req('Bearer jwt'), fake({ user: { id: 'u1' }, usersThrow: true }).admin, anon)).toBeNull()
+    })
+  })
+})
+

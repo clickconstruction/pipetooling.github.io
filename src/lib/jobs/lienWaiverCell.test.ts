@@ -34,6 +34,15 @@ function rel(over: Partial<JobLienReleaseRow> & { id: string; form_type: string;
 }
 
 describe('lienWaiverCellForBill (v2.4275)', () => {
+  it('each half reads its day in the company zone: an evening stamp is that day, not the UTC date', () => {
+    // 7:30 pm CDT on Oct 2 (also in PostgREST's +00:00 shape); 6:30 pm CST on Dec 1; noon UTC is its own day.
+    const half = (over: Partial<JobLienReleaseRow>) => lienWaiverCellForBill([rel({ id: 'c', form_type: 'conditional_progress', invoice_ids: ['inv-1'], ...over })], 'inv-1', false).conditional
+    expect(half({ status: 'signed', signed_at: '2026-10-03T00:20:00Z', sent_to_customer_at: '2026-10-03T00:30:00+00:00' })).toMatchObject({ state: 'sent', ymd: '2026-10-02' })
+    expect(half({ status: 'signed', signed_at: '2026-10-03T00:30:00Z' })).toMatchObject({ state: 'signed', ymd: '2026-10-02' })
+    expect(half({ status: 'awaiting_signature', signature_requested_at: '2026-12-02T00:30:00Z' })).toMatchObject({ state: 'awaiting', ymd: '2026-12-01' })
+    expect(half({ status: 'draft', created_at: '2026-10-03T12:00:00Z' })).toMatchObject({ state: 'draft', ymd: '2026-10-03' })
+    expect(lienWaiverCellForBill([rel({ id: 'c', form_type: 'conditional_progress', invoice_ids: ['inv-1'], status: 'signed', signed_at: '2026-10-03T00:20:00Z', sent_to_customer_at: '2026-10-03T00:30:00Z' })], 'inv-1', false).chips[0]!.text).toBe('Conditional ✓ sent Oct 2')
+  })
   it('a bill with nothing yet: adding the conditional is the next move, and both chips stay grey (calm since v2.4309)', () => {
     const cell = lienWaiverCellForBill([], 'inv-1', false)
     expect(cell.next).toBe('add_conditional')

@@ -19,6 +19,7 @@
  *    excluded — no bill date to measure from).
  */
 
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import {
   appliedByInvoiceId,
   jobBilledContribution,
@@ -73,7 +74,10 @@ function daysBetweenYmdUtc(fromYmd: string, toYmd: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
-/** timestamptz/date → YYYY-MM-DD (UTC slice — consistent with the board's date handling). */
+/**
+ * A `date` column's YYYY-MM-DD (estimated_bill_date, paid_on). Not for `billed_at`, an instant:
+ * its day is `todayYmdInAppTz(new Date(iso))`, since its UTC date is tomorrow after 7 PM Central.
+ */
 function ymdOf(iso: string): string {
   return iso.slice(0, 10)
 }
@@ -142,7 +146,7 @@ export function customerDaysToPay(jobs: ProfileJob[], todayYmd: string): DaysToP
   for (const job of jobs) {
     const billedAtByInvoice = new Map<string, string>()
     for (const inv of job.invoices) {
-      if (inv.billed_at) billedAtByInvoice.set(inv.id, ymdOf(inv.billed_at))
+      if (inv.billed_at) billedAtByInvoice.set(inv.id, todayYmdInAppTz(new Date(inv.billed_at)))
     }
     for (const p of job.payments) {
       if (!p.invoice_id || !p.paid_on) continue
@@ -198,12 +202,12 @@ export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJo
     const remaining = row.remaining
     out.openBilled += remaining
     if (row.settled || !inv) continue
-    const dateSource = inv.estimated_bill_date ?? inv.billed_at
-    if (!dateSource) {
+    // The estimated bill date is a calendar day; billed_at is an instant, read as its day in the company's zone.
+    const ymd = inv.estimated_bill_date ? ymdOf(inv.estimated_bill_date) : inv.billed_at ? todayYmdInAppTz(new Date(inv.billed_at)) : null
+    if (!ymd) {
       sawUndated = true
       continue
     }
-    const ymd = ymdOf(dateSource)
     if (out.oldestOpenBillYmd == null || ymd < out.oldestOpenBillYmd) out.oldestOpenBillYmd = ymd
   }
   if (out.oldestOpenBillYmd != null) out.ageDays = Math.max(0, daysBetweenYmdUtc(out.oldestOpenBillYmd, todayYmd))

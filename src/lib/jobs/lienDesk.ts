@@ -1,4 +1,5 @@
 import type { Database } from '../../types/database'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { NOTICE_CLOSING_DAYS, NOTICE_DUE_DAYS } from './forecastWorkMonths'
 import { ownerKind } from './ownerConfirm'
@@ -15,11 +16,16 @@ import { ownerKind } from './ownerConfirm'
  */
 
 /** Where a job's lien month came from (v2.3747): approved clock sessions, or — for a job with none — the month the job was created. */
-export type LienMonthSource = 'hours' | 'job_created'
+export type LienMonthSource = 'hours' | 'job_created' | 'hand'
 
 /** A row from any of the four lien readers whose month is the job's creation month. Absent on an older RPC = hours. */
 export function monthFromCreation(r: { month_source?: LienMonthSource | string | null }): boolean {
   return r.month_source === 'job_created'
+}
+
+/** The month came from the last day of work set by hand on the job (v2.4676). */
+export function monthSetByHand(r: { month_source?: LienMonthSource | string | null }): boolean {
+  return r.month_source === 'hand'
 }
 
 /** The line under a month dated from the job's creation — one wording on every surface (v2.3747). */
@@ -85,6 +91,8 @@ export type LienDeskMonth = {
   noticed: boolean
   /** The month is the job's creation month — it has no approved hours (v2.3747). */
   fromCreation: boolean
+  /** The month is the last day of work set by hand (v2.4676). */
+  byHand?: boolean
 }
 
 export type LienDeskEntry = {
@@ -98,6 +106,8 @@ export type LienDeskEntry = {
   months: LienDeskMonth[]
   /** The job has no approved clock hours: its one month is the month it was created (v2.3747). */
   datedFromCreation: boolean
+  /** The job's last month is the day set by hand (v2.4676). */
+  datedByHand?: boolean
   /** Unnoticed months whose window is still open — what a new notice would name. */
   dueMonths: string[]
   /** Unnoticed months whose window closed — the RPC keeps one a week, or until someone records it if nothing has been (v2.3680). */
@@ -198,7 +208,7 @@ export function buildLienDeskQueue(
       const prev = itemByJob.get(it.job_id)
       if (!prev || it.created_at > prev.created_at) itemByJob.set(it.job_id, it)
     } else if (it.status === 'sent' && it.sent_at) {
-      const age = daysBetweenYmd(it.sent_at.slice(0, 10), todayYmd) ?? 0
+      const age = daysBetweenYmd(calendarYmdInAppTzFromIso(it.sent_at), todayYmd) ?? 0
       if (age <= LIEN_DESK_SENT_DAYS) {
         const prev = sentByJob.get(it.job_id)
         if (!prev || it.sent_at > (prev.sent_at ?? '')) sentByJob.set(it.job_id, it)
@@ -225,6 +235,7 @@ export function buildLienDeskQueue(
       daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0,
       noticed: r.noticed,
       fromCreation: monthFromCreation(r),
+      byHand: monthSetByHand(r),
     }))
     const dueMonths = months.filter((m) => !m.noticed && m.daysLeft >= 0).map((m) => m.key)
     const missedMonths = months.filter((m) => !m.noticed && m.daysLeft < 0).map((m) => m.key)
@@ -255,6 +266,7 @@ export function buildLienDeskQueue(
       propertyKind: first?.property_kind ?? '',
       months,
       datedFromCreation: months.length > 0 && months.every((m) => m.fromCreation),
+      datedByHand: months.length > 0 && Boolean(months[months.length - 1]?.byHand),
       dueMonths,
       missedMonths,
       missedUnrecorded,

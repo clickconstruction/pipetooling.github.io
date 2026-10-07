@@ -1589,7 +1589,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX + 10,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
         >
           <div
@@ -1603,7 +1603,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
               borderRadius: 8,
               maxWidth: 620,
               width: '100%',
-              maxHeight: '85vh',
+              maxHeight: 'min(85vh, 100%)',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',

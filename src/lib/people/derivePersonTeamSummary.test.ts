@@ -373,3 +373,37 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
     expect(row.hoursBreakdown.totals.subLabor).toBe(5)
   })
 })
+
+describe('derivePersonTeamSummary — the vehicle line (v2.4653: fuel stays on the jobs)', () => {
+  // 16 field hours: two 8-hour days, no office or bid time.
+  const days = ['2026-09-01', '2026-09-02']
+  const periodHoursRows = days.map((work_date) => ({ person_name: 'Mal', work_date, hours: 8 }))
+  const pay = hourlyPayConfig('Mal', 30)
+  const derive = (vehicle: TeamReviewUnion['vehicleByPersonName'][string] | null) =>
+    derivePersonTeamSummary(makeUnion({ periodHoursRows, vehicleByPersonName: vehicle ? { Mal: vehicle } : {} }), 'Mal', pay, false, days)
+
+  it('a company truck charges its fixed costs per field hour plus the holder’s fuel on no job', () => {
+    const r = derive({ arrangement: 'company', fixedRate: 2.5, fuelOffJobsUsd: 30, truckName: '2019 Ford F-150', note: '' })
+    expect(r.fieldHours).toBe(16)
+    expect(r).toMatchObject({ vehicleArrangement: 'company', vehicleRate: 2.5, vehicleTruckName: '2019 Ford F-150', vehicleFixedCost: -40, vehicleFuelOffJobs: -30, vehicleCost: -70 })
+  })
+
+  it('a company truck with no fixed costs on file charges only the fuel on no job', () => {
+    const r = derive({ arrangement: 'company', fixedRate: 0, fuelOffJobsUsd: 48.1, truckName: '2019 Ford F-150', note: '' })
+    expect(r).toMatchObject({ vehicleFixedCost: 0, vehicleFuelOffJobs: -48.1, vehicleCost: -48.1 })
+  })
+
+  it('an own vehicle charges the fuel on no job, plus a manual fixed rate when the office set one', () => {
+    expect(derive({ arrangement: 'own_fuel_paid', fixedRate: 0, fuelOffJobsUsd: 10, truckName: null, note: '' })).toMatchObject({ vehicleFixedCost: 0, vehicleFuelOffJobs: -10, vehicleCost: -10 })
+    expect(derive({ arrangement: 'own_fuel_paid', fixedRate: 1.25, fuelOffJobsUsd: 10, truckName: null, note: '' })).toMatchObject({ vehicleRate: 1.25, vehicleFixedCost: -20, vehicleFuelOffJobs: -10, vehicleCost: -30 })
+  })
+
+  it('a refund on no job that outweighs the fuel there comes back as a credit', () => {
+    const r = derive({ arrangement: 'own_fuel_paid', fixedRate: 0, fuelOffJobsUsd: -8, truckName: null, note: '' })
+    expect(r).toMatchObject({ vehicleFuelOffJobs: 8, vehicleCost: 8 })
+  })
+
+  it('no deal, no vehicle line', () => {
+    expect(derive(null)).toMatchObject({ vehicleArrangement: 'none', vehicleRate: null, vehicleFixedCost: 0, vehicleFuelOffJobs: 0, vehicleCost: 0 })
+  })
+})

@@ -9,9 +9,10 @@
  * claim as printed, the months, the GC's and the claimant's names, the signer — never a draft,
  * never an amount the paper did not carry. A job paid off drops its card.
  *
- * Dependency-free Deno module shared by the customer-portal edge function and the client page
- * (`src/lib/portal/portalPayload.ts` re-parses it); unit-tested from vitest.
+ * Dependency-free beyond `appTimeZone.ts`; shared by the customer-portal edge function and the
+ * client page (`src/lib/portal/portalPayload.ts` re-parses it); unit-tested from vitest.
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 
 export type PortalNoticeJobRow = {
   id: string
@@ -112,7 +113,8 @@ export function buildPortalPropertyNotices(args: {
     const job = jobs.get(first.job_id)!
     const printed = fs.map((f) => f.printed_claim).find((p) => p != null && p !== '')
     const claim = printed != null ? num(printed) : fs.reduce((s, f) => s + num(f.amount), 0)
-    const mailedOn = ownerSentOn(first.sends) || (first.created_at ?? '').slice(0, 10)
+    // The owner send's day is a calendar day; the filing's created_at is an instant, read in the company's zone.
+    const mailedOn = ownerSentOn(first.sends) || (first.created_at ? todayYmdInAppTz(new Date(first.created_at)) : '')
     out.push({
       key,
       address: (job.job_address ?? '').trim(),

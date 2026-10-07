@@ -25,6 +25,9 @@ import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
 import { agreedValueFromAcceptance, alternateAnswer, offeredAlternates, setAlternateAnswer, type AlternateAnswer } from '../../lib/bids/alternateAcceptance'
+import { agreedValueForOption, letterOptionVersions, wonOptionVersionId, type OptionVersion } from '../../lib/bids/wonOption'
+import { recordWonOption } from '../../lib/bids/wonOptionWrite'
+import { latestSendByVersion } from '../../lib/bids/versionSends'
 import { formatCurrency } from '../../lib/format'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { bidAutosaveStatusLine, bidFormFooterLabels, type BidAutosaveStatus } from '../../lib/bids/bidFormAutosave'
@@ -220,17 +223,34 @@ export function BidFormModal(props: BidFormModalProps) {
   // v2.2407: a bid WITH versions gets the per-GC sent panel instead of the hand-typed date
   // (its bid_date_sent is a derived roll-up). Null while the count is loading.
   const [bidHasVersions, setBidHasVersions] = useState<boolean | null>(null)
+  // v2.4728: the letter's options (two or more base versions in the letter) and each one's latest
+  // sent value — the Won section asks which the GC took.
+  const [bidVersionRows, setBidVersionRows] = useState<OptionVersion[]>([])
+  const [versionSentValues, setVersionSentValues] = useState<Record<string, number | null>>({})
+  const [wonOptionBusy, setWonOptionBusy] = useState(false)
+  const [wonOptionError, setWonOptionError] = useState<string | null>(null)
   useEffect(() => {
     const id = props.editingBid?.id
     if (!id) {
       setBidHasVersions(false)
+      setBidVersionRows([])
+      setVersionSentValues({})
       return
     }
     setBidHasVersions(null)
+    setWonOptionError(null)
     let cancelled = false
     void (async () => {
-      const { count } = await supabase.from('bid_versions').select('id', { count: 'exact', head: true }).eq('bid_id', id)
-      if (!cancelled) setBidHasVersions((count ?? 0) > 0)
+      const [{ data: rows }, { data: sends }] = await Promise.all([
+        supabase.from('bid_versions').select('id, name, sort_order, include_in_submission, is_alternate, outcome, customer_id').eq('bid_id', id),
+        supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', id),
+      ])
+      if (cancelled) return
+      const list = (rows ?? []) as OptionVersion[]
+      setBidHasVersions(list.length > 0)
+      setBidVersionRows(list)
+      const latest = latestSendByVersion((sends ?? []) as Parameters<typeof latestSendByVersion>[0])
+      setVersionSentValues(Object.fromEntries(Object.entries(latest).map(([k, v]) => [k, v.value])))
     })()
     return () => {
       cancelled = true
@@ -935,6 +955,63 @@ export function BidFormModal(props: BidFormModalProps) {
                       <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                   )}
+                  {outcome === 'won' && editingBid && letterOptionVersions(bidVersionRows).length >= 2 ? (() => {
+                    // v2.4728: a letter with options — which one did the GC take? The answer lands on that
+                    // version (won), makes it the bid's active version, and sets the agreed value from its
+                    // sent value plus the accepted add-ons. The other option is not lost; it just was not taken.
+                    const options = letterOptionVersions(bidVersionRows)
+                    const taken = wonOptionVersionId(options)
+                    const alts = offeredAlternates(editingBid).filter((a) => a.offered)
+                    const choose = async (versionId: string) => {
+                      if (wonOptionBusy) return
+                      setWonOptionBusy(true)
+                      setWonOptionError(null)
+                      try {
+                        const result = await recordWonOption({ bidId: editingBid.id, chosenVersionId: versionId })
+                        if ('error' in result) {
+                          setWonOptionError(result.error)
+                          return
+                        }
+                        setBidVersionRows((prev) => prev.map((v) => (v.id === versionId ? { ...v, outcome: 'won' } : v.outcome === 'won' && options.some((o) => o.id === v.id) ? { ...v, outcome: null } : v)))
+                        const value = agreedValueForOption(result.sentValue, alts, acceptedAlternateTags)
+                        if (value != null) setAgreedValue(String(value))
+                      } finally {
+                        setWonOptionBusy(false)
+                      }
+                    }
+                    return (
+                      <div data-testid="bid-won-option" style={{ flexBasis: '100%', minWidth: 0, display: 'grid', gap: '0.35rem', padding: '0.5rem 0.75rem', border: '1px solid var(--text-amber-700)', borderRadius: 8, background: 'var(--bg-amber-tint)' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-amber-700)' }}>Which option did they take?</span>
+                        <div role="radiogroup" aria-label="Which option did they take?" style={{ display: 'grid', gap: '0.3rem' }}>
+                          {options.map((o, i) => {
+                            const sent = versionSentValues[o.id] ?? null
+                            const on = taken === o.id
+                            return (
+                              <button
+                                key={o.id}
+                                type="button"
+                                role="radio"
+                                aria-checked={on}
+                                disabled={wonOptionBusy}
+                                onClick={() => void choose(o.id)}
+                                style={{ font: 'inherit', textAlign: 'left', display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.3rem 0.6rem', borderRadius: 6, border: `1px solid ${on ? 'var(--text-amber-700)' : 'var(--border-strong)'}`, background: on ? 'var(--surface)' : 'transparent', cursor: wonOptionBusy ? 'wait' : 'pointer', fontWeight: on ? 700 : 500 }}
+                              >
+                                <span>{on ? '●' : '○'} Option {i + 1} — {o.name}</span>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 400 }}>{sent != null ? `sent $${formatCurrency(sent)}` : 'not sent yet'}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: wonOptionError ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                          {wonOptionError
+                            ? wonOptionError
+                            : taken
+                              ? <>Recorded. <strong style={{ color: 'var(--text-strong)' }}>{options.find((o) => o.id === taken)?.name}</strong> is the active version now, so the job and the takeoff follow it. The agreed value is its sent value plus any alternate they took.</>
+                              : 'Pick the option the GC signed for. It becomes the active version, so the job and the takeoff follow it.'}
+                        </span>
+                      </div>
+                    )
+                  })() : null}
                   {outcome === 'won' && editingBid && offeredAlternates(editingBid).some((a) => a.offered) ? (() => {
                     // v2.4211: the customer's answer to the with-and-without alternates — accepted ones fold
                     // into the agreed value; a declined one's rows leave the job's numbers.
@@ -1584,6 +1661,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 1002,
+                paddingTop: 'var(--app-top-chrome, 0px)',
               }}
               onClick={(e) => {
                 if (e.target === e.currentTarget) setServiceTypeSwitchOpen(false)
@@ -1599,7 +1677,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   borderRadius: 8,
                   maxWidth: '420px',
                   width: '90%',
-                  maxHeight: '85vh',
+                  maxHeight: 'min(85vh, 100%)',
                   overflow: 'auto',
                   boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
                 }}

@@ -205,7 +205,7 @@ export function OverheadLensModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
@@ -219,7 +219,7 @@ export function OverheadLensModal({
           border: '1px solid var(--border)',
           borderRadius: 10,
           width: 'min(880px, 100%)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           overflow: 'auto',
           padding: '1rem 1.25rem',
           boxShadow: '0 20px 60px rgba(0,0,0,0.35)',

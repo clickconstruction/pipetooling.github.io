@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { withSupabaseRetry } from '../../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../../utils/dateUtils'
 import {
   buildLegalPacket,
   type LegalAccountSummary,
@@ -17,11 +17,12 @@ import {
 } from '../../../lib/legal/legalPacket'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../../../lib/jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
-import type { JobContractRowLike, SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
+import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
 import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
 import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
 import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
+import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
 
 /**
  * Loads every record behind one account's legal packet and folds them through
@@ -114,7 +115,7 @@ export function useLegalPacketData(
               () => db.from('customer_contacts').select('id, contact_date, contact_method, details, created_by').eq('customer_id', customerId).order('contact_date').limit(ROW_CAP),
               'load legal packet contact history',
             )) ?? []
-            return rows.map((r): LegalContactEntryLike => ({ id: r.id, ymd: String(r.contact_date).slice(0, 10), method: r.contact_method, by: userName(r.created_by), text: (r.details ?? '').trim() }))
+            return rows.map((r): LegalContactEntryLike => ({ id: r.id, ymd: calendarYmdInAppTzFromIso(String(r.contact_date)), method: r.contact_method, by: userName(r.created_by), text: (r.details ?? '').trim() }))
           }, []),
           src<CustomerAddressRow[]>('property record', async () => {
             if (!customerId) return []
@@ -123,7 +124,7 @@ export function useLegalPacketData(
           }, []),
           src<JobContractRowLike[]>('contracts', async () =>
             (await withSupabaseRetry<JobContractRowLike[]>(
-              () => db.from('job_contracts').select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url').in('job_id', jobIds).is('voided_at', null),
+              () => db.from('job_contracts').select(JOB_CONTRACT_COVERAGE_COLUMNS).in('job_id', jobIds).is('voided_at', null),
               'load legal packet contracts',
             )) ?? [], []),
           src<SignedEstimateLike[]>('accepted estimates', async () =>
@@ -180,15 +181,32 @@ export function useLegalPacketData(
             })
           }, []),
         ])
+      // Property per job (#85 item 6): the record each job names (whoever's it is) and the job's owner override —
+      // the same inputs the firm's function sends, so the desk and the firm resolve the same property.
+      const links = await src<Array<{ id: string; customer_address_id: string | null }>>('job property links', async () =>
+        (await withSupabaseRetry<Array<{ id: string; customer_address_id: string | null }>>(() => db.from('jobs_ledger').select('id, customer_address_id').in('id', jobIds), 'load legal packet job property links')) ?? [], [])
+      const linkOf = new Map(links.map((l) => [l.id, l.customer_address_id] as const))
+      const jobAddressIds = [...new Set(links.map((l) => l.customer_address_id).filter((v): v is string => Boolean(v)))]
+      const [jobAddresses, jobOwners] = await Promise.all([
+        src<CustomerAddressRow[]>('job property records', async () => {
+          if (jobAddressIds.length === 0) return []
+          return ((await withSupabaseRetry<unknown[]>(() => db.from('customer_addresses').select(ADDRESS_COLUMNS).in('id', jobAddressIds), 'load legal packet job property records')) ?? []) as CustomerAddressRow[]
+        }, []),
+        src<LegalJobOwnerRow[]>('job owner overrides', async () =>
+          (await withSupabaseRetry<LegalJobOwnerRow[]>(() => db.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address').in('job_id', jobIds), 'load legal packet job owner overrides')) ?? [], []),
+      ])
+      const linkedAccount: LegalAccountSummary = { ...account, jobs: account.jobs.map((j) => (linkOf.has(j.id) ? { ...j, customer_address_id: linkOf.get(j.id) ?? null } : j)) }
       if (cancelled) return
       setPacket(
         buildLegalPacket({
           todayYmd,
-          account,
+          account: linkedAccount,
           customer,
           contacts,
           contactEntries,
           addresses,
+          jobAddresses,
+          jobOwners,
           contracts,
           signedEstimates: estimates,
           demandLetters,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payLineIsNotTheWork, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 
 const inv = (id: string, amount: number, seq: number, status = 'billed') =>
@@ -38,6 +38,20 @@ describe('the invoice behind the notice (v2.3437)', () => {
     expect(noticeEnclosureRefItem(docs)).toBe('2 invoices enclosed')
   })
 
+  it('a bill marked billed or sent in a Central evening reads that day, in the title and on the enclosed invoice', () => {
+    const one = (over: Record<string, unknown>) => ({ ...job, invoices: [{ ...inv('open', 1710, 2), ...over }] }) as unknown as JobWithDetails
+    // 7:30 pm CDT on Oct 2, in PostgREST's +00:00 shape.
+    const [billed] = noticeInvoiceDocs(one({ billed_at: '2026-10-03T00:30:00.123+00:00' }))
+    expect(billed?.title).toBe('Invoice #2, October 2, 2026')
+    expect(billed?.doc.invoiceDateDisplay).toBe('October 2, 2026')
+    // The enclosed invoice dates from the send when there is one: 6:30 pm CST on Dec 1.
+    const [sent] = noticeInvoiceDocs(one({ billed_at: '2026-12-02T00:30:00Z', sent_to_customer_at: '2026-12-02T00:30:00Z' }))
+    expect(sent?.title).toBe('Invoice #2, December 1, 2026')
+    expect(sent?.doc.invoiceDateDisplay).toBe('December 1, 2026')
+    // Noon UTC reads its own day.
+    expect(noticeInvoiceDocs(one({ billed_at: '2026-10-03T12:00:00Z' }))[0]?.title).toBe('Invoice #2, October 3, 2026')
+  })
+
   it('carries what the pay page needs (v2.3758): the balance still owed and whether the bill has a payment page', () => {
     const docs = noticeInvoiceDocs(job)
     expect(docs.map((d) => [d.openAmount, d.stripeInvoiceId])).toEqual([
@@ -65,6 +79,15 @@ describe("the pay page's description of a bill (v2.3758)", () => {
     expect(payPageDescription({ serviceLines: [line('Kitchen sink'), line('Lavatory'), line('Toilet')], narrativeTitle: 'Install and finish plumbing fixture trim.', lineDescription: '' })).toBe('Install and finish plumbing fixture trim.')
     expect(payPageDescription({ serviceLines: [line('Kitchen sink'), line('Lavatory'), line('Toilet')], narrativeTitle: '', lineDescription: '' })).toBe('Kitchen sink + 2 more')
     expect(payPageDescription({ serviceLines: [], narrativeTitle: '', lineDescription: '' })).toBe('')
+  })
+  it('a mailing note typed as the line, or the old system’s placeholder, is not the work (v2.4724)', () => {
+    const note = 'Paper checks can be sent to: Click Plumbing 12925 FM 20 Kingsbury TX 78638 (if you do this call 512 360-0599 first)'
+    expect(payPageDescription({ serviceLines: [line(note)], narrativeTitle: note, lineDescription: '' })).toBe('')
+    expect(payPageDescription({ serviceLines: [line(note), line('Water heater swap')], narrativeTitle: '', lineDescription: '' })).toBe('Water heater swap')
+    expect(payPageDescription({ serviceLines: [line('Job total (migrated)')], narrativeTitle: '', lineDescription: '' })).toBe('')
+    expect(payPageDescription({ serviceLines: [line('CHANGE ORDER: Added gas to fire features at pool')], narrativeTitle: note, lineDescription: '' })).toBe('CHANGE ORDER: Added gas to fire features at pool')
+    expect(payLineIsNotTheWork('Make checks payable to Click Plumbing')).toBe(true)
+    expect(payLineIsNotTheWork('Check valve replaced at the meter')).toBe(false)
   })
   it('never runs past a row', () => {
     const long = 'x'.repeat(200)

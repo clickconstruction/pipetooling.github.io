@@ -20,7 +20,7 @@ The rest of the receivables ritual is spread over three stations, each with its 
 ## The loop
 
 1. A bill goes **past its expected date** with no promise. That is the same clock as the row chips. The customer joins the queue.
-2. You call and **record what happened**. Every outcome is one tap. It logs who called, when, and what the customer said.
+2. Call and **record what happened**. Every outcome is one tap. It logs who called, when, and what the customer said.
 3. A **promise** turns the chips green everywhere. If it passes **7 days unpaid**, the customer comes back as a {{chip:yellow|broken promise}}.
 4. **Can't reach** snoozes them. They come back tomorrow, in 3 days, or in 7. Your pick.
 5. A **paid bill falls out on its own.** There's nothing to clean up.

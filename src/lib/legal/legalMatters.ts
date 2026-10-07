@@ -7,8 +7,11 @@
  * generated types catch up.
  */
 import { LEGAL_DEFAULT_FEE, type LegalFeeModel } from './legalPacket'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { LEGAL_ACTIVE_STAGES, LEGAL_END_STAGES, LEGAL_STAGE_LIST, legalMatterOnPortal } from '../../../supabase/functions/_shared/legalStages'
 
-export const LEGAL_STAGES = ['review', 'referred', 'demand', 'suit', 'judgment', 'settled', 'written_down', 'pulled'] as const
+/** One list with the functions (#85 item 16): `supabase/functions/_shared/legalStages.ts`. */
+export const LEGAL_STAGES = LEGAL_STAGE_LIST
 export type LegalStage = (typeof LEGAL_STAGES)[number]
 
 export type LegalFirmRow = {
@@ -42,6 +45,16 @@ export type LegalMatterRow = {
   closed_at: string | null
   closed_reason: string
   updated_at: string
+  /** Settlement authority (#85 item 20): one of the two, or neither (no floor). Absent before the migration. */
+  settlement_floor_amount?: number | null
+  settlement_floor_pct?: number | null
+  /** The narrative for the firm (v2.4812); absent before the migration. */
+  narrative_md?: string | null
+  narrative_updated_at?: string | null
+  narrative_updated_by?: string | null
+  /** The office's pull-back (#85 item 16): when and why. Absent before the migration. */
+  pulled_at?: string | null
+  pulled_reason?: string
 }
 
 export type LegalMatterJobRow = { matter_id: string; job_id: string }
@@ -58,6 +71,10 @@ export type LegalEntryRow = {
   created_by: string | null
   acknowledged_at: string | null
   created_at: string
+  /** Undone with a reason (#85 item 18): struck through, out of every total. Absent before the migration (and from an older function). */
+  voided_at?: string | null
+  voided_via_portal?: boolean
+  void_reason?: string
 }
 
 export function isLegalStage(raw: string | null | undefined): raw is LegalStage {
@@ -70,27 +87,57 @@ export function legalStageLabel(stage: string | null | undefined): string {
     case 'demand': return 'With the firm · demand sent'
     case 'suit': return 'With the firm · suit filed'
     case 'judgment': return 'With the firm · judgment'
+    case 'post_judgment': return 'With the firm · after judgment'
+    case 'payment_plan': return 'With the firm · payment plan'
     case 'settled': return 'Settled'
+    case 'uncollectible': return 'Uncollectible'
+    case 'dismissed': return 'Dismissed'
     case 'written_down': return 'Written down'
     case 'pulled': return 'Pulled back'
     default: return 'Under review'
   }
 }
 
-/** True while a firm can see the matter (PR 3 reads the same rule server-side). */
+/** The firm is working the stage (referred through a payment plan). The portal's rule adds the open ends: see `matterIsWithFirm`. */
 export function stageIsWithFirm(stage: string | null | undefined): boolean {
-  return stage === 'referred' || stage === 'demand' || stage === 'suit' || stage === 'judgment'
+  return (LEGAL_ACTIVE_STAGES as readonly string[]).includes(stage ?? '')
 }
 
+/** One of the firm's ends: settled · uncollectible · dismissed (#85 item 16). */
+export function stageIsFirmEnd(stage: string | null | undefined): boolean {
+  return (LEGAL_END_STAGES as readonly string[]).includes(stage ?? '')
+}
+
+/**
+ * The firm sees the matter and may act on it: a working stage, or an end the
+ * office has not closed yet (#85 item 16 — a settled matter stays open for the
+ * check and the last costs). The same rule `legal-portal` reads.
+ */
+export function matterIsWithFirm(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return m ? legalMatterOnPortal(m) : false
+}
+
+/** The firm reached an end the office still has to close. */
+export function matterAwaitsClose(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return Boolean(m && stageIsFirmEnd(m.stage) && !m.closed_at)
+}
+
+/** Closed for good: written down, or an end the office closed. */
+export function matterIsClosed(m: Pick<LegalMatterRow, 'stage' | 'closed_at'> | null | undefined): boolean {
+  return Boolean(m && (m.stage === 'written_down' || (stageIsFirmEnd(m.stage) && m.closed_at)))
+}
+
+/** Stage alone, for callers without the row: written down or a firm end. Prefer `matterIsClosed`, which tells an open settlement from a closed one. */
 export function stageIsClosed(stage: string | null | undefined): boolean {
-  return stage === 'written_down' || stage === 'settled'
+  return stage === 'written_down' || stageIsFirmEnd(stage)
 }
 
 /** The row chip on the Pipeline: nothing while an account is simply under review; a chip once the office asked for a dev or the firm has it. */
 export function legalRowChip(matter: LegalMatterRow | null | undefined): { label: string; tone: 'blue' | 'legal' | 'neutral' } | null {
   if (!matter) return null
   if (stageIsWithFirm(matter.stage)) return { label: `⚖ ${legalStageLabel(matter.stage).replace('With the firm · ', '')}`, tone: 'legal' }
-  if (stageIsClosed(matter.stage)) return { label: `⚖ ${legalStageLabel(matter.stage)}`, tone: 'neutral' }
+  if (matterAwaitsClose(matter)) return { label: `⚖ ${legalStageLabel(matter.stage).toLowerCase()} · close it`, tone: 'legal' }
+  if (matterIsClosed(matter)) return { label: `⚖ ${legalStageLabel(matter.stage)}`, tone: 'neutral' }
   if (matter.review_requested_at) return { label: '⚖ review requested', tone: 'blue' }
   return null
 }
@@ -103,12 +150,38 @@ export function heldOverridesOf(matter: LegalMatterRow | null | undefined): Reco
   return out
 }
 
-/** Toggle one timeline entry: the override only exists where it differs from the default. */
-export function withHoldOverride(current: Readonly<Record<string, boolean>>, key: string, held: boolean, heldByDefault: boolean): Record<string, boolean> {
-  const next = { ...current }
-  if (held === heldByDefault) delete next[key]
-  else next[key] = held
-  return next
+/** Where the office's reason for each hold rides (#85 item 29): inside `held_overrides`, a key the boolean readers skip. */
+export const HELD_REASONS_KEY = '_reasons'
+
+/** The office's reason for each held entry, keyed like the overrides; {} when none were written. */
+export function heldReasonsOf(matter: LegalMatterRow | null | undefined): Record<string, string> {
+  const raw = matter?.held_overrides
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const reasons = (raw as Record<string, unknown>)[HELD_REASONS_KEY]
+  if (!reasons || typeof reasons !== 'object' || Array.isArray(reasons)) return {}
+  const out: Record<string, string> = {}
+  for (const [k, v] of Object.entries(reasons as Record<string, unknown>)) if (typeof v === 'string') out[k] = v
+  return out
+}
+
+/**
+ * The `held_overrides` to save after holding one entry back (with the office's
+ * reason) or sharing it again (`reason` null). Since #85 item 29 everything
+ * goes to counsel unless held: only `true` is kept, an old `false` is dropped,
+ * and a hold without a reason is refused by the caller.
+ */
+export function withHold(matter: LegalMatterRow | null | undefined, key: string, reason: string | null): Record<string, unknown> {
+  const holds = Object.fromEntries(Object.entries(heldOverridesOf(matter)).filter(([, v]) => v === true)) as Record<string, unknown>
+  const reasons = heldReasonsOf(matter)
+  if (reason != null && reason.trim()) {
+    holds[key] = true
+    reasons[key] = reason.trim()
+  } else {
+    delete holds[key]
+    delete reasons[key]
+  }
+  for (const k of Object.keys(reasons)) if (holds[k] !== true) delete reasons[k]
+  return Object.keys(reasons).length ? { ...holds, [HELD_REASONS_KEY]: reasons } : holds
 }
 
 export function feeModelOf(firm: LegalFirmRow | null | undefined): LegalFeeModel {
@@ -158,14 +231,15 @@ export function buildLegalReview(
   const byKey = new Map(matters.map((m) => [m.payer_key, m] as const))
   const under = accounts.filter((a) => {
     const m = byKey.get(a.key)
-    return !m || (!stageIsWithFirm(m.stage) && !stageIsClosed(m.stage))
+    return !m || (!matterIsWithFirm(m) && !matterIsClosed(m))
   })
-  const withFirm = accounts.filter((a) => stageIsWithFirm(byKey.get(a.key)?.stage)).length
+  const withFirm = accounts.filter((a) => matterIsWithFirm(byKey.get(a.key))).length
   const requested = under
     .filter((a) => byKey.get(a.key)?.review_requested_at)
     .map((a) => {
       const m = byKey.get(a.key) as LegalMatterRow
-      const at = (m.review_requested_at ?? '').slice(0, 10)
+      // An instant: its day in APP_CALENDAR_TZ, as the desk's own "asked N days ago" reads it.
+      const at = calendarYmdInAppTzFromIso(m.review_requested_at ?? '')
       return { key: a.key, name: a.name, by: userNameOf(m.review_requested_by), note: m.review_request_note, days: /^\d{4}-\d{2}-\d{2}$/.test(at) ? daysBetween(at, todayYmd) : null }
     })
     .sort((x, y) => (y.days ?? 0) - (x.days ?? 0))
@@ -201,6 +275,9 @@ export type LegalRecipientRow = {
   paused_at: string | null
   added_via_portal?: boolean
   removed_at?: string | null
+  /** v2.4662: when emails to this person began failing, and the mail service's last refusal; null while they go through. */
+  send_failed_since?: string | null
+  send_error?: string | null
 }
 
 export type ReleaseRecipientLine = { name: string; email: string; bucket: 'now' | 'digest' | 'unconfirmed' | 'stopped'; why: string }
@@ -240,12 +317,14 @@ export type LegalFirmActivity = {
   feeTotal: number
   steps: number
   questions: number
+  /** The firm's settlements under the office's floor, waiting on a sign-off (#85 item 20) — counted apart from questions. */
+  settlements: number
   /** The firm's answers to the office's asks (#41 PR 3), and how many of them are sign-offs granted. */
   answers: number
   signoffs: number
   payments: number
   paymentTotal: number
-  /** The account the card opens on: a payment first, then a question, then an answer, then the newest. */
+  /** The account the card opens on: a settlement to sign off first, then a payment, then a question, then an answer, then the newest. */
   firstKey: string | null
   firstName: string | null
   latestAt: string | null
@@ -253,9 +332,10 @@ export type LegalFirmActivity = {
 
 export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters: ReadonlyArray<LegalMatterRow>): LegalFirmActivity {
   const byId = new Map(matters.map((m) => [m.id, m] as const))
-  const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const kindRank = (k: string) => (k === 'payment_received' ? 0 : k === 'question' ? 1 : k === 'answer' ? 2 : 3)
-  const first = [...open].sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || b.created_at.localeCompare(a.created_at))[0] ?? null
+  const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && !e.voided_at && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const isSettlement = (e: LegalEntryRow) => e.kind === 'question' && e.meta != null && typeof e.meta === 'object' && (e.meta as { flavor?: unknown }).flavor === 'settlement'
+  const kindRank = (e: LegalEntryRow) => (isSettlement(e) ? 0 : e.kind === 'payment_received' ? 1 : e.kind === 'question' ? 2 : e.kind === 'answer' ? 3 : 4)
+  const first = [...open].sort((a, b) => kindRank(a) - kindRank(b) || b.created_at.localeCompare(a.created_at))[0] ?? null
   const fm = first ? byId.get(first.matter_id) ?? null : null
   const sum = (k: string) => open.filter((e) => e.kind === k).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   return {
@@ -263,7 +343,8 @@ export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters
     fees: open.filter((e) => e.kind === 'fee' || e.kind === 'cost').length,
     feeTotal: sum('fee') + sum('cost'),
     steps: open.filter((e) => e.kind === 'step').length,
-    questions: open.filter((e) => e.kind === 'question').length,
+    questions: open.filter((e) => e.kind === 'question' && !isSettlement(e)).length,
+    settlements: open.filter(isSettlement).length,
     answers: open.filter((e) => e.kind === 'answer').length,
     signoffs: open.filter((e) => e.kind === 'answer' && e.meta != null && typeof e.meta === 'object' && (e.meta as { signedOff?: unknown }).signedOff === true).length,
     payments: open.filter((e) => e.kind === 'payment_received').length,

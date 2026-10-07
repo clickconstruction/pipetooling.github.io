@@ -1201,6 +1201,7 @@ export default function Projects() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1004,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => {
             if (projectSuperintendentSaving) return

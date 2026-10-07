@@ -31,6 +31,7 @@ import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { renderStatementRoundHtml, roundTotal, statementRoundSubject, statementRoundText, type StatementRoundPayload } from './render.ts'
 import { isOfficeWeekPayload, officeWeekSubject, officeWeekText, renderOfficeWeekHtml, type OfficeWeekPayload } from './renderOfficeWeek.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,7 +83,7 @@ async function fetchOfficeWeek(admin: Admin): Promise<OfficeWeekPayload | null> 
 type UserRow = { id: string; email: string | null; name: string | null; role: string | null; archived_at: string | null }
 
 async function loadUser(admin: Admin, id: string): Promise<UserRow | null> {
-  const { data } = await admin.from('users').select('id, email, name, role, archived_at').eq('is_sample', false).eq('id', id).maybeSingle()
+  const { data } = await admin.from('users').select('id, email, name, role, archived_at').match(REAL_ACCOUNT).eq('id', id).maybeSingle()
   return (data as UserRow | null) ?? null
 }
 

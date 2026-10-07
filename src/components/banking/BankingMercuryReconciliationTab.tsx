@@ -12,6 +12,7 @@ import {
   type ReconMonth,
   type ReconResult,
 } from '../../lib/mercuryReconciliation'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 const MONTHS_OPTIONS = [3, 6, 12] as const
 
@@ -29,9 +30,10 @@ function StatusPill({ status, children }: { status: 'ok' | 'warn' | 'muted'; chi
   )
 }
 
+/** A Mercury `postedAt` instant's day in the company calendar. */
 function fmtDate(iso: string | null): string {
   if (!iso) return '—'
-  return iso.slice(0, 10)
+  return calendarYmdInAppTzFromIso(iso) || iso.slice(0, 10)
 }
 
 function MonthRow({ m }: { m: ReconMonth }) {

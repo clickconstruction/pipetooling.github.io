@@ -74,6 +74,27 @@ describe('LegalDeskModal', () => {
     expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
   })
 
+  it("on Paper, a stop's title opens the window on the stop as evidence — the record, the rule, the Lien window door (v2.4800)", async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
+    await settle()
+    fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
+    await waitFor(() => expect(document.querySelector('[data-legal-job-timeline] [data-lien-timeline-stop-door]')).toBeTruthy())
+    const doors = [...document.querySelectorAll('[data-legal-job-timeline] [data-lien-timeline-stop-door]')] as HTMLButtonElement[]
+    const suit = doors.find((d) => d.dataset.lienTimelineStopDoor === 'suit')!
+    fireEvent.click(suit)
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('Suit to foreclose the lien')
+    // The filing checklist: an original contractor owes no § 53.056 notice, so row A reads not needed; the affidavit is not on file.
+    expect(screen.getByTestId('lien-stop-paper-checklist')).toBeTruthy()
+    expect(screen.getAllByTestId('lien-stop-paper-check').map((n) => n.getAttribute('data-status')).slice(0, 2)).toEqual(['not_needed', 'not_on_file'])
+    expect(screen.getByTestId('lien-stop-paper-rule-words').textContent).toContain('§ 53.158')
+    expect(screen.getByTestId('lien-stop-paper-rail-venue').textContent).toContain('district court')
+    expect(screen.getByTestId('lien-stop-paper-move').textContent).toBe('COUNSEL')
+    expect(screen.getByTestId('lien-stop-paper-act').textContent).toBe('Open the job’s Lien window ›')
+    expect(screen.getByTestId('lien-stop-paper-second-act').textContent).toBe('Copy the record as text')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+  })
+
   it('renders an empty state when nothing is in Collections', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[]} {...baseProps} />)
     await settle()
@@ -98,7 +119,7 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     byPayerKey: new Map(),
     byJobId: new Map(),
     jobIdsByMatter: new Map(),
-    entriesByMatter: new Map(),
+    entriesByMatter: new Map(), documentsByMatter: new Map(),
     recipients: [],
     firmPaused: false,
     reload: async () => {},
@@ -144,5 +165,47 @@ describe('LegalDeskModal · a window inside the desk (v2.4352)', () => {
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Apply discount' })).toBeTruthy()
     expect(desk()).toBeTruthy()
+  })
+
+  it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {
+    const onClose = await renderDesk({ canMarkReady: true, canEditReview: true })
+    fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
+    const win = screen.getByRole('dialog', { name: 'The collections law firm' })
+    expect(win).toBeTruthy()
+    fireEvent.click(win.parentElement!)
+    expect(screen.queryByRole('dialog', { name: 'The collections law firm' })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(desk()).toBeTruthy()
+  })
+
+  it('with no firm, the header and the release sheet both open the firm’s window (v2.4711)', async () => {
+    renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: null, firms: [] }} canMarkReady canEditReview />)
+    await settle()
+    expect(screen.getByRole('button', { name: 'Set up the collections law firm' }).textContent).toBe('No firm yet · Set up the firm…')
+    fireEvent.click(screen.getByRole('button', { name: '⚖ Mark attorney ready…' }))
+    expect(screen.getByText('No firm is set up yet.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Set up the firm…' }))
+    expect(screen.queryByRole('dialog', { name: 'Mark attorney-ready' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'The collections law firm' })).toBeTruthy()
+  })
+
+  it('a given-up account sits under Given up on with a pill in place of Mark attorney ready (punch list #94, v2.4794)', async () => {
+    const givenUp = {
+      ...makeJob({ id: 'job-g', hcp_number: '008', status: 'billed', collections_at: '2026-03-01T15:00:00Z', customer_id: 'surf', customer_name: 'Surf Thru', revenue: 250, payments_made: 0, invoices: [] }),
+      uncollectible_at: '2026-10-07T03:30:00Z',
+      uncollectible_reason: 'No response from the customer in 7 months.',
+    }
+    renderWithProviders(<LegalDeskModal open canMarkReady collectionsJobs={[collectionsJob('job-a', '717', 7502)]} uncollectibleJobs={[givenUp]} {...baseProps} />)
+    await settle()
+    expect(screen.getByText(/^Given up on · 1/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Surf Thru/ }))
+    await settle()
+    expect(screen.getByText('Given up on — not for the firm')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Mark attorney ready/ })).toBeNull()
+    // The chased account keeps the desk's usual header (the smoke has no legal tables, so that is the read-only note).
+    fireEvent.click(screen.getByRole('button', { name: /The Learning Experience/ }))
+    await settle()
+    expect(screen.queryByText('Given up on — not for the firm')).toBeNull()
+    expect(screen.getByText('Read-only until the legal tables are applied.')).toBeTruthy()
   })
 })

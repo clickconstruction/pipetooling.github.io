@@ -190,8 +190,8 @@ export function JobCalendarModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
-        padding: '1rem',
+        zIndex: 760,
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
     >
       <div
@@ -204,7 +204,7 @@ export function JobCalendarModal({
           borderRadius: 10,
           padding: '1rem',
           width: 'min(560px, 100%)',
-          maxHeight: 'min(90vh, 46rem)',
+          maxHeight: 'min(90vh, 46rem, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)',

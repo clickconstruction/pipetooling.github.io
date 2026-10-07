@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
- * The Person desk ends above the Dispatch / Job mode footer (v2.4380). The bar is fixed at z 1000
- * over the desk (z 60), and the desk's last row — Merge a duplicate…, Archive — sat under it.
+ * The Person desk ends above the Dispatch / Job mode footer (v2.4380). The bar was fixed at z 1000
+ * over the desk (z 60) then, and the desk's last row — Merge a duplicate…, Archive — sat under it.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
@@ -19,5 +19,7 @@ describe('PersonDeskDrawer', () => {
     const desk = screen.getByRole('dialog', { name: 'Person Desk: Kai Moss' })
     expect(desk.style.top).toBe('0px')
     expect(desk.style.bottom).toBe('var(--app-bottom-chrome, 0px)')
+    // and starts below an iPhone's status bar (v2.4444): the backdrop still covers it, the panel does not
+    expect(desk.style.paddingTop).toBe('var(--app-top-chrome, 0px)')
   })
 })

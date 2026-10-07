@@ -56,7 +56,7 @@ export function MyTimeNcnsPrecloseDialog({ flow, zIndex }: MyTimeNcnsPrecloseDia
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={flow.closePreclose}
     >
@@ -191,7 +191,7 @@ export function MyTimeNcnsDialog({ flow, personLabel, dateLabel, zIndex }: MyTim
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={flow.dismissDialog}
     >

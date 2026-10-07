@@ -8,9 +8,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { loadStageSplitsForBid } from '../bids/materialsByStageIo'
 import { asDecision } from './submittalRevision'
+import { isOrderOnlyRow } from './orderOnly'
 import type { SubmittalPartRow } from './itemParts'
 import { asPartStage, isCarrier } from './itemParts'
 import {
+  partLineDecision,
   stageDatesFromJob,
   tagStagesFrom,
   type ProcurementItemSource,
@@ -88,21 +90,31 @@ export async function loadStageDatesForBid(supabase: Client, bidId: string): Pro
   return { jobId: job.id, stageDates: stageDatesFromJob(fixtures ?? [], windows ?? []) }
 }
 
-type ItemLike = { id?: string; tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null }
+type ItemLike = { id?: string; review_note?: string | null; tag: string; submitted_manufacturer: string | null; submitted_model: string | null; submitted_label: string | null; specified_manufacturer: string | null; specified_model: string | null; specified_description: string | null; lead_time_days: number | null; review_decision: string | null; reviewed_at: string | null; supply_house_id: string | null; source_count_row_id?: string | null; order_only?: boolean | null }
 
 /**
  * The newest revision's rows as the log reads them; the house names come from one read. A row
  * with parts (2026-10-01) gives one line per part: the part's name, house, lead time and stage,
- * the fixtures counted × how many go on one, and its call — its own, else the row's; an order-only
- * part takes the row's call (it is released with its fixture).
+ * the fixtures counted × how many go on one, and its call (`partLineDecision`: its own; the
+ * row's when the row was called whole; an order-only part is released with its fixture). An
+ * order-only row (2026-10-02) waits for no call: every line of it is ready to order and stays
+ * off the GC's copies.
  */
 export async function procurementItemsFrom(supabase: Client, items: ReadonlyArray<ItemLike>, shared: boolean, parts: ReadonlyArray<SubmittalPartRow> = []): Promise<ProcurementItemSource[]> {
   const houseIds = [...new Set([...items.map((i) => i.supply_house_id), ...parts.map((p) => p.supply_house_id)].filter((x): x is string => !!x))]
   const names = new Map<string, string>()
+  // v2.4685 · a house's usual lead time stands in for a part that has none of its own; a typed number wins.
+  const usual = new Map<string, number>()
   if (houseIds.length > 0) {
-    const { data } = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
-    for (const h of data ?? []) names.set(h.id, h.name)
+    // Until the column is pushed the select with it fails: read the names alone then, as the Materials tab does.
+    let res: { data: unknown; error: unknown } = await supabase.from('supply_houses').select('id, name, default_lead_time_days').in('id', houseIds)
+    if (res.error) res = await supabase.from('supply_houses').select('id, name').in('id', houseIds)
+    for (const h of ((res.data ?? []) as Array<{ id: string; name: string; default_lead_time_days?: number | null }>)) {
+      names.set(h.id, h.name)
+      if (h.default_lead_time_days != null) usual.set(h.id, h.default_lead_time_days)
+    }
   }
+  const leadOf = (own: number | null | undefined, houseId: string | null | undefined): number | null => own ?? (houseId ? usual.get(houseId) ?? null : null)
   // How many fixtures the takeoff counted, for the parts' quantities and each tag's heading (2026-10-02).
   const countRowIds = [...new Set(items.map((i) => i.source_count_row_id).filter((x): x is string => !!x))]
   const counts = new Map<string, number>()
@@ -120,29 +132,35 @@ export async function procurementItemsFrom(supabase: Client, items: ReadonlyArra
     const submitted = [i.submitted_manufacturer, i.submitted_model].filter(Boolean).join(' ') || i.submitted_label || ''
     const specified = [i.specified_manufacturer, i.specified_model].filter(Boolean).join(' ') || i.specified_description || ''
     const d = asDecision(i.review_decision)
-    const rowDecision = d ? { kind: d, at: i.reviewed_at } : null
+    // The whole fixture is the office's: no call is read, and no line of it reaches the GC.
+    const noGc = isOrderOnlyRow(i)
+    const rowDecision = d && !noGc ? { kind: d, at: i.reviewed_at } : null
     const itemId = (i as ItemLike & { id?: string }).id
     const counted = i.source_count_row_id ?? null
     const base = { tag: i.tag.trim(), shared, sourceCountRowId: counted, itemId: itemId ?? null, fixture: counted ? fixtures.get(counted) ?? null : null, fixtureCount: counted ? counts.get(counted) ?? null : null }
     const rowParts = itemId ? parts.filter((p) => p.item_id === itemId).sort((a, b) => a.sequence_order - b.sequence_order) : []
     if (rowParts.length === 0) {
-      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: i.lead_time_days, decision: rowDecision, ...(submitted ? {} : { noProduct: true }) })
+      out.push({ ...base, product: submitted || specified || '(no product)', supplyHouse: i.supply_house_id ? names.get(i.supply_house_id) ?? null : null, leadTimeDays: leadOf(i.lead_time_days, i.supply_house_id), decision: rowDecision, reviewNote: i.review_note?.trim() || null, ...(submitted ? {} : { noProduct: true }), ...(noGc ? { orderOnly: true, noGc: true } : {}) })
       continue
     }
     const fixtureCount = i.source_count_row_id ? counts.get(i.source_count_row_id) ?? null : null
+    const rowCalledByPart = rowParts.some((p) => p.on_submittal && asDecision(p.review_decision) != null)
     for (const p of rowParts) {
       const own = asDecision(p.review_decision)
       out.push({
         ...base,
         product: p.label.trim(),
         supplyHouse: p.supply_house_id ? names.get(p.supply_house_id) ?? null : null,
-        leadTimeDays: p.lead_time_days ?? i.lead_time_days,
-        decision: !p.on_submittal ? rowDecision : own ? { kind: own, at: p.reviewed_at } : rowDecision,
+        leadTimeDays: leadOf(p.lead_time_days ?? i.lead_time_days, p.supply_house_id),
+        decision: noGc ? null : partLineDecision({ onSubmittal: p.on_submittal, own: own ? { kind: own, at: p.reviewed_at } : null, row: rowDecision, rowCalledByPart }),
         partKey: p.procure_key,
         partOrder: p.sequence_order,
-        orderOnly: !p.on_submittal,
+        orderOnly: noGc || !p.on_submittal,
+        ...(noGc ? { noGc: true } : {}),
         quantity: fixtureCount != null ? fixtureCount * Number(p.quantity) : null,
         pricedLabel: p.priced_label ?? null,
+        // The part's own note, else the row's when the row was called whole.
+        reviewNote: p.review_note?.trim() || i.review_note?.trim() || null,
         assembly: p.assembly ?? null,
         addedByHand: p.source === 'hand',
         // A carrier with no stage of its own is needed at Rough In (2026-10-02).

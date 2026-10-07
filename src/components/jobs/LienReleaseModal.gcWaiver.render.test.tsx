@@ -107,8 +107,39 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(screen.getByText('Conditional Waiver and Release on Final Payment')).toBeTruthy()
     expect(form.textContent).toContain('§ 53.284(d)')
     fireEvent.click(within(form).getByRole('button', { name: 'Unconditional' }))
-    expect(screen.getByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    expect(await screen.findByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
     expect(screen.getByTestId('lien-waiver-why').textContent).toContain('Only after the last payment has settled')
+  })
+
+  it('Unconditional asks first: Stay conditional changes nothing, Acknowledge switches the form (v2.4507)', async () => {
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    const form = await screen.findByTestId('lien-waiver-form')
+    await settle()
+    const unconditional = () => within(form).getByRole('button', { name: 'Unconditional' })
+    fireEvent.click(unconditional())
+    const ask = await screen.findByRole('alertdialog', { name: 'Are you sure you meant to choose Unconditional?' })
+    expect(ask.textContent).toContain('Have you spoken to your master plumber?')
+    expect(ask.textContent).toContain('Most GCs will accept a conditional waiver, even when they ask for an unconditional one.')
+    expect(ask.textContent).toContain('Signing an unconditional waiver gives up all your rights.')
+    // Nothing moved yet, and the safe button holds the focus.
+    expect(unconditional().getAttribute('aria-pressed')).toBe('false')
+    const stay = within(ask).getByRole('button', { name: 'Stay conditional' })
+    expect(document.activeElement).toBe(stay)
+    fireEvent.click(stay)
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(unconditional().getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByText('Conditional Waiver and Release on Progress Payment')).toBeTruthy()
+
+    fireEvent.click(unconditional())
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(unconditional().getAttribute('aria-pressed')).toBe('true'))
+    expect(screen.getByText('Unconditional Waiver and Release on Progress Payment')).toBeTruthy()
+    // Already unconditional: the button is a no-op, and Progress or Final never asks.
+    fireEvent.click(unconditional())
+    fireEvent.click(within(form).getByRole('button', { name: 'Final' }))
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(screen.getByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
   })
 
   it('the signer block names the job’s leader; He signs now mints the row for him and opens the pad — his name, draw only', async () => {
@@ -139,5 +170,62 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(agree.style.alignItems).toBe('center')
     // …and Sign it / Not now sit centred under it, so the tick and the button line up.
     expect(within(pad).getByTestId('lien-waiver-sign-actions').style.justifyContent).toBe('center')
+  })
+
+  it('every route into Unconditional asks (v2.4582): a window opened on it asks once; Stay conditional closes a preset window', async () => {
+    const onClose = vi.fn()
+    // Issue unconditional's route: the opener names the form.
+    renderWithProviders(<LienReleaseModal open onClose={onClose} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" initialFormType="unconditional_progress" />)
+    const ask = await screen.findByRole('alertdialog', { name: 'Are you sure you meant to choose Unconditional?' })
+    fireEvent.click(within(ask).getByRole('button', { name: 'Stay conditional' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
+    cleanup()
+    onClose.mockClear()
+    // Acknowledge keeps the window on the form it was opened for.
+    renderWithProviders(<LienReleaseModal open onClose={onClose} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" initialFormType="unconditional_progress" />)
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(onClose).not.toHaveBeenCalled()
+    expect(within(screen.getByTestId('lien-waiver-form')).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('Add the unconditional on a paid bill opens on that bill and its unconditional form (#87 I)', async () => {
+    // A bill paid in full is marked paid (mark_invoice_paid); the window used to leave it out and open on Conditional · progress.
+    const paid = makeInvoice({ id: 'inv-paid', status: 'paid', amount: 9022.49, sequence_order: 0 })
+    const later = makeInvoice({ id: 'inv-later', status: 'billed', amount: 15406, sequence_order: 1 })
+    const paidJob = { ...job, invoices: [paid, later] }
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={paidJob} invoice={paid} signerNameFallback="Malachi Reyes" />)
+    // The bill picked the unconditional, so the window asks first (v2.4582).
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    const form = screen.getByTestId('lien-waiver-form')
+    expect(within(form).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Unconditional Waiver and Release on Progress Payment')).toBeTruthy()
+    // That bill is the one selected, and its chip says it is paid.
+    const chipPaid = screen.getByRole('button', { name: /#1 · \$9,022\.49/ })
+    expect(chipPaid.getAttribute('aria-pressed')).toBe('true')
+    expect(chipPaid.getAttribute('title')).toMatch(/^Paid — /)
+    expect(screen.getByRole('button', { name: /#2 · / }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('Issue unconditional selects every bill its conditional covered, not only the first (#87 D)', async () => {
+    // The conditional covered two bills; both are paid now. Before #87 the window took only the opener's first one.
+    const paidA = makeInvoice({ id: 'inv-a', status: 'paid', amount: 9022.49, sequence_order: 0 })
+    const paidB = makeInvoice({ id: 'inv-b', status: 'paid', amount: 4100, sequence_order: 1 })
+    const later = makeInvoice({ id: 'inv-later', status: 'billed', amount: 15406, sequence_order: 2 })
+    const coveredJob = { ...job, invoices: [paidA, paidB, later] }
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={coveredJob} invoice={paidA} invoiceIds={['inv-b', 'inv-a']} signerNameFallback="Malachi Reyes" initialFormType="unconditional_progress" />)
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Acknowledge and choose Unconditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(screen.getByRole('button', { name: /#1 · \$9,022\.49/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /#2 · \$4,100/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: /#3 · / }).getAttribute('aria-pressed')).toBe('false')
+  })
+
+  it('a window that opens conditional asks nothing (v2.4582)', async () => {
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    await screen.findByTestId('lien-waiver-form')
+    await settle()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })

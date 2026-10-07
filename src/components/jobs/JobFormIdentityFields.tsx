@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import JobFormAddressNudge from './JobFormAddressNudge'
+import JobFormAddressPin from './JobFormAddressPin'
 import JobAddressSuggestions from './JobAddressSuggestions'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
 import { suggestionSavedAddress, type AddressSuggestion } from '../../lib/addressAutocomplete'
@@ -120,6 +121,8 @@ export function JobFormIdentityFields({
   const [addressFocused, setAddressFocused] = useState(false)
   const [suggestionsSuppressed, setSuggestionsSuppressed] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState(0)
+  // Leaving the address field asks the pin line to look the address up (v2.4783).
+  const [pinBlur, setPinBlur] = useState(0)
   const { suggestions, clearSuggestions } = useAddressSuggestions(
     jobAddress,
     addressFocused && !suggestionsSuppressed,
@@ -276,6 +279,7 @@ export function JobFormIdentityFields({
               // is what the statement prints.
               onBlur={() => {
                 setAddressFocused(false)
+                setPinBlur((n) => n + 1)
                 const cased = titleCaseAddress(jobAddress)
                 if (cased !== jobAddress) setJobAddress(cased)
               }}
@@ -334,6 +338,8 @@ export function JobFormIdentityFields({
               typing and to the paste button alike, since both go through
               setJobAddress. */}
           <JobFormAddressNudge address={jobAddress} onApply={setJobAddress} />
+          {/* The address pins itself (v2.4783): the cache, else a lookup on blur or after a pause. */}
+          <JobFormAddressPin address={jobAddress} blurSignal={pinBlur} />
         </div>
       </div>
     </>

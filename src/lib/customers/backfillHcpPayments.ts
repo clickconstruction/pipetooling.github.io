@@ -4,10 +4,11 @@
  * them. This kernel plans one synthetic payment per such job — amount is the
  * app's own revenue (the billed figure the rail compares against), the date
  * comes from the HCP jobs export with a fallback chain:
- * paid-in-full date → HCP completed date → HCP created date → the ledger
- * row's created date. Pure — parsed CSV cells and flat job rows in, a
+ * paid-in-full date → HCP completed date → HCP created date → the day the
+ * ledger row was made, in the company calendar. Pure — parsed CSV cells and flat job rows in, a
  * reviewable plan out; nothing writes here.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type BackfillJobInput = {
   id: string
@@ -141,7 +142,7 @@ export function planHcpPaymentBackfill(
       paidOn = hcp.createdOn
       dateSource = 'hcp_created'
     } else if (job.created_at) {
-      paidOn = job.created_at.slice(0, 10)
+      paidOn = calendarYmdInAppTzFromIso(job.created_at) || null
     }
     if (!paidOn) continue
     const hcpLabel = (job.hcp_number ?? '').trim()

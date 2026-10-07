@@ -125,7 +125,7 @@ function ApBillModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1110,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -141,7 +141,7 @@ function ApBillModal({
           background: 'var(--surface)',
           borderRadius: 8,
           width: expanded ? 'min(1100px, 96vw)' : 'min(520px, 96vw)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
@@ -325,7 +325,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1110,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -416,6 +416,7 @@ function ItemsModal({
   onOpenApBill,
   apBills,
   arCollectionsSection,
+  arUncollectibleSection = null,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -432,6 +433,8 @@ function ItemsModal({
   apBills: Record<string, DashboardApBill> | null
   /** AR only: parked difficult-to-collect receivables — listed after the main rows, excluded from the headline total. */
   arCollectionsSection: FinancialBucket | null
+  /** v2.4784: the Uncollectible section of the AR drill-down (punch list #94). */
+  arUncollectibleSection?: FinancialBucket | null
 }) {
   const meta = CARD_META[cardKey]
   // Grouped views (items keep their amount-desc order within each section):
@@ -479,12 +482,16 @@ function ItemsModal({
               ] as ModalSection[]
             ).filter((s) => s.items.length > 0)
           })()
-        : cardKey === 'ar' && arCollectionsSection && arCollectionsSection.count > 0
-          ? [
-              { title: null, items: bucket.items },
-              // Parked receivables — its own collapsible section, outside the headline total.
-              { title: 'Collections', items: arCollectionsSection.items, noun: 'bill' },
-            ]
+        : cardKey === 'ar' && ((arCollectionsSection && arCollectionsSection.count > 0) || (arUncollectibleSection && arUncollectibleSection.count > 0))
+          ? (
+              [
+                { title: null, items: bucket.items },
+                // Parked receivables — its own collapsible section, outside the headline total.
+                { title: 'Collections', items: arCollectionsSection?.items ?? [], noun: 'bill' },
+                // v2.4784: given up on — its own section, outside Owed altogether (punch list #94).
+                { title: 'Uncollectible — not owed', items: arUncollectibleSection?.items ?? [], noun: 'bill' },
+              ] as ModalSection[]
+            ).filter((s) => s.title === null || s.items.length > 0)
           : [{ title: null, items: bucket.items }]
   // Search + sort + aging state shared by the phone sheet and the desktop
   // table (v2.1483 / v2.1484). The AR column-header sort was replaced by the
@@ -872,7 +879,7 @@ function ItemsModal({
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose()
         }}
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1100 }}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}
       >
         <div
           role="dialog"
@@ -886,7 +893,7 @@ function ItemsModal({
             background: 'var(--surface)',
             borderRadius: '14px 14px 0 0',
             width: '100%',
-            height: '92dvh',
+            height: 'min(92dvh, 100%)',
             display: 'flex',
             flexDirection: 'column',
             boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
@@ -1206,7 +1213,7 @@ function ItemsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -1223,7 +1230,7 @@ function ItemsModal({
           borderRadius: 8,
           maxWidth: 'min(880px, 94vw)',
           width: '100%',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -1617,6 +1624,11 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
               data.arCollections.count > 0
                 ? ` · Collections ${formatMoneyShortK(data.arCollections.total)} (${data.arCollections.count})`
                 : ''
+            }${
+              // v2.4784: the Collections money the office gave up on — said, never summed (punch list #94).
+              data.arUncollectible.count > 0
+                ? ` · Uncollectible ${formatMoneyShortK(data.arUncollectible.total)} (${data.arUncollectible.count}), not owed`
+                : ''
             }`,
             // Bills the kernel keeps out of Owed (on a paid or deleted job) — said, never summed.
             ...(data.arExcluded.count > 0
@@ -1804,6 +1816,7 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
           }
           apBills={openCard === 'ap' ? data.apBills : null}
           arCollectionsSection={openCard === 'ar' ? data.arCollections : null}
+          arUncollectibleSection={openCard === 'ar' ? data.arUncollectible : null}
         />
       ) : null}
       {apBill ? (

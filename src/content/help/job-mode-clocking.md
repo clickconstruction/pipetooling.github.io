@@ -101,9 +101,9 @@ Three ways, depending on your day:
 
 All three doors run the same short stack. Most days you see one screen. The others only appear when there is something to catch.
 
-1. **Assign your spending before you clock out** appears only sometimes. You see it when you have card charges from today with no job on them. You pick the job for each. Your recent jobs are offered first. Or you **skip** and sort them later in Job Parts Tally. Why now? The charge is easiest to place while you still remember which house you were at.
+1. **Assign your spending before you clock out** appears only sometimes. You see it when you have card charges from today with no job on them. Pick the job for each. Your recent jobs are offered first. Or **skip** and sort them later in Job Parts Tally. Why now? The charge is easiest to place while you still remember which house you were at.
 2. **Review before clock out** always appears. *What did you work on?* takes a one-line note. The note is required. The job list confirms where the time goes. The job you are clocked into is first with a {{chip:green|You are here}} tag. So the usual answer is just to leave it. Why? The note is what the office reads when they approve your hours.
-3. ***Missing reports from today (click to make report)*** appears only when a job on today's schedule has no report yet. It shows one red button per job. You tap one to file the report right there. Or you finish clocking out and file it later with **Job Report** on your Dashboard. Why? A report filed the same day beats a phone call tomorrow.
+3. ***Missing reports from today (click to make report)*** appears only when a job on today's schedule has no report yet. It shows one red button per job. Tap one to file the report right there. Or finish clocking out and file it later with **Job Report** on your Dashboard. Why? A report filed the same day beats a phone call tomorrow.
 4. **Team feedback** is a short card about how your teammates did. It comes on a cadence the office sets, days or weeks apart, not daily. {{button:blue|Start}} answers it now. {{button:outline|Not now · remind me in N days}} puts it off. Left alone, it closes itself in 30 seconds and comes back when it is due again.
 
 Then {{button:red|Complete clock out}} ends the session. If it fails to reach the server, the same {{button:outline|Retry}} panel as Clock In appears. Nothing is recorded until it succeeds.
@@ -140,8 +140,8 @@ You may have switched **Write up a change from the field** on in Settings. Then 
 
 You are clocked in on a job that has no signed agreement yet. The customer is standing there. Under the card's buttons there is one more line: {{button:outline|✍ Hand the phone to the customer to sign}}.
 
-1. You tap it. The app opens this job's agreement on your phone. It is the same page the office sends by link. It shows the work, the price and payment line and the terms. It shows a note that says you are present.
-2. You hand the phone over. They read it. They type or draw their name. They tick **I agree to sign electronically** and press **Sign agreement**.
-3. You take the phone back. The job now reads {{chip:green|✍ Signed}} everywhere. Their signed copy goes to the email on the job.
+1. Tap it. The app opens this job's agreement on your phone. It is the same page the office sends by link. It shows the work, the price and payment line and the terms. It shows a note that says you are present.
+2. Hand the phone over. They read it. They type or draw their name. They tick **I agree to sign electronically** and press **Sign agreement**.
+3. Take the phone back. The job now reads {{chip:green|✍ Signed}} everywhere. Their signed copy goes to the email on the job.
 
 Nothing is emailed until they sign. If the office already sent this customer an agreement, the same one opens. If there is none yet, the app makes it from the job's own facts. So there is nothing to type. The line shows for the master, primary, superintendent and estimator roles. It disappears once the job is signed.

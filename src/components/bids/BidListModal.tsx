@@ -103,8 +103,8 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
   }
 
   return (
-    <div role="presentation" onClick={(e) => e.target === e.currentTarget && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_INDEX, padding: '1rem' }}>
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth: 780, maxHeight: 'min(92vh, 720px)', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
+    <div role="presentation" onClick={(e) => e.target === e.currentTarget && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_INDEX, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth: 780, maxHeight: 'min(92vh, 720px, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.35)', overflow: 'hidden' }}>
         <div style={{ padding: '0.85rem 1rem 0.6rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
           {d ? (
             <span style={{ display: 'inline-flex', gap: 4, flexShrink: 0 }}>

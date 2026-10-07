@@ -4,6 +4,8 @@ import {
   buildLienSupplierCard,
   buildLienSupplierJobs,
   lienSupplierEmailText,
+  lienSupplierLetterParagraph,
+  lienSupplierLetterParagraphFor,
   lienSupplierHouseNotice,
   lienSupplierMark,
   lienSupplierNotice,
@@ -263,5 +265,62 @@ describe('what the house told us (v2.4411)', () => {
     expect(parseSupplierWordBalance('7393.333')).toEqual({ ok: true, value: 7393.33 })
     expect(parseSupplierWordBalance('about 9k')).toEqual({ ok: false })
     expect(parseSupplierWordBalance('-5')).toEqual({ ok: false })
+  })
+})
+
+describe('the owner’s cover letter paragraph (v2.4725)', () => {
+  const ctx = { propertyKind: 'non_residential', todayYmd: TODAY, openBalance: 18400, payerName: 'Alder' }
+  const WORD = { houseId: 'reece', balance: 8950 as number | null, noticeYmd: '2026-10-14' as string | null, saidBy: 'Dana', note: '', notedByName: 'Grace', notedYmd: '2026-10-02' }
+  const oneHouse = (over: Partial<LienSupplierInvoiceInput> = {}, words?: typeof WORD) =>
+    buildLienSupplierJobs({ invoices: [inv({ id: 'a', amount: 130.75, invoice_date: '2026-08-05', ...over })], allocations: [{ invoice_id: 'a', job_id: 'j', pct: 100 }], houses: HOUSES, ...(words ? { wordsByJob: new Map([['j', [words]]]) } : {}) }).get('j')!
+
+  it('our estimate of its day: the house, its money, the day as ours, the separate claim, what clears it', () => {
+    const card = buildLienSupplierCard(oneHouse(), { ...ctx, openBalance: 17585 })
+    expect(lienSupplierLetterParagraph(card, { claim: 17585 })).toBe(
+      'You should also know that Reece sold materials for this job and is still owed $130.75. We expect Reece’s own notice by November 16. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $17,585.00. Paying us the $17,585.00 is what lets us clear that account.',
+    )
+  })
+
+  it('the day the house gave is said as the house’s, and its own balance is the figure', () => {
+    const card = buildLienSupplierCard(oneHouse({ amount: 7393.33 }, { ...WORD, balance: null }), { ...ctx, openBalance: 15722.49 })
+    expect(lienSupplierLetterParagraph(card, { claim: 15722.49 })).toBe(
+      'You should also know that Reece sold materials for this job and is still owed $7,393.33. Reece told us its own notice goes out on October 14 unless that balance is paid. That notice is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $15,722.49. Paying us the $15,722.49 is what lets us clear that account.',
+    )
+    // The house's own figure beats our books: the notice is its claim.
+    const theirs = buildLienSupplierCard(oneHouse({ amount: 7393.33 }, WORD), { ...ctx, openBalance: 15722.49 })
+    expect(lienSupplierLetterParagraph(theirs, { claim: 15722.49 })).toContain('is still owed $8,950.00. Reece told us')
+    // A day already past reads as past.
+    const past = buildLienSupplierCard(oneHouse({}, { ...WORD, balance: null, noticeYmd: '2026-09-30' }), ctx)
+    expect(lienSupplierLetterParagraph(past, { claim: 18400 })).toContain('Reece told us its own notice went out on September 30 unless that balance is paid.')
+  })
+
+  it('no date to give: the notice stays a possibility; a closed window names the money only', () => {
+    const noDate = buildLienSupplierCard(oneHouse({ invoice_date: '' }), ctx)
+    expect(noDate.rows[0]!.notice).toEqual({ kind: 'none' })
+    expect(lienSupplierLetterParagraph(noDate, { claim: 17585 })).toBe(
+      'You should also know that Reece sold materials for this job and is still owed $130.75. Reece may send its own notice for that balance. That notice would be Reece’s own claim for materials. It is not covered by our release, and it is not included in the $17,585.00. Paying us the $17,585.00 is what lets us clear that account.',
+    )
+    const closed = buildLienSupplierCard(oneHouse({ invoice_date: '2026-05-04' }), ctx)
+    expect(closed.rows[0]!.notice.kind).toBe('closed')
+    expect(lienSupplierLetterParagraph(closed, { claim: 17585 })).toBe(
+      'You should also know that Reece sold materials for this job and is still owed $130.75. That balance is Reece’s own claim for materials. It is not covered by our release, and it is not included in the $17,585.00. Paying us the $17,585.00 is what lets us clear that account.',
+    )
+  })
+
+  it('several houses: counted, listed, each with its own day; the clears-it sentence only when our claim covers them', () => {
+    const card = buildLienSupplierCard(jobs().get('job')!, ctx)
+    expect(lienSupplierLetterParagraph(card, { claim: 18400 })).toBe(
+      'You should also know that three supply houses sold materials for this job and are still owed $13,058.30 between them: Reece $9,612.40, Ferguson $2,340.15, Moore Supply $1,105.75. We expect Reece’s own notice by October 15. We expect Ferguson’s own notice by November 16. Those notices are the houses’ own claims for materials. They are not covered by our release, and they are not included in the $18,400.00. Paying us the $18,400.00 is what lets us clear those accounts.',
+    )
+    expect(lienSupplierLetterParagraph(card, { claim: 9800 })).not.toContain('is what lets us clear')
+    expect(lienSupplierLetterParagraph(card, { claim: 9800 })).toContain('they are not included in the $9,800.00.')
+  })
+
+  it('nothing owed, nothing said; the job builder answers the same words', () => {
+    const paidUp = buildLienSupplierJobs({ invoices: [inv({ id: 'p', amount: 4210, is_paid: true, paidYmd: '2026-08-01' })], allocations: [{ invoice_id: 'p', job_id: 'j', pct: 100 }], houses: HOUSES })
+    expect(lienSupplierLetterParagraph(buildLienSupplierCard(paidUp.get('j')!, ctx), { claim: 18400 })).toBe('')
+    expect(lienSupplierLetterParagraphFor(paidUp.get('j'), { propertyKind: '', todayYmd: TODAY, payerName: 'Alder', claim: 18400 })).toBe('')
+    expect(lienSupplierLetterParagraphFor(undefined, { propertyKind: '', todayYmd: TODAY, payerName: 'Alder', claim: 18400 })).toBe('')
+    expect(lienSupplierLetterParagraphFor(oneHouse(), { propertyKind: 'non_residential', todayYmd: TODAY, payerName: 'Alder', claim: 17585 })).toContain('We expect Reece’s own notice by November 16.')
   })
 })

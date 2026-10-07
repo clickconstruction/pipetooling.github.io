@@ -8,13 +8,14 @@
  *   node scripts/bids-live-walk.mjs walk     out/main           # the 20 steps → out/main/walk-result.json
  *   node scripts/bids-live-walk.mjs snapshot out/main 398,490   # each bid's four tabs as text → snapshot.json
  *   node scripts/bids-live-walk.mjs diff     out/main out/branch
+ *   node scripts/bids-live-walk.mjs phone    out/phone 398,403      # every bid tab at 375 px → phone.json
  *
  * PORT (default 5173) is the dev server's port. BID (default 398) is the test bid, BP398 "ZZ Test".
  *
  * What it writes, and only this: a version named "ZZ walk (delete me)" on the test bid, made from
  * "To Plans", edited, then deleted; and the bid's labor rate, changed and put back. The last step
  * checks "To Plans" reads as it did. If a run dies half way, the next run reuses the leftover
- * version and deletes it; or open the bid and delete it by hand.
+ * version and deletes it; or open the bid and delete it by hand. `phone` only reads.
  * `login` stores a real prod session. Delete e2e/.auth/bids-walk.json when you are done.
  */
 import { chromium } from '@playwright/test'
@@ -330,6 +331,69 @@ async function snapshot(OUT, BIDS) {
   await b.close()
 }
 
+/**
+ * Every bid tab at a phone width (v2.4451): what in the open bid's card runs past its right edge,
+ * and what sits under its ×. Exits 1 when anything does. A page that scrolls sideways for other
+ * reasons (a wide table further down) is reported, not failed.
+ */
+const PHONE_TABS = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release', 'submission-followup']
+async function phone(OUT, BIDS) {
+  mkdirSync(OUT, { recursive: true })
+  const desk = await open()
+  const ids = {}
+  for (const n of BIDS) {
+    try {
+      await openBid(desk.page, n)
+      ids[n] = new URL(desk.page.url()).searchParams.get('bidId')
+    } catch { ids[n] = null }
+  }
+  await desk.b.close()
+  const b = await chromium.launch()
+  const ctx = await b.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: STATE })
+  const page = await ctx.newPage()
+  const errors = []
+  page.on('pageerror', (e) => errors.push('pageerror: ' + e.message))
+  const result = {}
+  let bad = 0
+  for (const n of BIDS) {
+    if (!ids[n]) { console.log(`B${n}: not found`); bad += 1; continue }
+    for (const t of PHONE_TABS) {
+      await page.goto(`${BASE}/bids?tab=${t}&bidId=${ids[n]}`)
+      try {
+        await page.waitForFunction(() => Array.from(document.querySelectorAll('main h2')).some((h) => /\b(BP|B)\d+/.test(h.textContent || '')), null, { timeout: 60000 })
+      } catch { result[`B${n} ${t}`] = { missing: true }; console.log(`B${n} ${t}: no bid title`); bad += 1; continue }
+      await page.waitForTimeout(6000)
+      const r = await page.evaluate(() => {
+        const cw = document.documentElement.clientWidth
+        const h2 = Array.from(document.querySelectorAll('main h2')).find((h) => /\b(BP|B)\d+/.test(h.textContent || ''))
+        let card = h2.parentElement
+        while (card && card.tagName !== 'MAIN') {
+          const cs = getComputedStyle(card)
+          if (parseFloat(cs.borderLeftWidth) >= 1 && parseFloat(cs.borderRightWidth) >= 1 && parseFloat(cs.paddingLeft) >= 8) break
+          card = card.parentElement
+        }
+        const cr = card.getBoundingClientRect()
+        const scrolled = (el) => { for (let p = el.parentElement; p && p !== card; p = p.parentElement) if (getComputedStyle(p).overflowX !== 'visible') return true; return false }
+        const name = (el) => ((el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40)) || el.tagName
+        const top = Array.from(card.querySelectorAll('h2, button, a, [role="button"]')).filter((el) => { const e = el.getBoundingClientRect(); return e.width > 0 && e.top < cr.top + 400 && !scrolled(el) })
+        const past = top.filter((el) => { const e = el.getBoundingClientRect(); return e.right > cr.right - 1 || e.right > cw + 0.5 }).map(name)
+        const x = card.querySelector('button[aria-label="Close"]')
+        const xr = x?.getBoundingClientRect()
+        const under = !xr ? [] : top.filter((el) => el !== x && !el.contains(x)).filter((el) => { const e = el.getBoundingClientRect(); return e.left < xr.right && e.right > xr.left && e.top < xr.bottom && e.bottom > xr.top }).map(name)
+        return { past, under, pageWiderBy: document.documentElement.scrollWidth - cw }
+      })
+      result[`B${n} ${t}`] = r
+      if (r.past.length || r.under.length) bad += 1
+      console.log(`B${n} ${t.padEnd(19)} ${r.past.length ? 'past the card: ' + r.past.join(' | ') : 'inside the card'}${r.under.length ? ' · under the ×: ' + r.under.join(' | ') : ''}${r.pageWiderBy > 0 ? ` · page scrolls sideways ${r.pageWiderBy}px` : ''}`)
+      await page.screenshot({ path: `${OUT}/B${n}-${t}.png`, fullPage: false })
+    }
+  }
+  writeFileSync(`${OUT}/phone.json`, JSON.stringify({ result, errors }, null, 1))
+  console.log('errors:', JSON.stringify([...new Set(errors)].slice(0, 12)))
+  await b.close()
+  return bad + errors.length
+}
+
 async function login() {
   mkdirSync(dirname(STATE), { recursive: true })
   const b = await chromium.launch()
@@ -380,4 +444,5 @@ if (mode === 'login') await login()
 else if (mode === 'walk' && argA) { const R = await walk(argA); process.exit(Object.values(R).some((v) => typeof v === 'string' && v.startsWith('FAILED')) || R.errors.length ? 1 : 0) }
 else if (mode === 'snapshot' && argA) await snapshot(argA, (argB || BID).split(','))
 else if (mode === 'diff' && argA && argB) process.exit(diff(argA, argB) ? 1 : 0)
-else { console.error('usage: bids-live-walk.mjs login | walk <out> | snapshot <out> [bids] | diff <outA> <outB>'); process.exit(2) }
+else if (mode === 'phone' && argA) process.exit((await phone(argA, (argB || BID).split(','))) ? 1 : 0)
+else { console.error('usage: bids-live-walk.mjs login | walk <out> | snapshot <out> [bids] | diff <outA> <outB> | phone <out> [bids]'); process.exit(2) }

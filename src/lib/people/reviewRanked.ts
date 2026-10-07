@@ -98,7 +98,7 @@ export type ReviewVerdict = {
   costs: number
   /** The team's share of each cost-line tag's card charges, in manager order. */
   byTag: Array<{ tag: CategoryTagRow; usd: number }>
-  /** Wheels on Labor (v2.2735): vehicle deals priced per field hour — company trucks and own-vehicle fuel, as positive costs. */
+  /** Wheels on Labor (v2.2735): the vehicle lines as positive costs — company trucks (fixed costs + fuel on no job) and own-vehicle fuel on no job (v2.4653). */
   wheels: { company: number; own: number }
   /** Stored positive (a cost). */
   overheadLabor: number
@@ -171,7 +171,7 @@ export function buildReviewVerdict(
     segments.push({ key: 'overheadLabor', label: 'Overhead labor', usd: overheadLabor, share: share(overheadLabor) })
     segments.push({ key: 'burden', label: 'Parts burden', usd: burden, share: share(burden) })
     if (wheels.company > 0) segments.push({ key: 'wheelsCompany', icon: '🚚', label: 'Company trucks', usd: wheels.company, share: share(wheels.company) })
-    if (wheels.own > 0) segments.push({ key: 'wheelsOwn', icon: '🚗', label: 'Own-vehicle fuel', usd: wheels.own, share: share(wheels.own) })
+    if (wheels.own > 0) segments.push({ key: 'wheelsOwn', icon: '🚗', label: 'Own-vehicle fuel on no job', usd: wheels.own, share: share(wheels.own) })
     segments.push({ key: 'profit', label: 'Profit', usd: profit, share: share(profit) })
   }
 
@@ -332,30 +332,35 @@ export type ReviewPersonMath = {
   watchouts: string[]
 }
 
+/** $1,234.56 for the drawer's "why" text, unsigned: the caller says which way the money went. */
+const fmtUsd2 = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
 /**
- * The vehicle deal as a drawer line (v2.2735). Own vehicle: fuel per field
- * hour, on the labor side of the story. Company truck: the truck all-in.
- * A deal with no rate yet still gets a line, at $0, saying why.
+ * The vehicle deal as a drawer line (v2.2735). Since v2.4653 (punch list #52 PR 5) the deal's fuel
+ * stays on the jobs it was put on — it is in the ⛽ line above, shared like every job cost — so the
+ * line charges only what is not on a job: the deal's fixed $/field h (company truck: insurance +
+ * registration + service; a manual fixed rate wins) and the person's fuel on no job in the period.
  */
 function wheelsLines(b: TeamSummaryBreakdown): ReviewMathLine[] {
   if (b.vehicleArrangement === 'none') return []
-  const rateText = b.vehicleRate != null ? `${fmtH1(b.fieldHours)} field h × $${b.vehicleRate.toFixed(2)}` : 'no rate yet — see People → Vehicles → Wheels'
-  if (b.vehicleArrangement === 'company') {
-    return [
-      {
-        key: 'wheels',
-        label: `− 🚚 ${b.vehicleTruckName ?? 'Company truck'}`,
-        why: `${rateText} (fuel + insurance + registration + service ÷ the holder's field hours, 90-day; their fuel is kept out of the job purchases above)`,
-        usd: b.vehicleCost,
-        kind: 'out',
-      },
-    ]
-  }
+  const fuelOff = -b.vehicleFuelOffJobs
+  // A refund on no job can outweigh the period's fuel on no job; then that part gives money back.
+  const refund = fuelOff <= -0.005
+  const fuelText = refund ? `a ${fmtUsd2(fuelOff)} fuel refund on no job in the period comes back` : `${fmtUsd2(fuelOff)} of their fuel on no job in the period`
+  const fixedText =
+    b.vehicleRate != null && b.vehicleRate !== 0
+      ? `${fmtH1(b.fieldHours)} field h × $${b.vehicleRate.toFixed(2)} fixed`
+      : b.vehicleArrangement !== 'company'
+        ? null
+        : b.vehicleRate === 0
+          ? 'no insurance, registration or service on file for the truck'
+          : 'no fixed rate yet, see People → Vehicles → Wheels'
+  const why = `${fixedText ? `${fixedText}${refund ? ', and ' : ' + '}` : ''}${fuelText}; their fuel on jobs is in the ⛽ line above`
   return [
     {
       key: 'wheels',
-      label: '− 🚗 Own-vehicle fuel',
-      why: `${rateText} (their fuel-tag card charges ÷ field hours, 90-day — part of employing them, kept out of the job purchases above)`,
+      label: b.vehicleArrangement === 'company' ? `− 🚚 ${b.vehicleTruckName ?? 'Company truck'}` : '− 🚗 Own-vehicle fuel on no job',
+      why,
       usd: b.vehicleCost,
       kind: 'out',
     },

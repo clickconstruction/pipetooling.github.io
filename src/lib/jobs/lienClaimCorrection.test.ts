@@ -59,3 +59,12 @@ describe('correctedClaim (v2.3682)', () => {
     expect(collectionsNoteLine({ collections_note: 'note', revenue: 100, payments_made: 500 }, c())).toBe('note')
   })
 })
+
+describe('a correction set in the evening keeps its day (v2.4468)', () => {
+  it('reads the Central day', () => {
+    // 00:30 UTC on Sep 22 is 7:30 pm CDT on Sep 21; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(correctionSetWords(c({ setAt: '2026-09-22T00:30:00Z' }), (d) => d)).toBe('Taunya · 2026-09-21 · “GC disputes the 8/14 change order ($1,500); claim the agreed portion”')
+    expect(correctionSetWords(c({ setAt: '2026-12-02T00:30:00+00:00' }), (d) => d)).toMatch(/^Taunya · 2026-12-01 · /)
+    expect(correctionSetWords(c({ setAt: '2026-09-22T12:00:00Z' }), (d) => d)).toMatch(/^Taunya · 2026-09-22 · /)
+  })
+})

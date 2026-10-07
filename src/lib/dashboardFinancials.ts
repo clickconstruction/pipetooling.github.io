@@ -71,6 +71,8 @@ export type FinancialJobRow = {
   last_work_date: string | null
   /** Difficult-to-collect flag; in Collections = status='billed' AND collections_at set. */
   collections_at?: string | null
+  /** Uncollectible (punch list #94, v2.4784): a Collections job the office gave up on — never owed. */
+  uncollectible_at?: string | null
   /** Stages % complete (0–100), manually set on the Jobs Stages table. */
   pct_complete?: number | null
   /** Customer identity for the AR modal's Customers view (v2.2571). */
@@ -182,13 +184,14 @@ function arItemFromRow(
  * soon), `collections` is parked receivables. Both are the bill-truth kernel's buckets shaped
  * into items — membership by status (a fully-paid-but-unmarked bill stays as a $0 settled row,
  * so the count matches the Pipeline strip), remainders clamped once in the kernel, bills on paid
- * or missing jobs excluded and counted in `excluded`. ar.total + collections.total = Owed.
+ * or missing jobs excluded and counted in `excluded`. ar.total + collections.total = Owed;
+ * `uncollectible` (v2.4784) is the Collections money the office gave up on — shown, never owed.
  */
 export function buildArBuckets(
   jobs: FinancialJobRow[],
   invoices: FinancialInvoiceRow[],
   invoicePayments: FinancialInvoicePaymentRow[],
-): { ar: FinancialBucket; collections: FinancialBucket; excluded: ArExcluded; truth: BillTruth } {
+): { ar: FinancialBucket; collections: FinancialBucket; uncollectible: FinancialBucket; excluded: ArExcluded; truth: BillTruth } {
   const truth = computeBillTruth({ jobs, invoices, payments: invoicePayments })
   const jobsById = new Map(jobs.map((j) => [j.id, j]))
   const invoiceById = new Map(invoices.map((i) => [i.id, i]))
@@ -196,6 +199,7 @@ export function buildArBuckets(
   return {
     ar: finishBucket(toItems(truth.billed.rows)),
     collections: finishBucket(toItems(truth.collections.rows)),
+    uncollectible: finishBucket(toItems(truth.uncollectible.rows)),
     excluded: { count: truth.excludedOwed.count, total: truth.excludedOwed.total },
     truth,
   }

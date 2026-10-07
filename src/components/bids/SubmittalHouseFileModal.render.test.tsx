@@ -60,4 +60,20 @@ describe('SubmittalHouseFileModal', () => {
     expect(lavChoice.keep).toMatchObject({ t25: true, flange: true })
     expect(choices[matches.findIndex((m) => m.tag === 'ET-1')]!.addRow).toBe(false)
   })
+  it('2026-10-04 · choices changed and not applied: a click outside asks first; untouched, Esc closes at once', () => {
+    const onClose = vi.fn()
+    const props = { fileName: 'SPACEX BA-2 CORE & SHELL.pdf', read, matches, rows, partsByItem: parts, houses: [{ id: 'h-nws', name: 'National Wholesale' }], houseId: null, onApply: () => {}, onClose }
+    const { unmount } = render(<SubmittalHouseFileModal {...props} />)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    unmount()
+    render(<SubmittalHouseFileModal {...props} />)
+    const lav2 = screen.getAllByTestId('house-file-tag').find((c) => c.textContent?.startsWith('LAV-2'))!
+    fireEvent.change(within(within(lav2).getAllByTestId('house-file-part')[0]!).getByRole('combobox'), { target: { value: 'kohler' } })
+    fireEvent.click(screen.getByRole('presentation'))
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('leave-question').textContent).toContain('Your choices for this file are not applied yet.')
+    fireEvent.click(screen.getByTestId('leave-confirm'))
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
 })

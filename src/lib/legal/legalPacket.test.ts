@@ -5,11 +5,13 @@ import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobDemandLetterRow } from '../jobs/demandLetterTracking'
 import type { JobContractRowLike } from '../jobs/jobContractCoverage'
 import {
+  legalLargestOpenLine,
   legalLienClockWords,
   buildLegalPacket,
   daysBetweenYmd,
   groupCollectionsByPayer,
   invoiceReachedCustomer,
+  jobAgingYmd,
   jobOpenBalance,
   payerForJob,
   quickNet,
@@ -17,6 +19,7 @@ import {
   type LegalAccountSummary,
   type LegalPacketInput,
 } from './legalPacket'
+import { buildLegalPacketPrintHtml } from './legalPacketPrint'
 
 const TODAY = '2026-09-11'
 
@@ -129,6 +132,12 @@ describe('buildLegalPacket', () => {
       ['payment', '2026-06-02', -200],
     ])
     expect(packet.account.jobs.find((j) => j.jobId === 'job-a')?.primaryInvoiceId).toBe('inv-a')
+    // The account's largest open line (v2.4570): the header's Write down… opens on it, whichever job holds it.
+    const lines = packet.account.jobs
+    expect(lines.find((j) => j.jobId === 'job-a')?.primaryInvoiceOpen).toBeGreaterThan(0)
+    expect(legalLargestOpenLine(lines)?.invoiceId).toBe([...lines].sort((x, y) => y.primaryInvoiceOpen - x.primaryInvoiceOpen)[0]!.primaryInvoiceId)
+    expect(legalLargestOpenLine([{ jobId: 'j1', primaryInvoiceId: null, primaryInvoiceOpen: 0 }, { jobId: 'j2', primaryInvoiceId: 'inv-2', primaryInvoiceOpen: 300 }, { jobId: 'j3', primaryInvoiceId: 'inv-3', primaryInvoiceOpen: 900 }])).toEqual({ jobId: 'j3', invoiceId: 'inv-3' })
+    expect(legalLargestOpenLine([{ jobId: 'j1', primaryInvoiceId: null, primaryInvoiceOpen: 0 }])).toBeNull()
     expect(packet.theirWord.firstBillYmd).toBe('2026-04-17')
     expect(packet.theirWord.timeline.find((e) => e.kind === 'note')).toEqual(expect.objectContaining({ key: 'note:job-a', by: 'Taunya', shared: true }))
   })
@@ -149,6 +158,18 @@ describe('buildLegalPacket', () => {
     expect(partial.gaps.find((g) => g.key === 'contract:job-a')?.severity).toBe('stop')
     expect(partial.gaps.find((g) => g.key === 'contract:job-b')?.severity).toBe('warn')
     expect(partial.worth.verdict).toBe('worth it')
+    // The facts behind the theory travel as data for the firm's words (punch list #85, item 4).
+    expect(partial.account.jobs.map((j) => [j.jobId, j.record.field])).toEqual(expect.arrayContaining([['job-a', 'none'], ['job-b', 'gps']]))
+    expect(partial.account.jobs.every((j) => j.record.dispute === false)).toBe(true)
+  })
+
+  it('the printed packet dates a signed or sent agreement on the company calendar', () => {
+    // Signed 7:30 pm CDT on Apr 2 (Apr 3 in UTC); the other job's agreement went out 6:30 pm CST on Dec 1.
+    const signed: JobContractRowLike = { id: 'c1', job_id: 'job-a', status: 'signed', revision: 1, recipient_email: null, sent_at: null, last_sent_at: null, view_count: 0, signed_at: '2026-04-03T00:30:00+00:00', signer_printed_name: 'Aaron Smith', signer_mode: 'typed', voided_at: null }
+    const sent: JobContractRowLike = { id: 'c2', job_id: 'job-b', status: 'sent', revision: 1, recipient_email: 'aaron@tle.test', sent_at: '2026-12-02T00:30:00Z', last_sent_at: null, view_count: 2, signed_at: null, signer_printed_name: null, signer_mode: null, voided_at: null }
+    const html = buildLegalPacketPrintHtml(buildLegalPacket(baseInput(account, { contracts: [signed, sent] })), { preparedOn: TODAY, companyName: 'Click Plumbing and Electrical' })
+    expect(html).toContain('Signed 2026-04-02 by Aaron Smith')
+    expect(html).toContain('Sent 2026-12-01 · viewed 2×')
   })
 
   it('a dispute on record breaks the sworn account; a signed paper contract restores the theory and letters the exhibit', () => {
@@ -157,6 +178,7 @@ describe('buildLegalPacket', () => {
     )
     expect(disputed.theory.key).toBe('none')
     expect(disputed.worth.flags).toContain('dispute on record')
+    expect(disputed.account.jobs.every((j) => j.record.dispute)).toBe(true)
     const contract: JobContractRowLike = { id: 'c1', job_id: 'job-a', status: 'signed', revision: 1, recipient_email: null, sent_at: null, last_sent_at: null, view_count: 0, signed_at: '2026-04-01T10:00:00Z', signer_printed_name: 'Aaron Smith', signer_mode: 'paper', voided_at: null }
     const signed = buildLegalPacket(baseInput(account, { ...withEvidence, contracts: [contract] }))
     expect(signed.theory.key).toBe('contract')
@@ -197,7 +219,41 @@ describe('buildLegalPacket', () => {
     expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.label).toMatch(/§ 53.056 notice due 2026-10-15/)
   })
 
-  it('their word: one timeline, entries before the first bill held by default, overrides win both ways', () => {
+  it('their word reads each instant on the company calendar: a call or promise the evening before the first bill is that evening', () => {
+    // The first bill is Apr 17 at noon. Both were logged at 7:30 pm CDT on Apr 16, which is Apr 17 in UTC.
+    const packet = buildLegalPacket(
+      baseInput(account, {
+        promises: [{ id: 'pr0', jobId: 'job-a', customerId: 'tle', promisedYmd: '2026-04-30', saidBy: 'Aaron', heardByName: 'Malachi', channel: 'phone', source: 'office', note: null, createdAt: '2026-04-17T00:30:00+00:00' }],
+        chaseTouches: [{ id: 't0', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-04-17T00:30:00Z', createdByName: 'Taunya' }],
+      }),
+    )
+    const byKey = new Map(packet.theirWord.timeline.map((e) => [e.key, e] as const))
+    // #85 item 29: before the first bill or after, both go to counsel.
+    expect(byKey.get('call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: true, shared: true }))
+    expect(byKey.get('promise:pr0')).toEqual(expect.objectContaining({ ymd: '2026-04-16', sharedByDefault: true, shared: true }))
+    // The same call at noon UTC on Apr 17 is the bill's own day.
+    const noon = buildLegalPacket(baseInput(account, { chaseTouches: [{ id: 't0', customerId: 'tle', jobId: null, outcome: 'cant_reach', note: null, promisedYmd: null, snoozeDays: null, resolvedAt: null, createdAt: '2026-04-17T12:00:00Z', createdByName: 'Taunya' }] }))
+    expect(noon.theirWord.timeline.find((e) => e.key === 'call:t0')).toEqual(expect.objectContaining({ ymd: '2026-04-17', shared: true }))
+  })
+
+  it('the first bill, the aging and the collections flag read their instants on the company calendar', () => {
+    // Billed 7:30 pm CDT on Apr 16 (Apr 17 in UTC); flagged for collections 6:30 pm CST on Dec 1.
+    const evening = collectionsJob({
+      id: 'job-e', hcp_number: '719', customer_id: 'tle', customer_name: 'The Learning Experience', collections_note: 'Moved after the third call.',
+      collections_at: '2026-12-02T00:30:00Z',
+      invoices: [billedInvoice('inv-e', 500, '2026-04-17', { billed_at: '2026-04-17T00:30:00+00:00' })],
+    })
+    expect(jobAgingYmd(evening)).toBe('2026-04-16')
+    const acc = groupCollectionsByPayer([evening], new Map(), '2026-12-10')[0] as LegalAccountSummary
+    expect(acc.oldestDays).toBe(daysBetweenYmd('2026-04-16', '2026-12-10'))
+    expect(acc.reviewDays).toBe(9)
+    const packet = buildLegalPacket({ ...baseInput(acc), todayYmd: '2026-12-10' })
+    expect(packet.theirWord.firstBillYmd).toBe('2026-04-16')
+    expect(packet.account.ledger[0]).toEqual(expect.objectContaining({ kind: 'invoice', ymd: '2026-04-16' }))
+    expect(packet.theirWord.timeline.find((e) => e.kind === 'note')?.ymd).toBe('2026-12-01')
+  })
+
+  it('their word: one timeline, every entry goes to counsel unless held; an old share override is a no-op (#85 item 29)', () => {
     const packet = buildLegalPacket(
       baseInput(account, {
         contactEntries: [
@@ -211,7 +267,7 @@ describe('buildLegalPacket', () => {
       }),
     )
     expect(packet.theirWord.timeline.map((e) => [e.key, e.sharedByDefault, e.shared])).toEqual([
-      ['contact:c1', false, true],
+      ['contact:c1', true, true],
       ['contact:c2', true, false],
       ['call:t1', true, true],
       ['promise:pr1', true, true],
@@ -236,10 +292,13 @@ describe('buildLegalPacket', () => {
   it('property records: incomplete warns with what is missing; complete is silent and lien-ready', () => {
     const addr = (over: Partial<CustomerAddressRow>): CustomerAddressRow =>
       ({ id: 'a1', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', county_source: 'manual', legal_description: 'Lot 4, Block B', owner_mode: 'company', owner_name: '', owner_company: 'TLE Holdings', owner_mailing_address: 'PO Box 1', parcel_id: 'R123', parcel_source: 'cad', parcel_tax_year: '2026', parcel_looked_up_at: null, homestead: false, property_kind: 'non_residential', is_primary: true, note: null, sequence_order: 0, created_at: null, updated_at: null, ...over }) as CustomerAddressRow
-    const complete = buildLegalPacket(baseInput(account, { addresses: [addr({})] }))
-    expect(complete.account.properties[0]).toEqual(expect.objectContaining({ lienReady: true, gaps: [] }))
+    // Item 6: the property is the record each job names, whoever's record it is; both jobs stand on it.
+    const linked = { ...account, jobs: account.jobs.map((j) => ({ ...j, customer_address_id: 'a1' })) }
+    const complete = buildLegalPacket(baseInput(linked, { jobAddresses: [addr({})] }))
+    expect(complete.account.properties).toHaveLength(1)
+    expect(complete.account.properties[0]).toEqual(expect.objectContaining({ lienReady: true, gaps: [], source: 'linked', jobLabels: ['717', '718'] }))
     expect(complete.gaps.some((g) => g.key.startsWith('property'))).toBe(false)
-    const partial = buildLegalPacket(baseInput(account, { addresses: [addr({ county: '', legal_description: '' })] }))
+    const partial = buildLegalPacket(baseInput(linked, { jobAddresses: [addr({ county: '', legal_description: '' })] }))
     expect(partial.gaps.find((g) => g.key.startsWith('property:'))?.detail).toMatch(/Missing/)
   })
 

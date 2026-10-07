@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal: documents from the office, and the narrative — mockup</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.new { background: #111827; color: #fff; } .cap.alt { background: #E5E7EB; color: #374151; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 110ch; }
+  ul.notes li { margin: 5px 0; }
+  table.plan { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.plan th, table.plan td { border: 1px solid #D1D5DB; padding: 5px 8px; text-align: left; vertical-align: top; }
+  table.plan th { background: #F3F4F6; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #374151; }
+  code { background: #F3F4F6; padding: 1px 4px; border-radius: 3px; font-size: 12px; }
+  .paper { background: #f6f3ec; color: #16283c; padding: 18px; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .card { background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; padding: 14px 16px; }
+  .muted { color: #5a6b7e; } .faint { color: #8a97a6; } .lnk { color: #b0662f; font-weight: 600; }
+  .tabs { display: flex; gap: 2px; border-bottom: 1px solid #ddd6c8; margin: 10px 0 12px; font-size: 13px; }
+  .tabs span { padding: 6px 12px; color: #5a6b7e; border-bottom: 2px solid transparent; }
+  .tabs span.on { color: #16283c; font-weight: 700; border-bottom-color: #b0662f; }
+  .h { margin: 16px 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8a97a6; font-weight: 700; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.t th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 5px 8px; }
+  table.t td { padding: 7px 8px; border-bottom: 1px solid #ddd6c8; vertical-align: top; }
+  .md h4 { font-size: 13px; margin: 14px 0 4px; } .md p { margin: 4px 0; font-size: 13.5px; } .md table { border-collapse: collapse; font-size: 12.5px; margin: 6px 0; } .md td, .md th { border: 1px solid #ddd6c8; padding: 4px 8px; vertical-align: top; } .md th { background: #f1ece2; text-align: left; }
+  .band { font-size: 12px; color: #5a6b7e; background: #f1ece2; padding: 6px 10px; border-radius: 4px; margin-bottom: 10px; }
+  .office { background: #fff; color: #1f2937; border: 1px solid #D1D5DB; border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .office .sec { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #6B7280; font-weight: 700; margin: 12px 0 6px; }
+  .drop { border: 2px dashed #aab2bd; border-radius: 8px; padding: 14px; text-align: center; color: #6B7280; background: #F9FAFB; }
+  .btn { display: inline-block; border: 1px solid #aab2bd; border-radius: 6px; padding: 4px 10px; font-weight: 600; background: #fff; color: #1f2937; }
+  .btn.blue { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .row { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1.6fr) auto; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dotted #E5E7EB; }
+  .in { border: 1px solid #aab2bd; border-radius: 5px; padding: 4px 8px; background: #fff; }
+  .ta { border: 1px solid #aab2bd; border-radius: 6px; padding: 8px; background: #fff; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; color: #374151; }
+  .print { background: #fff; color: #16283c; border: 1px solid #ddd6c8; padding: 16px 20px; font-size: 12.5px; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Legal portal · mockup · drawn on the sample matter</p><h1>Documents from the office, and the narrative</h1>
+<p>The owner, 2026-10-07, after an evidence pull for a live matter: <i>what does the legal portal ask for and is it easy for us or via MCP to add that? And since we are able to easily create a narrative, should we offer that in a tab in markdown for the legal team?</i> Today the portal counts evidence but cannot hold a document, and the office's only words to the firm are the short note and the question thread. Everything below is drawn on the sample matter (Brazos Ridge Contracting, the Kyle tenant finish-out).</p></header>
+
+<h2>1 · The Evidence tab gets the documents</h2>
+<div class="cap new">The firm's portal · the sample matter · Evidence</div>
+<div class="pane"><div class="paper"><div class="card">
+  <div class="tabs"><span>Narrative</span><span>Account</span><span>Paper</span><span>Record of contact</span><span class="on">Evidence</span><span>Fees &amp; steps</span></div>
+  <div class="h">Field work</div>
+  <table class="t"><tr><th>Job</th><th>Field reports</th><th>Clock sessions</th><th>Hours</th><th>Worked</th></tr>
+  <tr><td><b>1042</b></td><td>3 (3 with GPS)</td><td>6 approved</td><td>41h</td><td>2026-06-02 → 2026-07-30</td></tr></table>
+  <div class="h">Documents from the office · 3</div>
+  <table class="t"><tr><th>Document</th><th>What it shows</th><th>Added</th><th></th></tr>
+  <tr><td><b>Billing report, 2026-08-04</b><br><span class="faint">PDF · 63 KB</span></td><td>The office's itemization of the two bills: dates, hours, materials, the contractor discount.</td><td class="muted">Robin Ortega · 2026-10-07</td><td><span class="lnk">Open ↗</span></td></tr>
+  <tr><td><b>Supplier invoice, Hill Country Supply</b><br><span class="faint">PDF · 71 KB</span></td><td>The fixtures on the second bill, bought for this job on 2026-07-14.</td><td class="muted">Robin Ortega · 2026-10-07</td><td><span class="lnk">Open ↗</span></td></tr>
+  <tr><td><b>Emails with the GC, 2026-08-10 to 08-22</b><br><span class="faint">PDF · 210 KB</span></td><td>The GC's dispute of the second bill, the breakdown acknowledged, the superintendent's position on the rate.</td><td class="muted">Robin Ortega · 2026-10-07</td><td><span class="lnk">Open ↗</span></td></tr>
+  <tr><td colspan="4" class="faint" style="font-size:12px">Links open for 15 minutes, like the signed agreements. 1 document is held by the office. Ask the office for the field reports themselves.</td></tr></table>
+</div></div></div>
+
+<h2>2 · A Narrative tab, first</h2>
+<div class="cap new">The firm's portal · the sample matter · Narrative (the first tab)</div>
+<div class="pane"><div class="paper"><div class="card">
+  <div class="tabs"><span class="on">Narrative</span><span>Account</span><span>Paper</span><span>Record of contact</span><span>Evidence</span><span>Fees &amp; steps</span></div>
+  <div class="band">The office's account of this matter, written by Robin Ortega on 2026-10-07. The record behind it is on the other tabs; every document named here is under Evidence.</div>
+  <div class="md">
+    <h4>The parties</h4>
+    <p>Click was the plumbing sub to Brazos Ridge Contracting on the tenant finish-out at 200 Creekside Pkwy, Suite 200, Kyle. The owner of record is Alvarado Holdings LLC.</p>
+    <h4>What happened</h4>
+    <p><b>June 2 to July 30</b> — rough-in and trim, two bills, the first paid by check on 2026-07-14, the second ($14,400) unpaid.</p>
+    <p><b>August 10</b> — the GC: the second bill has no breakdown. <b>August 12</b> — the office: the breakdown is attached; the superintendent approved the extra fixtures on site.</p>
+    <p><b>August 22</b> — the superintendent: the work is not denied; the rate on the extras is disputed.</p>
+    <h4>What they say, what the record shows</h4>
+    <table><tr><th>The GC says</th><th>The record</th></tr>
+    <tr><td>The extras were not approved</td><td>The superintendent's own email of 2026-07-10, under Evidence</td></tr>
+    <tr><td>No breakdown</td><td>Billing report, 2026-08-04; the supplier invoice itemizes the fixtures</td></tr></table>
+    <h4>Still missing</h4>
+    <p>A signed change order for the extras.</p>
+  </div>
+</div></div></div>
+
+<h2>3 · The office side: the Legal desk's account pane</h2>
+<div class="cap alt">Legal desk · the account · a Documents section and a Narrative editor</div>
+<div class="pane"><div class="office">
+  <div class="sec">Documents for the firm · 3 shown · 1 held</div>
+  <div class="drop">Drop PDFs, images or .eml files here, or <span class="btn">Choose files</span> · each needs a title and one line on what it shows before it saves</div>
+  <div class="row"><span class="in">Billing report, 2026-08-04</span><span class="in">The office's itemization of the two bills: dates, hours, materials, the contractor discount.</span><span><span class="btn">Hold</span> <span class="btn">Remove</span></span></div>
+  <div class="row"><span class="in">Receivables report (internal)</span><span class="in">The office's own aging report on 2026-08-04</span><span><span class="btn" style="background:#FEF3C7;border-color:#F59E0B">Held · internal</span> <span class="btn">Remove</span></span></div>
+  <div class="sec">Narrative for the firm · saved 2026-10-07 by Robin Ortega</div>
+  <div class="ta">## The parties
+Click was the plumbing sub to Brazos Ridge Contracting …
+
+## What happened
+**June 2 to July 30** — rough-in and trim, two bills …</div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><span class="btn blue">Save narrative</span><span class="btn">Preview as the firm sees it</span><span class="muted" style="font-size:12px">Markdown: headings, bold, lists and tables. Name documents by their title under Documents so the firm can open them.</span></div>
+</div></div>
+
+<h2>4 · The printed packet</h2>
+<div class="cap alt">Page 2, after the letterhead; the exhibits list grows</div>
+<div class="pane"><div class="print">
+  <div style="font-weight:700;font-size:14px">Narrative</div>
+  <div class="muted" style="font-size:11px;margin-bottom:8px">The office's account, written by Robin Ortega, 2026-10-07. The record is in Sections A–D; the documents named are Exhibit G.</div>
+  <div style="font-size:12px">The parties … What happened … What they say, what the record shows … Still missing …</div>
+  <div style="font-weight:700;font-size:13px;margin-top:14px">Exhibits</div>
+  <div style="font-size:12px">A · Invoices and payments (3) · B · Signed agreements (1) · C · Final demand letters (1) · D · Lien notices and filings (1) · E · What was said (9) · F · Field reports and clock sessions (9) · <b>G · Documents from the office (3)</b> — listed by title; each opens on the portal.</div>
+</div></div>
+
+<h2>The plan</h2>
+<table class="plan"><thead><tr><th>PR</th><th>What ships</th><th>Where</th></tr></thead><tbody>
+<tr><td>A</td><td><b>Documents on the matter.</b> Table <code>legal_matter_documents</code> (matter, title, what it shows, storage path, mime, size, added by/at, held + reason, voided) and a private bucket <code>legal-matter-documents</code> (the office cohort reads and writes; the portal function mints 15-minute links as the service role). Desk: the Documents section on the account pane — drop zone, title and the one line, Hold, Remove (retire, never delete). Portal: <i>Documents from the office</i> under Evidence; print: Exhibit G. Function: <code>documents[]</code> on the matter, shaped. MCP: <code>plan_matter_document</code> / <code>apply_matter_document</code> (base64 file, title, what it shows) in the plan-and-apply shape, so a session can file a package straight to the matter.</td><td>migration, <code>legal-portal</code>, <code>dev-mcp</code>, <code>LegalDeskModal</code>, <code>LegalFirmMatterView</code>, print</td></tr>
+<tr><td>B</td><td><b>The Narrative tab.</b> Columns <code>legal_matters.narrative_md</code>, <code>narrative_updated_at</code>, <code>narrative_updated_by</code>, written through an office RPC. Desk: the editor with a preview. Portal: the first tab, rendered with the app's own markdown (<code>marked</code>, the help guides' renderer, sanitized, no raw HTML), under a standing band saying whose account it is. Print: page 2. Function: <code>narrative</code> on the matter. MCP: <code>plan_matter_narrative</code> / <code>apply_matter_narrative</code>.</td><td>migration, <code>legal-portal</code>, <code>dev-mcp</code>, desk, portal, print</td></tr>
+</tbody></table>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Documents first, narrative second.</b> A narrative that names exhibits the firm cannot open is a tease. Build the shelf, then the story that points at it.</li>
+  <li><b>One line on what it shows, required.</b> A file named by its export helps nobody. The desk will not save a document without a title and the one line, and the portal shows the line beside the title.</li>
+  <li><b>Hold, like entries.</b> The office may keep a document back with a reason — its own aging report is context, not an exhibit — and the firm sees only the count, exactly as with held entries. The share-everything default of item 29 stands.</li>
+  <li><b>The narrative is labelled, dated and signed.</b> A band on the tab and on the print says it is the office's account, by whom, when. Counsel reads it as a brief from the client, which is what it is. It can be rewritten; the portal shows only the current one, the desk keeps who last saved it.</li>
+  <li><b>Narrative first in the tab order.</b> The first draft put it last. A lawyer opening a new matter wants the story before the ledger; the ledger is one tab away.</li>
+  <li><b>Markdown, not a rich editor.</b> The office already writes markdown in the help guides, the app already renders it, and a session can write it through MCP. Tables, bold, lists; no raw HTML, no images (those are documents).</li>
+  <li><b>Emails as documents, not as entries.</b> A thread saved as a PDF or .eml is one document with one line on what it shows; turning each email into a record-of-contact entry would bury the firm. The record of contact stays what the office logged.</li>
+  <li><b>MCP writes in the plan-and-apply shape</b>, like cost batches and HR entries: a dry run with a hash, then the write, as the dev, logged. Size cap 10 MB a file; PDF, image, .eml and .txt only.</li>
+  <li><b>Mockups stay on the sample matter.</b> A first cut of this page carried a live matter's names and figures out of the owner's mailbox into the repo; it was stopped, rightly. The evidence itself goes on the matter, through the door this plan builds, never into a file that is committed.</li>
+  <li><b>Not done.</b> Previews inside the portal (the firm opens the file), versions of a document (remove and add), and drafting the narrative from the record by one click on the desk — the MCP verb is that door for now.</li>
+</ul>
+</div></body></html>

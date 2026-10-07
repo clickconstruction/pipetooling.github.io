@@ -251,7 +251,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -265,7 +265,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
           background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(1100px, 100%)',
-          maxHeight: 'min(90vh, 900px)',
+          maxHeight: 'min(90vh, 900px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           padding: '1rem 1.25rem',

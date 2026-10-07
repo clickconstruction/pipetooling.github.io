@@ -178,3 +178,16 @@ describe('buildWorkOrderBoard — the effective stage (v2.3064)', () => {
     expect(b.rows[0]!.rail.current).toBe('work')
   })
 })
+
+describe('buildWorkOrderBoard — an evening stamp keeps its day (v2.4469)', () => {
+  it('counts a signature from the evening of Aug 31 in August, and dates an undated sheet by its Central day', () => {
+    // 00:30 UTC on Sep 1 is 7:30 pm CDT on Aug 31.
+    const evening = board([sheet({ id: 's1', payments: [{ amount: 1750 }], stage: 'customer_pay' })], [order({ id: 'o1', status: 'accepted', labor_job_id: 's1', signed_at: '2026-09-01T00:30:00Z' })])
+    expect(evening.tiles.signedThisMonth).toBe(0)
+    const noon = board([sheet({ id: 's1', payments: [{ amount: 1750 }], stage: 'customer_pay' })], [order({ id: 'o1', status: 'accepted', labor_job_id: 's1', signed_at: '2026-09-01T12:00:00Z' })])
+    expect(noon.tiles.signedThisMonth).toBe(1)
+    expect(board([sheet({ id: 's2', job_date: null, created_at: '2026-08-21T00:30:00Z' })]).rows[0]!.sheetDate).toBe('2026-08-20')
+    expect(board([sheet({ id: 's2', job_date: null, created_at: '2026-12-02T00:30:00+00:00' })]).rows[0]!.sheetDate).toBe('2026-12-01')
+    expect(board([sheet({ id: 's2', job_date: null, created_at: '2026-08-21T12:00:00Z' })]).rows[0]!.sheetDate).toBe('2026-08-21')
+  })
+})

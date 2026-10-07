@@ -332,6 +332,20 @@ describe('JobFormEditFactRows', () => {
     expect(screen.queryByLabelText('Homestead')).toBeNull()
   })
 
+  it('Property record: the row reads what the lien papers read, each blank in red, and one button opens the record above it (v2.4724)', async () => {
+    const site = { ...OFFICE_PROPERTY, id: 'addr-site', address: '1200 Ilka Rd, Seguin, TX 78155', county: 'Guadalupe', legal_description: '', owner_name: '', owner_mailing_address: '' }
+    renderWithProviders(<Harness propertyCandidates={[site]} customerAddressId="addr-site" propertyRecordFocus />)
+    await settle()
+    const facts = screen.getByTestId('property-record-facts')
+    expect(facts.textContent).toContain('What the lien papers read')
+    expect(facts.textContent).toContain('CountyGuadalupe')
+    expect(facts.textContent).toContain('Legal descriptionMissing')
+    expect(facts.textContent).toContain('Owner of recordMissing')
+    fireEvent.click(screen.getByTestId('property-record-fill'))
+    expect(screen.getByTestId('property-record-fill').textContent).toBe('Fill in the record')
+    expect(await screen.findByTestId('lien-paper-property-window')).toBeTruthy()
+  })
+
   it('Property record: an older caller that does not load the kind shows no kind control', async () => {
     renderWithProviders(<Harness propertyCandidates={[{ ...OFFICE_PROPERTY, id: 'addr-site' }]} customerAddressId="addr-site" />)
     await settle()

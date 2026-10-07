@@ -185,7 +185,7 @@ export default function SettingsCompanyDocumentsSection({
           role="dialog"
           aria-modal="true"
           aria-label="Manage company documents"
-          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}
+          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760 }}
         >
           <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 640, width: 'calc(100vw - 2rem)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.125rem' }}>Manage company documents</h2>

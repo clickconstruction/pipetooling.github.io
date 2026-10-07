@@ -6,7 +6,8 @@ import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { loadJsPDF } from '../../lib/loadJsPDF'
-import { formatCompactNoteDateTime } from '../../utils/dateUtils'
+import { formatCompactNoteDateTime, todayYmdInAppTz } from '../../utils/dateUtils'
+import { bidIsParked } from '../../lib/bids/bidNextFollowup'
 import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BID_LOSS_CATEGORIES, isBidLossCategoryKey } from '../../lib/bidLossCategories'
@@ -344,7 +345,8 @@ export function BidSubmissionFollowupTab({
   function submissionFollowupListRowBackground(bid: BidWithBuilder, isSelected: boolean): string | undefined {
     if (isSelected) return 'var(--bg-blue-tint)'
     const n = submissionFollowupStaleDaysThresholdParsed
-    if (n != null && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, n)) return 'var(--bg-red-tint)'
+    // v2.4421: a bid parked on a call-again day still ahead is not stale: someone said when to call.
+    if (n != null && !bidIsParked(bid, bid.last_contact ?? null, todayYmdInAppTz()) && isSubmissionBidStaleForThreshold(bid, lastContactFromEntries, customerContacts, n)) return 'var(--bg-red-tint)'
     return undefined
   }
 

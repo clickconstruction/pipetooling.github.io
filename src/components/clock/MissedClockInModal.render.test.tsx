@@ -58,6 +58,8 @@ describe('MissedClockInModal — a person reports a day the clock missed', () =>
 
   it('sends the day as the person’s own session, with what happened as the note', async () => {
     const { onClose, onSaved } = await mount()
+    // the window leaves room for an iPhone's status bar (v2.4444)
+    expect(screen.getByRole('dialog', { name: 'It did not clock me in' }).getAttribute('style')).toContain('var(--app-top-chrome, 0px)')
     fill(YESTERDAY, '10:00', '14:30', 'App would not let me clock in')
     expect(screen.getByTestId('missed-clock-summary').textContent).toContain('4.5h')
     expect(screen.getByTestId('missed-clock-summary').textContent).toContain('typed by you, 1 day late · no location')
