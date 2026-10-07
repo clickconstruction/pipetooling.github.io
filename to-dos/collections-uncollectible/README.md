@@ -1,8 +1,8 @@
 ---
 name: "Collections: a bill the office has given up on — stamped, out of every total, off the Lien desk"
 number: 94
-group: gated
-status: planned 2026-10-06 from the owner's ask; mockup beside it; nothing built. Waits on the owner's go and four calls (below).
+group: ready
+status: the owner answered the four calls 2026-10-07 (Uncollectible · any office staff · Stripe marked too · the payment-terms nudge); PR 1 v2.4782 (the columns, the RPC, the trigger) cut; PRs 2–6 follow in order
 summary: >
   Some bills will never be collected. Today they sit in Collections forever, counted in the Collections
   total, the Pipeline's In collections tile, the Dashboard's Collections section, the Lien desk's queues
@@ -10,12 +10,10 @@ summary: >
   any "what is coming in" number, with the reason plastered over the row so anyone who looks sees what
   happened — and once marked, off the Lien desk and out of every "what we could collect" figure.
 next: >
-  The owner reads the mockup and answers the four calls; then PR 1 (the columns, the RPC, the trigger)
-  cuts from main and the train runs in order.
+  Push the migration after PR 1 merges, regenerate types, then PR 2 (bill truth) and PR 3 (the board,
+  the stamp, Stripe's mark) — the train in order.
 size: M — six PRs, S each
-blocker: >
-  The owner's go on the design and the four calls: the word on the button, who may do it, whether
-  Stripe's invoice is marked uncollectible too, and whether the customer's payment terms get a nudge.
+blocker: None. The four calls are answered (below).
 ---
 
 # Collections: a bill the office has given up on
@@ -51,12 +49,12 @@ A second flag on the job, the same shape as Collections, one step further:
 - *What it adds beyond the ask:* the accountant's list, the self-clearing stamp, and the Legal desk hand-off so nothing is given up behind the firm's back.
 - *Where it could still be wrong:* the stamp's hand-written face is a system font (Marker Felt / Bradley Hand / Segoe Print); on a machine with none it falls to cursive, still red and tilted. The band's "this year" total needs the flag's date, which is why the date is a column and not a note.
 
-## The owner's four calls
+## The owner's four calls — answered 2026-10-07
 
-1. **The word on the button:** *Give up on it…* (the mockup) · *Write it off…* · *Uncollectible*. The stamp says UNCOLLECTIBLE either way.
-2. **Who may do it:** the Collections managers (today's pool), or a dev and the controller only.
-3. **Stripe:** also mark the bill's Stripe invoice uncollectible (closes the pay link; Stripe still accepts a late payment and the webhook would then pay the job and clear the stamp), or leave Stripe alone.
-4. **The customer:** a customer with a given-up bill gets a payment-terms nudge (*Deposit required*) on the next job, or nothing.
+1. **The word:** *Uncollectible*. The button under the row reads *Uncollectible…*, the band *Uncollectible*, the stamp UNCOLLECTIBLE; "given up on" stays in the explaining sentences only.
+2. **Who may do it:** any office staff — the Collections managers' pool (dev · master_technician · assistant · controller), the pool `set_job_collections_flag` gates.
+3. **Stripe:** yes — the bill's Stripe invoice is marked uncollectible too (closes the pay link; Stripe still accepts a late payment, and the webhook then pays the job and clears the stamp).
+4. **The customer:** yes — a customer with an uncollectible bill gets a payment-terms nudge (*Deposit required*) on the next job.
 
 ## Where it plugs in
 
