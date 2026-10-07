@@ -5,10 +5,13 @@
  * window. `src/lib/gc/gcIo.ts` does the reading
  * and the one write; the window and the kernels decide the rest.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { canOpenGcProjects } from '../lib/gc/access'
+import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -59,7 +62,17 @@ function money(n: number): string {
 }
 
 export default function GcProjects() {
-  const { role, loading: authLoading } = useAuth()
+  const { user, role, loading: authLoading } = useAuth()
+  // New here? opens itself on a first visit, once per browser; a blocked storage means no auto open.
+  const [tourOpen, setTourOpen] = useState<null | 'first-visit' | 'button'>(() => {
+    try {
+      return window.localStorage.getItem(GC_NEW_HERE_SEEN_KEY) ? null : 'first-visit'
+    } catch {
+      return null
+    }
+  })
+  /** The furthest stop the open walk reached, for the close's record. */
+  const tourFurthest = useRef(0)
   const { showToast } = useToastContext()
   const [params, setParams] = useSearchParams()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
@@ -99,6 +112,32 @@ export default function GcProjects() {
     if (!canOpenGcProjects(role)) return
     void load()
   }, [role, load])
+
+  // The walk shows once the page has loaded, so a stop never points at a card still loading. Its
+  // stops are read from the page after that render: an anchor not on it drops out unless the stop
+  // says what will show there.
+  const tourShowing = tourOpen !== null && loaded !== null
+  const [tourSteps, setTourSteps] = useState<SpotlightTourStep[] | null>(null)
+  useEffect(() => {
+    if (!tourShowing || !tourOpen) {
+      setTourSteps(null)
+      return
+    }
+    const steps = spotlightTourStepsPresent(GC_NEW_HERE_STEPS)
+    tourFurthest.current = 0
+    setTourSteps(steps)
+    try {
+      window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1')
+    } catch {
+      // No storage: the walk may open itself again next visit.
+    }
+    recordNavClick(user?.id, role, GC_NEW_HERE_CONTROL, gcNewHereTarget({ kind: 'opened', by: tourOpen, of: steps.length }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourShowing])
+  const closeTour = () => {
+    if (tourSteps) recordNavClick(user?.id, role, GC_NEW_HERE_CONTROL, gcNewHereTarget({ kind: 'closed', furthest: tourFurthest.current, of: tourSteps.length }))
+    setTourOpen(null)
+  }
 
   const bookInput = useMemo<ScopeBookInput | null>(
     () => (loaded ? { projects: loaded.projects, store: loaded.store, pastJobs: [], today } : null),
@@ -184,16 +223,21 @@ export default function GcProjects() {
   return (
     <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <BidsModeToggle mode="gc" />
+        <span data-tour="gc-mode-switch" style={{ display: 'inline-flex' }}>
+          <BidsModeToggle mode="gc" />
+        </span>
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>GC projects</h1>
         <Chip tone="grey" title="GC mode is new. Tell the office what you find.">
           Being built
         </Chip>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
-          <Btn kind="quiet" onClick={() => setBook({})} disabled={!loaded}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Btn kind="quiet" dataTour="gc-new-here" onClick={() => setTourOpen('button')} disabled={!loaded}>
+            New here?
+          </Btn>
+          <Btn kind="quiet" dataTour="gc-scope-book" onClick={() => setBook({})} disabled={!loaded}>
             Open the scope book
           </Btn>
-          <Btn kind="primary" onClick={() => setWindow(true)} disabled={!loaded}>
+          <Btn kind="primary" dataTour="gc-new-project" onClick={() => setWindow(true)} disabled={!loaded}>
             New project
           </Btn>
         </div>
@@ -206,24 +250,26 @@ export default function GcProjects() {
       {!loaded && !loadProblem && <div style={{ fontSize: '0.875rem' }}>Loading…</div>}
       {loaded && loaded.projects.length === 0 && <div style={{ fontSize: '0.875rem' }}>No GC project yet. Press New project when the first plans come in.</div>}
 
-      {loaded?.projects.map((p) => {
+      {loaded?.projects.map((p, cardIndex) => {
+        /** The walk points at the first card only, so each anchor is on the page once. */
+        const tour = (anchor: string) => (cardIndex === 0 ? anchor : undefined)
         const gaps = scopeGaps(p.trades.map((t) => ({ trade: t.trade, scope: t.scope.map((s) => s.label), excludes: t.excludes })))
         const newest = p.planSets[p.planSets.length - 1]
         return (
-          <div key={p.id} data-gc-project={p.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
+          <div key={p.id} data-gc-project={p.id} data-tour={tour('gc-project-card')} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
               <strong style={{ fontSize: '1.02rem' }}>{p.name}</strong>
               <Chip tone={justMade === p.id ? 'green' : 'grey'}>{p.stage}</Chip>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.address}</span>
               {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
-              <Btn kind="quiet" onClick={() => setPlansWindow(p.id)}>
+              <Btn kind="quiet" dataTour={tour('gc-plans')} onClick={() => setPlansWindow(p.id)}>
                 The plans
               </Btn>
-              <Btn kind="quiet" onClick={() => setQuestionsWindow(p.id)}>
+              <Btn kind="quiet" dataTour={tour('gc-questions')} onClick={() => setQuestionsWindow(p.id)}>
                 Questions about the plans{openQuestions(p).length > 0 ? ` · ${openQuestions(p).length} open` : ''}
               </Btn>
               {!p.lostOn && (
-                <Btn kind="quiet" onClick={() => setSetWindow(p.id)}>
+                <Btn kind="quiet" dataTour={tour('gc-new-set')} onClick={() => setSetWindow(p.id)}>
                   A new set of plans came in
                 </Btn>
               )}
@@ -237,7 +283,7 @@ export default function GcProjects() {
               {p.specs.length > 0 ? `, ${p.specs.length} ${p.specs.length === 1 ? 'section' : 'sections'}` : ''}.
             </div>
             {(
-              <div style={{ fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div data-tour={tour('gc-drive')} style={{ fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 {p.driveFolderUrl ? (
                   <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
                     The job folder in Drive
@@ -324,13 +370,25 @@ export default function GcProjects() {
               ))}
             </div>
             {gaps.length > 0 && (
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
+              <div data-tour={tour('gc-gaps')} style={{ fontSize: '0.85rem', color: 'var(--text-red-700)' }}>
                 {gaps.length} {gaps.length === 1 ? 'gap' : 'gaps'}: {gaps.map((g) => `${g.trade} leaves out ${g.label} for ${g.by}`).join('. ')}.
               </div>
             )}
           </div>
         )
       })}
+
+      {tourSteps && (
+        <SpotlightTour
+          steps={tourSteps}
+          onClose={closeTour}
+          onStep={(i) => {
+            tourFurthest.current = Math.max(tourFurthest.current, i)
+          }}
+          guideHref={GC_NEW_HERE_GUIDE.href}
+          guideLabel={GC_NEW_HERE_GUIDE.label}
+        />
+      )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
 

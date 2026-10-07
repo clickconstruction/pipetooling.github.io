@@ -31,6 +31,8 @@ type SpotlightTourProps = {
   guideLabel?: string
   /** The stop to open on (v2.4125): a `?` on a page section starts the tour at that section's stop. */
   startIndex?: number
+  /** Called with the stop's index each time one shows, the first included (v2.4838: GC's New here? records the last stop reached). */
+  onStep?: (index: number) => void
 }
 
 const CARD_WIDTH = 400
@@ -52,8 +54,13 @@ const CARD_EST_HEIGHT = 170
  * locked, the anchor's scrollIntoView could not move the page and every stop
  * below the fold was out of reach, and the wheel did nothing.
  */
-export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startIndex = 0 }: SpotlightTourProps) {
+export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startIndex = 0, onStep }: SpotlightTourProps) {
   const [index, setIndex] = useState(Math.min(Math.max(startIndex, 0), Math.max(steps.length - 1, 0)))
+  const onStepRef = useRef(onStep)
+  onStepRef.current = onStep
+  useEffect(() => {
+    onStepRef.current?.(index)
+  }, [index])
   const [anchorRect, setAnchorRect] = useState<TourRect | null>(null)
   const [anchorMissing, setAnchorMissing] = useState(false)
   const [cardHeight, setCardHeight] = useState(CARD_EST_HEIGHT)
