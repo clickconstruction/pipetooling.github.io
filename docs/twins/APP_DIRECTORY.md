@@ -69,7 +69,9 @@ sets, the sheets, the trades with their scope lines and the gaps) and holds **Ne
 the four-step window (project → plans → trades → each scope) that writes through
 `gc_create_project`. Who to ask (the companies) is not here yet. **Open the scope book** (`?book=1`)
 is every scope line we keep by trade: edit, add, fold duplicates, save a project's scope as a set.
-Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`.
+**A new set of plans came in** (`?set=<project id>`) puts an addendum, a bulletin or a whole new set on the
+project through `gc_issue_plan_set`. Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`,
+`/help?g=issue-a-new-set-of-plans`.
 Roles: dev only.
 
 ### /bids — Bids (the estimating hub)

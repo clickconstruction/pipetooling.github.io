@@ -12,11 +12,14 @@ import { formatErrorMessage } from '../utils/errorHandling'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
+import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { Btn, Chip } from '../components/gc/gcUi'
 import {
   checkDriveAccess,
   createGcProject,
   editScopeBookLine,
+  issuePlanSet,
+  loadGcTeam,
   loadGcPickerCustomers,
   loadGcProjects,
   loadScopeBookStore,
@@ -25,6 +28,7 @@ import {
   saveScopeBookLine,
   saveScopeSet,
   type GcPickerCustomer,
+  type GcTeamMember,
 } from '../lib/gc/gcIo'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
@@ -36,6 +40,7 @@ interface Loaded {
   customers: GcPickerCustomer[]
   projects: GcProjectView[]
   store: ScopeBookStore
+  team: GcTeamMember[]
 }
 
 function money(n: number): string {
@@ -59,11 +64,15 @@ export default function GcProjects() {
   const bookOpen = params.get('book') === '1'
   const bookTrade = params.get('trade')
   const bookProjectId = params.get('project')
+  /** The new-plans window: `set=<projectId>`. */
+  const setProjectId = params.get('set')
+  const [issuing, setIssuing] = useState(false)
+  const [issueProblem, setIssueProblem] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
-      const [customers, projects, store] = await Promise.all([loadGcPickerCustomers(), loadGcProjects(), loadScopeBookStore()])
-      setLoaded({ customers, projects, store })
+      const [customers, projects, store, team] = await Promise.all([loadGcPickerCustomers(), loadGcProjects(), loadScopeBookStore(), loadGcTeam()])
+      setLoaded({ customers, projects, store, team })
       setLoadProblem(null)
     } catch (e) {
       setLoadProblem(formatErrorMessage(e, 'The GC projects did not load.'))
@@ -101,6 +110,14 @@ export default function GcProjects() {
     setParams(next, { replace: true })
   }
   const bookProject = bookProjectId ? (loaded?.projects.find((p) => p.id === bookProjectId) ?? null) : null
+  const setProject = setProjectId ? (loaded?.projects.find((p) => p.id === setProjectId) ?? null) : null
+  const setSetWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('set', projectId)
+    else next.delete('set')
+    setParams(next, { replace: true })
+    setIssueProblem(null)
+  }
   const bookTradeView = bookProject && bookTrade ? (bookProject.trades.find((t) => t.trade === bookTrade) ?? null) : null
   const current = bookProject && bookTradeView ? { trade: bookTradeView.trade, lines: bookTradeView.scope.map((l) => l.label), projectName: bookProject.name, projectId: bookProject.id } : null
   const after = (work: Promise<void>, failed: string) => {
@@ -139,6 +156,11 @@ export default function GcProjects() {
               <Chip tone={justMade === p.id ? 'green' : 'grey'}>{p.stage}</Chip>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.address}</span>
               {p.bidDue && <span style={{ fontSize: '0.85rem' }}>bid due {p.bidDue}</span>}
+              {!p.lostOn && (
+                <Btn kind="quiet" onClick={() => setSetWindow(p.id)}>
+                  A new set of plans came in
+                </Btn>
+              )}
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
@@ -243,6 +265,40 @@ export default function GcProjects() {
           </div>
         )
       })}
+
+      {setProject && loaded && (
+        <GcNewPlansWindow
+          project={setProject}
+          book={book}
+          team={loaded.team}
+          today={today}
+          issuing={issuing}
+          problem={issueProblem}
+          onClose={() => setSetWindow(null)}
+          onIssue={(draft) => {
+            setIssuing(true)
+            setIssueProblem(null)
+            void (async () => {
+              // The set's Drive link is checked first, like the first set's; a link the helper cannot see is still recorded.
+              let drive = draft.drive
+              if (drive) {
+                try {
+                  const v = await checkDriveAccess(drive.url)
+                  drive = { url: drive.url, access: v.access, checkedOn: v.checkedOn }
+                } catch {
+                  drive = { url: drive.url, access: null, checkedOn: null }
+                }
+              }
+              await issuePlanSet({ ...draft, ...(drive ? { drive } : {}) })
+              await load()
+              setSetWindow(null)
+              showToast(`${draft.label} is on ${setProject.name}.`, 'success')
+            })()
+              .catch((e) => setIssueProblem(formatErrorMessage(e, 'The set was not put on the project.')))
+              .finally(() => setIssuing(false))
+          }}
+        />
+      )}
 
       {bookOpen && loaded && bookInput && (
         <GcScopeBookWindow
