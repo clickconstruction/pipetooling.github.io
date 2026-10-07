@@ -157,8 +157,8 @@ Each column names the prototype field it carries (`src/lib/gcMode/gcTypes.ts`).
 - `version` (integer, from 0, bumped by every plan write; decision 5).
 - `drafted_on` (date, the company day the writer gives; no default, since the server's day is UTC)
   and `drafted_by` (FK `users.id`).
-- `template_id` (FK `gc_schedule_templates.id`, set null; PR 4 adds the key, when that table
-  exists), `template_name` and `template_used_on`: `ProjectSchedule.template`, the template's name
+- `template_id` (FK `gc_schedule_templates.id`, set null: `gc_schedules_template_fkey`, which PR
+  4's `DO` block adds), `template_name` and `template_used_on`: `ProjectSchedule.template`, the template's name
   as it read that day (G-44). A check keeps the name and the day together.
 - `updated_at` and `updated_by`.
 - Every table below with a `project_id` references this row's, so nothing exists without the
@@ -348,36 +348,48 @@ G-75):
 
 **`gc_schedule_what_ifs`**, one copy per person per job (`ScheduleWhatIf`, decision 6):
 
-- `project_id` and `user_id`, the primary key together.
-- `made_on` and `base_version` (the schedule's version when it was made, to name what changed
-  since).
-- `base` (jsonb, `WhatIfBase` by activity id) and `copy` (jsonb: the copy's bars, waits, parts and
-  the moves tried in it, with `noWhy`).
+- `project_id` (FK `gc_schedules`) and `user_id` (FK `users.id`, cascade), the primary key
+  together. Its policy holds each copy to its own person, `user_id = (SELECT auth.uid())`, from the
+  first migration on, beside the dev gate that PR 10 swaps for the team.
+- `made_on` and `base_version` (from 0: the schedule's version when it was made, to name what
+  changed since).
+- `base` (jsonb, `WhatIfBase` by activity id) and `copy` (jsonb: the copy's `ProjectSchedule` as the
+  kernel keeps it, with its bars, waits, gaps, limits, parts and places, and the moves tried in it,
+  with `noWhy`), and `updated_at`.
 - jsonb, because nothing outside the Schedule tab reads a copy, and it is never queried by line.
+- The copy is kept whole, not as its moves: a move in a copy can change waits, gaps and limits that
+  its record does not keep. Keep replays nothing; it turns the moves tried into real rows through
+  the plan writes.
 
 **`gc_rough_schedules`**, a rough schedule while we bid (`RoughSchedule`, G-45), keyed by
-`project_id`:
+`project_id` (FK `gc_projects`). New project makes that row while we bid, and the job has no
+`gc_schedules` row until its first draft:
 
-- `start`, `stage_days` (jsonb, days by stage key), `drawn_by`, `drawn_on`.
-- `kept_on`, `kept_weeks`, `kept_finish` and `kept_at` (`bid` or `award`).
+- `start`, `stage_days` (jsonb, days by stage key), `drawn_by` (FK `users.id`), `drawn_on`, and
+  `updated_at`.
+- `kept_on`, `kept_weeks`, `kept_finish` and `kept_at` (`bid` or `award`), all four or none.
 - `template_id`, `template_name`, `template_used_on`.
-- `like` (jsonb): the template's lines as they were copied, so no edit to the template reaches the
-  rough.
+- `template_lines` (jsonb, the prototype's `like`, a reserved word in SQL): the template's lines as
+  they were copied, so no edit to the template reaches the rough. The template's name, its day and
+  its lines go together.
 - It is never the schedule itself.
 
 **`gc_schedule_templates`**, company-wide with no project key, like the scope book
 (`ScheduleTemplate`, G-44):
 
-- `id`, `name`.
+- `id`, `name` (at most 60 letters, `TEMPLATE_NAME_MAX`, and unique whatever the case, as
+  `templateNameProblem` refuses another template's).
 - `from_project_id` (FK `projects.id`, set null), `from_name`, `from_done_pct` (how much of that
   job was done when it was saved).
-- `saved_on` and `saved_by`.
+- `saved_on` and `saved_by` (FK `users.id`).
 - `lines` (jsonb, `TemplateLine[]`: trade, label, stage, days, waits with gaps, offset, place,
-  parts).
-- `stages` (jsonb) and `weeks` (integer).
+  parts), never empty. A line is keyed by trade and name, never by id, since a template is drawn
+  onto other jobs.
+- `stages` (jsonb) and `weeks` (integer, from 1).
 - `aside_on` (date): set aside, not offered for new jobs.
 - jsonb, because a template is read whole. Its lines never change once saved, only its name and
-  its day set aside.
+  its day set aside. Privileges hold that: `authenticated` has no UPDATE, DELETE or TRUNCATE on it,
+  but `UPDATE (name, aside_on)`.
 
 ## What the app already has, reused
 
@@ -713,8 +725,9 @@ PR 3, the moves and the records, merged as v2.4809 (#4827, migration
 `20261007220000_gc_schedule_moves_records`) with *The tables* amended to match. It was applied the
 same day and passed all five verify steps, its two doors included; its doc's status has the words,
 and PR 2's now has its steps 1 and 3 too. The types are in #4833. PR 4, what if and before the job,
-is #4835 (v2.4816, migration `20261007235500_gc_schedule_what_if_and_before`), its SQL byte for
-byte the approved plan. It was held unmerged at the pause, with auto-merge off.
+is #4835 (v2.4816, migration `20261007235500_gc_schedule_what_if_and_before`), with *The tables*
+amended to match and its SQL byte for byte the approved plan. It was held unmerged at the pause,
+with auto-merge off.
 
 Paused 2026-10-07 at the owner's word. PR 5, the RPCs, is next, and its plan must word two refusals
 before the tables refuse them: a template with no lines (`templateShape` has no guard) and a
