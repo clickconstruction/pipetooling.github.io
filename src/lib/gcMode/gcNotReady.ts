@@ -22,31 +22,11 @@ import { INSURANCE_ASK_DAYS, openPromiseFor, tradePromiseWords } from './gcPromi
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById, planLabel } from './gcLookups'
 import type { GanttHold } from './gcGantt'
-
-/**
- * A bar starting within this many days with its papers not in is late: the trade's last start
- * reminder has gone (G-114's `START_REMINDER_DAYS`, the last of them). Its own number, not an import:
- * the start reminders read this file's list of papers (G-139), and a constant read across that import
- * cycle is undefined on load. A test holds the two equal.
- */
-export const NOT_READY_LATE_DAYS = 3
-
-export type StartGapKind = 'award' | 'msa' | 'insurance' | 'w9' | 'sow'
-
-/** One thing a trade still needs before it starts, in the words each place says it. */
-export interface StartGap {
-  kind: StartGapKind
-  /** Get started's column: "Insurance", "Statement of work". */
-  label: string
-  /** The opened activity's line: "Insurance ran out Tue Sep 15." */
-  line: string
-  /** On the bar when it is the only gap, after "waits on": "current insurance, theirs ran out Sep 15". */
-  barWords: string
-  /** On the bar in a list of several: "current insurance". */
-  noun: string
-  /** The company window's paper: 'msa', 'insurance', 'w9' or 'sow-<package>'. Null: nothing there to send. */
-  doc: string | null
-}
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import type { StartGap } from '../gc/schedule/notReady'
+import { NOT_READY_LATE_DAYS, holdWordsInList } from '../gc/schedule/notReady'
+export type { StartGap, StartGapKind } from '../gc/schedule/notReady'
+export { NOT_READY_LATE_DAYS, holdWordsInList, lapsedInsuranceWords } from '../gc/schedule/notReady'
 
 /**
  * What a trade still needs before it starts work on `on`, in Get started's order. Empty: it is
@@ -153,19 +133,6 @@ export function notReadyWords(gaps: StartGap[]): string {
   return gaps.length === 1 && only ? only.barWords : listWords(gaps.map((g) => g.noun))
 }
 
-/** A typed title's first words that read lowercase inside the merged list. */
-const PLAIN_FIRST_WORDS = ['The', 'A', 'An', 'Their', 'Its', 'Our']
-
-/**
- * A hold's words as they read folded into the merged "waits on" list. A wait's title is what the
- * office typed, so it keeps its capitals, except a plain first word: "The transformer, …" reads
- * "the transformer, …". "RFI-004" and "CPS Energy" never change.
- */
-export function holdWordsInList(words: string): string {
-  const first = words.split(/[\s,]/, 1)[0] ?? ''
-  return PLAIN_FIRST_WORDS.includes(first) ? `${words.charAt(0).toLowerCase()}${words.slice(1)}` : words
-}
-
 /**
  * The chart's holds with each not-ready bar added (G-77), the kind 'paperwork'. A bar already held
  * by a submittal, a question or a wait keeps that hold too, last in one list after the papers:
@@ -268,16 +235,6 @@ export function uninsuredBars(state: GcState, project: GcProject): UninsuredBar[
     const gap = partner ? insuranceGap(partner, today, today) : null
     return partner && gap ? [{ lineId: a.lineId, pkg, partner, gap }] : []
   })
-}
-
-/**
- * A company's insurance on a day when it is not current, in a sentence for its line on the morning
- * list (G-118): "Their insurance ran out Tue Sep 15. Nothing they do for us is covered." G-77's gap,
- * read on that day. Null: current.
- */
-export function lapsedInsuranceWords(partner: Partner, day: string): string | null {
-  if (!insuranceGap(partner, day, day)) return null
-  return partner.coiExpires ? `Their insurance ran out ${weekdayDate(partner.coiExpires)}. Nothing they do for us is covered.` : 'No insurance on file. Nothing they do for us is covered.'
 }
 
 /** "Pecan Valley Electric's insurance ran out Tue Sep 15." · "Pecan Valley Electric has no insurance on file." */

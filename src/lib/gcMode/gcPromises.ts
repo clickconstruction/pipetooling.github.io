@@ -10,6 +10,9 @@ import type { PromiseState } from './gcFollowUp'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
 import { partnerById } from './gcLookups'
 import { buildingPromisesKeptBy } from './gcBuildingPromises'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { INSURANCE_ASK_DAYS } from '../gc/promises'
+export { INSURANCE_ASK_DAYS } from '../gc/promises'
 
 /** What each kind is, in a few words, when the office does not say. */
 export const PROMISE_WHAT: Record<PromiseKind, string> = {
@@ -24,9 +27,6 @@ export const PROMISE_WHAT: Record<PromiseKind, string> = {
   closeout: 'their closeout papers',
   msa: 'the signed master agreement',
 }
-
-/** Ask for the renewed certificate this many days before the policy runs out. */
-export const INSURANCE_ASK_DAYS = 30
 
 export function tradePromisesOf(state: GcState): TradePromise[] {
   return state.tradePromises ?? []

@@ -10,22 +10,12 @@ import type { DailyLog, GcProject, LookAheadReason, TradePackage } from './gcTyp
 import { addDays } from './gcBuilding'
 import { daysBetween, mondayOf } from './gcBuildingSchedule'
 import { shortDate, weekdayDate } from './gcWords'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { isWorkday } from '../gc/buildingLog'
+export { isWorkday, onSite, onSiteWords } from '../gc/buildingLog'
 
 /** How many working days back a missing log is flagged (the last week). My default. */
 export const LOG_LOOKBACK_WORKDAYS = 5
-
-const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-function weekday(iso: string): number {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()
-}
-
-/** Monday to Friday. */
-export function isWorkday(iso: string): boolean {
-  const d = weekday(iso)
-  return d >= 1 && d <= 5
-}
 
 /** The working days from `from` to `to`, both counted. */
 export function workdaysBetween(from: string, to: string): string[] {
@@ -54,33 +44,6 @@ export function missingLogs(project: GcProject, today: string): string[] {
     if (isWorkday(d)) days.unshift(d)
   }
   return days.filter((d) => !dailyLogOn(project, d))
-}
-
-/** A trade's days on site between two days by the log, and its worker-days. */
-export function onSite(project: GcProject, packageId: string, from: string, to: string): { days: string[]; workerDays: number } {
-  const logs = (project.dailyLogs ?? []).filter((l) => l.date >= from && l.date <= to)
-  const days: string[] = []
-  let workerDays = 0
-  for (const l of logs) {
-    const crew = l.crews.find((c) => c.packageId === packageId)
-    if (crew && crew.workers > 0) {
-      days.push(l.date)
-      workerDays += crew.workers
-    }
-  }
-  return { days: days.sort(), workerDays }
-}
-
-/** A trade's week on site in a few words, for the superintendent beside its look-ahead mark. Null: no log that week. */
-export function onSiteWords(project: GcProject, packageId: string, weekOf: string): string | null {
-  const weekEnd = addDays(weekOf, 4)
-  const logged = (project.dailyLogs ?? []).filter((l) => l.date >= weekOf && l.date <= weekEnd).length
-  if (logged === 0) return null
-  const { days, workerDays } = onSite(project, packageId, weekOf, weekEnd)
-  if (days.length === 0) return `Not on site in the ${logged} ${logged === 1 ? 'day' : 'days'} logged that week.`
-  const names = days.map((d) => WEEKDAY[weekday(d)] ?? d)
-  const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-  return `The daily log has them on site ${list}, ${workerDays} worker-${workerDays === 1 ? 'day' : 'days'}.`
 }
 
 /** The week's working days, Monday to Friday, each with its log. */

@@ -6,7 +6,7 @@
  *   VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vite-node to-dos/gc-mode/scripts/schedule-test-state.ts --out <out.ts>
  *
  * `--with <lift.json>` adds a lift for one run: the data its PR carries, before its follow-up lists it
- * in `LIFTS` with main's new copy (the schedule's 1b-i: `--with schedule-pr1b-i.lift.json`).
+ * in `LIFTS` with main's new copy.
  *
  * `testStateSource` is exported, so the spike's test holds main's file to exactly what this writes
  * (`gcScheduleTestState.test.ts`). Imported there, it writes nothing: only `--out` writes.
@@ -19,7 +19,7 @@ type Lift = {
   slice?: { root?: string; nested: Record<string, Record<string, string>> }
 }
 /** The lifts whose fields main's test data carries, oldest first. A later lift's list for a shape replaces an earlier one's. */
-const LIFTS = ['schedule-pr1a.lift.json']
+const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json']
 const withAt = process.argv.indexOf('--with')
 const withLift = withAt > 0 ? process.argv[withAt + 1] : undefined
 const lifts = [...LIFTS, ...(withLift ? [withLift] : [])].map((f) => JSON.parse(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8')) as Lift)

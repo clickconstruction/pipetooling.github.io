@@ -1,0 +1,17 @@
+/**
+ * GC mode, the real build: our company's name, as the GC mode prototype's `GC_COMPANY` has it (branch
+ * spike/gc-mode, `gcFixture.ts`), with only its name and short name, by the schedule's PR 1b. Its
+ * made-up estimators, address and pay contact stay in the prototype.
+ * These are the prototype's words for our GC entity until the owner names it, and nothing on main
+ * reads GC_STATEMENT_COMPANY_NAME for GC mode.
+ */
+
+/**
+ * The general contractor the trade's portal speaks for. One record, so the words never name a
+ * company: a later company is a new record, not new words. `shortName` is what a trade reads in a
+ * sentence ("Tell Click when your number will come").
+ */
+export const GC_COMPANY = {
+  name: 'Click Construction',
+  shortName: 'Click',
+}

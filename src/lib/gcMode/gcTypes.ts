@@ -1,5 +1,8 @@
 // What moved to main (the real build) is re-exported from there, so there is one copy.
 import type { LookAheadReason, ProjectSchedule, ScheduleMilestone, ScheduleMoveReason, ScheduleWhatIf, TemplateLine, TemplateUse } from '../gc/schedule/types'
+import type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
+export type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
+
 export type { ActivityPart, InspectionFailure, LateNotice, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleBaseline, ScheduleMilestone, ScheduleMove, ScheduleMoveReason, ScheduleWalk, ScheduleWhatIf, TemplateLine, TemplateUse, WhatIfBase } from '../gc/schedule/types'
 
 /**
@@ -680,21 +683,6 @@ export interface GcProject {
   whatIf?: ScheduleWhatIf
   /** Each trade's own word on how many a day it will have on site in a week (G-142), from its portal, newest first. Unset: none yet. */
   crewCounts?: CrewCount[]
-}
-/**
- * A trade's own word on how many people a day it will have on site in a week (G-142), from its
- * portal's look-ahead. Kept newest first: the newest for a trade and week is the one that counts,
- * and the ones before it say when a count was cut.
- */
-export interface CrewCount {
-  packageId: string
-  partnerId: string
-  /** The Monday of the week it is for. */
-  weekOf: string
-  /** About how many people a day, a whole number. 0: nobody that week. */
-  count: number
-  /** The day they said it. */
-  on: string
 }
 /** The customer's schedule sent on its own, dated and kept as sent (G-94). */
 export interface ScheduleSend {
@@ -1457,36 +1445,6 @@ export interface ScheduleImport {
   rows: ScheduleImportRow[]
   /** Their dates to meet, as ticked. */
   dates: { name: string; on: string }[]
-}
-/** What the work waits on from outside the trades (G-73 to G-75): a long-lead delivery, a decision the customer owes, a permit, the utility's work. */
-export type WaitKind = 'delivery' | 'decision' | 'permit' | 'utility'
-/**
- * One thing the work waits on that is not a trade's work (the Gantt, Phase 4): a long-lead item
- * on order, a decision the customer owes us, a permit the city owes us, the utility's part. It
- * holds the activities that need it until it is in, and it is drawn on the chart as a row of its
- * own, so the day it is expected reads beside the day the work needs it.
- */
-export interface ScheduleWait {
-  id: string
-  kind: WaitKind
-  /** "Rooftop units", "Restroom tile", "Electrical service permit", "The transformer". */
-  title: string
-  /** The trade whose work needs it. Null: the job's own. */
-  packageId: string | null
-  /** Who we wait on, by name: the supplier, the customer, the city, the utility. */
-  who: string
-  /** The activities (line ids) that cannot start until it is in. */
-  lineIds: string[]
-  /** The day it was ordered, asked for, applied for or requested. Null: not yet. */
-  askedOn: string | null
-  /** The day it is expected: the supplier's date, the day the customer said, the city's turnaround. */
-  expectedOn: string
-  /** A delivery only: the day it shipped. Null: not yet. */
-  shippedOn?: string | null
-  /** The day it came: on site, decided, issued, done. Null: still waiting. */
-  doneOn: string | null
-  /** Who said the expected day, or what is holding it up. */
-  note?: string
 }
 /** Why the work changed, in the words the app's change orders already use. */
 export type ChangeOrderReason = 'owner' | 'field' | 'plans'

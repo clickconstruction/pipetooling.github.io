@@ -8,9 +8,10 @@
  * English is the words the portal had before Spanish, kept exactly, so a key's English is the
  * sentence a test or a screenshot already knows.
  */
-import { shortDate, weekdayDate } from './gcWords'
-
-export type PortalLang = 'en' | 'es'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import type { PortalLang } from '../gc/portalI18n'
+export type { PortalLang } from '../gc/portalI18n'
+export { pDate, pWeekday } from '../gc/portalI18n'
 
 const S = {
   // The letterhead and the project page
@@ -918,25 +919,6 @@ export function pt(lang: PortalLang, key: PortalKey, vars?: Record<string, strin
 /** The raw text of a key in both languages, for the test. */
 export function portalString(key: PortalKey): Record<PortalLang, string> {
   return S[key]
-}
-
-const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
-const WEEKDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
-
-/** "Oct 8" in English, "8 oct" in Spanish. */
-export function pDate(lang: PortalLang, iso: string | null): string {
-  if (lang === 'en' || !iso) return shortDate(iso)
-  const [, m, d] = iso.split('-')
-  const month = MONTHS_ES[Number(m) - 1]
-  return month ? `${Number(d)} ${month}` : iso
-}
-
-/** "Thu Oct 8" in English, "jue 8 oct" in Spanish. */
-export function pWeekday(lang: PortalLang, iso: string | null): string {
-  if (lang === 'en' || !iso) return weekdayDate(iso)
-  const [y, m, d] = iso.split('-').map(Number)
-  const day = WEEKDAYS_ES[new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()]
-  return `${day} ${pDate(lang, iso)}`
 }
 
 const DISCIPLINES_ES: Record<string, string> = {

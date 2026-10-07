@@ -4,7 +4,7 @@
  * (branch spike/gc-mode, `src/lib/gcMode/gcTypes.ts`), so its records fit them as they are. The plans:
  * to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md and SCHEDULE_REAL_BUILD.md on branch spike/gc-mode.
  */
-import type { ProjectSchedule, ScheduleWhatIf } from './schedule/types'
+import type { CrewCount, LookAheadReason, ProjectSchedule, ScheduleWait, ScheduleWhatIf } from './schedule/types'
 
 /** One drawing in a set: its number, like "E-201", and its title. */
 export interface PlanSheet {
@@ -188,23 +188,59 @@ export interface TradePackage {
   excludes?: ScopeExclusion[]
 }
 
+export type GcStage = 'pursuing' | 'buyout' | 'building'
+
 export interface Partner {
   id: string
   company: string
+  contact: string
+  trades: string[]
+  coiExpires: string | null
+  /** The contact's phone and email, for Follow up's Call, Text and Email (the owner, 2026-10-04). Unset: a made-up one stands in (`partnerReach`). */
+  phone?: string
+  email?: string
 }
 
 export interface GcProject {
   id: string
   name: string
+  /** Where the job is, for the drive from each trade partner. */
+  town: string
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
+  /** The customer's name, kept on the row for display. */
+  owner: string
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
+  stage: GcStage
   packages: TradePackage[]
+  /** The day we closed the job: every trade closed out and our own crew done. */
+  closedOn?: string | null
   /** The schedule we draw while buying out; Start locks it as the baseline (owner, 2026-10-02). */
   schedule?: ProjectSchedule
+  /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */
+  dailyLogs?: DailyLog[]
+  /** What the work waits on from outside the trades (the Gantt, Phase 4): deliveries, the customer's decisions, permits, the utility. Unset: none. */
+  waits?: ScheduleWait[]
   /** A what-if copy of the schedule (the Gantt, G-81), beside it and never inside it: only the Schedule tab reads it. Unset: none open. */
   whatIf?: ScheduleWhatIf
+  /** Each trade's own word on how many a day it will have on site in a week (G-142), from its portal, newest first. Unset: none yet. */
+  crewCounts?: CrewCount[]
+}
+
+/**
+ * The superintendent's daily log for one day on the job (owner, 2026-10-04): the weather, who
+ * was on site and how many, what got done, what held work up, and who came by.
+ */
+export interface DailyLog {
+  /** The day it is for, YYYY-MM-DD. */
+  date: string
+  /** Work stopped for the weather. */
+  weatherStop: boolean
+  /** Each trade on site that day and how many workers. A trade not listed was not there. */
+  crews: { packageId: string; workers: number }[]
+  /** What held work up: whose (null: the job's own), why, and a note. */
+  delays: { packageId: string | null; reason: LookAheadReason; note: string }[]
 }
 
 export interface GcState {

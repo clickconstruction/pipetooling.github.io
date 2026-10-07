@@ -1,6 +1,7 @@
 /**
  * GC mode, the real build: dates in words, moved word for word from the GC mode prototype (branch
- * spike/gc-mode, `gcWords.ts`) by the schedule's PR 1a. Every lane's kernels write dates this way.
+ * spike/gc-mode, `gcWords.ts`) by the schedule's PR 1a, and the days until a date by PR 1b. Every
+ * lane's kernels write dates this way.
  */
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -20,4 +21,13 @@ export function weekdayDate(iso: string | null): string {
   const [y, m, d] = iso.split('-').map(Number)
   const day = WEEKDAYS[new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()]
   return `${day} ${shortDate(iso)}`
+}
+
+function utcDay(iso: string): number {
+  const [y, m, d] = iso.split('-').map(Number)
+  return Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1) / 86_400_000
+}
+
+export function daysUntil(iso: string, today: string): number {
+  return Math.round(utcDay(iso) - utcDay(today))
 }

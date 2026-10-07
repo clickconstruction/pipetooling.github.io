@@ -15,6 +15,11 @@ import { portalLink } from './gcPortal'
 import { pDate, pWeekday, type PortalLang } from './gcPortalI18n'
 import { GC_COMPANY } from './gcFixture'
 import { daysUntil, shortDate, weekdayDate } from './gcWords'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import type { PartnerReach } from '../gc/followUpSheet'
+import { partnerReach } from '../gc/followUpSheet'
+export type { PartnerReach } from '../gc/followUpSheet'
+export { partnerReach } from '../gc/followUpSheet'
 
 export type FollowItemKind =
   | 'quote'
@@ -73,33 +78,11 @@ export interface FollowScheduleRef {
   waitId?: string
 }
 
-export interface PartnerReach {
-  /** "Greg Paulk". */
-  name: string
-  first: string
-  phone: string
-  email: string
-  /** True when the record has none and a made-up one stands in. */
-  madeUp: boolean
-}
-
 export interface FollowPerson {
   partner: Partner
   reach: PartnerReach
   /** What the badge counts first, then what else they owe. */
   items: FollowItem[]
-}
-
-/** The person to reach at a company. A 555-01xx number and an .example address stand in where the record has none. */
-export function partnerReach(partner: Partner): PartnerReach {
-  const name = partner.contact || partner.company
-  const first = name.split(/\s+/)[0] ?? name
-  let h = 2166136261
-  for (const c of partner.id) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0
-  const phone = partner.phone ?? `(210) 555-01${String(h % 100).padStart(2, '0')}`
-  const slug = partner.company.toLowerCase().replace(/[^a-z0-9]+/g, '')
-  const email = partner.email ?? `${first.toLowerCase().replace(/[^a-z]/g, '')}@${slug}.example`
-  return { name, first, phone, email, madeUp: !partner.phone || !partner.email }
 }
 
 function lastAsk(lines: { on: string; how: string; note: string }[] | undefined): string | null {

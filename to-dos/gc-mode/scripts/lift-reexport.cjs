@@ -26,6 +26,8 @@ if (!placementsPath) {
 }
 const write = flag === '--write'
 const moved = JSON.parse(fs.readFileSync(placementsPath, 'utf8'))
+// Main's own folder, from the placements: "src/lib/gc".
+const mainOf = (Object.values(moved)[0]?.to ?? 'src/lib/gc/x.ts').split('/').slice(0, 3).join('/')
 const spikeDir = path.join(root, 'src/lib/gcMode')
 const files = fs.readdirSync(spikeDir).filter((f) => f.endsWith('.ts')).map((f) => path.join(spikeDir, f))
 const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, skipLibCheck: true, noEmit: true })
@@ -131,8 +133,15 @@ for (const [file, names] of byFile) {
   const head = imports.length ? sf.text.slice(0, imports[0].getStart()) : sf.text.slice(0, (body[0] ?? sf).getFullStart())
   const importBlock = newImports.filter(Boolean).join('\n')
   const intro = '// What moved to main (the real build) is re-exported from there, so there is one copy.'
-  const rest = stays.map((s) => sf.text.slice(s.getFullStart(), s.getEnd()).replace(/^\s*\n/, '\n')).join('').replace(/^\n+/, '')
-  const text = `${head}${importBlock}${importBlock ? '\n' : ''}${fromMain.length ? `${intro}\n${fromMain.join('\n')}\n` : ''}\n${rest}\n`.replace(/\n{3,}/g, '\n\n')
+  // Each declaration that stays keeps the blank line above it, as the spike had it.
+  const rest = stays.map((s) => sf.text.slice(s.getFullStart(), s.getEnd())).join('').replace(/^\s+/, '')
+  let text = `${head}${importBlock}${importBlock ? '\n' : ''}${fromMain.length ? `${intro}\n${fromMain.join('\n')}\n` : ''}\n${rest}\n`.replace(/\n{3,}/g, '\n\n')
+  // One intro a file, above its first line from main: an earlier follow-up's may have sat on an import that is gone now.
+  const mainFrom = `from '${rel(file, mainOf)}/`
+  const textLines = text.split('\n').filter((l) => l !== intro)
+  const first = textLines.findIndex((l) => /^(import|export) /.test(l) && l.includes(mainFrom))
+  if (first >= 0) textLines.splice(first, 0, intro)
+  text = textLines.join('\n')
   report.push(`${path.relative(root, file)}: ${deleted.length} deleted, ${[...lines.values()].reduce((a, l) => a + l.ev.size + l.et.size, 0)} re-exported, ${usedHere.size} imported from main, ${imports.length - newImports.filter(Boolean).length} imports dropped${kept.length ? `; kept here, still used by what stays: ${kept.map((s) => declared(s).join(',')).join(', ')}` : ''}`)
   if (write) fs.writeFileSync(file, text)
 }
