@@ -14948,6 +14948,76 @@ export type Database = {
           },
         ]
       }
+      legal_matter_documents: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          held_reason: string
+          id: string
+          matter_id: string
+          mime: string
+          original_name: string
+          shows: string
+          size_bytes: number
+          storage_path: string
+          title: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          held_reason?: string
+          id?: string
+          matter_id: string
+          mime?: string
+          original_name?: string
+          shows: string
+          size_bytes?: number
+          storage_path: string
+          title: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          held_reason?: string
+          id?: string
+          matter_id?: string
+          mime?: string
+          original_name?: string
+          shows?: string
+          size_bytes?: number
+          storage_path?: string
+          title?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_documents_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_voided_by_fkey"
+            columns: ["voided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       legal_matter_entries: {
         Row: {
           acknowledged_at: string | null
