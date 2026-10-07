@@ -1493,6 +1493,7 @@ The jobs pipeline postdates the schema sections above; its column semantics are 
 - `revenue` is the canonical job total; `payments_made` is a trigger-maintained cache of payment rows.
 - `hcp_number` and `click_number` combine into the effective job number (HCP wins when both are set).
 - `last_work_date` is trigger-maintained from approved clock sessions; the manual `last_bill_date` column was retired in v2.1154 (nothing reads or writes it).
+- `collections_at` / `collections_by` / `collections_note` — the Collections flag on a `billed` job (not a status): set and cleared by `set_job_collections_flag`, cleared by trigger when the job pays; the rules in [BILLING_FLOWS.md](./BILLING_FLOWS.md) → *Collections*, the term in [GLOSSARY.md](./GLOSSARY.md) → *Collections*.
 - FKs: `customer_id` (required before billing), `gc_customer_id` (optional GC link), `development_id` (optional job grouping), `project_id` (job's `master_user_id` synced to project owner), `service_type_id`. The two `customers` FKs make bare embeds ambiguous — always name the FK (PGRST201).
 - Link columns: `google_drive_link` (customer files), `job_pictures_link`, `job_plans_link`.
 
@@ -2773,7 +2774,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `RESEND_API_KEY` - Resend API key (set as Supabase secret for Edge Functions)
 
 ### Edge Functions
-There are **104** Edge Functions in `supabase/functions/` (count from `npm run check:edge-drift`, 2026-09-06) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
+There are **~130** Edge Functions in `supabase/functions/` (133 function folders on 2026-10-06; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
 - `create-user` - Manually create user; **role** must be one of the 9 valid roles: `dev`, `master_technician`, `assistant`, `subcontractor`, `helpers`, `estimator`, `primary`, `superintendent`, `controller`
 - `invite-user`, `archive-user`, `restore-user`, `set-user-password`, `login-as-user` - Account lifecycle
 - `claim-dev` - Break-glass dev promotion (audited; see Security Considerations)
