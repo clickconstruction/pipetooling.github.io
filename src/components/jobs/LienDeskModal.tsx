@@ -1223,7 +1223,7 @@ export default function LienDeskModal({
 
   if (!open) return null
   // An owner asked for our records (v2.4544): the checked packet for their property, opened over the desk. On a computer it sits on the title line
-  // left of § Rules, except on All filings, where the second line holds the paper tabs and it stays at that line's right end (v2.4740, the owner's ask).
+  // left of § Rules on every view (v2.4740 off All filings; v2.4786 there too, the owner's ask — the title line had the room). On a phone it ends the second line.
   const ownerRecordsDoor = office && onOpenOwnerRecords ? (
     <button
       type="button"
@@ -1235,7 +1235,7 @@ export default function LienDeskModal({
       An owner asked for records ›
     </button>
   ) : null
-  const ownerRecordsUp = !isMobile && !paperShown
+  const ownerRecordsUp = !isMobile
 
   const rulesAndCaller = (
     <>
@@ -2800,7 +2800,7 @@ export default function LienDeskModal({
               <LienDeskShare isMobile={isMobile} data={data} calendarRows={calendarRows} suppliers={suppliers.byJob} todayYmd={todayYmd} me={{ id: authUserId, name: authName }} onClose={() => setShareOpen(false)} />
             ) : null}
           </span>
-          {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice and the owner-records door at the right (v2.4740: the run moved up to the title line). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
+          {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
           {paperShown || (leader && wordSent.length > 0) || (isMobile && ownerRecordsDoor) ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}

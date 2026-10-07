@@ -183,13 +183,14 @@ describe('LienDeskModal', () => {
     const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const door = screen.getByTestId('lien-owner-records-door')
-    // On All filings: at the right end of the title bar's second line, after the paper tabs (v2.4629, v2.4740).
-    expect(door.closest('[data-lien-desk-right]')).toBeTruthy()
+    // On All filings too (v2.4786): on the title line, just before § Rules, not on the second line with the paper tabs (where v2.4629 and v2.4740 kept it).
+    expect(door.closest('[data-lien-desk-right]')).toBeNull()
+    expect(door.parentElement!.querySelector('[data-lien-desk-share]')).toBeTruthy()
     expect(door.textContent).toBe('An owner asked for records ›')
     fireEvent.click(door)
     expect(onOpenOwnerRecords).toHaveBeenCalledTimes(1)
     view.unmount()
-    // v2.4740: on Deadlines it moves up to the title line, just before § Rules, and the title bar is one line.
+    // v2.4740: on Deadlines it is on the title line, just before § Rules, and the title bar is one line.
     const deadlines = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="calendar" onOpenOwnerRecords={onOpenOwnerRecords} />)
     await settle()
     const up = screen.getByTestId('lien-owner-records-door')
