@@ -6,7 +6,7 @@
  */
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
-import { installDomShims, renderSettled } from '../../test/renderSmokeMocks'
+import { installDomShims, renderSettled, settle } from '../../test/renderSmokeMocks'
 import { emptyCustomerTimelineInput, type CustomerTimelineInput } from '../../lib/customers/customerTimeline'
 import type { CustomerTimelineLoad } from '../../lib/customers/fetchCustomerTimeline'
 
@@ -21,6 +21,16 @@ vi.mock('../../lib/supabase', async () => {
 })
 const openJobDetail = vi.fn()
 vi.mock('../../contexts/JobDetailModalContext', () => ({ useJobDetailModal: () => ({ openJobDetail }) }))
+vi.mock('../jobs/JobHoursStoryModal', () => ({
+  default: ({ jobId, onClose }: { jobId: string; onClose: () => void }) => (
+    <div data-testid="hours-story">
+      {jobId}
+      <button type="button" onClick={onClose}>
+        Close the hours story
+      </button>
+    </div>
+  ),
+}))
 
 import CustomerTimelineView from './CustomerTimelineView'
 
@@ -125,6 +135,26 @@ describe('CustomerTimelineView', () => {
     expect(hours.style.opacity).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: /944 · Clinic add-on/, pressed: true }))
     expect((document.querySelector('[data-card-kind="payment"]') as HTMLElement).style.opacity).toBe('1')
+  })
+
+  it('opens the job’s hours story from a crew card', async () => {
+    fetchTimeline.mockResolvedValue(loadOf())
+    await render()
+    fireEvent.click(screen.getByRole('button', { name: 'show the days ›' }))
+    expect(screen.getByTestId('hours-story').textContent).toContain('j944')
+    fireEvent.click(screen.getByRole('button', { name: 'Close the hours story' }))
+    expect(screen.queryByTestId('hours-story')).toBeNull()
+  })
+
+  it('copies a link that opens this timeline', async () => {
+    const writeText = vi.fn(async () => {})
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    fetchTimeline.mockResolvedValue(loadOf())
+    await render()
+    fireEvent.click(screen.getByRole('button', { name: 'Copy link' }))
+    await settle()
+    expect(writeText).toHaveBeenCalledWith('https://clicktooling.com/jobs?tab=stages&customerTimeline=c1')
+    expect(await screen.findByText('Link copied. It opens this timeline on the Pipeline.')).toBeTruthy()
   })
 
   it('switches to the Profile and closes', async () => {

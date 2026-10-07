@@ -24,6 +24,10 @@ import {
   customerTimelineWhoWords,
 } from '../../lib/customers/customerTimelineWords'
 import CustomerViewSwitch from './CustomerViewSwitch'
+import JobHoursStoryModal from '../jobs/JobHoursStoryModal'
+import { useToastContext } from '../../contexts/ToastContext'
+import { appUrl } from '../../lib/appOrigin'
+import { customerTimelineHref } from '../../lib/customers/customerTimelineSearch'
 
 /**
  * The Customer timeline (punch list #97): one customer's whole story on one spine of time,
@@ -139,18 +143,44 @@ function Rails({ lanes, count, width, nodeY, focus, greyHighlight }: { lanes: Ti
   )
 }
 
+/** A fold's lines past this many wait behind "show all". */
+const ITEMS_SHOWN = 5
+
+function CardItems({ items }: { items: string[] }) {
+  const [all, setAll] = useState(false)
+  const shown = all || items.length <= ITEMS_SHOWN + 1 ? items : items.slice(0, ITEMS_SHOWN)
+  return (
+    <>
+      <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        {shown.map((item, i) => (
+          <li key={i} style={{ overflowWrap: 'anywhere' }}>
+            {item}
+          </li>
+        ))}
+      </ul>
+      {shown.length < items.length ? (
+        <button type="button" onClick={() => setAll(true)} style={{ border: 'none', background: 'none', padding: 0, marginTop: 2, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-link)' }}>
+          show all {items.length}
+        </button>
+      ) : null}
+    </>
+  )
+}
+
 function CardView({
   card,
   job,
   phone,
   dimmed,
   onOpenJob,
+  onShowDays,
 }: {
   card: TimelineCard
   job: TimelineJob | null
   phone: boolean
   dimmed: boolean
   onOpenJob: (jobId: string) => void
+  onShowDays: (job: TimelineJob) => void
 }) {
   const color = job ? timelineJobColor(job.colorIndex) : 'var(--text-faint)'
   const accent = `3px solid ${color}`
@@ -201,15 +231,7 @@ function CardView({
         <div style={{ fontSize: '0.8rem', color: 'var(--text-base)', fontStyle: 'italic', marginTop: 2, overflowWrap: 'anywhere' }}>“{card.quote}”</div>
       ) : null}
       {card.by ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 1 }}>{card.kind === 'promise' ? `${card.by} said it` : `by ${card.by}`}</div> : null}
-      {card.items.length > 0 ? (
-        <ul style={{ margin: '4px 0 0', paddingLeft: 16, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          {card.items.map((item, i) => (
-            <li key={i} style={{ overflowWrap: 'anywhere' }}>
-              {item}
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {card.items.length > 0 ? <CardItems items={card.items} /> : null}
       {card.hours ? (
         <>
           {card.hours.shareOfJob != null && card.hours.shareOfJob < 0.995 ? (
@@ -217,13 +239,22 @@ function CardView({
               <div style={{ width: `${Math.round(card.hours.shareOfJob * 100)}%`, height: '100%', background: color }} />
             </div>
           ) : null}
-          {card.hours.crew.length > 0 ? (
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+          {card.hours.crew.length > 0 || job ? (
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
               {card.hours.crew.map((name) => (
                 <span key={name} style={{ fontSize: '0.68rem', border: '1px solid var(--border)', borderRadius: 9999, padding: '0 7px', color: 'var(--text-muted)' }}>
                   {name}
                 </span>
               ))}
+              {job ? (
+                <button
+                  type="button"
+                  onClick={() => onShowDays(job)}
+                  style={{ border: 'none', background: 'none', padding: 0, marginLeft: 4, cursor: 'pointer', fontSize: '0.75rem', color: 'var(--text-link)' }}
+                >
+                  show the days ›
+                </button>
+              ) : null}
             </div>
           ) : null}
         </>
@@ -235,12 +266,15 @@ function CardView({
 export default function CustomerTimelineView({ customerId, onClose, onShowProfile }: { customerId: string; onClose: () => void; onShowProfile: () => void }) {
   const phone = useIsMobile()
   const jobDetail = useJobDetailModal()
+  const { showToast } = useToastContext()
   const [load, setLoad] = useState<(CustomerTimelineLoad & { nowMs: number }) | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [show, setShow] = useState<Show>('all')
   const [focus, setFocus] = useState<string | null>(null)
   const [compact, setCompact] = useState(false)
   const [asOfYmd, setAsOfYmd] = useState<string | null>(null)
+  /** The job whose crew days are open in the hours story (the man-hours chip's window). */
+  const [hoursJob, setHoursJob] = useState<TimelineJob | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const frame = useRef<number | null>(null)
 
@@ -305,6 +339,15 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
   const openJob = (jobId: string) => jobDetail?.openJobDetail({ jobId })
   const sinceYmd = load ? timelineDayOfDate(load.input.customer.dateMet) || timelineDayOfInstant(load.input.customer.createdAt) || null : null
   const missingWords = load ? customerTimelineMissingWords(load) : ''
+  const copyLink = async () => {
+    const url = appUrl(customerTimelineHref(customerId))
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast('Link copied. It opens this timeline on the Pipeline.', 'success')
+    } catch {
+      showToast(`Copy this link: ${url}`, 'info')
+    }
+  }
 
   const titleBar = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -312,9 +355,17 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
       <CustomerViewSwitch view="timeline" onChange={(v) => (v === 'profile' ? onShowProfile() : undefined)} />
       <button
         type="button"
+        onClick={() => void copyLink()}
+        title="Copy a link that opens this timeline on the Pipeline"
+        style={{ marginLeft: 'auto', border: '1px solid var(--border)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 600, padding: '2px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+      >
+        Copy link
+      </button>
+      <button
+        type="button"
         onClick={onClose}
         aria-label="Close"
-        style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
+        style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
       >
         ×
       </button>
@@ -383,7 +434,15 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
     const field = row.field.filter((c) => timelineCardShown(c, show))
     if (office.length === 0 && field.length === 0) return null
     const card = (c: TimelineCard) => (
-      <CardView key={c.key} card={c} job={c.jobId ? (jobsById.get(c.jobId) ?? null) : null} phone={phone} dimmed={focus != null && !c.jobIds.includes(focus)} onOpenJob={openJob} />
+      <CardView
+        key={c.key}
+        card={c}
+        job={c.jobId ? (jobsById.get(c.jobId) ?? null) : null}
+        phone={phone}
+        dimmed={focus != null && !c.jobIds.includes(focus)}
+        onOpenJob={openJob}
+        onShowDays={setHoursJob}
+      />
     )
     const rails = <Rails lanes={row.lanes} count={laneTotal} width={laneW} nodeY={NODE_Y} focus={focus} greyHighlight={greyHighlightAt(row.ymd)} />
     return phone ? (
@@ -530,6 +589,9 @@ export default function CustomerTimelineView({ customerId, onClose, onShowProfil
           </>
         )}
       </div>
+      {hoursJob ? (
+        <JobHoursStoryModal jobId={hoursJob.id} hcpNumber={hoursJob.numberLabel} jobName={hoursJob.label} onClose={() => setHoursJob(null)} />
+      ) : null}
     </>
   )
 }
