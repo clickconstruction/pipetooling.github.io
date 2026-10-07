@@ -577,6 +577,16 @@ describe('JobsStagesTab render smoke', () => {
       expect(screen.getByRole('button', { name: 'Uncollectible…' })).toBeTruthy()
     })
 
+    it('a search that finds only the given-up job is a match: the band shows it and no "No match anywhere" line (v2.4874)', async () => {
+      renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: [...boardJobs(), chased(), givenUp()] })} />)
+      await settle()
+      fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Given Up' } })
+      await settle()
+      expect(document.querySelectorAll('tr[data-stages-row-stamped]')).toHaveLength(1)
+      expect(screen.queryByText(/No match anywhere/)).toBeNull()
+      expect(screen.queryByText(/Checking Paid in Full/)).toBeNull()
+    })
+
     it('Uncollectible… asks for a reason and writes it; Put it back asks and unmarks', async () => {
       uncollectibleRpc.calls = []
       const jobs = [...boardJobs(), chased(), givenUp()]

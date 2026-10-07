@@ -81,6 +81,15 @@ describe('buildBilledDatesLedger (v2.4205 — rows and one bold line, one deadli
     expect(l.verdict).toBeNull()
   })
 
+  it('a bill the office gave up on (Uncollectible) has no Expected or They said row: nobody expects the money', () => {
+    const promise = { promisedYmd: '2026-10-13', markedByName: 'Wendi' }
+    const kept = buildBilledDatesLedger({ todayYmd: today, row, data, promise, runway: null, inCollections: true })
+    expect(kept.rows.map((r) => r.key)).toEqual(['billed', 'money'])
+    const given = buildBilledDatesLedger({ todayYmd: today, row, data, promise, runway: null, inCollections: true, uncollectible: true })
+    expect(given.rows.map(line)).toEqual(['Billed Sep 23 7d ago'])
+    expect(given.verdict).toBeNull()
+  })
+
   it('the money is expected after the deadline: the row goes red and the verdict says how short — Notice first on a sub, File the lien first on a direct job', () => {
     const late = { promisedYmd: '2026-10-20', markedByName: 'Wendi' }
     const sub = buildBilledDatesLedger({ todayYmd: today, row, data, promise: late, runway: buildLienPayRunway(runwayInput({ expectedPayYmd: '2026-10-20' })), inCollections: false })

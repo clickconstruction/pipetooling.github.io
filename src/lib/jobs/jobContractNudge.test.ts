@@ -90,6 +90,21 @@ describe('byStage', () => {
     expect(s.byStage.ready_to_bill).toEqual({ total: 0, missing: 0, revenueMissing: 0 })
     expect(contractStageOf({ status: 'paid', collections_at: null })).toBeNull()
   })
+
+  it('a Collections job the office gave up on (Uncollectible) is chased for nothing: out of the live count, the gap and its stage', () => {
+    const s = summarizeContractNudge(
+      [
+        { id: 'd', bid_id: null, status: 'billed', revenue: 400, collections_at: '2026-09-01T00:00:00Z' },
+        { id: 'u', bid_id: null, status: 'billed', revenue: 7502, collections_at: '2026-09-01T00:00:00Z', uncollectible_at: '2026-10-07T19:00:00Z' },
+      ],
+      [],
+      [],
+      NOW,
+    )
+    expect(s.liveTotal).toBe(1)
+    expect(s.missing).toMatchObject({ count: 1, jobIds: ['d'], revenueTotal: 400 })
+    expect(s.byStage.collections).toEqual({ total: 1, missing: 1, revenueMissing: 400 })
+  })
 })
 
 

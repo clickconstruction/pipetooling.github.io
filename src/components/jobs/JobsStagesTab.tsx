@@ -901,7 +901,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!canSeeJobContracts) return 0
     let n = 0
     for (const j of jobs) {
-      if ((j.status ?? '') === 'paid') continue
+      if ((j.status ?? '') === 'paid' || jobUncollectible(j)) continue
       if (isContractGap(jobContractCoverageByJobId.get(j.id), j.revenue, contractFloorCents)) n++
     }
     return n
@@ -1050,6 +1050,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         promise,
         runway,
         inCollections: jobInCollections(row.job),
+        uncollectible: jobUncollectible(row.job),
       })
       if (ledger.rows.length === 0) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
@@ -3500,7 +3501,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const paidSearchHint = stagesPaidSearchHint({
               searchActive: stagesSearchActive,
               openMatchCount:
-                waiting.length + working.length + readyToBillRows.length + billedActiveRows.length + collectionsRows.length,
+                waiting.length + working.length + readyToBillRows.length + billedActiveRows.length + collectionsRows.length + uncollectibleRows.length,
               paidMatchCount: paid.length,
               serverSearchBusy: stagesServerSearchBusy,
             })

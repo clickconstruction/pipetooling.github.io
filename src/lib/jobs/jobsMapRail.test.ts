@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobsMapPin } from './jobsMap'
-import { DEFAULT_DISTANCE_BUCKETS, bucketAskLine, jobsMapAskLabel, jobsMapPinMiles, jobsMapPinsInBuckets, jobsMapRail } from './jobsMapRail'
+import { DEFAULT_DISTANCE_BUCKETS, bucketAskLine, jobsMapAskLabel, jobsMapPinAsks, jobsMapPinMiles, jobsMapPinsInBuckets, jobsMapRail } from './jobsMapRail'
 
 const OFFICE = { lat: 29.65, lng: -97.81 }
 
@@ -14,6 +14,7 @@ function pin(over: Partial<JobsMapPin> & { id: string }): JobsMapPin {
     addressKey: '1 main',
     section: 'working',
     inCollections: false,
+    uncollectible: false,
     pctComplete: null,
     owedDollars: 0,
     billedAgeDays: null,
@@ -89,5 +90,15 @@ describe('jobsMapRail', () => {
     expect(rail.buckets.map((b) => b.count)).toEqual([0, 0, 0])
     expect(rail.ask[0]!.milesLabel).toBe('— mi')
     expect(rail.toCollectDollars).toBe(35100)
+  })
+
+  it('a bill the office gave up on is pinned but neither to collect nor to ask', () => {
+    const given = pin({ id: 'given', section: 'billed', inCollections: true, uncollectible: true, billedAgeDays: 90, owedDollars: 0, ...north(3) })
+    const rail = jobsMapRail([...pins, given], OFFICE)
+    expect(rail.pinnedCount).toBe(8)
+    expect(rail.buckets[0]).toMatchObject({ count: 5, toCollectDollars: 24900, toAsk: 3 })
+    expect(rail.ask.map((r) => r.pin.id)).not.toContain('given')
+    expect(jobsMapPinAsks(given)).toBe(false)
+    expect(jobsMapPinAsks({ section: 'billed' })).toBe(true)
   })
 })

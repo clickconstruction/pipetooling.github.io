@@ -36,9 +36,9 @@ export function jobsMapPinsInBuckets(pins: readonly JobsMapPin[], anchor: MapAnc
   })
 }
 
-/** A pin that belongs on the ask list: billed or ready to bill. */
-export function jobsMapPinAsks(pin: Pick<JobsMapPin, 'section'>): boolean {
-  return pin.section === 'billed' || pin.section === 'readyToBill'
+/** A pin that belongs on the ask list: billed or ready to bill, and not a bill the office gave up on. */
+export function jobsMapPinAsks(pin: Pick<JobsMapPin, 'section'> & { uncollectible?: boolean }): boolean {
+  return !pin.uncollectible && (pin.section === 'billed' || pin.section === 'readyToBill')
 }
 
 export type JobsMapAskTone = 'collections' | 'late' | 'billed' | 'ready'

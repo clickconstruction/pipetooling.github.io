@@ -38,6 +38,8 @@ export type JobsMapHistoryJob = {
   status: string | null
   created_ymd: string
   collections_ymd: string | null
+  /** The day the office gave up on it (Uncollectible); the mark clears on pay or Put back, so no history before that. */
+  uncollectible_ymd: string | null
   customer_id: string | null
   customer_name: string | null
   gc_customer_id: string | null
@@ -154,13 +156,14 @@ export function jobsMapJobsAsOf(
     const section = sectionForStatus(status)
     if (!section) continue
     const inCollections = section === 'billed' && j.collections_ymd != null && j.collections_ymd <= ymd
+    const uncollectible = inCollections && j.uncollectible_ymd != null && j.uncollectible_ymd <= ymd
     const party = effectiveInvoiceParty({ bill_to_party: j.bill_to_party, gc_customer_id: j.gc_customer_id, customer_id: j.customer_id }, null)
     const payerName = ((party === 'gc' ? j.gc_name : j.customer_name) ?? '').trim() || null
     const address = (j.job_address ?? '').trim()
     const addressKey = normalizeAddressForGeocodeKey(address)
     const numberLabel = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
     const jobName = (j.job_name ?? '').trim() || '—'
-    const money = section === 'billed' || section === 'readyToBill' ? moneyOnDay(idx.billsByJob.get(j.id) ?? [], idx.paymentsByInvoice, ymd) : { owedDollars: 0, billedAgeDays: null }
+    const money = !uncollectible && (section === 'billed' || section === 'readyToBill') ? moneyOnDay(idx.billsByJob.get(j.id) ?? [], idx.paymentsByInvoice, ymd) : { owedDollars: 0, billedAgeDays: null }
     const job: JobsMapJob = {
       id: j.id,
       label: `${numberLabel} · ${jobName}`,
@@ -171,6 +174,7 @@ export function jobsMapJobsAsOf(
       addressKey,
       section,
       inCollections,
+      uncollectible,
       pctComplete: null,
       owedDollars: money.owedDollars,
       billedAgeDays: section === 'billed' ? money.billedAgeDays : null,

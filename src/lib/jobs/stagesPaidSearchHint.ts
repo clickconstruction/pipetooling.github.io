@@ -21,7 +21,7 @@ export type StagesPaidSearchHint =
 
 export function stagesPaidSearchHint(input: {
   searchActive: boolean
-  /** rows the search matched in Waiting / Working / Ready to Bill / Billed / Collections */
+  /** rows the search matched in Waiting / Working / Ready to Bill / Billed / Collections (its Uncollectible band included) */
   openMatchCount: number
   /** paid rows the search matched (already merged client-side) */
   paidMatchCount: number
