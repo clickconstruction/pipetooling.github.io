@@ -116,11 +116,12 @@ export function filterLegalLienGrid(book: LienTimelineBook, opts: { gcId: string
 
 /**
  * The rail: All GCs first, then every GC with rows in view, largest open
- * balance first, then the jobs with no GC. The counts and dollars follow the
- * view, so they foot with the grid beside them. A selected GC stays listed
- * at `0 jobs` when the view empties it, so the choice can be undone.
+ * balance first, then the jobs with no GC when any is in view. The counts
+ * and dollars follow the view, so they foot with the grid beside them. An
+ * entry with nothing in view is left off; the screen drops a choice that
+ * left the rail back to All GCs, so the grid never sits empty under a name.
  */
-export function legalLienGridGcs(book: LienTimelineBook, show: LienBookShow, selectedId: string | null): LegalLienGridGc[] {
+export function legalLienGridGcs(book: LienTimelineBook, show: LienBookShow): LegalLienGridGc[] {
   const inView = filterLienTimelineBook(book, { gcId: null, show })
   const byGc = new Map<string, LegalLienGridGc>()
   for (const g of book.gcs) byGc.set(g.id, { id: g.id, name: g.name || 'GC', count: 0, open: 0, kind: 'gc' })
@@ -135,10 +136,9 @@ export function legalLienGridGcs(book: LienTimelineBook, show: LienBookShow, sel
     e.open += r.job.openBalance
   }
   const gcs = [...byGc.values()]
-    .filter((g) => g.count > 0 || g.id === selectedId)
+    .filter((g) => g.count > 0)
     .sort((a, b) => b.open - a.open || b.count - a.count || a.name.localeCompare(b.name))
-  const tail = none.count > 0 || selectedId === LEGAL_LIEN_NO_GC || book.rows.some((r) => !r.job.gcId) ? [none] : []
-  return [all, ...gcs, ...tail]
+  return [all, ...gcs, ...(none.count > 0 ? [none] : [])]
 }
 
 /** The rail shows a find box once it lists this many GCs. */

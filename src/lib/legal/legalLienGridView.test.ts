@@ -118,7 +118,7 @@ describe('the rail', () => {
   const book = buildLienTimelineBook(input())
 
   it('lists All first, then the GCs largest first with their count and dollars, then the jobs with no GC', () => {
-    const rail = legalLienGridGcs(book, 'all', null)
+    const rail = legalLienGridGcs(book, 'all')
     expect(rail.map((e) => [e.id, e.name, e.count, e.open])).toEqual([
       ['', 'All GCs', 4, 56_793],
       ['gc1', 'Knight Contracting', 2, 47_846],
@@ -128,17 +128,21 @@ describe('the rail', () => {
     expect(rail.map((e) => e.kind)).toEqual(['all', 'gc', 'gc', 'none'])
   })
 
-  it('follows the view, keeps a selected GC at 0 jobs, and filters the grid the same way', () => {
-    const due = legalLienGridGcs(book, 'due', 'gc2')
+  it('follows the view, leaves an empty entry off, and filters the grid the same way', () => {
+    const due = legalLienGridGcs(book, 'due')
     expect(due[0]!.count).toBe(book.counts.due)
-    expect(due.find((e) => e.id === 'gc2')).toBeTruthy()
+    // The homeowner's month is due Oct 15, inside the lead: No GC stays. Push it out and the entry is left off (v2.4751).
+    expect(due.some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(true)
+    const later = buildLienTimelineBook({ ...input(), rows: input().rows.map((r) => (r.job_id === 'j1101' ? { ...r, deadline: '2027-01-15' } : r)) })
+    expect(legalLienGridGcs(later, 'due').some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(false)
+    expect(legalLienGridGcs(later, 'all').some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(true)
     expect(filterLegalLienGrid(book, { gcId: 'gc1', show: 'all' }).map((r) => r.jobId).sort()).toEqual(['j702', 'j878'])
     expect(filterLegalLienGrid(book, { gcId: LEGAL_LIEN_NO_GC, show: 'all' }).map((r) => r.jobId)).toEqual(['j1101'])
     expect(filterLegalLienGrid(book, { gcId: null, show: 'all' })).toHaveLength(4)
   })
 
   it('a find keeps All and the selected entry, and matches the rest by name', () => {
-    const rail = legalLienGridGcs(book, 'all', 'gc2')
+    const rail = legalLienGridGcs(book, 'all')
     expect(findLegalLienGcs(rail, 'knight', 'gc2').map((e) => e.id)).toEqual(['', 'gc1', 'gc2'])
     expect(findLegalLienGcs(rail, '', 'gc2')).toHaveLength(4)
     expect(legalLienGcCountWords(1)).toBe('1 job')

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { buildLienTimelineBook, lienGridHtml, type LienBookShow } from '../../../lib/jobs/lienTimelineBook'
 import { assembleLienBookInput, type LienBookRaw } from '../../../lib/jobs/lienTimelineBookAssemble'
@@ -28,7 +28,9 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
   const book = useMemo(() => buildLienTimelineBook(assembleLienBookInput(raw, todayYmd)), [raw, todayYmd])
   const rows = useMemo(() => filterLegalLienGrid(book, { gcId, show }), [book, gcId, show])
   const cells = useMemo(() => legalLienGridCells(rows, todayYmd), [rows, todayYmd])
-  const rail = useMemo(() => legalLienGridGcs(book, show, gcId), [book, show, gcId])
+  const rail = useMemo(() => legalLienGridGcs(book, show), [book, show])
+  // A choice that left the rail (the view emptied it) falls back to All GCs, so the grid never sits empty under a name.
+  useEffect(() => { if (gcId && !rail.some((g) => g.id === gcId)) setGcId(null) }, [rail, gcId])
   const railShown = useMemo(() => findLegalLienGcs(rail, find, gcId), [rail, find, gcId])
   const gc = gcId ? rail.find((g) => g.id === gcId) ?? null : null
   const title = gc ? gc.name : 'all GCs'
@@ -98,7 +100,7 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
                     <td style={td}>{fact(c.owner)}</td>
                     <td style={td}>
                       <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.kind}{c.kindUnknown ? <> {unknown('The office has not entered the property kind — commercial dates shown; a residential property is a month earlier')}</> : null}</span>
-                      {c.homestead ? <span style={{ display: 'block', color: MUTED }}>{c.homestead}</span> : null}
+                      {c.homestead ? <span style={{ display: 'block', color: MUTED, fontSize: 10.5, whiteSpace: 'nowrap' }}>{c.homestead}</span> : null}
                     </td>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>{fact(c.lastOnSite)}</td>
                     <td style={td}>
