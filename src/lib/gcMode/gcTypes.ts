@@ -8,7 +8,7 @@ export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteSta
 import type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, WeatherSky, WeeklyReportSent } from '../gc/types'
 export type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, SubmittalRound, WeatherSky, WeeklyReportSent } from '../gc/types'
 // Owner Billing's O2a (#4858): its whole shapes are main's, word for word.
-import type { ChangeOrderReason, OwnerBilling, OwnerInterestBill, OwnerPayAppSent, OwnerRetainageStep } from '../gc/types'
+import type { ChangeOrderReason, OwnerBilling, OwnerRetainageStep } from '../gc/types'
 export type { ChangeOrderReason, OwnerBilling, OwnerInterestBill, OwnerPayAppSent, OwnerRetainageStep } from '../gc/types'
 
 export type { RoughSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
