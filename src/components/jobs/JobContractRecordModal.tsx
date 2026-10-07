@@ -1,26 +1,17 @@
 /**
- * The signed-contract record (Contract Desk PR 3; body/shell split v2.2709):
- * the document exactly as signed, the signature (drawn image from the private
- * bucket or the typed line), and the e-sign audit — who, how, when, from
- * where. Paper records show the uploaded copy instead. `JobContractRecordBody`
- * is what the Jobs signed-agreement view mounts; the default export keeps the
- * standalone modal for the Contract modal's history rows.
+ * The signed-contract record's two shared pieces (Contract Desk PR 3; body/shell split v2.2709):
+ * signed URLs for the drawn marks, the stored PDF and the paper upload, and the record's printable
+ * HTML. The standalone modal and its facts body were mounted nowhere; they went in punch list
+ * #64's tidy (2026-10-07). The Contract window and its signed rail draw the record now.
  */
-import { useEffect, useMemo, useState } from 'react'
-import ResponsiveModalShell from '../ResponsiveModalShell'
-import IpAddressMapButton from '../estimates/IpAddressMapButton'
+import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { useToastContext } from '../../contexts/ToastContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
-import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
-import { buildJobContractDocumentHtml, isGoogleDocsUrl, jobContractHeading, parseJobContractFields, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
-import { formatContractStamp, jobContractSignatureAuditLine, jobContractSignatureBlocks, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
-
+import { buildJobContractDocumentHtml, jobContractHeading, parseJobContractFields } from '../../lib/jobs/jobContractDocument'
+import { formatContractStamp, jobContractSignatureBlocks, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
-
-export { JOB_CONTRACT_BUCKET }
 
 export type JobContractRecordJob = {
   hcp_number: string | null
@@ -29,9 +20,6 @@ export type JobContractRecordJob = {
   job_address: string | null
   customer_name: string | null
 }
-
-const kv: React.CSSProperties = { display: 'grid', gridTemplateColumns: '120px minmax(0, 1fr)', gap: '0.25rem 0.75rem', fontSize: '0.82rem' }
-const k: React.CSSProperties = { color: 'var(--text-muted)' }
 
 /** Signed URLs for the drawn signature, the stored PDF, and the paper upload. */
 export function useJobContractRecordUrls(row: JobContractRow | null, open: boolean): { signatureUrl: string | null; pdfUrl: string | null; paperUrl: string | null; coSignatureUrl: string | null } {
@@ -98,136 +86,4 @@ export function buildJobContractRecordHtml(row: JobContractRow, job: JobContract
     coSignerName: blocks.coSignerName,
     coSignature: blocks.coSignature,
   })
-}
-
-/** Facts grid + the document (iframe) or the paper copy link. */
-export function JobContractRecordBody({
-  row,
-  job,
-  urls,
-  showFacts = true,
-}: {
-  row: JobContractRow
-  job: JobContractRecordJob
-  urls: { signatureUrl: string | null; paperUrl: string | null }
-  showFacts?: boolean
-}) {
-  const html = useMemo(() => buildJobContractRecordHtml(row, job, urls.signatureUrl), [row, job, urls.signatureUrl])
-  const isPaper = row.signer_mode === 'paper'
-  const audit = jobContractSignatureAuditLine(row)
-  return (
-    <>
-      {showFacts ? (
-        <div style={{ ...kv, marginBottom: '0.75rem' }}>
-          <span style={k}>Signed by</span>
-          <span style={{ fontWeight: 600 }}>{row.signer_printed_name || '—'}</span>
-          <span style={k}>How</span>
-          <span>{isPaper ? 'On paper (uploaded copy)' : row.signer_mode === 'draw' ? 'Drawn signature' : row.signer_mode === 'in_person' ? 'In person, on our device' : 'Typed signature'}</span>
-          <span style={k}>When</span>
-          <span>
-            {formatContractStamp(row.signed_at) ?? '—'}
-            {isPaper && row.paper_signed_on ? ` · signed on ${row.paper_signed_on}` : ''}
-          </span>
-          {!isPaper ? (
-            <>
-              <span style={k}>Consent</span>
-              <span>{row.signer_consented_at ? `Recorded ${formatContractStamp(row.signer_consented_at)}` : '—'}</span>
-              <span style={k}>From</span>
-              <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                {row.signer_ip || '—'}
-                <IpAddressMapButton ip={row.signer_ip} />
-              </span>
-              <span style={k}>Device</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>{row.signer_user_agent || '—'}</span>
-            </>
-          ) : null}
-          <span style={k}>Document</span>
-          <span>
-            {row.template_name ?? 'Contract'} · rev {row.revision}
-            {row.template_version_date ? ` · v. ${row.template_version_date}` : ''}
-            {row.signed_pdf_path ? ' · PDF stored' : ''}
-          </span>
-        </div>
-      ) : null}
-      {audit && showFacts ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>{audit}</div> : null}
-      {isPaper ? (
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
-          {row.signed_document_url ? (
-            <a
-              href={row.signed_document_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', padding: '0.6rem 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 700, textDecoration: 'none', width: 'fit-content', maxWidth: '100%' }}
-            >
-              <span aria-hidden style={{ width: 20, height: 26, borderRadius: 3, background: 'var(--text-link)', flexShrink: 0 }} />
-              <span style={{ minWidth: 0 }}>
-                Open the signed {isGoogleDocsUrl(row.signed_document_url) ? 'Google Doc' : 'document'} ↗
-                <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{shortDocumentLabel(row.signed_document_url)}</span>
-              </span>
-            </a>
-          ) : null}
-          {urls.paperUrl ? (
-            <a href={urls.paperUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem' }}>
-              Open the uploaded signed copy ↗
-            </a>
-          ) : !row.signed_document_url ? (
-            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {row.paper_upload_path ? 'The uploaded copy could not be loaded.' : 'No file was uploaded — recorded from the paper copy on file.'}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <iframe title="Signed contract" srcDoc={html} style={{ width: '100%', height: '60vh', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }} />
-      )}
-    </>
-  )
-}
-
-export type JobContractRecordModalProps = {
-  open: boolean
-  onClose: () => void
-  row: JobContractRow | null
-  job: JobContractRecordJob | null
-}
-
-export default function JobContractRecordModal({ open, onClose, row, job }: JobContractRecordModalProps) {
-  const { showToast } = useToastContext()
-  const urls = useJobContractRecordUrls(row, open)
-  if (!open || !row || !job) return null
-  const isPaper = row.signer_mode === 'paper'
-  return (
-    <ResponsiveModalShell
-      title={`Signed contract · J${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}`}
-      onRequestClose={onClose}
-      maxWidthDesktop={820}
-      footer={
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-          {urls.pdfUrl ? (
-            <a
-              href={urls.pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}
-            >
-              Download signed PDF
-            </a>
-          ) : null}
-          {!isPaper ? (
-            <button
-              type="button"
-              onClick={() => {
-                // A print counts as a send (docs/SENT_COPIES.md): the contract is filed on the job as it printed.
-                if (!printAndFile(buildJobContractRecordHtml(row, job, urls.signatureUrl), { kind: 'job_contract_print', title: `Contract${row.template_name ? ` · ${row.template_name}` : ''}`, recipientName: row.recipient_name ?? '', jobIds: [row.job_id], source: { table: 'job_contracts', id: row.id } })) showToast('Allow pop-ups to print the contract.', 'error')
-              }}
-              style={{ padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
-            >
-              Print / save as PDF
-            </button>
-          ) : null}
-        </div>
-      }
-    >
-      <JobContractRecordBody row={row} job={job} urls={urls} />
-    </ResponsiveModalShell>
-  )
 }
