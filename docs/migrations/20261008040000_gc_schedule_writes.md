@@ -122,3 +122,11 @@ Nothing calls these until the schedule's PR 6. Going back is a new migration wit
 ## Status
 
 Written 2026-10-07 for the schedule's PR 5; not applied. The lead pushes it after PR 4's, and records here what steps 1 to 5 said.
+
+Applied to prod 2026-10-07 with `supabase db push` from a clean checkout of main after #4866 merged (the drift check reads 783 local, 783 remote, fully applied; types in #4876). The five verify steps ran the same evening through the management API's query endpoint, every write inside a transaction that rolled back:
+
+- Step 1: 23 `gc_schedule_*` functions, every one `SECURITY INVOKER` with `search_path=public`, none executable by `anon`, all executable by `authenticated` but `gc_schedule_plan_guard`; the guard trigger sits on the plan tables (`gc_schedules`, `gc_schedule_activities`, `gc_schedule_activity_parts`, `gc_schedule_links`, `gc_schedule_inspection_failures`, `gc_schedule_baselines`, `gc_schedule_baseline_dates`, `gc_schedule_changes`, `gc_schedule_moves`, `gc_schedule_move_pushes`).
+- Step 2: a dev's plain insert into `gc_schedule_changes` got `Change the schedule through its own presses, so its version counts the change.`
+- Step 3: the training-mode user's `gc_schedule_move` got `Read-only (training) mode: changes are blocked.` at the version's update.
+- Step 4: on the test project, drawn with two lines and moved twice on version 1, the second move got `The schedule changed while you were working.` with DETAIL `{"read": 1, "version": 2, "changes": [{"version": 2, …, "words": "A check: the first move, then rolled back."}]}`; afterwards the schedule tables read zero rows and the test project's stage read `bidding`, so nothing stayed.
+- Step 5: `anon` calling `gc_schedule_bump` got `permission denied for function gc_schedule_bump`.
