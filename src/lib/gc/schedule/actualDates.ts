@@ -1,0 +1,41 @@
+/**
+ * GC mode, the real build, the schedule's PR 1a: the days work really ran (G-55), moved word for word
+ * from the GC mode prototype (branch spike/gc-mode, `gcActualDates.ts`).
+ */
+import { daysBetween } from './schedule'
+import type { ProjectSchedule, ScheduleActivity } from './types'
+import { shortDate, weekdayDate } from '../words'
+
+/**
+ * A report sets the real days (the owner's OK, 2026-10-06): the first report over 0% on a line is
+ * its start, a report of 100% its finish, today, where none was recorded. The same schedule back
+ * when nothing changes.
+ */
+export function withReportedActuals(schedule: ProjectSchedule | undefined, lineId: string, pct: number, today: string): ProjectSchedule | undefined {
+  const a = schedule?.activities.find((x) => x.lineId === lineId)
+  if (!schedule || !a) return schedule
+  const start = pct > 0 && !a.actualStart ? today : undefined
+  const finish = pct >= 100 && !a.actualFinish ? today : undefined
+  if (!start && !finish) return schedule
+  return { ...schedule, activities: schedule.activities.map((x) => (x.lineId === lineId ? { ...x, ...(start ? { actualStart: start } : {}), ...(finish ? { actualFinish: finish } : {}) } : x)) }
+}
+
+/** "Started Mon Sep 21, as planned." · "Started Wed Sep 23, 2 days late; not finished." · "Sep 23 to Oct 10, 1 day longer than planned." Null: nothing recorded. */
+export function actualWords(a: ScheduleActivity): string | null {
+  const { actualStart: s, actualFinish: f } = a
+  if (!s && !f) return null
+  const lateStart = s ? daysBetween(a.start, s) : 0
+  const startWords = s ? `Started ${weekdayDate(s)}${lateStart === 0 ? ', as planned' : `, ${Math.abs(lateStart)} ${Math.abs(lateStart) === 1 ? 'day' : 'days'} ${lateStart > 0 ? 'late' : 'early'}`}` : 'Start not recorded'
+  if (!f) return `${startWords}; not finished.`
+  const lateFinish = daysBetween(a.finish, f)
+  return `${s ? `${shortDate(s)} to ${shortDate(f)}` : `Finished ${weekdayDate(f)}`}, ${lateFinish === 0 ? 'on the planned finish' : `${Math.abs(lateFinish)} ${Math.abs(lateFinish) === 1 ? 'day' : 'days'} ${lateFinish > 0 ? 'past' : 'before'} the planned finish`}.`
+}
+
+/** What is wrong with a pair of actual dates, or null. */
+export function actualProblem(actualStart: string | undefined, actualFinish: string | undefined, today: string): string | null {
+  if (actualStart && actualStart > today) return 'A start cannot be after today.'
+  if (actualFinish && actualFinish > today) return 'A finish cannot be after today.'
+  if (actualStart && actualFinish && actualFinish < actualStart) return 'It has to finish on or after it started.'
+  if (actualFinish && !actualStart) return 'Say when it started first.'
+  return null
+}
