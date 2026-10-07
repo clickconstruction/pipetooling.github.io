@@ -42,8 +42,8 @@ export default function LegalPortalRulesSheet({ title, onClose }: { title: strin
   }, [onClose])
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(22, 40, 60, 0.35)', zIndex: 760, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '24px 12px' }}>
-      <div role="dialog" aria-modal="true" aria-label={title} data-legal-rules-sheet onClick={(e) => e.stopPropagation()} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderTop: `3px solid ${COPPER}`, borderRadius: 8, width: '100%', maxWidth: 760, maxHeight: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(22, 40, 60, 0.35)', zIndex: 760, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: 'calc(24px + var(--app-top-chrome, 0px)) 12px 24px' }}>
+      <div role="dialog" aria-modal="true" aria-label={title} data-legal-rules-sheet onClick={(e) => e.stopPropagation()} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderTop: `3px solid ${COPPER}`, borderRadius: 8, width: '100%', maxWidth: 760, maxHeight: 'min(calc(100vh - 48px), 100%)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${HAIR}` }}>
           <b style={{ flex: 1, fontSize: 15 }}>{title}</b>
           <span style={{ fontSize: 12, color: MUTED }}>Esc closes</span>
