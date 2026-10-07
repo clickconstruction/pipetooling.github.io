@@ -2,7 +2,7 @@
 name: "The phone-width pass: every surface the four rounds touched, at 375px"
 rows: round five's last piece (the lead's list of surfaces)
 branch: spike/phone-pass (from origin/spike/gc-mode at 629022510)
-status: built 2026-10-06 on spike/phone-pass (Helper 1). Five defects found and fixed, each measured before and after in the browser. Pinned by GcPhonePass.render.test.tsx (8 tests, 14 pins broken on purpose). No words changed.
+status: built 2026-10-06 on spike/phone-pass (Helper 1) and merged into spike/gc-mode at aa4359814. Five defects found and fixed, each measured before and after in the browser. Pinned by GcPhonePass.render.test.tsx (8 tests, 14 pins broken on purpose). No words changed. The lead's three calls sit where each question does, under A desk, Left out and the last section.
 ---
 
 # The phone-width pass
@@ -133,7 +133,9 @@ Clean means doc 375, nothing out, nothing cut, and every press on the screen.
 - **D5 is not behind the phone check.** The list is the same on a desk, where the 23rem pane was broken too (above).
 - **Seen on a desk, not touched:** at 1024 the chart cuts 3 names. Two are waits with their company
   ("Rooftop units · Cool Breeze Mechanical's supplier", "the restroom tile · Cibolo Creek Partners"), and
-  one is the trade title "Structural steel" beside its dates. They are not this pass's, so I left them for the lead.
+  one is the trade title "Structural steel" beside its dates. They are not this pass's. **The lead keeps them**
+  (2026-10-06): a 1024 pane is a laptop's narrow window. Each wait's cut company is in its hover. The trade
+  title's hover is *Fold into one bar*, but the same words name its first bar, just under it.
 
 ## Pinned
 
@@ -183,9 +185,11 @@ No words changed. The golden test does not move.
 
 - **The longest names stay cut on a phone's chart** (D1): the three on Fair Oaks and Helotes's
   "Above-ceiling inspection". Each is wider than the whole column on one line. They read whole in List,
-  which a phone opens on, and in the opened bar.
-- **A phone's larger text setting** was not tested. The chart's column is 168px in pixels, so larger
-  text would cut more.
+  which a phone opens on, and in the opened bar. The lead keeps the column at 168 (the last section).
+- **For later: a phone's larger text setting.** This pass did not test it. The chart's name column is 168px
+  in pixels while its text is in rem, so larger text is the one setting that would cut more there. To check
+  it, raise the root font size to 115% and 130% at the phone preset, and count the chart's cut names and
+  pills as in D1. The lead's call (2026-10-06): a row for later.
 
 ## Is this the best we can do?
 
@@ -197,4 +201,6 @@ For the chart's names, the main defect:
    of 35. The rows keep their heights, so nothing else in the chart moves. **I pick it.**
 3. **A wider name column on a phone**, 200px instead of 168, stacked as in 2. It would leave 1 name cut on
    Fair Oaks instead of 3. But the bars would lose 32px of the 175px they get, a fifth of the window, and
-   the chart narrows the column on a phone so a few weeks of bars still show. **Not now.** It is the lead's call.
+   the chart narrows the column on a phone so a few weeks of bars still show. **Not now, by the lead's call**
+   (2026-10-06): the column stays at 168. A name wider than it reads whole in List and in the opened bar,
+   the right trade for a phone.
