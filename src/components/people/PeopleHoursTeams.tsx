@@ -9,7 +9,13 @@ import {
 import { WeekdayCostTable } from './WeekdayCostTable'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 
-export type PeopleHoursTeam = { id: string; name: string; members: string[] }
+export type PeopleHoursTeam = {
+  id: string
+  name: string
+  members: string[]
+  /** Member name → the `person_id` its row carries, as loaded; the archived filter matches by it first. */
+  memberPersonIds?: Readonly<Record<string, string | null>>
+}
 
 export interface PeopleHoursTeamsProps {
   open: boolean

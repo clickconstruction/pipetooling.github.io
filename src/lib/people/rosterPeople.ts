@@ -120,8 +120,9 @@ export function payRosterNames(
 
 /**
  * The names the archived folds and filters hide (punch list #29, v2.4671): People → Offsets'
- * Archived users section, Contracts' archived group, the Review tab, the Teams member filter and
- * the Hours grid's first rule. Every name an archived roster row answers to (its pay, account and
+ * Archived users section, Contracts' archived group and the Review tab match on them; the Teams
+ * member filter and the Hours grid's first rule take them only as `ArchivedRoster`'s fallback
+ * (v2.4862). Every name an archived roster row answers to (its pay, account and
  * roster names, trimmed), except a name a live row also answers to, compared without case, so a
  * living person never hides behind an archived namesake. It replaces `get_archived_user_names()`,
  * which knew archived accounts only and had no namesake guard.
@@ -136,4 +137,54 @@ export function archivedRosterNames(rows: readonly RosterPerson[]): Set<string> 
       .flatMap(namesOf)
       .filter((n) => !live.has(n.toLowerCase())),
   )
+}
+
+/**
+ * Who is archived, id first (punch list #29, item 3). The verdict per roster id, with
+ * `archivedRosterNames` as the fallback for a row that carries no id the roster knows.
+ * `byPersonId` is keyed by `people.id`, which every pay, team, offset and contract row's
+ * `person_id` references; `byUserId` by `users.id`. A linked pair answers to both ids.
+ */
+export type ArchivedRoster = {
+  byPersonId: ReadonlyMap<string, boolean>
+  byUserId: ReadonlyMap<string, boolean>
+  names: ReadonlySet<string>
+}
+
+/** Before the roster read lands, or when it fails: nothing is archived (no verdict). */
+export const NO_ARCHIVED_ROSTER: ArchivedRoster = { byPersonId: new Map(), byUserId: new Map(), names: new Set() }
+
+export function buildArchivedRoster(rows: readonly RosterPerson[]): ArchivedRoster {
+  const byPersonId = new Map<string, boolean>()
+  const byUserId = new Map<string, boolean>()
+  for (const r of rows) {
+    if (r.person_id) byPersonId.set(r.person_id, r.is_archived)
+    if (r.user_id) byUserId.set(r.user_id, r.is_archived)
+  }
+  return { byPersonId, byUserId, names: archivedRosterNames(rows) }
+}
+
+export type ArchivedRosterRef = { name: string; person_id?: string | null; user_id?: string | null }
+
+/**
+ * Whether one row's person is archived. The id wins: a row whose `person_id` (else `user_id`)
+ * the roster knows takes that roster row's verdict, whatever its name says. So a renamed row
+ * still folds, and a living person whose row shares an archived name stays. Only a row with no
+ * known id falls back to the archived names, matched trimmed and without case, the way
+ * `archivedRosterNames` guards a living namesake.
+ */
+export function isArchivedRosterRef(roster: ArchivedRoster, ref: ArchivedRosterRef): boolean {
+  if (ref.person_id) {
+    const v = roster.byPersonId.get(ref.person_id)
+    if (v !== undefined) return v
+  }
+  if (ref.user_id) {
+    const v = roster.byUserId.get(ref.user_id)
+    if (v !== undefined) return v
+  }
+  const name = ref.name.trim()
+  if (roster.names.has(name)) return true
+  const key = name.toLowerCase()
+  for (const n of roster.names) if (n.toLowerCase() === key) return true
+  return false
 }

@@ -68,7 +68,7 @@ function signedCurrency(n: number): string {
 
 export type PeopleReviewTabProps = {
   payConfig: Record<string, PayConfigRow>
-  archivedUserNames: Set<string>
+  archivedUserNames: ReadonlySet<string>
   /** People spine (v2.3698): the roster view's verdict per pay row on top of the archived names; null = no verdict. */
   payRoster: PayRosterIndex | null
   authUser: User | null

@@ -116,7 +116,7 @@ import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHours
 import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
 import { buildHoursGridRoster, EMPTY_HOURS_ROSTER_MESSAGE, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
 import { hoursGridDayCost, recordedHoursLookup, sortPeopleByTotalDesc } from '../lib/people/hoursGridCost'
-import { archivedRosterNames, buildPayRosterIndex, fetchRosterPeople, type PayRosterIndex } from '../lib/people/rosterPeople'
+import { buildArchivedRoster, buildPayRosterIndex, fetchRosterPeople, NO_ARCHIVED_ROSTER, type ArchivedRoster, type PayRosterIndex } from '../lib/people/rosterPeople'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
@@ -362,7 +362,9 @@ export default function People() {
     }
   }, [activeTab])
   const [reviewHoursModalOpen, setReviewHoursModalOpen] = useState(false)
-  const [archivedUserNames, setArchivedUserNames] = useState<Set<string>>(new Set())
+  /** Who is archived (#29): by id for the Hours grid and Teams (v2.4862), by name for Offsets, Contracts and Review. */
+  const [archivedRoster, setArchivedRoster] = useState<ArchivedRoster>(NO_ARCHIVED_ROSTER)
+  const archivedUserNames = archivedRoster.names
   /** People spine (v2.3698): the roster view's verdict per pay row — who is a person. Null until loaded (no verdict). */
   const [payRoster, setPayRoster] = useState<PayRosterIndex | null>(null)
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
@@ -429,7 +431,7 @@ export default function People() {
     removeTeamMember,
     deleteTeam,
     getCostForPersonDateTeams,
-  } = usePeopleHoursTeams({ canAccessPay, setError, archivedUserNames, payConfig, getCostForPersonDate })
+  } = usePeopleHoursTeams({ canAccessPay, setError, archived: archivedRoster, payConfig, getCostForPersonDate })
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -1087,15 +1089,15 @@ export default function People() {
   /**
    * People spine (v2.3698): one read of the roster view answers two questions. The pay lists take
    * its verdict (a sample, a twin or an archived person with a pay-config row is not on them), and
-   * since v2.4671 (#29) the archived folds and filters take its names (`archivedRosterNames`) in
-   * place of `get_archived_user_names()`: Offsets, Contracts, Review, the Teams filter, the Hours grid.
+   * since v2.4671 (#29) the archived folds and filters take who is archived from it (`buildArchivedRoster`):
+   * Offsets, Contracts, Review, the Teams filter, the Hours grid.
    */
   async function loadRosterPeople() {
     if (!canAccessPay && !canAccessHours && !canAccessContracts) return
     try {
       const rows = await fetchRosterPeople(supabase)
       setPayRoster(buildPayRosterIndex(rows))
-      setArchivedUserNames(archivedRosterNames(rows))
+      setArchivedRoster(buildArchivedRoster(rows))
     } catch {
       // No verdict: every pay row stays (the pre-v2.3698 list), never a blank grid, and nothing folds as archived.
     }
@@ -1627,8 +1629,8 @@ export default function People() {
   // display order. Both the RPC and the view load for hours-only viewers too (see the hours-tab load
   // cycle) and run with owner rights, so every viewer gets the same list.
   const showPeopleForHours = useMemo(
-    () => buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), archivedUserNames, payRoster, displayOrder: hoursDisplayOrder }),
-    [payConfig, archivedUserNames, payRoster, hoursDisplayOrder],
+    () => buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), archived: archivedRoster, payRoster, displayOrder: hoursDisplayOrder }),
+    [payConfig, archivedRoster, payRoster, hoursDisplayOrder],
   )
   const hoursDays = useMemo(() => getDaysInRange(hoursDateStart, hoursDateEnd), [hoursDateStart, hoursDateEnd])
   // ── Payroll catch-up (v2.2034): earlier weeks with hours but no report ──
@@ -1776,7 +1778,7 @@ export default function People() {
         nowMs: Date.now(),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/archived/roster/order are its inputs
-    [activeClockSessions, hoursDays, users, payConfig, archivedUserNames, payRoster, hoursDisplayOrder],
+    [activeClockSessions, hoursDays, users, payConfig, archivedRoster, payRoster, hoursDisplayOrder],
   )
   const peopleHoursPendingSummary = useMemo(
     () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),

@@ -4,10 +4,12 @@
  * The pay-config rows are the roster's source (every person with a pay-config row is on the
  * grid — the modal's own copy says so). Two exclusions, both applied:
  *
- *   1. the archived names (`archivedRosterNames`, v2.4671, #29): every name an archived roster row
- *      answers to, except a living namesake's. They come from the same `roster_people` read as rule
- *      2. Until v2.4671 they came from `get_archived_user_names()` (archived accounts only, no
- *      namesake guard);
+ *   1. the archived people (`ArchivedRoster`, #29), id first since v2.4862: a pay row whose
+ *      `person_id` the roster knows takes that roster row's verdict, whatever its name; a row with
+ *      no known id falls back to the archived names, without case (`archivedRosterNames`, v2.4671: every name an
+ *      archived roster row answers to, except a living namesake's). Both come from the same
+ *      `roster_people` read as rule 2. Until v2.4671 the names came from
+ *      `get_archived_user_names()` (archived accounts only, no namesake guard);
  *   2. the roster view's verdict (`rosterPeople.ts`, v2.3698): a sample account, a digital twin or
  *      a person whose roster row is archived is not on the grid either. Until v2.3698 rule 1 was
  *      the only one, and a Salary-ticked pay row on a test account put 40 h a week into every
@@ -15,28 +17,28 @@
  *
  * J7-6 still holds: the list is the same whatever the viewer, given the same inputs. The view
  * runs with owner rights, so every viewer who can open the grid gets the same roster. A read
- * that has not landed is no verdict, never a blank grid: rule 1 is empty and rule 2 null, so every
+ * that has not landed is no verdict, never a blank grid: rule 1 knows no one and rule 2 is null, so every
  * pay row stays for that load.
  */
 
-import { isPayRosterRow, type PayRosterIndex, type PayRosterRowRef } from './rosterPeople'
+import { isArchivedRosterRef, isPayRosterRow, type ArchivedRoster, type PayRosterIndex, type PayRosterRowRef } from './rosterPeople'
 
 const UNORDERED = 999999
 
 export type HoursGridRosterInput = {
   /** Every pay-config row — `person_name` plus the `person_id` it carries (null for old rows). */
   payConfigRows: readonly PayRosterRowRef[]
-  /** The names archived roster rows answer to (`archivedRosterNames`); empty until the roster read lands. */
-  archivedUserNames: ReadonlySet<string>
+  /** Who is archived, by id then by name (`buildArchivedRoster`); `NO_ARCHIVED_ROSTER` until the roster read lands. */
+  archived: ArchivedRoster
   /** The roster view's verdicts; null while loading (no verdict: rule 1 alone). */
   payRoster: PayRosterIndex | null
   /** `people_hours_display_order` — sequence per name; unordered names sort A→Z after the ordered. */
   displayOrder: Record<string, number>
 }
 
-export function buildHoursGridRoster({ payConfigRows, archivedUserNames, payRoster, displayOrder }: HoursGridRosterInput): string[] {
+export function buildHoursGridRoster({ payConfigRows, archived, payRoster, displayOrder }: HoursGridRosterInput): string[] {
   return payConfigRows
-    .filter((r) => !archivedUserNames.has(r.person_name.trim()))
+    .filter((r) => !isArchivedRosterRef(archived, { name: r.person_name, person_id: r.person_id }))
     .filter((r) => isPayRosterRow(payRoster, r))
     .map((r) => r.person_name)
     .sort((a, b) => {

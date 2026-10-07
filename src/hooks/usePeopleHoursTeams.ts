@@ -2,13 +2,15 @@ import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import type { PayConfigRow } from '../types/peoplePayConfig'
+import type { ArchivedRoster } from '../lib/people/rosterPeople'
 import type { PeopleHoursTeam } from '../components/people/PeopleHoursTeams'
 import { buildPeopleHoursTeams, teamDayCost, teamsWithoutArchivedMembers, type PeopleTeamMemberRow, type PeopleTeamRow } from '../lib/people/hoursTeams'
 
 export type UsePeopleHoursTeamsInput = {
   canAccessPay: boolean
   setError: (value: string | null) => void
-  archivedUserNames: ReadonlySet<string>
+  /** Who is archived, by id then by name (`buildArchivedRoster`). */
+  archived: ArchivedRoster
   payConfig: Record<string, PayConfigRow>
   /** The Hours grid's cost for a person's day — what a team day costs unless "max hours" is on. */
   getCostForPersonDate: (personName: string, workDate: string) => number
@@ -36,7 +38,7 @@ export type PeopleHoursTeamsApi = {
 }
 
 /** People → Hours → Teams and Due summaries: the teams, their period, and the five writes. Every write needs pay access. */
-export function usePeopleHoursTeams({ canAccessPay, setError, archivedUserNames, payConfig, getCostForPersonDate }: UsePeopleHoursTeamsInput): PeopleHoursTeamsApi {
+export function usePeopleHoursTeams({ canAccessPay, setError, archived, payConfig, getCostForPersonDate }: UsePeopleHoursTeamsInput): PeopleHoursTeamsApi {
   const [teams, setTeams] = useState<PeopleHoursTeam[]>([])
   const [teamPeriodStart, setTeamPeriodStart] = useState(() => {
     const d = new Date()
@@ -53,7 +55,7 @@ export function usePeopleHoursTeams({ canAccessPay, setError, archivedUserNames,
     if (!canAccessPay) return
     const [teamsRes, membersRes] = await Promise.all([
       supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
-      supabase.from('people_team_members').select('team_id, person_name'),
+      supabase.from('people_team_members').select('team_id, person_name, person_id'),
     ])
     if (teamsRes.error) return
     setTeams(buildPeopleHoursTeams((teamsRes.data ?? []) as PeopleTeamRow[], (membersRes.data ?? []) as PeopleTeamMemberRow[]))
@@ -111,7 +113,7 @@ export function usePeopleHoursTeams({ canAccessPay, setError, archivedUserNames,
     })
   }
 
-  const teamsFiltered = useMemo(() => teamsWithoutArchivedMembers(teams, archivedUserNames), [teams, archivedUserNames])
+  const teamsFiltered = useMemo(() => teamsWithoutArchivedMembers(teams, archived), [teams, archived])
 
   return {
     setTeams,
