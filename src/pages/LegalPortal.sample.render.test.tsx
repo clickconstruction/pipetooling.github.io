@@ -297,11 +297,14 @@ describe('LegalPortal — Start here and the tour (v2.4820)', () => {
   it('the tour opens each part of the portal, rings it and says which stop it is', async () => {
     const start = await openFirstVisit()
     fireEvent.click(start.querySelector('[data-start-rail="portal"]')!)
-    expect(start.textContent).toContain('The tour has 8 short stops.')
+    expect(start.textContent).toContain('The tour has 9 short stops.')
     fireEvent.click(screen.getByRole('button', { name: 'Start the tour ›' }))
     const strip = () => document.querySelector('[data-legal-tour-strip]') as HTMLElement
-    expect(strip().querySelector('[data-legal-tour-step-words]')!.textContent).toBe('Tour · stop 1 of 8')
+    expect(strip().querySelector('[data-legal-tour-step-words]')!.textContent).toBe('Tour · stop 1 of 9')
     await waitFor(() => expect(document.querySelector('[data-legal-tour="matters"]')!.classList.contains('legalTourRing')).toBe(true))
+    fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
+    // The Narrative tab (v2.4812) leads the matter's tabs, so it is the tour's second stop.
+    expect(strip().getAttribute('data-legal-tour-strip')).toBe('narrative')
     fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
     expect(strip().getAttribute('data-legal-tour-strip')).toBe('account')
     await waitFor(() => expect(document.querySelector('[data-legal-tour="matter"]')!.classList.contains('legalTourRing')).toBe(true))
