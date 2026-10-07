@@ -3138,6 +3138,7 @@ export default function JobFormModal({
               open={paymentMoveRow != null}
               payment={paymentMoveRow}
               fromJob={editing}
+              stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
               onClose={() => setPaymentMoveRow(null)}
               onMoved={() => {
                 void (async () => {

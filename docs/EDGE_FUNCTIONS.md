@@ -3965,6 +3965,8 @@ interface RecordStripeInvoiceOobBody {
 
 ### reverse-stripe-invoice-out-of-band-payment
 
+> **v2.4803**: the whole-bill credit note carries the request's `reason` as its memo (it had none), so Stripe's record says why — *Moved to J922 · wrong job* when the Move window on a Stripe-held check calls here first.
+
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
 > **v2.4082 — the client ends with the re-bill**: Stripe keeps the credited invoice `paid`, so the pay link is dead after any unwind. `UnwindStripeOobPaymentModal` now runs **void-stripe-invoice-for-revert** (which finds the credit note already on the invoice and issues none) through `sendBackStripeBilledLine` after this function succeeds, unless its *send back* box is unticked; the function itself is unchanged.
@@ -4122,6 +4124,8 @@ Amounts are in **cents**, matching Stripe invoice objects.
 
 **Purpose**: When sending a **billed** **`jobs_ledger_invoices`** row back to **Ready to Bill**, void or delete the Stripe invoice (draft delete, open → void), then clear Stripe columns and set **`status = ready_to_bill`**. Prevents leaving a collectible Stripe invoice after the in-app send-back.
 
+
+> **v2.4803 — `reason`**: an optional body field. When the function reverses our own paid-by-check mark (v2.4082) it becomes the credit note's memo (*<reason> — bill sent back in ClickTooling to be billed again.*) and the `removed` event's `oob_mark_reversed: <reason>` in place of *payment did not clear*. The Move window on a Stripe-held check sends *Moved to J922 · wrong job*; every other caller sends nothing and reads as before.
 **Endpoint**: `POST /functions/v1/void-stripe-invoice-for-revert`
 
 **Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (same pattern as **create-stripe-invoice**). **`verify_jwt = false`** on the gateway.

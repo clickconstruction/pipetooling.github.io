@@ -3,9 +3,10 @@ name: A check on a Stripe bill — hold the close, then move the stuck ones
 number: 98
 group: ready
 status: >
-  PR 1 built on claude/jobs-billing-modal-c180bb (v2.4801: Mark Paid · Check holds the Stripe
-  close; Move to job… and Remove work on a held check; the daily sweep closes Stripe after
-  seven days) · PR 2 next: Move to job… on a check Stripe already holds, in one press
+  PR 1 on PR #4818 (v2.4801: Mark Paid · Check holds the Stripe close; Move to job… and Remove
+  work on a held check; the daily sweep closes Stripe after seven days) · PR 2 built on
+  claude/stripe-held-move (v2.4803: Move to job… on a check Stripe already holds, in one press)
+  · left: the live tests, then job 186
 summary: >
   **A check recorded on a Stripe bill no longer tells Stripe "paid" at once.** It is an
   ordinary payment for seven days, so a check on the wrong job moves with Move to job… and a
@@ -14,13 +15,13 @@ summary: >
   already holds (job 186 today), which still need the credit note and a fresh bill — PR 2
   puts that behind the same Move to job… so it is one press too.
 next: >
-  PR 1's live test (recipe below), then PR 2: Move to job… on a Stripe-held row runs the
-  reversal, the send-back and the landing on the right job through one server-side function,
-  with the trail reading "moved", not "did not clear".
-size: S — PR 2 is one edge function, a reason on two existing ones, the Move window's words
+  Deploy the three functions and push the migration, run both live tests below on test-mode
+  bills, then job 186: Move to job… on Taunya's check (the owner's press — a real credit note
+  and a fresh bill for Dudley Mason).
+size: XS — live tests
 blocker: none
 ver: v2.4801
-opinion: build PR 2 next; job 186 (Dudley Mason, Taunya's check) is the live test and the first real use.
+opinion: run the test-mode recipes first; job 186 (Dudley Mason, Taunya's check) is the first real use and sends the customer a fresh bill.
 ---
 
 # A check on a Stripe bill — hold the close, then move the stuck ones
@@ -72,21 +73,24 @@ double payment today.
 | [`move_jobs_ledger_payment`](../../supabase/migrations/20261007213000_held_stripe_marks.sql) — refused every Stripe bill | refuses only while Stripe holds the row; the bill reconciles to Billed |
 | new [`heldStripeMark.ts`](../../src/lib/jobs/heldStripeMark.ts), new [`close-held-stripe-marks`](../../supabase/functions/close-held-stripe-marks/index.ts), the pg_cron schedule | |
 
-## PR 2 — Move to job… on a check Stripe already holds
+## PR 2 — Move to job… on a check Stripe already holds — BUILT v2.4803
 
-Today's stuck rows (job 186 is one): the Stripe invoice is `paid` by our mark. Stripe never
-reopens it, so the repair is still a credit note and a fresh bill — but it should be one
-press, with the money carried to the right job and the trail telling the truth.
+The stuck rows (job 186 is one): the Stripe invoice is `paid` by our mark. Stripe never
+reopens it, so the repair is still a credit note and a fresh bill — now one press, with the
+money carried to the right job and the trail telling the truth. Built as the Undo window
+already chains, not as a new server function (the plan's one departure: the two existing
+functions plus one RPC and one insert needed no new surface, and each stop after the credit
+note leaves words on screen). `docs/recent-features/v2.4803.md`.
 
 | Exists | Change |
 |---|---|
-| `JobFormPaymentLine` hides Move to job… when `stripeOwnsPaymentRow` | shows it; on a Stripe-held row the Move window adds one block: *what happens, in order* (credit note on J186's bill · J186's bill sent back, Ready to Bill · the check marked paid on J922's open Stripe bill, or recorded as a plain payment · both jobs get the grey line) |
-| `reverse-stripe-invoice-out-of-band-payment` (credit note memo fixed), `void-stripe-invoice-for-revert` (memo *Payment did not clear…*, event reason `oob_mark_reversed: payment did not clear`) | both take a `reason`; the memo and the event read *moved to J922 · wrong job* |
-| the client chains three functions today (Undo window → send-back) | one new edge function `move-stripe-held-payment` runs the four steps server-side, writes a `moved` event with the snapshot (payment_id null), and reports where it stopped if a step fails after the credit note |
-| the destination: `record-stripe-invoice-out-of-band-payment` with `allow_app_paid` (one open Stripe bill that fits) else a plain `jobs_ledger_payments` insert | |
+| `JobFormPaymentLine` hid Move to job… when `stripeOwnsPaymentRow` | shows it on a whole-bill mark (`stripeHeldMoveOffered`); the Move window lists *what happens, in order* |
+| `reverse-stripe-invoice-out-of-band-payment`, `void-stripe-invoice-for-revert` | the first writes its `reason` as the credit note's memo; the second takes an optional `reason` for the note and the `removed` event — *Moved to J922 · wrong job* |
+| the destination | `mark_invoice_paid` on its one open bill with room (a held mark), else a plain `jobs_ledger_payments` row; then the `moved` event (`stripeHeldPaymentMove.ts`) |
 
-Owner's calls, taken 2026-10-07: re-bill is unavoidable and the guide says so; auto-mark the
-destination's open Stripe bill when exactly one fits; the trace names the reason.
+Owner's calls, taken 2026-10-07: re-bill is unavoidable and the guide says so; land on the
+destination's one open bill when exactly one fits (held, not closed — v2.4801's rule);
+the trace names the reason.
 
 ## The mock-up
 
@@ -115,3 +119,17 @@ bill on a throwaway job (Bill Customer with the Stripe toggle on *Test*):
 5. Delete the throwaway jobs.
 
 Do not rehearse on a live bill: step 4 closes a real Stripe invoice.
+
+PR 2, on a **test-mode** Stripe bill marked paid (run the PR 1 recipe through step 4 first,
+or Mark Paid · Cash to close Stripe at once):
+
+1. Open the job → **Bill** tab. The line's ⋯ menu holds **Move to job…** with *reverses the
+   Stripe mark; this bill goes out again*.
+2. Press it. The window is titled *Move this check*; pick a second throwaway job with one
+   open bill of the same amount. *What happens, in order* lists the credit note, the send-back,
+   the landing on that bill, and the grey line.
+3. Press **Move**. The first job is Ready to Bill with the Stripe test invoice showing a credit
+   note whose memo reads *Moved to J<n> · wrong job*; the second job's bill reads Paid with the
+   check held (*Stripe closes the bill …*); both jobs show the grey *moved* line.
+4. Repeat onto a job with no open bill: the check lands under Other money with no bill picked.
+5. Delete the throwaway jobs.

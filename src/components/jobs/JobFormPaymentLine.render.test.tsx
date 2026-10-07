@@ -152,6 +152,21 @@ describe('JobFormPaymentLine — a Stripe row', () => {
     expect(openMenu('$1,500.00').textContent).not.toContain("Check didn't clear…")
   })
 
+  it('v2.4803: a check Stripe holds as paid offers Move to job… through the reversal; a credit-note part payment does not', () => {
+    const row = paymentRow({ id: 'p-held-stripe', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check' })
+    const paid = { ...stripeBill, status: 'paid', stripe_invoice_status: 'paid' } as unknown as JobsLedgerInvoiceRow
+    const { acts, unmount } = renderLine(row, { bill: paid, job: job([paid]) })
+    const move = within(openMenu('$1,500.00')).getByRole('menuitem', { name: /Move to job/ }) as HTMLButtonElement
+    expect(move.disabled).toBe(false)
+    expect(move.textContent).toContain('reverses the Stripe mark; this bill goes out again')
+    fireEvent.click(move)
+    expect(acts.requestMovePaymentRow).toHaveBeenCalledWith(row)
+    unmount()
+    const part = paymentRow({ id: 'p-part2', amount: 500, invoice_id: 'inv-s', stripe_credit_note_id: 'cn_2', payment_type: 'Check' })
+    renderLine(part, { bill: paid, job: job([paid]) })
+    expect(openMenu('$500.00').textContent).not.toContain('Move to job')
+  })
+
   it('v2.4801: a check Mark Paid holds (paid here, open in Stripe) is a hand-typed row that moves and comes off', () => {
     const row = paymentRow({ id: 'p-held', amount: 1500, invoice_id: 'inv-s', payment_type: 'Check', reference_number: '1042', paid_on: '2099-01-01' })
     const held = { ...stripeBill, status: 'paid', stripe_invoice_status: 'open' } as unknown as JobsLedgerInvoiceRow

@@ -231,6 +231,7 @@ A check recorded with Mark Paid closes the Stripe invoice seven days later, as p
 
 - On the job's **③ Payments received**, the check payment wears {{button:outline|Check didn't clear…}}. It opens **Undo out-of-band payment** with the reason filled in. **Send the bill back to Ready to Bill** is already ticked. You confirm. ClickTooling issues a credit note in Stripe that reverses the mark. It takes the payment off the job, removes the billed line and moves the job back to {{chip:blue|Ready to Bill}}.
 - If the payment was already removed, you open **View Bill** on the Billed row. The footer reads {{button:outline|Check didn't clear · send back…}}. The confirm says what it will do: credit note, billed line removed, job back to Ready to Bill.
+- If the check belongs on another job, press **Move to job…** on the line instead. It does the same two steps and then lands the check on the job you pick. See *see which payments paid a bill*.
 
 Then you press {{button:blue|Bill Customer}} as usual. A fresh Stripe invoice goes out with a new number and a new pay link. The old invoice stays in Stripe as paid and reversed. The reversal is kept on the job's payment record with who did it and why.
 

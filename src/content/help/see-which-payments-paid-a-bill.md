@@ -35,7 +35,7 @@ A check you record with **Mark Paid** stays an ordinary payment for seven days. 
 *Stripe closes the bill Oct 14, once the check has cleared*
 :::
 
-After that day the check is Stripe's. Its menu then holds only **View the Stripe bill** and **Check didn't clear…**. See *ready to bill pipeline* for that case.
+After that day the check is Stripe's. Its menu then holds **View the Stripe bill**, **Check didn't clear…** and **Move to job…**. Move still works, but Stripe never reopens a paid invoice. So the window lists what happens in order. A credit note reverses the Stripe mark. This job's bill goes back, so a fresh bill goes out. The check lands on the job you pick. Both jobs get the grey moved line. Press {{button:blue|Bill Customer}} on this job afterwards. See *ready to bill pipeline* for a check that did not clear.
 
 ## Money with no bill picked
 
