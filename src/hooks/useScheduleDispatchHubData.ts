@@ -409,10 +409,12 @@ export function useScheduleDispatchHubData({
       }
       // Record what the time-off map was just primed for so the standalone refresh effect
       // can skip the immediate duplicate fetch (it still fires for later roster changes).
+      // The key is the board's own (`hubVisibleUserIdsSerialized`: the roster without the
+      // archived) — keyed on every roster id it never matched while anyone archived was on it.
       hubUserTimeOffPrimedRef.current = {
         weekStart,
         weekEnd,
-        rosterKey: [...rosterIds].sort().join('|'),
+        rosterKey: rosterIds.filter((id) => !archivedSet.has(id)).sort().join('|'),
       }
 
       // Phase D: salaried + wages in parallel — both keyed by the already-fetched name map,

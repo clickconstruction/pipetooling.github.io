@@ -357,10 +357,22 @@ describe('useScheduleDispatchHubData — the satellites', () => {
     expect(io.fetchUserTimeOffForUsersInRange).toHaveBeenCalledTimes(2)
   })
 
-  it('an archived person on the roster defeats that skip: one more read (SCHEDULE_DISPATCH map, quirk "An archived person on the roster defeats the time-off prime")', async () => {
-    // The load primes with every roster id; the effect compares the board's rows, which leave the archived out.
-    await mountSettled()
+  it('an archived person on the roster does not defeat that skip: the key is the board’s, without the archived (SCHEDULE_DISPATCH map, quirk "An archived person on the roster defeats the time-off prime", fixed v2.4869)', async () => {
+    const { result } = await mountSettled()
+    expect(result.current.hubAllPeopleRows.map((r) => r.userId)).not.toContain('zed')
+    expect(io.fetchUserTimeOffForUsersInRange).toHaveBeenCalledTimes(1)
+  })
+
+  it('a quiet reload that brings a new person onto the board reads time off once, with them in it', async () => {
+    const { result } = await mountSettled()
+    io.fetchJobScheduleBlocksForHubDateRange.mockResolvedValue({ data: [block(), block({ id: 'blk-2', assignee_user_id: 'dana' })], error: null })
+    await act(async () => {
+      await result.current.loadHub({ quiet: true })
+    })
+    await waitFor(() => expect(result.current.hubAllPeopleRows.map((r) => r.userId)).toContain('dana'))
+    // The load's own read, then nothing more: it primed for the roster it just drew.
     expect(io.fetchUserTimeOffForUsersInRange).toHaveBeenCalledTimes(2)
+    expect(new Set(io.fetchUserTimeOffForUsersInRange.mock.calls[1]?.[0])).toEqual(new Set(['abraham', 'zed', 'paige', 'carl', 'dana']))
   })
 
   it('the standing office schedule fills the week once per range, reloads quietly when it made blocks, and runs again when forced', async () => {
