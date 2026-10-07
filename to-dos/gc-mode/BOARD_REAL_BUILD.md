@@ -342,8 +342,10 @@ Get started date.
 - **`gc_invite_companies(package_id, company_ids uuid[])`**: one ask per company, skipping one
   already asked (`invite`). It refuses a lost project and a trade that is ours. It sends nothing:
   B4's window calls P3 after it.
-- **`gc_office_decline(invite_id, why, reason, note)`**: the ask's decline and a contact line
-  saying why, in one transaction (`officeDecline`). It refuses `other` with no note.
+- **`gc_office_decline(invite_id, why, reason, note)`**: the ask's decline, with will not or
+  cannot, the reason and their words (`officeDecline`). It refuses `other` with no note. The
+  prototype logs the decline to its own story only, so no contact line is written: the company's
+  Activity reads it from the ask (`partnerDeclines`).
 
 **B5:**
 
@@ -491,6 +493,20 @@ The door that opens the board to the office is Helper 6's (door 2), after B3 and
 - **The spike, after each lift merges**: the follow-up deletes what moved and re-exports it from main
   (Helper 7). This plan's *Status* records each PR.
 
+## Who reads whose code
+
+Other lanes call these or key to them. Change one only with the lanes that read it.
+
+| What | Its shape | Read or called by |
+|---|---|---|
+| `gc_companies(id)` | Every reader's column is `company_id uuid REFERENCES gc_companies(id)`. | The Portal (its link table, every trade verb), Building (`gc_rfis.asked_by_company_id`, draws), the schedule (late notices, tells, answers, look-ahead marks, crew counts), New project (questions, set sends) |
+| `gc_keep_promises` | `(p_company_id uuid, p_kind text, p_project_id uuid DEFAULT NULL, p_package_id uuid DEFAULT NULL, p_on date DEFAULT NULL) RETURNS uuid`: the promise kept, or null when none is open. It matches kind, company, job and trade exactly, null equal to null, as `openPromiseFor` does. `SECURITY INVOKER`, granted to `authenticated` and `service_role`. | Building's writes, inside their own transactions (a log with the trade on site keeps `start`, the last submittal owed `submittals`, a pay application resent `payApp`, the last punch item fixed `punch`, closeout papers in `closeout`); the Portal's trade verbs (`gc_trade_coi` keeps `insurance`, `gc_trade_w9` keeps `w9`, the sign verbs keep `msa` and `sow`) |
+| `gc_record_promise` | `(p jsonb)`: `{companyId, kind, projectId?, packageId?, dueOn, source, what}`. It moves an open promise and keeps the old day. Granted to `service_role` too. | The Portal (a day the trade gives in its portal for a paper) |
+| The promise kinds | The prototype's `PromiseKind` words verbatim: `insurance`, `w9`, `sow`, `start`, `submittals`, `delivery`, `payApp`, `punch`, `closeout`, `msa`. | Building, the Portal |
+| `gc_invites`, `gc_quotes`, `gc_company_contacts` | An ask's line carries the ask's own company (a composite key). A quote day is `promised_by` on an ask's line. The quotes and the call log are append only for `authenticated`. | The Portal (P1 reads asks; P2 writes quotes, the quote day and declines through its own functions) |
+| `gc_sows`, `gc_sow_lines` (B6) | `gc_sow_lines(id, sow_id, scope_item_id, change_order_id, …)`: `SovLine.id` is `scope_item_id`, except on a change order's line. | Building (draw lines, reports), the schedule (a bar's percent by line) |
+| `gc_project_money` (B5) | Our number's three inputs, behind the money predicate. | Owner Billing, New project's `gc_create_project` |
+
 ## The owner's calls this plan raises
 
 1. Trade partners are a record of their own (decision 1), not supply houses, not `people`, not
@@ -544,4 +560,15 @@ lead's ask. Agreed the same evening:
 - **Later, with Helper 4:** Building's writes keep promises through B1's `gc_keep_promises`, and
   `priceStanding` lifts in B2 (Helper 4 agreed).
 
-Waiting on the lead's go. Nothing is built.
+The lead approved the plan at its defaults on 2026-10-07 and merged it into `spike/gc-mode`. The
+owner's calls go to him the same night, and none blocks B1.
+
+**B1** is clickconstruction/pipetooling.github.io#4853: v2.4828, migration
+`20261008020000_gc_company_record`, cut from main and armed on 2026-10-07. Before it was cut, all
+seven `company_id` columns were empty or null on prod. The migration ran twice on a local Postgres
+(PGlite) over main's GC tables. Beyond the plan, the call log, the quotes and the promise moves are
+append only by privileges, and `anon` is revoked on every table (the schedule's PR 3 pattern).
+Names that differ from this plan's first draft: the form's `reference_list` (`references` is
+reserved), `contacted_on`, `due_on` and `source`. The lead pushes it first in the 2026-10-08 evening
+batch, before Building's U1. B6's two live-table changes get their own review of every reader
+before B6 is cut, and the standalone `gc_sows` alternative stays open until then.
