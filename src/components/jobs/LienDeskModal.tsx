@@ -14,7 +14,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/job
 import { workMonthLabel, workMonthShort, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import {
   LIEN_ASK_REASON_LABELS,
-  LIEN_DESK_PILES,
+  LIEN_DESK_PILES, lienEmptyPileWords,
   LIEN_NOTICE_POLICIES,
   PUBLIC_OWNER_DESK_SENTENCE,
   draftReadiness,
@@ -522,6 +522,21 @@ export default function LienDeskModal({
     })
     return { visible: kept, findHits: hits }
   }, [visibleAll, finding, findWords, findFactsFor])
+  // A narrowed pile that empties under an act widens by itself (v2.4854): the leader approves the last
+  // awaiting notice and the list shows every pile, instead of "Nothing in this pile." A pile a door opens
+  // empty stays narrowed and says so, with its own door out.
+  const pileHadRowsRef = useRef<LienDeskPile | null>(null)
+  useEffect(() => {
+    if (!pile) {
+      pileHadRowsRef.current = null
+      return
+    }
+    if (visibleAll.length > 0) pileHadRowsRef.current = pile
+    else if (pileHadRowsRef.current === pile && !loading && data) {
+      pileHadRowsRef.current = null
+      setPile(null)
+    }
+  }, [pile, visibleAll.length, loading, data])
   // One match selects itself (v2.4721).
   useEffect(() => {
     const one = lienFindSingle(visible, finding)
@@ -1318,9 +1333,17 @@ export default function LienDeskModal({
           <span>{lienFindNothingWords(find).tryWords}</span>
           <span>{lienFindNothingWords(find).elsewhere}</span>
         </div>
+      ) : visible.length === 0 && pile && !loading && data ? (
+        <div data-lien-desk-empty-pile={pile} style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', display: 'grid', gap: 4, justifyItems: 'start' }}>
+          <strong style={{ color: 'var(--text-strong)' }}>{lienEmptyPileWords(pile, entries.length - visibleAll.length).head}</strong>
+          <span>{lienEmptyPileWords(pile, entries.length - visibleAll.length).rest}</span>
+          <button type="button" data-lien-pile-all onClick={() => setPile(null)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
+            Show every pile ›
+          </button>
+        </div>
       ) : visible.length === 0 ? (
         <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-          {loading || data == null ? 'Looking at every unpaid sub job…' : pile ? 'Nothing in this pile.' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
+          {loading || data == null ? 'Looking at every unpaid sub job…' : 'Nothing is due — every unpaid month on a sub job is noticed, or is more than 30 days from its deadline.'}
         </p>
       ) : null}
       {calendarJobFilter ? (

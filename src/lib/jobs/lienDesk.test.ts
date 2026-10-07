@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { lienEmptyPileWords } from './lienDesk'
 import {
   buildLienDeskQueue,
   draftReadiness,
@@ -271,5 +272,13 @@ describe('a notice sent in the evening keeps its day (v2.4468)', () => {
     expect(buildLienDeskQueue([], [winter], {}, '2027-01-01').entries).toEqual([])
     const noon = item({ job_id: 'j4', status: 'sent', sent_at: '2026-10-03T12:00:00Z' })
     expect(buildLienDeskQueue([], [noon], {}, '2026-11-02').entries.map((e) => e.jobId)).toEqual(['j4'])
+  })
+})
+
+describe('lienEmptyPileWords (v2.4854)', () => {
+  it('names what is no longer there and counts the other piles', () => {
+    expect(lienEmptyPileWords('awaiting', 23)).toEqual({ head: 'Nothing is waiting for approval.', rest: '23 notices are on the other piles.' })
+    expect(lienEmptyPileWords('to_draft', 1)).toEqual({ head: 'Nothing is left to draft.', rest: '1 notice is on the other piles.' })
+    expect(lienEmptyPileWords('missed', 0)).toEqual({ head: 'No window was missed.', rest: 'The other piles are empty too.' })
   })
 })
