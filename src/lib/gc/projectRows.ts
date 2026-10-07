@@ -7,6 +7,7 @@
  * of it (`ScopeBookProject`). Nothing here reads the database: the screen passes the rows in.
  */
 import type { CustomerRole, PlanSheet, ScopeExclusion, SpecSection } from './types'
+import type { PlanQuestionView } from './questions'
 import { indexDiff, sheetIndexInText, type IndexDiff } from './plans'
 import type { ScopeBookProject } from './scopeBook'
 
@@ -33,6 +34,8 @@ export interface GcProjectRows {
   exclusions: { id: string; package_id: string; position: number; label: string; by: string }[]
   sets: { id: string; rev: number; label: string; kind: string; issued_on: string; note: string; checked_by_user_id: string | null; drive_url: string; drive_access: string | null; drive_checked_on: string | null }[]
   setItems: { id: string; set_id: string; position: number; kind: string; number: string; title: string; change: string; was_title: string | null; discipline: string | null; page: number | null }[]
+  /** The questions about the plans (step 8). Missing on a row set read before they existed. */
+  questions?: { id: string; package_id: string | null; asked_by_name: string; text: string; sheets: string[]; asked_on: string; sent_to_architect_on: string | null; answered_on: string | null; answer: string; in_set_id: string | null }[]
 }
 
 /** One set of plans as the kernels read it: the sheets and sections as they stood after it. */
@@ -97,6 +100,8 @@ export interface GcProjectView extends ScopeBookProject {
   packages: ScopeBookProject['packages']
   /** The rows themselves, for the reads that fold the sets (src/lib/gc/planSetReads.ts). */
   rows: GcProjectRows
+  /** The questions about the plans, oldest first. */
+  questions: PlanQuestionView[]
 }
 
 function num(v: number | string | null | undefined): number {
@@ -214,6 +219,20 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
     trades,
     planSets: planSets.map((s) => ({ ...s, issuedOn: s.issuedOn })),
     rows,
+    questions: [...(rows.questions ?? [])]
+      .sort((a, b) => a.asked_on.localeCompare(b.asked_on))
+      .map((x) => ({
+        id: x.id,
+        packageId: x.package_id,
+        askedByName: x.asked_by_name,
+        text: x.text,
+        sheets: x.sheets ?? [],
+        askedOn: x.asked_on,
+        sentToArchitectOn: x.sent_to_architect_on,
+        answeredOn: x.answered_on,
+        answer: x.answer,
+        inSetId: x.in_set_id,
+      })),
     // The scope book's names for the same rows.
     packages: trades.map((t) => ({
       id: t.id,
