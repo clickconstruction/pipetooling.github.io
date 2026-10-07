@@ -1,5 +1,5 @@
 /**
- * GC mode — design spike, after the real build's PRs 1a, 1b-i and 1b-ii: main's job shapes are the spike's whole ones
+ * GC mode — design spike, after the real build's PRs 1a, 1b-i and 1b-ii (and the Board's B2-i, Building's U2): main's job shapes are the spike's whole ones
  * here. Main's `src/lib/gc/types.ts` keeps only the fields main's kernels read; on the spike each of
  * those shapes extends its spike namesake, so a record main's kernels hand back (a company, a project,
  * a trade, a change order, a day's log, a customer) keeps every field the prototype's screens read. Main never sees this file.
@@ -25,4 +25,6 @@ declare module '../gc/types' {
   interface ChangeOrder extends Spike.ChangeOrder {}
   interface Partner extends Spike.Partner {}
   interface PlanSet extends Spike.PlanSet {}
+  interface OwnerBilling extends Spike.OwnerBilling {}
+  interface OwnerPayAppSent extends Spike.OwnerPayAppSent {}
 }

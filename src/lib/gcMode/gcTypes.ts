@@ -4,6 +4,9 @@ import type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
 import type { RoughSchedule, ScheduleImport, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
 import type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
 export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
+// The Building lane's U2 (#4860): its whole shapes are main's, word for word.
+import type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, WeatherSky, WeeklyReportSent } from '../gc/types'
+export type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, SubmittalRound, WeatherSky, WeeklyReportSent } from '../gc/types'
 
 export type { RoughSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
 
@@ -563,58 +566,6 @@ export interface GcProject {
   /** Each trade's own word on how many a day it will have on site in a week (G-142), from its portal, newest first. Unset: none yet. */
   crewCounts?: CrewCount[]
 }
-/** A weekly report as it went to the customer (Building lane, 2026-10-05): kept as sent, for their portal. */
-export interface WeeklyReportSent {
-  /** The Monday of the week it covers. */
-  weekOf: string
-  sentOn: string
-  from: 'me' | 'company'
-  /** Who sent it, from me: the signed-in name. */
-  by: string
-  /** Who it went to, and whether the architect was copied. */
-  to: string
-  copiedArchitect: boolean
-  subject: string
-  body: string
-}
-export type WeatherSky = 'clear' | 'cloudy' | 'rain' | 'storm' | 'wind'
-export type SubmittalKind = 'product data' | 'shop drawings' | 'samples'
-export type SubmittalAnswer = 'approved' | 'approved as noted' | 'revise'
-/** One time a trade sent a submittal, and what came of it. */
-export interface SubmittalRound {
-  sentOn: string
-  /** The file it sent, by name (the prototype keeps no files). */
-  file: string
-  note: string
-  /** The day we sent it to the architect. Null: with us. */
-  toArchitectOn: string | null
-  /** The day the architect answered. Null: not yet. */
-  answeredOn: string | null
-  answer: SubmittalAnswer | null
-  answerNote: string
-}
-/**
- * A submittal (owner, 2026-10-04): product data, shop drawings or samples a trade sends for the
- * architect's approval before its work. It holds the schedule lines it covers until approved, and
- * is needed by the first of their starts less the days to get it on site.
- */
-export interface Submittal {
-  id: string
-  /** Its number in the register: the spec section and a count, "26 24 16-01". */
-  number: string
-  packageId: string
-  title: string
-  kind: SubmittalKind
-  specSection?: string
-  /** The schedule lines (activities) it holds until approved. */
-  lineIds: string[]
-  /** Days from approval to the material on site: ordering, making, shipping. */
-  leadDays: number
-  /** When no line it holds is on the schedule: the day it is needed approved by. */
-  neededBy?: string
-  askedOn: string
-  rounds: SubmittalRound[]
-}
 /**
  * The superintendent's daily log for one day on the job (owner, 2026-10-04): the weather, who
  * was on site and how many, what got done, what held work up, and who came by.
@@ -638,26 +589,6 @@ export interface DailyLog {
   visitors: string
   /** The day it was written. Later than `date`: caught up after the day. */
   writtenOn: string
-}
-/**
- * One punch-list item (owner, 2026-10-03): something left to fix on a trade's work, found when our
- * superintendent walks it. The trade marks it fixed in its portal; our superintendent checks it.
- * We accept a trade's work once every item on it is checked fixed.
- */
-export interface PunchItem {
-  id: string
-  packageId: string
-  /** What is wrong, as our superintendent wrote it. */
-  text: string
-  /** Where on the job: a room, a grid line. */
-  where?: string
-  addedOn: string
-  /** The day the trade said it is fixed. Null: still open. */
-  fixedOn: string | null
-  /** The day our superintendent checked it fixed. Null: not checked yet. */
-  checkedOn: string | null
-  /** Checked and not fixed: sent back to the trade, how many times, with the last note. */
-  sentBack?: { times: number; note: string; on: string }
 }
 export interface LogEntry {
   id: number
@@ -1203,15 +1134,6 @@ export interface NewProjectDraft {
 }
 /** Who our customer is to the job: the owner, another general contractor, or an owner's rep. */
 export type CustomerRole = 'owner' | 'gc' | 'ownersRep'
-/** What the trade typed on a draw's pay application. The numbers are rebuilt from the draws (`payApplicationForDraw`). */
-export interface DrawPayApp {
-  periodTo: string
-  address: string
-  license: string
-  signedBy: string
-  signedTitle: string
-  signedOn: string
-}
 /** One pay application we sent the owner, kept as it went. The next one starts from its lines. */
 /**
  * Retainage the owner holds that drops partway (the owner, 2026-10-04: we may offer it and choose
@@ -1369,32 +1291,4 @@ export interface TradeChangeRequest {
   changeOrderId: string | null
   /** The office turned it down: the day and why. Null: not turned down. */
   turnedDown: { on: string; note: string } | null
-}
-/** What an RFI's answer changes: nothing, the plans (a new set follows from Plans), or cost and days. */
-export type RfiImpact = 'none' | 'plans' | 'cost'
-/**
- * A question about the plans while we build (an RFI; the owner, 2026-10-05: its own tab, trades ask
- * from their portal, needed 3 days before the work, a cost answer starts a change order in one
- * click). It holds the work it is about until it is answered. Bidding questions stay on Plans
- * (`PlanQuestion`); these start once the job is ours.
- */
-export interface Rfi {
-  id: string
-  /** RFI-001, RFI-002… on the job. */
-  number: number
-  question: string
-  sheets: string[]
-  /** The trade it is about: a cost answer's change order goes on it. Null: our own work. */
-  packageId: string | null
-  /** Who asked: a trade, from its portal or by phone. Null: our superintendent. */
-  partnerId: string | null
-  askedOn: string
-  /** The schedule activities (line ids) it holds until answered. */
-  holds: string[]
-  /** The answer is needed this many days before the first held work starts. */
-  neededDays: number
-  sentToArchitectOn: string | null
-  answer: { on: string; text: string; by: 'architect' | 'us'; impact: RfiImpact; cost: number; days: number } | null
-  /** The change order a cost answer started. Null: none yet. */
-  changeOrderId: string | null
 }

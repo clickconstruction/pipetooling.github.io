@@ -30,6 +30,9 @@ import { vettingOf } from './gcVetting'
 import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromisesOf, tradePromiseState } from './gcPromises'
 import { punchItems, punchState } from './gcBuildingPunch'
 import { planLabel } from './gcLookups'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { PAY_WITHIN_DAYS } from '../gc/portal'
+export { PAY_WITHIN_DAYS } from '../gc/portal'
 
 /** What the plans block tells one company on one ask. */
 export interface PortalPlanNews {
@@ -1529,13 +1532,6 @@ export function linkNeverOpened(state: GcState, partnerId: string): { since: str
   const days = Math.max(0, -daysUntil(since, state.today))
   return { since, days, late: days > OPEN_WITHIN_DAYS }
 }
-
-// ---------------------------------------------------------------------------------------------
-// Your pay: every pay application on the company's jobs, when it was asked, approved and paid
-// ---------------------------------------------------------------------------------------------
-
-/** We pay an approved pay application within this many days (owner, 2026-10-03). Retainage keeps its own day. */
-export const PAY_WITHIN_DAYS = 10
 
 export type PortalPayState = 'checking' | 'approved' | 'late' | 'paid'
 
