@@ -86,34 +86,39 @@ function uses(sf, s) {
 // Where each moving declaration lands: "spikeFile#name" -> main path.
 const placed = new Map()
 const spikePath = (b) => path.join(spikeDir, b + '.ts')
-for (const e of config.files) {
-  const sf = program.getSourceFile(spikePath(e.from))
-  if (!sf) throw new Error(`no spike file ${e.from}`)
-  const exported = sf.statements.filter((s) => (ts.getCombinedModifierFlags(s.declarationList ? s.declarationList.declarations[0] : s) & ts.ModifierFlags.Export) || (s.modifiers || []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)).flatMap(declared)
-  const moves = (e.moves === 'all' ? exported : e.moves).filter((n) => !(e.stays || []).includes(n))
-  for (const n of moves) if (!exported.includes(n) && !declared(sf.statements.find((s) => declared(s).includes(n)) ?? {}).length) throw new Error(`${e.from} has no ${n}`)
-  e._moves = moves
-  e._sf = sf
-}
-for (const t of config.types || []) for (const name of t.names) placed.set(`${spikePath(t.from ?? 'gcTypes')}#${name}`, t.to)
-for (const [name, to] of Object.entries(config.existing || {})) placed.set(name.includes('#') ? path.join(root, name.split('#')[0]) + '#' + name.split('#')[1] : `${spikePath(config.existingFrom?.[name] ?? '')}#${name}`, to)
-
-// Each entry's closure inside its own spike file; what it needs from elsewhere is checked after.
-for (const e of config.files) {
-  const want = new Set(e._moves.map((n) => `${e._sf.fileName}#${n}`))
-  const stack = [...want]
-  while (stack.length) {
-    const k = stack.pop()
-    const d = decls.get(k)
-    if (!d) throw new Error(`no declaration ${k}`)
-    for (const u of uses(d.sf, d.s)) if (u.startsWith(e._sf.fileName + '#') && !want.has(u) && !placed.has(u)) {
-      want.add(u)
-      stack.push(u)
-    }
+/** A lift's placements: its types and what main has already, then each entry's moves with the private helpers they need from the same file. */
+function place(cfg) {
+  for (const e of cfg.files) {
+    const sf = program.getSourceFile(spikePath(e.from))
+    if (!sf) throw new Error(`no spike file ${e.from}`)
+    const exported = sf.statements.filter((s) => (ts.getCombinedModifierFlags(s.declarationList ? s.declarationList.declarations[0] : s) & ts.ModifierFlags.Export) || (s.modifiers || []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)).flatMap(declared)
+    const moves = (e.moves === 'all' ? exported : e.moves).filter((n) => !(e.stays || []).includes(n))
+    for (const n of moves) if (!exported.includes(n) && !declared(sf.statements.find((s) => declared(s).includes(n)) ?? {}).length) throw new Error(`${e.from} has no ${n}`)
+    e._moves = moves
+    e._sf = sf
   }
-  e._want = want
-  for (const k of want) if (!placed.has(k)) placed.set(k, e.to)
+  for (const t of cfg.types || []) for (const name of t.names) placed.set(`${spikePath(t.from ?? 'gcTypes')}#${name}`, t.to)
+  for (const [name, to] of Object.entries(cfg.existing || {})) placed.set(name.includes('#') ? path.join(root, name.split('#')[0]) + '#' + name.split('#')[1] : `${spikePath(cfg.existingFrom?.[name] ?? '')}#${name}`, to)
+  // Each entry's closure inside its own spike file; what it needs from elsewhere is checked after.
+  for (const e of cfg.files) {
+    const want = new Set(e._moves.map((n) => `${e._sf.fileName}#${n}`))
+    const stack = [...want]
+    while (stack.length) {
+      const k = stack.pop()
+      const d = decls.get(k)
+      if (!d) throw new Error(`no declaration ${k}`)
+      for (const u of uses(d.sf, d.s)) if (u.startsWith(e._sf.fileName + '#') && !want.has(u) && !placed.has(u)) {
+        want.add(u)
+        stack.push(u)
+      }
+    }
+    e._want = want
+    for (const k of want) if (!placed.has(k)) placed.set(k, e.to)
+  }
 }
+// An earlier lift (`after`) is on main already: what it placed counts as placed, and nothing of it is written again.
+for (const prior of config.after || []) place(JSON.parse(fs.readFileSync(path.join(path.dirname(configPath), prior), 'utf8')))
+place(config)
 
 // Everything a placed declaration uses must be placed too, or on main already.
 const missing = new Set()
@@ -186,10 +191,11 @@ for (const t of config.types || []) {
   const out = path.join(mainBase, t.to)
   const lines = [...uses_.entries()].map(([to, names]) => `import type { ${[...names].sort().join(', ')} } from '${rel(out, path.join(mainBase, to))}'`)
   const body = stmts.map((s) => fullText(sf, s).replace(/^\n+/, '')).join('\n\n')
-  const dest = path.join(outDir, out)
+  // `append`: only what is added to the file main has (its imports to merge at the top by hand).
+  const dest = path.join(outDir, out + (t.append ? '.append' : ''))
   fs.mkdirSync(path.dirname(dest), { recursive: true })
-  fs.writeFileSync(dest, `${(t.header ?? '').trim()}\n${lines.length ? lines.join('\n') + '\n' : ''}\n${body}\n`)
-  written.push(`${out}: ${stmts.length} types, whole`)
+  fs.writeFileSync(dest, t.append ? `${lines.length ? `// Imports for the top of the file:\n${lines.join('\n')}\n\n` : ''}${body}\n` : `${(t.header ?? '').trim()}\n${lines.length ? lines.join('\n') + '\n' : ''}\n${body}\n`)
+  written.push(`${out}${t.append ? ' (append)' : ''}: ${stmts.length} types, whole`)
 }
 // The types placed trimmed: the prototype's name with only the listed fields, each with its own
 // comment, in the order the spike's file has them. A lane that lifts more kernels lists more fields.
