@@ -7,9 +7,8 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'The grid’s switch reads Due in 30 days and Upcoming, in place of Something due and All.',
+    'Each job is three lines: its number and name, the street, then the city, state and zip with anything after. A red ? standing alone in a cell is centred.',
     'A job with the owner reads none needed, with (with the owner) on the line under it.',
-    'Each job is three lines: its number and name, the street, then the city, state and zip with anything after.',
-    'A red ? standing alone in a cell is centred.',
     'The money column is headed Amount due, with For work in on the line under it, so the total and the months each read under their own words.',
   ],
 }
