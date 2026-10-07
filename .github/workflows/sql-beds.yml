@@ -1,0 +1,23 @@
+name: SQL beds
+
+# The whole-schema SQL beds (scripts/pgtest-*.sh) need Docker, and no session on the office Mac can
+# reach it. GitHub's runners have it. A PR that touches the schedule's SQL runs its bed here before
+# the lead pushes the migration (the schedule's PR 5).
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/*gc_schedule*'
+      - 'supabase/tests/gc_schedule/**'
+      - 'scripts/pgtest-gc-schedule.sh'
+      - '.github/workflows/sql-beds.yml'
+  workflow_dispatch:
+
+jobs:
+  gc-schedule:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: The schedule's writes against every migration
+        run: bash scripts/pgtest-gc-schedule.sh

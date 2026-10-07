@@ -91,6 +91,23 @@ export function templateShape(state: GcState, project: GcProject): Pick<Schedule
   return { from: { projectId: project.id, name: project.name, donePct }, lines, stages, weeks: drawWeeks(schedule)?.weeks ?? 0 }
 }
 
+/**
+ * Why a job's schedule cannot be saved as a template, in the office's words, or null when it can (G-44;
+ * the schedule's PR 5). Save as a template asks before it writes, so the table's own checks never
+ * speak: a template keeps at least one trade's line, and its weeks come out at one or more.
+ */
+export function templateSaveProblem(state: GcState, project: GcProject, name: string): string | null {
+  if (project.stage !== 'building') return 'Only a job being built can be saved as a template.'
+  const named = templateNameProblem(state, name)
+  if (named) return named
+  const shape = templateShape(state, project)
+  if (!shape) return 'Draw the schedule first.'
+  if (!shape.lines.some((l) => l.trade !== '')) return "A template keeps the trades' lines. This schedule has none yet."
+  const w = project.schedule ? drawWeeks(project.schedule) : null
+  if (w && shape.weeks < 1) return `Substantial completion is planned ${weekdayDate(w.finish)}, before the work starts ${weekdayDate(w.start)}. Move it to a day after the work starts.`
+  return null
+}
+
 /** The templates offered for a new draw: not set aside, the newest first. */
 export function templatesOffered(state: GcState): ScheduleTemplate[] {
   return [...(state.scheduleTemplates ?? [])].filter((t) => !t.asideOn).reverse()
