@@ -3,8 +3,10 @@
  * company writes, moved word for word from the GC mode prototype (branch spike/gc-mode,
  * `gcExclusions.ts`; the owner, 2026-10-04: "various groups will have different kinds of
  * exclusions. We want to be able to track those exclusions on a per vendor basis"). The scope book
- * reads these; the quote's own cells, cover costs and habits stay with the prototype until their step.
+ * reads these. The cover costs' total came with the schedule's PR 1a, which reads it for a line's
+ * worth; the quote's own cells and habits stay with the prototype until their step.
  */
+import type { SubBid, TradePackage } from './types'
 
 /** Exclusions any trade's quote may list, and each trade's own. The portal's form offers these as ticks. */
 export const COMMON_EXCLUSIONS: { all: string[]; byTrade: Record<string, string[]> } = {
@@ -71,4 +73,10 @@ export function exclusionName(said: string): string {
   if (known) return known
   const t = said.trim()
   return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
+/** The cost to cover what a quote leaves out beyond the trade's Known exclusions: it goes into the all-in number. */
+export function exclusionCoversTotal(pkg: TradePackage, bid: SubBid): number {
+  const known = new Set((pkg.excludes ?? []).map((k) => fold(k.label)))
+  return (bid.exclusions ?? []).filter((e) => !known.has(fold(e.name))).reduce((t, e) => t + (bid.exclusionCovers?.[e.name] ?? 0), 0)
 }
