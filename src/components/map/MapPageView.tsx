@@ -1,4 +1,6 @@
 import {
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -8,14 +10,8 @@ import {
   type ReactNode,
 } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-// Leaflet / react-leaflet / Geoman: import only from this file so they stay in the lazy Map route chunk.
-import {
-  CircleMarker,
-  MapContainer,
-  TileLayer,
-  Popup,
-  useMap,
-} from 'react-leaflet'
+// Leaflet / react-leaflet / Geoman: import only from this file (and the lazy pins canvas) so they stay in the lazy Map route chunk.
+import { useMap } from 'react-leaflet'
 import { booleanPointInPolygon, point } from '@turf/turf'
 import type { Feature, Polygon } from 'geojson'
 import L from 'leaflet'
@@ -26,15 +22,9 @@ import { useMapPageData, type GeocodeAddressRow, type MapPageEntity } from '../.
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { MapGeocodeReviewModal } from './MapGeocodeReviewModal'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
-import {
-  DEFAULT_MAP_FALLBACK_CENTER,
-  DEFAULT_MAP_FALLBACK_ZOOM,
-  fetchMapDefaultViewFromAppSettings,
-} from '../../lib/mapDefaultViewSettings'
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
 import { DEFAULT_MAP_BID_STAGES, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
 import {
-  BID_STAGE_MARKER_COLOR,
   BUILDER_FOCUS_BID_STAGES,
   builderBidOutcomeCounts,
 } from '../../lib/map/builderBidMapFocus'
@@ -51,10 +41,13 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
-import { LeafletOfficeAnchor } from './LeafletOfficeAnchor'
 import { BID_BOARD_MAP_RING_MILES } from '../../lib/bids/bidBoardMap'
-import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
 import type { MapCanvasAnchor } from '../../lib/map/mapCanvasTypes'
+import { MAP_PAGE_KIND_COLOR, MAP_PAGE_KIND_LABEL, mapPageDirectionsUrl, mapPageEntitiesByPinId, mapPagePinId, mapPagePins } from '../../lib/map/mapPagePins'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+
+// The shared pins canvas (v2.4796): the Dashboard, Bid Board, Pipeline and clocked-in maps draw on it too.
+const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
 import { farFromOfficeLine, farFromOfficePlaces, farMilesWords, farPlaceCountWords, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
 
 const openLinkLikeStyle: CSSProperties = {
@@ -67,17 +60,8 @@ const openLinkLikeStyle: CSSProperties = {
   font: 'inherit',
 }
 
-const KIND_COLOR: Record<MapPageEntity['kind'], string> = {
-  job: '#2563eb',
-  bid: '#ea580c',
-  estimate: '#16a34a',
-}
-
-const KIND_LABEL: Record<MapPageEntity['kind'], string> = {
-  job: 'Jobs',
-  bid: 'Bids',
-  estimate: 'Estimates',
-}
+const KIND_COLOR = MAP_PAGE_KIND_COLOR
+const KIND_LABEL = MAP_PAGE_KIND_LABEL
 
 /** Color key overlaid on the map corner; layers toggled off in the header show dimmed. */
 function MapLegend({ show }: { show: Record<MapPageEntity['kind'], boolean> }) {
@@ -247,36 +231,7 @@ const headerToolbarButtonStyle: CSSProperties = {
   cursor: 'pointer',
 }
 
-function fitMapTo(map: L.Map, points: readonly MapPoint[]): void {
-  const b = mapPointsBounds(points)
-  if (!b) return
-  map.fitBounds(L.latLngBounds([b.south, b.west], [b.north, b.east]), { padding: [28, 28], maxZoom: 15 })
-}
-
-/**
- * The first view and Fit all (v2.4791). The home fit frames the office, its 50 mile ring and the
- * pins inside it, and re-frames only when those bounds change (the anchor arriving, in practice);
- * `fitAllSignal` frames every near pin and the office on demand. Pins far from the office are in
- * neither — see `mapPageFirstView.ts`.
- */
-function MapFit({ homePoints, allPoints, fitAllSignal }: { homePoints: MapPoint[]; allPoints: MapPoint[]; fitAllSignal: number }) {
-  const map = useMap()
-  const home = mapPointsBounds(homePoints)
-  const homeKey = home ? `${home.south},${home.west},${home.north},${home.east}` : ''
-  useEffect(() => {
-    if (homeKey) fitMapTo(map, homePoints)
-    // homeKey captures the bounds
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, homeKey])
-  useEffect(() => {
-    if (fitAllSignal > 0) fitMapTo(map, allPoints)
-    // on the signal only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, fitAllSignal])
-  return null
-}
-
-/** One-shot fly-to from geocode / table actions; does not remount MapContainer. */
+/** One-shot fly-to from the table, the geocode list, the far list and the court areas panel. Mounted inside the canvas. */
 function MapFlyTo({
   target,
   onConsumed,
@@ -463,6 +418,44 @@ function GeocodeProgressList({
   )
 }
 
+const POPUP_BUTTON_STYLE: CSSProperties = {
+  padding: '0.25rem 0.6rem',
+  fontSize: '0.8125rem',
+  cursor: 'pointer',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 6,
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
+}
+
+const PHONE_ACTION_STYLE: CSSProperties = { ...POPUP_BUTTON_STYLE, flex: 1, minHeight: 44, fontSize: '0.9375rem' }
+
+/** The popup body (desktop) and the bar under the map (phone, v2.4796): the record, its kind and stage, the address, Open and Directions. */
+function MapPinBody({ entity, phone, onOpen, onDirections }: { entity: MapPageEntity; phone: boolean; onOpen: (e: MapPageEntity) => void; onDirections: (e: MapPageEntity) => void }) {
+  const stage = entity.kind === 'bid' && entity.bidSection ? BID_STAGE_TITLE[entity.bidSection] : entity.meta
+  return (
+    <div style={{ fontSize: phone ? '0.875rem' : '0.8125rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 6, minWidth: phone ? 0 : 200, maxWidth: phone ? undefined : 300, color: 'var(--text-base)' }}>
+      <div style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: phone ? '0.9375rem' : undefined }}>
+        {entity.tableLabel}
+        {entity.sublabel.trim() ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>{` · ${entity.sublabel.trim()}`}</span> : null}
+      </div>
+      <div style={{ color: 'var(--text-muted)' }}>
+        <span style={{ textTransform: 'capitalize' }}>{entity.kind}</span>
+        {stage ? ` · ${stage}` : ''}
+      </div>
+      <div style={{ color: 'var(--text-muted)' }}>{entity.addressLabel}</div>
+      <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+        <button type="button" onClick={() => onOpen(entity)} style={phone ? PHONE_ACTION_STYLE : POPUP_BUTTON_STYLE}>
+          Open
+        </button>
+        <button type="button" onClick={() => onDirections(entity)} style={phone ? PHONE_ACTION_STYLE : POPUP_BUTTON_STYLE}>
+          Directions
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function MapEntityTable({
   rows,
   title,
@@ -581,6 +574,8 @@ export function MapPageView() {
   const [mapFlyTo, setMapFlyTo] = useState<{ lat: number; lng: number } | null>(null)
   const clearMapFlyTo = useCallback(() => setMapFlyTo(null), [])
   const [geocodeChooserMatches, setGeocodeChooserMatches] = useState<MapPageEntity[] | null>(null)
+  // The pin the office clicked (v2.4796): its popup on a desktop, the bar under the map on a phone.
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const openEntity = useCallback(
     (e: MapPageEntity) => {
       if (e.kind === 'job' && jobFormModal) {
@@ -590,10 +585,12 @@ export function MapPageView() {
       }
       if (e.lat != null && e.lng != null) {
         setMapFlyTo({ lat: e.lat, lng: e.lng })
+        setSelectedId(mapPagePinId(e))
       }
     },
     [jobFormModal, navigate, openJobOnMap]
   )
+  const directionsTo = useCallback((e: MapPageEntity) => openInExternalBrowser(mapPageDirectionsUrl(e.addressLabel)), [])
   const onGeocodeAddressOpen = useCallback(
     (addressNormalized: string) => {
       const matches = entities.filter((en) => en.addressKey === addressNormalized)
@@ -728,39 +725,6 @@ export function MapPageView() {
     const lng = ring.reduce((sum, c) => sum + (c[0] ?? 0), 0) / ring.length
     setMapFlyTo({ lat, lng })
   }, [])
-  const [mapView, setMapView] = useState<{
-    lat: number
-    lng: number
-    zoom: number
-  }>(() => ({
-    lat: DEFAULT_MAP_FALLBACK_CENTER.lat,
-    lng: DEFAULT_MAP_FALLBACK_CENTER.lng,
-    zoom: DEFAULT_MAP_FALLBACK_ZOOM,
-  }))
-
-  const loadMapDefaultView = useCallback(() => {
-    void (async () => {
-      try {
-        const v = await fetchMapDefaultViewFromAppSettings()
-        if (v) {
-          setMapView({ lat: v.centerLat, lng: v.centerLng, zoom: v.zoom })
-        } else {
-          setMapView({
-            lat: DEFAULT_MAP_FALLBACK_CENTER.lat,
-            lng: DEFAULT_MAP_FALLBACK_CENTER.lng,
-            zoom: DEFAULT_MAP_FALLBACK_ZOOM,
-          })
-        }
-      } catch {
-        // keep current mapView
-      }
-    })()
-  }, [])
-
-  useEffect(() => {
-    loadMapDefaultView()
-  }, [loadMapDefaultView])
-
   const onFilterPolygon = useCallback((poly: Feature<Polygon> | null) => {
     setFilterPoly(poly)
   }, [])
@@ -798,7 +762,26 @@ export function MapPageView() {
   const farPlaces = useMemo(() => farFromOfficePlaces(nearAndFar.far), [nearAndFar.far])
   const homeFitPoints = useMemo(() => mapPageHomeFitPoints(nearAndFar.near, anchorPoint), [nearAndFar.near, anchorPoint])
   const fitAllPoints = useMemo(() => mapPageFitAllPoints(nearAndFar.near, anchorPoint), [nearAndFar.near, anchorPoint])
-  const [fitAllSignal, setFitAllSignal] = useState(0)
+  // The map opens on the home fit; Fit all widens to every near pin and stays wide (the Bid Board map's rule).
+  const [fitAll, setFitAll] = useState(false)
+  const [fitSignal, setFitSignal] = useState(0)
+  const fitPoints = fitAll ? fitAllPoints : homeFitPoints
+  const pins = useMemo(
+    () => mapPagePins(placed, { builderFocus: !!builderFocusId, focusSection: focusSectionOf }),
+    [placed, builderFocusId, focusSectionOf],
+  )
+  const byPinId = useMemo(() => mapPageEntitiesByPinId(placed), [placed])
+  const selected = selectedId ? (byPinId.get(selectedId) ?? null) : null
+  useEffect(() => {
+    if (selectedId && !byPinId.has(selectedId)) setSelectedId(null)
+  }, [byPinId, selectedId])
+  const renderPopup = useCallback(
+    (id: string) => {
+      const e = byPinId.get(id)
+      return e ? <MapPinBody entity={e} phone={false} onOpen={openEntity} onDirections={directionsTo} /> : null
+    },
+    [byPinId, openEntity, directionsTo],
+  )
   const courtCover = useMemo(() => courtCoverage(withCoords.map((e) => ({ label: e.tableLabel, lat: e.lat, lng: e.lng })), courtAreas), [withCoords, courtAreas])
   const tableRows = useMemo(
     () => filterEntitiesByPolygon(searchFiltered, filterPoly),
@@ -905,7 +888,7 @@ export function MapPageView() {
           ) : null}
           <button
             type="button"
-            onClick={() => setFitAllSignal((c) => c + 1)}
+            onClick={() => { setFitAll(true); setFitSignal((c) => c + 1) }}
             disabled={fitAllPoints.length === 0}
             title="Frame every pin and the office"
             style={{
@@ -934,10 +917,7 @@ export function MapPageView() {
           </button>
           <button
             type="button"
-            onClick={() => {
-              void reload()
-              loadMapDefaultView()
-            }}
+            onClick={() => void reload()}
             disabled={loading}
             style={{
               ...headerToolbarButtonStyle,
@@ -1050,61 +1030,34 @@ export function MapPageView() {
       >
         {/* isolation contains Leaflet's internal z-indexes (panes 200-700, controls 1000) so they can't paint over header dropdowns */}
         <div style={{ position: 'relative', flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', isolation: 'isolate' }}>
-          <MapContainer
-            key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
-            center={[mapView.lat, mapView.lng] as L.LatLngExpression}
-            zoom={mapView.zoom}
-            style={{ width: '100%', height: narrow ? 360 : 520 }}
-            scrollWheelZoom
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
-            <MapFit homePoints={homeFitPoints} allPoints={fitAllPoints} fitAllSignal={fitAllSignal} />
-            {canvasAnchor ? <LeafletOfficeAnchor anchor={canvasAnchor} /> : null}
-            <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
-            {courtMode || courtAreas.length ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
-            {withCoords.map((e) => (
-              <CircleMarker
-                key={`${e.kind}-${e.id}`}
-                center={[e.lat!, e.lng!]}
-                radius={7}
-                pathOptions={(() => {
-                  const fs = e.kind === 'bid' ? focusSectionOf(e) : undefined
-                  const c = builderFocusId && fs
-                    ? BID_STAGE_MARKER_COLOR[fs]
-                    : KIND_COLOR[e.kind]
-                  return { color: c, fillColor: c, fillOpacity: 0.8, weight: 1 }
-                })()}
-              >
-                <Popup>
-                  <div style={{ fontSize: '0.8rem' }}>
-                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>
-                      {e.kind}
-                      {e.kind === 'bid' && e.bidSection ? (
-                        <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)' }}>
-                          {` — ${BID_STAGE_TITLE[e.bidSection]}`}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div>{e.tableLabel}</div>
-                    <div style={{ color: 'var(--text-muted)' }}>{e.addressLabel}</div>
-                    {e.kind === 'job' && jobFormModal ? (
-                      <button type="button" onClick={() => openJobOnMap(e.id)} style={openLinkLikeStyle}>
-                        Open
-                      </button>
-                    ) : (
-                      <Link to={e.linkTo}>Open</Link>
-                    )}
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
-          </MapContainer>
+          <Suspense fallback={<div style={{ height: narrow ? 360 : 520 }} />}>
+            <PinsMapCanvas
+              pins={pins}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              renderPopup={renderPopup}
+              fitSignal={fitSignal}
+              height={narrow ? 360 : 520}
+              isMobile={narrow}
+              anchor={canvasAnchor}
+              fitPoints={fitPoints}
+              // The map sits above the table: the wheel scrolls the page until the map is clicked once
+              scrollZoomAfterClick
+              // Leaflet ignores a height change after mount — remount when the form flips
+              key={narrow ? 'phone' : 'desktop'}
+            >
+              <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
+              <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
+              {courtMode || courtAreas.length ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
+            </PinsMapCanvas>
+          </Suspense>
           <MapLegend show={{ job: showJobs, bid: showBids, estimate: showEst }} />
         </div>
+        {narrow && selected ? (
+          <div data-map-phone-bar style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 10, padding: '0.625rem 0.75rem' }}>
+            <MapPinBody entity={selected} phone onOpen={openEntity} onDirections={directionsTo} />
+          </div>
+        ) : null}
         <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
           {farPlaces.length > 0 ? (
             <div data-far-from-office style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
