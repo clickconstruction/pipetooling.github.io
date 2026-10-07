@@ -11,8 +11,9 @@ import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { GcNewProjectWindow } from '../components/gc/GcNewProject'
+import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { Btn, Chip } from '../components/gc/gcUi'
-import { createGcProject, loadGcPickerCustomers, loadGcProjects, loadScopeBookStore, saveScopeBookLine, type GcPickerCustomer } from '../lib/gc/gcIo'
+import { createGcProject, editScopeBookLine, loadGcPickerCustomers, loadGcProjects, loadScopeBookStore, mergeScopeBookLines, saveScopeBookLine, saveScopeSet, type GcPickerCustomer } from '../lib/gc/gcIo'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
@@ -39,6 +40,10 @@ export default function GcProjects() {
   const [justMade, setJustMade] = useState<string | null>(null)
   const today = todayYmdInAppTz()
   const windowOpen = params.get('new') === '1'
+  /** The scope book's window: `book=1`, and `trade=<trade>&project=<id>` to save that scope as a set. */
+  const bookOpen = params.get('book') === '1'
+  const bookTrade = params.get('trade')
+  const bookProjectId = params.get('project')
 
   const load = useCallback(async () => {
     try {
@@ -70,13 +75,32 @@ export default function GcProjects() {
     else next.delete('new')
     setParams(next, { replace: true })
   }
+  const setBook = (open: { trade?: string; projectId?: string } | null) => {
+    const next = new URLSearchParams(params)
+    for (const k of ['book', 'trade', 'project']) next.delete(k)
+    if (open) {
+      next.set('book', '1')
+      if (open.trade) next.set('trade', open.trade)
+      if (open.projectId) next.set('project', open.projectId)
+    }
+    setParams(next, { replace: true })
+  }
+  const bookProject = bookProjectId ? (loaded?.projects.find((p) => p.id === bookProjectId) ?? null) : null
+  const bookTradeView = bookProject && bookTrade ? (bookProject.trades.find((t) => t.trade === bookTrade) ?? null) : null
+  const current = bookProject && bookTradeView ? { trade: bookTradeView.trade, lines: bookTradeView.scope.map((l) => l.label), projectName: bookProject.name, projectId: bookProject.id } : null
+  const after = (work: Promise<void>, failed: string) => {
+    void work.then(() => load()).catch((e) => showToast(formatErrorMessage(e, failed), 'error'))
+  }
 
   return (
     <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem' }}>GC projects</h1>
         <Chip tone="grey">dev only, the real build</Chip>
-        <div style={{ marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+          <Btn kind="quiet" onClick={() => setBook({})} disabled={!loaded}>
+            Open the scope book
+          </Btn>
           <Btn kind="primary" onClick={() => setWindow(true)} disabled={!loaded}>
             New project
           </Btn>
@@ -121,6 +145,11 @@ export default function GcProjects() {
                       {t.scope.length} scope {t.scope.length === 1 ? 'line' : 'lines'}
                       {t.excludes.length > 0 ? `, leaves out ${t.excludes.length}` : ''}
                     </span>
+                    {t.scope.length > 0 && (
+                      <Btn kind="quiet" onClick={() => setBook({ trade: t.trade, projectId: p.id })}>
+                        Save as a set
+                      </Btn>
+                    )}
                   </div>
                   <ul style={{ margin: 0, paddingLeft: '1.2rem', color: 'var(--text-muted)' }}>
                     {t.scope.map((s) => (
@@ -142,6 +171,21 @@ export default function GcProjects() {
           </div>
         )
       })}
+
+      {bookOpen && loaded && bookInput && (
+        <GcScopeBookWindow
+          input={bookInput}
+          onClose={() => setBook(null)}
+          startTrade={bookTrade ?? undefined}
+          current={current}
+          writes={{
+            onSave: (trade, words, spec) => after(saveScopeBookLine(trade, words, spec), 'The line was not saved.'),
+            onEdit: (trade, words, to) => after(editScopeBookLine(trade, words, to), 'The line was not changed.'),
+            onMerge: (trade, from, into) => after(mergeScopeBookLines(trade, from, into), 'The lines were not folded.'),
+            onSaveSet: (trade, name, lines, fromProjectId) => after(saveScopeSet(trade, name, lines, fromProjectId), 'The set was not saved.'),
+          }}
+        />
+      )}
 
       {windowOpen && loaded && bookInput && (
         <GcNewProjectWindow

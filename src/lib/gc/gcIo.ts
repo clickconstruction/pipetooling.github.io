@@ -10,7 +10,8 @@ import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorH
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { ScopeBookStore, ScopeExclusion } from './types'
+import type { ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
+import { scopeWordKey } from './scopeBook'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
 export interface GcPickerCustomer {
@@ -138,7 +139,52 @@ export async function createGcProject(draft: NewProjectDraft): Promise<string> {
   return id
 }
 
-/** A line the office saves to the scope book by hand. */
-export async function saveScopeBookLine(trade: string, words: string, spec?: string): Promise<void> {
-  taken(await supabase.from('gc_scope_book_saved').insert({ trade, words, spec: spec ?? null }).select('id').single(), 'save the line to the scope book')
+/** A line the office saves to the scope book by hand, with its section and what it leaves out. */
+export async function saveScopeBookLine(trade: string, words: string, spec?: string, leavesOut?: ScopeExclusion): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_scope_book_saved')
+      .insert({ trade, words, spec: spec ?? null, leaves_out_label: leavesOut?.label ?? null, leaves_out_by: leavesOut?.by ?? null })
+      .select('id')
+      .single(),
+    'save the line to the scope book',
+  )
+}
+
+/**
+ * A change to a line of the book. One edit stands per line (the kernel follows the first it finds),
+ * so an earlier edit of the same words goes before the new one is written.
+ */
+export async function editScopeBookLine(trade: string, words: string, to: ScopeBookEdit['to']): Promise<void> {
+  const key = scopeWordKey(words)
+  const earlier = taken(await supabase.from('gc_scope_book_edits').select('id, words').eq('trade', trade), 'change the scope book line')
+  const stale = earlier.filter((e) => scopeWordKey(e.words) === key).map((e) => e.id)
+  if (stale.length > 0) taken(await supabase.from('gc_scope_book_edits').delete().in('id', stale), 'change the scope book line')
+  taken(
+    await supabase
+      .from('gc_scope_book_edits')
+      .insert({
+        trade,
+        words,
+        to_words: to.words,
+        to_spec: to.spec ?? null,
+        clear_spec: to.spec === null,
+        to_leaves_out_label: to.leavesOut?.label ?? null,
+        to_leaves_out_by: to.leavesOut?.by ?? null,
+        clear_leaves_out: to.leavesOut === null,
+      })
+      .select('id')
+      .single(),
+    'change the scope book line',
+  )
+}
+
+/** Two lines of one trade that say the same thing: `from` folds into `into`. */
+export async function mergeScopeBookLines(trade: string, from: string, into: string): Promise<void> {
+  taken(await supabase.from('gc_scope_book_merges').insert({ trade, from_words: from, into_words: into }).select('id').single(), 'fold the two lines together')
+}
+
+/** A named list of one trade's lines, saved to start another job from. */
+export async function saveScopeSet(trade: string, name: string, lines: string[], fromProjectId?: string): Promise<void> {
+  taken(await supabase.from('gc_scope_sets').insert({ trade, name, lines, from_project_id: fromProjectId ?? null }).select('id').single(), 'save the set')
 }

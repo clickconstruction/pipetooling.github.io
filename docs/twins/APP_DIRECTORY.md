@@ -67,7 +67,9 @@ Roles: all.
 GC mode's real build, step by step. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through
-`gc_create_project`. Who to ask (the companies) is not here yet. Guide: `/help?g=start-a-gc-project`.
+`gc_create_project`. Who to ask (the companies) is not here yet. **Open the scope book** (`?book=1`)
+is every scope line we keep by trade: edit, add, fold duplicates, save a project's scope as a set.
+Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`.
 Roles: dev only.
 
 ### /bids — Bids (the estimating hub)
