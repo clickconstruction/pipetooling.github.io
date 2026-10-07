@@ -5152,6 +5152,15 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 /* The firm's Lien grid (v2.4749): a rail of GCs beside the table; colors come inline from portalTheme. */
 /* The job address pins itself (v2.4783): the placing… word breathes while the lookup runs. */
 @keyframes jobAddressPinPulse { 50% { opacity: 0.4; } }
+/* The narrative for the firm (v2.4812): markdown rendered on the portal's light paper. */
+.legalNarrative h1, .legalNarrative h2, .legalNarrative h3, .legalNarrative h4 { font-size: 13.5px; margin: 16px 0 6px; }
+.legalNarrative h1:first-child, .legalNarrative h2:first-child, .legalNarrative h3:first-child { margin-top: 4px; }
+.legalNarrative p { margin: 6px 0; line-height: 1.5; }
+.legalNarrative ul, .legalNarrative ol { margin: 6px 0; padding-left: 22px; }
+.legalNarrative table { border-collapse: collapse; margin: 8px 0; font-size: 12.5px; }
+.legalNarrative th, .legalNarrative td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
+.legalNarrative th { background: var(--surface-muted, transparent); }
+.legalNarrative a { color: #b0662f; }
 /* Reach the office (v2.4755): one line under the letterhead; a column on a phone. Colors inline from portalTheme. */
 .legalReachStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; margin: 12px 0 0; border-radius: 6px; font-size: 12.5px; }
 .legalReachWho { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }

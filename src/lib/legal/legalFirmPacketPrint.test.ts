@@ -45,6 +45,16 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
     expect(bare).not.toContain('Documents from the office')
   })
 
+  it('prints the narrative first, labelled, before the exhibits (v2.4812)', () => {
+    const { payload, m, packet } = sample()
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, narrative: m.narrative }, particulars: payload.particulars })
+    expect(html).toContain('<h2>Narrative</h2>')
+    expect(html).toContain("The office's account of this matter, written by Robin Ortega")
+    expect(html.indexOf('<h2>Narrative</h2>')).toBeLessThan(html.indexOf('<h2>Exhibits</h2>'))
+    const bare = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+    expect(bare).not.toContain('<h2>Narrative</h2>')
+  })
+
   it('says where to file, in one paragraph after the money (v2.4764)', () => {
     const { payload, m, packet } = sample()
     const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })

@@ -17,6 +17,7 @@ import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
 import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
 import { LEGAL_MATTER_DOCUMENTS_BUCKET, legalPortalDocumentFromRow } from '../_shared/legalMatterDocuments.ts'
+import { legalNarrativeFromRow } from '../_shared/legalNarrative.ts'
 // v2.4756: the key is short on purpose, so wrong keys are counted by caller and a guesser is refused.
 import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
@@ -361,6 +362,10 @@ serve(async (req) => {
       const { data: signed } = await admin.storage.from(LEGAL_MATTER_DOCUMENTS_BUCKET).createSignedUrl(d.storage_path as string, SIGNED_PDF_SECONDS)
       if (signed?.signedUrl) documentUrls.set(d.id as string, signed.signedUrl)
     }))
+    // The narrative for the firm (v2.4812), in its own read: until the migration is pushed the columns are
+    // missing, and the matters read above must not fail with them.
+    const { data: narrRows, error: narrErr } = await admin.from('legal_matters').select('id, narrative_md, narrative_updated_at, narrative_updated_by').in('id', matterIds)
+    const narrativeRows = new Map((narrErr ? [] : ((narrRows ?? []) as Row[])).map((r) => [r.id as string, r] as const))
 
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
@@ -370,6 +375,7 @@ serve(async (req) => {
     for (const p of promises) if (p.heard_by) userIds.add(p.heard_by as string)
     for (const r of reports) if (r.created_by_user_id) userIds.add(r.created_by_user_id as string)
     for (const d of documentRows) if (d.added_by) userIds.add(d.added_by as string)
+    for (const r of narrativeRows.values()) if (r.narrative_updated_by) userIds.add(r.narrative_updated_by as string)
     const { data: userRows } = userIds.size ? await admin.from('users').select('id, name').in('id', [...userIds]) : { data: [] }
     const userName = new Map(((userRows ?? []) as Row[]).map((u) => [u.id as string, (u.name as string | null) ?? null]))
 
@@ -459,6 +465,10 @@ serve(async (req) => {
         heldCount,
         documents: documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => legalPortalDocumentFromRow(d as { id: string; title: string; shows: string; mime: string | null; size_bytes: number | null; added_at: string | null }, (d.added_by ? userName.get(d.added_by as string) : null) ?? '', documentUrls.get(d.id as string) ?? '', (iso) => todayYmdInAppTz(new Date(iso)))),
         heldDocumentCount: documentRows.filter((d) => d.matter_id === m.id && documentHeld(d)).length,
+        narrative: (() => {
+          const r = narrativeRows.get(m.id as string)
+          return r ? legalNarrativeFromRow(r as { narrative_md?: string | null; narrative_updated_at?: string | null }, (r.narrative_updated_by ? userName.get(r.narrative_updated_by as string) : null) ?? '', (iso) => todayYmdInAppTz(new Date(iso))) : null
+        })(),
         // #85 item 20: the office's settlement floor (dollars or a percent of the balance); both null = none.
         settlementFloor: { amount: m.settlement_floor_amount ?? null, pct: m.settlement_floor_pct ?? null },
         sharedOverrides,

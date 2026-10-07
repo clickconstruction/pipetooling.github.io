@@ -8,6 +8,8 @@ import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from 
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { legalDocumentKindWords, legalDocumentSizeWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
+import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
+import { legalNarrativeHtml } from '../../../lib/legal/legalNarrativeHtml'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
 import { CardCell } from './LegalCardCell'
@@ -33,7 +35,7 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
  * Styled on the customer statement's paper (pinned light by the caller).
  */
 
-import { FIRM_TABS, FIRM_TAB_LABELS, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
+import { FIRM_TAB_LABELS, firmTabsFor, firmTabShown, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
 
 /**
  * Every table of the firm's matter. On a narrow box (a phone, an iPad's main column) each row folds into a card,
@@ -154,6 +156,15 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
 }
 
 export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }: { tab: FirmTab; packet: LegalPacket; matter: FirmMatterLike; companyName: string; acts?: ReactNode; /** #85 item 18: the firm undoes its own act, with a reason; absent on the desk's preview. */ onUndo?: (entryId: string, reason: string) => Promise<boolean> }) {
+  if (tab === 'narrative' && matter.narrative?.markdown) {
+    return (
+      <div data-legal-firm-narrative>
+        <p style={{ fontSize: 12.5, color: MUTED, background: NOTE_BAND, padding: '6px 10px', borderRadius: 4, margin: '4px 0 10px' }}>{legalNarrativeBandWords(matter.narrative)}</p>
+        {/* eslint-disable-next-line react/no-danger -- legalNarrativeHtml: marked, then the allowlist sanitizer (no scripts, styles, forms or handlers; http(s) links only), tested */}
+        <div className="legalNarrative" style={{ fontSize: 13.5, color: INK }} dangerouslySetInnerHTML={{ __html: legalNarrativeHtml(matter.narrative.markdown) }} />
+      </div>
+    )
+  }
   const a = packet.account
   const h = portalH
   if (tab === 'account') {
@@ -263,6 +274,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   onUndo?: (entryId: string, reason: string) => Promise<boolean>
 }) {
   const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
+  // Narrative only when the office wrote one (v2.4812); a tab the matter does not show falls back to Account.
+  const shownTab = firmTabShown(tab, matter)
   // The county and owner line reads the first job's own property (#85 item 6), never the payer's first address.
   const firstProperty = packet.account.jobs[0]?.property ?? null
   return (
@@ -289,13 +302,13 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, margin: '14px 0 12px', fontSize: 13 }}>
-          {FIRM_TABS.map((t) => (
-            <button key={t} type="button" onClick={() => onTab(t)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: tab === t ? INK : MUTED, borderBottom: tab === t ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: tab === t ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
+          {firmTabsFor(matter).map((t) => (
+            <button key={t} type="button" onClick={() => onTab(t)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: shownTab === t ? INK : MUTED, borderBottom: shownTab === t ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: shownTab === t ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
               {FIRM_TAB_LABELS[t]}
             </button>
           ))}
         </div>
-        <FirmMatterTab tab={tab} packet={packet} matter={matter} companyName={companyName} acts={acts} onUndo={onUndo} />
+        <FirmMatterTab tab={shownTab} packet={packet} matter={matter} companyName={companyName} acts={acts} onUndo={onUndo} />
       </div>
       <div style={{ ...portalCard, marginTop: 12 }}>
         <div style={portalCap}>Exhibits</div>
@@ -354,7 +367,7 @@ function FirmDocuments({ documents, held }: { documents: ReadonlyArray<LegalPort
       <PortalTable
         head={['Document', 'What it shows', 'Added', '']}
         rows={documents.map((d) => [
-          <span key="t"><b>{d.title}</b><div style={{ fontSize: 11.5, color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
+          <span key="t"><b>{d.title}</b><div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
           d.shows,
           <span key="a" style={{ color: MUTED, whiteSpace: 'nowrap' }}>{[d.addedByName, d.addedOn].filter(Boolean).join(' · ')}</span>,
           d.url ? <a key="o" href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: COPPER, fontWeight: 600, whiteSpace: 'nowrap' }}>Open ↗</a> : <span key="o" style={{ color: FAINT, whiteSpace: 'nowrap' }}>on the firm's link</span>,
