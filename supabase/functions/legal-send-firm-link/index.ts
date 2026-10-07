@@ -5,6 +5,7 @@ import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalWelcomeEmail } from '../_shared/legalEmails.ts'
 import { legalFirmLinkAddresses } from '../_shared/legalFirmLink.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { legalPortalAddress } from '../_shared/legalPortalAddress.ts'
 
 /**
  * Send the law firm its portal link (v2.4624, punch list #85 item 21): the desk's link card →
@@ -15,10 +16,12 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
  * manages the link). Filed in `sent_documents` (kind `legal_firm_link`, source the active
  * `legal_portal_links` row), which is where the card reads *Sent to … on …* back.
  *
- * Body: `{ firmId, useOnFile?: boolean, typed?: string, note?: string, token?: string }`.
- * `token` is the raw link the card holds; it must match the firm's active link (raw or its hash).
- * With none, the row's raw token is used, else the Vault copy (`legal_portal_link_token`, service
- * role, punch list #85 item 22). The link's origin is `APP_ORIGIN`, never the caller's.
+ * Body: `{ firmId, linkId?: string, useOnFile?: boolean, typed?: string, note?: string, token?: string }`.
+ * `linkId` (v2.4750) names one of the firm's live links — a person's link, sent to that person;
+ * without it the firm's own link goes. The key is read from Vault on the server
+ * (`legal_portal_link_token_by_id` / `legal_portal_link_token`, service role, punch list #85 item
+ * 22); `token`, when the card sends it, must match that link's hash. The address is the one the
+ * office's list shows (`_shared/legalPortalAddress.ts`), on `APP_ORIGIN`, never the caller's origin.
  */
 
 const corsHeaders = {
@@ -28,11 +31,6 @@ const corsHeaders = {
 }
 const WITH_FIRM = ['referred', 'demand', 'suit', 'judgment']
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
-}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -48,7 +46,7 @@ serve(async (req) => {
     const { data: isOffice } = await userClient.rpc('legal_office_can_read')
     if (isOffice !== true) return json({ error: 'Only the office sends the firm its link.' }, 403)
 
-    const body = (await req.json().catch(() => null)) as { firmId?: string; useOnFile?: boolean; typed?: string; note?: string; token?: string } | null
+    const body = (await req.json().catch(() => null)) as { firmId?: string; linkId?: string; useOnFile?: boolean; typed?: string; note?: string; token?: string } | null
     const firmId = (body?.firmId ?? '').trim()
     if (!firmId) return json({ error: 'Which firm?' }, 400)
 
@@ -60,27 +58,22 @@ serve(async (req) => {
     const to = legalFirmLinkAddresses({ onFile: firm.email, useOnFile: body?.useOnFile !== false, typed: body?.typed ?? '' })
     if (to.error) return json({ error: to.error }, 400)
 
-    // The link: the active row's raw token, or the one the card holds when it matches that row.
-    const { data: linkRow } = await admin.from('legal_portal_links').select('id, token, token_hash').eq('firm_id', firm.id).is('revoked_at', null).maybeSingle()
-    const link = linkRow as { id: string; token: string | null; token_hash: string | null } | null
-    if (!link) return json({ error: 'Create the firm’s link first.' }, 409)
-    const offered = (body?.token ?? '').trim()
-    let token = link.token ?? ''
-    if (offered && offered !== token) {
-      token = link.token_hash && (await sha256Hex(offered)) === link.token_hash ? offered : ''
-      if (!token) return json({ error: 'That link is no longer the firm’s active link. Close the card and open it again.' }, 409)
-    }
-    if (!token && !offered) {
-      // Hash only at rest (item 22): the raw token lives in Vault, readable by the service role alone.
-      const { data: vaulted, error: vaultErr } = await admin.rpc('legal_portal_link_token', { p_firm_id: firm.id })
-      if (vaultErr) console.warn('legal-send-firm-link: legal_portal_link_token', vaultErr.message)
-      token = typeof vaulted === 'string' ? vaulted : ''
-    }
+    // The link (v2.4750): the named live link, else the firm's own. Its key sits in Vault, readable by the service role alone.
+    const linkId = (body?.linkId ?? '').trim()
+    const linkQuery = admin.from('legal_portal_links').select('id, purpose, label, token_hash').eq('firm_id', firm.id).is('revoked_at', null)
+    const { data: linkRow } = await (linkId ? linkQuery.eq('id', linkId) : linkQuery.eq('purpose', 'firm')).maybeSingle()
+    const link = linkRow as { id: string; purpose: string; label: string | null; token_hash: string | null } | null
+    if (!link) return json({ error: linkId ? 'That link is no longer live. Open the list again.' : 'Create the firm’s link first.' }, 409)
+    const { data: vaulted, error: vaultErr } = await admin.rpc('legal_portal_link_token_by_id', { p_link_id: link.id })
+    if (vaultErr) console.warn('legal-send-firm-link: legal_portal_link_token_by_id', vaultErr.message)
+    const token = typeof vaulted === 'string' ? vaulted : ''
     if (!token) return json({ error: 'The stored link cannot be read back. Press Rotate, then send the new link.' }, 409)
+    const offered = (body?.token ?? '').trim()
+    if (offered && offered !== token) return json({ error: 'That link is no longer the firm’s live link. Close the card and open it again.' }, 409)
 
-    // The link's origin is the app's, never one the caller names (a body origin would let a caller mail the firm a look-alike host).
+    // The address the office's list shows, on the app's origin: a body origin would let a caller mail the firm a look-alike host.
     const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
-    const portalUrl = `${origin.replace(/\/$/, '')}/legal?t=${encodeURIComponent(token)}`
+    const portalUrl = legalPortalAddress(origin, token)
 
     const [{ count: matterCount }, { data: me }] = await Promise.all([
       admin.from('legal_matters').select('id', { count: 'exact', head: true }).eq('firm_id', firm.id).in('stage', WITH_FIRM),
@@ -91,7 +84,7 @@ serve(async (req) => {
       companyName: PORTAL_COMPANY.name,
       companyPhone: PORTAL_COMPANY.phone,
       firmName: firm.name,
-      greetName: firm.handling_name,
+      greetName: link.purpose === 'person' && link.label ? link.label : firm.handling_name,
       portalUrl,
       matterCount: matterCount ?? 0,
       note: typeof body?.note === 'string' ? body.note.slice(0, 1000) : null,

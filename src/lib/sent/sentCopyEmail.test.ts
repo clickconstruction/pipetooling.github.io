@@ -101,5 +101,7 @@ describe('sentCopyKeptHtml (punch list #85, item 21)', () => {
     expect(kept).toContain('/legal?t=…"')
     expect(kept).toContain('&amp;t=…')
     expect(sentCopyKeptHtml('bill', html)).toBe(html)
+    const short = '<a href="https://my.clickplumbing.com/snell-law-firm-k4tp9x2mq7zr">Open</a> my.clickplumbing.com/snell-law-firm-k4tp9x2mq7zr'
+    expect(sentCopyKeptHtml('legal_firm_link', short)).toBe('<a href="https://my.clickplumbing.com/…">Open</a> my.clickplumbing.com/…')
   })
 })

@@ -61,7 +61,7 @@ Each item: a mockup file beside this card (`mockup-<n>-<slug>.html`), then its P
 
 ### Structure and refactors
 
-22. ~~**Hash-only tokens at rest**~~ (v2.4669, v2.4647), no-store headers, a referrer policy, short PDF link life after revoke, the Rotate confirm says every emailed link dies.
+22. ~~**Hash-only tokens at rest**~~ (v2.4669, v2.4647), no-store headers, a referrer policy, short PDF link life after revoke, the Rotate confirm says every emailed link dies. Since v2.4750 the office reads a live key back from Vault through `list_legal_portal_links` (the owner's ask: every link on the window, copyable); the table still holds no key.
 23. ~~**Shape the payload**~~ (v2.4644) to what the page draws.
 24. ~~**Scope contacts**~~ (v2.4642) to the matter's jobs.
 25. ~~**One evidence rule**~~ (v2.4637) for sessions.

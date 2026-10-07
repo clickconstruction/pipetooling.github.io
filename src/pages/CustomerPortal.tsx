@@ -10,6 +10,7 @@ import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromis
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
+import { probeLegalPortalKey } from '../lib/legal/legalPortalProbe'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import type { CSSProperties, FormEvent } from 'react'
@@ -102,6 +103,8 @@ export default function CustomerPortal() {
   // "Payment received — statement updated": a bill this page showed before is
   // gone (or smaller) and the balance dropped. Read-only detection; no writes.
   const [paymentLanded, setPaymentLanded] = useState(false)
+  // Where an unknown slug goes once the legal probe answers (v2.4750).
+  const [fallThrough, setFallThrough] = useState<'legal' | 'sub' | null>(null)
   // Load generation: an unmount or a link change invalidates in-flight fetches and pending refetch timers.
   const genRef = useRef(0)
   const invalidateLoads = () => {
@@ -217,10 +220,25 @@ export default function CustomerPortal() {
   }, [])
 
   // Shared printed namespace (sub-portal train): a my.clickplumbing.com slug
-  // that isn't a customer's may be a sub's — fall through to the sub portal,
-  // which renders the same friendly error when it's neither.
-  if (state.kind === 'error' && slug && !token) {
-    return <Navigate to={`/s/${slug}`} replace />
+  // that isn't a customer's may be the law firm's key (v2.4750: one cheap probe
+  // first, so a dead sub link still lands on the sub portal's own error) or a
+  // sub's — fall through to the sub portal, which renders the same friendly
+  // error when it's neither.
+  const slugMiss = state.kind === 'error' && Boolean(slug) && !token
+  useEffect(() => {
+    if (!slugMiss) return
+    let live = true
+    void probeLegalPortalKey(slug).then((yes) => {
+      if (live) setFallThrough(yes ? 'legal' : 'sub')
+    })
+    return () => {
+      live = false
+    }
+  }, [slugMiss, slug])
+  if (slugMiss) {
+    if (fallThrough === 'legal') return <Navigate to={`/legal?t=${encodeURIComponent(slug)}`} replace />
+    if (fallThrough === 'sub') return <Navigate to={`/s/${slug}`} replace />
+    return null
   }
 
   return (
