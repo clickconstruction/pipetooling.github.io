@@ -12,13 +12,14 @@ summary: >
   The prototype plays the whole loop on a fixture with the office on one side and a trade
   partner's portal on the other, so every screen and rule below was decided by using it.
 next: >
-  Read HANDOFF.md (what is left, gathered from every lane on 2026-10-05). Every open question is
-  answered; take its list of the owner's calls to him. When he says the shape is right: write the
-  schema from the model file, then build it for real in the order under "The plan".
+  Read HANDOFF.md (what is left). The shape is settled (2026-10-06) and the real build runs from
+  main in small PRs: New project's in NEW_PROJECT_REAL_BUILD.md, then the schedule's in
+  SCHEDULE_REAL_BUILD.md once the owner gives the word on its ten decisions (HANDOFF.md, call 11),
+  which carry the Gantt's real-build-only rows, G-132 to G-134.
 size: XL (a new mode: about ten tables, a company-keyed portal, email, and six to eight screens)
-blocker: The owner's calls listed under "Open questions". No engineering blocker.
+blocker: None on the Gantt, whose prototype rows are built. The schedule's real build waits on the owner's word on the ten decisions in SCHEDULE_REAL_BUILD.md (HANDOFF.md, call 11). No engineering blocker.
 mockup: not required — the mock-up is the running prototype at /bids/gc on branch spike/gc-mode
-opinion: your call — the prototype is far enough along to judge the idea; nothing should be built for real until the open questions are answered
+opinion: the shape is settled, and building it for real from main in small PRs is right; the prototype stays the reference and never merges
 ---
 
 # GC mode
