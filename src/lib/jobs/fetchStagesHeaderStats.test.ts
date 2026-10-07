@@ -83,7 +83,7 @@ describe('fetchStagesHeaderStats', () => {
     const r = await fetchStagesHeaderStats(null, now)
     expect(r.ok).toBe(true)
     const jobs = q('jobs_ledger')
-    expect(argsOf(jobs.steps, 'select')[0]![0]).toBe('id, status, revenue, payments_made, pct_complete, collections_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party')
+    expect(argsOf(jobs.steps, 'select')[0]![0]).toBe('id, status, revenue, payments_made, pct_complete, collections_at, uncollectible_at, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party')
     expect(argsOf(jobs.steps, 'or')).toEqual([[`status.in.(${LEAN_STATS_ACTIVE_JOB_STATUSES.join(',')}),status.is.null`]])
     expect(argsOf(jobs.steps, 'order')).toEqual([['id']])
     expect(argsOf(jobs.steps, 'range')).toEqual([[0, 999]])
@@ -173,5 +173,13 @@ describe('fetchStagesHeaderStats', () => {
       throw 'weird'
     }
     expect(await fetchStagesHeaderStats(null, now)).toEqual({ ok: false, error: 'Could not load board stats' })
+  })
+})
+
+describe('collectedWindowStartYmd · today on the company calendar (v2.4475)', () => {
+  it('starts the window 29 days before the Central day', () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2.
+    expect(collectedWindowStartYmd(new Date('2026-10-03T00:30:00Z'))).toBe('2026-09-03')
+    expect(collectedWindowStartYmd(new Date('2026-10-03T12:00:00Z'))).toBe('2026-09-04')
   })
 })

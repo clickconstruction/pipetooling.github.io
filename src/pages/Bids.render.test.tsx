@@ -357,6 +357,27 @@ describe('Bids page render smoke — Counts with an alternate (v2.4204)', () => 
   })
 })
 
+describe('Bids page render smoke — the Counts import is one run and one insert (v2.4720)', () => {
+  it('pressing Import twice during a run writes one batch insert, and the button reads Importing…', async () => {
+    renderBidsAt('/bids?tab=counts&bidId=bid-1', 'estimator', [BID], [])
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    // jsdom has no clipboard, so the door falls through to the paste box.
+    fireEvent.click(await screen.findByRole('button', { name: 'Import from /Tooling' }))
+    const box = (await screen.findByPlaceholderText(/Fixture or Tie-in/)) as HTMLTextAreaElement
+    fireEvent.change(box, { target: { value: 'WC\t4\t2\nLAV\t3\t2' } })
+    const importBtn = screen.getByRole('button', { name: 'Import' })
+    fireEvent.click(importBtn)
+    fireEvent.click(importBtn)
+    await waitFor(() => expect(smoke.writes.filter((w) => w.table === 'bids_count_rows' && w.op === 'insert')).toHaveLength(1))
+    const insert = smoke.writes.find((w) => w.table === 'bids_count_rows' && w.op === 'insert')!
+    expect(Array.isArray(insert.payload)).toBe(true)
+    expect((insert.payload as Array<Record<string, unknown>>).map((r) => [r.fixture, r.count, r.sequence_order])).toEqual([['WC', 4, 1], ['LAV', 3, 2]])
+    await settle()
+    expect(smoke.writes.filter((w) => w.table === 'bids_count_rows' && w.op === 'insert')).toHaveLength(1)
+    expect(screen.queryByText('Importing…')).toBeNull()
+  })
+})
+
 describe('Bids page render smoke — the Day book’s params', () => {
   const dayBookParams = () => [...new URLSearchParams((currentUrl() ?? '').split('?')[1] ?? '').keys()].filter((k) => k.startsWith('dayb_'))
 

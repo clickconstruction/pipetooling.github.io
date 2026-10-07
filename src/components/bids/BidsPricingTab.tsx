@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
+import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatRevenueMultiple } from '../../lib/bids/bidFormatting'
@@ -56,7 +58,7 @@ import { usePricingQuoteDesk } from '../../hooks/usePricingQuoteDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import { PricingStarChooserDialog } from './PricingStarChooserDialog'
-import { PricingMarginHistory } from './PricingMarginHistory'
+import { PricingBidsLikeThis } from './PricingBidsLikeThis'
 import { WorkbenchHelpCard } from './WorkbenchHelpCard'
 import { usePricingMarginHistory } from '../../hooks/usePricingMarginHistory'
 import { useWorkbenchHelp } from '../../hooks/useWorkbenchHelp'
@@ -73,6 +75,7 @@ import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
@@ -1448,6 +1451,9 @@ export function BidsPricingTab({
   // Iteration 3 — win/loss calibration history for this service type (the read sits where its
   // effect stood, so the tab's effects run in the order they did).
   const wbHistory = usePricingMarginHistory(selectedServiceTypeId)
+  // v2.4448: the header slot "Bids like this" is portalled into (a state, not a ref, so the
+  // first render after the slot mounts draws the chips).
+  const [bidsLikeThisSlot, setBidsLikeThisSlot] = useState<HTMLSpanElement | null>(null)
   // v2.4395: the version's materials at today's book, one line under the sent-vs-today line.
   const materialsToday = useTakeoffPriceDrift({ bidId: selectedBidForPricing?.id, versionId: selectedBidVersionId, enabled: !!selectedBidForPricing })
 
@@ -1794,8 +1800,12 @@ export function BidsPricingTab({
     if (!bidId || !versionId || matches.length === 0) return
     setWbFillingBook(true)
     try {
-      const { error: err } = await supabase.from('bid_pricing_assignments').insert(
-        matches.map((m) => ({ bid_id: bidId, count_row_id: m.countRowId, price_book_entry_id: m.entryId, price_book_version_id: versionId })),
+      // One press, one action in the bid's history (PR 1b).
+      const { error: err } = await withBidAction(
+        supabase.from('bid_pricing_assignments').insert(
+          matches.map((m) => ({ bid_id: bidId, count_row_id: m.countRowId, price_book_entry_id: m.entryId, price_book_version_id: versionId })),
+        ),
+        BID_ACTIONS.bookFill,
       )
       if (err) {
         setError(err.message)
@@ -2139,13 +2149,20 @@ export function BidsPricingTab({
             />
             ) : null}
             <div id="pricing-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', gap: '0.75rem' }}>
+              {/* v2.4448: the group may shrink (minWidth 0) so its own items wrap inside it; at its
+                  max-content width the chips pushed the flow strip off the right of a 1,400 px window. */}
+              <div style={{ display: 'flex', alignItems: 'center', flex: '1 1 auto', minWidth: 0, flexWrap: 'wrap', gap: '0.75rem' }}>
+                {/* v2.4451: no h2Style, so the title may shrink and wrap as on every other tab. Held
+                    at its full width (flex 0 0 auto), it ran past the card on a phone. */}
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForPricing}
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
-                  h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
+                {/* v2.4448: "Bids like this" sits here, after the title. Its numbers (the Workbench's
+                    effective revenue and margin) are derived further down, inside the Workbench block,
+                    so that block portals the chips into this slot. */}
+                <span ref={setBidsLikeThisSlot} style={{ display: 'inline-flex', alignItems: 'center' }} />
                 <BidFlowStrip
                   variant="inline"
                   expanded={flowFold.expanded}
@@ -2173,7 +2190,8 @@ export function BidsPricingTab({
                     </button>
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+              {/* v2.4451: may shrink to the card and wrap (the RFQ chip above the Share button) on a phone. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 1 auto', minWidth: 0, flexWrap: 'wrap' }}>
                 {/* v2.2630/31/36: one chip, five states (deriveRfqChip) — quotes-only
                     opens compare (as shipped); any request opens the RFQ desk. */}
                 {canPackageAndSendBidPricing && rfqChip.kind !== 'none' ? (
@@ -3035,12 +3053,19 @@ export function BidsPricingTab({
                     </div>
                     </div>
 
-                    <PricingMarginHistory
-                      history={wbHistory}
-                      currentBidId={selectedBidForPricing?.id}
-                      currentMargin={effMargin}
-                      gcCustomerId={selectedBidForPricing?.customer_id ?? null}
-                    />
+                    {bidsLikeThisSlot
+                      ? createPortal(
+                          <PricingBidsLikeThis
+                            history={wbHistory}
+                            currentBidId={selectedBidForPricing?.id}
+                            currentPrice={effRevenue}
+                            currentMargin={effMargin}
+                            gcCustomerId={selectedBidForPricing?.customer_id ?? null}
+                            gcName={selectedBidForPricing?.customers?.name ?? null}
+                          />,
+                          bidsLikeThisSlot,
+                        )
+                      : null}
                     {/* Batch 2: short label — "N of M priced" (owner). v2.2378: collapsed behind the
                         solver-line chip by default — this row renders only while the chip is expanded. */}
                     {(wbCoverageOpen || wbShowUnpricedOnly) && costed.length > 0 ? (
@@ -3191,7 +3216,7 @@ export function BidsPricingTab({
                                     return (
                                       <button
                                         type="button"
-                                        title={`Materials from ${cc.house_name ?? 'a quote'} (${cc.applied_at.slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
+                                        title={`Materials from ${cc.house_name ?? 'a quote'} (${calendarYmdInAppTzFromIso(cc.applied_at).slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
                                         onClick={() => void revertCustomCost(cc)}
                                         style={{ display: 'block', marginLeft: 'auto', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, color: '#15803d', background: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                       >
@@ -3535,7 +3560,7 @@ export function BidsPricingTab({
             : "The GC's letter is built on this price — make another price the base first."
           const close = () => setPricingEdit(null)
           return (
-            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+            <div role="presentation" onClick={close} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }}>
               <div role="dialog" aria-label="Price" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close() } }} style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.4rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>Price</h3>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }} htmlFor="pricing-edit-name">Name</label>
@@ -3617,7 +3642,7 @@ export function BidsPricingTab({
         const mine = priceBookVersions.filter((p) => (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null))
         const defaultName = `Alternate ${Math.max(1, mine.length)}`
         return (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={() => !wbCloning && setAddPriceOpen(null)}>
             <div role="dialog" aria-label={`Another price for ${gc}`} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 12, padding: '1rem 1.1rem', maxWidth: 460, width: '92%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }} onClick={(e) => e.stopPropagation()}>
               <h3 style={{ margin: '0 0 0.2rem', fontSize: '1.02rem' }}>Another price for {gc}</h3>
               <p style={{ margin: '0 0 0.7rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>Same counts, same takeoff — a second price this GC can pick. Different materials? use “+ version” in the picker instead.</p>

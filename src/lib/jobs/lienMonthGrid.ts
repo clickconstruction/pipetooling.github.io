@@ -10,6 +10,7 @@
  * it and the card draws it.
  */
 import type { LienDeskItemRow, LienDeskMonth } from './lienDesk'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { noticeDeadlineForMonth, type JobLienFilingRow } from './lienDeadlines'
 import { normalizeDocumentUrl, type LienFilingDocument } from './lienFilingDocumentLink'
@@ -65,7 +66,7 @@ export type LienGridRow = {
   }
   /** One cell per paper key (this notice under 'this'). */
   cells: Record<string, LienGridCell>
-  thisNotice: { on: boolean; locked: boolean; info: boolean }
+  thisNotice: { on: boolean; locked: boolean; info: boolean; /** v2.4708: a closed month claimed late while the affidavit window is open. */ late: boolean }
 }
 
 export type LienMonthGrid = {
@@ -73,6 +74,8 @@ export type LienMonthGrid = {
   papers: LienGridPaper[]
   /** The earliest open deadline among the months on this notice — the date it has to beat. */
   earliestOpen: string | null
+  /** v2.4708: the affidavit's last day when closed months may be claimed late; null otherwise. */
+  lateUntil: string | null
 }
 
 export type LienGridEvidence = { key: string; hours: number; people: number; dayCount: number; pendingHours?: number }
@@ -100,7 +103,10 @@ export function buildLienMonthGrid(input: {
   thisPile: string
   propertyKind: string
   todayYmd: string
+  /** v2.4708: the affidavit's last day while its window is still open and no notice went out — a closed month is then a late claim on this notice, not information; null otherwise. */
+  lateUntil?: string | null
 }): LienMonthGrid {
+  const lateAllowed = Boolean(input.lateUntil)
   const notices = input.filings
     .filter((f) => f.kind === 'notice_53_056' && !f.voided_at)
     .slice()
@@ -113,7 +119,7 @@ export function buildLienMonthGrid(input: {
       key: f.id,
       letter: LETTERS[i] ?? String(i + 1),
       kind: 'filing',
-      sentOn: send.sent_on || f.created_at.slice(0, 10),
+      sentOn: send.sent_on || calendarYmdInAppTzFromIso(f.created_at),
       byHand: x.by_hand === true,
       amount: Number(f.amount) || 0,
       printedClaim: x.printed_claim == null ? null : Number(x.printed_claim),
@@ -162,8 +168,8 @@ export function buildLienMonthGrid(input: {
       const closed = daysLeft != null && daysLeft < 0
       const on = input.checked.has(month)
       const state: LienGridWindowState = pendingOnly ? 'none' : closed ? 'closed' : 'open'
-      cells.this = on ? (closed ? 'info' : 'named') : 'blank'
-      const locked = noticed || closed || (input.thisItem != null && input.thisItem.status !== 'drafted') || pendingOnly
+      cells.this = on ? (closed && !lateAllowed ? 'info' : 'named') : 'blank'
+      const locked = noticed || (closed && !lateAllowed) || (input.thisItem != null && input.thisItem.status !== 'drafted') || pendingOnly
       return {
         month,
         hours,
@@ -183,11 +189,11 @@ export function buildLienMonthGrid(input: {
           skippedBy: h?.outcome === 'skipped' ? h.byName : '',
         },
         cells,
-        thisNotice: { on, locked: locked && !on ? true : locked, info: on && closed },
+        thisNotice: { on, locked: locked && !on ? true : locked, info: on && closed && !lateAllowed, late: on && closed && lateAllowed },
       }
     })
   const earliestOpen = rows.filter((r) => r.thisNotice.on && r.window.state === 'open' && r.window.deadline).map((r) => r.window.deadline).sort()[0] ?? null
-  return { rows, papers, earliestOpen }
+  return { rows, papers, earliestOpen, lateUntil: input.lateUntil ?? null }
 }
 
 /** "Sent Sep 22 · by hand" / "This notice" — the paper's header line. */

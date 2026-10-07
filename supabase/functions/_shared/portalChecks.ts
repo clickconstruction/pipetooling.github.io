@@ -17,6 +17,7 @@
  * dependency-free beyond the shared rules; tested from vitest
  * (src/lib/portal/portalChecks.test.ts).
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
 
 /** The id the page passes as the "GC" — every kept job's customer. */
@@ -32,6 +33,7 @@ export type PortalChecksJobRow = {
   gc_customer_id?: string | null
   bill_to_party?: string | null
   lien_retainage_held?: number | null
+  revenue?: number | null
 }
 
 export type PortalChecksInvoiceRow = {
@@ -77,6 +79,8 @@ export type PortalChecksJobOut = {
   gc_customer_id: null
   bill_to_party: null
   lien_retainage_held: number | null
+  /** The job's total (v2.4534), only when the viewer pays every sent bill on it: then `invoices` is the whole list and unlinked money is kept. */
+  revenue: number | null
   invoices: Array<{ id: string; job_id: string; sequence_order: number | null; amount: number; status: string; billed_at: string | null }>
   payments: Array<{ id: string; job_id: string; invoice_id: string | null; amount: number; paid_on: string | null; sent_on: string | null; payment_type: string | null; reference_number: string | null; sequence_order: number | null }>
 }
@@ -123,7 +127,8 @@ export function buildPortalChecks(args: {
       gc_customer_id: null,
       bill_to_party: null,
       lien_retainage_held: job.lien_retainage_held ?? null,
-      invoices: mine.map((i) => ({ id: i.id, job_id: i.job_id, sequence_order: i.sequence_order, amount: Number(i.amount ?? 0), status: i.status, billed_at: i.billed_at ? String(i.billed_at).slice(0, 10) : null })),
+      revenue: allMine && job.revenue != null ? Number(job.revenue) : null,
+      invoices: mine.map((i) => ({ id: i.id, job_id: i.job_id, sequence_order: i.sequence_order, amount: Number(i.amount ?? 0), status: i.status, billed_at: i.billed_at ? todayYmdInAppTz(new Date(i.billed_at)) : null })),
       payments: kept.map((p) => ({
         id: p.id,
         job_id: p.job_id,

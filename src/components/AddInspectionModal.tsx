@@ -162,7 +162,7 @@ export default function AddInspectionModal({ open, onClose, onSaved, authUserId 
   if (!scheduledDate) missingFields.push('Date')
 
   return (
-    <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
+    <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 765 }}>
       {/* This panel is the scroller — the title bar sticks so the × stays reachable
           on a phone instead of scrolling away once the form fills in (v2.990 pattern). */}
       <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>

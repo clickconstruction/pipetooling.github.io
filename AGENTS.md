@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~418 tables, all with RLS; ~125 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~440 tables, all with RLS; ~130 Edge Functions.
 
 ---
 
@@ -58,7 +58,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 
 ## Critical constraints (non-negotiable)
 
-1. **Migrations**: append-only; created with `supabase migration new <snake_case>` (never invent or reuse a timestamp — a version is immutable once applied); numbered from `origin/main`; opened with `SET lock_timeout = '3s';`; applied only by `supabase db push` after the file is on `main`; CREATE TABLE closed with both read-only block calls. The full rule: `CLAUDE.md` → DB migrations. CI never applies migrations. The Supabase MCP is for reads (`list_tables`, `list_migrations`, read-only `execute_sql`, logs, advisors) — never `apply_migration`, never DDL through `execute_sql`.
+1. **Migrations**: append-only; created with `supabase migration new <snake_case>` (never invent or reuse a timestamp — a version is immutable once applied); numbered from `origin/main`; opened with `SET lock_timeout = '3s';`; applied only by `supabase db push` after the file is on `main`; CREATE TABLE closed with the two read-only block calls and the twin fence call. The full rule: `CLAUDE.md` → DB migrations. CI never applies migrations. The Supabase MCP is for reads (`list_tables`, `list_migrations`, read-only `execute_sql`, logs, advisors) — never `apply_migration`, never DDL through `execute_sql`.
 2. **Always add RLS policies** — every new table needs SELECT/INSERT/UPDATE/DELETE coverage for all 9 roles. A policy or function that lists roles by hand names the controller wherever it names the assistant, or calls `is_assistant()` (`docs/ACCESS_CONTROL.md`).
 3. **Regenerate types after schema changes** — `npm run gen-types:linked` (or `gen-types:local`) rewrites `src/types/database.ts`; ship it as its own `chore(types)` PR after the push.
 4. **No `any`** — TypeScript strict mode; use proper types or `unknown`.
@@ -80,4 +80,4 @@ Break-glass repairs (understand what happened before running either):
 - **Remote-only version** (a ledger row with no repo file): `supabase migration repair --status reverted VERSION --linked` — edits the history table only; runs no DOWN, drops nothing.
 - **Push fails "already exists"** (DDL applied but never recorded): `supabase migration repair --status applied VERSION --linked`, then `supabase db push --linked` (`--include-all` for out-of-order timestamps).
 
-last_updated: 2026-10-01
+last_updated: 2026-10-06

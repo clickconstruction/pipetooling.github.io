@@ -124,7 +124,7 @@ export function AssignSessionJobPopover({
   resolveSessionForAssign,
   onSaved,
   onError,
-  popoverZIndex = 100,
+  popoverZIndex = 800,
   unassignedTrigger = 'default',
   compactTrigger = false,
   showChangeWhenAssigned = true,

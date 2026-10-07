@@ -18,8 +18,8 @@ describe('RoomRevisionBody (v2.4187, #62 Layer 2 PR 1)', () => {
   it('draws the headline, the differing rows, and the matches behind a fold — with the call group when it may decide', () => {
     const onDecide = vi.fn()
     render(<RoomRevisionBody rev={rev} onDecide={onDecide} afterSubline={<b>Just looking? Fine.</b>} />)
-    expect(screen.getByTestId('room-headline').textContent).toContain('1 row needs a call')
-    expect(screen.getByTestId('room-headline').textContent).toContain('2 rows match the plans and are marked approved. 1 differs — each says why. Just looking? Fine.')
+    expect(screen.getByTestId('room-headline').textContent).toContain('1 product needs your answer')
+    expect(screen.getByTestId('room-headline').textContent).toContain('2 products match the plans and are marked approved. 1 differs — each says why. Just looking? Fine.')
     expect(screen.getAllByTestId('room-row')).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: /Show the 2 rows as the plans specify/ }))
     expect(screen.getAllByTestId('room-row')).toHaveLength(3)
@@ -51,11 +51,25 @@ describe('RoomRowCard · the GC calls each part (2026-10-01)', () => {
     ],
   })
 
+  it('2026-10-03 · a proposed row asks in the GC’s words: for your review, the fixture’s name with no "The plans:", We intend to install', () => {
+    const { unmount } = render(<RoomRowCard row={{ ...wc, plans: 'WC 1&2' }} readOnly />)
+    const card = screen.getByTestId('room-row')
+    expect(card.textContent).toContain('for your review')
+    expect(screen.getByTestId('room-row-plans').textContent).toBe('WC 1&2')
+    expect(card.textContent).toContain('We intend to install:')
+    expect(card.textContent).not.toMatch(/The plans:|Proposed:/)
+    unmount()
+    // A row that differs from the schedule still names the plans' product.
+    render(<RoomRowCard row={row({ id: 'a', tag: 'DWH-1', kind: 'differs', plans: 'Rheem RH375', proposed: 'Bradford White RE2HP50', why: 'the lead time is long' })} readOnly />)
+    expect(screen.getByTestId('room-row-plans').textContent).toBe('The plans: Rheem RH375')
+    expect(screen.getByTestId('room-row').textContent).toContain('Proposed: Bradford White RE2HP50')
+  })
+
   it('each part has its own call; a part approved on the last revision says so and asks nothing; Approve all takes the open ones', () => {
     const onDecide = vi.fn()
     render(<RoomRowCard row={wc} onDecide={onDecide} />)
     expect(screen.getAllByTestId('room-part')).toHaveLength(3)
-    expect(screen.getByTestId('room-parts-summary').textContent).toBe('3 parts · 1 approved · 2 to go')
+    expect(screen.getByTestId('room-parts-summary').textContent).toBe('3 parts · 1 approved · 2 to answer')
     expect(screen.getByTestId('room-part-call').textContent).toMatch(/Approved on the last revision · Dana Whitfield · Oct 1/)
     expect(screen.queryByRole('group', { name: 'Your call on TOTO CT728CUVG#01' })).toBeNull()
     fireEvent.click(screen.getByRole('group', { name: 'Your call on TOTO TET2LBI31#SS' }).querySelector('button[aria-pressed="false"]:nth-child(2)')!)
@@ -67,7 +81,7 @@ describe('RoomRowCard · the GC calls each part (2026-10-01)', () => {
 
   it('the calls not sent yet count in the summary and light their buttons; read only draws no buttons', () => {
     const { unmount } = render(<RoomRowCard row={wc} onDecide={() => {}} localParts={{ valve: 'revise' }} />)
-    expect(screen.getByTestId('room-parts-summary').textContent).toBe('3 parts · 1 approved · 1 revise · 1 to go')
+    expect(screen.getByTestId('room-parts-summary').textContent).toBe('3 parts · 1 approved · 1 revise · 1 to answer')
     expect(screen.getByRole('group', { name: 'Your call on TOTO TET2LBI31#SS' }).querySelector('[aria-pressed="true"]')!.textContent).toBe('Revise')
     expect(screen.queryByTestId('room-approve-parts')).toBeNull()
     unmount()

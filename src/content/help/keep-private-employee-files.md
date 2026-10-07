@@ -17,9 +17,9 @@ Each person's file has three layers:
 
 ## Add what happened
 
-1. You open **People → HR** and pick the person. The dot next to each name tells you the file's state. {{chip:green|●}} means the summary is current. {{chip:yellow|●}} means entries are newer than the summary. {{chip:gray|●}} means no file yet.
-2. You go to **Raw entries** and set the date it **happened**. That is not today's date, unless it happened today. You pick a source: Conversation, Payroll event, Incident, Review, Milestone, or Job event. Then you write the fact.
-3. You tap {{button:blue|Add entry}}.
+1. Open **People → HR** and pick the person. The dot next to each name tells you the file's state. {{chip:green|●}} means the summary is current. {{chip:yellow|●}} means entries are newer than the summary. {{chip:gray|●}} means no file yet.
+2. Go to **Raw entries** and set the date it **happened**. That is not today's date, unless it happened today. Pick a source: Conversation, Payroll event, Incident, Review, Milestone, or Job event. Then write the fact.
+3. Tap {{button:blue|Add entry}}.
 
 :::example Good entry
 "Sit-down about a fall raise and the path to Leader hours — agreed to revisit both at the November review." Dated the day of the conversation, source **Review**.

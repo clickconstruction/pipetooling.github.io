@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BLOCKER_KINDS,
+  BLOCKER_WORDS,
+  blockerKeys,
+  rowsForBlocker,
   addDays,
   buildProcurementLog,
   approveBy,
@@ -9,13 +13,13 @@ import {
   groupRowsByStage,
   longDate,
   monthDay,
+  partLineDecision,
   procurementAsks,
   stageDatesWords,
   daysBetween,
   diffProcurementLog,
   fixtureHead,
   floatText,
-  procurementHeadline,
   procurementUpdateText,
   readTypedLogDate,
   logDateRead,
@@ -27,9 +31,11 @@ import {
   stageOfStageName,
   stageOfWeights,
   statusText,
+  submittalWord,
   tagMatchesFixture,
+  type ProcurementDecision,
   type ProcurementItemSource,
-  type ProcurementRecord, foldByHouse, gcProcurementRows, houseFoldNote, lineStatus, logIsDraft, orderBlockers, procurementSections, tagRollUp } from './procurementLog'
+  type ProcurementRecord, ANSWER_DOOR_WORDS, answerDoor, gcProcurementRows, lineStatus, logIsDraft, orderBlockers, procurementSections, procurementCounts, tagRollUp } from './procurementLog'
 
 const item = (p: Partial<ProcurementItemSource> & { tag: string; product: string }): ProcurementItemSource => ({ supplyHouse: null, leadTimeDays: null, decision: null, shared: true, ...p })
 const rec = (p: Partial<ProcurementRecord> & { tag: string | null }): ProcurementRecord => ({ id: 'r-' + (p.tag ?? p.label ?? 'x'), label: '', leadTimeDays: null, stage: null, orderedOn: null, poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0, ...p })
@@ -52,6 +58,22 @@ const records = [
   rec({ tag: null, label: 'Grease interceptor 750 gal', leadTimeDays: 56, stage: 'rough_in', orderedOn: '2026-09-18', poRef: '115', sortOrder: 0 }),
 ]
 const tagStage = { 'WH-1': 'trim_set', 'FS-2': 'rough_in', 'BFP-1': 'rough_in', 'HS-1': 'trim_set', 'L-1': 'trim_set', 'S-3': 'trim_set' } as const
+
+describe('standsOnRev (2026-10-02)', () => {
+  it('a row approved on an earlier revision marks every line of it, the fixture’s pre-parts line too; a newest-revision row marks none', () => {
+    const items: ProcurementItemSource[] = [
+      item({ tag: 'WC-1', product: 'bowl', partKey: 'k-bowl', partOrder: 1, itemId: 'it-1', decision: { kind: 'approved', at: '2026-09-20T15:00:00Z' }, standsOnRev: 1 }),
+      item({ tag: 'DWH-1', product: 'heater', itemId: 'it-2' }),
+    ]
+    const records: ProcurementRecord[] = [{ id: 'r1', tag: 'WC-1', partKey: null, label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-28', poRef: '', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 }]
+    const rows = buildProcurementLog({ items, records, tagStage: {}, stageDates: {} })
+    expect(rows.map((r) => [r.key, r.standsOnRev])).toEqual([
+      ['DWH-1', null],
+      ['WC-1', 1],
+      ['part:k-bowl', 1],
+    ])
+  })
+})
 
 describe('dates', () => {
   it('adds days and measures gaps on ISO dates without a timezone wobble', () => {
@@ -150,13 +172,56 @@ describe('the log', () => {
     expect(rows.map((r) => r.tag)).toEqual(['BFP-1', 'FS-2', 'HS-1', 'L-1', 'S-3', 'WH-1', null])
   })
 
-  it('counts and words the headline', () => {
-    expect(procurementHeadline(rows)).toBe('4 released · 4 ordered · 1 delivered · 2 behind schedule · 1 sent back')
-  })
-
   it('has blank required dates and no float before the bid is a job', () => {
     const r = buildProcurementLog({ items: items.slice(0, 1), records: records.slice(0, 1), tagStage, stageDates: {} })[0]!
     expect(r).toMatchObject({ requiredOn: null, floatDays: null, orderBy: null, expectedOn: '2026-11-05' })
+  })
+})
+
+describe('2026-10-02 · a call reads as its day in the company’s zone', () => {
+  // 7:30 pm CDT on Oct 2 is 00:30 UTC on Oct 3: the UTC date of the call is the day after.
+  const calls = buildProcurementLog({
+    items: [
+      item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', decision: approved('2026-10-03T00:30:00Z') }),
+      // The shape the database hands back reviewed_at in.
+      item({ tag: 'L-1', product: 'Kohler K-2005 lav', decision: { kind: 'revise', at: '2026-10-03T00:30:00+00:00' } }),
+      // An answer the office entered for an earlier day is stamped noon UTC (`enteredDecisionAt`).
+      item({ tag: 'S-1', product: 'Elkay sink', decision: approved('2026-09-12T12:00:00.000Z') }),
+      // 6:30 pm CST on Dec 1 is 00:30 UTC on Dec 2.
+      item({ tag: 'WH-1', product: 'A.O. Smith BTH-199', decision: approved('2026-12-02T00:30:00Z') }),
+    ],
+    records: [],
+    tagStage: {},
+    stageDates: {},
+  })
+  const row = (tag: string) => calls.find((r) => r.tag === tag)!
+
+  it('an approval recorded at 7:30 pm Central is released that day, not the UTC day after', () => {
+    expect(row('WC-1')).toMatchObject({ status: 'released', releasedOn: '2026-10-02', submittalAt: '2026-10-02' })
+    expect(statusText(row('WC-1'))).toBe('Released 10/02')
+    expect(lineStatus(row('WC-1')).sub).toBe('released 10/02')
+    expect(submittalWord(row('WC-1'))).toBe('Approved 10/02')
+    expect(gcSubmittalWord(row('WC-1'))).toBe('Approved Oct 2')
+  })
+
+  it('a call sent back in the evening, and one in winter, read their own day', () => {
+    expect(row('L-1')).toMatchObject({ status: 'sent_back', releasedOn: null, submittalAt: '2026-10-02' })
+    expect(statusText(row('L-1'))).toBe('Sent back 10/02')
+    expect(row('WH-1')).toMatchObject({ releasedOn: '2026-12-01', submittalAt: '2026-12-01' })
+  })
+
+  it('an answer entered for an earlier day, at noon UTC, reads its own day', () => {
+    expect(row('S-1')).toMatchObject({ releasedOn: '2026-09-12', submittalAt: '2026-09-12' })
+  })
+
+  it('the GC’s copy, an update’s snapshot and changes, and the printed sheet carry the same day', () => {
+    expect(gcProcurementRows(calls).find((r) => r.tag === 'WC-1')?.releasedOn).toBe('2026-10-02')
+    expect(snapshotRows(calls).find((s) => s.tag === 'WC-1')?.releasedOn).toBe('2026-10-02')
+    expect(diffProcurementLog(null, calls).find((c) => c.tag === 'WC-1')?.text).toBe('released 10/02')
+    const html = buildProcurementUpdateHtml({ bidLabel: 'B1', companyName: 'Click', updateNumber: 1, sentOn: '2026-10-02', sinceOn: null, rows: calls, changes: [], line: '', stageDates: {} })
+    expect(html).toContain('Approved Oct 2<')
+    expect(html).toContain('Returned for revision Oct 2<')
+    expect(html).not.toContain('Oct 3')
   })
 })
 
@@ -416,18 +481,6 @@ describe('a line per part (2026-10-01)', () => {
     expect(gcProcurementRows(rows)).toHaveLength(5)
   })
 
-  it('To order: what to buy now by house, the soonest first; then waiting, on order, delivered', () => {
-    const s = procurementSections(rows, 'to_order')
-    expect(s.map((x) => [x.title, x.rows.map((r) => r.key)])).toEqual([
-      ['Order now · National Wholesale', ['part:k-bowl']],
-      ['Order now · Moore Supply', ['HB-3', 'part:k-stop']],
-      ['Order now · no house yet', ['WC-1']],
-      ['Waiting on the GC', ['part:k-valve']],
-      ['Delivered', ['part:k-carrier']],
-    ])
-    expect(s[0]!.note).toBe('1 line · the first by 10/27')
-  })
-
   it('By tag and By house group the same lines', () => {
     expect(procurementSections(rows, 'by_tag').map((x) => [x.title, x.rows.length])).toEqual([['HB-3', 1], ['WC-1', 5]])
     expect(procurementSections(rows, 'by_house').map((x) => [x.title, x.rows.length])).toEqual([['Moore Supply', 2], ['National Wholesale', 2], ['No house yet', 2]])
@@ -499,6 +552,38 @@ describe('2026-10-02 · a line in a phrase, a tag in a heading', () => {
   })
 })
 
+describe('2026-10-02 · the call a part’s line reads', () => {
+  const rejectedCall: ProcurementDecision = { kind: 'rejected', at: '2026-10-02T19:11:00Z' }
+  const approvedCall: ProcurementDecision = { kind: 'approved', at: '2026-09-22T15:00:00Z' }
+  const reviseCall: ProcurementDecision = { kind: 'revise', at: '2026-09-23T15:00:00Z' }
+
+  it('one part sent back does not send its neighbours back: WC-1’s flush valve is rejected, the bowl, the seat and the carrier are still open', () => {
+    // The row reads Rejected, the roll-up of its parts.
+    const line = (own: ProcurementDecision | null, onSubmittal = true) => partLineDecision({ onSubmittal, own, row: rejectedCall, rowCalledByPart: true })
+    expect(line(rejectedCall)).toEqual(rejectedCall)
+    expect(line(null)).toBeNull()
+    // A part approved on the same row keeps its approval, whatever the row rolls up to.
+    expect(line(approvedCall)).toEqual(approvedCall)
+    // An order-only part was not sent back either. It waits for its fixture.
+    expect(line(null, false)).toBeNull()
+    expect(partLineDecision({ onSubmittal: true, own: null, row: reviseCall, rowCalledByPart: true })).toBeNull()
+  })
+
+  it('a row called whole, with no call on any part, covers every part', () => {
+    for (const row of [approvedCall, reviseCall, rejectedCall]) {
+      expect(partLineDecision({ onSubmittal: true, own: null, row, rowCalledByPart: false })).toEqual(row)
+      expect(partLineDecision({ onSubmittal: false, own: null, row, rowCalledByPart: false })).toEqual(row)
+    }
+    expect(partLineDecision({ onSubmittal: true, own: null, row: null, rowCalledByPart: false })).toBeNull()
+  })
+
+  it('every part approved releases the order-only parts with the fixture, on the row’s date', () => {
+    expect(partLineDecision({ onSubmittal: false, own: null, row: approvedCall, rowCalledByPart: true })).toEqual(approvedCall)
+    // An order-only part never reads a call of its own, even if one was left on it.
+    expect(partLineDecision({ onSubmittal: false, own: rejectedCall, row: approvedCall, rowCalledByPart: true })).toEqual(approvedCall)
+  })
+})
+
 describe('2026-10-02 · what still blocks ordering', () => {
   it('counts the lines not yet ordered that have no lead time, no house or no stage; a row with no product is named; hand and ordered lines are left out', () => {
     const lines = buildProcurementLog({
@@ -520,26 +605,99 @@ describe('2026-10-02 · what still blocks ordering', () => {
       noProduct: [{ key: 'UTILITY SINK', tag: 'UTILITY SINK', itemId: 'row-us' }],
     })
   })
-})
 
-describe('2026-10-02 · lines folded one per house', () => {
-  it('names the houses A to Z, then the lines with no house; each says its parts and order-only count', () => {
+  it('the log narrows to the lines one blocker names, and comes back whole when it names none', () => {
     const lines = buildProcurementLog({
       items: [
-        item({ tag: 'LAV-1', product: 'TOTO T25S51E#CP', partKey: 'a', supplyHouse: 'Reece' }),
-        item({ tag: 'LAV-1', product: 'BRASSCRA PLB113XP', partKey: 'b', orderOnly: true }),
-        item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', partKey: 'c', supplyHouse: 'Moore Supply' }),
-        item({ tag: 'WC-1', product: 'MAINLINE ML1055SSC000', partKey: 'd', supplyHouse: 'Moore Supply', orderOnly: true }),
+        item({ tag: 'WC-1', product: 'TOTO CT728CUVG#01', partKey: 'k-bowl', supplyHouse: 'Moore Supply', leadTimeDays: 21, stage: 'trim_set' }),
+        item({ tag: 'WC-1', product: 'TOTO TET2UB31#SS', partKey: 'k-valve', supplyHouse: 'Moore Supply' }),
+        item({ tag: 'LAV-1', product: 'TOTO T25S51E#CP', partKey: 'k-faucet', leadTimeDays: 14 }),
       ],
       records: [],
       tagStage: {},
       stageDates: {},
     })
-    const folds = foldByHouse(lines)
-    expect(folds.map((f) => [f.house, f.rows.length, houseFoldNote(f)])).toEqual([
-      ['Moore Supply', 2, '2 parts · 1 order only'],
-      ['Reece', 1, '1 part'],
-      [null, 1, '1 part · 1 order only · pick a house to order'],
+    const b = orderBlockers(lines)
+    // In the log's own order: LAV-1 before WC-1.
+    expect(blockerKeys(b, 'stage')).toEqual(['part:k-faucet', 'part:k-valve'])
+    expect(rowsForBlocker(lines, b, 'stage')).toMatchObject({ only: 'stage', rows: [{ key: 'part:k-faucet' }, { key: 'part:k-valve' }] })
+    expect(rowsForBlocker(lines, b, 'house').rows.map((r) => r.key)).toEqual(['part:k-faucet'])
+    expect(rowsForBlocker(lines, b, 'lead').rows.map((r) => r.key)).toEqual(['part:k-valve'])
+    // Nothing picked: every line.
+    expect(rowsForBlocker(lines, b, null)).toMatchObject({ only: null, rows: [{}, {}, {}] })
+    // The last line fixed: the blocker names nothing, so the whole log is back and nothing is picked.
+    const fixed = { ...b, noStage: [] }
+    expect(rowsForBlocker(lines, fixed, 'stage')).toMatchObject({ only: null, rows: [{}, {}, {}] })
+    expect(BLOCKER_KINDS.map((k) => BLOCKER_WORDS[k])).toEqual(['no lead time', 'no house', 'no stage'])
+  })
+})
+
+describe('2026-10-02 · an order-only fixture on the log', () => {
+  const fco = item({ tag: 'FCO', product: 'ZURN ZN1400-2NL', supplyHouse: 'Moore Supply', shared: false, orderOnly: true, noGc: true })
+  const wc = item({ tag: 'WC-1', product: 'TOTO CT728', supplyHouse: 'Moore Supply', shared: false })
+
+  it('never reaches the GC’s copies, is not counted as released by the GC, and does not make a draft read as sent', () => {
+    const rows = buildProcurementLog({ items: [fco, wc], records: [], tagStage: {}, stageDates: {} })
+    expect(gcProcurementRows(rows).map((r) => r.tag)).toEqual(['WC-1'])
+    expect(procurementCounts(rows).released).toBe(0)
+    expect(logIsDraft(rows)).toBe(true)
+    expect(logIsDraft(buildProcurementLog({ items: [fco], records: [], tagStage: {}, stageDates: {} }))).toBe(false)
+  })
+
+  it('By tag says so in the fixture’s heading', () => {
+    const rows = buildProcurementLog({ items: [fco, wc], records: [], tagStage: {}, stageDates: {} })
+    expect(procurementSections(rows, 'by_tag').map((s) => [s.title, s.note])).toEqual([['FCO', 'order only, no GC approval'], ['WC-1', '']])
+  })
+
+  it('once ordered it reads as any ordered line', () => {
+    const rows = buildProcurementLog({ items: [fco], records: [rec({ tag: 'FCO', orderedOn: '2026-10-01' })], tagStage: {}, stageDates: {} })
+    expect(rows[0]!.status).toBe('ordered')
+  })
+})
+
+describe('2026-10-02 · the door from a line to Their answer', () => {
+  // BP375's WC-1, WC-2 on a shared revision: the bowl waits on the GC, the valve was sent back, the seat
+  // was approved, the stop is order only; HB-3 is one product, ordered before anyone answered.
+  const part = (k: string, product: string, extra: Partial<ProcurementItemSource> = {}) =>
+    item({ tag: 'WC-1, WC-2', product, itemId: 'row-wc', partKey: k, partOrder: 1, supplyHouse: 'Moore Supply', ...extra })
+  const lines = buildProcurementLog({
+    items: [
+      part('k-bowl', 'TOTO CT728CUVG#01'),
+      part('k-valve', 'TOTO TET2UB31#SS', { partOrder: 2, decision: { kind: 'rejected', at: '2026-10-02T15:00:00Z' } }),
+      part('k-seat', 'MAINLINE ML1055SSC000', { partOrder: 3, decision: approved('2026-10-02T15:00:00Z') }),
+      part('k-stop', 'BRASSCRA PLB113XP', { partOrder: 4, orderOnly: true }),
+      item({ tag: 'HB-3', product: 'WOODFORD B74C', itemId: 'row-hb' }),
+      item({ tag: 'UTILITY SINK', product: '(no product)', itemId: 'row-us', noProduct: true }),
+      item({ tag: 'FCO', product: 'ZURN ZN1400-2NL', itemId: 'row-fco', orderOnly: true, noGc: true }),
+    ],
+    records: [rec({ tag: 'HB-3', orderedOn: '2026-10-01' }), rec({ tag: null, label: 'Grease interceptor 750 gal', sortOrder: 0 })],
+    tagStage: {},
+    stageDates: {},
+  })
+  const doorOf = (pick: (r: (typeof lines)[number]) => boolean) => answerDoor(lines.find(pick)!)
+
+  it('a line the GC still holds offers Enter their answer…; one they sent back offers Change their answer…', () => {
+    expect(doorOf((r) => r.partKey === 'k-bowl')).toBe('enter')
+    expect(doorOf((r) => r.partKey === 'k-valve')).toBe('change')
+    expect(ANSWER_DOOR_WORDS).toEqual({ enter: 'Enter their answer…', change: 'Change their answer…' })
+  })
+
+  it('none on a released, ordered or order-only line, a row with no product, or a hand line', () => {
+    expect(doorOf((r) => r.partKey === 'k-seat')).toBeNull()
+    expect(doorOf((r) => r.partKey === 'k-stop')).toBeNull()
+    expect(doorOf((r) => r.tag === 'HB-3')).toBeNull()
+    expect(doorOf((r) => r.tag === 'UTILITY SINK')).toBeNull()
+    expect(doorOf((r) => r.tag === 'FCO')).toBeNull()
+    expect(doorOf((r) => r.isHand)).toBeNull()
+  })
+
+  it('on a draft every line the GC sees offers the door: the office records an answer that came outside the app', () => {
+    const draft = buildProcurementLog({ items: [part('k-bowl', 'TOTO CT728CUVG#01', { shared: false }), item({ tag: 'HB-3', product: 'WOODFORD B74C', itemId: 'row-hb', shared: false })], records: [], tagStage: {}, stageDates: {} })
+    expect(draft.map((r) => [r.status, answerDoor(r)])).toEqual([
+      ['not_submitted', 'enter'],
+      ['not_submitted', 'enter'],
     ])
+    // A line with no row behind it (an older caller that does not pass itemId) has no door to open.
+    expect(answerDoor({ ...draft[1]!, itemId: null })).toBeNull()
   })
 })

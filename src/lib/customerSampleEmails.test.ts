@@ -134,6 +134,9 @@ describe('sample emails (What customers see)', () => {
     expect(digest.subject).toBe('Weekly digest — 1 open matter at Click Plumbing and Electrical')
     expect(digest.html).toContain('Your weekly digest, Bo Sample.')
     expect(digest.html).toContain('New account referred')
+    // Released three days ago and referred yesterday, on the company's calendar.
+    expect(digest.html).toContain(' · since 2026-09-13')
+    expect(digest.html).toContain('<li>2026-09-15 · New account referred')
   })
 })
 

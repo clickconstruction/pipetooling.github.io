@@ -2,7 +2,7 @@
 title: open just the Pipeline sections you use
 category: Office
 roles: dev, master_technician, assistant
-keywords: pipeline, stages, sections, collapse, expand, ready to bill, faster, loading
+keywords: pipeline, stages, sections, collapse, expand, ready to bill, faster, loading, jump, stage bar, scroll, headers, colors
 order: 76
 ---
 The Pipeline board loads only the sections you have open. Everything else stays collapsed, so the board opens in a blink.
@@ -16,10 +16,20 @@ A collapsed section still shows its live count and dollar total, without loading
 - Collapsed headers are not stale. The counts, totals, the 30+/90+ aging chips and **Capable of Being Billed** all stay live. They come from a lightweight stats read, even for sections that never load rows.
 
 :::example A dispatcher's board
-▶ Waiting (17) - $272.3k &nbsp;·&nbsp; ▼ Working (31) - $322.5k &nbsp;·&nbsp; ▼ Ready to Bill (6) - $13.1k
+▶ Waiting 17 $272.3k &nbsp;·&nbsp; ▼ Working 31 $322.5k &nbsp;·&nbsp; ▼ Ready to Bill 6 $13.1k
 
 Waiting stays collapsed all week — its 17 jobs are never fetched, but the header still shows the real count and total.
 :::
+
+## Jump between sections
+
+A bar under the map lists every section with its count and its dollars. Click a section in the bar to open it and jump to it.
+
+The bar stays at the top of the window while you scroll. The section you are scrolling through is lit in its color.
+
+Each section header is a band in that same color. It is the color of that section's pins on the map. A section with nothing in it stays in the bar, greyed. Collections shows only while it has rows.
+
+On a phone the stage chips at the top do the same job.
 
 ## When everything loads anyway
 

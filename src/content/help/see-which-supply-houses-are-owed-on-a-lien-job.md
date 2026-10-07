@@ -8,7 +8,7 @@ The Lien desk shows which jobs still owe a supply house. A supply house can send
 
 ## Find the jobs
 
-Open the [Lien desk](/jobs?tab=stages&liendesk=1). A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
+Open the [Lien desk](/jobs?tab=stages&liendesk=1&kind=notice) on its Notices tab, under All filings. A job with a small storefront on its row still owes a supply house. The words beside it say how many houses and how much.
 
 :::example the mark on a row
 3 houses owed $13,058
@@ -16,17 +16,17 @@ Open the [Lien desk](/jobs?tab=stages&liendesk=1). A job with a small storefront
 
 A teal storefront means a house has a job account open for that job. A job with every house paid shows no mark.
 
-The mark shows on the Calendar. It also shows on the Notices, Affidavits and Retainage lists.
+The mark shows on the Deadlines tab. It also shows on the Notices, Affidavits and Retainage lists.
 
 ## See only those jobs
 
-On the Calendar, press the storefront button beside the pills. It shows a count of the jobs that still owe a house. The Calendar then shows only those jobs, still sorted by month. Press it again to see every job.
+On the Deadlines tab, press the storefront button. On a computer it sits beside the search box. On a phone it sits before the pills. It shows a count of the jobs that still owe a house.
 
-On a computer with a wide window, the button reads {{button:outline|Houses owed}}.
+The Deadlines tab then shows only those jobs, still sorted by month. Press it again to see every job.
 
 ## Read the card
 
-Press a job on the Notices tab. The card **Supply houses on this job** sits under the four checks. Each house has one row.
+Press a job on the Notices tab. The card **Supply houses on this job** sits under the four gates. Each house has one row.
 
 - **House** names the house. Under it you see if a job account is open there.
 - **Unpaid since** names the oldest month with an unpaid invoice.
@@ -60,15 +60,33 @@ The copied paragraph uses the house's words too. Press **Change what they told u
 
 Only office users see **They told us…**. The Lien window shows what was written and does not change it.
 
+You can ask one house about all its jobs at once. See [ask a supply house what it shows owed on my jobs](/help/ask-a-supply-house-what-it-shows-owed).
+
 ## Copy it into an email
 
 Press {{button:blue|Copy for an email}}. The desk copies a short paragraph. Paste it into your email and change what you like.
 
 The paragraph names each house and what it is owed. It says the house's notice is its own claim. It says that claim is not part of the money owed to us.
 
+## Name the house in the owner's letter
+
+Counsel's cover letter goes on the owner's copy of the notice. When a house is still owed, the letter ends with a paragraph about it. The paragraph names the house and what it is owed. It says when the house's own notice goes out. It says that notice is the house's own claim. Our release does not cover it, and it is not part of our claim. When our claim covers what the houses are owed, it says paying us is what clears that account.
+
+The box **Name the supply house owed** sits beside the cover letter box above the paper. It starts ticked. Untick it, and the paragraph leaves the letter. The box shows only while the cover letter is on and a house is owed.
+
+:::example the paragraph, when the house told us its day
+You should also know that Reece sold materials for this job and is still owed $7,393.33. Reece told us its own notice goes out on October 14 unless that balance is paid. That notice is Reece's own claim for materials. It is not covered by our release, and it is not included in the $15,722.49. Paying us the $15,722.49 is what lets us clear that account.
+:::
+
+The middle sentence changes with what we know. When the house gave us its day, the letter says so. When it did not, the letter gives our estimate as ours. When there is nothing to count from, it says the house may send its own notice. When the house's window has already closed, no notice is mentioned.
+
+The money is the figure the house gave when it gave one. Our books fill in otherwise.
+
+An amber line under the box says counsel has not read this paragraph yet. It goes away once counsel signs off.
+
 ## Send the whole list
 
-Press {{button:outline|Share}} at the end of the desk's title line. Open **What to send** and pick **Jobs where a supply house is also owed**. The message lists every such job. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
+Press {{button:outline|Share}} at the end of the desk's title line. Open **Which liens** and pick **Jobs where a supply house is also owed**. The message lists up to twelve such jobs and sums the rest. The email lists them all. Each line says what is owed to us and what is owed to the houses. It names the house whose notice comes first.
 
 Send it as a text or email it to a teammate. The steps are in [share where our liens stand](/help/share-where-our-liens-stand).
 
@@ -76,9 +94,19 @@ Send it as a text or email it to a teammate. The steps are in [share where our l
 
 Press **Open in Held for suppliers ›** on the card. Materials opens on that job with its houses listed. You pay a house from there.
 
+## Come back from Materials
+
+Open a job's row on [Held for suppliers](/materials?tab=job-accounts). A job on a lien clock shows one line above its houses. The line says when our notice or our lien is due.
+
+:::example the line on a job's row
+On the Lien desk · our notice is due by Oct 15 · $15,722 unpaid
+:::
+
+Press **Open the desk ›** on that line. The Lien desk opens on that job.
+
 ## In the Lien window
 
-Press a job on the Calendar to open its Lien window. The same card sits near the top as one line. Press **Show** to open it.
+Press a job on the Deadlines tab to open its Lien window. Under the timeline, a chip reads how many houses are owed and how much. Press it, or **Details**, to open the same card.
 
 ## Good to know
 

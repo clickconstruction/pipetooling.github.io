@@ -10,6 +10,7 @@
  */
 
 import type { JournalRow } from './partnerLedgerJournal'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type PartnerTimelineKind =
   | 'labor'
@@ -120,7 +121,8 @@ export function buildPartnerTimeline(journal: JournalRow[], events: TimelineEven
   for (const d of events.declines) {
     if (!d.declined_at) continue
     rows.push({
-      date: d.declined_at.slice(0, 10),
+      // declined_at and confirmed_at are instants: their day in APP_CALENDAR_TZ, not their UTC date.
+      date: calendarYmdInAppTzFromIso(d.declined_at),
       kind: 'decline',
       label: `Declined work order${d.decline_reason?.trim() ? ` — “${d.decline_reason}”` : ''}`,
       sub: d.amount != null ? `$${Number(d.amount).toLocaleString('en-US')} offer · Sub Board` : 'Sub Board',
@@ -135,7 +137,7 @@ export function buildPartnerTimeline(journal: JournalRow[], events: TimelineEven
     // old sentence stands whole.
     const trade = j.service_type_name?.trim() || null
     rows.push({
-      date: j.confirmed_at.slice(0, 10),
+      date: calendarYmdInAppTzFromIso(j.confirmed_at),
       kind: 'job',
       label: trade ? `${j.label} confirmed as partner-majority` : `Job #${j.label} confirmed as partner-majority`,
       sub: 'now visible to the partner',

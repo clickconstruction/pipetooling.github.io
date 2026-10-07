@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import {
   LIEN_WAIVER_DOCUMENT_NAMES,
   LIEN_WAIVER_FORMS,
@@ -47,7 +47,7 @@ export type LienWaiverSendTarget = {
 type BookEntry = { id: string; document_name: string; form_template_id: string | null }
 type PriorWaiver = { id: string; document_name: string; status: string; sent_at: string | null; signed_at: string | null }
 
-const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 1200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4vh 1rem', overflowY: 'auto' }
+const overlay: CSSProperties = { position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', zIndex: 1200, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(4vh + var(--app-top-chrome, 0px)) 1rem 4vh', overflowY: 'auto' }
 const panel: CSSProperties = { width: 'min(640px, 100%)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, boxShadow: '0 18px 48px rgba(17,24,39,0.25)', color: 'var(--text-base)' }
 const section: CSSProperties = { padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)' }
 const eyebrow: CSSProperties = { fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }
@@ -249,7 +249,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
           </div>
           {prior.length ? (
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Already on this sheet: {prior.map((p) => `${p.document_name.replace(' Waiver and Release on ', ' · ')} (${p.status}${p.signed_at ? ` ${p.signed_at.slice(0, 10)}` : p.sent_at ? ` ${p.sent_at.slice(0, 10)}` : ''})`).join(' · ')}
+              Already on this sheet: {prior.map((p) => `${p.document_name.replace(' Waiver and Release on ', ' · ')} (${p.status}${p.signed_at ? ` ${p.signed_at.slice(0, 10)}` : p.sent_at ? ` ${calendarYmdInAppTzFromIso(p.sent_at)}` : ''})`).join(' · ')}
             </div>
           ) : null}
           {entries && missing.length ? (

@@ -223,6 +223,11 @@ button:focus-visible {
   --text-violet-800: #5b21b6;
   --text-indigo-800: #3730a3;
 
+  /* Man hours chart series (People → Overhead): checked for color-blind readers against --bg-page, one set per theme. */
+  --man-hours-field: #0f9a8a;
+  --man-hours-office: #8b5cf6;
+  --man-hours-bids: #e2602b;
+
   /* surfaces (background:) */
   --bg-page: #f0f2f5; /* v2.2203: was #fafafa — white cards need a ground to sit on, like dark mode */
   --surface: #ffffff;
@@ -290,6 +295,15 @@ button:focus-visible {
   --border-indigo: #a5b4fc;
   --border-indigo-soft: #c7d2fe;
   --border-violet: #c4b5fd;
+  /* Customer timeline (punch list #97): one color per job rail and job tag. Jobs open at once never share one. */
+  --timeline-job-0: #0d9488;
+  --timeline-job-1: #4f46e5;
+  --timeline-job-2: #ea580c;
+  --timeline-job-3: #db2777;
+  --timeline-job-4: #2563eb;
+  --timeline-job-5: #16a34a;
+  --timeline-job-6: #9333ea;
+  --timeline-job-7: #ca8a04;
 }
 
 :root[data-theme='dark'] {
@@ -342,6 +356,10 @@ button:focus-visible {
   --text-violet-700: #c4b5fd;
   --text-violet-800: #c4b5fd;
   --text-indigo-800: #a5b4fc;
+
+  --man-hours-field: #199e70;
+  --man-hours-office: #8b6fe0;
+  --man-hours-bids: #e0703f;
 
   --bg-page: #111827;
   --surface: #1f2937;
@@ -401,6 +419,14 @@ button:focus-visible {
   --border-indigo: #3730a3;
   --border-indigo-soft: #312e81;
   --border-violet: #5b21b6;
+  --timeline-job-0: #2dd4bf;
+  --timeline-job-1: #a5b4fc;
+  --timeline-job-2: #fb923c;
+  --timeline-job-3: #f472b6;
+  --timeline-job-4: #60a5fa;
+  --timeline-job-5: #4ade80;
+  --timeline-job-6: #c084fc;
+  --timeline-job-7: #facc15;
 }
 
 [data-theme='light']:not(:root) {
@@ -2095,6 +2121,8 @@ body.my-time-boundary-dragging {
 .respModalOverlay {
   position: fixed;
   inset: 0;
+  /* Below an iPhone's status bar: the dim covers it, the panel (a phone's full-height sheet, its sticky title bar) starts under it. */
+  padding-top: var(--app-top-chrome, 0px);
   background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
@@ -2110,8 +2138,8 @@ body.my-time-boundary-dragging {
 /* v2.4045: the title-bar toggle's full-screen state — the same edge-to-edge
    sheet phones get, on a desktop, by choice. The shell sets the width inline. */
 .respModalPanel.respModalPanelFull {
-  height: 100vh;
-  height: 100dvh;
+  height: calc(100vh - var(--app-top-chrome, 0px));
+  height: calc(100dvh - var(--app-top-chrome, 0px));
   max-height: none;
   border-radius: 0;
 }
@@ -2132,8 +2160,8 @@ body.my-time-boundary-dragging {
   }
   .respModalPanel {
     width: 100vw;
-    height: 100vh;
-    height: 100dvh;
+    height: calc(100vh - var(--app-top-chrome, 0px));
+    height: calc(100dvh - var(--app-top-chrome, 0px));
     max-height: none;
     border-radius: 0;
   }
@@ -3838,9 +3866,20 @@ body.my-time-boundary-dragging {
 .lienGate[data-tone='blocker'] .lienGateValue > span { color: var(--text-red-700); }
 .lienGate[data-tone='check'] .lienGateValue,
 .lienGate[data-tone='check'] .lienGateValue > span { color: var(--text-amber-800); }
-.lienGateDetail { --lien-gate-ring: #16a34a; grid-column: 1 / -1; display: grid; gap: 0.3rem; padding: 0.1rem 0.5rem 0.1rem 0.7rem; border-left: 3px solid var(--border-green); border-radius: 0 6px 6px 0; font-size: 0.8125rem; outline: 0; }
-.lienGateDetail[data-tone='blocker'] { --lien-gate-ring: #dc2626; border-left-color: #dc2626; }
-.lienGateDetail[data-tone='check'] { --lien-gate-ring: #f59e0b; border-left-color: #f59e0b; }
+/* A section as a row (v2.4718): the number, the label as a column, the fact with its doors at the right on the first line, one muted line under it. */
+.lienGateDetail { --lien-gate-ring: #16a34a; grid-column: 1 / -1; display: grid; grid-template-columns: 22px 150px minmax(0, 1fr); gap: 0.2rem 0.75rem; align-items: start; padding: 0.55rem 0.3rem 0.5rem; border-top: 1px solid var(--border); border-radius: 6px; font-size: 0.8125rem; outline: 0; }
+.lienGateDetail[data-tone='blocker'] { --lien-gate-ring: #dc2626; }
+.lienGateDetail[data-tone='check'] { --lien-gate-ring: #f59e0b; }
+.lienGateRowNum { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; background: var(--bg-green-tint); color: var(--text-green-800); border: 1px solid var(--border-green); margin-top: 1px; }
+.lienGateDetail[data-tone='blocker'] .lienGateRowNum { background: #dc2626; color: #fff; border-color: transparent; }
+.lienGateDetail[data-tone='check'] .lienGateRowNum { background: #b45309; color: #fff; border-color: transparent; }
+.lienGateRowLabel { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); padding-top: 4px; min-width: 0; }
+.lienGateRowBody { display: grid; gap: 0.2rem; min-width: 0; }
+.lienGateRowBody .lienGateFactValue { font-size: 0.9rem; font-weight: 700; color: var(--text-strong); min-width: 0; }
+.lienGateRowMeta { font-size: 0.75rem; color: var(--text-muted); }
+.lienGatesFold { display: flex; justify-content: flex-end; }
+.lienGatesFoldBtn { background: none; border: none; padding: 0; font: inherit; font-size: 0.78rem; font-weight: 700; color: var(--text-link); cursor: pointer; }
+.lienGatesFoldBtn:focus-visible { outline: 2px solid var(--text-link); outline-offset: 2px; border-radius: 3px; }
 .lienGateDetail[data-active='yes'] { animation: lienGateBringUp 4s ease-out both; }
 @keyframes lienGateBringUp {
   0%, 65% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--lien-gate-ring); }
@@ -3855,6 +3894,8 @@ body.my-time-boundary-dragging {
   .lienGatesGrid { grid-template-columns: minmax(0, 1fr); }
   .lienGatesGrid .lienGate[data-n],
   .lienGatesGrid .lienGateDetail { grid-column: 1; grid-row: auto; }
+  .lienGateDetail { grid-template-columns: 22px minmax(0, 1fr); }
+  .lienGateRowBody { grid-column: 2; }
   .lienGate { flex-wrap: nowrap; }
   .lienGateLabel { flex: 0 1 auto; }
   .lienGateValue { flex: 1 1 0; text-align: right; }
@@ -3901,10 +3942,14 @@ body.my-time-boundary-dragging {
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
 .lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
 .lienDeskFooterSlot:empty { display: none; }
-/* Lien desk Share (v2.4311): the What to send menu's rows — hover and the picked one need a class (an inline background would beat :hover). */
+/* Lien desk Share (v2.4311): the Which liens menu's rows — hover and the picked one need a class (an inline background would beat :hover). */
 .lienShareItem { background: var(--surface); }
 .lienShareItem:hover, .lienShareItem:focus-visible { background: var(--bg-subtle); }
 .lienShareItem[aria-checked="true"] { background: var(--bg-blue-tint); }
+/* The Lien window on a phone (v2.4422): a record sheet is drawn over the card, so the card holds its full height while one is up, however short the paper under it. */
+[data-lien-window-card]:has([data-lien-record-sheet]) { height: min(92vh, 100%); }
+/* The Lien desk's card does the same for its Already mailed sheet (v2.4446); its own max-height still caps it. */
+[data-lien-desk-panel]:has([data-lien-record-sheet]) { height: 100%; }
 /* The Lien desk's title bar (v2.4355): the title, the tabs and the doors are spaced by the column gap. On a desk narrower than 1,100 px (a window under 1,132 px; a phone keeps its own layout) the gaps close up, the tabs narrow and Share shows its icon, its word still the button's name, so the bar keeps one line. A viewport query on purpose: a container query on the bar would trap the fixed Share sheet inside it. */
 .lienDeskTitleBar { gap: 0.4rem 0.9rem; }
 .lienDeskKindTab { padding: 2px 10px; }
@@ -3930,6 +3975,39 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienCalSearch:focus-within { border-color: var(--text-link); }
 .lienCalSearch input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 0.8125rem; color: inherit; }
 .lienCalDateCount { position: absolute; left: 100%; bottom: 0; margin-left: 4px; padding: 0 5px; border-radius: 8px; font-size: 0.625rem; font-weight: 700; line-height: 1.5; font-variant-numeric: tabular-nums; }
+/* A job's door on the Lien desk (v2.4531 the Calendar's number; v2.4628 text on every view, the Next up row's number and name too): underlines on hover and on focus only. */
+.lienJobDoor:hover, .lienJobDoor:focus-visible { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1.5px; }
+.lienJobDoor:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; }
+/* A Do now row's four dots (v2.4631): a hover or focus lifts them so the card beside them reads as theirs. */
+.lienStepMark:hover, .lienStepMark:focus-visible { background: var(--bg-subtle); outline: none; }
+.lienStepMark:focus-visible { box-shadow: 0 0 0 2px var(--border-blue); }
+/* A Do now row's chip as a door to the paper (v2.4632): a ring in its own color on hover and focus. */
+.lienPaperDoor:hover, .lienPaperDoor:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px currentColor; text-decoration: underline; text-underline-offset: 2px; outline: none; }
+/* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */
+.lienPaperGap { display: inline-flex; align-items: center; gap: 0.35em; border-bottom: 2px solid #dc2626; color: #991b1b; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 0.82em; padding-bottom: 1px; white-space: nowrap; }
+/* The Notices list's pile titles (v2.4672): sticky siblings of the rows, each with its own top and bottom offset, so passed titles stack at the top and coming ones wait at the bottom; the pile the reader is in wears a blue bar. */
+/* The list's pile heads, the pane's section heads and its page labels: grey since v2.4787 (the owner's ask), so they read apart from the white rows and cards. */
+.lienPileHead { position: sticky; z-index: 3; height: 30px; display: flex; align-items: center; gap: 0.5rem; padding: 0 0.9rem; background: var(--bg-muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.lienPileHead[data-on="yes"] { color: var(--text-blue-700); box-shadow: inset 3px 0 0 var(--border-blue); }
+.lienPileHeadBtn { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 0.5rem; background: none; border: none; padding: 0; font: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; text-align: left; }
+.lienPileHeadBtn:hover, .lienPileHeadBtn:focus-visible { color: var(--text-strong); outline: none; }
+.lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
+/* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
+.lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
+/* A stop's title on the lien timeline as a door to its paper (v2.4793): the label's own type, a dotted underline, blue on hover. */
+.lienStopDoor { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline dotted var(--border-strong); text-underline-offset: 3px; }
+.lienStopDoor:hover, .lienStopDoor:focus-visible { color: var(--text-link) !important; text-decoration-color: var(--text-link); outline: none; }
+.lienPaneHead .lienPaneHeadLabel { flex: none; }
+.lienPaneHead .n { font-weight: 700; font-size: 0.78rem; text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lienPaneHead .lienPaneHeadTail { font-weight: 500; color: var(--text-muted); }
+/* § Rules as a window (v2.4655): a found word, the one Enter stands on, and the rule the window opened at. */
+.lienRulesBody mark[data-find] { background: var(--bg-amber-tint); color: inherit; border-radius: 2px; padding: 0 1px; box-shadow: 0 0 0 1px var(--border-amber); }
+.lienRulesBody mark[data-find-at="yes"] { background: #fbbf24; color: #1a1200; }
+.lienRulesBody [data-rule-opened="yes"] { scroll-margin-top: 0.5rem; box-shadow: inset 3px 0 0 var(--border-blue); padding-left: 0.5rem; }
+.lienPaperFresh { background: #dcfce7; border-bottom: 2px solid #16a34a; padding: 0 2px; animation: lienPaperFresh 2.4s ease-out 0.6s forwards; }
+@keyframes lienPaperFresh { to { background: transparent; border-bottom-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .lienPaperFresh { animation: none; } }
+.lienPaperGap b { background: #dc2626; color: #fff; border-radius: 999px; width: 1.35em; height: 1.35em; display: inline-grid; place-items: center; font-size: 0.8em; }
 .lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
 .lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }
@@ -3937,8 +4015,6 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienCalBand { mix-blend-mode: multiply; }
 :root[data-theme='dark'] .lienCalBand { mix-blend-mode: screen; opacity: 0.4; }
 @container lien-cal-toolbar (max-width: 1060px) { .lienCalPillDate { display: none; } }
-/* Houses owed (v2.4407): the lens keeps its icon and its count when the toolbar is tight, so the pills stay on one line. */
-@container lien-cal-toolbar (max-width: 1180px) { .lienCalLensWord { display: none; } }
 @container lien-cal-toolbar (max-width: 900px) { .lienCalPillMoney { display: none; } }
 .lienCalAxis { container: lien-cal-axis / inline-size; }
 .lienCalDateShort { display: none; }
@@ -3955,7 +4031,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienMonthDot b { font-weight: 600; color: var(--text-green-800); }
 .lienMonthDot[data-outcome='skipped'] b { color: var(--text-amber-800); }
 .lienMonthDot[data-outcome='missed'] b { color: var(--text-red-700); }
-.lienMonthDialogScrim { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); padding: 1rem; }
+.lienMonthDialogScrim { position: fixed; inset: 0; z-index: 790; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); padding: calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem; }
 .lienMonthDialog { width: min(26rem, 100%); background: var(--surface); color: var(--text-base); border: 1px solid var(--border-strong); border-radius: 10px; padding: 0.9rem 1rem 1rem; box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6); }
 .lienMonthDialogHead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
 .lienMonthDialogHead strong { font-size: 1rem; }
@@ -3978,6 +4054,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienEnvelope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 0.8125rem; color: var(--text-muted); }
 .lienEnvelope strong { color: var(--text-strong); }
 .lienEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); white-space: nowrap; }
+/* A second tick (the supply houses, v2.4725) sits beside the first, not across the line from it. */
+.lienEnvelope label + label { margin-left: 0; }
 .lienFootMuted { color: var(--text-muted); }
 
 /* Send the run — the envelope table (v2.3720 / v2.3734): a header row per envelope with its method and tracking box, a row per notice inside it. At phone width each envelope stacks as a card, its Method and Tracking # labelled, so the tracking box never sits off-screen. */
@@ -4003,7 +4081,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
-.lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; }
+.lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }
 .lienFootRow[data-blocked='yes'] .lienFootState { color: var(--text-red-700); }
 .lienFootWhy { font-size: 0.8125rem; font-weight: 400; color: var(--text-muted); }
 .lienFootSpacer { flex: 1 1 0; }
@@ -4011,6 +4089,8 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienFootSkip { border: none; background: none; padding: 0; font: inherit; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
 .lienFootSkip:hover { color: var(--text-red-700); }
 .lienFootSkip:disabled { cursor: default; opacity: 0.6; }
+/* v2.4745 (the owner's ask): Already mailed? over Record it…, so the footer row keeps its room. */
+.lienByHandWords { display: inline-block; line-height: 1.15; text-align: left; }
 @media (max-width: 640px) {
   .lienFootState { flex: 1 1 100%; }
   .lienFootSpacer { display: none; }
@@ -4229,24 +4309,18 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   border-color: var(--border-amber);
   color: #b45309;
 }
-.stagesWhenDoor {
-  border: none;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  font-size: 0.68rem;
-  color: var(--text-link);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.stagesWhenFlag.isDoor {
+  font-family: inherit;
   cursor: pointer;
 }
-.stagesWhenDoor:hover {
-  text-decoration-thickness: 2px;
+.stagesWhenFlag.isDoor:hover {
+  border-color: currentColor;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.stagesWhenDoor:focus-visible {
+.stagesWhenFlag.isDoor:focus-visible {
   outline: 2px solid var(--text-link);
   outline-offset: 1px;
-  border-radius: 2px;
 }
 
 /* The phone Pipeline (punch list #30, PR 2a): one stage at a time under sticky stage chips —
@@ -4260,6 +4334,208 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .quickfillRoundScreen select,
 .quickfillRoundScreen textarea {
   font-size: 16px !important;
+}
+/* The Pipeline's stage bar (v2.4512): the jump strip, pinned while the board scrolls, the
+   section being scrolled through lit in its own color; and each section header a band in
+   that color. `--stage-color` comes from `lib/jobs/stagesStageBar`. */
+.stagesStageBar {
+  position: sticky;
+  z-index: 18;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.stagesStageBarEnd {
+  display: flex;
+  align-items: center;
+  padding: 0 0.6rem;
+  border-right: 1px solid var(--border);
+}
+.stagesStageBarEnd.isTrailing {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+.stagesStageSegs {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  container-type: inline-size;
+}
+/* The arrows between the stages (v2.4519) are the first thing to go when the bar gets tight. */
+.stagesStageArrow {
+  flex: none;
+  align-self: center;
+  color: var(--text-faint);
+  font-size: 0.875rem;
+  user-select: none;
+}
+@container (max-width: 800px) {
+  .stagesStageArrow {
+    display: none;
+  }
+  .stagesStageSegs .stagesStageSeg {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+  }
+}
+.stagesStageSeg {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 0.4rem 0.75rem 0.3rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+.stagesStageSeg.isWide {
+  flex-grow: 1.6;
+}
+.stagesStageSeg:hover {
+  background: var(--bg-subtle);
+}
+.stagesStageSeg:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: -2px;
+}
+.stagesStageSeg.isOn {
+  background: color-mix(in srgb, var(--stage-color) 14%, var(--surface));
+  border-bottom-color: var(--stage-color);
+}
+.stagesStageSegName {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stagesStageSegDot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--stage-color);
+}
+.stagesStageSegMeta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.stagesStageSeg.isEmpty .stagesStageSegName {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+/* The Lien desk shortcut (v2.4520) rides beside the last stage: the two share that stage's
+   place in the bar, centered together. */
+.stagesStageSegTail {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+.stagesStageSegTail.isWide {
+  flex-grow: 1.6;
+}
+.stagesStageSegTail > .stagesStageSeg {
+  flex: 0 1 auto;
+}
+.stagesLienDeskShortcut {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: #ff6600;
+  cursor: pointer;
+}
+.stagesLienDeskShortcut:hover {
+  background: var(--bg-subtle);
+}
+.stagesLienDeskShortcut:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+}
+.stagesLienDeskShortcutBadge {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.55rem;
+  min-width: 1.4em;
+  padding: 0.05rem 0.35rem;
+  border: 2px solid var(--surface);
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #241a05;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+}
+.stagesSectionBand {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--stage-color);
+  background: color-mix(in srgb, var(--stage-color) 9%, var(--surface));
+  scroll-margin-top: var(--stages-jump-offset, 0px);
+}
+.stagesBandTitle {
+  font-size: 1.0625rem;
+  font-weight: 700;
+}
+.stagesBandCount {
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--stage-color) 24%, var(--surface));
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.7;
+}
+.stagesBandTotal {
+  font-weight: 600;
+}
+/* Put a GC on notice (v2.4540): the row the "N look wrong" list jumped to stays lit for a moment. */
+@keyframes gcNoticeRowFlash {
+  0%, 100% { background: var(--bg-amber-tint); }
+  50% { background: transparent; }
+}
+tr.gcNoticeBandRow[data-flash='yes'] > td {
+  background: var(--bg-amber-tint);
+  animation: gcNoticeRowFlash 0.9s ease-in-out 2;
+}
+tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+@media (prefers-reduced-motion: reduce) {
+  tr.gcNoticeBandRow[data-flash='yes'] > td {
+    animation: none;
+  }
+}
+.gcNoticeWrongItem:hover,
+.gcNoticeWrongItem:focus-visible {
+  background: var(--bg-subtle) !important;
+  outline: none;
 }
 /* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
 .stagesWhenPills {
@@ -4483,6 +4759,79 @@ button.gcStep:hover > em { text-decoration: underline; }
   transition: box-shadow 0.2s;
 }
 
+/* Submittals row editor: one line a part under headings; on a narrow screen a part is three short
+   lines (its name; the house and the lead time; how many, the stage and who it is shown to). */
+.sub-parts-row { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) 3.4rem 9.6rem 5rem 7.8rem 6.4rem; grid-template-areas: "mv name each house lead stage pick"; gap: 0.3rem 0.4rem; align-items: start; padding: 0.25rem 0.3rem; border: 1px solid transparent; border-radius: 6px; }
+.sub-parts-row--out { grid-template-areas: "mv name note note note note pick"; background: var(--bg-subtle); }
+.sub-parts-head { padding-block: 0 0.2rem; border-bottom: 1px solid var(--border); border-radius: 0; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.sub-parts-mv { display: flex; gap: 2px; }
+.sub-parts-each-word { display: none; }
+.sub-edit-two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0.75rem 1.25rem; align-items: start; }
+.sub-edit-two > div { display: flex; flex-direction: column; gap: 0.75rem; min-width: 0; }
+@media (max-width: 820px) {
+  .sub-parts-row { grid-template-columns: 3.2rem repeat(5, minmax(0, 1fr)); grid-template-areas: "mv name name name name name" "house house house house lead lead" "each each stage stage pick pick"; padding-block: 0.4rem; border-bottom-color: var(--border); border-radius: 0; }
+  .sub-parts-row--out { grid-template-areas: "mv name name name pick pick" "note note note note note note"; }
+  .sub-parts-row select { padding-inline: 0.3rem !important; font-size: 0.78rem !important; }
+  .sub-parts-head { display: none; }
+  .sub-parts-each-word { display: inline; }
+  .sub-edit-two { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Submittals: the steps. A grid of one row per step: a gutter, the rail's dot, the step. The gutter holds the
+   Next revision loop, a dashed line from step 7's dot up to step 2's with its label written bottom to top. It lies
+   over rows 2 to 6 and runs 16px on, to the middle of step 7's dot, so it stretches as steps fold and unfold.
+   The label sits at the loop's middle and is sticky both ways: with a long step open the loop is taller than the
+   screen, and the label stays in view beside whatever part of it is. A phone has no margin for any of it: there
+   the gutter and the loop go, and the steps keep their two columns. */
+.submittal-road { display: grid; grid-template-columns: 22px 34px 1fr; column-gap: 0.6rem; }
+.submittal-road-rail { grid-column: 2; }
+.submittal-road-step { grid-column: 3; }
+/* v2.4690 · the loop takes the theme's link blue, so it reads on the dark surface too (a literal #2563eb was faint there). */
+.submittal-road-loop { grid-column: 1; grid-row: 2 / 7; margin: 14px -0.6rem -16px 18px; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; border: 2px dashed var(--text-blue-700); border-right: 0; border-radius: 10px 0 0 10px; pointer-events: none; }
+.submittal-road-loop__head { position: absolute; top: -6px; right: -1px; width: 8px; height: 8px; border-top: 2px solid var(--text-blue-700); border-right: 2px solid var(--text-blue-700); transform: rotate(45deg); }
+.submittal-road-loop__label { position: sticky; top: calc(var(--app-top-chrome, 0px) + 7rem); bottom: 6rem; margin-left: -20px; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; font-size: 0.72rem; line-height: 14px; font-weight: 600; letter-spacing: 0.01em; color: var(--text-blue-700); }
+@media (max-width: 720px) {
+  .submittal-road { grid-template-columns: 34px 1fr; }
+  .submittal-road-rail { grid-column: 1; }
+  .submittal-road-step { grid-column: 2; }
+  .submittal-road-loop { display: none; }
+}
+
+/* Submittals rows table: a part and the reviewer's answer on it are two cells of one grid row, the
+   answer under the Their answer heading (a 13rem header cell less its 1rem of padding). On a phone each row is a
+   card, each cell a block under a small label, and the answer sits under its part. */
+.sub-rows-answers { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 1rem; align-items: baseline; }
+.sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr) 12rem; }
+/* A table too narrow to give the parts and their answers a column each (a laptop-width window) stacks each
+   answer under its part, as a phone does, and drops the Their answer heading. Measured on the table, not the screen. */
+.sub-rows-wrap { container-type: inline-size; }
+@container (max-width: 900px) {
+  .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr); row-gap: 0.1rem; margin-bottom: 0.15rem; }
+  .sub-rows-answer-head { display: none; }
+}
+@media (max-width: 720px) {
+  .sub-rows-wrap { border: none !important; background: transparent !important; overflow: visible !important; }
+  .sub-rows-table { display: block; min-width: 0 !important; }
+  .sub-rows-table thead { display: none; }
+  .sub-rows-table tbody { display: flex; flex-direction: column; gap: 0.6rem; }
+  .sub-rows-table tr { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 0.3rem 0.25rem; }
+  .sub-rows-table td { display: block; border-bottom: none !important; padding-block: 0.25rem !important; text-align: left !important; }
+  .sub-rows-table td[data-label]::before { content: attr(data-label); display: block; font-size: 0.66rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+  .sub-rows-answers[data-answers='true'] { grid-template-columns: minmax(0, 1fr); row-gap: 0.1rem; margin-bottom: 0.2rem; }
+  /* On a card the catalog words drop under a long maker-and-model instead of squeezing beside it. */
+  .sub-rows-part { flex-wrap: wrap; }
+  /* On a card the row's verdict reads first, then its buttons, both from the left edge. */
+  .sub-rows-actions { align-items: flex-start !important; }
+  .sub-rows-call { order: -1; max-width: none !important; text-align: left !important; }
+}
+
+/* Submittals step 6, what came back: the fixture, its parts and the door to change them line up down
+   the list; on a phone the fixture and its door share a line and the parts sit under them. */
+.sub-call-row { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto; grid-template-areas: "tag parts edit"; gap: 0.2rem 0.7rem; align-items: baseline; padding: 0.35rem 0; }
+@media (max-width: 720px) {
+  .sub-call-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag edit" "parts parts"; }
+}
+
 /* Pipeline Billed rows' dates block (v2.4193): the doors underline on hover only. */
 .billedDatesLedger button:hover {
   text-decoration: underline;
@@ -4593,7 +4942,17 @@ button.gcStep:hover > em { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) { [data-holding='true'] .bid-mark-hold-fill { animation: none; width: 100%; } }
 .bid-mark-toggle { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; white-space: nowrap; border: 1px solid var(--bid-mark); border-radius: 4px; cursor: pointer; background: var(--surface); color: var(--bid-mark-text); font: inherit; font-size: 0.875rem; font-weight: 600; box-sizing: border-box; }
 .bid-mark-toggle[data-on='true'] { background: var(--bid-mark-wash-strong); }
-.bid-mark-toggle--title { padding: 0.2rem 0.6rem; font-size: 0.8rem; vertical-align: middle; }
+/* The open bid's title: two icons joined as one control, [ mark | for someone ]. Each half lights on its own hover. */
+.bid-mark-pair { display: inline-flex; align-items: stretch; vertical-align: middle; border: 1px solid var(--bid-mark); border-radius: 6px; background: var(--surface); }
+.bid-mark-pair__btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 26px; padding: 0; border: none; background: transparent; color: var(--bid-mark-text); cursor: pointer; transition: background-color 120ms ease; }
+.bid-mark-pair > .bid-mark-pair__btn { border-radius: 5px 0 0 5px; }
+.bid-mark-pair .bid-mark-for-someone .bid-mark-pair__btn { border-left: 1px solid var(--bid-mark); border-radius: 0 5px 5px 0; }
+.bid-mark-pair__btn:hover, .bid-mark-pair__btn:focus-visible, .bid-mark-pair__btn[aria-expanded='true'] { background: var(--bid-mark-wash-strong); }
+.bid-mark-pair__btn:focus-visible { outline: 2px solid var(--text-link); outline-offset: 1px; }
+.bid-mark-pair__btn .bid-mark-toggle__dot { width: 12px; height: 12px; }
+.bid-mark-pair__btn[data-on='true'] { background: var(--bid-mark-wash); }
+.bid-mark-pair__btn[data-on='true']:hover, .bid-mark-pair__btn[data-on='true']:focus-visible { background: var(--bid-mark-wash-strong); }
+.bid-mark-pair__btn[data-on='true'] .bid-mark-toggle__dot { background: var(--bid-mark); }
 .bid-mark-toggle__dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--bid-mark); box-sizing: border-box; background: transparent; flex: 0 0 auto; }
 .bid-mark-toggle[data-on='true'] .bid-mark-toggle__dot { background: var(--bid-mark); }
 .bid-mark-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; padding: 0.5rem 0.25rem 0; font-size: 0.8rem; color: var(--text-muted); }
@@ -4772,3 +5131,91 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .procure-fold { display: flex; flex: 1 1 auto; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; min-height: 32px; padding: 0.2rem 0.3rem; border: none; border-radius: 6px; background: transparent; color: inherit; font: inherit; font-size: 0.8125rem; text-align: left; cursor: pointer; }
 .procure-fold:hover { background: var(--bg-blue-tint); }
 .procure-fold:focus-visible { outline: 2px solid var(--text-link); outline-offset: 0; }
+
+/* The law firm's portal at phone width (punch list #85, item 8). One grid for the page: the
+   matter on the left, the matters list and the side cards on the right. Under 720 px it is one
+   column, matters list first, then the matter, then the side cards; the firm's forms stack and
+   their buttons go full width. Tables keep their own sideways scroll inside the card. */
+.legalPortalPage { padding: 26px 20px 60px; }
+.legalPortalSplit { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr); grid-template-areas: "main list" "main aside"; grid-template-rows: auto 1fr; column-gap: 16px; align-items: start; }
+.legalPortalSplit > * { min-width: 0; }
+.legalPortalMain { grid-area: main; }
+.legalPortalList { grid-area: list; }
+.legalPortalAside { grid-area: aside; }
+.legalPortalForm { display: grid; gap: 8px; align-items: end; }
+.legalPortalForm--fee { grid-template-columns: 1fr 1fr 1fr 2fr auto; } /* #85 item 18: a Date column first */
+.legalPortalForm--note { grid-template-columns: 1fr 1fr 2fr auto; }
+.legalPortalForm--ask { grid-template-columns: 1fr auto; }
+.legalPortalPair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr); gap: 16px; align-items: start; }
+.legalPortalPair > * { min-width: 0; }
+.legalJobTimeline { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 12px; align-items: start; }
+/* The firm's Lien grid (v2.4749): a rail of GCs beside the table; colors come inline from portalTheme. */
+/* The job address pins itself (v2.4783): the placing… word breathes while the lookup runs. */
+@keyframes jobAddressPinPulse { 50% { opacity: 0.4; } }
+/* Reach the office (v2.4755): one line under the letterhead; a column on a phone. Colors inline from portalTheme. */
+.legalReachStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; margin: 12px 0 0; border-radius: 6px; font-size: 12.5px; }
+.legalReachWho { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.legalReachAny { margin-left: auto; font-style: italic; }
+.legalLienLay { display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 14px; margin-top: 12px; align-items: stretch; }
+.legalLienLay > * { min-width: 0; }
+.legalLienRail { border-right: 1px solid var(--border); padding-right: 10px; }
+.legalLienRailList { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.legalLienGc { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; width: 100%; padding: 6px 8px 6px 10px; border: none; border-left: 3px solid transparent; border-radius: 5px; text-align: left; font: inherit; font-size: 12.5px; line-height: 1.25; cursor: pointer; }
+.legalLienGc:hover { background-color: rgba(22, 40, 60, 0.05); }
+.legalLienGcName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legalLienGcCount { grid-column: 1; font-size: 11.5px; }
+.legalLienGcOpen { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+@media (max-width: 720px) {
+  .legalPortalPage { padding: 16px 16px 48px; --legal-small: 12px; }
+  .legalPortalSplit { grid-template-columns: minmax(0, 1fr); grid-template-areas: "list" "main" "aside"; grid-template-rows: auto; row-gap: 14px; }
+  .legalPortalList > button:first-of-type, .legalPortalAside > :first-child { margin-top: 6px !important; }
+  .legalPortalPair { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .legalPortalForm { grid-template-columns: minmax(0, 1fr); }
+  .legalPortalForm + .legalPortalForm { border-top: 1px dotted var(--border); padding-top: 10px; }
+  .legalPortalForm button[type="submit"], .legalPortalWide { width: 100%; justify-content: center; }
+  .legalPortalHeadAside, .legalMatterHeadSums { text-align: left !important; }
+  .legalMatterHeadSums { width: 100%; }
+  .legalMatterHeadSums > * { text-align: left !important; }
+  .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .legalReachStrip { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .legalReachWho { white-space: normal; flex-wrap: wrap; }
+  .legalReachAny { margin-left: 0; }
+  .legalReachSep { display: none; }
+  .legalLienLay { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
+  .legalLienRail { border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 8px; }
+  .legalLienRailList { position: static; max-height: none; overflow: visible; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .legalLienRailList > input { width: 100% !important; }
+  .legalLienGc { display: inline-flex; gap: 6px; width: auto; border: 1px solid var(--border) !important; border-radius: 999px; padding: 4px 9px; margin: 0 !important; }
+  .legalLienGc[aria-pressed="true"] { border-color: #b0662f !important; }
+  .legalLienGcCount { display: none; }
+  .legalRecipientScope { margin-left: 0 !important; }
+}
+/* The firm's tables fold into cards when their box is narrow (v2.4808): a row is a card, each cell its column's name
+   beside the value (`data-label`, `CardCell`), nothing scrolls sideways. A container query on the table's own box,
+   not the window, so a phone and an iPad's narrow main column both fold. Colors come inline from portalTheme
+   (`--legal-card-hair`, `--legal-card-label`, `LEGAL_CARD_VARS`). `.legalCardOnly` is a cell only a card shows. */
+.legalCardWrap { container: legal-card / inline-size; }
+.legalCardOnly { display: none; }
+@container legal-card (max-width: 560px) {
+  .legalCardTable { min-width: 0 !important; }
+  .legalCardTable, .legalCardTable > tbody, .legalCardTable > tbody > tr { display: block; }
+  .legalCardTable > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .legalCardTable > tbody > tr { padding: 8px 0; border-bottom: 1px solid var(--legal-card-hair); }
+  .legalCardTable > tbody > tr[data-card-has-sub] { border-bottom: none; padding-bottom: 4px; }
+  .legalCardTable > tbody > tr[data-card-sub] { padding-top: 0; }
+  .legalCardTable > tbody > tr > td { display: grid; grid-template-columns: minmax(6.5rem, 34%) minmax(0, 1fr); column-gap: 10px; align-items: baseline; padding: 3px 0 !important; border: none !important; text-align: left !important; white-space: normal !important; }
+  .legalCardTable > tbody > tr > td::before { content: attr(data-label); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; line-height: 1.4; text-transform: uppercase; color: var(--legal-card-label); }
+  .legalCardTable > tbody > tr > td[data-label=""], .legalCardTable > tbody > tr[data-card-sub] > td { display: block; }
+  .legalCardTable > tbody > tr > td[data-label=""]::before, .legalCardTable > tbody > tr[data-card-sub] > td::before { content: none; }
+  .legalCardTable > tbody > tr > td[data-card-drop] { display: none; }
+  .legalCardTable > tbody > tr > td[data-card-num], .legalCardTable > tbody > tr > td[data-card-title] { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .legalCardVal { min-width: 0; overflow-wrap: anywhere; }
+}
+/* The Deadlines grid's last-day label as a door (v2.4735): it reads as the label until pointed at. */
+.lienCalWorkDoor:hover, .lienCalWorkDoor:focus-visible { color: var(--text-link) !important; text-decoration: underline; outline: none; }
+
+/* Uncollectible (punch list #94, v2.4792): a Collections row the office gave up on wears faint
+   stripes under its cells; the red stamp in the money cell says why. */
+tr[data-stages-row-stamped] > td {
+  background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgba(127, 127, 127, 0.07) 14px 28px);
+}

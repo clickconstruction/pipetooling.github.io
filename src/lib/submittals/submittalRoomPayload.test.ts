@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asRoomRole, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { asRoomRole, gcRoomItems, officeOnlyTags, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const item = (o: Partial<RoomItemSource>): RoomItemSource => ({
   id: 'i', tag: 'X-1', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
@@ -51,11 +51,26 @@ describe('the room\'s rows, counts and headline', () => {
   it('counts and words the headline', () => {
     const c = roomCounts(roomRowsFrom(items))
     expect(c).toEqual({ total: 5, matches: 1, differs: 2, notQuoted: 1, added: 1, proposed: 0, decided: 1, open: 1 })
-    expect(roomHeadline(c)).toBe('1 row needs a call')
-    expect(roomSubline(c)).toBe('1 row match the plans and is marked approved. 2 differ — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
+    expect(roomHeadline(c)).toBe('1 product needs your answer')
+    expect(roomSubline(c)).toBe('1 product matches the plans and is marked approved. 2 differ — each says why. 1 has no product yet. 1 is accessory the plans leave to us.')
     expect(roomHeadline({ ...c, open: 0 })).toBe('All 2 decided — thank you')
     expect(roomHeadline({ total: 3, matches: 3, differs: 0, notQuoted: 0, added: 0, decided: 0, open: 0 })).toBe('Everything matches the plans')
     expect(roomHeadline({ total: 0, matches: 0, differs: 0, notQuoted: 0, added: 0, decided: 0, open: 0 })).toBe('Nothing to review yet')
+  })
+  it('2026-10-03 · a row built from the takeoff reads as what we intend to install; nothing tells the GC the schedule was not on the bid', () => {
+    // BP375: thirteen rows from the takeoff, four of them answered, one with no product.
+    const takeoff = [
+      item({ id: 't1', tag: 'DWH-1', sequence_order: 1, status: 'proposed', specified_description: 'DWH1 & ET', submitted_label: 'RHEEM PROPH40-T2-RH400-SO' }),
+      item({ id: 't2', tag: 'FCO', sequence_order: 2, status: 'proposed', submitted_label: 'ZURN ZN1400-2NL' }),
+      item({ id: 't3', tag: 'UTILITY SINK', sequence_order: 3, status: 'missing' }),
+    ]
+    const rows = roomRowsFrom(takeoff)
+    expect(rows[0]).toMatchObject({ kind: 'proposed', plans: 'DWH1 & ET', why: 'This is the product we intend to install.' })
+    const c = roomCounts(rows)
+    expect(roomHeadline(c)).toBe('2 products need your answer')
+    expect(roomSubline(c)).toBe('2 are products we intend to install. 1 has no product yet.')
+    expect(roomSubline(roomCounts(roomRowsFrom(takeoff.slice(0, 1))))).toBe('1 is a product we intend to install.')
+    for (const r of rows) expect(`${r.why} ${roomSubline(c)}`).not.toMatch(/schedule/)
   })
   it('roles fall back to other', () => {
     expect(asRoomRole('architect')).toBe('architect')
@@ -94,5 +109,33 @@ describe('the GC calls each part (2026-10-01)', () => {
     const all = rollUpPartDecisions([call(bowl, 'approved', '2026-10-08T15:00:00Z'), call(valve, 'approved', '2026-10-08T15:00:00Z'), call(carrier, 'approved', '2026-10-09T15:00:00Z', { decision_source: 'entered', decision_entered_by: 'u1', decision_entered_by_name: 'Wendi' }), stop])
     expect(all).toMatchObject({ review_decision: 'approved', review_note: null, reviewed_at: '2026-10-09T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' })
     expect(rollUpPartDecisions([stop]).review_decision).toBeNull()
+  })
+})
+
+describe('an order-only row is the office\'s alone (2026-10-02)', () => {
+  const rows = [
+    item({ id: 'wc', tag: 'WC-1', sequence_order: 1, status: 'alternate', submitted_label: 'TOTO CT728' }),
+    item({ id: 'fco', tag: 'FCO', sequence_order: 2, status: 'proposed', submitted_label: 'ZURN ZN1400-2NL', order_only: true }),
+    item({ id: 'hb', tag: 'HB-3', sequence_order: 3, order_only: false }),
+  ]
+
+  it('never reaches the room: not as a row, and not in a count or the headline', () => {
+    const room = roomRowsFrom(rows)
+    expect(room.map((r) => r.tag)).toEqual(['WC-1', 'HB-3'])
+    expect(JSON.stringify(room)).not.toContain('ZURN')
+    expect(roomCounts(room).total).toBe(2)
+    // A row read before the column's push has no flag and stays.
+    expect(roomRowsFrom([item({ id: 'old', tag: 'OLD-1' })]).map((r) => r.tag)).toEqual(['OLD-1'])
+  })
+
+  it('cannot be called by a reviewer, and its log lines stay in the office', () => {
+    expect(gcRoomItems(rows).map((r) => r.id)).toEqual(['wc', 'hb'])
+    const stored = [
+      { tag: 'FCO', submittal_id: 'rev2', order_only: true },
+      { tag: 'WC-1', submittal_id: 'rev2', order_only: false },
+      { tag: 'FD', submittal_id: 'rev1', order_only: true }, // an older revision's row
+    ]
+    expect([...officeOnlyTags(stored, 'rev2')]).toEqual(['FCO'])
+    expect(officeOnlyTags(stored, null).size).toBe(0)
   })
 })

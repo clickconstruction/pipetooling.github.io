@@ -34,7 +34,7 @@ export function RequestPrioritySheet({
       aria-modal="true"
       aria-label={lowering ? 'Lower priority' : 'Raise priority'}
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}

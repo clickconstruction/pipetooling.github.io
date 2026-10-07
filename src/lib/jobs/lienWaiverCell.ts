@@ -1,6 +1,7 @@
 import type { JobLienReleaseRow } from './lienReleaseTracking'
 import { isConditionalLienForm, liveLienReleases } from './lienReleaseTracking'
 import { lienReleaseStatus } from './lienReleaseLifecycle'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * The lien-waiver cell on a bill (v2.4275): one pair per bill — the conditional that goes out
@@ -45,12 +46,13 @@ function halfFor(rows: JobLienReleaseRow[]): LienWaiverHalf {
   const rank = (r: JobLienReleaseRow) => (r.sent_to_customer_at ? 4 : lienReleaseStatus(r) === 'signed' ? 3 : lienReleaseStatus(r) === 'awaiting_signature' ? 2 : lienReleaseStatus(r) === 'issued' ? 1.5 : 1)
   const best = [...rows].sort((a, b) => rank(b) - rank(a) || b.created_at.localeCompare(a.created_at))[0]
   if (!best) return { state: 'none', release: null, ymd: null }
-  if (best.sent_to_customer_at) return { state: 'sent', release: best, ymd: best.sent_to_customer_at.slice(0, 10) }
+  // Each stamp is an instant: its day in APP_CALENDAR_TZ, never its UTC date.
+  if (best.sent_to_customer_at) return { state: 'sent', release: best, ymd: calendarYmdInAppTzFromIso(best.sent_to_customer_at) }
   const s = lienReleaseStatus(best)
-  if (s === 'signed') return { state: 'signed', release: best, ymd: (best.signed_at ?? best.created_at).slice(0, 10) }
-  if (s === 'awaiting_signature') return { state: 'awaiting', release: best, ymd: (best.signature_requested_at ?? best.created_at).slice(0, 10) }
-  if (s === 'issued') return { state: 'awaiting', release: best, ymd: (best.minted_at ?? best.created_at).slice(0, 10) }
-  return { state: 'draft', release: best, ymd: best.created_at.slice(0, 10) }
+  if (s === 'signed') return { state: 'signed', release: best, ymd: calendarYmdInAppTzFromIso(best.signed_at ?? best.created_at) }
+  if (s === 'awaiting_signature') return { state: 'awaiting', release: best, ymd: calendarYmdInAppTzFromIso(best.signature_requested_at ?? best.created_at) }
+  if (s === 'issued') return { state: 'awaiting', release: best, ymd: calendarYmdInAppTzFromIso(best.minted_at ?? best.created_at) }
+  return { state: 'draft', release: best, ymd: calendarYmdInAppTzFromIso(best.created_at) }
 }
 
 function shortDate(ymd: string | null): string {

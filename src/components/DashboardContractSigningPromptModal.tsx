@@ -26,8 +26,8 @@ export function DashboardContractSigningPromptModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 100,
-        padding: '1rem',
+        zIndex: 800,
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
       onClick={onClose}

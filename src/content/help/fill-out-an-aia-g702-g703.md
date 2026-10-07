@@ -1,0 +1,223 @@
+---
+title: fill out an AIA G702-G703
+category: Billing & Money
+roles: dev, master_technician, assistant, controller
+keywords: aia, g702, g703, pay application, pay app, application for payment, continuation sheet, retainage, schedule of values, change orders, workbook
+---
+Some general contractors pay from an AIA G702-G703. That is an application for payment with a continuation sheet. You fill it in one window and download it as a workbook.
+
+## Open the window
+
+Go to **Jobs → Pipeline**. Find the job in **Ready to Bill** or **Billed Awaiting Payment**. Press the green sheet button on its row. The same button sits in **View bill**.
+
+On a job with nothing saved, the window opens on a new application. On a job with saved applications, it opens on their history. Press {{button:green|New application}} there to start the next one.
+
+The form has two sides. The paper is on the left. The form is on the right.
+
+## Fill the form
+
+The form starts with what the job already knows.
+
+- **TO OWNER** is who the bills go to. On a job that bills its GC, that is the GC. The address is the one on their customer page.
+- **FROM CONTRACTOR** is our company. The address comes from **Settings**. Each line typed there prints on its own row.
+- **PROJECT** is the job's name and address.
+- **PROJECT NO** is the job's number.
+- **CONTRACT DATE** is the day the job's contract was signed. It is empty when the job has no signed contract.
+- **Retainage %** starts at 10.
+- **APPLICATION DATE** is today.
+
+You type **Period to** yourself. On a job with nothing saved, you type **APPLICATION NUMBER** too.
+
+1. Type in a field on the right. The paper on the left changes as you type.
+2. Press a box on the paper to jump to its field.
+3. Open **Change Orders** to type additions and deductions.
+4. Type **Retainage %** as a plain number. Type 5 for five percent.
+
+A blue box on the paper holds something from the form. A plain number is the sheet's own math. You never type the nine lines of the G702. The sheet works them out.
+
+:::example what the paper works out
+Type an **ORIGINAL CONTRACT SUM** of 48,500. On the line, type a **SCHEDULED VALUE** of 48,500 and **WORK THIS PERIOD** of 19,400. With **Retainage %** at 10, the paper shows total completed $19,400.00, retainage $1,940.00 and **CURRENT PAYMENT DUE $17,460.00**.
+:::
+
+## The lines
+
+The bottom of the form is **LINES**. Each line is one row of the continuation sheet. A job starts with one line for the whole contract.
+
+A line has these boxes.
+
+- **DESCRIPTION OF WORK** is the line's name.
+- **SCHEDULED VALUE** is the line's part of the contract.
+- **FROM PREVIOUS APPLICATION** is the work you asked for before.
+- **% DONE TO DATE** is how far along the line is. Type a percent and **WORK THIS PERIOD** is worked out for you.
+- **WORK THIS PERIOD** is the work you are asking for now. Type dollars here if you would rather.
+- **MATERIALS STORED ON SITE** is material on the job that is not installed yet.
+
+Press **Add a line** to add a row. A change order can be its own line. Press **Remove** on a line to take it off.
+
+## Choose how the rows start
+
+On a job's first application you choose where the rows come from. The choice sits at the top of **LINES**, under **START THE ROWS FROM**.
+
+- **One row** puts the whole contract on one line. It is picked for you on a job with no bid schedule.
+- **A row per Line Item** makes a row for each Line Item on the job's **Bill** tab. It shows when the job has two or more.
+- **The bid's schedule** uses the lines from the bid. It shows when the bid has a schedule, and then it is the one picked.
+
+Press an option and the rows change. The paper on the left changes with them.
+
+:::example job 892, three Line Items
+The job is priced at $37,745. **One row** gives one line for $37,745. **A row per Line Item** gives Rough In for $15,098, Top Out for $15,098 and Trim Set for $7,549.
+:::
+
+The window asks before it replaces rows you typed in. Press **Keep** to leave them.
+
+A Line Item with no price turns **A row per Line Item** off. Price it on the **Bill** tab first.
+
+The choice goes away after the first {{button:outline|Save}}. From then on the rows belong to the job. You can still add, rename and remove rows by hand.
+
+## Lines from the bid
+
+A job that came from a bid starts with the bid's schedule of values. Those are the lines the GC already saw.
+
+- A bid with its own lines brings them over as written.
+- A bid left on the three stages brings three lines. They are Rough In, Top Out and Trim Set.
+- A bid with fewer than two stages filled in brings nothing. The job starts with one line.
+- A job with no bid starts with one line, unless you choose a row per Line Item.
+
+The bid is only the start. Once you save application 1, the lines belong to the job. You can rename them, add to them and take them off.
+
+The bid may print labor and material apart. Then **Labor and material on their own rows** starts ticked. Each line prints as two rows. Untick it to print one row per line.
+
+## The crew's percent
+
+A line that belongs to a stage shows what the crew reported for that stage. It reads *The crew reported Top Out at 90%.* Press **Use 90%** to take it. Nothing changes until you press it.
+
+## When the lines do not add to the contract
+
+The bid's total is not always the job's price. The form says how far the lines are from the contract to date. Press **Scale the lines to** the amount shown. Every line moves by the same share, to the cent.
+
+A change order is not a gap. Add it as its own line, and type it under **Change Orders**.
+
+## How many lines fit
+
+The sheet holds 34 rows. The form shows how many you have used. You can save more than 34 lines. You cannot generate until some are grouped.
+
+## Our address on two lines
+
+**CONTRACTOR ADDRESS** takes more than one line. Press Enter in the box to start a new line. The sheet prints each line on its own row.
+
+To change the address for every job, open **Settings** and find the **Address** box under the company name. Type the street on the first line and the city on the second.
+
+## Leave a field empty
+
+A field you leave empty is empty in the download. Nothing is filled in for you after you clear it. Check the paper before you download.
+
+## Download it
+
+Press {{button:green|Generate}}. The workbook downloads to your computer. Its name carries the job's number and the application number. Send it to the general contractor the way they ask for it.
+
+Press {{button:outline|Reset from job}} to start again from what the job knows.
+
+## On a phone or a narrow window
+
+You see one side at a time. Press **Preview** at the top to see the paper. Press **Form** to go back. Pressing a box on the paper takes you to its field.
+
+## Save it on the job
+
+Press {{button:outline|Save}}. The application is kept on the job under its number. {{button:green|Generate}} saves it too, after it downloads.
+
+The top of the form names the application you are on. It also says who saved it and when.
+
+Saved applications are listed in the job's history. Press **← Pay applications** at the top of the form to see it. Press **Open** on an application to change it and save it again. Nothing locks.
+
+The window asks before you lose what you typed. Press **Stay** to keep typing.
+
+## Read the job's history
+
+The history is the first thing you see on a job with saved applications. It answers four questions.
+
+- **Where the job stands.** Four numbers from the latest application. Contract to date, completed and stored, held as retainage, and work left.
+- **What each application asked for.** One line per application. Its number, its name, its period and the payment due.
+- **Who saved it and when.** Under each line. A second save shows as *saved again*, with the name and the day.
+- **What went out.** Each workbook you generated, with the time and who pressed Generate. Press the file name to download the same file again.
+- **What changed after it went out.** A warning names each amount that moved since the workbook was generated. Generate again to send the change, or put the amounts back.
+
+:::example job 892, two applications
+The line reads *2 saved · $24,458.76 certified · 72% complete*. Application 1 says *Saved Aug 1 by Taunya* and *Went out Aug 1, 9:40 AM by Taunya as J892-App1.xlsx*. Application 2 says *Saved Sep 2 by Taunya · saved again Sep 18 by Robert*.
+:::
+
+A warning under a line means it no longer matches the application before it. The reason you typed shows beside it.
+
+A workbook you generated with no application number shows at the bottom. It belongs to no application.
+
+Press {{button:green|New application}} to start the next one. It starts from the last one saved.
+
+## Name an application
+
+You can give a saved application a name of your own. Type it under **NAME**, then press {{button:outline|Save}}.
+
+The name shows in the job's history. It also shows on the job's **Documents** tab. It is never printed on the paper.
+
+To rename one, open it from the history. Type the new name and press {{button:outline|Save}}. Clear the box and save to take the name off.
+
+A new application starts with no name.
+
+## Start the next application
+
+Open the window again next month. It opens on the job's history. Press {{button:green|New application}}. The number is one more than the last.
+
+The new one starts from the last one saved.
+
+- Each line keeps its name and its value. Its **FROM PREVIOUS APPLICATION** is the work you asked for before.
+- **WORK THIS PERIOD** starts empty on each line. Material stored on site stays on its line.
+- **LESS PREVIOUS CERTIFICATES FOR PAYMENT** is what the last application had earned, less retainage.
+- Last month's change orders move to the previous months.
+- **Retainage %** stays what it was.
+
+## When retainage drops to 5%
+
+Some contracts drop retainage to 5% once the job is past 50% complete. The window tells you when the job is past that point. It shows what is held now and what would be held at 5%.
+
+Press **Use 5%** when the contract allows it. The 5% covers everything to date. The retainage let go is added to the payment due.
+
+Leave it alone when the contract keeps the retainage. Nothing changes until you press the button.
+
+:::example the second application
+Application 1 asked for $19,400.00 of work on its one line at 10% retainage, so $17,460.00 was due. A month later the job is at $29,100.00. Application 2 opens with 19,400 from the previous application and 9,700 this period on that line. **CURRENT PAYMENT DUE** reads $8,730.00.
+:::
+
+## When an earlier application changes
+
+Nothing locks, so an earlier application can change after a later one went out. The later one then shows a warning. It lists each amount that no longer matches.
+
+You can still save and generate it. You have two choices.
+
+- Press **Use application 1's amounts** to take the new amounts. The number in the button is the earlier application.
+- Or keep it as it went out. Type the reason under **WHY IT STAYS AS IT IS** and press {{button:outline|Save}}.
+
+The warning also shows on the job's **Documents** tab, with the reason.
+
+## An application sent before today
+
+Type it in as its own application. Type its **APPLICATION NUMBER** and its amounts.
+
+Then paste the Google Drive link to the file under **LINK TO THE FILE YOU SENT**. Press {{button:outline|Save}}. The next application starts from it.
+
+Press **Open** beside the link to see the file. Any saved application can carry a link.
+
+## See them on the job
+
+Open the job and press the **Documents** tab. Every saved application is listed with its number, its period and the payment due.
+
+Each row also says what went out and who saved it. Under **Went out** is each workbook you generated, with its time. Press its name to download the same file again. A link you pasted shows there as **Open the file**.
+
+Press **Open** to change the application. Press **New application** to start one from there.
+
+A saved application can still be changed. The kept workbook cannot. The workbooks sit with their applications here, not under **Sent from this job**.
+
+## Take one off the job
+
+Open the saved application and press **Delete**. The window asks first. A later application keeps the amounts it was saved with.
+
+The deleted application stays in the history as a quiet line. The line says who deleted it and when. Its workbooks stay with it. Its number is free for a new application.
+
+A deleted application shows after the live ones, in grey. It has no **Open** button.

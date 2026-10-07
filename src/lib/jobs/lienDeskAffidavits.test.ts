@@ -32,6 +32,7 @@ describe('affidavit gates and piles', () => {
   it('a sub job needs owner, legal description, a recorded notice, and no homestead; a direct job skips the notice', () => {
     const sub = affidavitGates(row({ job_id: 'a', noticed: false }))
     expect(sub.map((g) => [g.key, g.ok])).toEqual([['owner', true], ['legal', true], ['notice', false], ['homestead', true]])
+    expect(sub.find((g) => g.key === 'notice')?.label).toContain('a late one counts while this window is open')
     const direct = affidavitGates(row({ job_id: 'b', is_sub: false, noticed: false, gc_customer_id: null }))
     expect(direct.find((g) => g.key === 'notice')?.ok).toBe(true)
     expect(affidavitGates(row({ job_id: 'c', homestead: true })).find((g) => g.key === 'homestead')?.ok).toBe(false)
@@ -71,5 +72,17 @@ describe('buildLienAffidavitQueue · a job with no clock hours is dated from its
   it('carries the flag on the entry; an ordinary row reads as the last month worked', () => {
     const q = buildLienAffidavitQueue([row({ job_id: 'j858', last_month: '2026-08', deadline: '2026-10-15', month_source: 'job_created' }), row({ job_id: 'j273', last_month: '2026-08', deadline: '2026-10-15' })], [], TODAY)
     expect(q.entries.map((e) => [e.jobId, e.lastMonthFromCreation])).toEqual([['j858', true], ['j273', false]])
+  })
+})
+
+describe('an affidavit filed in the evening keeps its day (v2.4468)', () => {
+  it('stays listed for 30 days from the Central day', () => {
+    // 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const rows = [row({ job_id: 'f1', filed: true })]
+    const evening = [item({ job_id: 'f1', status: 'sent', sent_at: '2026-12-02T00:30:00Z' })]
+    expect(buildLienAffidavitQueue(rows, evening, '2026-12-31').entries.map((e) => [e.jobId, e.pile])).toEqual([['f1', 'filed']])
+    expect(buildLienAffidavitQueue(rows, evening, '2027-01-01').entries).toEqual([])
+    const noon = [item({ job_id: 'f1', status: 'sent', sent_at: '2026-12-02T12:00:00Z' })]
+    expect(buildLienAffidavitQueue(rows, noon, '2027-01-01').entries.map((e) => e.jobId)).toEqual(['f1'])
   })
 })

@@ -6,22 +6,25 @@
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PaymentRow } from './jobFormTypes'
-import { jobsLedgerInvoiceIsStripeLinked, paymentRowLinkedToInvoice } from './jobFormPaymentPredicates'
+import { jobsLedgerInvoiceIsStripeLinked, paymentRowLinkedToInvoice, stripeOwnsPaymentRow } from './jobFormPaymentPredicates'
 
 export type PaymentMoveBlock = 'unsaved' | 'stripe' | 'sent-bill'
 
 /**
- * Null when the row may move. A row not yet saved has nothing to move; a Stripe-hosted bill's
- * payment stays with Stripe; a payment a SENT bill already counted stays until it is unlinked —
- * the customer was told a number. A payment on an unsent bill moves (and is unlinked on the
- * way); a bank-deposit-linked payment moves with its deposit.
+ * Null when the row may move. A row not yet saved has nothing to move; a payment Stripe holds a
+ * record of (a credit note, a bill marked paid in Stripe) stays with Stripe; a payment a SENT
+ * bill already counted stays until it is unlinked — the customer was told a number. A payment on
+ * an unsent bill moves (and is unlinked on the way); a bank-deposit-linked payment moves with its
+ * deposit. v2.4801: a row on a Stripe bill Stripe has not heard of — a check Mark Paid holds until
+ * it clears, a deposit matched in Accounts Receivable — moves too: the pay link is still open and
+ * the customer's number is unchanged, so the bill just reads Billed again.
  */
 export function paymentMoveBlock(row: PaymentRow, job: JobWithDetails | null, persisted: boolean): PaymentMoveBlock | null {
   if (!persisted) return 'unsaved'
   if (paymentRowLinkedToInvoice(row) && job) {
     const inv = (job.invoices ?? []).find((i) => i.id === row.invoice_id)
     if (inv) {
-      if (jobsLedgerInvoiceIsStripeLinked(inv)) return 'stripe'
+      if (jobsLedgerInvoiceIsStripeLinked(inv)) return stripeOwnsPaymentRow(row, job) ? 'stripe' : null
       if (inv.sent_to_customer_at) return 'sent-bill'
     }
   }

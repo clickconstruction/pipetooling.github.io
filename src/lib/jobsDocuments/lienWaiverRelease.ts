@@ -2,7 +2,7 @@ import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { loadJsPDF } from '../loadJsPDF'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { billCheckClearsYmd } from '../jobs/checkClearing'
 import { isUnfinishedDate } from '../autosaveDateHold'
 import { unfinishedDateStopsMessage } from '../dateBoxEntry'
@@ -83,6 +83,23 @@ export function lienWaiverWhy(formType: LienWaiverFormType, payorName: string): 
     }
   }
 }
+
+/**
+ * What the Release of Lien window asks before the form goes from Conditional to Unconditional
+ * (v2.4507, the owner's words). The safe answer is to stay, so that button is the blue one.
+ */
+export const UNCONDITIONAL_WAIVER_WARNING = {
+  title: 'Are you sure you meant to choose Unconditional?',
+  message: [
+    'Have you spoken to your master plumber?',
+    'Most GCs will accept a conditional waiver, even when they ask for an unconditional one.',
+    'Signing an unconditional waiver gives up all your rights. It is usually only done at the very end of a job, after you have received 100% of what you asked for.',
+  ].join('\n\n'),
+  confirmLabel: 'Acknowledge and choose Unconditional',
+  cancelLabel: 'Stay conditional',
+  danger: true,
+  cancelIsSafe: true,
+} as const
 
 export function lienWaiverTitle(formType: LienWaiverFormType): string {
   switch (formType) {
@@ -280,6 +297,7 @@ export function lienWaiverInvoiceOpenRemaining(job: JobWithDetails, inv: JobsLed
   return Math.max(0, Number(inv.amount ?? 0) - sumAppliedToInvoice(job, inv.id))
 }
 
+/** A `date` column's day (`last_work_date`). An instant's day is `calendarYmdInAppTzFromIso`: its first ten characters are the UTC date. */
 function ymdFromIso(iso: string | null | undefined): string {
   const d = (iso ?? '').trim().slice(0, 10)
   return /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : ''
@@ -368,13 +386,28 @@ export function pickLienWaiverForBill(
   }
 }
 
+/**
+ * The tick on Bill Customer (v2.4603): the pick for the bill about to go, or null when no
+ * tick is drawn. No tick on a direct job, with no bill named, or for a bill not on the job.
+ * The hand-off to the Release of Lien window follows the tick, so both read this.
+ */
+export function lienWaiverTickForBill(
+  job: (Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'> & { gc_customer_id?: string | null }) | null | undefined,
+  invoiceId: string | null | undefined,
+  today: string = todayYmd(),
+): LienWaiverBillPick | null {
+  if (!job?.gc_customer_id || !invoiceId) return null
+  const invoice = (job.invoices ?? []).find((i) => i.id === invoiceId)
+  return invoice ? pickLienWaiverForBill(job, invoice, today) : null
+}
+
 export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWaiverPrefillContext): LienWaiverFields {
   const { job, invoices, issuer, ownerName, signerName } = ctx
   const name = (job.job_name ?? '').trim()
   const address = (job.job_address ?? '').trim()
   const projectDescription = name && address ? `${name} — ${address}` : name || address
   const throughDate =
-    invoices.map((i) => ymdFromIso(i.billed_at) || ymdFromIso(i.created_at)).filter(Boolean).sort().pop() ??
+    invoices.map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || calendarYmdInAppTzFromIso(i.created_at ?? '')).filter(Boolean).sort().pop() ??
     (ymdFromIso(job.last_work_date) || todayYmd())
   return {
     companyName: (issuer?.companyName ?? '').trim() || 'ClickConstruction LLC',

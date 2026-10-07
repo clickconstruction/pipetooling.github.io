@@ -105,7 +105,7 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved, startTypedOnly, startTypist, onOpenDay }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 760, surface = 'approvals-queue', onApproved, startTypedOnly, startTypist, onOpenDay }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
@@ -522,7 +522,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
       role="dialog"
       aria-modal="true"
       aria-label="Hours approvals, every week"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -533,7 +533,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
           borderRadius: 8,
           padding: '0.9rem 1rem',
           width: 'min(960px, 96vw)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 16px 40px rgba(0,0,0,0.25)',

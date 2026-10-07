@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { openOrSaveFromStorage } from '../../lib/storageSave'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -281,12 +282,8 @@ export default function PeopleHrTab() {
   }, [authUser?.id, showToast])
 
   const openAttachment = useCallback(async (a: AttachmentRow) => {
-    const { data, error } = await supabase.storage.from(HR_FILES_BUCKET).createSignedUrl(a.storage_path, 600)
-    if (error || !data?.signedUrl) {
-      showToast(`Couldn't open ${a.filename}: ${error?.message ?? 'no URL'}`, 'error')
-      return
-    }
-    window.open(data.signedUrl, '_blank', 'noopener')
+    // v2.4610 · a PDF or a picture opens to be read; anything else is saved from the app's own address.
+    if (!(await openOrSaveFromStorage(HR_FILES_BUCKET, a.storage_path, a.filename, 600))) showToast(`Couldn't open ${a.filename}.`, 'error')
   }, [showToast])
 
   useEffect(() => {

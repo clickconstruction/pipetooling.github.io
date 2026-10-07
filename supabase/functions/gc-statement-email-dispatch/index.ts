@@ -28,6 +28,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { COMPANY_EMAIL_FROM, EMAIL_FROM } from '../_shared/emailFrom.ts'
 import {
@@ -53,6 +54,8 @@ import {
   renderGcShareAllText,
   renderGcStatementHtml,
   renderGcStatementText,
+  attachJobTotals,
+  payloadJobIds,
   type GcStatementPayload,
 } from './render.ts'
 
@@ -117,7 +120,7 @@ async function receivedFor(admin: any, gcId: string, todayYmd: string): Promise<
     const { data: rawJobs, error: jobsErr } = await admin
       .from('jobs_ledger')
       .select(
-        'id, hcp_number, click_number, job_name, job_address, customer_id, gc_customer_id, bill_to_party, lien_retainage_held, ' +
+        'id, hcp_number, click_number, job_name, job_address, customer_id, gc_customer_id, bill_to_party, lien_retainage_held, revenue, ' +
           'invoices:jobs_ledger_invoices(id, job_id, sequence_order, amount, status, billed_at, bill_to_party, bill_to_email), ' +
           'payments:jobs_ledger_payments(id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number, mercury_transaction_id, sequence_order, created_at)',
       )
@@ -300,6 +303,17 @@ serve(async (req) => {
         if (rpcErr) throw new Error(`payload rpc: ${rpcErr.message}`)
         const payload = payloadRaw as GcStatementPayload
         if (!payload || !Array.isArray(payload.groups)) throw new Error('empty payload')
+        // v2.4536: each job's total, so the line under a bill does not word money that paid the
+        // part of the job on no bill as paying that bill. A failed read leaves the rows as they came.
+        try {
+          const jobIds = payloadJobIds(payload)
+          if (jobIds.length > 0) {
+            const { data: totalRows } = await admin.from('jobs_ledger').select('id, revenue').in('id', jobIds)
+            attachJobTotals(payload, Object.fromEntries(((totalRows ?? []) as Array<{ id: string; revenue: number | null }>).map((j) => [j.id, j.revenue])))
+          }
+        } catch {
+          /* the statement still goes, worded by the bills alone */
+        }
 
         const dateStr = chicagoDateStr()
         const isSingle = entityId != null
@@ -375,6 +389,7 @@ serve(async (req) => {
         const replyTo =
           typeof requester?.email === 'string' && requester.email.includes('@') ? requester.email : undefined
 
+        const statementAttachments = isSingle && qrModules ? [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] : []
         const resendResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
@@ -386,7 +401,7 @@ serve(async (req) => {
             html,
             text,
             ...(replyTo ? { reply_to: replyTo } : {}),
-            ...(isSingle && qrModules ? { attachments: [{ filename: PORTAL_QR_FILENAME, content: bytesToBase64(qrPngBytes(qrModules)), content_id: PORTAL_QR_CONTENT_ID }] } : {}),
+            ...(statementAttachments.length ? { attachments: statementAttachments } : {}),
           }),
         })
         if (!resendResponse.ok) {
@@ -402,6 +417,11 @@ serve(async (req) => {
           subject,
           emailType: GC_STATEMENT_EMAIL_TYPES.scheduled,
         })
+        // Sent copies (docs/SENT_COPIES.md): the scheduled statement as the GC read it, kept under the GC.
+        await fileSentEmailBestEffort(
+          { kind: 'gc_statement', recipientName: auditGcName, customerId: row.gc_customer_id, sentBy: row.requested_by },
+          { to: [row.sent_to], cc: Array.isArray(row.cc_emails) ? row.cc_emails : [], from: FROM, subject, html, attachments: statementAttachments, resendEmailId: sentMail.id ?? null },
+        )
 
         // Audit row (same table + semantics as send-gc-statement-email; failure
         // must not fail an already-sent email).

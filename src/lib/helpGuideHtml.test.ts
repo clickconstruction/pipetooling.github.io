@@ -37,6 +37,15 @@ describe('encode/restore in-app guide links', () => {
     )
   })
 
+  it('v2.4529: a link to a heading of the same guide rides through with a data-anchor hook', () => {
+    const html = '<a href="#the-s-53-056-notice">The notice</a>'
+    expect(encodeHelpGuideLinks(html)).toBe('<a href="https://anchor.help.internal/the-s-53-056-notice">The notice</a>')
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks(html))).toBe('<a href="#the-s-53-056-notice" data-anchor="the-s-53-056-notice">The notice</a>')
+    // Authored text cannot pre-bake the placeholder, and anything but a plain anchor is left alone.
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks('<a href="https://anchor.help.internal/x">x</a>'))).toBe('<a href="x">x</a>')
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks('<a href="#Bad Anchor">x</a>'))).toBe('<a href="#Bad Anchor">x</a>')
+  })
+
   it('leaves other hrefs alone and refuses anything but a bare slug', () => {
     const html = '<a href="https://example.com/help/x">e</a> <a href="/help/../etc">bad</a> <a href="mailto:x@y.z">m</a>'
     expect(restoreHelpGuideLinks(encodeHelpGuideLinks(html))).toBe(html)

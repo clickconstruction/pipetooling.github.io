@@ -78,3 +78,53 @@ export function robotOfferText(kind: RobotKind, input: { hasPlans?: boolean } = 
       }
   }
 }
+
+/**
+ * A queued ask that nobody is coming for (2026-10-03, the tab review's finding 9). BP375 read
+ * "The robot is queued to read the fixture schedule off the plans" for days: no date, and no word
+ * that no robot was on shift. The ask is stale when no seat is live, or when it has waited more
+ * than a day. Then the line says the day it was asked, what the seats are doing, and what to do
+ * by hand. null while the wait is ordinary: the page keeps its usual words.
+ */
+export const ASK_STALE_AFTER_MS = DAY
+
+/** v2.4690 · past a week the ask is old: the line says how many days, and the button reads Withdraw the ask. */
+export const ASK_OLD_AFTER_DAYS = 7
+
+export type StaleAsk = {
+  /** Whole days since the ask. */
+  daysWaited: number
+  /** "You asked the robot on Sep 29. No robot has run in 12 days." */
+  head: string
+  /** What to do by hand, for the chore asked. */
+  detail: string
+  /** "asked Sep 29 · no robot has run in 12 days": the short form, after a task's own line. */
+  suffix: string
+}
+
+const BY_HAND: Record<RobotKind, string> = {
+  read_schedule: 'Nobody is reading the plans. Type the schedule yourself, or leave the ask in place.',
+  file_cut_sheets: 'Nobody is reading this file. Put its pages on the rows yourself, or leave the ask in place.',
+  read_redlines: 'Nobody is reading this file. Type their answers yourself, or leave the ask in place.',
+}
+
+export function staleAsk(kind: RobotKind, requestedAt: string | null | undefined, seat: RobotSeatState, nowMs: number, /** "Sep 29" for an instant */ day: (iso: string) => string): StaleAsk | null {
+  const asked = requestedAt ? new Date(requestedAt).getTime() : NaN
+  if (!Number.isFinite(asked)) return null
+  const waited = nowMs - asked
+  if (seat.live && waited < ASK_STALE_AFTER_MS) return null
+  const when = day(requestedAt as string)
+  const daysWaited = Math.max(0, Math.floor(waited / DAY))
+  // v2.4690 · a week on, the day it was asked matters less than how long it has sat: say the days, and that nobody came.
+  if (daysWaited >= ASK_OLD_AFTER_DAYS) {
+    return { daysWaited, head: `You asked the robot ${daysWaited} days ago. Nobody has picked it up.`, detail: BY_HAND[kind], suffix: `asked ${daysWaited} days ago · nobody picked it up` }
+  }
+  // A live seat that has not taken it in a day: say so in place of the seat's own line, which would read as hope.
+  const seatWords = seat.live ? `${seat.line} It has not picked this up.` : seat.line
+  return {
+    daysWaited,
+    head: `You asked the robot${when ? ` on ${when}` : ''}. ${seatWords}`,
+    detail: BY_HAND[kind],
+    suffix: `${when ? `asked ${when} · ` : ''}${seat.live ? 'not picked up yet' : seat.line.replace(/\.$/, '').replace(/^No /, 'no ').replace(/^A /, 'a ')}`,
+  }
+}

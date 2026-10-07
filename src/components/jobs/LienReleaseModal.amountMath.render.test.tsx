@@ -103,10 +103,21 @@ describe('LienReleaseModal — how the amount is figured (v2.4296)', () => {
     expect(screen.getByText(/of \$26,800 · waiver on file/)).toBeTruthy()
   })
 
+  it('Waive the paid asks first; Stay conditional leaves the form where it was (v2.4582)', async () => {
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={bill1} signerNameFallback="Malachi Whites" />)
+    const note = await screen.findByTestId('lien-waiver-paid-unwaived')
+    fireEvent.click(within(note).getByRole('button', { name: 'Waive the $17,777.51 paid ›' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog', { name: 'Are you sure you meant to choose Unconditional?' })).getByRole('button', { name: 'Stay conditional' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(within(screen.getByTestId('lien-waiver-form')).getByRole('button', { name: 'Conditional' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
   it('Waive the paid switches to the unconditional progress for the money in hand; typing over the amount offers the way back', async () => {
     renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={bill1} signerNameFallback="Malachi Whites" />)
     const note = await screen.findByTestId('lien-waiver-paid-unwaived')
     fireEvent.click(within(note).getByRole('button', { name: 'Waive the $17,777.51 paid ›' }))
+    // It asks first, as the step 2 switch does (v2.4582).
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
     const form = screen.getByTestId('lien-waiver-form')
     await waitFor(() => expect(within(form).getByRole('button', { name: 'Unconditional' }).getAttribute('aria-pressed')).toBe('true'))
     const box = screen.getByTestId('lien-waiver-math')
@@ -166,6 +177,7 @@ describe('LienReleaseModal — a reopened draft follows its bills (v2.4296)', ()
     await settle()
     await waitFor(() => expect(amountBox()).toBe('9,022.49'))
     fireEvent.click(within(form).getByRole('button', { name: 'Unconditional' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Acknowledge and choose Unconditional' }))
     await waitFor(() => expect(amountBox()).toBe('17,777.51'))
     fireEvent.click(within(form).getByRole('button', { name: 'Conditional' }))
     await waitFor(() => expect(amountBox()).toBe('9,022.49'))

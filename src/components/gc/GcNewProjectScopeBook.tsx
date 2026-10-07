@@ -1,14 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
-import {
-  lateWords,
-  linesToAdd,
-  oftenMissed,
-  scopeWordKey,
-  scopeBookUseWords,
-  searchScopeBook,
-  type ScopeBookLine,
-  type ScopeSetChoice,
-} from '../../lib/gcMode/gcModel'
+import { lateWords, linesToAdd, oftenMissed, scopeBookUseWords, scopeWordKey, searchScopeBook, type ScopeBookLine, type ScopeSetChoice } from '../../lib/gc/scopeBook'
 import { Btn, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerRow } from './GcNewProjectPickerRows'

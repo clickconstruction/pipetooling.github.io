@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { laborItemsSubtotal } from '../lib/peopleLaborJobItemLineCost'
 import { supabase } from '../lib/supabase'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 /** One sub-labor job with an outstanding balance (labor total − payments − backcharges > 0). */
 export type SubLaborDueJobRow = {
@@ -8,7 +9,7 @@ export type SubLaborDueJobRow = {
   assignedToName: string | null
   address: string | null
   jobNumber: string | null
-  /** created_at date part (YYYY-MM-DD) — sub jobs have no due date, so age anchors here. */
+  /** created_at's day in the company calendar (YYYY-MM-DD) — sub jobs have no due date, so age anchors here. */
   createdYmd: string | null
   balance: number
 }
@@ -77,7 +78,7 @@ export async function fetchSubLaborDueJobRows(): Promise<SubLaborDueJobRow[]> {
         assignedToName: job.assigned_to_name,
         address: job.address,
         jobNumber: job.job_number,
-        createdYmd: job.created_at ? job.created_at.slice(0, 10) : null,
+        createdYmd: job.created_at ? calendarYmdInAppTzFromIso(job.created_at) || null : null,
         balance,
       })
     }

@@ -139,7 +139,8 @@ const DASHBOARD_MODAL_OVERLAY_STYLE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 60,
+  zIndex: 760,
+  paddingTop: 'var(--app-top-chrome, 0px)',
 }
 export default function Dashboard() {
   const jobDetailModal = useJobDetailModal()

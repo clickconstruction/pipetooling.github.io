@@ -21,6 +21,7 @@
  * exactly once (repoint FIRST — a dangling incident → deleted-invoice link is
  * worse than a leftover draft row).
  */
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type HazmatRollInInvoice = {
   id: string
@@ -48,10 +49,11 @@ export type HazmatRollInLine = {
   description: string
 }
 
+/** The incident's day in the company calendar as MM/DD/YYYY; `incident_at` is an instant. */
 function formatIncidentDate(iso: string | null): string {
   const t = (iso ?? '').trim()
   if (!t) return ''
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(calendarYmdInAppTzFromIso(t))
   if (!m) return ''
   return `${m[2]}/${m[3]}/${m[1]}`
 }

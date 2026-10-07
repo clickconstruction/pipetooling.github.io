@@ -21,7 +21,7 @@ import {
   type SpecInSet,
 } from '../../lib/gcMode/gcModel'
 import { Btn, Chip } from './gcUi'
-import { PlanSetDriveLine } from './GcNewProjectDriveLink'
+import { PlanSetDriveLine } from './GcNewProjectDriveLink.proto'
 
 /**
  * GC mode design spike: the plans, one click from the Project Board. The Bid Board's plans link

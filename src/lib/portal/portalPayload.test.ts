@@ -168,6 +168,20 @@ describe('agreements (Contract Desk PR 5)', () => {
     expect(p?.agreements[1]).toMatchObject({ status: 'sent', signUrl: null, amountCents: null })
   })
 
+  it('a part-signed agreement carries who has signed and who it waits on (v2.4596); an older function sends neither', () => {
+    const p = parsePortalPayload({
+      customerName: 'Sam Owner',
+      bills: [],
+      agreements: [
+        { jobLabel: 'J1053', status: 'sent', signerName: 'Sam Owner', signingProgress: ' Sam Owner signed · waiting on Alex Owner ' },
+        { jobLabel: 'J1054', status: 'signed', signerName: 'Sam Owner and Alex Owner' },
+        { jobLabel: 'J1055', status: 'sent' },
+      ],
+    })
+    expect(p?.agreements.map((a) => a.signingProgress)).toEqual(['Sam Owner signed · waiting on Alex Owner', null, null])
+    expect(p?.agreements[1]?.signerName).toBe('Sam Owner and Alex Owner')
+  })
+
   it('a payload without agreements parses to an empty list', () => {
     expect(parsePortalPayload({ customerName: 'X', bills: [] })?.agreements).toEqual([])
     // Customer Waiting (v2.3249): the number on file rides along; blank/missing → null.
@@ -281,5 +295,21 @@ describe('parsePortalChecks (Your payments, v2.4053)', () => {
     expect(r?.jobs[0]?.invoices).toEqual([{ id: 'i1', job_id: 'j1', sequence_order: 1, amount: 9750, status: 'paid', billed_at: '2026-08-01' }])
     expect(r?.jobs[0]?.payments).toEqual([{ id: 'p1', job_id: 'j1', invoice_id: 'i1', amount: 9750, paid_on: '2026-09-10', sent_on: null, payment_type: 'check', reference_number: '48102', sequence_order: null }])
     expect(r?.events).toEqual([{ id: 'e1', kind: 'moved', payment_id: 'p1', from_job_id: 'j0', to_job_id: 'j1', amount: 9750, created_at: '2026-09-26T16:00:00Z' }])
+  })
+})
+
+describe('ownerRecords (punch list #86)', () => {
+  it('reads the request offered on this portal, signed or not; an older function sends none', () => {
+    const base = { customerName: 'Umar Khan', company: {}, bills: [] }
+    expect(parsePortalPayload(base)!.ownerRecords).toBeNull()
+    const open = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null } })!.ownerRecords
+    expect(open).toEqual({ id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: null, sent: null })
+    const signed = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: '9703 Lenox Hill', ownerName: 'Umar Khan', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'UMAR KHAN' } } })!.ownerRecords
+    expect(signed?.signed).toEqual({ on: '2026-10-07', name: 'UMAR KHAN' })
+    expect(parsePortalPayload({ ...base, ownerRecords: { id: '', offeredOn: '2026-10-06' } })!.ownerRecords).toBeNull()
+    // Sent on the portal (PR 4): the day and the PDF's signed URL; a bad URL reads as none.
+    const sent = parsePortalPayload({ ...base, ownerRecords: { id: 'r1', address: 'a', ownerName: 'U', offeredOn: '2026-10-06', signed: { on: '2026-10-07', name: 'U' }, sent: { on: '2026-10-08', downloadUrl: 'https://x.supabase.co/storage/v1/object/sign/sent-documents/r1/p.pdf?token=t' } } })!.ownerRecords
+    expect(sent?.sent).toEqual({ on: '2026-10-08', downloadUrl: 'https://x.supabase.co/storage/v1/object/sign/sent-documents/r1/p.pdf?token=t' })
+    expect(parsePortalPayload({ ...base, ownerRecords: { id: 'r1', offeredOn: '2026-10-06', sent: { on: '2026-10-08', downloadUrl: 'javascript:alert(1)' } } })!.ownerRecords?.sent).toEqual({ on: '2026-10-08', downloadUrl: null })
   })
 })

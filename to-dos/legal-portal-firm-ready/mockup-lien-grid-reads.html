@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal: the Lien grid reads better — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  .pane img { max-width: 100%; border: 1px solid #E5E7EB; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+
+  /* ---- the portal's paper (portalTheme.ts) ---- */
+  .paper { background: #f6f3ec; color: #16283c; padding: 18px; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .card { background: #fdfcf9; border: 1px solid #ddd6c8; border-radius: 6px; padding: 14px 16px; }
+  .capP { font-size: 11px; color: #8a97a6; text-transform: uppercase; letter-spacing: .07em; }
+  .muted { color: #5a6b7e; }
+  .faint { color: #8a97a6; }
+  .copper { color: #b0662f; }
+  .btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 5px; border: 1px solid #b0662f; background: #b0662f; color: #fff; }
+  .seg { display: inline-flex; border: 1px solid #ddd6c8; border-radius: 6px; overflow: hidden; font-size: 12.5px; }
+  .seg span { padding: 4px 10px; color: #5a6b7e; background: #fdfcf9; }
+  .seg span.on { background: #16283c; color: #fff; font-weight: 600; }
+  .lay { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 14px; margin-top: 12px; align-items: stretch; }
+  .rail { border-right: 1px solid #ddd6c8; padding-right: 10px; display: flex; flex-direction: column; gap: 2px; }
+  .rail .find { font: inherit; font-size: 12.5px; border: 1px solid #ddd6c8; border-radius: 6px; padding: 5px 8px; background: #fdfcf9; color: #5a6b7e; margin-bottom: 6px; }
+  .gc { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 8px; padding: 6px 8px 6px 10px; border-radius: 5px; border-left: 3px solid transparent; font-size: 12.5px; line-height: 1.25; }
+  .gc .n { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .gc .c { grid-column: 1; font-size: 11.5px; color: #5a6b7e; }
+  .gc .m { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+  .gc.on { background: #f1ece2; border-left-color: #b0662f; }
+  .gc.all { border-bottom: 1px dotted #ddd6c8; border-radius: 5px 5px 0 0; margin-bottom: 4px; padding-bottom: 8px; }
+  .gc.none .n { font-weight: 500; color: #5a6b7e; font-style: italic; }
+  table.g { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  table.g th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 5px 6px; font-weight: 700; white-space: nowrap; }
+  table.g td { padding: 6px 6px; border-bottom: 1px solid #ddd6c8; vertical-align: top; line-height: 1.3; }
+  td.job b { display: block; font-size: 12px; white-space: nowrap; }
+  td.job .a { display: block; color: #5a6b7e; margin-top: 1px; }
+  td.kind .h { display: block; color: #5a6b7e; }
+  td.unpaid .t { display: block; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12px; }
+  td.unpaid .mo { display: block; color: #5a6b7e; margin-top: 1px; }
+  td.n .row { display: block; white-space: nowrap; }
+  td.n .row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  td.n .sent { color: #1f7a3a; }
+  .q { color: #b42318; font-weight: 700; }
+  .dash { color: #8a97a6; }
+  .phone { max-width: 375px; margin-top: 10px; }
+  .phone .lay { grid-template-columns: minmax(0,1fr); }
+  .phone .rail { flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid #ddd6c8; padding: 0 0 8px; gap: 6px; }
+  .phone .gc { display: inline-flex; gap: 6px; border: 1px solid #ddd6c8; border-left-width: 1px; padding: 4px 8px; border-radius: 999px; }
+  .phone .gc .c, .phone .gc .m { font-size: 11.5px; } .phone .gc.on { border-color: #b0662f; }
+  .phone .gc.all { border-bottom: 1px solid #ddd6c8; margin: 0; padding-bottom: 4px; border-radius: 999px; }
+  .phone .find { display: none; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Legal portal · after punch list #85 · mockup</p><h1>The Lien grid reads better</h1>
+<p>The owner, 2026-10-06, on the firm's Lien grid: the address under the job name; <i>Com</i> and <i>Res</i> spelled out, with <i>Homestead</i> or <i>No homestead</i> on the line beneath; the unpaid total first and the months under it; the § 53.056 column without the missed months; and the GC picker made attractive, showing each GC's job count and dollars, as tall as it needs to be.</p></header>
+
+<h2>Before</h2>
+<div class="cap old">The grid today, 2026-10-06 (the owner's screenshot)</div>
+<div class="pane"><img src="mockup-lien-grid-reads-before.webp" alt="The Lien grid today: seven of twelve columns in the frame, a GC select, Com · — in the kind column, Jun: Sep 15 MISSED in the notice column"></div>
+
+<h2>After</h2>
+<div class="cap new">The grid with a GC rail, the same rows</div>
+<div class="pane"><div class="paper"><div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+    <div>
+      <div class="capP">Lien grid</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">Each job with money open and a lien month, from the office's records today — 19 jobs · $123,716 open</div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;font-size:12.5px"><span class="muted">Show</span> <span class="seg"><span class="on">Something due · 19</span><span>All · 46</span></span></div>
+    </div>
+    <span class="btn">⎙ Print the grid</span>
+  </div>
+  <div class="lay">
+    <div class="rail">
+      <input class="find" value="Find a GC" readonly>
+      <div class="gc all on"><span class="n">All GCs</span><span class="c">19 jobs</span><span class="m">$123,716</span></div>
+      <div class="gc"><span class="n">RMC- Dudley Mason</span><span class="c">7 jobs</span><span class="m">$41,980</span></div>
+      <div class="gc"><span class="n">Knight Contracting</span><span class="c">4 jobs</span><span class="m">$38,625</span></div>
+      <div class="gc"><span class="n">Michael Palmer</span><span class="c">2 jobs</span><span class="m">$15,722</span></div>
+      <div class="gc"><span class="n">Heron Construction Group</span><span class="c">1 job</span><span class="m">$9,221</span></div>
+      <div class="gc"><span class="n">TF Harper</span><span class="c">2 jobs</span><span class="m">$7,152</span></div>
+      <div class="gc"><span class="n">Summit General Contractors</span><span class="c">1 job</span><span class="m">$4,800</span></div>
+      <div class="gc"><span class="n">Burd &amp; Assoc.</span><span class="c">1 job</span><span class="m">$4,421</span></div>
+      <div class="gc none"><span class="n">No GC · with the owner</span><span class="c">1 job</span><span class="m">$1,795</span></div>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="g"><thead><tr><th>Job</th><th>Owner of record</th><th>Property</th><th>Last on site</th><th>Unpaid · months</th><th>§ 53.056 per month</th><th>Affidavit by</th><th>Bond</th><th>Paid out to GC</th><th>10 % reserved</th><th>Contract completed</th></tr></thead><tbody>
+      <tr><td class="job"><b>878 · Take 5- Seguin</b><span class="a">380 TX-123, Seguin, TX 78155</span></td><td>TC/JP SEGUIN 2019 LLC</td><td class="kind">Commercial</td><td>Sep 2026</td><td class="unpaid"><span class="t">$38,625</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span><span class="row">Sep: <b>Dec 15</b></span></td><td>Jan 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>891 · Take 5- Liberty Hill</b><span class="a">11730 TX-29, Liberty Hill, TX 78642</span></td><td>JBI LIBERTY HILL LLC</td><td class="kind">Commercial</td><td>Aug 2026</td><td class="unpaid"><span class="t">$27,199</span><span class="mo">Jul, Aug</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span></td><td>Dec 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>650 · ATI Schertz — As per plans</b><span class="a">5498 Cibolo Valley Dr 200, Schertz, TX 78108</span></td><td>SCHERTZ STATION LTD</td><td class="kind">Commercial</td><td>Sep 2026</td><td class="unpaid"><span class="t">$15,722</span><span class="mo">Jun, Jul, Aug, Sep</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span><span class="row">Aug: <b>Nov 16</b></span><span class="row">Sep: <b>Dec 15</b></span></td><td>Jan 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>843 · Michael Palmer- Jacob Roberts</b><span class="a">102 Jacob Roberts, Blanco, TX 78606</span></td><td>LAGAN JOEL C &amp; SHANNON</td><td class="kind">Residential<span class="h">Homestead</span></td><td>Sep 2026</td><td class="unpaid"><span class="t">$7,152</span><span class="mo">Aug, Sep</span></td><td class="n"><span class="row">Aug: <b>Oct 15</b></span><span class="row">Sep: <b>Nov 16</b></span></td><td>Dec 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>898 · Reliant Health</b><span class="a">150 E Sonterra Blvd 200B, San Antonio, TX 78258</span></td><td>EPC SPARTI LLC</td><td class="kind">Commercial</td><td>Jul 2026</td><td class="unpaid"><span class="t">$4,800</span><span class="mo">Jul</span></td><td class="n"><span class="row">Jul: <b>Oct 15</b></span></td><td>Nov 16</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>1101 · Whitfield residence — repipe</b><span class="a">7 Willow Ct, San Marcos, TX 78666</span></td><td>Sam Whitfield</td><td class="kind">Residential<span class="h">No homestead</span></td><td>Aug 2026</td><td class="unpaid"><span class="t">$1,795</span><span class="mo">Aug</span></td><td class="n">none needed (with the owner)</td><td>Nov 16</td><td>N</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+      <tr><td class="job"><b>702 · Old Mill Suites</b><span class="a">4 Mill Run, Kyle, TX 78640</span></td><td>OLD MILL HOLDINGS LP</td><td class="kind">Commercial</td><td>Jun 2026</td><td class="unpaid"><span class="t">$9,221</span><span class="mo">May, Jun</span></td><td class="n"><span class="dash" title="Every month's § 53.056 window has closed">—</span></td><td>Oct 15</td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td><td><span class="q">?</span></td></tr>
+    </tbody></table>
+    </div>
+  </div>
+  <p class="muted" style="font-size:11.5px;margin:8px 0 0">Deadlines are per job and per work month (§ 53.056, § 53.052), weekends rolled; a property of unknown kind shows commercial dates and a residential one is a month earlier. A month whose § 53.056 window has closed is left off; <span class="dash">—</span> is a job with no window still open. A <b class="q">?</b> is a fact the office has not entered — payment bond, paid out to the GC, the 10 % reserved, the owner's contract completion.</p>
+</div></div></div>
+
+<div class="cap new" style="margin-top:14px">On a phone (375 px): the rail becomes a row of chips</div>
+<div class="pane"><div class="paper phone"><div class="card">
+  <div class="capP">Lien grid</div>
+  <div class="lay"><div class="rail">
+    <div class="gc all on"><span class="n">All GCs</span><span class="m">$123,716</span></div>
+    <div class="gc"><span class="n">RMC- Dudley Mason</span><span class="m">$41,980</span></div>
+    <div class="gc"><span class="n">Knight Contracting</span><span class="m">$38,625</span></div>
+    <div class="gc"><span class="n">Michael Palmer</span><span class="m">$15,722</span></div>
+  </div><div class="muted" style="font-size:12px">… the table scrolls sideways inside the card, as today (item 8).</div></div>
+</div></div></div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>The address under the job, not a column.</b> The job cell is the row's name; the address is where it is. One cell, two lines, and the table loses its widest column. The print keeps the memo's twelve columns, which counsel asked for by name.</li>
+  <li><b>Property in words.</b> <i>Commercial</i>; <i>Residential</i> with <i>Homestead</i> or <i>No homestead</i> beneath. Homestead only matters on a residential property, so a commercial row carries one word. A kind the office has not entered reads <i>Commercial</i> followed by the red <b class="q">?</b>, since commercial dates are what the grid shows for it.</li>
+  <li><b>The total first.</b> Counsel reads the dollars before the months. The months wrap under it, as many lines as they need.</li>
+  <li><b>Missed months left off, not struck through.</b> A closed window is nothing counsel can act on. The row still shows the month as unpaid, so nothing is hidden about the money; only the dead deadline goes. A job with every window closed shows a dash with its reason on hover, never a red <b class="q">?</b>, which means a fact the office has not entered.</li>
+  <li><b>A rail, not a select.</b> Every GC is in view with its count and its dollars, largest first, so the firm sees where the money is before it clicks. <i>All GCs</i> leads; a job with no GC (contracted with the owner) gets its own row at the end, which the select never offered. The rail's numbers follow the <i>Something due / All</i> switch, so they always foot with the grid beside them. It stretches to the grid's height, and past about ten GCs a find box filters the names.</li>
+  <li><b>Not done: sorting the grid by the rail's order, or a per-GC print button.</b> The grid keeps the book's order (next date, then balance), and <i>Print the grid</i> prints what is in view, so a per-GC print is one click on the rail then the button.</li>
+</ul>
+</div></body></html>

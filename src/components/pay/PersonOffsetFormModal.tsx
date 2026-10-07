@@ -43,7 +43,7 @@ function defaultOccurredDateYmd(): string {
 export function PersonOffsetFormModal({
   open,
   onClose,
-  zIndex = 10,
+  zIndex = 710,
   editingOffset,
   initialCreateDraft = null,
   personNameOptions,
@@ -170,6 +170,7 @@ export function PersonOffsetFormModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose()

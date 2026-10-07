@@ -274,19 +274,21 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
                 <span style={{ flex: 1, padding: '0.5rem 0', fontSize: '0.875rem', color: 'var(--text-700)' }}>{(bid as { submitted_to?: string | null }).submitted_to || '—'}</span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Edit bid to change</span>
               </div>
+              {/* v2.4453: the label-and-field rows wrap, and their labels may break, so on a phone the
+                  field drops below its label. Held on one line, the date row pushed the page 105 px sideways. */}
               <div>
                 <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Company Information: Click Plumbing and Electrical</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem' }}>Project Lead Contact</label>
                   <input type="text" value={form.contactPerson} onChange={(e) => updateChangeOrderForm({ contactPerson: e.target.value })} placeholder="e.g. yourname@clickplumbing.com" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Project Lead Contact Phone/Email</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem' }}>Project Lead Contact Phone/Email</label>
                   <input type="text" value={form.phoneEmail} onChange={(e) => updateChangeOrderForm({ phoneEmail: e.target.value })} placeholder="e.g. 512 360 0599" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.875rem', whiteSpace: 'nowrap' }}>Response request date (1 week by default)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.875rem' }}>Response request date (1 week by default)</label>
                 <input type="date" value={form.responseRequestDate} onChange={(e) => updateChangeOrderForm({ responseRequestDate: e.target.value })} style={{ flex: 1, maxWidth: 180, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }} />
               </div>
               <div>
@@ -391,11 +393,11 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
             aria-modal="true"
             aria-labelledby="co-bridge-sheet-title"
             onClick={close}
-            style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', boxSizing: 'border-box' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, width: 'min(560px, 100%)', maxHeight: '92vh', overflow: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}
+              style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, width: 'min(560px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', padding: '1.25rem 1.5rem', boxSizing: 'border-box', boxShadow: '0 10px 40px rgba(0,0,0,0.25)' }}
             >
               <h3 id="co-bridge-sheet-title" style={{ margin: '0 0 0.35rem', fontSize: '1.0625rem' }}>Create a change order draft in Estimates?</h3>
               <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>

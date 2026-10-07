@@ -78,7 +78,9 @@ New `jobs_board_section_stats(p_customer_filter uuid default null)`:
   list settles rather than reading "couldn't start" as failure).
 - `statusScope` in the fetch fn grows from `'all' | 'non_paid' | 'paid'` to per-status scopes
   (`waiting`, `working`, `ready_to_bill`, `billed_all` (billed incl. collections), `paid`) —
-  additive; existing values keep working during the train.
+  additive; existing values keep working during the train. A bill rides its job's scope, so since
+  v2.4761 opening Billed, Collections or Ready to Bill asks for every non-paid scope
+  (`scopesForStagesSection`), as the money modals always did with `NON_PAID_SCOPES`.
 - **Refresh scoping**: the debounced refetch re-fetches only currently-merged scopes; the stats
   RPC re-runs on every refresh (cheap) so collapsed headers stay live.
 - **Cross-scope moves**: a status move (e.g. RTB → Billed with Billed un-fetched) patches the

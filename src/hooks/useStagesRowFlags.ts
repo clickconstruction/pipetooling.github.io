@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildJobContractCoverage,
+  JOB_CONTRACT_COVERAGE_COLUMNS,
   type JobContractCoverage,
   type JobContractRowLike,
   type JobForCoverage,
@@ -61,7 +62,7 @@ export function useJobContractCoverage(
       const [contractsRes, estimatesRes] = await Promise.all([
         supabase
           .from('job_contracts')
-          .select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url')
+          .select(JOB_CONTRACT_COVERAGE_COLUMNS)
           .is('voided_at', null),
         supabase
           .from('estimates')
@@ -119,8 +120,9 @@ export function useHazmatAndReleaseJobIds(canCreateHazmatFee: boolean): {
   const loadLienReleaseJobIds = useCallback(async () => {
     if (!canCreateHazmatFee) return
     try {
-      const { data } = await supabase.from('job_lien_releases').select('job_id').is('voided_at', null)
-      setLienReleaseJobIds(jobIdSet(data))
+      // Issued means issued: a draft still being written does not box the icon (its tooltip says "issued").
+      const { data } = await supabase.from('job_lien_releases').select('job_id, status').is('voided_at', null)
+      setLienReleaseJobIds(jobIdSet((data ?? []).filter((r) => (r.status ?? '').trim() !== 'draft')))
     } catch {
       // glanceable extra — never block the tab
     }

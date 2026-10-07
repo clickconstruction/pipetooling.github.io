@@ -18,6 +18,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { buildBankReturnNoticeEmail, buildBankReturnNoticePush, noticeInputFromCase, type ArReturnCaseRow } from './bankReturnedDeposits.ts'
 import type { sendEmailViaResend } from './resendSendEmail.ts'
+import { REAL_ACCOUNT } from './realAccount.ts'
 
 /** The caller's `sendEmailViaResend`. */
 export type SendEmail = typeof sendEmailViaResend
@@ -48,7 +49,7 @@ export async function loadBankReturnRecipients(admin: Admin): Promise<NoticeReci
   } catch {
     ids = []
   }
-  let q = admin.from('users').select('id, email, name, role').eq('is_sample', false).is('archived_at', null)
+  let q = admin.from('users').select('id, email, name, role').match(REAL_ACCOUNT).is('archived_at', null)
   q = ids.length > 0 ? q.in('id', ids) : q.in('role', OFFICE_ROLES)
   const { data, error } = await q
   if (error) throw error

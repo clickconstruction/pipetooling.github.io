@@ -62,6 +62,18 @@ export type TakeoffCandidate = {
   ticked: boolean
   /** Already a row on the revision being built onto. */
   alreadyOn: boolean
+  /** 2026-10-02 · how it sits on the draft now: a row the GC sees, an order-only row, or not on it (null / absent). */
+  onAs?: 'gc' | 'order' | null
+  /** 2026-10-02 · the bid remembers the fixture as order only: it comes on as a row the GC never sees. */
+  storedOrderOnly?: boolean
+  /** 2026-10-03 · not on the draft because the GC approved it on an earlier revision, where its row stands (`rowsThatStand`). `whole` is false when only some of its parts were approved. */
+  standsOn?: { rev: number; whole: boolean } | null
+  /** 2026-10-02 · the lines left off the fixture: not in `pieces`, so no row, refresh or count reads them; kept here to bring one back. */
+  leftOutPieces?: ProductPiece[]
+  /** Every line under the fixture in takeoff order, the left-off ones included; absent = `pieces`. */
+  allPieces?: ProductPiece[]
+  /** 2026-10-02 · on the draft: the row's takeoff parts by their takeoff key and whether the GC sees each; null when the row has none or the house's file set them. */
+  onParts?: ReadonlyArray<{ key: string; onSubmittal: boolean }> | null
   /** The name spells out more than one tag (WC 1&2 → WC-1, WC-2), so the row may split (v2.4118). */
   canSplit: boolean
   /** The estimator's stored split, when there is one. */
@@ -87,6 +99,10 @@ export type TakeoffCandidatesInput = {
   productKeys?: ReadonlyMap<string, ReadonlyArray<string>> | null
   /** Count rows already on the revision (their `source_count_row_id`). */
   alreadyOn?: ReadonlySet<string> | null
+  /** The estimator's stored order-only picks by count row id (2026-10-02). */
+  orderOnly?: ReadonlyMap<string, boolean> | null
+  /** The takeoff lines left off each fixture, by count row id (2026-10-02). */
+  leftOut?: ReadonlyMap<string, ReadonlyArray<string>> | null
 }
 
 const PIPE_NAME = /\bft\s+of\b|\bpipe\b|\btubing\b|\bconduit\b/i
@@ -280,7 +296,11 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
   for (const row of input.countRows) {
     const fixture = (row.fixture ?? '').trim()
     if (!fixture) continue
-    const pieces = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses, input.assemblies ?? new Map())
+    const everyPiece = productPiecesOf(row.id, byRow.get(row.id) ?? [], input.parts, input.templates, input.houses, input.assemblies ?? new Map())
+    // A line the estimator left off the fixture is not one of its pieces: nothing downstream submits, orders or refreshes it.
+    const offKeys = new Set(input.leftOut?.get(row.id) ?? [])
+    const pieces = offKeys.size > 0 ? everyPiece.filter((p) => !offKeys.has(p.key)) : everyPiece
+    const leftOutPieces = offKeys.size > 0 ? everyPiece.filter((p) => offKeys.has(p.key)) : []
     const defaults = defaultProductKeys(pieces)
     // A stored choice holds while any of its pieces is still on the takeoff; otherwise the rule decides again.
     // A key that named a whole assembly line (stored before assemblies opened) stands for that assembly's default parts.
@@ -315,6 +335,8 @@ export function takeoffCandidates(input: TakeoffCandidatesInput): TakeoffCandida
       storedTick,
       ticked: storedTick ?? defaultTicked,
       alreadyOn: input.alreadyOn?.has(row.id) ?? false,
+      storedOrderOnly: input.orderOnly?.get(row.id) ?? false,
+      ...(leftOutPieces.length > 0 ? { leftOutPieces, allPieces: everyPiece } : {}),
       canSplit,
       storedSplit,
       split: canSplit && (storedSplit ?? false),

@@ -63,6 +63,21 @@ Landing page for every role: pinned pages, role-relevant cards (recent reports, 
 Wednesday GC-certification nudge, tasks). Start here to orient; do work elsewhere.
 Roles: all.
 
+### /gc — GC projects (dev only)
+GC mode's real build, step by step. Lists every GC project as the kernels read it (the plan
+sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
+the four-step window (project → plans → trades → each scope) that writes through
+`gc_create_project`. Who to ask (the companies) is not here yet. **Open the scope book** (`?book=1`)
+is every scope line we keep by trade: edit, add, fold duplicates, save a project's scope as a set.
+**A new set of plans came in** (`?set=<project id>`) puts an addendum, a bulletin or a whole new set on the
+project through `gc_issue_plan_set`. **The plans** (`?plans=<project id>`) is the plans window: the sheets and
+the manual as they stood at each set, what each set changed and took out, and the scope that reads from a sheet.
+**Questions about the plans** (`?questions=<project id>`) records a company's question, emails it to the architect
+(`gc-plan-question-email`) and records the answer; the next set carries it.
+Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=issue-a-new-set-of-plans`,
+`/help?g=read-the-plans-of-a-gc-project`, `/help?g=ask-the-architect-about-the-plans`.
+Roles: dev only.
+
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick
 a bid (search or click a row's tool icons) and the tab works on that bid. `&bidId=<uuid>`
@@ -182,7 +197,7 @@ Week grid scheduling crews/subs onto jobs (and bid-anchored blocks). Drag to ass
 Roles: dev, master, assistant, controller, superintendent (limited).
 
 ### /people — People
-Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Person desk (`?tab=person&id=`), clock cards, hours approval (People→Hours grid).
+Roster with Contact / Account / Pay lenses (`?tab=users&lens=`), + Hire, the Person desk (`?tab=person&id=`), who is spending what on the company cards (`?tab=spending`, office roles; help: `see-who-is-spending-what-on-the-company-cards`), clock cards, hours approval (People→Hours grid).
 Roles: dev, master, assistant (no wages), controller (wages too), estimator (limited).
 
 ### /customers — Customers · /customers/:id — Customer Hub
@@ -198,8 +213,9 @@ Homeowner-style quotes (separate from bids): line items, send for acceptance, �
 Roles: dev, master, assistant, controller, estimator, primary; super limited.
 
 ### /tally — Tally
-Company transaction tally: payroll marks, categorization, follow-up.
-Roles: all (feature access varies; payroll actions gated).
+Company card charges sorted to jobs: the office's Team queue (one card per person per day,
+the likely job first), each holder's own card, payroll marks, follow-up.
+Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 
 ### /banking — Banking
 Mercury bank ledger: user/drag sort, accounting labels, card + category review,

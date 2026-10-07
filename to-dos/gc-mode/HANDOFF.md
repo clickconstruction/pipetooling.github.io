@@ -306,6 +306,8 @@ uploads work through the "PipeTooling Jobs" Shared Drive since 2026-08-29
   One word for each thing (*orden de cambio*, *documento para aprobación*, *cronograma*, usted
   throughout) is pinned by `gcSpanishVoice.test.ts`; change a word there, never around it.
 - **Kernels moved to main live in `src/lib/gc/`.** Edit them there, never a copy in `gcMode/`.
+- **The spike's New project windows carry `.proto` in their names** (`GcNewProject.proto.tsx`,
+  `GcNewPlans.proto.tsx`, `GcNewProjectDriveLink.proto.tsx`) because main owns the real paths.
 - **The quote's due day** (`quotesWantedOn`) is the day questions close (`questionsCloseOn`), and
   the portal's `portalQuoteDue` follows it.
 - **Walkthroughs anchor to words and `data-tour` names**: New project's "+ New project", its five

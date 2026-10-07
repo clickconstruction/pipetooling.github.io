@@ -545,8 +545,8 @@ export function FormStudioEditor({
 
 function Modal({ title, onClose, wide, children }: { title: string; onClose: () => void; wide?: boolean; children: React.ReactNode }) {
   return (
-    <div role="dialog" aria-modal="true" aria-label={title} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '1rem 1.1rem', width: wide ? 'min(96vw, 1000px)' : 'min(92vw, 560px)', maxHeight: '92vh', overflow: 'auto' }}>
+    <div role="dialog" aria-modal="true" aria-label={title} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '1rem 1.1rem', width: wide ? 'min(96vw, 1000px)' : 'min(92vw, 560px)', maxHeight: 'min(92vh, 100%)', overflow: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
           <h4 style={{ margin: 0, fontSize: '1rem' }}>{title}</h4>
           <button type="button" onClick={onClose} aria-label="Close" style={btn}>

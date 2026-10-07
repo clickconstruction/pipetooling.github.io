@@ -21,7 +21,7 @@
  */
 import type { ProgressPaymentSegment, ProgressPaymentView } from './progressPaymentCell'
 import { formatUsdNoCents } from './jobFormatting'
-import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 
 export type MoneyBarTone = 'paid' | 'billed' | 'unbilled'
 
@@ -145,7 +145,7 @@ function dateOf(view: ProgressPaymentView, pctComplete: number | null): MoneyBar
   if (!p || !p.at) return null
   // A finished job's date says nothing the bill dates don't, unless the crew has worked since (v2.4353).
   if (p.pct >= 100 && !view.stale) return null
-  const day = formatWorkDateYmdMonthDayShort(p.at.slice(0, 10))
+  const day = formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(p.at))
   const source = p.source === 'report' ? 'reported' : p.source === 'seed' ? 'set' : 'typed'
   const staleWords = view.stale ? ' The crew has worked since, so the % may be behind.' : ''
   if (pctComplete == null) {

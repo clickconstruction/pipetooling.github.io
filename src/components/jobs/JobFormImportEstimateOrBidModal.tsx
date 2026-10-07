@@ -112,7 +112,7 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="presentation"
@@ -127,7 +127,7 @@ export function JobFormImportEstimateOrBidModal({ open, onClose, zIndex, onSelec
           padding: '1.25rem',
           maxWidth: 480,
           width: '100%',
-          maxHeight: 'min(80vh, 520px)',
+          maxHeight: 'min(80vh, 520px, 100%)',
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem',

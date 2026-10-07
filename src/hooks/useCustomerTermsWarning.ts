@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
-import { customerTermsWarning, parseCustomerTerms, type CustomerTermsRow, type TermsWarning } from '../lib/customerPaymentTerms'
+import { customerTermsWarning, parseCustomerTerms, type CustomerTermsRow, type TermsWarning, type UncollectibleHistory } from '../lib/customerPaymentTerms'
 import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../lib/jobs/paymentPromises'
 
 /**
@@ -17,16 +17,17 @@ export function useCustomerTermsWarning(customerId: string | null | undefined, r
   terms: CustomerTermsRow | null
   record: CustomerPromiseRecord | null
 } {
-  const [state, setState] = useState<{ id: string | null; terms: CustomerTermsRow | null; record: CustomerPromiseRecord | null }>({ id: null, terms: null, record: null })
+  const [state, setState] = useState<{ id: string | null; terms: CustomerTermsRow | null; record: CustomerPromiseRecord | null; uncollectible: UncollectibleHistory | null }>({ id: null, terms: null, record: null, uncollectible: null })
   useEffect(() => {
     let cancelled = false
     if (!customerId) {
-      setState({ id: null, terms: null, record: null })
+      setState({ id: null, terms: null, record: null, uncollectible: null })
       return
     }
     void (async () => {
       let terms: CustomerTermsRow | null = null
       let record: CustomerPromiseRecord | null = null
+      let uncollectible: UncollectibleHistory | null = null
       try {
         const { data } = await supabase
           .from('customers')
@@ -51,12 +52,28 @@ export function useCustomerTermsWarning(customerId: string | null | undefined, r
       } catch {
         // not an office role, or RPC not pushed — no record
       }
-      if (!cancelled) setState({ id: customerId, terms, record })
+      try {
+        // Punch list #94 (v2.4795): bills the office gave up on — the nudge toward Deposit required on the next job.
+        const { data } = await supabase
+          .from('jobs_ledger')
+          .select('revenue, payments_made' as never)
+          .eq('customer_id', customerId)
+          .eq('status', 'billed')
+          .not('collections_at', 'is', null)
+          .not('uncollectible_at', 'is', null)
+        const rows = (data ?? []) as unknown as Array<{ revenue: number | null; payments_made: number | null }>
+        if (rows.length > 0) {
+          uncollectible = { count: rows.length, total: rows.reduce((s, r) => s + Math.max(0, Number(r.revenue ?? 0) - Number(r.payments_made ?? 0)), 0) }
+        }
+      } catch {
+        // column not there yet (deploy window) — no nudge
+      }
+      if (!cancelled) setState({ id: customerId, terms, record, uncollectible })
     })()
     return () => {
       cancelled = true
     }
   }, [customerId, refreshKey])
-  const current = state.id === customerId ? state : { terms: null, record: null }
-  return { warning: customerTermsWarning(current.terms, current.record), terms: current.terms, record: current.record }
+  const current = state.id === customerId ? state : { terms: null, record: null, uncollectible: null }
+  return { warning: customerTermsWarning(current.terms, current.record, current.uncollectible), terms: current.terms, record: current.record }
 }

@@ -3,16 +3,25 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
-import { buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
+import { legalPortalAddress } from '../_shared/legalPortalAddress.ts'
+import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalNowTriggerOf, legalPageHtml, legalTriggerSendsNow, legalWrapHtml } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
+import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 
 /**
  * The firm's emails (Legal portal train, PR 5). Two doors:
  *
  *   POST (pg_cron every 5 minutes, X-Cron-Secret) —
+ *     Events (#85 item 17): referred · answer (with the firm's question) · pulled (with the reason) · ask ·
+ *     note · applied — each emailed right away and carried by the digest — and fee_seen, digest only.
  *     1. drains legal_notification_queue rows not yet sent: every confirmed, unpaused
  *        recipient at the firm with mode 'now' (and, for scope 'mine', named as the
- *        matter's handling person) gets one email per event; stamps sent_now_at.
+ *        matter's handling person) gets one email per event. v2.4662: each person is
+ *        stamped in the event's `sent_to` only when their send went through; a failed
+ *        send is tried again next tick, twelve tries at most (`_shared/legalNotifyLedger.ts`),
+ *        and the person carries send_failed_since / send_error until one goes through.
+ *        sent_now_at is stamped once every person is sent, given up or skipped.
  *     2. digests: each confirmed, unpaused recipient with mode 'digest' whose weekday and
  *        Central time have arrived and who has not had today's digest gets ONE email —
  *        every open matter for the firm plus the events since their last digest;
@@ -33,7 +42,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
-const WITH_FIRM = ['referred', 'demand', 'suit', 'judgment']
 
 type Row = Record<string, unknown>
 
@@ -60,26 +68,41 @@ function ymdInAppTz(iso: string | null | undefined): string | null {
   return todayYmdInAppTz(new Date(iso))
 }
 
-type Recipient = { id: string; firm_id: string; name: string; email: string; mode: string; scope: string; digest_weekday: number; digest_time: string; confirmed_at: string | null; paused_at: string | null; last_digest_at: string | null; unsubscribe_token_hash: string | null }
+type Recipient = { id: string; firm_id: string; name: string; email: string; mode: string; scope: string; digest_weekday: number; digest_time: string; confirmed_at: string | null; paused_at: string | null; last_digest_at: string | null; unsubscribe_token_hash: string | null; unsubscribe_salt?: string | null; send_failed_since?: string | null }
 
 async function unsubscribeLink(admin: SupabaseClient, r: Recipient): Promise<string> {
-  // The unsubscribe token is minted once per recipient, hashed at rest; the raw value lives only in the emails.
+  // v2.4662: minted once — an HMAC of the person's id and salt under the service key, so every email
+  // carries the same token and an older email's stop link keeps working. Only its hash is stored;
+  // the row is written when the hash is missing or stale (a new salt, a rotated key), never per email.
   // v2.3521: the link lands on the app's page (the platform relays this function's HTML as text/plain).
   const base = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm`
-  const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
-  if (!r.unsubscribe_token_hash) {
-    await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: await sha256Hex(raw), updated_at: new Date().toISOString() }).eq('id', r.id)
-    r.unsubscribe_token_hash = await sha256Hex(raw)
-    return `${base}?t=${raw}&stop=1`
+  // The key: LEGAL_UNSUBSCRIBE_SECRET, else the service key (a rotated service key would otherwise break every
+  // stop link already sent). Both empty: fail closed, no link, and say so in the log.
+  const secret = legalUnsubscribeSecret(Deno.env.get('LEGAL_UNSUBSCRIBE_SECRET'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))
+  if (!secret) {
+    console.error('legal-notify-dispatch: no LEGAL_UNSUBSCRIBE_SECRET and no service key; the email goes without a stop link')
+    return ''
   }
-  // An existing hash cannot be reversed; rotate it so this email's link works (older emails' links stop — acceptable).
-  await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: await sha256Hex(raw), updated_at: new Date().toISOString() }).eq('id', r.id)
-  return `${base}?t=${raw}&stop=1`
+  const { token, hash } = await legalUnsubscribeToken(secret, r.id, r.unsubscribe_salt)
+  if (r.unsubscribe_token_hash !== hash) {
+    await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: hash, updated_at: new Date().toISOString() }).eq('id', r.id)
+    r.unsubscribe_token_hash = hash
+  }
+  return `${base}?t=${token}&stop=1`
 }
 
+/** A person's standing after a send: cleared by a success, "failing since" kept from the first failure. */
+async function noteSend(admin: SupabaseClient, r: Recipient, result: { success: boolean; error?: string }): Promise<void> {
+  const patch = legalRecipientSendPatch(r.send_failed_since ?? null, result, new Date().toISOString())
+  if ((r.send_failed_since ?? null) === patch.send_failed_since && !patch.send_error) return
+  r.send_failed_since = patch.send_failed_since
+  await admin.from('legal_firm_recipients').update(patch).eq('id', r.id)
+}
+
+// The firm's own link, as the office's list shows it (v2.4750: my.clickplumbing.com/<firm>-<tail> for a slug key).
 function portalLink(token: string | null): string {
   const origin = Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'
-  return token ? `${origin}/legal?t=${token}` : origin
+  return token ? legalPortalAddress(origin, token) : origin
 }
 
 function wrap(bodyHtml: string, unsub: string): string {
@@ -112,7 +135,8 @@ serve(async (req) => {
       const hash = await sha256Hex(confirm)
       const { data } = await admin.from('legal_firm_recipients').select('id, name, email, confirmed_at').eq('confirm_token_hash', hash).is('removed_at', null).maybeSingle()
       const r = data as { id: string; name: string; email: string; confirmed_at: string | null } | null
-      if (!r) return json({ kind: 'expired', reason: 'Ask someone at the firm to add you again from the portal.' }, 404)
+      // v2.4624: point at the button that exists (Resend the confirmation), not at adding them again.
+      if (!r) return json({ kind: 'expired', reason: LEGAL_CONFIRM_EXPIRED_REASON }, 404)
       if (!r.confirmed_at) await admin.from('legal_firm_recipients').update({ confirmed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
       return json({ kind: 'confirmed', name: r.name, email: r.email })
     }
@@ -130,11 +154,12 @@ serve(async (req) => {
   // --- POST: the cron tick -----------------------------------------------------
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   const secret = Deno.env.get('CRON_SECRET')
-  if (!secret || req.headers.get('x-cron-secret') !== secret) return json({ error: 'Unauthorized' }, 401)
+  // v2.4662: compared in constant time.
+  if (!secret || !constantTimeEqual(req.headers.get('x-cron-secret') ?? '', secret)) return json({ error: 'Unauthorized' }, 401)
   const resendKey = Deno.env.get('RESEND_API_KEY')
   if (!resendKey) return json({ error: 'RESEND_API_KEY missing' }, 500)
 
-  const result = { now: 0, digests: 0, skipped: 0, errors: [] as string[] }
+  const result = { now: 0, digests: 0, skipped: 0, retrying: 0, gaveUp: 0, errors: [] as string[] }
   try {
     const { data: firmRows } = await admin.from('legal_firms').select('id, name, paused_at').eq('active', true)
     const firms = (firmRows ?? []) as Array<{ id: string; name: string; paused_at: string | null }>
@@ -157,36 +182,66 @@ serve(async (req) => {
         continue
       }
       if (digestRecipients.length === 0) await admin.from('legal_notification_queue').update({ digested_at: stamp }).eq('firm_id', firm.id).is('digested_at', null)
-      const { data: linkRow } = await admin.from('legal_portal_links').select('token').eq('firm_id', firm.id).is('revoked_at', null).maybeSingle()
-      const portal = portalLink(((linkRow as Row | null)?.token as string | null) ?? null)
-      const { data: matterRows } = await admin.from('legal_matters').select('id, payer_name, stage, handling_name, released_at').eq('firm_id', firm.id).in('stage', WITH_FIRM)
+      // Item 22 (#85): the live link's raw token sits in Vault once the table is hash-only; the service-role RPC
+      // reads it. Before that migration the RPC does not exist and the raw column still answers.
+      const { data: vaultToken, error: vaultErr } = await admin.rpc('legal_portal_link_token', { p_firm_id: firm.id })
+      let liveToken = !vaultErr && typeof vaultToken === 'string' && vaultToken ? vaultToken : null
+      if (!liveToken) {
+        const { data: linkRow } = await admin.from('legal_portal_links').select('token').eq('firm_id', firm.id).is('revoked_at', null).maybeSingle()
+        liveToken = ((linkRow as Row | null)?.token as string | null) ?? null
+      }
+      const portal = portalLink(liveToken)
+      const { data: matterRows } = await admin.from('legal_matters').select('id, payer_name, stage, handling_name, released_at').eq('firm_id', firm.id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null)
       const matters = (matterRows ?? []) as Array<{ id: string; payer_name: string; stage: string; handling_name: string; released_at: string | null }>
       const matterById = new Map(matters.map((m) => [m.id, m] as const))
       const canSee = (r: Recipient, matterId: string | null) => r.scope === 'all' || !matterId || (matterById.get(matterId)?.handling_name ?? '').trim().toLowerCase() === r.name.trim().toLowerCase()
 
       // 1. "Now" recipients drain the queue.
       const { data: openRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('sent_now_at', null).order('created_at').limit(50)
-      for (const ev of (openRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row }>) {
-        const targets = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id))
-        for (const r of targets) {
+      for (const ev of (openRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; sent_to?: unknown }>) {
+        // v2.4662: the per-person ledger. Before the migration's column exists (`sent_to` absent) the
+        // event is stamped after one pass, as before, so a deploy ahead of the push never re-sends.
+        const hasLedger = ev.sent_to !== undefined
+        // #85 item 17: every office event; an unknown trigger is skipped, never mislabeled; a fee the office saw rides the digest only.
+        const trigger = legalNowTriggerOf(ev.trigger)
+        // An explicit list (item 17 review): an unknown trigger is logged and stamped with nobody to send to, never sent as another kind.
+        if (!trigger) console.warn(`legal-notify-dispatch: unknown trigger ${JSON.stringify(ev.trigger)} on ${ev.id}; skipped`)
+        const targetIds = trigger && legalTriggerSendsNow(trigger) ? recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id)).map((r) => r.id) : []
+        const plan = legalNotifyDue(hasLedger ? parseSentTo(ev.sent_to) : {}, targetIds)
+        let sentTo = plan.sentTo
+        for (const r of recipients.filter((x) => plan.due.includes(x.id))) {
           const unsub = await unsubscribeLink(admin, r)
+          // Sent copies (docs/SENT_COPIES.md): what the firm is sent, a notice or a digest, is kept. No sender: the queue sends itself.
           // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
           const mail = buildLegalNowEmail({
             companyName: PORTAL_COMPANY.name,
             firmName: firm.name,
-            trigger: (ev.trigger === 'referred' || ev.trigger === 'answer' ? ev.trigger : 'pulled') as LegalNowTrigger,
+            trigger: trigger ?? 'note',
             payer: String(ev.payload.payer ?? 'an account'),
             handling: ev.payload.handling ? String(ev.payload.handling) : null,
             note: ev.payload.note ? String(ev.payload.note) : null,
             body: ev.payload.body ? String(ev.payload.body) : null,
+            question: ev.payload.question ? String(ev.payload.question) : null,
+            flavor: ev.payload.flavor ? String(ev.payload.flavor) : null,
+            jobLabel: ev.payload.jobLabel ? String(ev.payload.jobLabel) : null,
+            amount: ev.payload.amount != null && Number.isFinite(Number(ev.payload.amount)) ? Number(ev.payload.amount) : null,
+            reason: ev.payload.reason ? String(ev.payload.reason) : null,
             portalUrl: portal,
             unsubscribeUrl: unsub,
           })
-          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM })
-          if (!res.success) result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
-          else result.now++
+          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM, file: { kind: 'legal_notice', recipientName: `${r.name} · ${firm.name}` } })
+          sentTo = legalNotifyRecord(sentTo, r.id, res, new Date().toISOString())
+          await noteSend(admin, r, res)
+          if (!res.success) {
+            result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
+            if (sentTo[r.id]?.gaveUp) result.gaveUp++
+            else result.retrying++
+          } else result.now++
         }
-        await admin.from('legal_notification_queue').update({ sent_now_at: new Date().toISOString() }).eq('id', ev.id)
+        // The ledger and the stamp are separate writes. A ledger that cannot be kept falls back to the old
+        // rule (stamp after one pass): better one missed retry than re-sending to everyone each tick.
+        const kept = hasLedger ? !(await admin.from('legal_notification_queue').update({ sent_to: sentTo }).eq('id', ev.id)).error : false
+        if (!kept || legalNotifyDone(sentTo)) await admin.from('legal_notification_queue').update({ sent_now_at: new Date().toISOString() }).eq('id', ev.id)
       }
 
       // 2. Digests on each recipient's weekday, once the time has arrived, once per day.
@@ -196,7 +251,7 @@ serve(async (req) => {
         if (r.digest_weekday !== weekday || hhmm < r.digest_time) continue
         if (ymdInAppTz(r.last_digest_at) === today) continue
         const { data: sinceRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('digested_at', null).order('created_at').limit(200)
-        const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id))
+        const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id) && legalNowTriggerOf(e.trigger) != null)
         const mine = matters.filter((m) => canSee(r, m.id))
         const unsub = await unsubscribeLink(admin, r)
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
@@ -204,11 +259,12 @@ serve(async (req) => {
           companyName: PORTAL_COMPANY.name,
           recipientName: r.name,
           matters: mine.map((m) => ({ payerName: m.payer_name, stage: m.stage, handlingName: m.handling_name, releasedAt: m.released_at })),
-          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: (e.trigger === 'referred' || e.trigger === 'answer' ? e.trigger : 'pulled') as LegalNowTrigger, payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null })),
+          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: legalNowTriggerOf(e.trigger) ?? 'note', payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null, reason: e.payload.reason ? String(e.payload.reason) : null, amount: e.payload.amount != null && Number.isFinite(Number(e.payload.amount)) ? Number(e.payload.amount) : null })),
           portalUrl: portal,
           unsubscribeUrl: unsub,
         })
-        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM })
+        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey, { from: COMPANY_EMAIL_FROM, file: { kind: 'legal_digest', recipientName: `${r.name} · ${firm.name}` } })
+        await noteSend(admin, r, res)
         if (!res.success) {
           result.errors.push(`${r.email}: ${res.error ?? 'digest failed'}`)
           continue

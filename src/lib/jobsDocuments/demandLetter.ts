@@ -6,8 +6,9 @@ import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import type { StripeInvoiceLineDetail } from '../stripeInvoiceDetailsResponse'
 import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabase/functions/_shared/billToParty'
-import { enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
+import { enclosureEntries, enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
 import { loadJsPDF } from '../loadJsPDF'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * Final demand letter (v2.2640, Lien Instruments phase 2): the lientooling.com
@@ -63,7 +64,7 @@ export type DemandLetterFields = {
   statement?: DemandStatementInvoice[]
   /** The job address the work went into (v2.3425). */
   serviceAddress?: string
-  /** What goes out behind the letter (v2.3429): the invoice as Exhibit A, the agreement as B, the delivery record as C. */
+  /** What goes out behind the letter (v2.3429): each invoice, the signed agreement, the delivery record — labelled by `exhibitLabels`. */
   enclosures?: DemandExhibit[]
   /** YYYY-MM-DD — 30 days after the letter: when attorney's fees become recoverable under CPRC § 38.002 (v2.3433). */
   feeClockYmd?: string
@@ -199,13 +200,20 @@ export function lienFilingDeadlineForMonth(furnishYmd: string, propertyKind: str
 
 export type DemandLetterBlock =
   | { kind: 'senderBlock'; company: string; licenseLine: string; contactLines: string[] }
-  | { kind: 'meta'; text: string }
-  | { kind: 'reLine'; text: string }
+  /** Who it goes to, as an envelope reads it, with the letter's date beside it. */
+  | { kind: 'addressBlock'; recipient: string[]; date: string }
+  /** The label over the subject, the subject, the line under it, and the one-line "Re:" the plain-text letter carries. */
+  | { kind: 'subject'; kicker: string; text: string; detail: string; re: string }
+  /** How much and by when — the two facts the reader must not have to look for. */
+  | { kind: 'amountBox'; balance: string; deadline: string }
   | { kind: 'paragraph'; text: string }
-  | { kind: 'heading'; text: string }
-  | { kind: 'listItem'; text: string }
+  /** `keepMm`: start a new page unless this much room is left, so a section is not split across the fold. */
+  | { kind: 'heading'; text: string; keepMm?: number }
+  /** `n` numbers the item (the remedies); `lead` is a first column (a notice's date) and the item draws no bullet; with neither it is a bullet. */
+  | { kind: 'listItem'; text: string; n?: number; lead?: string }
   | { kind: 'signature'; lines: string[] }
   | { kind: 'statement'; invoices: DemandStatementInvoice[]; balance: string }
+  | { kind: 'enclosures'; items: Array<{ label: string; text: string }>; line: string }
   | { kind: 'notarial' }
 
 /** "Invoice #A" / "Invoices #A and #B" / "Invoices #A, #B and #C". */
@@ -221,6 +229,25 @@ export function letterheadContactLines(address: string, phone: string, email: st
   return [...address.split(/\r?\n/).map((l) => l.trim()), phone.trim(), email.trim()].filter((l) => l)
 }
 
+/** The addressee as an envelope reads it: the name, then the address a line at a time (a one-line address breaks after its street). */
+export function recipientLines(name: string, address: string): string[] {
+  const a = address.trim()
+  const typed = a.split(/\r?\n/).map((l) => l.trim()).filter((l) => l)
+  const comma = a.indexOf(', ')
+  const addressLines = typed.length > 1 ? typed : comma > 0 ? [a.slice(0, comma), a.slice(comma + 2)] : typed
+  return [name.trim() || '—', ...addressLines]
+}
+
+const COUNT_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
+
+/** The subject under "Final demand for payment": where the work was, and under it how many bills or the one bill's number. Two lines, never one joined by a dash. */
+export function demandSubject(statement: DemandStatementInvoice[], serviceAddress: string): { text: string; detail: string } {
+  const where = serviceAddress.trim()
+  const count = COUNT_WORDS[statement.length] ?? String(statement.length)
+  const what = statement.length > 1 ? `${count.charAt(0).toUpperCase()}${count.slice(1)} unpaid invoices` : demandInvoicesPhrase(statement)
+  return where ? { text: where, detail: what } : { text: what, detail: '' }
+}
+
 export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string): DemandLetterBlock[] {
   const out = demandMoney(f.outstanding)
   const blocks: DemandLetterBlock[] = []
@@ -233,17 +260,16 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     // The sender's name is not up here; it signs the letter at the bottom.
     contactLines: letterheadContactLines(f.businessAddress, f.businessPhone, f.businessEmail),
   })
-  blocks.push({ kind: 'meta', text: `Date: ${demandDate(todayYmd)}` })
-  blocks.push({
-    kind: 'meta',
-    text: `TO: ${f.recipientName.trim() || '—'}${f.recipientAddress.trim() ? ` — ${f.recipientAddress.trim()}` : ''}`,
-  })
+  blocks.push({ kind: 'addressBlock', recipient: recipientLines(f.recipientName, f.recipientAddress), date: demandDate(todayYmd) })
+  const KICKER = 'Final demand for payment'
+  const box: DemandLetterBlock = { kind: 'amountBox', balance: out, deadline: demandDate(f.deadlineDate) }
   const statement = (f.statement ?? []).filter((i) => i.lines.length > 0 || i.invoiceNumber.trim())
   if (statement.length > 0) {
     // v2.3425: the letter reads the bill. The Re line carries the number the
     // customer saw, the opening names the dates, and the debt is a statement
     // of account, one block per invoice — never a retyped summary.
-    blocks.push({ kind: 'reLine', text: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
+    blocks.push({ kind: 'subject', kicker: KICKER, ...demandSubject(statement, f.serviceAddress ?? ''), re: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
+    blocks.push(box)
     const first = statement[0]!
     const sentDates = statement.map((i) => i.sentYmd).filter((d) => d)
     const dueDates = statement.map((i) => i.dueYmd).filter((d) => d)
@@ -262,7 +288,8 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     const exhibitsText = exhibitsSentence(f.enclosures ?? [])
     blocks.push({ kind: 'paragraph', text: `${exhibitsText ? `${exhibitsText} ` : ''}All payments and credits have been allowed.` })
   } else {
-    blocks.push({ kind: 'reLine', text: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
+    blocks.push({ kind: 'subject', kicker: KICKER, text: `Invoice #${f.invoiceNumber.trim() || '—'}`, detail: '', re: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
+    blocks.push(box)
     blocks.push({
       kind: 'paragraph',
       text: `Dear ${f.recipientName.trim() || '—'}, this letter serves as a final formal demand for payment in the amount of ${out} for services rendered by ${f.businessName.trim() || '—'}, as agreed upon between the parties. Despite the notices listed below, this balance remains unpaid.`,
@@ -273,22 +300,18 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     blocks.push({ kind: 'listItem', text: `Payments received: ${demandMoney(f.paymentsReceived)}` })
     blocks.push({ kind: 'listItem', text: `Outstanding balance: ${out}` })
   }
-  blocks.push({ kind: 'heading', text: 'Notice History' })
-  if (f.priorNotices.length === 0) {
-    blocks.push({ kind: 'listItem', text: `Invoiced on ${demandDate(f.invoiceDate)}` })
-  }
-  for (const n of f.priorNotices) {
-    blocks.push({ kind: 'listItem', text: `${demandDate(n.date)} — ${n.label}` })
-  }
-  blocks.push({ kind: 'heading', text: 'Demand' })
+  blocks.push({ kind: 'heading', text: 'Demand', keepMm: 72 })
   blocks.push({
     kind: 'paragraph',
     text: `Unless payment in full is received by ${demandDate(f.deadlineDate)}, we will pursue all legal remedies available, including but not limited to:`,
   })
-  if (f.includeSmallClaims) blocks.push({ kind: 'listItem', text: f.feeClockYmd ? courtLineText(f.outstanding) : 'Initiating a small claims lawsuit' })
+  // The remedies are numbered, in the order they are named.
+  let remedy = 0
+  if (f.includeSmallClaims) blocks.push({ kind: 'listItem', n: ++remedy, text: f.feeClockYmd ? courtLineText(f.outstanding) : 'Initiating a small claims lawsuit' })
   if (f.includeLien && !(f.lienBlockedReason ?? '')) {
     blocks.push({
       kind: 'listItem',
+      n: ++remedy,
       text:
         `Filing a mechanic's lien under Chapter 53 of the Texas Property Code` +
         (f.lienFilingDeadline ? ` (our filing window for this work runs through ${demandDate(f.lienFilingDeadline)})` : ''),
@@ -297,6 +320,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
   if (f.includeTheftOfServices) {
     blocks.push({
       kind: 'listItem',
+      n: ++remedy,
       text: 'Filing a theft of services report with local law enforcement under Texas Penal Code § 31.04',
     })
   }
@@ -336,6 +360,13 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
       })
     }
   }
+  blocks.push({ kind: 'heading', text: 'Notice history' })
+  if (f.priorNotices.length === 0) {
+    blocks.push({ kind: 'listItem', text: `Invoiced on ${demandDate(f.invoiceDate)}` })
+  }
+  for (const n of f.priorNotices) {
+    blocks.push({ kind: 'listItem', lead: demandDate(n.date), text: n.label })
+  }
   blocks.push({
     kind: 'signature',
     lines: ['Sincerely,', f.senderName.trim() || '—', f.businessName.trim(), f.businessPhone.trim(), f.businessEmail.trim()].filter(
@@ -343,7 +374,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     ),
   })
   const enclosures = enclosuresLine(f.enclosures ?? [])
-  if (enclosures) blocks.push({ kind: 'meta', text: enclosures })
+  if (enclosures) blocks.push({ kind: 'enclosures', items: enclosureEntries(f.enclosures ?? []), line: enclosures })
   if (f.includeNotarial) blocks.push({ kind: 'notarial' })
   return blocks
 }
@@ -362,40 +393,69 @@ const NOTARIAL_TEXT_LINES = [
   'Notary Public, State of Texas',
 ]
 
+const INK = '#1c1a17'
+const MUTED = '#5f5a52'
+const HAIR = '#d3d1c7'
+const ALERT = '#791f1f'
+const SANS = "'Helvetica Neue',Arial,sans-serif"
+const LABEL_STYLE = `font-family:${SANS};font-size:0.72em;letter-spacing:0.08em;text-transform:uppercase`
+
 export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: string): string {
   const parts: string[] = []
   for (const b of buildDemandLetterModel(f, todayYmd)) {
     switch (b.kind) {
       case 'senderBlock':
         parts.push(
-          `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;margin:0 0 1em 0;padding-bottom:0.6em;border-bottom:1px solid #cfcbc2">` +
-            `<div><div style="font-weight:700;font-size:1.12em">${esc(b.company)}</div>` +
-            (b.licenseLine ? `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.72em;color:#7a756c;margin-top:0.15em">${esc(b.licenseLine)}</div>` : '') +
+          `<div style="display:flex;justify-content:space-between;align-items:flex-end;gap:1.5rem;margin:0 0 1.4em 0;padding-bottom:0.6em;border-bottom:2px solid ${INK}">` +
+            `<div><div style="font-family:${SANS};font-weight:700;font-size:1.35em;letter-spacing:0.01em">${esc(b.company)}</div>` +
+            (b.licenseLine ? `<div style="font-family:${SANS};font-size:0.72em;color:#7a756c;margin-top:0.15em">${esc(b.licenseLine)}</div>` : '') +
             `</div>` +
-            `<div style="font-family:'Helvetica Neue',Arial,sans-serif;flex:0 0 auto;white-space:nowrap;text-align:right;font-size:0.8em;color:#5f5a52;line-height:1.45">${b.contactLines.map(esc).join('<br/>')}</div>` +
+            `<div style="font-family:${SANS};flex:0 0 auto;white-space:nowrap;text-align:right;font-size:0.78em;color:${MUTED};line-height:1.45">${b.contactLines.map(esc).join('<br/>')}</div>` +
             `</div>`,
         )
         break
-      case 'meta':
-        parts.push(`<p style="margin:0 0 0.5em 0">${esc(b.text)}</p>`)
+      case 'addressBlock':
+        parts.push(
+          `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;margin:0 0 1.4em 0;line-height:1.5">` +
+            `<div>${b.recipient.map(esc).join('<br/>')}</div><div style="flex:0 0 auto;white-space:nowrap;text-align:right">${esc(b.date)}</div></div>`,
+        )
         break
-      case 'reLine':
-        parts.push(`<p style="text-align:center;margin:0.8em 0;font-weight:700">${esc(b.text)}</p>`)
+      case 'subject':
+        parts.push(
+          `<div style="${LABEL_STYLE};color:${ALERT};margin:0 0 0.2em 0">${esc(b.kicker)}</div>` +
+            `<div style="font-weight:700;font-size:1.12em;line-height:1.35;margin:0 0 ${b.detail ? '0.1em' : '0.9em'} 0">${esc(b.text)}</div>` +
+            (b.detail ? `<div style="font-family:${SANS};font-size:0.86em;color:${MUTED};margin:0 0 1em 0">${esc(b.detail)}</div>` : ''),
+        )
         break
+      case 'amountBox': {
+        const cell = (label: string, value: string, rule: boolean) =>
+          `<td style="width:50%;padding:0.6em 0.9em;${rule ? `border-right:1px solid ${INK};` : ''}font-family:${SANS}">` +
+          `<div style="font-size:0.75em;color:${MUTED}">${esc(label)}</div><div style="font-size:1.55em;font-weight:700;line-height:1.3;font-variant-numeric:tabular-nums">${esc(value)}</div></td>`
+        parts.push(`<table data-demand-amount-box style="border-collapse:collapse;width:100%;border:1px solid ${INK};margin:0 0 1.1em 0"><tr>${cell('Balance due', b.balance, true)}${cell('Pay in full by', b.deadline, false)}</tr></table>`)
+        break
+      }
       case 'heading':
-        parts.push(`<p style="margin:0.9em 0 0.3em 0;font-weight:700">${esc(b.text)}</p>`)
+        parts.push(`<div style="${LABEL_STYLE};color:${MUTED};margin:1.5em 0 0.45em 0">${esc(b.text)}</div>`)
         break
       case 'paragraph':
         parts.push(`<p style="margin:0 0 0.7em 0">${esc(b.text)}</p>`)
         break
       case 'listItem':
-        parts.push(`<p style="margin:0 0 0.25em 1.2em">• ${esc(b.text)}</p>`)
+        if (b.lead) parts.push(`<div style="display:flex;gap:1em;margin:0 0 0.3em 0"><span style="flex:0 0 11.5em">${esc(b.lead)}</span><span>${esc(b.text)}</span></div>`)
+        else parts.push(`<p style="margin:0 0 0.3em 0;padding-left:1.6em;text-indent:-1.2em">${b.n ? `${b.n}.` : '•'}&nbsp;&nbsp;${esc(b.text)}</p>`)
         break
       case 'signature':
-        parts.push(`<p style="margin:1.2em 0 0 0">${b.lines.map(esc).join('<br/>')}</p>`)
+        // The first line closes the letter; the gap under it is where the ink goes.
+        parts.push(`<p style="margin:1.6em 0 0 0">${esc(b.lines[0] ?? '')}</p><p style="margin:2.6em 0 0 0;line-height:1.5">${b.lines.slice(1).map(esc).join('<br/>')}</p>`)
         break
       case 'statement':
         parts.push(statementHtml(b))
+        break
+      case 'enclosures':
+        parts.push(
+          `<div style="${LABEL_STYLE};color:${MUTED};margin:1.8em 0 0.3em 0">Enclosure${b.items.length > 1 ? 's' : ''}</div>` +
+            `<div style="font-family:${SANS};font-size:0.82em;color:${MUTED};line-height:1.55">${b.items.map((e) => `<div style="display:flex;gap:1em"><span style="flex:0 0 6.5em;color:${INK}">${esc(e.label)}</span><span>${esc(e.text)}</span></div>`).join('')}</div>`,
+        )
         break
       case 'notarial':
         parts.push(`<p style="margin:2em 0 0 0">${NOTARIAL_TEXT_LINES.map(esc).join('<br/>')}</p>`)
@@ -421,17 +481,73 @@ export function statementRows(b: { invoices: DemandStatementInvoice[]; balance: 
   return rows
 }
 
-function statementHtml(b: { invoices: DemandStatementInvoice[]; balance: string }): string {
-  const tr = (left: string, right: string, style: string) =>
-    `<tr><td style="padding:0.25em 0.4em 0.25em 0;border-bottom:1px solid #e3ded2;${style}">${esc(left)}</td><td style="padding:0.25em 0 0.25em 0.6em;border-bottom:1px solid #e3ded2;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;${style}">${esc(right)}</td></tr>`
-  const rows = statementRows(b).map((r) => {
-    if (r.kind === 'invoice') return tr(r.left, r.right, 'font-weight:700;padding-top:0.6em')
-    if (r.kind === 'line') return tr(r.left, r.right, '')
-    if (r.kind === 'paid') return tr(r.left, r.right, 'color:#555')
-    if (r.kind === 'balance') return tr(r.left, r.right, b.invoices.length > 1 ? 'font-weight:600' : 'font-weight:700;border-bottom:2px solid #333')
-    return tr(r.left, r.right, 'font-weight:700;border-bottom:2px solid #333')
+/** "Sep 16, 2026" — a table's date. */
+export function demandShortDate(ymd: string): string {
+  const d = (ymd ?? '').trim()
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return d || '—'
+  const parsed = new Date(d + 'T00:00:00')
+  if (Number.isNaN(parsed.getTime())) return d
+  return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+export type DemandStatementTableRow = {
+  invoice: string
+  /** What the bill was for, a line of the bill per entry; a bill of several lines carries each line's charge ('' on a bill of one line: the row's own figures are its charge). */
+  lines: Array<{ text: string; amount: string }>
+  sent: string
+  due: string
+  billed: string
+  paid: string
+  balance: string
+}
+
+/**
+ * The statement as the letter prints it: one row per invoice, read across —
+ * what it was for, when it went out and was due, and what is still owed. The
+ * Billed and Paid columns appear only when something was paid (the day it went
+ * out then sits under the invoice's number, to leave the room); with nothing
+ * paid every balance is the bill. Each charge of a bill of several lines is
+ * named in its row (Rule 185: the name, date and charge of each item).
+ */
+export function statementTable(b: { invoices: DemandStatementInvoice[]; balance: string }): { hasPaid: boolean; rows: DemandStatementTableRow[]; total: string } {
+  const hasPaid = b.invoices.some((i) => Number(i.paid || 0) > 0)
+  const rows = b.invoices.map((inv) => {
+    const named = (l: DemandStatementLine) => `${l.description.trim() || '—'}${l.qty.trim() ? ` · Qty ${l.qty.trim()}` : ''}`
+    return {
+      invoice: inv.invoiceNumber.trim() || 'Invoice',
+      lines: inv.lines.map((l) => ({ text: named(l), amount: inv.lines.length > 1 ? demandMoney(l.amount) : '' })),
+      sent: inv.sentYmd ? demandShortDate(inv.sentYmd) : '—',
+      due: inv.dueYmd ? demandShortDate(inv.dueYmd) : '—',
+      billed: demandMoney(inv.total),
+      paid: Number(inv.paid || 0) > 0 ? `−${demandMoney(inv.paid)}` : demandMoney('0'),
+      balance: demandMoney(inv.balance),
+    }
   })
-  return `<table style="border-collapse:collapse;width:100%;margin:0.3em 0 0.8em 0;font-size:0.95em">${rows.join('')}</table>`
+  return { hasPaid, rows, total: demandMoney(b.balance) }
+}
+
+function statementHtml(b: { invoices: DemandStatementInvoice[]; balance: string }): string {
+  const t = statementTable(b)
+  const money = 'text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums'
+  const th = (text: string, style = '') => `<th style="padding:0.35em 0.6em 0.35em 0;border-bottom:1px solid ${INK};font-weight:400;font-size:0.9em;color:${MUTED};text-align:left;${style}">${esc(text)}</th>`
+  const td = (html: string, last: boolean, style = '') => `<td style="padding:0.45em 0.6em 0.45em 0;border-bottom:${last ? `1px solid ${INK}` : `1px solid ${HAIR}`};vertical-align:top;${style}">${html}</td>`
+  const head = [th('Invoice'), th('For'), ...(t.hasPaid ? [] : [th('Sent')]), th('Due'), ...(t.hasPaid ? [th('Billed', money), th('Paid', money)] : []), th('Balance', `${money};padding-right:0`)].join('')
+  const body = t.rows
+    .map((r, i) => {
+      const last = i === t.rows.length - 1
+      return `<tr>${[
+        td(`${esc(r.invoice)}${t.hasPaid ? `<br/><span style="font-size:0.9em;color:${MUTED}">sent ${esc(r.sent)}</span>` : ''}`, last, 'white-space:nowrap'),
+        td(r.lines.map((l) => (l.amount ? `<div style="display:flex;justify-content:space-between;gap:1.2em"><span>${esc(l.text)}</span><span style="color:${MUTED};${money}">${esc(l.amount)}</span></div>` : `<div>${esc(l.text)}</div>`)).join(''), last),
+        ...(t.hasPaid ? [] : [td(esc(r.sent), last, 'white-space:nowrap')]),
+        td(esc(r.due), last, 'white-space:nowrap'),
+        ...(t.hasPaid ? [td(esc(r.billed), last, money), td(esc(r.paid), last, money)] : []),
+        td(esc(r.balance), last, `${money};padding-right:0`),
+      ].join('')}</tr>`
+    })
+    .join('')
+  const span = t.hasPaid ? 5 : 4
+  const total = `<tr><td colspan="${span}" style="padding:0.5em 0;font-weight:700">Balance due</td><td style="padding:0.5em 0;font-weight:700;font-size:1.08em;${money}">${esc(t.total)}</td></tr>`
+  return `<table data-demand-statement-table style="border-collapse:collapse;width:100%;margin:0 0 0.8em 0;font-family:${SANS};font-size:0.86em;line-height:1.45"><thead><tr>${head}</tr></thead><tbody>${body}${total}</tbody></table>`
 }
 
 export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): string {
@@ -441,11 +557,20 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
       case 'senderBlock':
         lines.push([b.company, b.licenseLine, ...b.contactLines].filter((l) => l).join('\n'))
         break
+      case 'addressBlock':
+        lines.push(`Date: ${b.date}`, `TO: ${b.recipient[0] ?? '—'}${b.recipient.length > 1 ? ` — ${b.recipient.slice(1).join(', ')}` : ''}`)
+        break
+      case 'subject':
+        lines.push(b.re)
+        break
+      case 'amountBox':
+        lines.push(`Balance due: ${b.balance} · Pay in full by: ${b.deadline}`)
+        break
       case 'signature':
         lines.push(b.lines.join('\n'))
         break
       case 'listItem':
-        lines.push(`  • ${b.text}`)
+        lines.push(`  ${b.n ? `${b.n}.` : '•'} ${b.lead ? `${b.lead} — ` : ''}${b.text}`)
         break
       case 'statement':
         lines.push(
@@ -453,6 +578,9 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
             .map((r) => (r.kind === 'invoice' ? r.left : `  ${r.kind === 'line' ? '' : '  '}${r.left}${r.right ? ` ${'.'.repeat(Math.max(2, 58 - r.left.length - r.right.length))} ${r.right}` : ''}`))
             .join('\n'),
         )
+        break
+      case 'enclosures':
+        lines.push(b.line)
         break
       case 'notarial':
         lines.push(NOTARIAL_TEXT_LINES.join('\n'))
@@ -468,7 +596,7 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
 export function buildDemandLetterPrintHtml(f: DemandLetterFields, todayYmd: string, jobNumber: string): string {
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>Final Demand for Payment — Job ${esc(jobNumber)}</title>
 <style>
-  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.7; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: ${INK}; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.6; }
   @media print { body { margin: 0.5in auto; } }
 </style></head><body>${buildDemandLetterEmailHtml(f, todayYmd)}</body></html>`
 }
@@ -482,126 +610,251 @@ export function demandLetterPdfFilename(jobNumber: string): string {
 
 const PAGE_MARGIN = 20
 const MAX_TEXT_WIDTH_MM = 176
-const PAGE_CONTENT_MAX_Y = 266
+const PAGE_CONTENT_MAX_Y = 264
 
 export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: string): Promise<Blob> {
   const JsPDF = await loadJsPDF()
   const doc = new JsPDF({ unit: 'mm', format: 'letter' })
+  const rightX = PAGE_MARGIN + MAX_TEXT_WIDTH_MM
   let y = PAGE_MARGIN + 4
 
+  const ink = () => doc.setTextColor(28, 26, 23)
+  const muted = () => doc.setTextColor(95, 90, 82)
   const ensureRoom = (needed: number) => {
     if (y + needed > PAGE_CONTENT_MAX_Y) {
       doc.addPage()
-      y = PAGE_MARGIN
+      y = PAGE_MARGIN + 2
     }
   }
-  const writeWrapped = (text: string, lh: number, opts?: { indent?: number; align?: 'right' | 'center' }) => {
+  const writeWrapped = (text: string, lh: number, opts?: { indent?: number; hang?: string }) => {
     const indent = opts?.indent ?? 0
     const lines = doc.splitTextToSize(text, MAX_TEXT_WIDTH_MM - indent) as string[]
-    for (const line of lines) {
+    lines.forEach((line, i) => {
       ensureRoom(lh)
-      if (opts?.align === 'right') doc.text(line, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, y, { align: 'right' })
-      else if (opts?.align === 'center') doc.text(line, PAGE_MARGIN + MAX_TEXT_WIDTH_MM / 2, y, { align: 'center' })
-      else doc.text(line, PAGE_MARGIN + indent, y)
+      if (i === 0 && opts?.hang) doc.text(opts.hang, PAGE_MARGIN + indent - 6, y)
+      doc.text(line, PAGE_MARGIN + indent, y)
       y += lh
-    }
+    })
+  }
+  /** A small spaced capital label: the section names, the subject's kicker. */
+  const label = (text: string, rgb: [number, number, number]) => {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(rgb[0], rgb[1], rgb[2])
+    doc.text(text.toUpperCase(), PAGE_MARGIN, y, { charSpace: 0.35 })
+    ink()
   }
 
   for (const b of buildDemandLetterModel(f, todayYmd)) {
     switch (b.kind) {
       case 'senderBlock': {
+        const contactH = b.contactLines.length * 3.7
+        const bottom = y + Math.max(contactH, b.licenseLine ? 9.5 : 6)
+        // Both columns sit on the rule: the name on the last line, the contact column ending beside it.
         doc.setFont('helvetica', 'bold')
-        doc.setFontSize(13)
-        doc.setTextColor(28, 26, 23)
-        doc.text(b.company, PAGE_MARGIN, y + 4.5)
-        let leftY = y + 4.5
+        doc.setFontSize(15)
+        ink()
+        doc.text(b.company, PAGE_MARGIN, b.licenseLine ? bottom - 4.2 : bottom - 0.6)
         if (b.licenseLine) {
           doc.setFont('helvetica', 'normal')
           doc.setFontSize(7.5)
           doc.setTextColor(122, 117, 108)
-          leftY += 4
-          doc.text(b.licenseLine, PAGE_MARGIN, leftY)
+          doc.text(b.licenseLine, PAGE_MARGIN, bottom - 0.4)
         }
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(8)
-        doc.setTextColor(95, 90, 82)
-        let rightY = y + 3
-        for (const l of b.contactLines) {
-          doc.text(l, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, rightY, { align: 'right' })
-          rightY += 3.7
-        }
-        y = Math.max(leftY, rightY - 3.7) + 4
-        doc.setDrawColor(207, 203, 194)
-        doc.setLineWidth(0.25)
-        doc.line(PAGE_MARGIN, y, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, y)
-        doc.setTextColor(28, 26, 23)
-        y += 7
+        muted()
+        b.contactLines.forEach((l, i) => doc.text(l, rightX, bottom - 0.4 - (b.contactLines.length - 1 - i) * 3.7, { align: 'right' }))
+        y = bottom + 2.6
+        doc.setDrawColor(28, 26, 23)
+        doc.setLineWidth(0.6)
+        doc.line(PAGE_MARGIN, y, rightX, y)
+        ink()
+        y += 10
         break
       }
-      case 'meta':
+      case 'addressBlock': {
         doc.setFont('times', 'normal')
         doc.setFontSize(11)
-        writeWrapped(b.text, 5.6)
+        doc.text(b.date, rightX, y, { align: 'right' })
+        for (const l of b.recipient) {
+          const wrapped = doc.splitTextToSize(l, MAX_TEXT_WIDTH_MM - 50) as string[]
+          for (const line of wrapped) {
+            doc.text(line, PAGE_MARGIN, y)
+            y += 5.2
+          }
+        }
+        y += 5.5
         break
-      case 'reLine':
-        y += 2
+      }
+      case 'subject':
+        label(b.kicker, [121, 31, 31])
+        y += 5.4
         doc.setFont('times', 'bold')
-        doc.setFontSize(11.5)
-        writeWrapped(b.text, 6, { align: 'center' })
-        y += 2
+        doc.setFontSize(13)
+        writeWrapped(b.text, 6)
+        if (b.detail) {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(9)
+          muted()
+          doc.text(b.detail, PAGE_MARGIN, y - 0.6)
+          ink()
+          y += 4.4
+        }
+        y += 1.5
         break
+      case 'amountBox': {
+        const h = 17
+        ensureRoom(h + 4)
+        const top = y - 2.5
+        const mid = PAGE_MARGIN + MAX_TEXT_WIDTH_MM / 2
+        doc.setDrawColor(28, 26, 23)
+        doc.setLineWidth(0.35)
+        doc.rect(PAGE_MARGIN, top, MAX_TEXT_WIDTH_MM, h)
+        doc.line(mid, top, mid, top + h)
+        const cell = (x: number, name: string, value: string) => {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(8)
+          muted()
+          doc.text(name, x + 4.5, top + 5.6)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(16)
+          ink()
+          doc.text(value, x + 4.5, top + 13)
+        }
+        cell(PAGE_MARGIN, 'Balance due', b.balance)
+        cell(mid, 'Pay in full by', b.deadline)
+        y = top + h + 8
+        break
+      }
       case 'heading':
-        y += 2.5
-        doc.setFont('times', 'bold')
-        doc.setFontSize(11)
-        writeWrapped(b.text, 5.6)
+        y += 4
+        ensureRoom(b.keepMm ?? 16)
+        label(b.text, [95, 90, 82])
+        y += 5.2
         break
       case 'paragraph':
         doc.setFont('times', 'normal')
         doc.setFontSize(11)
-        writeWrapped(b.text, 5.6)
-        y += 1.5
+        writeWrapped(b.text, 5.4)
+        y += 1.8
         break
       case 'listItem':
         doc.setFont('times', 'normal')
         doc.setFontSize(11)
-        writeWrapped(`• ${b.text}`, 5.6, { indent: 5 })
+        if (b.lead) {
+          // Two columns: the day, then what happened on it.
+          ensureRoom(5.4)
+          doc.text(b.lead, PAGE_MARGIN, y)
+          writeWrapped(b.text, 5.4, { indent: 46 })
+        } else writeWrapped(b.text, 5.4, { indent: 8, hang: b.n ? `${b.n}.` : '•' })
+        y += 0.8
         break
       case 'signature':
-        y += 4
+        // "Sincerely," — then room for the ink — then who signed.
+        ensureRoom(18 + b.lines.length * 5.2)
+        y += 5
         doc.setFont('times', 'normal')
         doc.setFontSize(11)
-        for (const l of b.lines) writeWrapped(l, 5.4)
+        b.lines.forEach((l, i) => {
+          writeWrapped(l, 5.2)
+          if (i === 0) y += 11
+        })
         break
       case 'statement': {
-        // Two columns: the item wraps in the left 138 mm, the money sits right-aligned.
-        const rightX = PAGE_MARGIN + MAX_TEXT_WIDTH_MM
-        const leftW = MAX_TEXT_WIDTH_MM - 38
-        y += 1
-        for (const r of statementRows(b)) {
-          const bold = r.kind === 'invoice' || r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1)
-          doc.setFont('times', bold ? 'bold' : 'normal')
-          doc.setFontSize(r.kind === 'invoice' ? 10.5 : 10)
-          doc.setTextColor(r.kind === 'paid' ? 90 : 28, r.kind === 'paid' ? 90 : 26, r.kind === 'paid' ? 90 : 23)
-          if (r.kind === 'invoice') y += 1.5
-          const indent = r.kind === 'line' ? 4 : r.kind === 'invoice' ? 0 : 4
-          const wrapped = doc.splitTextToSize(r.left, leftW - indent) as string[]
-          ensureRoom(5 * wrapped.length + 1.5)
-          const top = y
-          for (const line of wrapped) {
-            doc.text(line, PAGE_MARGIN + indent, y)
-            y += 5
-          }
-          if (r.right) doc.text(r.right, rightX, top, { align: 'right' })
-          doc.setDrawColor(r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 51 : 227, r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 51 : 222, r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 51 : 210)
-          doc.setLineWidth(r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 0.5 : 0.2)
-          doc.line(PAGE_MARGIN, y - 1.6, rightX, y - 1.6)
-          y += 0.6
+        const t = statementTable(b)
+        // Fixed columns from the right edge; the For column takes what is left.
+        const W = { invoice: 33, sent: 23, due: 23, billed: 22, paid: 21, balance: t.hasPaid ? 23 : 25 }
+        const xBalance = rightX
+        const xPaid = xBalance - W.balance
+        const xBilled = xPaid - (t.hasPaid ? W.paid : 0)
+        const moneyLeft = xBilled - (t.hasPaid ? W.billed : 0)
+        const xDue = moneyLeft - W.due
+        const xSent = xDue - (t.hasPaid ? 0 : W.sent)
+        const xFor = PAGE_MARGIN + W.invoice
+        const forW = xSent - xFor - 3
+        const rule = (strong: boolean) => {
+          doc.setDrawColor(strong ? 28 : 211, strong ? 26 : 209, strong ? 23 : 199)
+          doc.setLineWidth(strong ? 0.35 : 0.2)
+          doc.line(PAGE_MARGIN, y, rightX, y)
         }
-        doc.setTextColor(28, 26, 23)
-        y += 2
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        muted()
+        doc.text('Invoice', PAGE_MARGIN, y)
+        doc.text('For', xFor, y)
+        if (!t.hasPaid) doc.text('Sent', xSent, y)
+        doc.text('Due', xDue, y)
+        if (t.hasPaid) {
+          doc.text('Billed', xBilled, y, { align: 'right' })
+          doc.text('Paid', xPaid, y, { align: 'right' })
+        }
+        doc.text('Balance', xBalance, y, { align: 'right' })
+        y += 1.8
+        rule(true)
+        ink()
+        doc.setFontSize(9)
+        t.rows.forEach((r, i) => {
+          // A charge sits at the right of its line's first row, inside the For column.
+          const wrapped = r.lines.flatMap((l) => (doc.splitTextToSize(l.text, forW - (l.amount ? 19 : 0)) as string[]).map((text, k) => ({ text, amount: k === 0 ? l.amount : '' })))
+          const rowH = Math.max(t.hasPaid ? 2 : 1, wrapped.length) * 4.3 + 3.2
+          if (y + rowH > PAGE_CONTENT_MAX_Y) {
+            doc.addPage()
+            y = PAGE_MARGIN + 2
+          }
+          const base = y + 4.6
+          doc.text(r.invoice, PAGE_MARGIN, base)
+          wrapped.forEach((l, k) => {
+            doc.text(l.text, xFor, base + k * 4.3)
+            if (l.amount) {
+              muted()
+              doc.text(l.amount, xFor + forW, base + k * 4.3, { align: 'right' })
+              ink()
+            }
+          })
+          if (t.hasPaid) {
+            doc.setFontSize(8)
+            muted()
+            doc.text(`sent ${r.sent}`, PAGE_MARGIN, base + 4.3)
+            doc.setFontSize(9)
+            ink()
+          } else doc.text(r.sent, xSent, base)
+          doc.text(r.due, xDue, base)
+          if (t.hasPaid) {
+            doc.text(r.billed, xBilled, base, { align: 'right' })
+            // The built-in fonts have no U+2212; a hyphen is the minus on paper.
+            doc.text(r.paid.replace('−', '-'), xPaid, base, { align: 'right' })
+          }
+          doc.text(r.balance, xBalance, base, { align: 'right' })
+          y += rowH
+          rule(i === t.rows.length - 1)
+        })
+        ensureRoom(9)
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9.5)
+        doc.text('Balance due', PAGE_MARGIN, y + 5.2)
+        doc.setFontSize(10.5)
+        doc.text(t.total, xBalance, y + 5.2, { align: 'right' })
+        y += 13.5
         break
       }
+      case 'enclosures':
+        ensureRoom(8 + b.items.length * 4)
+        y += 6
+        label(`Enclosure${b.items.length > 1 ? 's' : ''}`, [95, 90, 82])
+        y += 4.4
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8.5)
+        muted()
+        for (const item of b.items) {
+          ensureRoom(4)
+          ink()
+          doc.text(item.label, PAGE_MARGIN, y)
+          muted()
+          writeWrapped(item.text, 4, { indent: 21 })
+        }
+        ink()
+        break
       case 'notarial':
         y += 8
         doc.setFont('times', 'normal')
@@ -617,12 +870,12 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     doc.setPage(p)
     doc.setDrawColor(207, 203, 194)
     doc.setLineWidth(0.25)
-    doc.line(PAGE_MARGIN, 270, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, 270)
+    doc.line(PAGE_MARGIN, 270, rightX, 270)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7)
     doc.setTextColor(122, 117, 108)
     if (footerLeft) doc.text(footerLeft, PAGE_MARGIN, 274)
-    doc.text(`Page ${p} of ${pages}`, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, 274, { align: 'right' })
+    doc.text(`Page ${p} of ${pages}`, rightX, 274, { align: 'right' })
   }
   return doc.output('blob')
 }
@@ -690,6 +943,24 @@ export async function buildDeliveryRecordPdfBlob(input: {
 // ---------- prefill ----------
 
 /**
+ * The invoice exhibit says what the letter says: the number the customer saw
+ * and the day the bill was due, taken from the statement's row for that bill.
+ * The app's own rendering of a Stripe-hosted bill knows only its sequence
+ * ("#2") and falls back to the send day when no due day was recorded — a
+ * letter citing one number and due day over an exhibit printing others is a
+ * legal paper contradicting its own attachment.
+ */
+export function exhibitInvoiceDocument(doc: PhysicalInvoiceDocument, st: Pick<DemandStatementInvoice, 'invoiceNumber' | 'dueYmd'>): PhysicalInvoiceDocument {
+  const number = st.invoiceNumber.trim()
+  return {
+    ...doc,
+    ...(number ? { invoiceNumberDisplay: number } : {}),
+    ...(/^\d{4}-\d{2}-\d{2}$/.test(st.dueYmd) ? { dueDateDisplay: demandDate(st.dueYmd) } : {}),
+  }
+}
+
+
+/**
  * What the modal knows about one covered invoice beyond its ledger row
  * (v2.3425): the app's own document model (lines, number, dates) and, for a
  * Stripe-hosted bill, what Stripe rendered — the number the customer saw and
@@ -710,6 +981,7 @@ export function fallbackInvoiceNumber(inv: Pick<JobsLedgerInvoice, 'sequence_ord
   return h ? `#${h}` : '#1'
 }
 
+/** A `date` column's day. An instant's day is `calendarYmdInAppTzFromIso` (its first ten characters are the UTC date). */
 function ymdOf(raw: string | null | undefined): string {
   const t = (raw ?? '').trim()
   return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : ''
@@ -744,7 +1016,7 @@ export function buildDemandStatement(job: JobWithDetails, sources: DemandInvoice
     return {
       invoiceNumber,
       // The day the bill went out (billed_at), not the day it was later delivered or re-sent (v2.3445).
-      sentYmd: ymdOf(inv.billed_at) || ymdOf(inv.sent_to_customer_at) || ymdOf(inv.created_at),
+      sentYmd: calendarYmdInAppTzFromIso(inv.billed_at ?? '') || calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || calendarYmdInAppTzFromIso(inv.created_at ?? ''),
       dueYmd: ymdOf(inv.estimated_bill_date) || ymdOf(stripe?.dueYmd ?? null),
       lines,
       total: moneyInput(total),
@@ -795,11 +1067,15 @@ export type DemandLetterPrefillContext = {
  *
  * On a job with several bills, unlinked money is applied oldest bill first (the owner's rule,
  * 2026-09-18, v2.3592) — never smeared onto every bill (the double credit v2.3498 removed).
+ *
+ * Unlinked money pays the part of the job on no bill before it pays a bill (v2.4534): the job's
+ * total (`revenue`) goes to the kernel. Job 273's letter claimed $0.00 beside a § 53.056 notice
+ * for $17,585, because $38,780 paid before its three bills existed was counted against them.
  */
-export function paymentsAppliedToInvoice(job: Pick<JobWithDetails, 'payments' | 'invoices'>, invoiceId: string): number {
+export function paymentsAppliedToInvoice(job: Pick<JobWithDetails, 'payments' | 'invoices'> & { revenue?: number | string | null }, invoiceId: string): number {
   // v2.3592: oldest bill first — the same kernel the invoice's payment history, the Bill tab and the
   // portal read, so the letter, its exhibit and the statement of account cannot disagree.
-  return paymentsAppliedToBill(job.invoices ?? [], job.payments ?? [], invoiceId)
+  return paymentsAppliedToBill(job.invoices ?? [], job.payments ?? [], invoiceId, job.revenue)
 }
 
 /**
@@ -824,7 +1100,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
   const outstanding = Math.max(0, total - applied)
   const hcp = (job.hcp_number ?? '').trim()
   const firstBilled = invoices
-    .map((i) => (i.billed_at ?? i.created_at ?? '').slice(0, 10))
+    .map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? i.created_at ?? ''))
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort()[0]
   const lastWork = (job.last_work_date ?? '').slice(0, 10)

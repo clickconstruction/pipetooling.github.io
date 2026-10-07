@@ -2,7 +2,9 @@ name: Edge function drift
 
 # CI deploys only the client; edge functions deploy manually. This job fails loudly when a
 # function exists in supabase/functions/ but is not deployed to prod (three prior incidents:
-# create-user, invite-user, stripe-invoice-agreed-write-down).
+# create-user, invite-user, stripe-invoice-agreed-write-down), or runs older code than main —
+# its index.ts or any file it imports, _shared included. The daily run reads every deployed
+# function's source (--full); a push reads only those changed since their deploy.
 #
 # Requires the SUPABASE_ACCESS_TOKEN repo secret (personal access token from
 # https://supabase.com/dashboard/account/tokens).
@@ -14,6 +16,7 @@ on:
     paths:
       - 'supabase/functions/**'
       - 'scripts/check-edge-function-drift.mjs'
+      - 'scripts/lib/edgeBundle.mjs'
       - '.github/workflows/edge-function-drift.yml'
   schedule:
     # Daily at 15:00 UTC (~9-10am Chicago) — catches drift introduced outside git pushes too.
@@ -27,9 +30,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Full history: the content-staleness check (v2.1974) compares each
-          # function dir's last commit date to its deployed timestamp — a
-          # shallow clone would silently skip it (git log finds nothing).
+          # Full history: the staleness check compares each function bundle's
+          # commits with its deployed timestamp, and looks deployed files up
+          # in history — a shallow clone would silently skip it.
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -38,6 +41,6 @@ jobs:
           node-version: '20'
 
       - name: Check edge-function drift
-        run: node scripts/check-edge-function-drift.mjs
+        run: node scripts/check-edge-function-drift.mjs ${{ github.event_name != 'push' && '--full' || '' }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

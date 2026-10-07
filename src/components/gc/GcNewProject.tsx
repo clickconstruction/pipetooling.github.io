@@ -1,62 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import {
-  OUR_TRADES,
-  SAMPLE_SHEET_INDEX,
-  TOWNS,
-  townFromAddress,
+  BY_NOT_A_TRADE,
+  SPEC_DIVISIONS,
   TRADE_TEMPLATES,
-  money,
-  newProjectId,
-  sheetIndexInText,
-  disciplineOf,
-  driveAccessStandIn,
-  driveLinkProblem,
-  rowProblems,
-  sheetsOfRows,
-  withPickedDisciplines,
-  type SheetIndexRow,
-  type CustomerRole,
-  inScopeBook,
-  linesToAdd,
-  scopeBook,
-  scopeSetsFor,
-  scopeWordKey,
-  type ScopeBookLine,
-  type ScopeSetChoice,
+  budgetFromSize,
+  guessLineSheets,
+  guessLineSpecs,
+  inSentence,
+  scopeGaps,
+  specDivision,
+  specIndexInText,
   tradeOrder,
   tradesForPlans,
-  specIndexInText,
-  specDivision,
-  guessLineSpecs,
-  SAMPLE_SPEC_INDEX,
-  SPEC_DIVISIONS,
-  usualScope,
   usualExcludes,
-  inSentence,
-  strangerActions,
-  vettingWords,
-  type StrangerAsk,
-  scopeGaps,
-  BY_NOT_A_TRADE,
-  type ScopeExclusion,
+  usualScope,
   type ScopeGap,
-  guessLineSheets,
-  answerRecord,
-  budgetForSize,
-  budgetBySize,
-  perSqFtWords,
-  buildNewProject,
-  partnerBlockers,
-  defaultAsks,
-  tradeLineup,
-  travelWords,
-  type AnswerRecord,
-  type GcAction,
-  type GcState,
-  type NewProjectDraft,
-  type PlanSheet,
-  type SpecSection,
-} from '../../lib/gcMode/gcModel'
+} from '../../lib/gc/plans'
+import { disciplineOf, rowProblems, sheetsOfRows, withPickedDisciplines, type SheetIndexRow } from '../../lib/gc/sheets'
+import { budgetBySize, perSqFtWords } from '../../lib/gc/budgets'
+import { driveLink, driveLinkProblem } from '../../lib/gc/drive'
+import { inScopeBook, linesToAdd, scopeWordKey, type ScopeBookLine, type ScopeSetChoice } from '../../lib/gc/scopeBook'
+import type { CustomerRole, PlanSheet, ScopeExclusion, SpecSection } from '../../lib/gc/types'
+import type { NewProjectDraft } from '../../lib/gc/newProjectDraft'
 
 /** Who we work for, in the window's words, and which customers come first for each. */
 const CUSTOMER_ROLES: { role: CustomerRole; label: string; customer: string; them: string; fits: (c: { kind: string }) => boolean; fitsLabel: string }[] = [
@@ -103,30 +68,36 @@ function usualLines(trade: string): ScopeLineDraft[] {
 }
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Chip, input, num, td, th } from './gcUi'
-import { CustomerPicker, Picker } from './GcNewProjectPickers'
+import { CustomerPicker, Picker, type PickerCustomer } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX, pickerFace, pickerGroup, pickerRow } from './GcNewProjectPickerRows'
 import { SheetIndexTable } from './GcNewProjectSheetIndex'
 import { BookLineSearch, OftenMissed, StartFromBook } from './GcNewProjectScopeBook'
-import { GcScopeBookWindow } from './GcNewProjectScopeBookPage'
 import { SetKindsInfo } from './GcNewProjectSetKinds'
 import { DriveLinkField } from './GcNewProjectDriveLink'
 
 /**
- * GC mode design spike: New Project. A project starts the day its plans come in. Four steps in
- * one window, each feeding the next: the project (owner and architect from the one customer
- * list), the plans (the sheet index pasted and read), the trades (guessed from the sheets) and
- * each trade's scope (its usual lines, changed here). Create puts it under Bidding to the owner
- * and opens it on Trades, where companies are asked.
+ * GC mode, the real build, step 4: New project, moved from the prototype (branch spike/gc-mode,
+ * `GcNewProject.tsx`) with its first four steps: the project (the customer and the architect from
+ * the one customer list), the plans (the sheet table and the Drive link), the trades (guessed from
+ * the sheets and the specs, with budgets by size) and each trade's scope (its usual lines, the scope
+ * book). Who to ask waits for the company record. The window builds a NewProjectDraft; the page
+ * sends it through gc_create_project.
  */
 
 const NEW = '__new'
+
+/** The trades our own crew does: ticked Ours by default. */
+const OUR_TRADES = ['Plumbing']
+
+function money(n: number): string {
+  return `$${Math.round(n).toLocaleString('en-US')}`
+}
 
 const STEPS = [
   { title: 'The project', hint: 'What it is, where it is, who it is for.' },
   { title: 'The plans', hint: 'The set that came in and its sheets.' },
   { title: 'The trades', hint: 'Who we buy, guessed from the sheets.' },
   { title: 'Each scope', hint: 'The work each quote must cover.' },
-  { title: 'Who to ask', hint: 'The companies asked to quote each trade.' },
 ] as const
 
 /** What the office changed on one trade. A field left out follows the guess. */
@@ -243,13 +214,24 @@ function sheetsWords(ids: string[]): string {
 }
 
 interface WindowProps {
-  state: GcState
-  dispatch: Dispatch<GcAction>
+  /** The customer list: owners, general contractors, owner's reps and architects alike. */
+  customers: PickerCustomer[]
+  /** The scope book, read from our GC projects and the office's changes. */
+  book: ScopeBookLine[]
+  /** The sets a trade's scope can start from. */
+  setsFor: (trade: string) => ScopeSetChoice[]
+  today: string
   onClose: () => void
-  onCreated: (projectId: string) => void
+  /** The press: the page writes the draft through gc_create_project. */
+  onCreate: (draft: NewProjectDraft) => void
+  /** The press is on its way, or came back with a problem. */
+  creating?: boolean
+  problem?: string | null
+  /** Save a line to the scope book. Unset: the button is not offered. */
+  onSaveToBook?: (trade: string, words: string, spec?: string) => void
 }
 
-export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: WindowProps) {
+export function GcNewProjectWindow({ customers: customerList, book, setsFor, today, onClose, onCreate, creating, problem, onSaveToBook }: WindowProps) {
   const [step, setStep] = useState(0)
   const roomy = useMatchMedia('(min-width: 900px)')
   // On a phone the five steps are a row of numbers, with the open step's name beside them.
@@ -261,10 +243,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const [name, setName] = useState('')
   const [address, setAddress] = useState('')
-  const townRead = townFromAddress(address)
-  /** The town is read from the address (the owner, 2026-10-04: "the drive is pulled from the address"); a pick only when it cannot be. */
-  const [townPick, setTownPick] = useState('')
-  const town = townRead ?? townPick
   const [ownerPick, setOwnerPick] = useState('')
   const [ownerNew, setOwnerNew] = useState('')
   /** The owner of the property when it is not the customer (the owner, 2026-10-04): opened by a button under Customer. */
@@ -282,37 +260,22 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const [sqFtText, setSqFtText] = useState('')
   const [sizeWords, setSizeWords] = useState('')
   const sqFtNumber = Number(sqFtText.replace(/[^0-9]/g, '')) || 0
-  /** The one display line the board, the header and the portals read: "6,800 sq ft clinic, one story". */
-  const sizeNote = [sqFtNumber > 0 ? `${sqFtNumber.toLocaleString('en-US')} sq ft` : '', sqFtNumber > 0 ? inSentence(sizeWords) : sizeWords.trim()]
-    .filter(Boolean)
-    .join(' ')
 
   const [setLabel, setSetLabel] = useState('Bid set')
-  /** The set's Google Drive link (the owner, 2026-10-04), and the prototype's stand-in for its sharing fixed in Drive. */
+  /** The set's Google Drive link (the owner, 2026-10-04). Its access is checked by a later step; until then it is not checked. */
   const [driveUrl, setDriveUrl] = useState('')
-  const [driveFixed, setDriveFixed] = useState(false)
-  const driveCheck = driveUrl.trim() === '' ? null : driveAccessStandIn(driveUrl, driveFixed)
-  const [issuedOn, setIssuedOn] = useState(state.today)
+  const driveRead = driveUrl.trim() === '' ? null : driveLink(driveUrl)
+  const [issuedOn, setIssuedOn] = useState(today)
   const [setNote, setSetNote] = useState('')
   /** The sheet list as a table: rows from the plan PDF, a paste or typing (the owner, 2026-10-04). */
   const [sheetRows, setSheetRows] = useState<SheetIndexRow[]>([])
   const [specText, setSpecText] = useState('')
   /** The budgets the fill wrote, by trade, with where each rate came from. Shown while the budget is unchanged. */
   const [filled, setFilled] = useState<Record<string, { budget: string; words: string }>>({})
-  /** Companies new to us the office adds on Who to ask: asked to quote, not vetted (question 3). */
-  const [strangers, setStrangers] = useState<StrangerAsk[]>([])
-  const [strangerFor, setStrangerFor] = useState<string | null>(null)
-  const [strangerName, setStrangerName] = useState('')
-  const [strangerContact, setStrangerContact] = useState('')
 
   const [edits, setEdits] = useState<Record<string, TradeEdit>>({})
-  /** The scope book (the owner, 2026-10-04): read from every scope on our jobs, with the office's changes. */
-  const book = useMemo(() => scopeBook(state), [state])
-  const [bookOpen, setBookOpen] = useState(false)
   const [added, setAdded] = useState<string[]>([])
   const [scopeFor, setScopeFor] = useState<string | null>(null)
-  /** The companies ticked per trade. A trade left out follows the default: the most reliable in range. */
-  const [asks, setAsks] = useState<Record<string, string[]>>({})
 
   const reading = useMemo(() => ({ sheets: sheetsOfRows(sheetRows) }), [sheetRows])
   const sheetRowsToFix = Object.keys(rowProblems(sheetRows)).length
@@ -321,8 +284,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     () => withPickedDisciplines(tradesForPlans(reading.sheets, specReading.sections), reading.sheets, (trade) => ({ trade, from: [], specs: [] })),
     [reading.sheets, specReading.sections],
   )
-  /** The made-up sheets drawn into the made-up plan PDF. */
-  const sampleSheets = useMemo(() => sheetIndexInText(SAMPLE_SHEET_INDEX).sheets, [])
 
   const rows: TradeRow[] = useMemo(() => {
     const names = [...guesses.map((g) => g.trade), ...added.filter((t) => !guesses.some((g) => g.trade === t))]
@@ -348,15 +309,14 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const edit = (trade: string, change: TradeEdit) => setEdits((all) => ({ ...all, [trade]: { ...all[trade], ...change } }))
 
-  const customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name))
-  const ownerName = ownerPick === NEW ? ownerNew.trim() : (state.customers.find((c) => c.id === ownerPick)?.name ?? '')
-  const landlordName = !landlordShown ? '' : landlordPick === NEW ? landlordNew.trim() : (state.customers.find((c) => c.id === landlordPick)?.name ?? '')
-  const archName = archPick === NEW ? archNew.trim() : (state.customers.find((c) => c.id === archPick)?.name ?? '')
+  const customers = [...customerList].sort((a, b) => a.name.localeCompare(b.name))
+  const ownerName = ownerPick === NEW ? ownerNew.trim() : (customerList.find((c) => c.id === ownerPick)?.name ?? '')
+  const landlordName = !landlordShown ? '' : landlordPick === NEW ? landlordNew.trim() : (customerList.find((c) => c.id === landlordPick)?.name ?? '')
+  const archName = archPick === NEW ? archNew.trim() : (customerList.find((c) => c.id === archPick)?.name ?? '')
 
   const draft: NewProjectDraft = {
     name: name.trim(),
     address: address.trim(),
-    town,
     customerId: ownerPick && ownerPick !== NEW ? ownerPick : null,
     ...(customerRole !== 'owner' ? { customerRole } : {}),
     ...(landlordShown && landlordName !== '' ? { propertyOwnerId: landlordPick && landlordPick !== NEW ? landlordPick : null, propertyOwnerName: landlordName } : {}),
@@ -364,13 +324,15 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     architectId: archPick && archPick !== NEW ? archPick : null,
     architectName: archName,
     bidDue: bidDue || null,
-    sizeNote,
+    sqFt: sqFtNumber > 0 ? sqFtNumber : null,
+    sizeNote: sizeWords.trim(),
     setLabel: setLabel.trim() || 'Bid set',
+    setKind: ['Bid set', 'Pricing set', 'Permit set'].includes(setLabel.trim()) ? setLabel.trim() : 'Bid set',
     issuedOn,
     setNote: setNote.trim(),
     sheets: reading.sheets,
     ...(specReading.sections.length > 0 ? { specs: specReading.sections } : {}),
-    ...(driveCheck ? { drive: { url: driveUrl.trim(), access: driveCheck.access, checkedOn: state.today } } : {}),
+    ...(driveRead ? { drive: { url: driveUrl.trim(), access: null, checkedOn: null } } : {}),
     trades: picked.map((r) => {
       const own = reading.sheets.filter((x) => r.from.includes(x.id))
       const ownSpecs = specReading.sections.filter((x) => r.specs.includes(x.id))
@@ -390,7 +352,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
 
   const missing: string[] = []
   if (draft.name === '') missing.push('Give the project a name.')
-  if (draft.town === '') missing.push('Add the town to the address, so drives can be measured.')
   if (ownerName === '') missing.push('Pick the customer.')
   if (customerRole === 'owner' && landlordOpen && landlordName === '') missing.push('Pick the owner of the property, or take it off.')
   if (archName === '') missing.push('Pick the architect.')
@@ -404,11 +365,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const ours = picked.filter((r) => r.ours).length
   const budgets = picked.reduce((n, r) => n + budgetNumber(r.budget), 0)
   const sqFt = sqFtNumber > 0 ? sqFtNumber : null
-  /** The project as it will be made, so each trade's companies can be lined up before it exists. */
-  const built = buildNewProject(state, draft).project
-  const asksFor = (trade: string, pkg: (typeof built.packages)[number]) => asks[trade] ?? defaultAsks(state, built, pkg)
-  const strangersOn = strangers.filter((x) => built.packages.some((p) => p.trade === x.trade && !p.selfPerform))
-  const asked = built.packages.reduce((n, pkg) => n + asksFor(pkg.trade, pkg).length, 0) + strangersOn.length
   const summaries = [
     draft.name || 'No name yet',
     `${draft.setLabel} · ${reading.sheets.length} ${reading.sheets.length === 1 ? 'sheet' : 'sheets'}${
@@ -416,30 +372,20 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
     }`,
     `${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}${ours > 0 ? `, ${ours} ours` : ''}`,
     `${scopeLines} scope ${scopeLines === 1 ? 'line' : 'lines'}${gaps.length > 0 ? `, ${gaps.length} ${gaps.length === 1 ? 'gap' : 'gaps'}` : ''}`,
-    asked === 0 ? 'Nobody asked yet' : `${asked} ${asked === 1 ? 'company' : 'companies'} asked`,
   ]
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // An open picker takes Escape for itself; only an Escape nothing else used closes the window.
       // The scope book's window, open over this one, takes Escape for itself.
-      if (e.key === 'Escape' && !bookOpen && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
+      if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('[role="listbox"]')) onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [onClose, bookOpen])
+  }, [onClose])
 
-  const create = () => {
-    const id = newProjectId(state, draft)
-    dispatch({ type: 'createProject', draft })
-    // Each ask is the board's own invite, so the company's count and the log move as they do on Trades.
-    for (const pkg of built.packages) {
-      for (const partnerId of asksFor(pkg.trade, pkg)) dispatch({ type: 'invite', projectId: id, packageId: pkg.id, partnerId })
-    }
-    // Each company new to us comes in not vetted, then is asked like the rest.
-    for (const action of strangerActions(state, { ...built, id }, strangersOn)) dispatch(action)
-    onCreated(id)
-  }
+
+  const create = () => onCreate(draft)
 
   const groups: { discipline: string; rows: PlanSheet[] }[] = []
   for (const s of reading.sheets) {
@@ -459,18 +405,12 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   const removeTrade = (trade: string) => {
     setAdded((a) => a.filter((t) => t !== trade))
     setEdits((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== trade)))
-    setAsks((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== trade)))
-    setStrangers((all) => all.filter((x) => x.trade !== trade))
     setFilled((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== trade)))
   }
   /** What goes with a removed trade, said on its button. */
   const removeWords = (r: TradeRow) => {
     const lines = r.scope.filter((l) => l.label.trim()).length
-    const asked = (asks[r.trade]?.length ?? 0) + strangers.filter((x) => x.trade === r.trade).length
-    const goes = [
-      lines > 0 ? `its ${lines} scope ${lines === 1 ? 'line' : 'lines'}` : '',
-      asked > 0 ? `the ${asked} ${asked === 1 ? 'company' : 'companies'} you picked` : '',
-    ].filter(Boolean)
+    const goes = [lines > 0 ? `its ${lines} scope ${lines === 1 ? 'line' : 'lines'}` : ''].filter(Boolean)
     return goes.length > 0 ? `Take ${r.trade} off this project, with ${goes.join(' and ')}.` : `Take ${r.trade} off this project.`
   }
   const addTrade = (trade: string) => {
@@ -481,7 +421,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }}>
       <div
         role="dialog"
         aria-modal="true"
@@ -491,7 +431,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
           color: 'var(--text-base)',
           borderRadius: 10,
           width: 'min(1040px, 100%)',
-          height: 'min(760px, 94vh)',
+          height: 'min(760px, 94vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -615,25 +555,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
               </Field>
               <Field label="Address">
                 <input style={field} value={address} onChange={(e) => setAddress(e.target.value)} placeholder="24165 IH-10 W, San Antonio" />
-                {townRead ? (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>Drives are measured from {townRead}.</span>
-                ) : address.trim() === '' ? (
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>The street and the town. Each company's drive is measured from the town.</span>
-                ) : (
-                  <span style={{ display: 'grid', gap: '0.3rem' }}>
-                    <span style={{ color: 'var(--text-amber-700)', fontSize: '0.78rem', fontWeight: 600 }}>
-                      No town we know is in the address. Add it after a comma, like ", San Antonio", or pick it here.
-                    </span>
-                    <Picker
-                      value={townPick}
-                      onChange={setTownPick}
-                      options={TOWNS.map((t) => ({ value: t.name, label: t.name }))}
-                      placeholder="Pick the town"
-                      ariaLabel="Towns"
-                      searchPlaceholder="Search towns"
-                    />
-                  </span>
-                )}
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>The street and the town.</span>
               </Field>
               {/* The owner, 2026-10-04: "owner should become customer and then there should be a button to add owner different than customer." */}
               <div style={{ display: 'grid', gap: '0.25rem', alignContent: 'start' }}>
@@ -794,15 +716,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                   </div>
                   <input style={field} value={setLabel} onChange={(e) => setSetLabel(e.target.value)} />
                 </Field>
-                <DriveLinkField
-                  url={driveUrl}
-                  onUrl={(url) => {
-                    setDriveUrl(url)
-                    setDriveFixed(false)
-                  }}
-                  fixed={driveFixed}
-                  onCheckAgain={() => setDriveFixed(true)}
-                />
+                <DriveLinkField url={driveUrl} onUrl={setDriveUrl} />
                 <div style={{ display: 'grid', gap: '0.8rem', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))' }}>
                   <Field label="It came in on">
                     <input type="date" style={field} value={issuedOn} onChange={(e) => setIssuedOn(e.target.value)} />
@@ -811,14 +725,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     <input style={field} value={setNote} onChange={(e) => setSetNote(e.target.value)} placeholder="The set the customer sent out to bid." />
                   </Field>
                 </div>
-                <SheetIndexTable
-                  rows={sheetRows}
-                  onRows={setSheetRows}
-                  sampleText={`${(draft.name || 'New project').toUpperCase()} · ${draft.setLabel.toUpperCase()}  09/30/2026\n${SAMPLE_SHEET_INDEX}`}
-                  sampleSheets={sampleSheets}
-                  projectName={draft.name}
-                  setLabel={draft.setLabel}
-                />
+                <SheetIndexTable rows={sheetRows} onRows={setSheetRows} projectName={draft.name} setLabel={draft.setLabel} />
                 <Field
                   label="The project manual's table of contents"
                   hint="Paste the list of sections from the front of the specs. Each line that starts with a section number becomes a section. Leave it empty when no specs came in."
@@ -831,11 +738,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                     style={{ ...field, height: 'auto', fontFamily: 'inherit', resize: 'vertical' }}
                   />
                 </Field>
-                {specText.trim() === '' && (
-                  <div>
-                    <Btn kind="quiet" onClick={() => setSpecText(SAMPLE_SPEC_INDEX)}>Paste a made-up table of contents</Btn>
-                  </div>
-                )}
               </div>
 
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', background: 'var(--bg-subtle)', fontSize: '0.85rem' }}>
@@ -985,11 +887,10 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                         onClick={() => {
                           const next: Record<string, { budget: string; words: string }> = {}
                           for (const r of picked) {
-                            const b = r.budget.trim() === '' ? budgetForSize(state, r.trade, sqFt) : null
+                            const b = r.budget.trim() === '' ? budgetFromSize(r.trade, sqFt) : null
                             if (b === null) continue
-                            const budget = b.amount.toLocaleString('en-US')
-                            const rate = perSqFtWords(b.perSqFt)
-                            next[r.trade] = { budget, words: b.jobs > 0 ? `${rate}, from ${b.jobs} past ${b.jobs === 1 ? 'job' : 'jobs'}` : `${rate}, a rough rate` }
+                            const budget = b.toLocaleString('en-US')
+                            next[r.trade] = { budget, words: `${perSqFtWords(b / sqFt)}, a rough rate` }
                             edit(r.trade, { budget })
                           }
                           setFilled((all) => ({ ...all, ...next }))
@@ -998,7 +899,7 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                         Fill the empty budgets from the size
                       </Btn>
                       <span style={{ color: 'var(--text-muted)' }}>
-                        Each trade's cost per square foot on our past jobs, times {sqFt.toLocaleString('en-US')} sq ft. A trade we have no past job for uses a rough rate. Change any of them.
+                        A rough rate per square foot for each trade, times {sqFt.toLocaleString('en-US')} sq ft. Our own past GC jobs will set the rate once some are closed. Change any of them.
                       </span>
                     </>
                   )}
@@ -1014,7 +915,6 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                 <span style={{ flex: '1 1 20rem' }}>
                   Each line is one piece of work. A company says yes or no to every line when it quotes. Compare quotes reads them line by line.
                 </span>
-                <Btn kind="quiet" onClick={() => setBookOpen(true)}>Open the scope book</Btn>
               </div>
               {picked.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)' }}>No trades are ticked yet. Pick them on step 3.</div>
@@ -1077,10 +977,8 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
                       next={picked[picked.indexOf(shown) + 1]?.trade ?? null}
                       onNext={setScopeFor}
                       book={book}
-                      sets={scopeSetsFor(state, shown.trade)}
-                      onSaveToBook={(line) =>
-                        dispatch({ type: 'saveToScopeBook', trade: shown.trade, words: line.label.trim(), ...(line.specs?.[0] ? { spec: line.specs[0] } : {}) })
-                      }
+                      sets={setsFor(shown.trade)}
+                      onSaveToBook={(line) => onSaveToBook?.(shown.trade, line.label.trim(), line.specs?.[0])}
                     />
                   )}
                 </div>
@@ -1088,186 +986,29 @@ export function GcNewProjectWindow({ state, dispatch, onClose, onCreated }: Wind
             </div>
           )}
 
-          {step === 4 && (
-            <div style={{ display: 'grid', gap: '0.8rem' }}>
-              <div style={{ fontSize: '0.875rem' }}>
-                The most reliable companies in range are ticked, up to three a trade, so at least two quotes come back. Each one gets a portal link with the plans, its trade&apos;s scope and the due date. Missing paperwork does not stop a quote. It shows under the company, to fix before you award.
-              </div>
-              {built.packages.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No trades are ticked yet. Pick them on step 3.</div>}
-              {built.packages.map((pkg) => {
-                if (pkg.selfPerform) {
-                  return (
-                    <div key={pkg.id} style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      <strong style={{ color: 'var(--text-base)' }}>{pkg.trade}</strong> is ours. Nobody is asked.
-                    </div>
-                  )
-                }
-                const lineup = tradeLineup(state, built, pkg)
-                const mine = strangers.filter((x) => x.trade === pkg.trade)
-                const on = [...asksFor(pkg.trade, pkg), ...mine.map((x) => `new:${x.company}`)]
-                return (
-                  <div key={pkg.id} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.4rem 0.7rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
-                      <strong>{pkg.trade}</strong>
-                      <span style={{ color: on.length >= 2 ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
-                        {on.length === 0 ? 'nobody asked' : `${on.length} asked`}
-                        {on.length > 0 && on.length < 2 ? '. Two quotes is the least you want.' : ''}
-                      </span>
-                      <span style={{ flex: 1 }} />
-                      {asks[pkg.trade] && (
-                        <Btn kind="quiet" onClick={() => setAsks((all) => Object.fromEntries(Object.entries(all).filter(([t]) => t !== pkg.trade)))}>
-                          Tick the most reliable again
-                        </Btn>
-                      )}
-                    </div>
-                    {lineup.length === 0 ? (
-                      <div style={{ padding: '0.4rem 0.7rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        No company in the directory does {inSentence(pkg.trade)} yet. Ask one below.
-                      </div>
-                    ) : (
-                      lineup.map((row) => {
-                        const ticked = on.includes(row.partner.id)
-                        const miles = travelWords(row.travel, row.partner)
-                        const blockers = partnerBlockers(row.partner, state.today)
-                        return (
-                          <label
-                            key={row.partner.id}
-                            style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem', cursor: 'pointer', opacity: row.travel.inZone ? 1 : 0.6 }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={ticked}
-                              onChange={(e) => {
-                                const was = asksFor(pkg.trade, pkg)
-                                setAsks((all) => ({ ...all, [pkg.trade]: e.target.checked ? [...was, row.partner.id] : was.filter((x) => x !== row.partner.id) }))
-                              }}
-                            />
-                            <strong>{row.partner.company}</strong>
-                            <span style={{ color: 'var(--text-muted)' }}>{miles || 'coverage not set'}</span>
-                            <span style={{ flex: 1 }} />
-                            {vettingWords(row.partner) !== '' && <Chip tone="amber">{vettingWords(row.partner)}</Chip>}
-                            <RecordChip record={answerRecord(row.partner)} />
-                            {blockers.length > 0 && (
-                              <span style={{ flexBasis: '100%', paddingLeft: '1.6rem', color: 'var(--text-muted)', fontSize: '0.78rem' }}>{blockers.join(' ')}</span>
-                            )}
-                          </label>
-                        )
-                      })
-                    )}
-                    {mine.map((x, i) => (
-                      <div key={`${x.company}-${i}`} style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
-                        <input type="checkbox" checked readOnly aria-label={`${x.company} is asked`} />
-                        <strong>{x.company}</strong>
-                        <span style={{ color: 'var(--text-muted)' }}>{x.contact || 'no contact yet'}</span>
-                        <span style={{ flex: 1 }} />
-                        <Chip tone="amber">not vetted yet</Chip>
-                        <Chip tone="grey">new to us</Chip>
-                        <button
-                          type="button"
-                          onClick={() => setStrangers((all) => all.filter((y) => y !== x))}
-                          aria-label={`Do not ask ${x.company}`}
-                          style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1rem', padding: '0 0.3rem' }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                    {strangerFor === pkg.trade ? (
-                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.7rem', fontSize: '0.875rem' }}>
-                        <input
-                          autoFocus
-                          style={{ ...field, flex: '1 1 12rem', minWidth: 0 }}
-                          value={strangerName}
-                          onChange={(e) => setStrangerName(e.target.value)}
-                          placeholder="The company's name"
-                          aria-label={`A company new to us for ${pkg.trade}`}
-                        />
-                        <input
-                          style={{ ...field, flex: '1 1 12rem', minWidth: 0 }}
-                          value={strangerContact}
-                          onChange={(e) => setStrangerContact(e.target.value)}
-                          placeholder="Their email or phone"
-                          aria-label={`How to reach the new company for ${pkg.trade}`}
-                        />
-                        <Btn
-                          disabled={strangerName.trim() === ''}
-                          onClick={() => {
-                            setStrangers((all) => [...all, { trade: pkg.trade, company: strangerName.trim(), contact: strangerContact.trim() }])
-                            setStrangerName('')
-                            setStrangerContact('')
-                            setStrangerFor(null)
-                          }}
-                        >
-                          Ask them
-                        </Btn>
-                        <Btn kind="quiet" onClick={() => setStrangerFor(null)}>Cancel</Btn>
-                        <span style={{ flexBasis: '100%', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                          Anyone can quote. A company new to us comes in not vetted. Nothing is awarded to them until we approve them on Trade partners.
-                        </span>
-                      </div>
-                    ) : (
-                      <div style={{ padding: '0.35rem 0.7rem' }}>
-                        <Btn
-                          kind="quiet"
-                          onClick={() => {
-                            setStrangerFor(pkg.trade)
-                            setStrangerName('')
-                            setStrangerContact('')
-                          }}
-                        >
-                          + Ask a company not on our list
-                        </Btn>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
         </div>
 
         <div style={{ padding: '0.65rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-600)', flex: '1 1 18rem' }}>
             {missing.length > 0
               ? missing[0]
-              : `${draft.name} starts under Bidding to the customer with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. ${
-                  asked === 0 ? 'Nobody is asked yet.' : `${asked} ${asked === 1 ? 'company is' : 'companies are'} asked to quote.`
-                }${strangersOn.length > 0 ? ` ${strangersOn.length} ${strangersOn.length === 1 ? 'is' : 'are'} new to us and not vetted yet.` : ''}`}
+              : problem
+                ? problem
+                : `${draft.name} starts under Bidding to the customer with ${picked.length} ${picked.length === 1 ? 'trade' : 'trades'}. Nobody is asked to quote until the companies are on the record.`}
           </span>
           <Btn kind="quiet" onClick={onClose}>Cancel</Btn>
           {step > 0 && <Btn onClick={() => setStep(step - 1)}>← Back</Btn>}
           {step < STEPS.length - 1 ? (
             <Btn kind="primary" onClick={() => setStep(step + 1)}>Next →</Btn>
           ) : (
-            <Btn kind="primary" disabled={missing.length > 0} title={missing.join(' ') || undefined} onClick={create}>
-              Create the project
+            <Btn kind="primary" disabled={missing.length > 0 || Boolean(creating)} title={missing.join(' ') || undefined} onClick={create}>
+              {creating ? 'Making it…' : 'Create the project'}
             </Btn>
           )}
         </div>
       </div>
-      {bookOpen && (
-        <GcScopeBookWindow
-          state={state}
-          dispatch={dispatch}
-          onClose={() => setBookOpen(false)}
-          {...(shown ? { startTrade: shown.trade } : {})}
-          current={shown ? { trade: shown.trade, lines: shown.scope.map((l) => l.label.trim()).filter(Boolean), projectName: draft.name } : null}
-        />
-      )}
     </div>
   )
-}
-
-const RECORD_WORDS: Record<AnswerRecord, { tone: 'green' | 'amber' | 'red' | 'grey'; words: string }> = {
-  reliable: { tone: 'green', words: 'answers when asked' },
-  mixed: { tone: 'amber', words: 'answers some asks' },
-  silent: { tone: 'red', words: 'often silent' },
-  new: { tone: 'grey', words: 'new to us' },
-}
-
-function RecordChip({ record }: { record: AnswerRecord }) {
-  const r = RECORD_WORDS[record]
-  return <Chip tone={r.tone}>{r.words}</Chip>
 }
 
 function ScopeEditor({
@@ -1638,30 +1379,3 @@ export function ScopeLines({
 }
 
 /** The way in from the board: a button that opens the New project window. */
-export function GcNewProjectButton({
-  state,
-  dispatch,
-  onCreated,
-}: {
-  state: GcState
-  dispatch: Dispatch<GcAction>
-  onCreated: (projectId: string) => void
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <>
-      <Btn onClick={() => setOpen(true)}>+ New project</Btn>
-      {open && (
-        <GcNewProjectWindow
-          state={state}
-          dispatch={dispatch}
-          onClose={() => setOpen(false)}
-          onCreated={(id) => {
-            setOpen(false)
-            onCreated(id)
-          }}
-        />
-      )}
-    </>
-  )
-}

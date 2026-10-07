@@ -235,3 +235,32 @@ describe('billTruth — the Pipeline board is the same truth (spine parity)', ()
     expect(boardRows.length).toBe(2)
   })
 })
+
+describe('billTruth — Uncollectible (punch list #94, v2.4784)', () => {
+  it('a Collections job marked Uncollectible leaves collections and owed; its rows land in uncollectible, still dated and counted', () => {
+    const jobs = [
+      job('chase', { collections_at: '2026-08-01T00:00:00Z', revenue: 350 }),
+      job('gone', { collections_at: '2026-04-13T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z', revenue: 7502 }),
+      job('open', { revenue: 1000 }),
+    ]
+    const t = computeBillTruth({ jobs, invoices: [inv('c1', 'chase', 350), inv('g1', 'gone', 7502), inv('o1', 'open', 1000)], payments: [pay('g1', 2)] })
+    expect(t.billed).toMatchObject({ count: 1, total: 1000 })
+    expect(t.collections).toMatchObject({ count: 1, total: 350 })
+    expect(t.uncollectible).toMatchObject({ count: 1, total: 7500 })
+    expect(t.uncollectible.rows[0]).toMatchObject({ jobId: 'gone', inCollections: true, uncollectible: true })
+    expect(t.owed).toEqual({ count: 2, total: 1350 })
+  })
+
+  it('the mark counts only inside Collections — a billed job with uncollectible_at but no collections_at is plain Billed, as the RPC never writes', () => {
+    const t = computeBillTruth({ jobs: [job('odd', { uncollectible_at: '2026-10-07T00:00:00Z', revenue: 100 })], invoices: [], payments: [] })
+    expect(t.billed.count).toBe(1)
+    expect(t.uncollectible.count).toBe(0)
+    expect(openBillRowsForJob(job('odd', { uncollectible_at: '2026-10-07T00:00:00Z', revenue: 100 }), [], new Map())[0]).toMatchObject({ inCollections: false, uncollectible: false })
+  })
+
+  it('the shell row of an Uncollectible job with no bill line carries the mark too', () => {
+    const rows = openBillRowsForJob(job('shell', { collections_at: '2026-09-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z', revenue: 250 }), [], new Map())
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ kind: 'shell', remaining: 250, inCollections: true, uncollectible: true })
+  })
+})

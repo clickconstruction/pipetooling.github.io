@@ -175,7 +175,7 @@ export function PeopleHoursPendingCellPopover({
         top: pos?.top ?? -9999,
         left: pos?.left ?? -9999,
         width: POPOVER_WIDTH,
-        zIndex: 50,
+        zIndex: 750,
         background: 'var(--surface)',
         border: '1px solid #f59e0b',
         borderRadius: 8,

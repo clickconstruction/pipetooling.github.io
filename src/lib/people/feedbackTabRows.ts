@@ -5,6 +5,7 @@
  */
 import { computeTeamFeedbackEligibilityDetail, type TeamFeedbackSettingsRow, type TeamFeedbackUserStateRow } from '../teamFeedback'
 import { summarizeCrewSubject, type CrewSubjectSummary, type SourcedReviewRow } from './crewReview'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type DeckState =
   | { kind: 'off' }
@@ -173,7 +174,7 @@ export function feedbackStats(rows: FeedbackPersonRow[], reviews: SourcedReviewR
   const rated = new Set<string>()
   for (const r of reviews) if (r.source === 'crew' && r.review_month === reviewMonth) rated.add(r.subject_user_id)
   const monthPrefix = reviewMonth.slice(0, 7)
-  const wordsThisMonth = submissions.filter((s) => submissionHasWords(s) && s.created_at.slice(0, 7) === monthPrefix).length
+  const wordsThisMonth = submissions.filter((s) => submissionHasWords(s) && calendarYmdInAppTzFromIso(s.created_at).slice(0, 7) === monthPrefix).length
   return {
     dueNow: enabled ? rows.filter((r) => r.deck.kind === 'due').length : null,
     ratedThisMonth: rated.size,

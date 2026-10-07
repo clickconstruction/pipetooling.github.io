@@ -127,3 +127,19 @@ describe('useBilledLienClocks', () => {
     await waitFor(() => expect(Object.keys(hook.result.current ?? {}).sort()).toEqual(['a', 'b']))
   })
 })
+
+describe('a filing with no filed day keeps its Central day (v2.4468)', () => {
+  it('dates an affidavit or a release from the day its row was made, in the company calendar', async () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    db.rows.job_lien_filings = [
+      { job_id: 'a', kind: 'affidavit', filed_at: null, created_at: '2026-12-02T00:30:00Z', months_covered: null },
+      { job_id: 'a', kind: 'release_of_record', filed_at: null, created_at: '2026-10-03T00:30:00+00:00', months_covered: null },
+      { job_id: 'b', kind: 'affidavit', filed_at: '2026-09-14', created_at: '2026-09-15T00:30:00Z', months_covered: null },
+      { job_id: 'b', kind: 'release_of_record', filed_at: null, created_at: '2026-10-03T12:00:00Z', months_covered: null },
+    ]
+    const hook = mount([A, B])
+    await waitFor(() => expect(hook.result.current).not.toBeNull())
+    expect(hook.result.current?.a).toMatchObject({ filedYmd: '2026-12-01', releasedYmd: '2026-10-02' })
+    expect(hook.result.current?.b).toMatchObject({ filedYmd: '2026-09-14', releasedYmd: '2026-10-03' })
+  })
+})

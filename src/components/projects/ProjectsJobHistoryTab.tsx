@@ -49,18 +49,20 @@ import {
   normalizeBarSearchQuery,
 } from '../../lib/projectsJobHistoryBarSearch'
 import { ProjectsJobHistoryTimeline } from './ProjectsJobHistoryTimeline'
-import { JobHistoryDayList } from './JobHistoryDayList'
-import { HistoryRangeBar } from './HistoryRangeBar'
-import { buildJobHistoryDayList } from '../../lib/jobs/jobHistoryDayList'
-import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import JobHistoryCrewCalendar from '../jobs/JobHistoryCrewCalendar'
+import { buildCrewCalendar, crewRangeFor, type CrewRangeMode } from '../../lib/jobs/jobHistoryCalendar'
+import type { LienMonthLine } from '../../lib/jobs/lienMonthLines'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { ProjectsJobHistoryDayModal } from './ProjectsJobHistoryDayModal'
 
 type Props = {
   customerId: string | null
-  /** T5-05: single-job mode — the job window's History tab. One job (any status), 180-day default range,
-   *  no persisted prefs, no project filter. */
+  /** T5-05: single-job mode — the job window's History tab. One job (any status), no persisted prefs, no
+   *  project filter. Since v2.4694 it draws Days on the job — the month calendar — in place of the Gantt
+   *  (and of the phone's day list), over the whole job by default. */
   jobId?: string | null
+  /** Single-job mode (v2.4707): each work month's § 53.056 line for the calendar's month headers, from the lien timeline the Job window reads; null when the lien box is not shown. */
+  lienMonthLines?: Record<string, LienMonthLine> | null
 }
 
 type ServiceTypeRow = { id: string; ledger_job_prefix: string | null; ledger_bid_prefix: string | null }
@@ -124,7 +126,7 @@ function writeOnlyWithProjects(value: boolean) {
   }
 }
 
-export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
+export function ProjectsJobHistoryTab({ customerId, jobId = null, lienMonthLines = null }: Props) {
   const { user: authUser, role: authRole } = useAuth()
   const authUserId = authUser?.id ?? null
   const isDocVisible = useDocumentVisibility()
@@ -334,14 +336,25 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
   // Today's Chicago calendar key is effectively stable across a session for this UI; we don't
   // need to re-derive it on every render.
   const todayKey = useMemo(() => todayChicagoYmd(), [])
-  // v2.3235: on a phone, a single job's history is a day list, not the 36 px-a-day grid.
-  const narrowViewport = useNarrowViewport640()
-  const phoneDayList = !!jobId && narrowViewport
-  const dayList = useMemo(
-    () => (phoneDayList && jobId ? buildJobHistoryDayList(sessionRows, { jobId, todayYmd: todayKey, startYmd: rangeStart, endYmd: rangeEnd }) : null),
-    [phoneDayList, jobId, sessionRows, todayKey, rangeStart, rangeEnd],
+  // Days on the job (v2.4694): one job's history is a month calendar, desktop and phone alike. The
+  // range starts as the whole job (its first day worked through today); the chips narrow it.
+  const [crewRangeMode, setCrewRangeMode] = useState<CrewRangeMode>('whole')
+  const [pickedUserId, setPickedUserId] = useState<string | null>(null)
+  const wholeStartYmd = useMemo(() => {
+    if (!jobId) return ''
+    let first = ''
+    for (const r of sessionRows) if (r.job_ledger_id === jobId && r.work_date && (!first || r.work_date < first)) first = r.work_date
+    return first
+  }, [jobId, sessionRows])
+  const crewRange = useMemo(
+    () => crewRangeFor(crewRangeMode, todayKey, wholeStartYmd, { start: rangeStart, end: rangeEnd }, ymdAddDays),
+    [crewRangeMode, todayKey, wholeStartYmd, rangeStart, rangeEnd],
   )
-  const dayListNames = useUserDisplayNames(dayList?.userIds ?? [])
+  const crew = useMemo(
+    () => (jobId ? buildCrewCalendar(sessionRows, { jobId, todayYmd: todayKey, startYmd: crewRange.start, endYmd: crewRange.end, onlyUserId: pickedUserId }) : null),
+    [jobId, sessionRows, todayKey, crewRange, pickedUserId],
+  )
+  const crewNames = useUserDisplayNames(crew?.people.map((p) => p.userId) ?? [])
 
   // Apply the "only show jobs with projects" toggle BEFORE the search filter so the
   // search match counter reflects the same population the user sees on screen. When the
@@ -474,18 +487,9 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
 
   return (
     <div>
-      {/* v2.3237: on a phone, one range bar replaces the search box, From / To,
-          the preset chips and the summary line above the day list. */}
-      {phoneDayList ? (
-        <HistoryRangeBar
-          start={rangeStart}
-          end={rangeEnd}
-          todayYmd={todayKey}
-          daysWorked={dayList?.daysWorked ?? 0}
-          maxPeople={dayList?.maxPeople ?? 0}
-          onChange={(start, end) => persistRange(start, end)}
-        />
-      ) : (
+      {/* One job (v2.4694): Days on the job carries its own range chips, so the search box, From / To,
+          the presets and Expanded / Compact — all many-jobs controls — are not drawn. */}
+      {jobId ? null : (
       <div
         style={{
           display: 'flex',
@@ -573,7 +577,7 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
             <button type="button" onClick={() => onPreset(365)} style={chipStyle}>
               Last 365d
             </button>
-            {!phoneDayList && (
+            {(
             <div
               role="group"
               aria-label="Job History layout mode"
@@ -651,19 +655,29 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
         </p>
       )}
 
-      {phoneDayList && dayList && !rangeInvalid && (
-        <JobHistoryDayList
-          list={dayList}
-          namesById={dayListNames}
+      {jobId && crew && (
+        <JobHistoryCrewCalendar
+          calendar={crew}
+          namesById={crewNames}
           todayYmd={todayKey}
+          monthLines={lienMonthLines}
+          loading={loadingJobs || loadingSessions}
+          range={{ mode: crewRangeMode, start: crewRange.start, end: crewRange.end }}
+          onRangeMode={(mode) => {
+            if (mode === 'custom') persistRange(crewRange.start, crewRange.end)
+            setCrewRangeMode(mode)
+          }}
+          onCustomRange={(start, end) => persistRange(start, end)}
+          pickedUserId={pickedUserId}
+          onPickUser={setPickedUserId}
           onOpenDay={(ymd) => {
-            const bar = filteredBars[0] ?? projectFilteredBars[0] ?? bars[0]
+            const bar = bars[0]
             if (bar) onDayCellClick(bar, ymd)
           }}
         />
       )}
 
-      {!phoneDayList && !rangeInvalid && projectFilteredBars.length > 0 && dayKeys.length > 0 && filteredBars.length > 0 && (
+      {!jobId && !rangeInvalid && projectFilteredBars.length > 0 && dayKeys.length > 0 && filteredBars.length > 0 && (
         <ProjectsJobHistoryTimeline
           bars={filteredBars}
           dayKeys={dayKeys}

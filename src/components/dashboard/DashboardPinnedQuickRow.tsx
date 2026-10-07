@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
+import { lienWindowHref, ownerRecordsHref } from '../../lib/jobs/stagesDeepLinks'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../../lib/bankingAccess'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
@@ -24,6 +25,7 @@ import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
 import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
+import { useBidFollowupsDue } from '../../hooks/useBidFollowupsDue'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBulkHoursNudge } from '../../hooks/useBulkHoursNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
@@ -41,11 +43,13 @@ import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds, useGcSchedul
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
+import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
+import { useOwnerRecordsSignedNudge } from '../../hooks/useOwnerRecordsSignedNudge'
 import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { useSubmittalsNudge } from '../../hooks/useSubmittalsNudge'
@@ -370,6 +374,8 @@ export function DashboardPinnedQuickRow({
     Boolean(authUserId) &&
     (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary')
   const { nudge: lostBidNudge, loading: lostBidNudgeLoading } = useLostBidNudge(lostBidNudgeEnabled)
+  // Promised bid calls due or missed (v2.4426): the Call queue's audience (a primary is not on Followup).
+  const { due: bidFollowupsDue } = useBidFollowupsDue(Boolean(authUserId) && (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'))
   const {
     peopleCount: tallyStaffStalePeopleCount,
     transactionCount: tallyStaffStaleTxCount,
@@ -495,6 +501,9 @@ export function DashboardPinnedQuickRow({
   // Supply-house job accounts (v2.3430): jobs that bought at a house expecting an account with none on record — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
+  // The owner, 2026-10-06 (v2.4700): dev, assistant and controller see active vehicles with no insurance, registration or service on file.
+  const vehicleRecordGapsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
+  const { gaps: vehicleRecordGaps } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
   const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
@@ -509,6 +518,9 @@ export function DashboardPinnedQuickRow({
   // The firm's portal acts awaiting the office (Legal portal PR 4) — office roles; the desk's Fees & steps clears them.
   const legalFirmActivityEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
+  // Owners who signed for our records on their portal (punch list #86) — the office set that works the Lien desk.
+  const ownerRecordsSignedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
@@ -532,6 +544,7 @@ export function DashboardPinnedQuickRow({
     tallyMinAgeDays: TALLY_STALE_MIN_AGE_DAYS,
     lostBidNudge,
     lostBidNudgeLoading,
+    bidFollowupsDue,
     teamReviewsOverdue,
     teamReviewCadenceDays,
     roadmapNudges,
@@ -574,6 +587,8 @@ export function DashboardPinnedQuickRow({
     capacityUnder,
     jobAccountGapsEnabled,
     jobAccountGaps,
+    vehicleRecordGapsEnabled,
+    vehicleRecordGaps,
     priceMatrixEnabled,
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
@@ -599,6 +614,8 @@ export function DashboardPinnedQuickRow({
     lienDeskEnabled: lienUnconditionalEnabled,
     lienDesk: lienDeskData?.summary ?? null,
     lienDeskLeader: role === 'dev' || role === 'master_technician',
+    ownerRecordsSignedEnabled,
+    ownerRecordsSigned,
     hoursApprovalsEnabled,
     hoursApprovals,
     hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
@@ -733,6 +750,8 @@ export function DashboardPinnedQuickRow({
               setTallyStaffFollowUpModalOpen(true)
             } else if (item.key === 'lost-bids') {
               navigate('/bids?tab=why-we-lost')
+            } else if (item.key === 'bid-followups') {
+              navigate('/bids?tab=call-queue')
             } else if (item.key === 'job-followups') {
               navigate('/jobs?tab=stages&followups=1')
             } else if (item.key === 'contract-missing') {
@@ -757,6 +776,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {
               navigate('/materials?tab=job-accounts&filter=no_account')
+            } else if (item.key === 'vehicle-records-missing') {
+              navigate('/people?tab=vehicles')
             } else if (item.key.startsWith('submittal-')) {
               const n = submittalsNudge.nudge
               const first = item.key === 'submittal-lead-time' ? n?.leadTime.first : item.key === 'submittal-sent-back' ? n?.sentBack.first : item.key === 'submittal-unopened' ? n?.unopened.first : n?.notStarted.first
@@ -821,13 +842,19 @@ export function DashboardPinnedQuickRow({
               // The leader's seat (v2.4276): the list, the page, the pad.
               setLienWaiversToSignOpen(true)
             } else if (item.key === 'demand-deadline') {
-              navigate('/jobs?tab=stages')
+              // The job's Lien window on the demand letter; with several, the first and the board behind it.
+              const jobId = demandDeadlineOverdue?.jobIds[0]
+              navigate(jobId ? lienWindowHref(jobId, 'demand') : '/jobs?tab=stages')
             } else if (item.key === 'lien-notice-batch') {
               const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
               navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-window-missed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
-            } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
+            } else if (item.key === 'lien-notice-approve') {
+              // The leader's card lands on what waits on him (punch list #82).
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=awaiting')
+            } else if (item.key === 'lien-notice-draft') {
+              // Next up: the list this card counts from.
               navigate('/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-file-window') {
               navigate('/jobs?tab=stages&liendesk=1&kind=affidavit')
@@ -835,8 +862,14 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
             } else if (item.key === 'lien-tracking-owed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
+            } else if (item.key === 'owner-records-signed') {
+              // Records for an owner on the request that has waited longest (punch list #86); the desk's own door without a job.
+              const jobId = ownerRecordsSigned?.first.jobId
+              navigate(jobId ? ownerRecordsHref(jobId) : '/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-serve-copy') {
-              navigate('/jobs?tab=stages')
+              // The lien whose serve-by day comes first, on its Mechanic's lien tab where service is recorded.
+              const first = [...(lienWatch?.serveDue ?? [])].sort((a, b) => a.serveDue.localeCompare(b.serveDue))[0]
+              navigate(first ? lienWindowHref(first.jobId, 'affidavit') : '/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
               navigate('/people?tab=hours&approvals=1')
             } else if (item.key === 'typed-hours') {
@@ -870,6 +903,9 @@ export function DashboardPinnedQuickRow({
               else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
             } else if (item.key === 'lien-notice-draft' && key === 'missed') {
               navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
+            } else if (item.key === 'lien-notice-draft' && key === 'letter-two') {
+              // Letter two is sent from a notice's Sent row (v2.4561); before, this line was drawn as a link and did nothing.
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=sent')
             } else if (item.key === 'robot-backlog') {
               if (key === 'snooze') robotBacklogNudge.snooze24h()
               else if (key === 'dismiss') robotBacklogNudge.dismissUntilCountIncreases()

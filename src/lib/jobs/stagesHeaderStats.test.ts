@@ -34,6 +34,8 @@ function job(
     payments_made?: number
     pct_complete?: number | null
     collections_at?: string | null
+    /** Uncollectible (punch list #94, v2.4784) — ahead of the generated types, hence the assertion on the literal. */
+    uncollectible_at?: string | null
     invoices?: Inv[]
     payments?: Pay[]
   },
@@ -45,6 +47,7 @@ function job(
     payments_made: o.payments_made ?? 0,
     pct_complete: o.pct_complete ?? null,
     collections_at: o.collections_at ?? null,
+    uncollectible_at: o.uncollectible_at ?? null,
     hcp_number: id.replace(/\D/g, '') || '1',
     click_number: null,
     invoices: (o.invoices ?? []).map((i, n) => ({
@@ -110,6 +113,8 @@ const FULL: JobWithDetails[] = [
     invoices: [{ id: 'b2-a', amount: 700, status: 'billed' }],
   }),
   job('b3', { status: 'billed', revenue: 350, payments_made: 50 }),
+  // Uncollectible (punch list #94, v2.4784): in Collections and given up on — its own stat, never owed.
+  job('b4', { status: 'billed', revenue: 1200, collections_at: '2026-06-01', invoices: [{ id: 'b4-a', amount: 1200, status: 'billed' }], uncollectible_at: '2026-10-07' }),
   job('p1', { status: 'paid', revenue: 5000, payments_made: 5000 }),
 ]
 
@@ -126,6 +131,7 @@ function stripToLean(jobs: JobWithDetails[]): {
       payments_made: j.payments_made,
       pct_complete: j.pct_complete,
       collections_at: j.collections_at,
+      uncollectible_at: (j as { uncollectible_at?: string | null }).uncollectible_at ?? null,
       hcp_number: j.hcp_number,
       click_number: j.click_number,
       customer_id: j.customer_id ?? null,
@@ -184,6 +190,11 @@ describe('computeStagesHeaderStats', () => {
     const { jobRows, invoiceRows, paymentRows } = stripToLean(FULL)
     const lean = assembleLeanStatsJobs(jobRows, invoiceRows, paymentRows)
     expect(computeStagesHeaderStats(lean, NOW)).toEqual(computeStagesHeaderStats(FULL, NOW))
+    // b4 is Collections money the office gave up on: counted in its own stat, in neither collections nor owed.
+    const full = computeStagesHeaderStats(FULL, NOW)
+    expect(full.uncollectible).toEqual({ count: 1, total: 1200 })
+    expect(full.collections).toEqual({ count: 1, total: 700 })
+    expect(full.billTruth.owed.total).toBe(full.billed.total + full.collections.total)
   })
 
   it('bounded fetch simulation (v2.1917) matches the unbounded path, with paid count + collected overridden', () => {
@@ -275,5 +286,15 @@ describe('computeStagesHeaderStats · stage plans (v2.3809)', () => {
     // A job with no Order stage keeps the formula either way.
     const plain = { ...w, fixtures: [{ ...(w.fixtures[0] as object), stage_kind: null }] } as unknown as JobWithDetails
     expect(computeStagesHeaderStats([plain], NOW, EMPTY_WORKING_STAGE_INPUTS).capableToBill).toBe(400)
+  })
+})
+
+describe('collectedByDayFromPayments · the window ends today on the company calendar (v2.4475)', () => {
+  it('puts a payment from today in the last bar in the evening', () => {
+    // 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2: the last bar is Oct 2.
+    const days = collectedByDayFromPayments([{ paid_on: '2026-10-02', amount: 50 }], new Date('2026-10-03T00:30:00Z'))
+    expect(days.length).toBe(30)
+    expect(days[0]!.dayYmd).toBe('2026-09-03')
+    expect(days[days.length - 1]).toEqual({ dayYmd: '2026-10-02', total: 50 })
   })
 })

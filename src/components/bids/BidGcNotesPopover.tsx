@@ -148,14 +148,14 @@ export function BidGcNotesPopover({
         e.stopPropagation()
         onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 780, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={`Notes for ${gcName} on ${bidLabel}`}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 'min(30rem, 100%)', maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 28px 60px rgba(0,0,0,0.35)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, width: 'min(30rem, 100%)', maxHeight: 'min(85vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 28px 60px rgba(0,0,0,0.35)' }}
       >
         <div style={{ padding: '0.9rem 1.1rem 0.6rem' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>

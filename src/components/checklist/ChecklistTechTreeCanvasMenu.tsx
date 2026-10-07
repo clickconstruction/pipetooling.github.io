@@ -67,6 +67,7 @@ export function ChecklistTechTreeCanvasMenu({ menu, onRemoveLink, onAddStage, on
 
   return createPortal(
     <div
+      // status-bar: allow — a click-catcher: the menu inside is placed at the pointer
       style={{ position: 'fixed', inset: 0, zIndex: 10040 }}
       onMouseDown={onClose}
       onContextMenu={(e) => {

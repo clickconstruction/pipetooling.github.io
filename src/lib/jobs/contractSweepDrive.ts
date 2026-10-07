@@ -1,5 +1,5 @@
 /**
- * The Contract sweep's Drive pass, in the list (Contract sweep refresh — to-dos/contract-sweep-refresh).
+ * The Contract sweep's Drive pass, in the list (Contract sweep refresh — docs/recent-features/v2.3669.md).
  *
  * Some customers already have a contract with us, sitting in the jobs Drive. The scan that finds
  * them (`drive-contract-scan` + `matchDriveContracts`) used to live in a window under ⋯; the

@@ -6,6 +6,7 @@ import { balanceHeadline, partnerSinceLine } from '../../lib/partnerLedger/partn
 import type { PartnerJobCosting, PartnerJobsPayload } from '../../lib/partnerLedger/partnerJobsPayload'
 import type { PartnerSummary, WeekCard } from '../../lib/partnerLedger/partnerWeeks'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PORTAL_FONT } from '../../lib/portal/portalTheme'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 /**
  * The partner statement as paper (v2.2157) — the customer portal's sibling.
@@ -313,7 +314,7 @@ function CostingSheet({ costing, err }: { costing: PartnerJobCosting | null; err
           {costing.card_charges.length > 0 ? (
             <>
               {head('Card charges')}
-              {costing.card_charges.map((c, i) => line(`${c.counterparty ?? 'Charge'}${c.posted_at ? ` · ${c.posted_at.slice(0, 10)}` : ''}`, money(c.allocated), i))}
+              {costing.card_charges.map((c, i) => line(`${c.counterparty ?? 'Charge'}${c.posted_at ? ` · ${calendarYmdInAppTzFromIso(c.posted_at)}` : ''}`, money(c.allocated), i))}
             </>
           ) : null}
           {costing.direct.length > 0 ? (

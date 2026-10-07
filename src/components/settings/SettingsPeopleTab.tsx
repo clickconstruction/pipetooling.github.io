@@ -668,7 +668,7 @@ export default function SettingsPeopleTab({
                   </table>
                 </div>
             {editingNonUserPerson && (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }}>
                 <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
                   <h2 style={{ marginTop: 0 }}>Edit person: {editingNonUserPerson.name}</h2>
                   {editPersonError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{editPersonError}</p>}
@@ -703,7 +703,7 @@ export default function SettingsPeopleTab({
         </div>
 
       {mergeDuplicatesModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>

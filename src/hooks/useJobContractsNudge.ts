@@ -7,7 +7,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { JobContractRowLike, SignedEstimateLike } from '../lib/jobs/jobContractCoverage'
+import { JOB_CONTRACT_COVERAGE_COLUMNS, type JobContractRowLike, type SignedEstimateLike } from '../lib/jobs/jobContractCoverage'
 import { fetchJobContractFloorCents } from '../lib/jobs/jobContractFloor'
 import { CONTRACT_NUDGE_STATUSES, summarizeContractNudge, type ContractNudgeJob, type ContractNudgeSummary } from '../lib/jobs/jobContractNudge'
 
@@ -29,7 +29,7 @@ export function useJobContractsNudge(enabled: boolean): { nudge: ContractNudge |
           .in('status', [...CONTRACT_NUDGE_STATUSES]),
         supabase
           .from('job_contracts')
-          .select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url')
+          .select(JOB_CONTRACT_COVERAGE_COLUMNS)
           .is('voided_at', null),
         supabase
           .from('estimates')

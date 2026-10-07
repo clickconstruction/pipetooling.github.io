@@ -212,7 +212,7 @@ export function TallyPayrollRulesModal({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: '2rem 1rem', boxSizing: 'border-box', overflow: 'auto' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: 'calc(2rem + var(--app-top-chrome, 0px)) 1rem 2rem', boxSizing: 'border-box', overflow: 'auto' }}
     >
       <div role="dialog" aria-modal="true" aria-label="Payroll auto-mark rules" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 640, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

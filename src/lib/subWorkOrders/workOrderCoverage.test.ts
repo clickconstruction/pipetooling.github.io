@@ -49,3 +49,13 @@ describe('buildJobWorkOrderCoverage', () => {
     expect(workOrderBoardBucket(row({ id: 'x', status: 'cancelled' }), TODAY)).toBeNull()
   })
 })
+
+describe('an evening signature or offer keeps its day (v2.4469)', () => {
+  it('reads the signed and sent days in the company calendar', () => {
+    // 00:30 UTC on Oct 1 is 7:30 pm CDT on Sep 30; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    expect(buildJobWorkOrderCoverage([row({ id: 'a', status: 'accepted', signed_at: '2026-10-01T00:30:00Z' })], '2026-10-01')).toMatchObject({ kind: 'signed', signedOn: '2026-09-30' })
+    expect(buildJobWorkOrderCoverage([row({ id: 'a', status: 'approved', accepted_at: '2026-12-02T00:30:00+00:00' })], '2026-12-02')).toMatchObject({ kind: 'signed', signedOn: '2026-12-01' })
+    expect(buildJobWorkOrderCoverage([row({ id: 'o', status: 'offered', offered_at: '2026-09-05T00:30:00Z', offer_expires_at: '2026-09-11' })], TODAY)).toMatchObject({ kind: 'sent', sentAt: '2026-09-04' })
+    expect(buildJobWorkOrderCoverage([row({ id: 'o', status: 'offered', offered_at: '2026-09-05T12:00:00Z' })], TODAY)).toMatchObject({ kind: 'sent', sentAt: '2026-09-05' })
+  })
+})

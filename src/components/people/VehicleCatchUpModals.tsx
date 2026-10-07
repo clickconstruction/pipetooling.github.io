@@ -21,15 +21,15 @@ const overlayStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  zIndex: 10,
-  padding: '1rem',
+  zIndex: 710,
+  padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
 }
 const shellStyle: React.CSSProperties = {
   background: 'var(--surface)',
   borderRadius: 16,
   border: '1px solid var(--border)',
   width: 'min(38rem, 100%)',
-  maxHeight: '85vh',
+  maxHeight: 'min(85vh, 100%)',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',

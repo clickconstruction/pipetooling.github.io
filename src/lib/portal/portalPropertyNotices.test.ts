@@ -66,6 +66,13 @@ describe('buildPortalPropertyNotices (v2.3825)', () => {
   it('falls back to the filing day when the owner send has no date', () => {
     expect(buildPortalPropertyNotices({ jobs: [job('j273')], filings: [filing('f1', 'j273', { sends: [] })], viewerCustomerId: OWNER })[0]!.mailedOn).toBe('2026-09-26')
   })
+  it('2026-10-02 · a filing recorded at 7:30 pm Central falls back to that day, not the UTC day after', () => {
+    const mailedOn = (created_at: string) => buildPortalPropertyNotices({ jobs: [job('j273')], filings: [filing('f1', 'j273', { sends: [], created_at })], viewerCustomerId: OWNER })[0]!.mailedOn
+    expect(mailedOn('2026-10-03T00:30:00Z')).toBe('2026-10-02')
+    expect(mailedOn('2026-10-03T00:30:00+00:00')).toBe('2026-10-02')
+    expect(mailedOn('2026-12-02T00:30:00Z')).toBe('2026-12-01')
+    expect(mailedOn('2026-10-02T12:00:00Z')).toBe('2026-10-02')
+  })
 })
 
 describe('parsePortalPayload · propertyNotices', () => {

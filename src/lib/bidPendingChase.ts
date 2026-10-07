@@ -26,6 +26,8 @@ export type PendingChaseBid = {
   sentIso: string
   /** Effective last contact instant (bid `last_contact` / latest note), null = never. */
   lastContactIso: string | null
+  /** Parked on a call-again day still ahead (v2.4421, `bidIsParked`): it needs no chase until that day. */
+  parked?: boolean
 }
 
 const DAY_MS = 86_400_000
@@ -41,13 +43,15 @@ export function pendingChaseDaysBetween(fromIso: string, toIso: string): number 
 /**
  * A bid needs a chase when nobody has talked to the builder since it went out,
  * or the last touch has gone stale: no contact at all, contact older than the
- * sent date, or contact older than `staleDays`.
+ * sent date, or contact older than `staleDays`. A bid parked on a day still
+ * ahead never does.
  */
 export function bidNeedsChase(
-  b: Pick<PendingChaseBid, 'sentIso' | 'lastContactIso'>,
+  b: Pick<PendingChaseBid, 'sentIso' | 'lastContactIso' | 'parked'>,
   nowIso: string,
   staleDays: number = PENDING_CHASE_STALE_CONTACT_DAYS,
 ): boolean {
+  if (b.parked) return false
   if (!b.lastContactIso) return true
   const contact = Date.parse(b.lastContactIso)
   const sent = Date.parse(b.sentIso)

@@ -861,7 +861,7 @@ function NestedModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1010,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
     >
       <div
@@ -873,7 +873,7 @@ function NestedModal({
           minWidth: 320,
           maxWidth: wide ? 800 : 460,
           width: '100%',
-          maxHeight: 'calc(100vh - 2rem)',
+          maxHeight: 'min(calc(100vh - 2rem), 100%)',
           overflow: 'auto',
           boxShadow: '0 20px 40px rgba(15, 23, 42, 0.35)',
         }}

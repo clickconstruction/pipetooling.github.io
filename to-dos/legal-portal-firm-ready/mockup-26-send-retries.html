@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 26: send failures retried and shown — before / after</title>
+<style>
+  :root { color-scheme: light; } * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; } header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; margin-top: 12px; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .capt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .capt.old { background: #E5E7EB; color: #374151; } .capt.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px; }
+  iframe { width: 100%; border: 1px solid #D1D5DB; border-top: none; background: #fff; display: block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; } th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #E5E7EB; padding: 6px; } td { padding: 7px 6px; border-bottom: 1px solid #F3F4F6; vertical-align: top; }
+  .ok { color: #067647; font-weight: 600; } .bad, .red { color: #B42318; } .bad { font-weight: 600; } .muted { color: #6B7280; } .s { font-size: 12px; }
+  .dlg { border: 1px solid #E5E7EB; border-radius: 10px; padding: 14px; } .dlg h3 { margin: 0 0 8px; font-size: 15px; }
+  .pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; } .pill.ok { background: #ECFDF3; color: #067647; } .pill.warn { background: #FFFAEB; color: #B54708; }
+  .b { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border: 1px solid #D1D5DB; border-radius: 4px; font-size: 12px; color: #374151; background: #fff; } .b.g { color: #6B7280; } .b.r { color: #b42318; border-color: #b42318; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .person { border: 1px solid #ddd6c8; border-radius: 6px; padding: 12px 14px; background: #fdfcf9; } .chip { float: right; font-size: 11.5px; font-weight: 700; color: #3f7d4e; }
+  code { font: 12px ui-monospace, monospace; background: #F3F4F6; padding: 1px 4px; border-radius: 3px; }
+  ul.notes { margin: 12px 0 0; padding-left: 20px; color: #374151; max-width: 110ch; } ul.notes li { margin: 5px 0; }
+</style></head><body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 26 · mockup</p><h1>Send failures retried and shown; stop links minted once</h1>
+<p>The “now” lane of <code>legal-notify-dispatch</code>, the desk's <b>✉ Firm's emails</b> and the firm's Notifications page. The emails are drawn by the real builder; the stop tokens by the real kernel. Sample firm: <i>Sample &amp; Partner, PLLC</i>.</p></header>
+
+<h2>1. One event, two people, one bad address</h2>
+<div class="two">
+  <div><div class="capt old">Before — stamped after the loop, failures or not</div><div class="pane"><table><thead><tr><th>Tick</th><th>Ann (good address)</th><th>Bo (address bounces)</th><th>Event</th></tr></thead><tbody>
+  <tr><td>:01</td><td class="ok">sent</td><td class="bad">refused</td><td><span class="bad">stamped sent_now_at</span></td></tr>
+  <tr><td>:06</td><td class="muted">—</td><td><span class="bad">never tried again</span></td><td>done</td></tr>
+  <tr><td colspan="4" class="muted">Nobody at the office or the firm can see that Bo never heard about the referral. <code>result.errors</code> goes to the cron log only.</td></tr>
+  </tbody></table></div></div>
+  <div><div class="capt new">After — each person stamped on success, retried up to 12 ticks</div><div class="pane"><table><thead><tr><th>Tick</th><th>Ann (good address)</th><th>Bo (address bounces)</th><th>Event</th></tr></thead><tbody>
+  <tr><td>:01</td><td class="ok">sent</td><td class="bad">refused</td><td><span class="muted">waits: Bo not settled</span></td></tr>
+  <tr><td>:06</td><td class="muted">not sent again</td><td><span class="bad">refused · try 2</span></td><td>waits</td></tr>
+  <tr><td>:11</td><td class="muted">not sent again</td><td class="ok">sent · try 3 (Resend was down)</td><td class="ok">stamped</td></tr>
+  <tr><td colspan="4" class="muted">Or, if it keeps failing: tries 4 … 12, then <i>gave up</i> and the event is stamped. Bo keeps the “not reaching” line until an email gets through.</td></tr>
+  </tbody></table></div></div>
+</div>
+
+<h2>2. The desk's ✉ Firm's emails</h2>
+<div class="two">
+  <div><div class="capt old">Before — Bo looks fine</div><div class="pane"><div class="dlg"><h3>✉ Who at Sample &amp; Partner, PLLC hears from us</h3>
+  <table><thead><tr><th>Person</th><th>Hears</th><th>Scope</th><th>Status</th><th></th></tr></thead><tbody>
+  <tr><td><b>Ann Sample</b><div class="muted s">ann@samplepartner.example.com · Attorney</div></td><td>right away</td><td>every matter</td><td><span class="pill ok">confirmed</span></td><td><span class="b">Remove</span></td></tr>
+  <tr><td><b>Bo Sample</b><div class="muted s">bo@samplepartner.example.com · Paralegal</div></td><td>right away</td><td>only their matters</td><td><span class="pill ok">confirmed</span></td><td><span class="b">Remove</span></td></tr>
+  </tbody></table></div>
+  <p class="s muted" style="margin-top:8px">Desk header button: <span class="b">✉ Firm’s emails</span></p></div></div>
+  <div><div class="capt new">After — the failure, since when, and what the mail service said</div><div class="pane"><div class="dlg"><h3>✉ Who at Sample &amp; Partner, PLLC hears from us</h3>
+  <table><thead><tr><th>Person</th><th>Hears</th><th>Scope</th><th>Status</th><th></th></tr></thead><tbody>
+  <tr><td><b>Ann Sample</b><div class="muted s">ann@samplepartner.example.com · Attorney</div></td><td>right away</td><td>every matter</td><td><span class="pill ok">confirmed</span></td><td><span class="b">Remove</span></td></tr>
+  <tr><td><b>Bo Sample</b><div class="muted s">bo@samplepartner.example.com · Paralegal</div><div class="s red">Could not reach bo@samplepartner.example.com since 2026-10-05: The to address is invalid. The queue tries each email again every five minutes, for an hour.</div></td><td>right away</td><td>only their matters</td><td><span class="pill warn">not reaching</span></td><td><span class="b">Remove</span></td></tr>
+  </tbody></table></div>
+  <p class="s muted" style="margin-top:8px">Desk header button: <span class="b">✉ Firm’s emails · 1 not reaching</span></p></div></div>
+</div>
+
+<h2>3. The firm's Notifications page, against the person</h2>
+<div class="two">
+  <div><div class="capt old">Before</div><div class="pane"><div class="person"><b>Bo Sample</b> <span class="muted">bo@samplepartner.example.com · paralegal</span><span class="chip">confirmed</span>
+  
+  <div class="row" style="margin-top:8px"><span class="b g">Right away</span><span class="b g">Only my matters</span><span class="b g r">Stop emails to this person</span></div></div></div></div>
+  <div><div class="capt new">After</div><div class="pane"><div class="person"><b>Bo Sample</b> <span class="muted">bo@samplepartner.example.com · paralegal</span><span class="chip">confirmed</span>
+  <div class="red s" style="margin-top:6px">Our emails to bo@samplepartner.example.com have not gone through since 2026-10-05. We try each one again for an hour. If the address is wrong, press Stop emails to this person and add the right one.</div>
+  <div class="row" style="margin-top:8px"><span class="b g">Right away</span><span class="b g">Only my matters</span><span class="b g r">Stop emails to this person</span></div></div></div></div>
+</div>
+
+<h2>4. “Stop these emails to you” in two emails a week apart</h2>
+<div class="two">
+  <div><div class="capt old">Before — a new token per email; the Monday email's link is dead by Friday</div><div class="pane">
+    <table><tbody><tr><td>Monday, <i>New account referred</i></td><td><code>…2d39a36b65</code> <span class="bad">dead</span></td></tr><tr><td>Friday, <i>Pulled back</i></td><td><code>…7f504e3863</code> <span class="ok">works</span></td></tr></tbody></table>
+    <p class="s muted">Each email overwrote the person's stored hash. Clicking the older link said <i>That link has expired</i>.</p></div>
+    <iframe style="height:250px" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;/head&gt;&lt;body style=&quot;margin:0;padding:14px;background:#fff&quot;&gt;&lt;div style=&quot;font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px&quot;&gt;&lt;div style=&quot;border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px&quot;&gt;&lt;b&gt;Click Plumbing and Electrical&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#5a6b7e;font-size:13px&quot;&gt;Collections referred to counsel&lt;/span&gt;&lt;/div&gt;&lt;p&gt;Click Plumbing and Electrical has marked &lt;b&gt;Sample Contracting&lt;/b&gt; attorney-ready and released it to Sample &amp;amp; Partner, PLLC — handling: Ann Sample.&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://clicktooling.com/legal?t=…&quot; style=&quot;display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none&quot;&gt;Open the portal&lt;/a&gt;&lt;/p&gt;&lt;p style=&quot;color:#8a97a6;font-size:12px;margin-top:22px&quot;&gt;You get this because you are listed at the firm on Click's legal portal. &lt;a href=&quot;https://clicktooling.com/legal/confirm?t=1e8b0fa591e546bc9daf864726b92130f05550f8f7c545819447b62d39a36b65&amp;stop=1&quot; style=&quot;color:#8a97a6&quot;&gt;Stop these emails to you&lt;/a&gt;.&lt;/p&gt;&lt;/div&gt;&lt;/body&gt;&lt;/html&gt;"></iframe></div>
+  <div><div class="capt new">After — one token per person, the same in every email</div><div class="pane">
+    <table><tbody><tr><td>Monday, <i>New account referred</i></td><td><code>…eb0eeec31d</code> <span class="ok">works</span></td></tr><tr><td>Friday, <i>Pulled back</i></td><td><code>…eb0eeec31d</code> <span class="ok">works</span></td></tr></tbody></table>
+    <p class="s muted">An HMAC of the person's id and salt under the server key. Only its SHA-256 is stored, written once. It changes only when the person turns emails back on.</p></div>
+    <iframe style="height:250px" srcdoc="&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;&lt;/head&gt;&lt;body style=&quot;margin:0;padding:14px;background:#fff&quot;&gt;&lt;div style=&quot;font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px&quot;&gt;&lt;div style=&quot;border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px&quot;&gt;&lt;b&gt;Click Plumbing and Electrical&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#5a6b7e;font-size:13px&quot;&gt;Collections referred to counsel&lt;/span&gt;&lt;/div&gt;&lt;p&gt;&lt;b&gt;Sample Contracting&lt;/b&gt; has been pulled back by the office and no longer shows on the portal.&lt;/p&gt;&lt;p&gt;&lt;a href=&quot;https://clicktooling.com/legal?t=…&quot; style=&quot;display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none&quot;&gt;Open the portal&lt;/a&gt;&lt;/p&gt;&lt;p style=&quot;color:#8a97a6;font-size:12px;margin-top:22px&quot;&gt;You get this because you are listed at the firm on Click's legal portal. &lt;a href=&quot;https://clicktooling.com/legal/confirm?t=453408becfbd27e98a7b0beb661fa80e43183d7a014fb083da52cbeb0eeec31d&amp;stop=1&quot; style=&quot;color:#8a97a6&quot;&gt;Stop these emails to you&lt;/a&gt;.&lt;/p&gt;&lt;/div&gt;&lt;/body&gt;&lt;/html&gt;"></iframe></div>
+</div>
+
+<h2>5. The cron secret</h2>
+<div class="two">
+  <div><div class="capt old">Before</div><div class="pane"><code>req.headers.get('x-cron-secret') !== secret</code> <span class="muted">· returns at the first byte that differs</span></div></div>
+  <div><div class="capt new">After</div><div class="pane"><code>constantTimeEqual(header, secret)</code> <span class="muted">· every byte and the length, every time</span></div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>A jsonb ledger on the event, or a new table of sends?</b> The jsonb column. The ledger lives and dies with its event, needs no new RLS or training-mode fences, and the person's standing (the line we show) is two plain columns on the person. A table would earn its keep only for a send history, which the filed copies in <code>sent_documents</code> already are.</li>
+  <li><b>How many tries?</b> Twelve, one per tick: an hour. Long enough to ride out a mail-service blip; short enough that a dead address is called dead the same hour. The person's line stays until an email gets through, so a given-up event is still visible.</li>
+  <li><b>Who gets a retried event?</b> Only the people who were to hear it when it happened. The ledger is frozen on the first tick, so someone who confirms during the retry hour is not sent an old event (the v2.3325 rule).</li>
+  <li><b>What if the function is deployed before the migration?</b> It notices the missing column and stamps after one pass, as before, so it never re-sends every five minutes. The portal reads <code>*</code> so it never breaks on the new columns.</li>
+  <li><b>Why rotate the stop link at all?</b> Only when the person turns emails back on: then a stop link in an old, perhaps forwarded, email no longer pauses them again. Otherwise it never changes, and every email's link works.</li>
+  <li><b>Should the firm see the mail service's error text?</b> No. The office does, for diagnosis. The firm gets what to do: stop the wrong address and add the right one. (Refined after the first draw: the line first said only “add the right one”, which left the bad address being tried on every event.)</li>
+  <li><b>Bounces after acceptance?</b> Out of scope: this catches a send the mail service refuses. A bounce reported later by Resend's webhook would need its own pass.</li>
+</ul>
+</div></body></html>

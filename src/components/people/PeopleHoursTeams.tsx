@@ -221,7 +221,8 @@ export function PeopleHoursTeams({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 12,
+            zIndex: 712,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => {
             if (!teamDeletingId) setTeamToDelete(null)

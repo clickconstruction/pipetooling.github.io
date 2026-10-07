@@ -1,8 +1,9 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   LIEN_WAIVER_FORM_CITES,
+  UNCONDITIONAL_WAIVER_WARNING,
   buildLienWaiverParagraphs,
   buildLienWaiverPdfBlob,
   buildLienWaiverPrefill,
@@ -27,9 +28,11 @@ import {
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
 import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
-import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile, printWhenReadyAndFile } from '../../lib/sent/sentCopiesIo'
 import { lienReleaseRowSignatureWithInk, lienReleaseSignedPdfBlob, loadLienReleaseInk } from '../../lib/jobs/lienReleaseInk'
 import {
+  isConditionalLienForm,
   isLienWaiverFormType,
   lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
@@ -37,6 +40,7 @@ import {
   type JobLienReleaseRow,
 } from '../../lib/jobs/lienReleaseTracking'
 import {
+  lienReleaseCancelTarget,
   lienReleaseChips,
   lienReleaseIsEditable,
   lienReleaseIsMinted,
@@ -52,6 +56,7 @@ import { MarkedWaiverAmount, WaiverCoveredNote, WaiverMathBox, WaiverPaidNote } 
 import { LienReleaseStepRow, LienWaiverSignedLook } from './LienReleaseStepRow'
 import { MoneyTypingInput } from '../MoneyTypingInput'
 import { lienReleaseSteps, releaseStepLookNote, releaseStepPagePart } from '../../lib/jobs/lienReleaseSteps'
+import { lienReleaseBillStatusWord, lienReleaseOpening, lienReleaseSelectableInvoices } from '../../lib/jobs/lienReleaseOpening'
 import { lienWaiverAlreadyCovered, lienWaiverAmountMath, lienWaiverPaidUnwaived } from '../../lib/jobs/lienWaiverAmountMath'
 import {
   customerAddressLienGaps,
@@ -67,6 +72,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useNavigate } from 'react-router-dom'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
@@ -152,19 +158,12 @@ function lienChipStyle(c: LienReleaseChip): React.CSSProperties {
   }
 }
 
-/** Bill lines the release can cover — anything already minted for billing. */
-function selectableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
-  return (job.invoices ?? [])
-    .filter((i) => i.status === 'billed' || i.status === 'ready_to_bill')
-    .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
-}
-
 export default function LienReleaseModal({
   open,
   onClose,
   job,
   invoice,
+  invoiceIds,
   signerNameFallback,
   onIssued,
   initialFormType,
@@ -174,6 +173,8 @@ export default function LienReleaseModal({
   job: JobWithDetails | null
   /** Row-level hint: preselect this bill line when it is selectable. */
   invoice: JobsLedgerInvoice | null
+  /** Every bill line to preselect, over `invoice` (#87 D): Issue unconditional names each line its conditional covered. */
+  invoiceIds?: readonly string[] | null
   /** Job master's People "Full name and title" with session-name fallback (same line the lien prefill uses). */
   signerNameFallback: string
   /** Fired after a release row is recorded (v2.2582) so openers can refresh badges/strips. */
@@ -183,10 +184,19 @@ export default function LienReleaseModal({
 }) {
   const { role: authRole, user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const [formType, setFormType] = useState<LienWaiverFormType>('conditional_progress')
   // v2.4274: the leaders who can sign (the job's master first), the one standing here, and the GC's email.
   const [masters, setMasters] = useState<MasterOption[]>([])
   const [presentSignerId, setPresentSignerId] = useState<string | null>(null)
+  /**
+   * #87 M: the leader a resumed signature request asked. He stays the pick and the signer of record while
+   * the request waits, even when he is no longer on the list, named from his own users row (`name` stays
+   * null until that read lands, and when it finds no name: then nothing off the list is named).
+   */
+  const [waitingAsk, setWaitingAsk] = useState<{ id: string; name: string | null } | null>(null)
+  /** The job's default leader, as the users load last worked it out (the pick falls back to him, #87 M). */
+  const defaultSignerRef = useRef<string | null>(null)
   const [presentOpen, setPresentOpen] = useState(false)
   const [gcEmail, setGcEmail] = useState<string | null>(null)
   const [sendBusy, setSendBusy] = useState(false)
@@ -197,6 +207,9 @@ export default function LienReleaseModal({
   // The row this modal session works on: an autosaving draft until an output
   // action mints it (v2.2619 — the mint gate), then the locked minted row.
   const [releaseRow, setReleaseRow] = useState<JobLienReleaseRow | null>(null)
+  /** The row as the masters load sees it (#87 N): a draft's saved leader off the list gives way to the default. */
+  const releaseRowRef = useRef<JobLienReleaseRow | null>(null)
+  releaseRowRef.current = releaseRow
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error' | 'held'>('idle')
   const [mintBusy, setMintBusy] = useState(false)
   const [signOpen, setSignOpen] = useState(false)
@@ -210,33 +223,55 @@ export default function LienReleaseModal({
   // release button — billed rows have no Bill Customer, so the strip alone
   // couldn't view/void there. Fail-soft like the strip.
   const [historyRows, setHistoryRows] = useState<JobLienReleaseRow[]>([])
+  /** The job's releases have been read for this open: only then is it known whether a draft resumes. */
+  const [historyReady, setHistoryReady] = useState(false)
+  /** The window opened on an unconditional form nobody pressed for (v2.4582): asked once the history is read. */
+  const openUnconditionalAskRef = useRef<{ preset: boolean; fallback: LienWaiverFormType } | null>(null)
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
+
+  /** The job the window is on now: a history read that comes back for another job is dropped (#87 M). */
+  const currentJobIdRef = useRef<string | null>(null)
+  useLayoutEffect(() => {
+    currentJobIdRef.current = job?.id ?? null
+  }, [job?.id])
 
   const loadHistory = useCallback(async () => {
     if (!job?.id) {
       setHistoryRows([])
       return
     }
+    const forJob = job.id
     try {
       const { data } = await supabase
         .from('job_lien_releases')
         .select('*')
-        .eq('job_id', job.id)
+        .eq('job_id', forJob)
         .order('created_at', { ascending: false })
+      if (currentJobIdRef.current !== forJob) return
       setHistoryRows((data ?? []) as JobLienReleaseRow[])
     } catch {
-      setHistoryRows([])
+      if (currentJobIdRef.current === forJob) setHistoryRows([])
+    } finally {
+      if (currentJobIdRef.current === forJob) setHistoryReady(true)
     }
   }, [job?.id])
 
   useEffect(() => {
     if (!open) {
       setHistoryRows([])
+      setHistoryReady(false)
       setVoidPendingId(null)
       return
     }
     void loadHistory()
   }, [open, loadHistory])
+
+  // The pick belongs to one opening on one job (v2.4567): cleared here, the load below sets this job's default.
+  // A resumed row that was asked keeps its own leader (#87 M, the resume below).
+  useEffect(() => {
+    setPresentSignerId(null)
+    defaultSignerRef.current = null
+  }, [open, job?.id])
 
   useEffect(() => {
     if (!open || !job) {
@@ -258,7 +293,14 @@ export default function LienReleaseModal({
         // v2.4285: the company's signer (Settings → Jobs & billing) is the default; the job's master, then anyone, after.
         const companySigner = (getPhysicalInvoiceIssuerDraft().signerName ?? '').trim().toLowerCase()
         const byCompany = companySigner ? rows.find((r) => r.name.trim().toLowerCase() === companySigner)?.id : undefined
-        setPresentSignerId((cur) => cur ?? byCompany ?? job.master_user_id ?? rows[0]?.id ?? null)
+        defaultSignerRef.current = byCompany ?? job.master_user_id ?? rows[0]?.id ?? null
+        // #87 N: a draft's saved leader who is off the list now gives way; a waiting request's asked leader does not (#87 M).
+        setPresentSignerId((cur) => {
+          if (!cur) return defaultSignerRef.current
+          const row = releaseRowRef.current
+          const offList = !rows.some((r) => r.id === cur)
+          return offList && row && lienReleaseStatus(row) === 'draft' && row.signer_user_id === cur ? defaultSignerRef.current : cur
+        })
       } catch {
         setMasters([])
       }
@@ -392,28 +434,37 @@ export default function LienReleaseModal({
   const resolvedProperty = useMemo(() => resolveLienProperty(linkedAddress, jobOwnerRow), [linkedAddress, jobOwnerRow])
   const ownerName = useMemo(() => lienPropertyOwnerDisplayName(resolvedProperty.owner) || null, [resolvedProperty])
 
-  const invoices = useMemo(() => (job ? selectableInvoices(job) : []), [job])
+  // #87 I: a paid bill is a line a release can cover — what an unconditional is for.
+  const invoices = useMemo(() => (job ? lienReleaseSelectableInvoices(job.invoices) : []), [job])
 
   // Open-reset: default the selection to the row's invoice, else billed lines, else everything selectable.
+  const invoiceIdsKey = (invoiceIds ?? []).join(',')
   useEffect(() => {
     if (!open || !job) return
-    setFormType(initialFormType ?? 'conditional_progress')
     setReleaseRow(null)
+    setWaitingAsk(null)
     setAutosaveState('idle')
     setSignOpen(false)
     userTouchedRef.current = false
     signerTouchedRef.current = false
     hydratedDraftRef.current = false
-    const selectable = selectableInvoices(job)
-    if (invoice && selectable.some((i) => i.id === invoice.id)) {
-      setSelectedInvoiceIds(new Set([invoice.id]))
-      // The bill picks its own form (v2.4274) unless the opener asked for one.
-      if (!initialFormType) setFormType(pickLienWaiverForBill(job, invoice).formType)
-      return
-    }
-    const billed = selectable.filter((i) => i.status === 'billed')
-    setSelectedInvoiceIds(new Set((billed.length > 0 ? billed : selectable).map((i) => i.id)))
-  }, [open, job?.id, invoice?.id, initialFormType])
+    // The row's bill alone, picking its own form (v2.4274) unless the opener asked for one; else the billed
+    // lines. A paid bill (#87 I) is selected only when the opener names it — Add the unconditional's, or
+    // every line a cleared conditional covered (Issue unconditional, #87 D).
+    const opening = lienReleaseOpening({
+      selectable: lienReleaseSelectableInvoices(job.invoices),
+      invoiceId: invoice?.id ?? null,
+      invoiceIds: invoiceIdsKey ? invoiceIdsKey.split(',') : null,
+      initialFormType: initialFormType ?? null,
+      formForBill: (id) => {
+        const bill = (job.invoices ?? []).find((i) => i.id === id)
+        return bill ? pickLienWaiverForBill(job, bill).formType : 'conditional_progress'
+      },
+    })
+    setFormType(opening.formType)
+    openUnconditionalAskRef.current = opening.askUnconditional
+    setSelectedInvoiceIds(new Set(opening.invoiceIds))
+  }, [open, job?.id, invoice?.id, invoiceIdsKey, initialFormType])
 
   // Resume the newest live draft (v2.2619) — and, since v2.2641, a pending
   // awaiting-signature release too: while a request is out, reopening the
@@ -423,15 +474,40 @@ export default function LienReleaseModal({
   // release, and those live in the history box.
   useEffect(() => {
     if (!open || releaseRow) return
+    // Only this job's rows: a window reopened on another job never resumes the last one's waiver (#87 M).
+    const mine = historyRows.filter((r) => r.job_id === job?.id)
     const draft =
-      historyRows.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at) ??
-      historyRows.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at)
+      mine.find((r) => lienReleaseStatus(r) === 'draft' && !r.voided_at) ??
+      mine.find((r) => lienReleaseStatus(r) === 'awaiting_signature' && !r.voided_at)
     if (!draft) return
     hydratedDraftRef.current = true
     setReleaseRow(draft)
     if (isLienWaiverFormType(draft.form_type)) setFormType(draft.form_type)
     setSelectedInvoiceIds(new Set(draft.invoice_ids ?? []))
     const s = lienReleaseFieldsFromSnapshot(draft.fields)
+    // #87 M: a waiting request names the leader it asked. The Signs pick shows him, and He signs now
+    // keeps him; the job's default would reassign the request on the next press.
+    // #87 N: a draft saved its pick (or kept the leader a taken-back request asked), so it reopens on
+    // him; one no longer on the list falls back to the default, here or when the list arrives.
+    if (lienReleaseStatus(draft) === 'draft' && draft.signer_user_id) {
+      const savedId = draft.signer_user_id
+      setPresentSignerId(masters.length > 0 && !masters.some((m) => m.id === savedId) ? defaultSignerRef.current : savedId)
+    } else if (lienReleaseStatus(draft) === 'awaiting_signature' && draft.signer_user_id) {
+      const askedId = draft.signer_user_id
+      setPresentSignerId(askedId)
+      setWaitingAsk({ id: askedId, name: null })
+      // His own users row names him, archived or not; the page's Signed by line may print someone else.
+      void (async () => {
+        try {
+          const { data } = await supabase.from('users').select('id, name, notes').eq('id', askedId).maybeSingle()
+          const u = data as { name: string | null; notes: string | null } | null
+          const name = u ? (u.notes?.trim() || u.name?.trim() || '').replace(/,.*$/, '').trim() : ''
+          if (name) setWaitingAsk((cur) => (cur && cur.id === askedId ? { id: askedId, name } : cur))
+        } catch {
+          /* unnamed: nothing off the list is named, as before */
+        }
+      })()
+    }
     setFields({
       companyName: s.companyName ?? '',
       checkFrom: s.checkFrom ?? '',
@@ -446,6 +522,24 @@ export default function LienReleaseModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, historyRows])
 
+  // Every route into Unconditional asks (v2.4582, the owner's call on punch list #83 row 1): a window opened
+  // already on an unconditional form — Issue unconditional's preset, or a settled bill's own pick — asks the
+  // same question the step 2 switch does. A resumed draft or pending request does not: that choice was made.
+  // Stay conditional closes a preset window (it was opened for the unconditional) and steps a picked form back.
+  useEffect(() => {
+    if (!open || !historyReady) return
+    const ask = openUnconditionalAskRef.current
+    if (!ask) return
+    openUnconditionalAskRef.current = null
+    if (hydratedDraftRef.current) return
+    void (async () => {
+      if (await confirmDialog(UNCONDITIONAL_WAIVER_WARNING)) return
+      if (ask.preset) onClose()
+      else setFormType(ask.fallback)
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, historyReady])
+
   const selectedInvoices = useMemo(
     () => invoices.filter((i) => selectedInvoiceIds.has(i.id)),
     [invoices, selectedInvoiceIds],
@@ -459,10 +553,17 @@ export default function LienReleaseModal({
    * locks to drawing, so a typed name can never stand in for the leader's hand (job 650's first waiver).
    */
   const signerOfRecord = useMemo(() => {
-    const id = releaseRow?.signer_user_id ?? presentSignerId
-    const m = (id ? masters.find((x) => x.id === id) : null) ?? presentSigner
+    // #87 N: a draft's saved id trails the pick (its autosave reads nothing back), so the pick rules there.
+    const id = (releaseRow && lienReleaseStatus(releaseRow) !== 'draft' ? releaseRow.signer_user_id : null) ?? presentSignerId
+    const listed = (id ? masters.find((x) => x.id === id) : null) ?? presentSigner
+    // #87 M: the leader a waiting request asked is its signer of record even off the list (archived, or no longer a leader).
+    const askedOffList =
+      !listed && waitingAsk?.name && releaseRow && lienReleaseStatus(releaseRow) === 'awaiting_signature' && releaseRow.signer_user_id === waitingAsk.id
+        ? { id: waitingAsk.id, name: waitingAsk.name }
+        : null
+    const m = listed ?? askedOffList
     return m && m.id !== authUser?.id ? m : null
-  }, [releaseRow?.signer_user_id, presentSignerId, masters, presentSigner, authUser?.id])
+  }, [releaseRow, presentSignerId, masters, presentSigner, authUser?.id, waitingAsk])
 
   // Rebuild the prefill whenever its inputs change; keep user-typed signer lines.
   // A resumed draft opts out entirely — its saved fields ARE the document.
@@ -564,9 +665,11 @@ export default function LienReleaseModal({
       amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
       through_date: usesThrough && fields.throughDate ? fields.throughDate : null,
       signed_date: fields.signedDate || null,
+      // #87 N: the Signs pick rides with the draft, so a draft reopens on the leader its Signed by line names.
+      signer_user_id: presentSignerId ?? releaseRow?.signer_user_id ?? null,
       fields: { ...fields } as Record<string, string>,
     }
-  }, [fields, job, formType, selectedInvoiceIds])
+  }, [fields, job, formType, selectedInvoiceIds, presentSignerId, releaseRow?.signer_user_id])
 
   // Autosave (v2.2619): the draft writes itself, debounced, from the first
   // real edit — no Save button, ✕ just closes. Stops the moment the row mints.
@@ -732,12 +835,18 @@ export default function LienReleaseModal({
 
   const cancelSignatureRequest = useCallback(async () => {
     if (!releaseRow || lienReleaseStatus(releaseRow) !== 'awaiting_signature') return
+    // #87 C: a waiver minted by its own request goes back to a draft you can change; one printed first stays issued.
+    const target = lienReleaseCancelTarget(releaseRow)
     try {
       const data = await withSupabaseRetry<JobLienReleaseRow>(
         () =>
           supabase
             .from('job_lien_releases')
-            .update({ status: 'issued' })
+            .update(
+              target === 'draft'
+                ? { status: 'draft', minted_at: null, minted_pdf_path: null, signature_requested_at: null, signature_requested_by: null }
+                : { status: 'issued' },
+            )
             .eq('id', releaseRow.id)
             .eq('status', 'awaiting_signature')
             .select('*')
@@ -745,11 +854,17 @@ export default function LienReleaseModal({
         'cancel lien signature request',
       )
       if (data) setReleaseRow(data)
+      // #87 M: an asked leader off the list (archived) was the pick only while his request waited.
+      if (waitingAsk) {
+        if (!masters.some((m) => m.id === waitingAsk.id)) setPresentSignerId(defaultSignerRef.current)
+        setWaitingAsk(null)
+      }
       void loadHistory()
+      if (target === 'draft') showToast('Request taken back. The waiver is a draft again, so you can change it.', 'success')
     } catch {
       showToast('Could not cancel the request.', 'error')
     }
-  }, [releaseRow, loadHistory, showToast])
+  }, [releaseRow, loadHistory, showToast, waitingAsk, masters])
 
   /**
    * He signs now (v2.4274): mint the row as awaiting the chosen leader's signature, then open the
@@ -847,10 +962,12 @@ export default function LienReleaseModal({
     const row = await ensureMinted('issued')
     if (!row) return
     // v2.4335: a signed waiver prints with the ink stored at signing (it printed the name in type).
-    const ok =
-      lienReleaseStatus(row) === 'signed'
-        ? await openHtmlWindowWhenReady(async () => buildLienWaiverPrintHtml(formType, fields, jobNumber, await lienReleaseRowSignatureWithInk(row, deviceNameFor(row))), { print: true })
-        : openHtmlPrintWindow(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)))
+    // A print counts as a send (docs/SENT_COPIES.md): the release is filed on the job as it printed.
+    const signed = lienReleaseStatus(row) === 'signed'
+    const filing = { kind: 'lien_release', title: signed ? `Release of lien — Job ${jobNumber}` : `Release of lien, unsigned — Job ${jobNumber}`, jobIds: [row.job_id], source: { table: 'job_lien_releases', id: row.id } }
+    const ok = signed
+      ? await printWhenReadyAndFile(async () => buildLienWaiverPrintHtml(formType, fields, jobNumber, await lienReleaseRowSignatureWithInk(row, deviceNameFor(row))), filing)
+      : printAndFile(buildLienWaiverPrintHtml(formType, fields, jobNumber, renderSignature(row)), filing)
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
   }, [fields, formType, jobNumber, ensureMinted, renderSignature, deviceNameFor, showToast])
 
@@ -993,7 +1110,7 @@ export default function LienReleaseModal({
   const cur = steps.current
   const stepAt = (n: number) => steps.steps[n - 1]!
   // v2.4337 — click to look: a folded step's card and its number open it read-only; an open step's number brings it into view.
-  const lookNote = releaseStepLookNote(rowStatus, Boolean(releaseRow?.sent_to_customer_at))
+  const lookNote = releaseStepLookNote(rowStatus, Boolean(releaseRow?.sent_to_customer_at), releaseRow ? lienReleaseCancelTarget(releaseRow) === 'draft' : true)
   const lookProps = (n: number) => {
     const folded = stepAt(n).folded
     return {
@@ -1026,15 +1143,19 @@ export default function LienReleaseModal({
   }
   const waivePaid = () => {
     // The same bills, now as the waiver for money already in hand; the amount follows (a resumed draft keeps no prefill).
-    userTouchedRef.current = true
-    setFormType('unconditional_progress')
-    setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
+    // It asks first (v2.4582), as the step 2 switch does; on a form already unconditional there is nothing to ask.
+    void (async () => {
+      if (isConditionalLienForm(formType) && !(await confirmDialog(UNCONDITIONAL_WAIVER_WARNING))) return
+      userTouchedRef.current = true
+      setFormType('unconditional_progress')
+      setField('amount', lienWaiverPrefillAmount('unconditional_progress', job, selectedInvoices).toFixed(2))
+    })()
   }
   const historyRow = (r: JobLienReleaseRow) => (
     <div key={r.id} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem', fontSize: '0.75rem' }}>
       <span style={{ fontWeight: 700 }}>{lienReleaseFormLabel(r.form_type)}</span>
       <span style={{ fontWeight: 700 }}>{Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
-      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate((r.created_at ?? '').slice(0, 10))}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{lienWaiverDate(calendarYmdInAppTzFromIso(r.created_at ?? ''))}</span>
       {lienReleaseChips(r).map((c) => (
         <span key={c.label} style={lienChipStyle(c)}>
           {c.label}
@@ -1144,7 +1265,7 @@ export default function LienReleaseModal({
                         disabled={!editable}
                         aria-pressed={on}
                         onClick={() => toggleInvoice(i.id)}
-                        title={`${i.status === 'billed' ? 'Billed' : 'Ready to bill'} — $${Number(i.amount ?? 0).toLocaleString('en-US')} (open $${openRem.toLocaleString('en-US')})`}
+                        title={`${lienReleaseBillStatusWord(i.status)} — $${Number(i.amount ?? 0).toLocaleString('en-US')} (open $${openRem.toLocaleString('en-US')})`}
                         style={{
                           padding: '0.35rem 0.7rem',
                           fontSize: '0.8125rem',
@@ -1193,6 +1314,13 @@ export default function LienReleaseModal({
                     setFormType(nextForm)
                     refillFromSelection(nextForm, selectedInvoiceIds)
                   }
+                  // v2.4507: the Unconditional button asks first; staying conditional changes nothing.
+                  const pickUnconditional = () => {
+                    if (!t.conditional) return
+                    void (async () => {
+                      if (await confirmDialog(UNCONDITIONAL_WAIVER_WARNING)) pick({ conditional: false })
+                    })()
+                  }
                   const picked = selectedInvoices.length === 1 ? pickLienWaiverForBill(job, selectedInvoices[0]!) : null
                   return (
                     <>
@@ -1200,7 +1328,7 @@ export default function LienReleaseModal({
                         <button type="button" disabled={!editable} aria-pressed={t.conditional} onClick={() => pick({ conditional: true })} style={seg(t.conditional, !editable)}>
                           Conditional
                         </button>
-                        <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={() => pick({ conditional: false })} style={seg(!t.conditional, !editable)}>
+                        <button type="button" disabled={!editable} aria-pressed={!t.conditional} onClick={pickUnconditional} style={seg(!t.conditional, !editable)}>
                           Unconditional
                         </button>
                       </div>
@@ -1344,7 +1472,13 @@ export default function LienReleaseModal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
                   <span style={{ color: 'var(--text-muted)' }}>Signs</span>
                   {masters.length > 1 ? (
-                    <select value={presentSignerId ?? ''} onChange={(e) => setPresentSignerId(e.target.value || null)} aria-label="Who signs" disabled={asked} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }}>
+                    <select value={presentSignerId ?? ''} onChange={(e) => {
+                        userTouchedRef.current = true
+                        setPresentSignerId(e.target.value || null)
+                      }} aria-label="Who signs" disabled={asked} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit', fontFamily: 'inherit' }}>
+                      {asked && waitingAsk?.name && presentSignerId === waitingAsk.id && !masters.some((m) => m.id === waitingAsk.id) ? (
+                        <option value={waitingAsk.id}>{waitingAsk.name}</option>
+                      ) : null}
                       {masters.map((m) => (
                         <option key={m.id} value={m.id}>
                           {m.name}
@@ -1375,14 +1509,19 @@ export default function LienReleaseModal({
                 {asked && releaseRow ? (
                   <div style={{ padding: '0.55rem 0.7rem', borderRadius: 9, background: 'var(--bg-amber-100)', border: '1px solid var(--border-strong)', fontSize: '0.8125rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                     <strong style={{ color: 'var(--text-amber-800)' }}>✍ Waiting for {fields.signerName.trim() || 'the signer'} to sign</strong>
-                    <span style={{ color: 'var(--text-muted)' }}>Asked for his signature {lienWaiverDate((releaseRow.signature_requested_at ?? '').slice(0, 10))}. Until it is signed, the waiver stays locked.</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Asked for his signature {lienWaiverDate(calendarYmdInAppTzFromIso(releaseRow.signature_requested_at ?? ''))}. Until it is signed, the waiver stays locked.</span>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {authUser?.id && releaseRow.signer_user_id === authUser.id ? (
                         <button type="button" onClick={() => setSignOpen(true)} style={{ padding: '0.35rem 0.85rem', fontSize: '0.8125rem', fontWeight: 700, background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit' }}>
                           Sign now
                         </button>
                       ) : null}
-                      <button type="button" onClick={() => void cancelSignatureRequest()} style={{ ...linkBtn, fontSize: '0.8125rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => void cancelSignatureRequest()}
+                        title={lienReleaseCancelTarget(releaseRow) === 'draft' ? 'Take the request back. The waiver becomes a draft you can change.' : 'Take the request back. It was printed, so the waiver stays issued.'}
+                        style={{ ...linkBtn, fontSize: '0.8125rem' }}
+                      >
                         Cancel request
                       </button>
                     </div>
@@ -1456,7 +1595,7 @@ export default function LienReleaseModal({
                     {releaseRow.sent_to_customer_at ? (
                       <>
                         <dt style={{ color: 'var(--text-muted)', margin: 0 }}>Sent</dt>
-                        <dd style={{ margin: 0, color: 'var(--text-green-700)', fontWeight: 600 }}>{lienWaiverDate((releaseRow.sent_to_customer_at ?? '').slice(0, 10))}</dd>
+                        <dd style={{ margin: 0, color: 'var(--text-green-700)', fontWeight: 600 }}>{lienWaiverDate(calendarYmdInAppTzFromIso(releaseRow.sent_to_customer_at ?? ''))}</dd>
                       </>
                     ) : null}
                   </dl>

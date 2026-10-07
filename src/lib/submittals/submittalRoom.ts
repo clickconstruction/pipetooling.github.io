@@ -5,7 +5,9 @@
  * edge function and the page agree.
  */
 import type { Database } from '../../types/database'
+import { withPreviewFlag } from '../publicViewCounting'
 import { asRoomRole, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomPayload, type RoomMessage} from '../../../supabase/functions/_shared/submittalRoomPayload'
+import type { RecordRoomPayload } from '../../../supabase/functions/_shared/submittalRecord'
 
 export type SubmittalRoomRow = Database['public']['Tables']['bid_submittal_rooms']['Row']
 export type SubmittalPersonRow = Database['public']['Tables']['bid_submittal_people']['Row']
@@ -24,6 +26,15 @@ export function newRoomToken(): string {
 /** The page every token opens: /submittal?t=… */
 export function roomLink(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}/submittal?t=${encodeURIComponent(token)}`
+}
+
+/**
+ * The office's door to the GC's real page (v2.4608, #62): the room link with the preview flag on
+ * it, so the page is never counted as an open and refuses every write (v2.4599) on every path,
+ * a copied address too. Never the link the office sends: that is `roomLink`.
+ */
+export function roomPreviewLink(origin: string, token: string): string {
+  return withPreviewFlag(roomLink(origin, token))
 }
 
 export type PersonHow = 'named' | 'identified' | 'forwarded'
@@ -80,8 +91,10 @@ export function describeTrail(t: PersonTrail, tz: string): string {
 }
 
 /** "Room link · shared Sep 16 · opened 9×" */
-export function describeRoomLine(room: Pick<SubmittalRoomRow, 'status' | 'shared_at' | 'closed_at'>, opens: number, tz: string): string {
+export function describeRoomLine(room: Pick<SubmittalRoomRow, 'status' | 'shared_at' | 'closed_at'>, opens: number, tz: string, /** rows whose answer the office typed in: a submittal that went out by email */ typedAnswers = 0): string {
   if (room.status === 'closed') return `Room closed${room.closed_at ? ` · ${short(room.closed_at, tz)}` : ''}`
+  // 2026-10-03 · typing an answer makes the room so the answer has somewhere to live. Nothing was sent: "not opened yet" read as if a link had gone out.
+  if (!room.shared_at && opens === 0) return typedAnswers > 0 ? 'Not shared from the app · answers typed in' : 'Not shared from the app'
   const parts = ['Room link']
   if (room.shared_at) parts.push(`shared ${short(room.shared_at, tz)}`)
   parts.push(opens === 0 ? 'not opened yet' : `opened ${opens}×`)
@@ -89,7 +102,7 @@ export function describeRoomLine(room: Pick<SubmittalRoomRow, 'status' | 'shared
 }
 
 /** Defensive parse of the function's JSON — the page never trusts the wire blindly. */
-export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload | null {
+export function parseSubmittalRoomPayload(json: unknown): RecordRoomPayload | null {
   if (!json || typeof json !== 'object') return null
   const j = json as Record<string, unknown>
   const bid = j.bid as Record<string, unknown> | undefined
@@ -113,6 +126,7 @@ export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload |
         id: String(r.id ?? ''),
         rev: Number(r.rev ?? 0),
         sharedAt: typeof r.sharedAt === 'string' ? r.sharedAt : null,
+        answeredByEmailAt: typeof r.answeredByEmailAt === 'string' ? r.answeredByEmailAt : null,
         current: r.current === true,
         hasPackage: r.hasPackage === true,
         rows: Array.isArray(r.rows) ? (r.rows as SubmittalRoomPayload['revisions'][number]['rows']) : [],
@@ -160,8 +174,10 @@ export function describeThreadEntry(m: RoomMessage, tz: string): { who: string |
 export function summarizeThread(messages: ReadonlyArray<RoomMessage>, tz: string): string {
   if (messages.length === 0) return 'No conversation yet'
   const last = threadOrder(messages)[messages.length - 1]!
-  const who = last.authorKind === 'office' ? 'you' : last.authorKind === 'system' ? (last.authorName ?? 'the room') : (last.authorName ?? 'someone')
-  const verb = last.kind === 'reply' ? 'answered' : last.kind === 'decision' ? 'decided' : last.kind === 'shared' ? 'shared' : 'asked'
+  // 2026-10-03 · an answer the office typed in is not the room deciding (`enteredEntryBody` writes these lines).
+  const typed = last.kind === 'decision' && last.authorKind === 'system' ? (/, read by the robot, confirmed by the office/.test(last.body) ? 'robot' : /, entered by the office/.test(last.body) ? 'office' : null) : null
+  const who = typed === 'office' ? 'the office' : typed === 'robot' ? 'the robot' : last.authorKind === 'office' ? 'you' : last.authorKind === 'system' ? (last.authorName ?? 'the room') : (last.authorName ?? 'someone')
+  const verb = typed === 'office' ? 'entered their answers' : typed === 'robot' ? 'read their answers' : last.kind === 'reply' ? 'answered' : last.kind === 'decision' ? 'decided' : last.kind === 'shared' ? 'shared' : 'asked'
   const when = last.at ? new Date(last.at).toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' }) : ''
   return `${messages.length} ${messages.length === 1 ? 'entry' : 'entries'} · last: ${who} ${verb}${when ? ` ${when}` : ''}`
 }

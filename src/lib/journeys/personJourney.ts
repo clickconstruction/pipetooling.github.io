@@ -15,6 +15,7 @@ import { payLinkUrl } from '../billing/payLink'
 import type { OfficeViewStats } from '../portal/portalOpenedLabel'
 import { PORTAL_SHORT_ORIGIN } from '../portal/portalShortOrigin'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { lienWindowHref } from '../jobs/stagesDeepLinks'
 
 export type PersonSubject =
   | { kind: 'customer'; id: string; name: string }
@@ -121,7 +122,9 @@ export type HouseRows = {
 }
 
 export type FirmRows = {
-  portalLinks: { token: string | null; revoked_at: string | null; created_at: string | null }[]
+  portalLinks: { id?: string | null; token: string | null; revoked_at: string | null; created_at: string | null }[]
+  /** v2.4624: the welcome emails the desk sent (`sent_documents`, kind `legal_firm_link`), each under the link it carried. */
+  linkSends?: { source_id: string | null; sent_at: string | null; recipient_emails: string[] | null }[]
   recipients: { name: string | null; email: string | null; mode: string | null; confirmed_at: string | null; paused_at: string | null; removed_at: string | null; last_digest_at: string | null }[]
   queue: { sent_now_at: string | null; digested_at: string | null; created_at: string | null }[]
 }
@@ -210,6 +213,11 @@ export function jobLabel(j: JobRow): string {
 
 function customerPageAction(customerId: string, label: string): PersonStep['action'] {
   return { label, to: `/customers/${customerId}` }
+}
+
+/** The job's Lien window itself (v2.4562), on the tab the step is about. */
+function lienWindowAction(jobId: string, tab: 'demand' | 'notice'): PersonStep['action'] {
+  return { label: 'Open the job\u2019s liens', to: lienWindowHref(jobId, tab) }
 }
 
 function jobAction(jobId: string, label: string): PersonStep['action'] {
@@ -397,7 +405,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
   steps['demand-letter'] = dl
     ? { state: 'sent', headline: `Sent ${dayWord(dl.sent_at, now)}${dl.deadline_date ? ` · due ${dayWord(dl.deadline_date, now)}` : ''}`, detail: [dl.sent_method ?? '', dl.amount != null ? `$${Math.round(dl.amount).toLocaleString('en-US')}` : ''].filter(Boolean).join(' · '), at: dl.sent_at, link: null, action: jobAction(dl.job_id, 'Open the Lien instruments') }
     : openStripe.length && openStripe.some((i) => daysBetween(i.sent_to_customer_at!, now) >= 45)
-      ? never('Eligible — a bill is 45+ days past', openStripe[0] ? jobAction(openStripe[0].job_id, 'Open the Lien instruments') : null)
+      ? never('Eligible — a bill is 45+ days past', openStripe[0] ? lienWindowAction(openStripe[0].job_id, 'demand') : null)
       : na('Not needed')
   const lr = latestBy(rows.lienReleases.filter((r) => !r.voided_at), (r) => r.sent_to_customer_at ?? r.signed_at)
   steps['lien-release'] = lr
@@ -462,8 +470,10 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     const notices = rows.lienFilings.filter((f) => f.kind === 'notice_53_056' && !f.voided_at)
     const lastNotice = latestBy(notices, (f) => f.served_at ?? f.filed_at)
     steps['owner-notice'] = lastNotice
-      ? { state: 'sent', headline: `Sent ${dayWord(lastNotice.served_at ?? lastNotice.filed_at, now)}`, detail: plural(notices.length, 'notice'), at: lastNotice.served_at ?? lastNotice.filed_at, link: null, action: jobAction(lastNotice.job_id, 'Open the Lien instruments') }
+      ? { state: 'sent', headline: `Sent ${dayWord(lastNotice.served_at ?? lastNotice.filed_at, now)}`, detail: plural(notices.length, 'notice'), at: lastNotice.served_at ?? lastNotice.filed_at, link: null, action: lienWindowAction(lastNotice.job_id, 'notice') }
       : na('None')
+    // GC mode (v2.4799): the question email goes to a GC project's architect; the GC projects' own record lands with the company record.
+    steps['plan-question-email'] = na('GC mode: read on the GC project')
   }
 
   const liveJobs = rows.jobs.filter((j) => jobIdsOfCustomer.has(j.id) && j.status && j.status !== 'paid' && j.status !== 'archived').length
@@ -551,13 +561,23 @@ export function firmJourney(subject: Extract<PersonSubject, { kind: 'firm' }>, r
   const waiting = recipients.filter((r) => !r.confirmed_at)
   const paused = recipients.filter((r) => r.paused_at)
   const firmAction = { label: 'Manage who gets emails', to: '/customers' }
+  // A live link is one not revoked; its token may be unreadable (hash only at rest, #85 item 22).
+  const activeLink = rows.portalLinks.find((l) => !l.revoked_at) ?? null
+  const sends = (rows.linkSends ?? []).filter((s) => !activeLink?.id || s.source_id === activeLink.id)
+  const lastSend = latestBy(sends, (s) => s.sent_at)
+  steps['firm-welcome-email'] = !activeLink
+    ? never('No portal link yet', { label: 'Share their portal', to: '/customers' })
+    : lastSend
+      ? { state: 'sent', headline: `Sent ${dayWord(lastSend.sent_at, now)}`, detail: (lastSend.recipient_emails ?? []).join(', '), at: lastSend.sent_at, link: null, action: null }
+      : never('Link not sent from the desk yet', { label: 'Send their link', to: '/customers' })
   steps['firm-confirm-email'] = recipients.length
     ? { state: confirmed.length ? 'signed' : 'sent', headline: `${plural(confirmed.length, 'address')} confirmed${waiting.length ? ` · ${waiting.length} waiting` : ''}${paused.length ? ` · ${paused.length} paused` : ''}`, detail: recipients.map((r) => r.name ?? r.email ?? '').filter(Boolean).join(', '), at: latestBy(recipients, (r) => r.confirmed_at)?.confirmed_at ?? null, link: null, action: waiting.length ? firmAction : null }
     : never('No recipients yet', firmAction)
   steps['firm-confirmed-page'] = confirmed.length ? { state: 'signed', headline: `Confirmed ${dayWord(latestBy(confirmed, (r) => r.confirmed_at)?.confirmed_at, now)}`, at: null, link: null, action: null } : never('—')
-  const link = rows.portalLinks.find((l) => !l.revoked_at && l.token) ?? null
-  steps['firm-portal'] = link?.token
-    ? { state: 'sent', headline: `Link made ${dayWord(link.created_at, now)}`, at: link.created_at, link: `/legal?t=${encodeURIComponent(link.token)}`, action: null }
+  // A live link, token or not (#85 item 22: hash-only at rest, so the office opens the portal by firm id, signed in).
+  const link = rows.portalLinks.find((l) => !l.revoked_at) ?? null
+  steps['firm-portal'] = link
+    ? { state: 'sent', headline: `Link made ${dayWord(link.created_at, now)}`, at: link.created_at, link: link.token ? `/legal?t=${encodeURIComponent(link.token)}` : `/legal?firm=${encodeURIComponent(subject.id)}&preview=1`, action: null }
     : never('No portal link yet', { label: 'Share their portal', to: '/customers' })
   const nowSends = rows.queue.filter((q) => q.sent_now_at)
   const lastNow = latestBy(nowSends, (q) => q.sent_now_at)

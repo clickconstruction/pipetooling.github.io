@@ -15,6 +15,7 @@ const stats: StagesHeaderStats = {
   readyToBill: { count: 1, total: 1850 },
   billed: { count: 121, total: 224400 },
   collections: { count: 5, total: 22800 },
+  uncollectible: { count: 0, total: 0 },
   paid: { count: 630 },
   capableToBill: 71969,
   billedAging: { count30_90: 10, sum30_90: 40000, count90: 4, sum90: 44000 },

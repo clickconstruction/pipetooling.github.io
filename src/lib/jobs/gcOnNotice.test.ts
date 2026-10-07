@@ -9,6 +9,8 @@ import {
   gcNoticeMonthWords,
   type GcNoticeOwnerState,
   type GcUnpaidMonthRow,
+  parseGcNoticeBatchReason,
+  gcNoticeSavedRun,
 } from './gcOnNotice'
 import type { LienDeskItemRow } from './lienDesk'
 
@@ -286,5 +288,76 @@ describe('buildGcOnNotice · a job with no clock hours is dated from its creatio
     const j = buildGcOnNotice(rows, [], () => 'on_file', TODAY).jobs[0]!
     expect(j.datedFromCreation).toBe(false)
     expect(j.months.map((m) => m.fromCreation)).toEqual([false])
+  })
+})
+
+describe('what the office sent to the leader is read back (v2.4571)', () => {
+  it('parseGcNoticeBatchReason: the label alone, the label with a note, Other without its dots, and anything else', () => {
+    expect(parseGcNoticeBatchReason('GC is not paying its subs')).toEqual({ reason: 'not_paying_subs', note: '' })
+    expect(parseGcNoticeBatchReason('Payment promise broken twice — Dana said Friday')).toEqual({ reason: 'promise_broken_twice', note: 'Dana said Friday' })
+    expect(parseGcNoticeBatchReason('Other — a lien search came back')).toEqual({ reason: 'other', note: 'a lien search came back' })
+    expect(parseGcNoticeBatchReason(gcNoticeBatchReason('insolvency', '  two bounced  '))).toEqual({ reason: 'insolvency', note: 'two bounced' })
+    expect(parseGcNoticeBatchReason('Some older wording')).toBeNull()
+    expect(parseGcNoticeBatchReason('')).toBeNull()
+  })
+
+  it('gcNoticeSavedRun: the reason, the note and each kind\u2019s letter from the drafts awaiting approval', () => {
+    const item = (status: string, fields: Record<string, unknown>) => ({ status, fields: { notice: {}, ...fields } }) as never
+    const jobs = [
+      { jobId: 'a', item: item('awaiting_approval', { batchReason: 'GC insolvency suspected — two checks came back', coverLetter: 'COMMERCIAL AS EDITED' }) },
+      { jobId: 'b', item: item('awaiting_approval', { batchReason: 'GC insolvency suspected — two checks came back', coverLetter: 'RESIDENTIAL AS EDITED' }) },
+      { jobId: 'c', item: item('drafted', { batchReason: 'Other', coverLetter: 'A DRAFT NOBODY SENT' }) },
+      { jobId: 'd', item: null },
+    ]
+    const kindOf = (id: string) => (id === 'b' ? 'residential' : 'commercial')
+    expect(gcNoticeSavedRun(jobs, kindOf)).toEqual({ reason: 'insolvency', note: 'two checks came back', letters: { commercial: 'COMMERCIAL AS EDITED', residential: 'RESIDENTIAL AS EDITED' }, includeLetter: true })
+    // The office left the letter out: the leader's window leaves it out too.
+    expect(gcNoticeSavedRun([{ jobId: 'a', item: item('awaiting_approval', { batchReason: 'Other' }) }], kindOf)).toEqual({ reason: 'other', note: '', letters: {}, includeLetter: false })
+    // Nothing waiting on the leader: the window keeps its defaults.
+    expect(gcNoticeSavedRun([jobs[2]!, jobs[3]!], kindOf)).toBeNull()
+  })
+})
+
+describe('the supply houses paragraph in the letter (v2.4725)', () => {
+  it('every default letter ends with the fill; blank, the paragraph leaves without a trace; given, it is the last paragraph before the enclosure', async () => {
+    const { defaultGcNoticeCoverLetter, paidOutOwnerLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
+    const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
+    const letters = [
+      defaultGcNoticeCoverLetter(base),
+      defaultGcNoticeCoverLetter({ ...base, kind: 'residential' }),
+      defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' }),
+      defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true }),
+      paidOutOwnerLetter(base),
+    ]
+    for (const t of letters) expect(coverLetterParagraphs(t)).toContain(COVER_LETTER_FILLS.supplyHouses)
+    const fills = { property: '212 Kettle Dr, Buda', months: 'May 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert', phone: '(512) 360-0599' }
+    const without = fillCoverLetter(letters[0]!, fills)
+    expect(without).not.toContain('{{')
+    expect(coverLetterParagraphs(without)).toHaveLength(12)
+    expect(without.endsWith('file a lien on your property.')).toBe(true)
+    const para = 'You should also know that Reece sold materials for this job and is still owed $130.75.'
+    const withHouses = coverLetterParagraphs(fillCoverLetter(letters[1]!, { ...fills, supplyHouses: para }))
+    expect(withHouses[withHouses.length - 1]).toBe(para)
+    expect(withHouses[withHouses.length - 2]).toBe('Do not send Click Plumbing and Electrical a check on your own unless Harborline Builders has agreed in writing.')
+  })
+})
+
+describe('the conditional release paragraph in the letter (v2.4729)', () => {
+  it('every default letter carries the fill after the houses; blank it leaves; given it closes the letter', async () => {
+    const { defaultGcNoticeCoverLetter, paidOutOwnerLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
+    const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
+    for (const t of [defaultGcNoticeCoverLetter(base), defaultGcNoticeCoverLetter({ ...base, kind: 'residential' }), defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' }), defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true }), paidOutOwnerLetter(base)]) {
+      const ps = coverLetterParagraphs(t)
+      expect(ps[ps.length - 2]).toBe(COVER_LETTER_FILLS.supplyHouses)
+      expect(ps[ps.length - 1]).toBe(COVER_LETTER_FILLS.conditionalRelease)
+    }
+    const fills = { property: '212 Kettle Dr, Buda', months: 'May 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert', phone: '(512) 360-0599' }
+    const plain = coverLetterParagraphs(fillCoverLetter(defaultGcNoticeCoverLetter(base), fills))
+    expect(plain).toHaveLength(12)
+    const rel = 'A conditional release of lien is enclosed. This release is not effective today. It becomes effective only after $5,900.00 is received and the funds have cleared. Until then, the notice stands.'
+    const both = coverLetterParagraphs(fillCoverLetter(defaultGcNoticeCoverLetter(base), { ...fills, supplyHouses: 'You should also know that Reece is owed $130.75.', conditionalRelease: rel }))
+    expect(both).toHaveLength(14)
+    expect(both[both.length - 1]).toBe(rel)
+    expect(both[both.length - 2]).toBe('You should also know that Reece is owed $130.75.')
   })
 })

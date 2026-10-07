@@ -7,6 +7,7 @@
 import type { Database } from '../../types/database'
 import type { PreviousItem, SubmittalRowDraft } from './buildSubmittalRows'
 import type { ProductStatus, ReasonKind } from './productStatus'
+import { isOrderOnlyRow, orderOnlyInsert } from './orderOnly'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type SubmittalRevisionRow = Database['public']['Tables']['bid_submittals']['Row']
@@ -97,6 +98,7 @@ export function itemToPrevious(item: SubmittalItemRow): PreviousItem {
     reviewNote: item.review_note,
     supplyHouseId: item.supply_house_id,
     sourceQuoteLineId: item.source_quote_line_id,
+    orderOnly: isOrderOnlyRow(item),
   }
 }
 
@@ -122,6 +124,7 @@ export function draftToItemInsert(draft: SubmittalRowDraft, submittalId: string)
     sheet_pages: draft.sheetPages,
     sheet_source: draft.sheetPages.length > 0 ? 'estimator' : null,
     carried_from_item_id: draft.carriedFromItemId,
+    ...(draft.orderOnly ? { order_only: true } : {}),
   }
 }
 
@@ -159,12 +162,39 @@ export function carriedRowInsert(it: SubmittalItemRow, submittalId: string, sequ
     sheet_pages: [...(it.sheet_pages ?? [])],
     sheet_source: it.sheet_source,
     carried_from_item_id: it.id,
+    ...orderOnlyInsert(it),
   }
 }
 
 /** A row wants a cut sheet unless nobody quoted it. */
 export function needsSheet(item: Pick<SubmittalItemRow, 'status' | 'sheet_pages'>): boolean {
   return asStatus(item.status) !== 'missing' && (item.sheet_pages ?? []).length === 0
+}
+
+/** The tags of the rows that want a cut sheet and have none: what the cover lists as "to follow". An untagged row reads as an accessory. */
+export function rowsOwingSheet(items: ReadonlyArray<Pick<SubmittalItemRow, 'tag' | 'status' | 'sheet_pages'>>): string[] {
+  return items.filter(needsSheet).map((it) => it.tag.trim() || 'accessory')
+}
+
+/**
+ * The question before a package is built with cut sheets still missing (2026-10-04). The cover
+ * prints "to follow" for those rows and lists their tags; the question names them first, so a
+ * package that goes out short is a choice.
+ */
+export function sheetsToFollowConfirm(tags: ReadonlyArray<string>): { title: string; message: string; confirmLabel: string } {
+  const n = tags.length
+  const shown = tags.slice(0, 12).join(', ') + (n > 12 ? ` and ${n - 12} more` : '')
+  return {
+    title: `Build the package with ${n} cut sheet${n === 1 ? '' : 's'} to follow`,
+    message: `${n === 1 ? 'This row has' : 'These rows have'} no cut sheet yet: ${shown}. The cover will read cut sheet to follow for ${n === 1 ? 'it' : 'them'}. The GC may hold their answer on ${n === 1 ? 'that row' : 'those rows'} until the sheet arrives.`,
+    confirmLabel: 'Build package',
+  }
+}
+
+/** The Build package button: "Build package · 6 cut sheets to follow" while sheets are missing. */
+export function buildPackageLabel(built: boolean, sheetsNeeded: number): string {
+  const verb = built ? 'Rebuild package' : 'Build package'
+  return sheetsNeeded > 0 ? `${verb} · ${sheetsNeeded} cut sheet${sheetsNeeded === 1 ? '' : 's'} to follow` : verb
 }
 
 export type RevisionTiles = {
@@ -270,11 +300,36 @@ export function asRevisionStatus(v: string | null | undefined): RevisionStatus {
   return v === 'shared' || v === 'reviewed' || v === 'superseded' ? v : 'draft'
 }
 
-/** "Rev 3 · draft · Sep 15" (shared revisions date their share, drafts their creation). */
-export function describeRevisionChip(rev: Pick<SubmittalRevisionRow, 'rev_number' | 'status' | 'created_at' | 'shared_at'>): string {
+/**
+ * "Rev 3 · draft · Sep 15" (shared revisions date their share, drafts their creation). A draft the
+ * office sent outside the app (v2.4705, `sent_outside_at`) reads "Rev 1 · sent by email · Sep 29":
+ * *draft* means unsent, and this one went.
+ */
+export function describeRevisionChip(rev: Pick<SubmittalRevisionRow, 'rev_number' | 'status' | 'created_at' | 'shared_at'> & Partial<Pick<SubmittalRevisionRow, 'sent_outside_at'>>, /** the newest answer on its rows, when it has one (2026-10-03) */ answeredAt?: string | null): string {
   const status = asRevisionStatus(rev.status)
+  // A draft answered by email and then replaced holds the GC's answers: "superseded · the day it was made" hid both facts.
+  if (status === 'superseded' && answeredAt) return [`Rev ${rev.rev_number}`, `answered ${formatShortDate(answeredAt)}`].join(' · ')
+  if (rev.sent_outside_at && (status === 'draft' || status === 'superseded')) return [`Rev ${rev.rev_number}`, SENT_BY_EMAIL, formatShortDate(rev.sent_outside_at)].filter(Boolean).join(' · ')
   const when = formatShortDate(status === 'draft' ? rev.created_at : rev.shared_at ?? rev.created_at)
   return [`Rev ${rev.rev_number}`, REVISION_STATUS_LABELS[status], when].filter(Boolean).join(' · ')
+}
+
+/** v2.4705 · the words for a revision that went out by email or on paper, not through the room. */
+export const SENT_BY_EMAIL = 'sent by email'
+
+/** Step 5's line for such a revision: "Sent by email · Sep 29 · answers typed in". */
+export function sentByEmailLine(sentOutsideAt: string, /** rows whose answer the office typed in */ typedAnswers = 0): string {
+  return ['Sent by email', formatShortDate(sentOutsideAt), typedAnswers > 0 ? 'answers typed in' : ''].filter(Boolean).join(' · ')
+}
+
+/** The newest answer on a revision's rows and parts, or null when nobody answered. */
+export function revisionAnsweredAt(rows: ReadonlyArray<{ review_decision?: string | null; reviewed_at?: string | null }>, parts: ReadonlyArray<{ review_decision?: string | null; reviewed_at?: string | null }> = []): string | null {
+  let newest: string | null = null
+  for (const r of [...rows, ...parts]) {
+    if (!asDecision(r.review_decision) || !r.reviewed_at) continue
+    if (newest == null || new Date(r.reviewed_at).getTime() > new Date(newest).getTime()) newest = r.reviewed_at
+  }
+  return newest
 }
 
 /**
@@ -350,6 +405,7 @@ export function blankSubmittalItem(submittalId: string, sequenceOrder: number): 
     decision_source: 'room',
     decision_entered_by: null,
     decision_entered_by_name: null,
+    order_only: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }

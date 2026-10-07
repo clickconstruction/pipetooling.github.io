@@ -197,7 +197,7 @@ export function UpcomingWeekSessionsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -217,7 +217,7 @@ export function UpcomingWeekSessionsModal({
           borderRadius: 8,
           maxWidth: 620,
           width: '100%',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}

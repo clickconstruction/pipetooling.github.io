@@ -1107,8 +1107,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }
       let rowsOnRevision: Array<{ tag: string; submitted: string | null; owes_sheet: boolean }> = []
       if (task.submittal_id) {
-        const { data: items } = await admin.from('bid_submittal_items').select('tag, submitted_label, submitted_model, sheet_pages, status').eq('submittal_id', task.submittal_id).order('sequence_order')
-        rowsOnRevision = ((items ?? []) as Array<{ tag: string; submitted_label: string | null; submitted_model: string | null; sheet_pages: number[] | null; status: string }>).filter((i) => i.status !== 'missing').map((i) => ({ tag: i.tag, submitted: i.submitted_label ?? i.submitted_model ?? null, owes_sheet: !(i.sheet_pages ?? []).length }))
+        const { data: items } = await admin.from('bid_submittal_items').select('tag, submitted_label, submitted_model, sheet_pages, status, order_only').eq('submittal_id', task.submittal_id).order('sequence_order')
+        rowsOnRevision = ((items ?? []) as Array<{ tag: string; submitted_label: string | null; submitted_model: string | null; sheet_pages: number[] | null; status: string; order_only?: boolean | null }>).filter((i) => i.status !== 'missing' && i.order_only !== true).map((i) => ({ tag: i.tag, submitted: i.submitted_label ?? i.submitted_model ?? null, owes_sheet: !(i.sheet_pages ?? []).length }))
       }
       return textContent(JSON.stringify({
         task: task.id,
@@ -2318,7 +2318,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           const v = amendRef.bid_value == null ? null : Number(amendRef.bid_value)
           const g = !String(amendRef.plans_link ?? '').trim() ? 'X' : v != null && (c1 ?? 0) > 0 && (c2 ?? 0) > 0 ? 'A' : v != null ? 'B' : (c1 ?? 0) > 0 ? 'C' : 'D'
           const lostA = amendRef.outcome === 'lost'
-          const flagsClearA = !((v != null && v > 0 && v % 100 === 0) || (lostA && ['no_bid', 'project_died'].includes(String(amendRef.loss_category ?? ''))) || (lostA && !amendRef.loss_category) || (() => { const w = String(amendRef.bid_date_sent ?? amendRef.created_at ?? '').slice(0, 10); const d = w ? Math.abs(Date.parse(`${todayYmdInAppTz()}T00:00:00Z`) - Date.parse(`${w}T00:00:00Z`)) / 86400000 : 0; return Number.isFinite(d) && d > 183 })())
+          const flagsClearA = !((v != null && v > 0 && v % 100 === 0) || (lostA && ['no_bid', 'project_died'].includes(String(amendRef.loss_category ?? ''))) || (lostA && !amendRef.loss_category) || (() => { const c = String(amendRef.created_at ?? ''); const w = amendRef.bid_date_sent ? String(amendRef.bid_date_sent).slice(0, 10) : c && !Number.isNaN(Date.parse(c)) ? todayYmdInAppTz(new Date(c)) : ''; const d = w ? Math.abs(Date.parse(`${todayYmdInAppTz()}T00:00:00Z`) - Date.parse(`${w}T00:00:00Z`)) / 86400000 : 0; return Number.isFinite(d) && d > 183 })())
           const finalVerdict = (patch.scope_verdict as string | undefined) ?? String(existingScore.scope_verdict ?? 'unknown')
           patch.gate_eligible = (g === 'A' || g === 'B') && flagsClearA && finalVerdict !== 'fail'
         }
@@ -2353,7 +2353,9 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const lost = refBid.outcome === 'lost'
       const weakLoss = lost && ['no_bid', 'project_died'].includes(String(refBid.loss_category ?? ''))
       const lossUncategorized = lost && !refBid.loss_category
-      const whenYmd = String(refBid.bid_date_sent ?? refBid.created_at ?? '').slice(0, 10)
+      // bid_date_sent is a `date`; created_at is an instant, so its day is read in the company calendar.
+      const createdIso = String(refBid.created_at ?? '')
+      const whenYmd = refBid.bid_date_sent ? String(refBid.bid_date_sent).slice(0, 10) : createdIso && !Number.isNaN(Date.parse(createdIso)) ? todayYmdInAppTz(new Date(createdIso)) : ''
       const today = todayYmdInAppTz()
       const ageDays = whenYmd ? Math.abs(Date.parse(`${today}T00:00:00Z`) - Date.parse(`${whenYmd}T00:00:00Z`)) / 86400000 : 0
       const stale = Number.isFinite(ageDays) && ageDays > 183
@@ -2633,8 +2635,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }, null, 2))
     }
     case 'paste_counts': {
+      // Every write of this call is the robot's paste in the bid's history (punch list #73, PR 1b):
+      // the x-bid-action tag rides on the client, and record_bid_change() stores it.
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
+        global: { headers: { 'x-bid-action': 'robot-paste' } },
       })
       const ref = String(args.bid ?? '').trim()
       const rows = Array.isArray(args.rows) ? args.rows as Record<string, unknown>[] : []

@@ -10,6 +10,7 @@
 import { useCallback, useRef, type CSSProperties } from 'react'
 import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
+import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import AccountManIcon from '../icons/AccountManIcon'
@@ -209,7 +210,7 @@ export function JobsStagesToolsMenu({
               title="Lien notices due per unpaid work month on sub jobs — draft, approve, send"
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', borderRadius: 4, fontSize: '0.8125rem' }}
             >
-              <span aria-hidden>⏱</span>
+              <StagesToolsMenuGlyph name="gavel" />
               <span>Lien desk</span>
               {typeof lienDeskCount === 'number' && lienDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lienDeskCount}</span> : null}
             </button>

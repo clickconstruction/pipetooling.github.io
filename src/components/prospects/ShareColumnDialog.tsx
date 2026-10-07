@@ -32,7 +32,7 @@ export default function ShareColumnDialog({ columnName, accounts, shares, loadin
         aria-modal="true"
         aria-labelledby="share-column-title"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 8, padding: '1.25rem', width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 8, padding: '1.25rem', width: '100%', maxWidth: 440, maxHeight: 'min(90vh, 100%)', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}
       >
         <h3 id="share-column-title" style={{ margin: '0 0 0.35rem', fontSize: '1.0625rem' }}>Share {columnName} with</h3>
         <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

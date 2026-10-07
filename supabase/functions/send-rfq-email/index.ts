@@ -17,6 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildRfqEmail, type RfqEmailInput } from '../_shared/rfqEmail.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,7 +62,7 @@ serve(async (req) => {
     if (authErr || !userData?.user) return json({ error: 'Not signed in' }, 401)
     const { data: sender } = await admin
       .from('users')
-      .select('id, name, email, role, archived_at').eq('is_sample', false)
+      .select('id, name, email, role, archived_at').match(REAL_ACCOUNT)
       .eq('id', userData.user.id)
       .maybeSingle()
     if (!sender || sender.archived_at || !ALLOWED_ROLES.has((sender.role as string) ?? '')) {
@@ -214,7 +215,8 @@ serve(async (req) => {
           token,
           plansLink,
         })
-        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc })
+        // Sent copies (docs/SENT_COPIES.md): the request as the supply house read it is kept, under the bid.
+        const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc, file: { kind: 'rfq', recipientName: house?.name ?? '', bidId, source: { table: 'bid_rfqs', id: rfq.id }, sentBy: userData.user.id } })
         if (sent.success) {
           await admin.from('bid_rfqs').update({ resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
           results.push({ supplyHouseId: r.supplyHouseId, ok: true })
@@ -257,7 +259,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc) })
+      const sent = await sendEmailViaResend(rfq.sent_email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc), file: { kind: 'rfq_reminder', recipientName: rfq.sent_to ?? '', bidId: rfq.bid_id, source: { table: 'bid_rfqs', id: rfq.id }, sentBy: userData.user.id } })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin
         .from('bid_rfqs')
@@ -286,7 +288,7 @@ serve(async (req) => {
         token: rfq.token as string,
         plansLink: cleanPlansLink(scope.plansLink),
       })
-      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc) })
+      const sent = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, resendApiKey, { from: COMPANY_EMAIL_FROM, replyTo, cc: cleanCc(rfq.sent_cc), file: { kind: 'rfq_resent', recipientName: rfq.sent_to ?? '', bidId: rfq.bid_id, source: { table: 'bid_rfqs', id: rfq.id }, sentBy: userData.user.id } })
       if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
       await admin.from('bid_rfqs').update({ sent_email: email, resend_email_id: sent.resendEmailId ?? null }).eq('id', rfq.id)
       return json({ ok: true })

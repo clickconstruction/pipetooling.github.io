@@ -23,7 +23,7 @@ const job = (id: string, n: number, ref: string, paidOn: string): PortalChecks['
 })
 const checks: PortalChecks = {
   jobs: [1, 2, 3, 4, 5, 6, 7].map((n) => job(`j${n}`, n, `${1000 + n}`, `2026-09-${String(n).padStart(2, '0')}`)),
-  events: [{ id: 'e1', kind: 'moved', payment_id: 'j7-p', from_job_id: 'j1', to_job_id: 'j7', amount: 100, created_at: '2026-09-26T00:00:00Z' }],
+  events: [{ id: 'e1', kind: 'moved', payment_id: 'j7-p', from_job_id: 'j1', to_job_id: 'j7', amount: 100, created_at: '2026-09-26T16:00:00Z' }],
 }
 
 describe('PortalPaymentsSection', () => {

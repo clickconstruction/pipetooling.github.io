@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Legal portal item 9: one coherent sample matter — before / after</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: #374151; max-width: 90ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  .lede { margin: 0 0 14px; color: #374151; max-width: 100ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: #E5E7EB; color: #374151; } .cap.new { background: #111827; color: #fff; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 12px 14px; }
+  .pane img { width: 100%; height: auto; display: block; border: 1px solid #E5E7EB; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: #6B7280; border-bottom: 1px solid #D1D5DB; padding: 5px 6px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #E5E7EB; vertical-align: top; }
+  .bad { color: #991B1B; } .good { color: #05603A; }
+  ol.story { margin: 0; padding-left: 20px; color: #374151; } ol.story li { margin: 3px 0; }
+  ul.notes { margin: 18px 0 0; padding-left: 20px; color: #374151; max-width: 100ch; }
+  ul.notes li { margin: 4px 0; }
+  figure { margin: 0 0 12px; } figcaption { font-size: 12px; color: #6B7280; margin-top: 4px; }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Punch list #85 · item 9 · mockup</p><h1>One coherent sample matter</h1>
+<p><code>/legal?t=sample</code> is what the firm will see tomorrow. The old sample contradicted itself and left three panels empty. The new one tells one story, every date relative to today, and every claim passes through the same parser and packet kernel as a real matter. Screenshots are the portal itself, walked in the preview browser at 1280 px on 2026-10-05.</p></header>
+
+<h2>What contradicted itself</h2>
+<div class="pane" style="border-top: 1px solid #D1D5DB; border-radius: 8px;">
+<table><thead><tr><th>Before</th><th>After</th></tr></thead><tbody>
+<tr><td class="bad">The note says "start with a demand on the GC", but the job reads <i>original contractor · § 53.056 notice not required · contracted with the owner</i>: the GC was stored as the customer.</td><td class="good">The building's owner (Sample Holdings LLC) is the job's customer and Sample Contracting is its GC, so Click is the subcontractor and the GC is the payer. The note asks for a demand on the GC.</td></tr>
+<tr><td class="bad">The payment has no date and no check number: the sample used <code>payment_date</code> / <code>reference</code>, not the real row's columns.</td><td class="good">The real columns: <code>paid_on</code>, <code>sent_on</code>, <code>payment_type</code>, <code>reference_number</code>. The ledger reads <i>Payment · 1042 · check · ref 2291</i> with its day.</td></tr>
+<tr><td class="bad">No property record, no demand letter, no lien paper: Paper is near empty, there is no Lien grid tab, and Paper says <i>the affidavit window closed with nothing filed — the lien is gone</i>.</td><td class="good">A property record (Hays County, owner of record, legal description, parcel), a § 53.056 notice sent in time to the owner and the GC with the owner's answers (still owes the GC $12,000, holds the 10%: pile A), a final demand by certified mail with its deadline passed, and an affidavit window still open: <i>File the affidavit — 42 days</i>.</td></tr>
+<tr><td class="bad">"Two promises missed" beside one promise.</td><td class="good">Two promises: the first draw kept by the check, the final bill broken. The note says exactly that.</td></tr>
+<tr><td class="bad">Click's particulars: license, registered agent, custodian and affiant all "—".</td><td class="good">Filled with plainly sample values, each ending "(sample)".</td></tr>
+<tr><td class="bad">No firm question, no office answer.</td><td class="good">The firm's fee, the firm's question (seen) and the office's answer, in the last four days.</td></tr>
+</tbody></table>
+</div>
+
+<h2>The story, relative to today</h2>
+<div class="pane" style="border-top: 1px solid #D1D5DB; border-radius: 8px;">
+<ol class="story">
+  <li>Agreement signed by Pat Sample (122 days ago). Work on site 110, 96, 82 and 66 days ago: four approved clock sessions with GPS, two field reports with GPS.</li>
+  <li>Progress bill $4,000 (100 days ago). Pat promises the first draw (92 days ago); check #2291 is paid 84 days ago: <b>kept</b>.</li>
+  <li>Final bill $14,400 (60 days ago). A second promise (50 days ago) passes unpaid: <b>broken</b>.</li>
+  <li>§ 53.056 notice to the owner and the GC by certified mail (40 days ago), covering every work month inside its window.</li>
+  <li>The owner's manager calls (33 days ago): still owes the GC $12,000 and holds the 10% retainage: pile A, the claim is trapped.</li>
+  <li>Final demand on the GC by certified mail (28 days ago), deadline 18 days ago: passed.</li>
+  <li>Moved to Collections (21 days ago), referred to the firm (6 days ago). The firm adds its fee (4), asks whether the owner's answer is in writing (3), and the office answers (2).</li>
+  <li>The Lien grid: this job (both months noticed, affidavit due), another GC's job whose next notice is inside the desk's 30-day lead, and an original contractor's residential repipe whose affidavit was filed two days ago and must be served, so the grid's default view is never empty.</li>
+</ol>
+</div>
+
+<h2>Account</h2>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="pane"><img src="mockup-9-before-account.jpg" alt="Before: the Account tab with a payment that has no date, and blank particulars"></div></div>
+  <div><div class="cap new">After</div><div class="pane"><img src="mockup-9-after-account.jpg" alt="After: two bills and a dated check, the county and owner of record in the header, sample particulars filled"></div></div>
+</div>
+
+<h2>Paper</h2>
+<div class="two">
+  <div><div class="cap old">Before</div><div class="pane"><img src="mockup-9-before-paper.jpg" alt="Before: original contractor, notice not required, affidavit window closed, the lien is gone"></div></div>
+  <div><div class="cap new">After</div><div class="pane"><img src="mockup-9-after-paper.jpg" alt="After: subcontractor under Sample Contracting, both notices sent, affidavit open, the final demand passed, the notice with the owner's answers"></div></div>
+</div>
+
+<h2>Their word, Fees &amp; steps, and the Lien grid (new)</h2>
+<div class="two">
+  <figure><div class="cap new">After · Their word</div><div class="pane"><img src="mockup-9-after-their-word.jpg" alt="Their word: keeps 1 of 2, 1 broken; three contacts, two promises and the collections note"></div></figure>
+  <figure><div class="cap new">After · Fees &amp; steps</div><div class="pane"><img src="mockup-9-after-fees.jpg" alt="Fees and steps: the firm's fee, its question seen by the office"></div></figure>
+</div>
+<figure><div class="cap new">After · Lien grid (All)</div><div class="pane"><img src="mockup-9-after-grid.jpg" alt="The Lien grid with three jobs"></div></figure>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>Will the demo show the new sample tomorrow?</b> Not if it waits on a <code>legal-portal</code> redeploy. Refined: the page builds the sample itself from the same shared fixture the function answers with (<code>sampleLegalPortalResponse</code>), so it shows the moment the page ships, makes no network call, and the function's answer stays identical for anyone calling it.</li>
+  <li><b>Is "one promise kept" honest?</b> Only once the function agrees. The office's desk measures a promise against what was billed when it was made; <code>legal-portal</code> summed every bill on the job, so on a real matter like this one the first promise would read as broken on the firm's page and kept on the desk. Fixed in the same PR: <code>billedAtPromise</code>, the desk RPC's rule, in a shared kernel with a test.</li>
+  <li><b>Does it hold on every day?</b> The test builds the packet and the grid on eight days (month ends, a leap day, a year turn, weekends) and checks the same story each time: the notice in time, the affidavit still open, nothing marked missed. The sample's statutory 15th is held to the client's own lien clock by a test.</li>
+  <li><b>Is the grid empty on its default view?</b> It was on the first draft (every job "later"). Refined: the repipe's affidavit was filed two days ago, so its service copy is always due; the dental job's next notice is chosen to be the first one not yet passed.</li>
+  <li><b>Anything left?</b> The payment still prints as <code>$-4,000.00</code>: that is item 5's one formatter. The Lien grid's paid-out and 10 % columns stay "?" even though the owner answered: the grid kernel does not read the owner's call yet (worth a later item).</li>
+</ul>
+</div></body></html>

@@ -2,7 +2,7 @@
 name: "Contracts & terms: every contract a customer signs, side by side"
 number: 50
 group: close
-status: planned and built 2026-09-27 / 28 · PR 1 shipped v2.3977 (the tab, Compare, the doors) · PR 2 shipped v2.3968 (the bid room gets the wording the letter prints) · PR 3 shipped v2.3965 (an unsent draft goes out with the current standard terms) · PR 4 shipped v2.3964 (consent on a change order signed in the bid room) · PR 5 shipped v2.3987 (the history tables and triggers) · PR 7 shipped v2.3992 (Last sent) · PR 6 shipped v2.3994 (History, What did it say on, Mark reviewed) — all seven built · then v2.4098 (Read it as the customer sees it — the customer's own page in sample mode, in a modal; the sample agreement now prints the Book document) and v2.4108 (the tab reads as an index: six sections in the customer's order, one row per contract, lenses and a find box) · left: a month of use, four things deliberately not built, one question for the attorney
+status: planned and built 2026-09-27 / 28 · PR 1 shipped v2.3977 (the tab, Compare, the doors) · PR 2 shipped v2.3968 (the bid room gets the wording the letter prints) · PR 3 shipped v2.3965 (an unsent draft goes out with the current standard terms) · PR 4 shipped v2.3964 (consent on a change order signed in the bid room) · PR 5 shipped v2.3987 (the history tables and triggers) · PR 7 shipped v2.3992 (Last sent) · PR 6 shipped v2.3994 (History, What did it say on, Mark reviewed) — all seven built · then v2.4098 (Read it as the customer sees it — the customer's own page in sample mode, in a modal; the sample agreement now prints the Book document) and v2.4108 (the tab reads as an index: six sections in the customer's order, one row per contract, lenses and a find box) · the attorney's answer landed v2.4730 (45 days from the invoice everywhere) · left: a month of use, four things deliberately not built
 summary: >
   The app offers customers **eight contract texts** from Estimates, Bids and Jobs, kept five
   different ways — one Settings text, per-record boxes, built-in wording in code, the Contract
@@ -16,9 +16,9 @@ summary: >
 next: >
   Use the tab for a month. Then decide two things — whether the estimate and bid terms move into
   the Contract Book (rejected for now, see The decision), and which of the five items under
-  *Not in this train* to build (the sample-agreement one shipped v2.4098). Take the interest-clause disagreement to the attorney.
+  *Not in this train* to build (the sample-agreement one shipped v2.4098). The interest clauses agree since v2.4730.
 size: S — what is left is use, and four small builds if they are wanted
-blocker: A month of use. The interest clauses (45 days from the invoice; 30 days after the due date) are the attorney's call.
+blocker: A month of use (to 2026-10-28).
 ver: v2.3977 · v2.3968 · v2.3965 · v2.3964 · v2.3987 · v2.3992 · v2.3994 · v2.4098 · v2.4108
 opinion: your call — everything planned is built and the tab has had two more passes on the owner's live reads; the four items left out are each small, and the first to build is the signed copy to the customer, because the consent tells them they have one
 mockup: not required — built in the same sitting as the plan; the live tab is the drawing
@@ -87,8 +87,10 @@ Confirmed in the code:
   terms, and the save that follows strips the terms fields.
 - **A change order signed in the bid room records no consent** — the card posts no `esignConsent`.
 - **What customers see shows stand-in terms** for the job agreement, not the Book document — fixed v2.4098 (`get-job-contract`'s sample prints the newest customer Book document; the fixture's terms only when the Book holds none).
-- **The texts disagree**: the estimate terms charge interest 45 days from the invoice, the job
-  agreement 30 days after the due date (read in production on the tab, 2026-09-27).
+- ~~**The texts disagree**: the estimate terms charge interest 45 days from the invoice, the job
+  agreement 30 days after the due date (read in production on the tab, 2026-09-27).~~ Settled
+  2026-10-06: the owner and the attorney chose 45 days from the invoice date everywhere (v2.4730:
+  the built-in wording, and the Book's Service agreement edited on the tab).
 - **`app_settings` has no date column**, so texts 1 and 3–6 have no "last changed" at all.
 
 Reported by the read, not re-checked: the approval PDF ignores the org defaults; an estimate or

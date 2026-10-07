@@ -10,6 +10,7 @@ import { questionContextLine, threadAuditNotes, type BidAuditNoteRow, type BidAu
 import { orderedChoices, answerFromChoice } from '../../lib/bids/twinQuestionChoices'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import type { TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 // bid_audits / twin_questions predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -223,9 +224,9 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
       aria-labelledby="robot-envelope-title"
       onClick={onClose}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1010, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1010, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
-      <div role="document" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 680, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div role="document" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 680, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', maxHeight: 'min(90vh, 100%)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.1rem', borderBottom: '1px solid var(--border)' }}>
           <span aria-hidden style={{ fontSize: '1.1rem' }}>🔒</span>
           <div style={{ minWidth: 0 }}>
@@ -242,7 +243,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
         <div style={{ padding: '0.9rem 1.1rem', overflowY: 'auto', display: 'grid', gap: '0.9rem' }}>
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
             <span style={kpi}>
-              <span style={kpiLabel}>{run.kind === 'shadow' ? 'Robot locked' : 'Robot draft'}{run.at ? ` · ${run.at.slice(5, 10).replace('-', '/')}` : ''}</span>
+              <span style={kpiLabel}>{run.kind === 'shadow' ? 'Robot locked' : 'Robot draft'}{run.at ? ` · ${calendarYmdInAppTzFromIso(run.at).slice(5, 10).replace('-', '/')}` : ''}</span>
               <b style={mono}>{money(robotTotal)}</b>
             </span>
             <span style={kpi}>

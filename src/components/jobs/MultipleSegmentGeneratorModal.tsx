@@ -143,7 +143,7 @@ export function MultipleSegmentGeneratorModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={(e) => e.target === e.currentTarget && onCancel()}
       role="presentation"
@@ -158,7 +158,7 @@ export function MultipleSegmentGeneratorModal({
           padding: '1.25rem',
           maxWidth: 640,
           width: '100%',
-          maxHeight: 'min(88vh, 760px)',
+          maxHeight: 'min(88vh, 760px, 100%)',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',

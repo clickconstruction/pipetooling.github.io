@@ -1,7 +1,8 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { ROOM_COPPER, roomCard, roomLabel, roomQuiet, roomShortDate } from '../../lib/submittals/roomStyles'
 import { pendingKey } from '../../lib/submittals/submittalRoom'
-import { roomHeadline, roomSubline, type RoomPart, type RoomRevision, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { roomHeadline, roomSubline, type RoomPart, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import type { RecordRoomRevision } from '../../../supabase/functions/_shared/submittalRecord'
 
 /**
  * The reviewer's view of one revision (v2.4187, punch list #62 Layer 2 PR 1): the headline
@@ -17,7 +18,7 @@ export type DecisionKind = NonNullable<RoomRow['decision']>['kind']
 const DECISION_WORD: Record<DecisionKind, string> = { approved: 'Approved', revise: 'Revise', rejected: 'Rejected' }
 const DECISION_INK: Record<DecisionKind, string> = { approved: '#1f7a3a', revise: ROOM_COPPER, rejected: '#b42318' }
 
-/** "3 approved · 1 revise · 2 to go" over a card's parts, counting the calls not sent yet. */
+/** "3 parts · 3 approved · 1 revise · 2 to answer" over a card's parts, counting the calls not sent yet. */
 function partsSummary(parts: ReadonlyArray<RoomPart>, localParts: Record<string, DecisionKind | undefined>): string {
   const c = { approved: 0, revise: 0, rejected: 0, open: 0 }
   for (const p of parts) {
@@ -25,8 +26,8 @@ function partsSummary(parts: ReadonlyArray<RoomPart>, localParts: Record<string,
     if (k) c[k] += 1
     else c.open += 1
   }
-  const bits = [c.approved ? `${c.approved} approved` : '', c.revise ? `${c.revise} revise` : '', c.rejected ? `${c.rejected} rejected` : '', c.open ? `${c.open} to go` : ''].filter(Boolean)
-  return `${parts.length} parts${bits.length ? ` · ${bits.join(' · ')}` : ''}`
+  const bits = [c.approved ? `${c.approved} approved` : '', c.revise ? `${c.revise} revise` : '', c.rejected ? `${c.rejected} rejected` : '', c.open ? `${c.open} to answer` : ''].filter(Boolean)
+  return `${parts.length} part${parts.length === 1 ? '' : 's'}${bits.length ? ` · ${bits.join(' · ')}` : ''}`
 }
 
 const seg = (on: boolean, tone: 'g' | 'a' | 'r'): CSSProperties => ({
@@ -52,18 +53,19 @@ export function RoomRowCard({ row, local, localParts = {}, onDecide, readOnly = 
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
         <b>{row.tag || 'Accessory'}</b>
         <span style={{ fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: tone }}>
-          {row.kind === 'differs' ? 'differs' : row.kind === 'proposed' ? 'proposed' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
+          {row.kind === 'differs' ? 'differs' : row.kind === 'proposed' ? 'for your review' : row.kind === 'added' ? 'added for the fixture' : row.kind === 'not_quoted' ? 'to follow' : 'as the plans specify'}
         </span>
       </div>
       {row.plans ? (
-        <div style={{ ...roomQuiet, marginTop: 4 }}>
-          The plans: <b style={{ color: 'var(--text-strong)' }}>{row.plans}</b>
+        // 2026-10-03 · a row from the takeoff carries our own name for the fixture, not the plans' product: it reads as the fixture, with no "The plans:".
+        <div style={{ ...roomQuiet, marginTop: 4 }} data-testid="room-row-plans">
+          {row.kind === 'proposed' ? row.plans : <>The plans: <b style={{ color: 'var(--text-strong)' }}>{row.plans}</b></>}
         </div>
       ) : null}
       {parts.length > 0 ? (
         <div style={{ marginTop: 4 }} data-testid="room-parts">
           <div style={{ ...roomQuiet, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-            <span>{row.kind === 'matches' ? 'Submitted' : 'Proposed'}:</span>
+            <span>{row.kind === 'matches' ? 'Submitted' : row.kind === 'proposed' ? 'We intend to install' : 'Proposed'}:</span>
             <span data-testid="room-parts-summary">{partsSummary(parts, localParts)}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 2 }}>
@@ -99,7 +101,7 @@ export function RoomRowCard({ row, local, localParts = {}, onDecide, readOnly = 
         </div>
       ) : row.proposed ? (
         <div style={{ marginTop: 2, fontSize: '0.9rem' }}>
-          {row.kind === 'matches' ? 'Submitted' : 'Proposed'}: <b>{row.proposed}</b>
+          {row.kind === 'matches' ? 'Submitted' : row.kind === 'proposed' ? 'We intend to install' : 'Proposed'}: <b>{row.proposed}</b>
         </div>
       ) : null}
       {row.why ? <div style={{ ...roomQuiet, marginTop: 4 }}>{row.kind === 'differs' ? 'Why: ' : ''}{row.why}</div> : null}
@@ -141,7 +143,7 @@ export function RoomRevisionBody({
   afterSubline,
   personLine,
 }: {
-  rev: RoomRevision
+  rev: RecordRoomRevision
   /** Calls not sent yet, keyed by `pendingKey(row, part?)`. */
   pending?: Record<string, { decision: DecisionKind; note: string }>
   onDecide?: (rowId: string, kind: DecisionKind, partId?: string) => void
@@ -162,6 +164,12 @@ export function RoomRevisionBody({
   )
   return (
     <>
+      {rev.answeredByEmailAt ? (
+        // 2026-10-06 · a revision answered by email is on the record with its package; the answers are theirs, typed in by the office.
+        <p style={{ ...roomQuiet, margin: '0 0 0.5rem' }} data-testid="room-emailed-line">
+          You answered this revision by email. Our office typed your answers in here, as the record.
+        </p>
+      ) : null}
       <div style={{ ...roomCard, borderLeft: `4px solid ${ROOM_COPPER}` }} data-testid="room-headline">
         <div style={{ ...roomLabel, color: ROOM_COPPER }}>{roomHeadline(rev.counts)}</div>
         <div style={{ ...roomQuiet, marginTop: 4 }}>
@@ -183,3 +191,49 @@ export function RoomRevisionBody({
     </>
   )
 }
+
+/**
+ * The reviewer page's header (moved verbatim out of `pages/SubmittalRoom.tsx`, v2.4606, punch list
+ * #62 PR 1b): the letterhead, *Product review*, the project and its address. The office's window
+ * draws this same header, so it cannot say what the page does not.
+ */
+export function RoomHeader({ company, bid }: { company: { name: string; tagline?: string | null; phone?: string | null }; bid: { label: string; projectName: string | null; address: string | null } }) {
+  return (
+    <header style={{ marginBottom: '0.9rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, paddingBottom: '0.7rem', borderBottom: `3px solid var(--text-strong)` }}>
+        <div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>{company.name.toUpperCase()}</div>
+          {company.tagline ? <div style={{ ...roomLabel, marginTop: 4, letterSpacing: '0.22em' }}>{company.tagline}</div> : null}
+        </div>
+        {company.phone ? <div style={{ ...roomQuiet, fontSize: '0.75rem', textAlign: 'right' }}>{company.phone}</div> : null}
+      </div>
+      <div style={{ marginTop: '0.9rem' }}>
+        <div style={{ ...roomLabel, color: ROOM_COPPER }}>Product review</div>
+        <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.25 }}>{bid.projectName || bid.label}</div>
+        <div style={roomQuiet}>Plumbing fixtures &amp; equipment{bid.address ? ` · ${bid.address}` : ''}</div>
+      </div>
+    </header>
+  )
+}
+
+/** One revision as the page's chips read it. */
+export type RoomChip = { id: string; rev: number; current: boolean; sharedAt: string | null; /** On the record by email (2026-10-06): the answers' own day. */ answeredByEmailAt?: string | null }
+
+/**
+ * The page's revision chips (moved verbatim, v2.4606), drawn only when there is more than one. With
+ * `onSelect` a chip picks the revision on screen, as the page does; without it the chips are the
+ * list read only, the office's window: the same look, nothing to press.
+ */
+export function RoomRevisionChips({ revisions, selectedId, onSelect }: { revisions: ReadonlyArray<RoomChip>; selectedId: string; onSelect?: (id: string) => void }) {
+  if (revisions.length <= 1) return null
+  return (
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.8rem' }} data-testid="room-revisions">
+      {revisions.map((r) => (
+        <button key={r.id} type="button" aria-pressed={r.id === selectedId} aria-disabled={onSelect ? undefined : true} onClick={onSelect ? () => onSelect(r.id) : undefined} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === selectedId ? 'var(--text-strong)' : 'var(--surface)', color: r.id === selectedId ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === selectedId ? 700 : 500, cursor: onSelect ? 'pointer' : 'default' }}>
+          Rev {r.rev}{r.current ? ' · current' : ''}{r.answeredByEmailAt ? ` · answered by email · ${roomShortDate(r.answeredByEmailAt)}` : r.sharedAt ? ` · ${roomShortDate(r.sharedAt)}` : ''}
+        </button>
+      ))}
+    </div>
+  )
+}
+

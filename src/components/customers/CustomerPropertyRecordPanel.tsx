@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { precinctSourceWords } from '../../lib/customers/propertyDraft'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
 import { cadPasteHasFacts, parseCadPagePaste, type CadPasteResult } from '../../lib/customers/cadPagePaste'
@@ -35,6 +36,8 @@ type Props = {
   /** Run the lookup on mount when the row has never been looked up (the sheet opens ready). */
   autoLookup?: boolean
   compact?: boolean
+  /** Open the CAD paste box when the roll has nothing (v2.4724, the lien fix window): the county's page is then the only source. */
+  pasteFirst?: boolean
 }
 
 const inputStyle: CSSProperties = { padding: '0.4rem 0.5rem', width: '100%', boxSizing: 'border-box', fontSize: '0.8125rem' }
@@ -67,12 +70,15 @@ function pill(label: string, on: boolean, onClick: () => void, title?: string) {
   )
 }
 
-export default function CustomerPropertyRecordPanel({ address, fields, onChange, autoLookup = false, compact = false }: Props) {
+export default function CustomerPropertyRecordPanel({ address, fields, onChange, autoLookup = false, compact = false, pasteFirst = false }: Props) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [outcome, setOutcome] = useState<PropertyLookupOutcome | null>(null)
   const autoRan = useRef(false)
   // "Paste the CAD page" (v2.3016): the fallback when the roll has nothing under the pin.
-  const [pasteOpen, setPasteOpen] = useState(false)
+  // Paste first (v2.4724): a row already looked up that still lacks its legal description or owner starts with the box open.
+  const [pasteOpen, setPasteOpen] = useState(
+    () => pasteFirst && fields.parcel_looked_up_at.trim() !== '' && (!fields.legal_description.trim() || (!fields.owner_name.trim() && !fields.owner_company.trim())),
+  )
   const [pasteText, setPasteText] = useState('')
   const [pasteResult, setPasteResult] = useState<CadPasteResult | null>(null)
 
@@ -97,6 +103,7 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
     if (res.proposal.found || res.proposal.county.county) patch.parcel_looked_up_at = new Date().toISOString()
     if (Object.keys(patch).length > 0) onChange(patch)
     setStatus('done')
+    if (pasteFirst && !res.proposal.found) setPasteOpen(true)
   }
 
   useEffect(() => {
@@ -191,7 +198,7 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
                 {pasteResult.ownerName ? <span>Owner · {pasteResult.ownerName}</span> : null}
                 {pasteResult.mailingAddress ? <span>Mailing address · {pasteResult.mailingAddress}</span> : null}
                 {pasteResult.propId ? <span>Prop ID · {pasteResult.propId}</span> : null}
-                {pasteResult.homestead !== 'unknown' ? <span>Exemptions · {pasteResult.homestead === 'yes' ? 'homestead (HS)' : 'no homestead'}</span> : null}
+                {pasteResult.homestead !== 'unknown' ? <span>Exemptions · {pasteResult.homestead === 'yes' ? 'homestead (HS)' : 'no homestead'}</span> : pasteResult.found.includes('exemptions') ? <span>Exemptions · not shown on the page, so the homestead tick is left as it is</span> : null}
                 <div style={{ display: 'flex', gap: '0.4rem', marginTop: 2 }}>
                   <button
                     type="button"
@@ -285,6 +292,19 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
           ) : null}
           {showCountyPills ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>The sources disagree; the parcel record wins unless you know better.</span> : null}
         </div>
+      </div>
+
+      {/* justice precinct (v2.4771): the court map fills it; a typed value wins */}
+      <div data-property-precinct>
+        <label style={labelStyle}>Justice precinct <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· where a small claim on this property is filed</span></label>
+        <input
+          value={fields.jp_precinct ?? ''}
+          onChange={(e) => onChange({ jp_precinct: e.target.value, jp_precinct_source: e.target.value.trim() ? 'hand' : '' })}
+          placeholder="2, 1-2, 3 — as the county writes it"
+          aria-label="Justice precinct"
+          style={{ ...inputStyle, maxWidth: 260 }}
+        />
+        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{precinctSourceWords({ jp_precinct: fields.jp_precinct ?? '', jp_precinct_source: fields.jp_precinct_source ?? '' })}</div>
       </div>
 
       {/* legal description */}

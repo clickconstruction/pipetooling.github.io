@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Records for an owner, on their portal — the owner's three stops</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { margin: 0; background: #e9e5dc; color: #16283c; font-family: -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  .lead { color: #5b6b7c; font-size: 0.9rem; margin: 0 0 20px; max-width: 70ch; }
+  .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 20px; }
+  .frame { background: #f6f3ec; border: 1px solid #cfc8b8; border-radius: 12px; overflow: hidden; }
+  .frame h2 { margin: 0; padding: 10px 14px; font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; color: #5b6b7c; background: #efeadf; border-bottom: 1px solid #cfc8b8; }
+  .page { padding: 16px 14px 18px; }
+  .brand { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; }
+  .brand small { display: block; color: #5b6b7c; font-weight: 400; font-size: 0.78rem; }
+  .card { background: #fff; border: 1px solid #d9d2c3; border-radius: 10px; padding: 14px; margin-top: 12px; }
+  .card h3 { margin: 0 0 4px; font-size: 1rem; }
+  .muted { color: #5b6b7c; font-size: 0.82rem; }
+  .btn { display: inline-block; padding: 8px 14px; border-radius: 8px; font-weight: 600; font-size: 0.875rem; border: 1px solid #1d4ed8; background: #1d4ed8; color: #fff; }
+  .btn.plain { background: #fff; color: #1d4ed8; }
+  .btn.quiet { background: #fff; color: #16283c; border-color: #cfc8b8; }
+  .field { margin-top: 10px; }
+  .field label { display: block; font-size: 0.78rem; color: #5b6b7c; margin-bottom: 3px; }
+  .input { border: 1px solid #cfc8b8; border-radius: 7px; padding: 8px 10px; background: #fff; font-size: 0.95rem; }
+  .input.bad { border-color: #b42318; }
+  .hint { font-size: 0.78rem; margin-top: 4px; }
+  .hint.bad { color: #b42318; }
+  .hint.ok { color: #166534; }
+  .pad { border: 1px dashed #9aa5b1; border-radius: 8px; height: 88px; display: flex; align-items: center; justify-content: center; color: #9aa5b1; font-family: "Snell Roundhand", "Brush Script MT", cursive; font-size: 1.6rem; background: #fff; }
+  .seg { display: inline-flex; border: 1px solid #cfc8b8; border-radius: 7px; overflow: hidden; font-size: 0.8rem; }
+  .seg span { padding: 4px 10px; }
+  .seg .on { background: #1d4ed8; color: #fff; }
+  .consent { font-size: 0.78rem; color: #5b6b7c; margin-top: 10px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid #ebe6da; font-size: 0.9rem; }
+  .row:first-of-type { border-top: none; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+  .chip.green { background: #dcfce7; color: #166534; }
+  .chip.gray { background: #eceae3; color: #5b6b7c; }
+  .steps { display: flex; gap: 8px; font-size: 0.72rem; color: #5b6b7c; margin: 10px 0 0; }
+  .steps b { color: #1d4ed8; }
+  .office { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .note { font-size: 0.8rem; color: #5b6b7c; margin: 6px 0 0; }
+  .b { border-left: 4px solid #b45309; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Records for an owner, on their portal</h1>
+  <p class="lead">What the owner sees, in order. Names from the app, amounts illustrative. The office's window is drawn once at the bottom, with the two lines that change on it. Shape B is the last frame.</p>
+
+  <div class="frames">
+    <div class="frame">
+      <h2>Stop 1 · The owner opens their portal link</h2>
+      <div class="page">
+        <div class="brand">Click Plumbing and Electrical <small>my.clickplumbing.com · for Umar Khan</small></div>
+        <div class="card">
+          <h3>Our records for 9703 Lenox Hill</h3>
+          <div class="muted">You asked us for our records on your property. They are ready once you sign for them.</div>
+          <div class="muted" style="margin-top:8px">The records are a statement of each job at this property, each bill, and each payment we received on those bills, as of the day we send them. They say nothing about anyone else.</div>
+          <div style="margin-top:12px"><span class="btn">Sign for the records ›</span></div>
+          <div class="steps"><b>1 Sign</b><span>·</span><span>2 We check our contract and send</span><span>·</span><span>3 Download</span></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:0.9rem">Your bills at this property</h3>
+          <div class="muted">As today (v2.3826): the bills the office chose to show.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <h2>Stop 2 · They sign the acknowledgment</h2>
+      <div class="page">
+        <div class="card">
+          <h3>Acknowledgment of a records request</h3>
+          <div class="muted">9703 Lenox Hill, San Antonio, TX</div>
+          <ol class="muted" style="padding-left:18px; margin:8px 0 0">
+            <li>I asked Click Plumbing and Electrical in writing for its records on this property.</li>
+            <li>I received its statement of the jobs, bills and payments at this property.</li>
+            <li>I understand it is a business record, not legal advice, and says nothing about anyone else.</li>
+          </ol>
+          <div class="field"><label>Your full name, as the county lists the owner</label>
+            <div class="input bad">U. Khan</div>
+            <div class="hint bad">Type your name as the county lists it: <b>Umar Khan</b>. Every letter must match. Capitals, spaces and dashes do not matter.</div>
+          </div>
+          <div class="field"><label>Your full name, as the county lists the owner</label>
+            <div class="input">umar khan</div>
+            <div class="hint ok">✓ Matches the owner of record.</div>
+          </div>
+          <div class="field"><label>Your signature</label>
+            <div class="seg"><span class="on">Type</span><span>Draw</span></div>
+            <div class="pad" style="margin-top:6px">Umar Khan</div>
+          </div>
+          <div class="consent">☑ I agree to sign electronically. <u>How electronic signing works</u></div>
+          <div style="margin-top:12px"><span class="btn">Sign and send my request ›</span></div>
+          <p class="note">On pressing: the signed page is kept as a PDF with the signature (as a lien waiver is), the office's checks 1 and 4 turn green, and the office is told.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <h2>Stop 3 · Shape A: the papers live on the portal</h2>
+      <div class="page">
+        <div class="card">
+          <h3>Our records for 9703 Lenox Hill</h3>
+          <div class="muted">You signed on Oct 6, 2026. The office sent the records on Oct 7, 2026.</div>
+          <div class="steps"><span>1 Sign ✓</span><span>·</span><span>2 Sent ✓</span><span>·</span><b>3 Download</b></div>
+        </div>
+        <div class="card">
+          <h3 style="font-size:0.9rem">Your papers</h3>
+          <div class="row"><span>Records for 9703 Lenox Hill · statement as of Oct 7, 2026 <span class="chip green">sent</span></span><span><span class="btn plain" style="padding:6px 10px">Download</span></span></div>
+          <div class="row"><span>Acknowledgment of a records request · signed Oct 6, 2026 <span class="chip green">signed</span></span><span><span class="btn plain" style="padding:6px 10px">Download</span></span></div>
+          <div class="row"><span>Lien waiver · Bill 1 · conditional · progress</span><span><span class="btn quiet" style="padding:6px 10px">View</span></span></div>
+          <div class="field" style="margin-top:14px"><label>Email the records to</label>
+            <div style="display:flex; gap:8px; align-items:center"><div class="input" style="flex:1">umar.khan@example.com</div><span class="btn">Email it to me</span></div>
+            <div class="hint muted">The PDF, as sent. We keep a record of each email.</div>
+          </div>
+        </div>
+        <p class="note">A second send by the office adds a second dated row; the first stays. A view or a download here is recorded, as a bill view is.</p>
+      </div>
+    </div>
+
+    <div class="frame b">
+      <h2>Stop 3 · Shape B: one download, nothing kept</h2>
+      <div class="page">
+        <div class="card">
+          <h3>Our records for 9703 Lenox Hill</h3>
+          <div class="muted">You signed on Oct 6, 2026. The office sent the records on Oct 7, 2026.</div>
+          <div style="margin-top:12px"><span class="btn">Download the records</span></div>
+          <p class="note">The same PDF the office downloads. No list, no email. The office's own copy in Documents is the record. If they lose the file, they call.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="office">
+      <div class="frame">
+        <h2>The office's window · what changes (both shapes)</h2>
+        <div class="page">
+          <div class="card">
+            <div class="row"><span>○ 1 · Their request, in writing</span><span class="muted">Offered on their portal Oct 6 · <u>Copy the link</u></span></div>
+            <div class="row"><span>○ 2 · Our contract with the GC</span><span class="muted">as today</span></div>
+            <div class="row"><span>! 3 · The numbers agree</span><span class="muted">as today</span></div>
+            <div class="row"><span>○ 4 · Their acknowledgment</span><span class="muted">waits for their signature on the portal</span></div>
+            <div style="margin-top:10px"><span class="btn plain">Offer it on their portal ›</span> <span class="muted">· new, beside Put it on file ›</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="frame">
+        <h2>The office's window · after they sign</h2>
+        <div class="page">
+          <div class="card">
+            <div class="row"><span>● 1 · Their request, in writing</span><span class="muted">On their portal, Oct 6, from Umar Khan</span></div>
+            <div class="row"><span>● 4 · Their acknowledgment</span><span class="muted">Signed on the portal Oct 6 · <u>the signed page</u></span></div>
+            <div style="margin-top:10px"><span class="input" style="display:inline-block">On their portal ▾</span> <span class="btn">Record it as sent</span></div>
+            <p class="note">A fifth way to send. On the Dashboard: <i>Umar Khan signed for the records on 9703 Lenox Hill.</i></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

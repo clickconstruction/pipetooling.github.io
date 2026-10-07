@@ -575,7 +575,7 @@ export function ChecklistGoalsSection({
         const chain = lockedStagePrerequisiteChain({ groupId: lockedChainStage.groupId, stageRows: chainStages, edges: goalEdges })
         return (
           <div
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60, padding: '1rem' }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 760, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
             onClick={() => setLockedChainStage(null)}
           >
             <div
@@ -583,7 +583,7 @@ export function ChecklistGoalsSection({
               aria-modal="true"
               aria-label={`What unlocks ${target?.title ?? 'this stage'}`}
               onClick={(e) => e.stopPropagation()}
-              style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(440px, 100%)', maxHeight: '82vh', overflowY: 'auto', padding: '1rem 1rem 0.75rem' }}
+              style={{ background: 'var(--surface)', borderRadius: 10, border: '1px solid var(--border)', width: 'min(440px, 100%)', maxHeight: 'min(82vh, 100%)', overflowY: 'auto', padding: '1rem 1rem 0.75rem' }}
             >
               <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)', display: 'flex', gap: '0.45rem', alignItems: 'baseline' }}>
                 <span style={{ color: 'var(--text-faint)', fontVariantNumeric: 'tabular-nums' }}>{targetNumber > 0 ? targetNumber : ''}</span>

@@ -10,45 +10,69 @@ A lien release is a paper that gives up your lien rights for the work it covers.
 
 ## Open the release
 
-Open the **Pipeline** board. Every job row in **Ready to Bill**, **Billed Awaiting Payment**, or **Collections** has a blue release-of-lien button. It sits in the small icons under **Edit**, between share and the orange lien hammer. Tap it. The **Release of Lien** window opens with everything filled in from the job. On a phone, it's **Release of lien** in the card's ⋯ menu.
+Open the **Pipeline** board. Every job row in **Ready to Bill**, **Billed Awaiting Payment**, or **Collections** has a blue release-of-lien button. The button sits in the small icons under **Edit**. In **Billed Awaiting Payment** and **Collections** it sits between share and the orange gavel. Tap it. The **Release of Lien** window opens with everything filled in from the job. On a phone, press and hold the job's row. **Release of lien** is in the ⋯ sheet.
+
+## Follow the six steps
+
+The left side of the window is six numbered steps. Work them from top to bottom. The right side shows the paper as it will print.
+
+1. **Pick the bills.** Tick the bill lines the release covers. A job with one bill has nothing to pick.
+2. **Check the form.** The app picks the form from the bill the window opened on.
+3. **Check the amount.** It follows the bills and the form.
+4. **Check the details.** These are the lines the paper prints, like the project and the dates.
+5. **Get it signed.**
+6. **Send it.** The step names who gets it, most often the GC.
+
+A step that needs a fix holds the steps under it. Each one reads *Waits for step N* until the fix is made.
 
 ## Pick the right form
 
-Three forms, one switcher at the top:
+There are four forms. Two switches in step 2 choose between them. One reads **Conditional** or **Unconditional**. The other reads **Progress** or **Final**.
 
-- ***Conditional · progress***: payment has been *promised but not received*. The release only takes effect once the check clears. This is the one to send along with an invoice.
+- ***Conditional · progress***: a progress payment has been *promised but not received*. The release only takes effect once the check clears. This is the one to send along with an invoice.
 - ***Unconditional · progress***: a progress payment has been *received and cleared*. It releases lien rights for that portion of the work only.
+- ***Conditional · final***: the last payment has been *promised but not received*. It takes effect once that check clears.
 - ***Unconditional · final***: the job is done and *paid in full*. It fully releases all lien rights on the project.
 
+Every way into an unconditional form asks first. That includes pressing **Unconditional**, pressing a **Waive the paid** link and opening the window from **Issue unconditional**. An unconditional release holds even when the check behind it does not clear. **Stay conditional** keeps the conditional form. A window opened from **Issue unconditional** closes instead.
+
 :::example Which bill lines does it cover?
-If the job has more than one bill line, green chips at the top let you pick which line(s) the release covers — the amount and the "progress payments through" date follow your selection. Everything stays editable below, so you can always overwrite what the prefill guessed.
+If the job has more than one bill line, step 1 lets you pick which line(s) the release covers — the amount and the "progress payments through" date follow your selection. Everything stays editable below, so you can always overwrite what the prefill guessed.
 :::
 
 ## Check the prefill
 
 - **Check from**: the saved property owner for the job, else the GC, else the customer.
-- **Amount**: what's still open on the selected bill lines. For the unconditional progress form, it is what's been received.
-- **Contractor / releasing party**: your company block from Settings → Physical invoice issuer.
-- **Signed by**: the job leader's name and title. Add the signer title if it's blank.
+- **Amount**: what's still open on the selected bill lines. For the unconditional progress form, it is what's been received. For the unconditional final form, it is the whole bill.
+- **Contractor / releasing party**: your company block from Settings → Jobs & billing → Physical invoice. Only a dev sees that block.
+- **Signed by**: the company's signer from Settings, else the job's leader. The **Signs** pick in step 5 opens on the company's signer for a new waiver. When a waiver already waits for a leader's signature, the pick opens on him. A saved draft keeps its own Signed by line and the leader you picked. The signer's title fills in when he is the company's signer. Fill in the **His title** field if it is blank.
 
 ## It saves itself
 
 There's no Save button and nothing to cancel. From your first edit the release keeps itself as a **draft** on the job. The corner reads *All changes saved*. The ✕ just closes the window. Open the release again later. The draft picks up exactly where you left it. A date left half typed holds the save until the year is finished. Half typed means a year typed as `26`, say. The corner says *Not saved: a date is not finished* until then.
 
-## Get it signed — in the app
+## Get it signed
 
-- {{button:outline-blue|✍ Request signature}} sends the release to the **master plumber** to sign right in the app. The window shows {{chip:yellow|✍ Awaiting signature}} until it's signed. The document locks so nobody edits what he's signing. When he opens the release, a **Sign now** button lets him sign. He types his name, which is rendered in a signature script, or draws with a finger. His signature then prints on every copy: preview, print, and PDF. A "signed electronically" stamp sits under it.
-- Prefer wet ink? {{button:outline-blue|Print for signature}} opens the clean letter with fill-in lines, exactly as before.
+Step 5 offers three ways.
 
-## Issue it
+- {{button:blue|✍ He is here, he signs now}} opens the signature pad on this screen. Hand him the phone or turn the screen. He draws his signature. When you are the signer, the button reads **✍ Sign it now**. Then you may press **Type it instead**.
+- **Send it to his desk** asks the leader to sign later. The window says it is waiting for his signature. The release locks so nobody edits what he is signing. **Cancel request** unlocks it.
+- Signing on paper instead? Press **Print it**, then **Mark issued**.
 
+His signature then prints on every copy. A grey line under the signature says how it was signed, by whom and when.
+
+## Send it
+
+Step 6 opens once he signs.
+
+- The blue **Send to** button emails the signed PDF. The button names who gets it, and the line above it shows the address.
 - {{button:outline-blue|Download PDF}} saves a letter-format PDF to attach anywhere.
-- {{button:blue|Mark issued}} records the release on the job explicitly. Printing, downloading, or requesting a signature records it too. **You can't produce the paper without the record**. That is what keeps every release findable on the job forever.
-- An issued release is locked as it reads. So none of those four buttons works while a date is half typed. A line names the box. It reads like *Finish the “Signature” date before this is issued. Type the year in full, like 2026.* The release stays a draft until you finish the year.
+- Printing, marking issued or asking for a signature records the release on the job. **You can't produce the paper without the record**. That is what keeps every release findable on the job forever.
+- An issued release is locked as it reads. So none of those buttons works while a date is half typed. A line names the box. It reads like *Finish the “Signature” date before this is issued. Type the year in full, like 2026.* The release stays a draft until you finish the year.
 
 ## Save the property's legal info once
 
-Open **Customers → Edit → Additional addresses**. Every address now has a **Property legal info** panel. It holds the county the paperwork files in. The app suggests the county from the city. Confirm it. It holds the legal description, the lot as the county records name it. That comes from the county appraisal district. There's a direct **CAD ↗** link. CAD is the county appraisal district. It holds the residential or homestead classification. It holds the **owner of record with their mailing address**. That is where lien notices legally go, which is often not the job site.
+Open **Customers → Edit**. Under **Properties**, press **Edit** on an address or **+ Add property**. Each property has a **Property record** panel. It holds the county the paperwork files in. **Look up the property record** fills the county from the parcel or the map pin. A county from the city alone reads *guessed from the city — confirm it*. It holds the legal description, the lot as the county records name it. That comes from the county appraisal district. There's a direct **CAD ↗** link. CAD is the county appraisal district. It holds the residential or homestead classification. It holds the **owner of record with their mailing address**. That is where lien notices legally go, which is often not the job site.
 
 :::example Why bother?
 An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. Link a job to its property record from **Edit Job → Property record** or right in the Release of Lien window — the app suggests the match by address — and the owner of record, filing county, and legal description fill into the lien paperwork automatically. When none of the customer's saved properties is the job address (a builder entered as the customer only has its office on file), the row offers {{button:outline-blue|+ Add 628 Terrell Rd as a property on RMC- Dudley Mason}}: the property sheet opens with the job address, the lookup runs, and **Add property** saves it on the customer and links the job in one go.
@@ -64,15 +88,33 @@ The moment the leader signs, the release lands in the **Teams Inbox**. That is o
 
 The leader sees his own lane the same way. It is called **Awaiting your signature**. He signs right from the row. In **Dispatch Mode → Inbox** both lanes sit at the very top of the page, above My Inbox.
 
+## Enclose one with a lien notice
+
+The Lien desk can put a conditional release in the envelope with a § 53.056 notice. A box above the paper reads **Enclose a conditional release**. It shows the claim beside it. It starts off. Tick it when the GC or the owner has asked for a release before they cut the check.
+
+The release is the app's own form, filled from the notice. The claim is the amount. The GC is the one the check comes from. The form is ***Conditional · progress*** when the claim is less than everything open on the job. It is ***Conditional · final*** when the claim is all of it.
+
+The owner's copy carries the release behind the cover letter. The GC's copy carries it behind the notice. The letter ends with a paragraph about it.
+
+:::example the paragraph in the letter
+A conditional release of lien is enclosed. This release is not effective today. It becomes effective only after $17,585.00 is received and the funds have cleared. Until then, the notice stands.
+:::
+
+The tick makes a draft release on the job. Open it from this window to change a box or to sign it. A release signed here prints with his signature. One not signed prints a line, and he signs it with the notice.
+
+Recording the run issues the release. It then shows on the job like any release you issued here. When the money clears, the Dashboard offers the unconditional. Untick the box and the draft is voided.
+
+An amber line under the box says counsel has not read the release paragraph yet. It goes away once counsel signs off.
+
 ## Track what you issued
 
 Once a release is minted, that is made, the app keeps it in sight:
 
 - **Documents → Jobs** lists every release under its job, right beside the billed invoices. Each shows its lifecycle chips, {{chip:yellow|awaiting signature}} or {{chip:green|signed ✓}}. A click reopens the exact document, signature included. Voided releases stay listed with a {{chip:red|voided}} chip. Nothing ever disappears.
-- The job's **activity feed** logs every step under a **Release** tag alongside billing events. The steps are issued, signature requested, signed and voided.
+- The job's **activity feed** logs every step under a **Release** tag alongside billing events. The steps are issued, signature requested, signed, sent and voided.
 
 - The release button on the job's Pipeline row wears a **blue box** when the job has an issued release.
-- The release window itself lists everything **issued on this job**. View the exact document again, or Void a mistaken record, from any Pipeline section.
+- The release window itself lists what is **Already on this job**. The list shows one release, and **Show all** opens the rest. View the exact document again, or Void a mistaken record, from any Pipeline row with the release button.
 - The **Bill Customer** window shows a **Lien releases** panel for the job. It lists each release with its amount and issue date. For conditional releases it also says whether the check behind it has cleared. From there you can **View**, **Void**, or start a **+ New release**.
 
 :::example The follow-through
@@ -83,7 +125,9 @@ A conditional release only takes effect when the check clears — and once it do
 
 The **Needs you** card may say a payment cleared behind a conditional release. Then {{button:blue|Issue release}} opens a list rather than the Pipeline board. Every waiting release is a row. It shows the job and the customer. It shows the conditional release with its amount and issue date, and the check that cleared it. The oldest cleared comes first. The total owed sits at the bottom.
 
-- {{button:green|Issue unconditional}} opens the Release of Lien window already on the ***Unconditional · progress*** form. The covered bill lines are selected. The amount is filled from the applied payments. Mint it by print, PDF, or request signature. The row disappears. The card count falls with it.
+A bill paid by check waits seven days before its row appears. The bank can still send a check back in that time. A card, a bank transfer or cash does not wait. A release you are still writing does not clear a row. The row stays until the unconditional is issued.
+
+- {{button:green|Issue unconditional}} opens the Release of Lien window already on the ***Unconditional · progress*** form. A row that reads *Conditional · final* opens on ***Unconditional · final***. The covered bill lines are selected. The amount is filled from the applied payments. Then get it signed in step 5. The row disappears. The card count falls with it.
 - The **job name** opens the Job window for context. That is the window with the *Job · Edit · Bill* tabs. The list stays open underneath. Closing the window puts you right back.
 - **View release** reopens the original conditional document so you can check the amount and through-date first.
 

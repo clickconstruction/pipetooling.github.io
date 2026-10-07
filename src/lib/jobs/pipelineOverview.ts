@@ -61,7 +61,11 @@ export function buildPipelineMoneyStory(
       key: 'in-collections',
       label: 'in collections',
       value: formatUsdNoCents(collections.total),
-      sub: `${collections.count} job${collections.count === 1 ? '' : 's'}`,
+      // v2.4784: the dollars the office gave up on sit under the number, never in it (punch list #94).
+      sub:
+        stats.uncollectible.count > 0
+          ? `${collections.count} job${collections.count === 1 ? '' : 's'} · ${formatUsdNoCents(stats.uncollectible.total)} uncollectible`
+          : `${collections.count} job${collections.count === 1 ? '' : 's'}`,
       tone: 'plain',
     },
     {

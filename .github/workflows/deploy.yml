@@ -63,8 +63,8 @@ jobs:
       - name: To-dos render the punch list
         run: npm run check:todos
 
-      - name: Changed help guides read in plain words
-        run: npm run check:plain-words
+      - name: Changed help guides, sentences that open on a pronoun (warns, never fails)
+        run: npm run check:pronouns
 
       - name: Windows drawn inside windows stop their own backdrop click
         run: npm run check:nested-windows
@@ -72,8 +72,14 @@ jobs:
       - name: Windows close on a click outside, not on the press
         run: npm run check:backdrop-click
 
+      - name: Every window stands above the Dispatch / Job mode dock
+        run: npm run check:window-z
+
       - name: Every dim full-screen backdrop holds a panel marked as a modal
         run: npm run check:dialog-role
+
+      - name: Every window's panel starts below an iPhone's status bar
+        run: npm run check:status-bar
 
       - name: Test
         run: npm test

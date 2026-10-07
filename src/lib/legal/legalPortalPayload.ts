@@ -3,10 +3,13 @@
  * parsed defensively, and the step that turns one matter's raw records into
  * the same packet the office desk shows — through the one kernel, so the firm
  * and the office never disagree. Held entries never arrive (the function
- * applies the office's decisions under the service role); `sharedOverrides`
- * carries only the pre-bill entries the office chose to share, so the kernel
- * shows them as going rather than held.
+ * applies the office's decisions under the service role) — since #85 item 29
+ * everything goes unless the office held it back, and `heldCount` says how
+ * many were. `sharedOverrides` marks every entry that arrived as shared, so a
+ * page still on the old default rule shows them too.
  */
+import { parseLegalPortalDocuments, type LegalPortalDocument } from './legalMatterDocuments'
+import { emptyOfficeContacts, type LegalOfficeContacts } from './legalOfficeContacts'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobContractRowLike, SignedEstimateLike } from '../jobs/jobContractCoverage'
@@ -15,12 +18,14 @@ import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../jobs/paymentChase'
 import type { LegalDeskItemLike } from './legalLienPaper'
+import type { LegalJobOwnerRow } from './legalProperty'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, type LegalContactLike, type LegalCustomerLike, type LegalFeeModel, type LegalPacket } from './legalPacket'
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
 import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
+import { settlementFloorOf, type LegalSettlementFloor } from '../../../supabase/functions/_shared/legalSettlement'
 
-export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean }
+export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean; /** v2.4662: the day emails to this person began failing; null while they go through. */ failingSince: string | null }
 
 export type LegalPortalContract = JobContractRowLike & { signedPdfUrl: string | null }
 
@@ -33,11 +38,23 @@ export type LegalPortalMatter = {
   releasedAt: string | null
   feesToStatement: boolean
   sharedOverrides: Record<string, boolean>
+  /** Entries the office held back from counsel (#85 item 29) — they never arrive, so the page shows the count; 0 from an older function. */
+  heldCount: number
+  /** The office's settlement floor (#85 item 20); null = the firm settles freely (and from an older function). */
+  settlementFloor: LegalSettlementFloor | null
+  /** Documents from the office (v2.4810), each with a 15-minute link; [] from an older function. */
+  documents: LegalPortalDocument[]
+  /** Documents the office held back; the firm sees the count. */
+  heldDocumentCount: number
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
   contactEntries: LegalContactEntryLike[]
   addresses: CustomerAddressRow[]
+  /** The records the matter's jobs name (`customer_address_id`), any customer's (#85 item 6); [] from an older function. */
+  jobAddresses: CustomerAddressRow[]
+  /** The jobs' owner overrides, no email (#85 item 6); [] from an older function. */
+  jobOwners: LegalJobOwnerRow[]
   contracts: LegalPortalContract[]
   signedEstimates: SignedEstimateLike[]
   demandLetters: JobDemandLetterRow[]
@@ -53,6 +70,9 @@ export type LegalPortalMatter = {
   entries: LegalEntryRow[]
 }
 
+/** A matter the office pulled back (#85 item 16): read-only on the portal — the reason and the firm's own entries, none of the customer's records. */
+export type LegalPortalPulledMatter = { id: string; payerName: string; pulledAt: string | null; reason: string; entries: LegalEntryRow[] }
+
 export type LegalPortalParticulars = { entity?: string; license?: string; agent?: string; custodian?: string; affiant?: string; phone?: string; email?: string; w9?: string }
 
 export type LegalPortalPayload = {
@@ -60,9 +80,13 @@ export type LegalPortalPayload = {
   preparedOn: string
   firm: LegalFirmRow
   particulars: LegalPortalParticulars
+  /** Who the firm calls (v2.4755); from an older function, the letterhead's number alone. */
+  officeContacts: LegalOfficeContacts
   recipients: LegalPortalRecipient[]
   firmPaused: boolean
   matters: LegalPortalMatter[]
+  /** Matters the office pulled back (#85 item 16); [] from an older function. */
+  pulledMatters: LegalPortalPulledMatter[]
   /** The Lien desk's Timeline book, raw (#41 PR 2) — null when the function could not read it (or an older function). */
   lienBook: LienBookRaw | null
 }
@@ -88,11 +112,17 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       releasedAt: typeof m.releasedAt === 'string' ? m.releasedAt : null,
       feesToStatement: Boolean(m.feesToStatement),
       sharedOverrides: isRecord(m.sharedOverrides) ? Object.fromEntries(Object.entries(m.sharedOverrides).filter(([, v]) => typeof v === 'boolean') as Array<[string, boolean]>) : {},
+      heldCount: typeof m.heldCount === 'number' && Number.isFinite(m.heldCount) && m.heldCount > 0 ? Math.floor(m.heldCount) : 0,
+      settlementFloor: isRecord(m.settlementFloor) ? settlementFloorOf({ settlement_floor_amount: m.settlementFloor.amount, settlement_floor_pct: m.settlementFloor.pct }) : null,
+      documents: parseLegalPortalDocuments(m.documents),
+      heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       jobs: m.jobs as LegalPortalMatter['jobs'],
       customer: (isRecord(m.customer) ? m.customer : null) as LegalCustomerLike,
       contacts: Array.isArray(m.contacts) ? (m.contacts as LegalContactLike[]) : [],
       contactEntries: Array.isArray(m.contactEntries) ? (m.contactEntries as LegalContactEntryLike[]) : [],
       addresses: Array.isArray(m.addresses) ? (m.addresses as CustomerAddressRow[]) : [],
+      jobAddresses: Array.isArray(m.jobAddresses) ? (m.jobAddresses as unknown[]).filter((a): a is CustomerAddressRow => isRecord(a) && typeof a.id === 'string') : [],
+      jobOwners: Array.isArray(m.jobOwners) ? (m.jobOwners as unknown[]).filter((o): o is LegalJobOwnerRow => isRecord(o) && typeof o.job_id === 'string') : [],
       contracts: Array.isArray(m.contracts) ? (m.contracts as LegalPortalContract[]) : [],
       signedEstimates: Array.isArray(m.signedEstimates) ? (m.signedEstimates as SignedEstimateLike[]) : [],
       demandLetters: Array.isArray(m.demandLetters) ? (m.demandLetters as JobDemandLetterRow[]) : [],
@@ -112,11 +142,15 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
     preparedOn: typeof raw.preparedOn === 'string' ? raw.preparedOn : '',
     firm: firm as unknown as LegalFirmRow,
     particulars: isRecord(raw.particulars) ? (raw.particulars as LegalPortalParticulars) : {},
+    officeContacts: parseOfficeContacts(raw.officeContacts, isRecord(raw.company) && typeof raw.company.phone === 'string' ? raw.company.phone : ''),
     recipients: Array.isArray(raw.recipients)
-      ? (raw.recipients as unknown[]).filter(isRecord).map((r): LegalPortalRecipient => ({ id: String(r.id ?? ''), name: String(r.name ?? ''), email: String(r.email ?? ''), role: String(r.role ?? ''), mode: r.mode === 'digest' ? 'digest' : 'now', scope: r.scope === 'mine' ? 'mine' : 'all', digestWeekday: Number(r.digestWeekday) || 1, digestTime: typeof r.digestTime === 'string' ? r.digestTime : '07:00', confirmed: Boolean(r.confirmed), paused: Boolean(r.paused), addedViaPortal: Boolean(r.addedViaPortal) }))
+      ? (raw.recipients as unknown[]).filter(isRecord).map((r): LegalPortalRecipient => ({ id: String(r.id ?? ''), name: String(r.name ?? ''), email: String(r.email ?? ''), role: String(r.role ?? ''), mode: r.mode === 'digest' ? 'digest' : 'now', scope: r.scope === 'mine' ? 'mine' : 'all', digestWeekday: Number(r.digestWeekday) || 1, digestTime: typeof r.digestTime === 'string' ? r.digestTime : '07:00', confirmed: Boolean(r.confirmed), paused: Boolean(r.paused), addedViaPortal: Boolean(r.addedViaPortal), failingSince: typeof r.failingSince === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.failingSince) ? r.failingSince : null }))
       : [],
     firmPaused: Boolean(raw.firmPaused),
     matters,
+    pulledMatters: Array.isArray(raw.pulledMatters)
+      ? (raw.pulledMatters as unknown[]).filter(isRecord).filter((p) => typeof p.id === 'string').map((p): LegalPortalPulledMatter => ({ id: p.id as string, payerName: String(p.payerName ?? ''), pulledAt: typeof p.pulledAt === 'string' ? p.pulledAt : null, reason: typeof p.reason === 'string' ? p.reason : '', entries: Array.isArray(p.entries) ? (p.entries as LegalEntryRow[]) : [] }))
+      : [],
     lienBook: parseLienBookRaw(raw.lienBook),
   }
 }
@@ -137,6 +171,8 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
     contacts: m.contacts,
     contactEntries: m.contactEntries,
     addresses: m.addresses,
+    jobAddresses: m.jobAddresses,
+    jobOwners: m.jobOwners,
     contracts: m.contracts,
     signedEstimates: m.signedEstimates,
     demandLetters: m.demandLetters,
@@ -156,4 +192,13 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
 
 export function portalFeeModel(payload: LegalPortalPayload): LegalFeeModel {
   return feeModelOf(payload.firm)
+}
+
+function parseOfficeContacts(raw: unknown, companyPhone: string): LegalOfficeContacts {
+  if (!isRecord(raw)) return emptyOfficeContacts(companyPhone)
+  const names = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0) : [])
+  const controllers = Array.isArray(raw.controllers)
+    ? raw.controllers.filter(isRecord).filter((k) => typeof k.name === 'string' && k.name.trim()).map((k) => ({ name: String(k.name).trim(), phone: typeof k.phone === 'string' && k.phone.trim() ? k.phone.trim() : null }))
+    : []
+  return { phone: typeof raw.phone === 'string' ? raw.phone.trim() : companyPhone, assistants: names(raw.assistants), controllers }
 }

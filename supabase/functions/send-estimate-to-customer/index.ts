@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
@@ -50,7 +51,7 @@ async function sendEmailViaResend(
   resendApiKey: string,
   from: string,
   replyTo: string | null,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; resendEmailId?: string | null }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -72,7 +73,7 @@ async function sendEmailViaResend(
   }
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
   await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from, subject })
-  return { success: true }
+  return { success: true, resendEmailId: sent.id ?? null }
 }
 
 serve(async (req) => {
@@ -151,7 +152,7 @@ serve(async (req) => {
     const { data: est, error: selErr } = await userClient
       .from('estimates')
       .select(
-        'id, title, status, sent_at, customer_email, bid_room_id, customer_experience_sent, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot, valid_until, for_address',
+        'id, customer_id, job_ledger_id, bid_id, title, status, sent_at, customer_email, bid_room_id, customer_experience_sent, line_items_snapshot, terms_snapshot, total_cents, estimate_number, customer_experience_overrides, accept_header_brand, customer_attachment_url, customer_attachment_label, doc_kind, options_snapshot, valid_until, for_address',
       )
       .eq('id', estimate_id)
       .single()
@@ -338,6 +339,15 @@ serve(async (req) => {
     }
 
     const sent = await sendEmailViaResend(customer_email, mail.subject, mail.text, mail.html, resendApiKey, fromMailbox, mail.replyTo)
+    // Sent copies (docs/SENT_COPIES.md): the email as the customer read it is kept, under the
+    // job, the customer and the bid the estimate names.
+    if (sent.success) {
+      const keys = est as { customer_id?: string | null; job_ledger_id?: string | null; bid_id?: string | null }
+      await fileSentEmailBestEffort(
+        { kind: isResend ? 'estimate_resent' : 'estimate', jobIds: [keys.job_ledger_id], customerId: keys.customer_id, bidId: keys.bid_id, source: { table: 'estimates', id: estimate_id }, sentBy: user.id },
+        { to: [customer_email], from: fromMailbox, subject: mail.subject, html: mail.html, resendEmailId: sent.resendEmailId ?? null },
+      )
+    }
     if (!sent.success) {
       return new Response(
         JSON.stringify({

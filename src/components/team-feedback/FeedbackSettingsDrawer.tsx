@@ -45,5 +45,5 @@ export default function FeedbackSettingsDrawer({ row, onSaved, onClose, narrow }
   )
 }
 
-const backdrop: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', justifyContent: 'flex-end' }
+const backdrop: CSSProperties = { position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }
 const panel: CSSProperties = { height: '100%', background: 'var(--surface)', color: 'var(--text-base)', borderLeft: '1px solid var(--border)', boxShadow: '-20px 0 40px -20px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column' }

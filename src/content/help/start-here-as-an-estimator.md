@@ -14,9 +14,9 @@ Your world is Bids. You take a bid from the board through takeoff and pricing to
 :::example A bid's life on the board
 {{chip:gray|Unsent}} → {{chip:yellow|Pending}} → {{chip:green|Won}} or {{chip:red|Lost}} — and Won work moves to {{chip:blue|Started}} once the office runs it
 :::
-2. **Takeoff** is where you count fixtures and tie-ins off the plans. You can also [import them from CountTooling](?g=import-a-takeoff-from-counttooling). Then you give each fixture its parts. See [cost a takeoff one fixture at a time](?g=cost-a-takeoff-one-fixture-at-a-time).
+2. **Takeoff** is where you count fixtures and tie-ins off the plans. You can also [import them from CountTooling](?g=import-a-takeoff-from-counttooling). Then give each fixture its parts. See [cost a takeoff one fixture at a time](?g=cost-a-takeoff-one-fixture-at-a-time).
 3. **Pricing and Labor** turn those counts into materials, hours and a price. The books do that work. Versions let you price the same project more than one way. Labor lists the fixtures counted on the version you are on. A short loading card shows while a bid opens. You never see an empty list for a bid that has fixtures.
-4. **Cover Letter and Submission** are where you build the proposal and send it. Bidding one project to several GCs? See [bid one project to multiple GCs](?g=bid-one-project-to-multiple-gcs). Want the GC to sign online? The **Bid room** panel starts with {{button:blue|Get the link}}. It publishes the room and copies the link. You send the link from your own email. **Send to GC** is there when you would rather the app email it. See [send a bid for signature](?g=send-a-bid-for-signature).
+4. **Cover Letter and Submission** are where you build the proposal and send it. Bidding one project to several GCs? See [bid one project to multiple GCs](?g=bid-one-project-to-multiple-gcs). Want the GC to sign online? The **Bid room** panel starts with {{button:blue|Get the link}}. It publishes the room and copies the link. Send the link from your own email. **Send to GC** is there when you would rather the app email it. See [send a bid for signature](?g=send-a-bid-for-signature).
 5. **Followup** holds the **Call queue**, where you chase sent bids. The board goes quiet on purpose once a letter is out. See [follow up with builders](?g=follow-up-with-builders).
 
 ## Your other tabs

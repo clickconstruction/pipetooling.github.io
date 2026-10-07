@@ -75,7 +75,9 @@ export function BidsLaborBookPanel({ book, entryForm }: { book: LaborBookPanelBo
   const canEdit = book.rights.edit && book.book != null
   return (
     <>
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
+  {/* v2.4453: minmax(0, 1fr), not 1fr. A 1fr column grows to the entries table's widest row,
+      which pushed the whole page 188 px sideways on a phone; now the table scrolls in its own box. */}
+  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '2rem', marginTop: '1.5rem' }}>
     <div>
       <button
         type="button"
@@ -124,7 +126,7 @@ export function BidsLaborBookPanel({ book, entryForm }: { book: LaborBookPanelBo
       {book.book && (
         <>
           <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
@@ -201,7 +203,8 @@ export function BidsLaborBookPanel({ book, entryForm }: { book: LaborBookPanelBo
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 50,
+        zIndex: 750,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={entryForm.onClose}
     >

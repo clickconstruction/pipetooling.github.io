@@ -20,7 +20,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { assigneePersonIdsForNames } from '../../lib/people/assigneePersonIds'
 import { filterLaborCrewNames, formatCurrency } from '../../lib/jobs/jobFormatting'
 import { laborItemsSubtotal, lineLaborCost } from '../../lib/peopleLaborJobItemLineCost'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildLaborFormSubSheetHtml } from '../../lib/jobsDocuments/subLaborSheet'
 import { resolvedLaborInvoiceLink } from '../../lib/jobs/jobAddressUrls'
 import { SubSheetPortalFieldsBox } from './SubSheetPortalFieldsBox'
@@ -78,7 +78,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * The sheet form's overlay stands where the app's modal shell stands (1100), above the phone
- * dock (`DISPATCH_MODE_FOOTER_Z_INDEX`, 1000): at 50 the dock drew over the form's last 60 px on a
+ * dock (`DISPATCH_MODE_FOOTER_Z_INDEX`): at 50 the dock, then at 1000, drew over the form's last 60 px on a
  * phone, and Save sits there (v2.4073, punch list #30 — Taunya's phone walk). The dialogs the form
  * opens on top of itself stand one step higher.
  */
@@ -1070,12 +1070,14 @@ function JobsSubLaborFormModalInner(
   }
 
   function printLaborSubSheet() {
-    openHtmlPrintWindow(
+    // A print counts as a send (docs/SENT_COPIES.md): the sheet handed to the sub is filed as it printed.
+    printAndFile(
       buildLaborFormSubSheetHtml({
         assignedNames: laborAssignedTo,
         address: laborAddress,
         rows: laborFixtureRows,
       }),
+      { kind: 'sub_labor_sheet', title: `Sub sheet · ${String(laborAddress ?? '').trim() || 'no address'}`, recipientName: Array.isArray(laborAssignedTo) ? laborAssignedTo.join(', ') : String(laborAssignedTo ?? '') },
     )
   }
 
@@ -2482,7 +2484,7 @@ function JobsSubLaborFormModalInner(
       )}
 
       {showAddSubcontractorModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_INNER_Z }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_INNER_Z, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Add Sub</h3>
             {addSubcontractorError && (
@@ -2557,7 +2559,7 @@ function JobsSubLaborFormModalInner(
       )}
 
       {laborEntryFormOpen && laborBookEntriesVersionId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_Z }} onClick={closeLaborEntryForm}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: SHEET_FORM_Z, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={closeLaborEntryForm}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
             {error && (

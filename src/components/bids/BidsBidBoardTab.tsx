@@ -1,4 +1,6 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { bidFollowupColumns, followupChip } from '../../lib/bids/bidNextFollowup'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { boardAlternateAddOn } from '../../lib/bids/coverLetterAddAlternates'
 import { acceptanceWords, bidIsWon, boardAlternateState } from '../../lib/bids/alternateAcceptance'
 import { formatCurrency } from '../../lib/format'
@@ -69,6 +71,8 @@ type BidBoardSectionOpenState = {
 
 type BidsBidBoardTabProps = {
   bids: BidWithBuilder[]
+  /** Names of the people on customers, by id: who a bid's call-again day asks for (v2.4421). */
+  contactPersonNameById?: Readonly<Record<string, string>>
   /** Tier-2 #20: the trade pill's scope — the pill counts read the one count kernel and wear its label. */
   sentScope: BidSentScope
   /** True until the first bids fetch settles — the board shows a skeleton, not "No bids yet" (J10-F8). */
@@ -204,6 +208,7 @@ const BID_BOARD_DUE_CHIP_COLORS = {
 
 export function BidsBidBoardTab({
   bids,
+  contactPersonNameById,
   sentScope,
   loading = false,
   authUser,
@@ -987,6 +992,31 @@ export function BidsBidBoardTab({
     )
   }
 
+  /** The call-again day of a sent, undecided bid (v2.4421): a chip under Last contact, or after it on a card. */
+  function bidFollowupChipFor(bid: BidWithBuilder) {
+    if (bid.outcome != null || !bid.bid_date_sent) return null
+    const personId = bidFollowupColumns(bid).personId
+    return followupChip({ bid, sentIso: bid.bid_date_sent, lastContactIso: bid.last_contact ?? null, todayYmd: todayYmdInAppTz(), nowIso: new Date().toISOString(), personName: personId ? contactPersonNameById?.[personId] ?? null : null })
+  }
+  const followupChipTone: Record<'red' | 'amber' | 'blue', CSSProperties> = {
+    red: { background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)' },
+    amber: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', border: '1px solid var(--border-amber)' },
+    blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)' },
+  }
+  function renderBidFollowupChip(bid: BidWithBuilder, size: 'short' | 'full') {
+    const chip = bidFollowupChipFor(bid)
+    if (!chip) return null
+    return (
+      <span
+        data-testid="bid-followup-chip"
+        title={chip.title}
+        style={{ display: 'inline-block', fontSize: size === 'short' ? '0.625rem' : '0.7rem', fontWeight: 600, lineHeight: 1.3, padding: size === 'short' ? '0 0.3rem' : '0.05rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap', ...followupChipTone[chip.tone] }}
+      >
+        {'☎'} {size === 'short' ? chip.short : chip.label}
+      </span>
+    )
+  }
+
   function renderBidBoardLastContact(bid: BidWithBuilder, parts: BidBoardDateCellParts | null) {
     if (!onLastContactClick) {
       return parts ? (
@@ -1369,6 +1399,10 @@ export function BidsBidBoardTab({
           </td>
           <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
             {renderBidBoardLastContact(bid, lcParts)}
+            {(() => {
+              const chip = renderBidFollowupChip(bid, 'short')
+              return chip ? <div style={{ marginTop: '0.1rem' }}>{chip}</div> : null
+            })()}
           </td>
           <td style={{ padding: '0.0625rem 0.2rem', textAlign: 'center' }}>
             {renderBidBoardLinksCluster(bid)}
@@ -1545,6 +1579,7 @@ export function BidsBidBoardTab({
           ) : lcParts ? (
             <span>· Last contact {lcParts.dateLabel} {lcParts.deltaLabel}</span>
           ) : null}
+          {renderBidFollowupChip(bid, 'full')}
         </div>
         {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
         {bid.outcome === 'lost' ? (
@@ -2069,6 +2104,7 @@ export function BidsBidBoardTab({
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
         >
           <div

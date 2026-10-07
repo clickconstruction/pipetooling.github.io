@@ -105,7 +105,7 @@ export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds, ba
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: PEOPLE_PICKER_OVERLAY_Z_INDEX,
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           }}
           onClick={() => setAddOpen(false)}
         >

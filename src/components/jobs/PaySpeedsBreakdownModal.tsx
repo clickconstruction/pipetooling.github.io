@@ -343,7 +343,7 @@ export default function PaySpeedsBreakdownModal({
       role="dialog"
       aria-modal="true"
       aria-label="Pay speeds breakdown"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={onClose}
     >
       <div
@@ -353,7 +353,7 @@ export default function PaySpeedsBreakdownModal({
           borderRadius: 12,
           border: '1px solid var(--border)',
           width: isMobile ? 'calc(100vw - 0.75rem)' : 'min(720px, calc(100vw - 2rem))',
-          maxHeight: isMobile ? '94vh' : 'min(84vh, 900px)',
+          maxHeight: isMobile ? 'min(94vh, 100%)' : 'min(84vh, 900px, 100%)',
           overflowY: 'auto',
           padding: isMobile ? '0.9rem 0.8rem 1rem' : '1.1rem 1.25rem 1.25rem',
         }}

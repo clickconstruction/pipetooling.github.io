@@ -43,3 +43,17 @@ describe('buildPaperworkLines', () => {
     expect(lines.find((l) => l.id === 'a')!.detail).toBe('signed 2026-09-05')
   })
 })
+
+describe('buildPaperworkLines · paperwork sent in the evening keeps its day (v2.4473)', () => {
+  it('reads the Central day it was sent; a signed day stays as stored', () => {
+    // 00:30 UTC on Aug 2 is 7:30 pm CDT on Aug 1.
+    const lines = buildPaperworkLines(
+      [
+        doc({ id: 's', document_name: 'Handbook', status: 'sent', sent_at: '2026-08-02T00:30:00Z' }),
+        doc({ id: 'g', document_name: 'W-9', status: 'signed', signed_at: '2026-08-02', sent_at: '2026-08-01T12:00:00Z' }),
+      ],
+      '2026-08-10',
+    )
+    expect(lines.map((l) => l.detail).sort()).toEqual(['sent 2026-08-01', 'signed 2026-08-02'])
+  })
+})

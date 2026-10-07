@@ -20,6 +20,7 @@
  */
 
 import { asText, isBankReturnReason, jobLabelForBankReturn, mercuryBankReturn, BANK_RETURN_REASON_PHRASES, type BankReturnedJobRow, type MercuryBankReturn } from '../../../supabase/functions/_shared/bankReturnedDeposits'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 // The rule itself lives beside the webhook (v2.3804) so the office's notice and these
 // reads agree on what a bank return is; this file re-exports it for the app.
@@ -56,7 +57,7 @@ export type BankReturnedPayment = {
   jobLabel: string
   amount: number
   reason: string
-  /** YYYY-MM-DD the deposit posted, when known. */
+  /** YYYY-MM-DD the deposit posted (its day in APP_CALENDAR_TZ), when known. */
   postedYmd: string | null
 }
 
@@ -93,7 +94,7 @@ export function summarizeBankReturnedPayments(
       jobLabel: jobLabelForBankReturn(jobsById.get(p.job_id)),
       amount,
       reason: ret.reason,
-      postedYmd: tx.posted_at ? String(tx.posted_at).slice(0, 10) : null,
+      postedYmd: calendarYmdInAppTzFromIso(String(tx.posted_at ?? '')) || null,
     })
   }
   items.sort((a, b) => b.amount - a.amount || a.jobLabel.localeCompare(b.jobLabel))

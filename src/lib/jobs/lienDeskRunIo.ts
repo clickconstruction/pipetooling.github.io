@@ -3,27 +3,35 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
 import { clearOneShotLienClaimCorrection } from './lienClaimCorrectionIo'
-import { runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord } from './lienDeskRun'
+import { runCourtesyCopies, runCourtesyEmailWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunCourtesySend, type RunNotice, type RunSendRecord } from './lienDeskRun'
 import { combinedFilingPayloads, type CombinedRunNotice } from './lienNoticeCombine'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
 import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { buildLienWaiverPdfBlob } from '../jobsDocuments/lienWaiverRelease'
+import { issueNoticeRelease } from './lienNoticeReleaseIo'
 
 /**
- * Recording the run: for every notice, email the courtesy copies that asked
- * for it (the resend id becomes the tracking), insert the `job_lien_filings`
- * row naming every month, and mark the desk item sent. One notice failing
- * never stops the others; the caller gets both lists.
+ * Recording the run: for every notice, email the envelopes sent by email (the
+ * resend id becomes the tracking), insert the `job_lien_filings` row naming
+ * every month, and mark the desk item sent. Then the courtesy PDFs (punch list
+ * #87 B): the original contractor's copy, emailed beside the paper one. One
+ * notice failing never stops the others, and a courtesy email failing never
+ * un-records its notice; the caller gets every list.
  */
 
-async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = []): Promise<string> {
+async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = [], words?: { subject: string; text: string }): Promise<string> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
   const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter(n.kind) })
   // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it;
   // the pay page (v2.3758) rides behind the form, in front of the invoices it points at.
   const parts: Blob[] = []
   if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0 })))
+  // The conditional release (v2.4729): behind the owner's letter, behind the GC's form — as the printed packet stacks it.
+  const release = n.release ? await buildLienWaiverPdfBlob(n.release.formType, n.release.fields, n.release.signature) : null
+  if (recipientKey === 'owner' && release) parts.push(release)
   parts.push(form)
+  if (recipientKey !== 'owner' && release) parts.push(release)
   if (payBlocks.length > 0) parts.push(await filingDocPdfBlob([...payBlocks], { footer: filingDocFooter(n.kind) }))
   const notice = parts.length > 1 ? await mergePdfBlobs(parts) : form
   // The unpaid invoices ride behind the notice, stamped INVOICE (v2.3437, § 53.056(a-3)).
@@ -32,13 +40,55 @@ async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_co
   let binary = ''
   for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))
   const { data, error } = await supabase.functions.invoke('send-lien-filing-email', {
-    body: { job_id: n.jobId, to_email: toEmail, recipient_label: recipientKey, pdf_base64: btoa(binary), pdf_filename: filingPdfFilename(n.kind, n.jobNumber) },
+    body: { job_id: n.jobId, to_email: toEmail, recipient_label: recipientKey, pdf_base64: btoa(binary), pdf_filename: filingPdfFilename(n.kind, n.jobNumber), ...(words ? { subject: words.subject, email_text: words.text } : {}) },
   })
   if (error || (data as { error?: string } | null)?.error) throw new Error((data as { error?: string } | null)?.error || 'email failed')
   return ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '') || 'sent'
 }
 
-export type RunRecordResult = { recorded: string[]; failed: { itemId: string; label: string; reason: string }[] }
+/**
+ * The pay offer's money side (v2.4704): once the notice is recorded and its item sent, the
+ * `lien-pay-offer` function puts the Stripe credit on every enclosed bill. Never throws — a
+ * notice is recorded whatever happens to the credit — but what did not go on is said back.
+ */
+export type RunOfferResult = { jobId: string; applied: number; skipped: number; failed: number; reason: string }
+
+async function applyLienPayOffer(filingId: string, result: RunRecordResult, jobId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase.functions.invoke('lien-pay-offer', { body: { action: 'apply', filing_id: filingId } })
+    const d = (data ?? null) as { ok?: boolean; error?: string; applied?: unknown[]; skipped?: { reason: string }[]; failed?: { reason: string }[]; reason?: string } | null
+    if (error || !d?.ok) throw new Error(d?.error || (error as { message?: string } | null)?.message || 'the offer could not be put on the bills')
+    result.offers.push({ jobId, applied: d.applied?.length ?? 0, skipped: d.skipped?.length ?? 0, failed: d.failed?.length ?? 0, reason: d.failed?.[0]?.reason ?? d.reason ?? '' })
+  } catch (e) {
+    result.offers.push({ jobId, applied: 0, skipped: 0, failed: 1, reason: e instanceof Error && e.message ? e.message : 'the offer could not be put on the bills' })
+  }
+}
+
+export type RunRecordResult = {
+  recorded: string[]
+  failed: { itemId: string; label: string; reason: string }[]
+  /** The enclosed releases (v2.4729) that could not be issued as the run recorded — the notice is recorded regardless. */
+  releaseFailed: { label: string; reason: string }[]
+  courtesySent: RunCourtesySend[]
+  courtesyFailed: (RunCourtesySend & { reason: string })[]
+  /** The pay offer (v2.4704): what went on the bills per recorded notice that carried one. */
+  offers: RunOfferResult[]
+}
+
+type RecordOpts = Parameters<typeof recordLienDeskRun>[1]
+
+/** The courtesy PDFs of one recorded notice, the same pages its envelope holds. Never throws. */
+async function emailCourtesyCopies(n: RunNotice, opts: RecordOpts, result: RunRecordResult): Promise<void> {
+  for (const r of runCourtesyCopies(n)) {
+    const to = r.email.trim()
+    try {
+      await emailNoticePdf(n, r.key, to, opts.invoiceDocsByJob?.[n.jobId] ?? [], opts.payBlocksByJob?.[n.jobId]?.[r.key] ?? [], runCourtesyEmailWords(n, r.method))
+      result.courtesySent.push({ itemId: n.itemId, label: n.label, email: to })
+    } catch (e) {
+      result.courtesyFailed.push({ itemId: n.itemId, label: n.label, email: to, reason: e instanceof Error && e.message ? e.message : 'email failed' })
+    }
+  }
+}
 
 export async function recordLienDeskRun(
   notices: ReadonlyArray<CombinedRunNotice>,
@@ -54,7 +104,7 @@ export async function recordLienDeskRun(
     mailedOn?: string
   },
 ): Promise<RunRecordResult> {
-  const result: RunRecordResult = { recorded: [], failed: [] }
+  const result: RunRecordResult = { recorded: [], failed: [], releaseFailed: [], courtesySent: [], courtesyFailed: [], offers: [] }
   for (const n of notices) {
     try {
       const sends: RunSendRecord[] = []
@@ -80,7 +130,11 @@ export async function recordLienDeskRun(
           if (filingId) await markLienDeskItemSent(part.itemId, filingId)
           await clearOneShotLienClaimCorrection(part.jobId).catch(() => undefined)
           result.recorded.push(part.itemId)
+          if (part.release) await issueNoticeRelease(part.release.id).catch((e: unknown) => result.releaseFailed.push({ label: part.label, reason: e instanceof Error && e.message ? e.message : 'could not issue the release' }))
+          // Each part is its own filing and its own desk item; the lead's offer is the combined notice's (the function reads each item's own).
+          if (filingId && n.offer) await applyLienPayOffer(filingId, result, part.jobId)
         }
+        await emailCourtesyCopies(n, opts, result)
         continue
       }
       const filing = await withSupabaseRetry<{ id: string }>(
@@ -91,6 +145,10 @@ export async function recordLienDeskRun(
       // A claim corrected for this notice only (v2.3682) is done now; a carried one stays for the next.
       await clearOneShotLienClaimCorrection(n.jobId).catch(() => undefined)
       result.recorded.push(n.itemId)
+      // The enclosed release (v2.4729) is issued as the paper leaves; a failure here never un-records the notice.
+      if (n.release) await issueNoticeRelease(n.release.id).catch((e: unknown) => result.releaseFailed.push({ label: n.label, reason: e instanceof Error && e.message ? e.message : 'could not issue the release' }))
+      if (n.offer) await applyLienPayOffer(filing.id, result, n.jobId)
+      await emailCourtesyCopies(n, opts, result)
     } catch (e) {
       result.failed.push({ itemId: n.itemId, label: n.label, reason: e instanceof Error && e.message ? e.message : 'could not record' })
     }

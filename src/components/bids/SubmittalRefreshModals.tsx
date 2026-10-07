@@ -2,10 +2,15 @@
  * Two ways a draft catches up (2026-10-01). **Refresh from the takeoff** lists each row the
  * takeoff now reads differently, what it reads now and what it will read, before anything is
  * written. **Make it a part of…** folds a row typed by hand for another row's fixture (BP375's
- * Josam carriers) into that row as a part. Both hand the choice back; the tab writes it.
+ * Josam carriers) into that row as a part. **Grade against the schedule** (v2.4609, punch list
+ * #17) lists each Proposed row the plans' schedule names, what it reads and what it will read.
+ * All three hand the choice back; the tab writes it.
  */
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
 import { foldReplaceSuggestion, foldWrites, type RefreshPlanRow, type RefreshSkip } from '../../lib/submittals/refreshFromTakeoff'
+import { gradeSummary, productHead, type GradePlanRow, type GradeSkip } from '../../lib/submittals/gradeAgainstSchedule'
+import { STATUS_LABELS } from '../../lib/submittals/productStatus'
 import { splitPartLabel, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 
@@ -15,9 +20,11 @@ const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: 
 const select: CSSProperties = { padding: '0.4rem 0.5rem', minHeight: 36, border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', width: '100%', minWidth: 0 }
 
 function Shell({ label, busy, onClose, children, footer, maxWidth }: { label: string; busy: boolean; onClose: () => void; children: ReactNode; footer: ReactNode; maxWidth: number }) {
+  // 2026-10-04 · nothing is typed here, so there is nothing to ask about: Esc closes it like the ×.
+  useLeaveGuard({ dirty: false, onClose, busy })
   return (
-    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1rem 0.6rem', overflowY: 'auto' }}>
-      <div role="dialog" aria-modal="true" aria-label={label} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 2rem)' }} onMouseDown={(e) => e.stopPropagation()}>
+    <div role="presentation" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose() }} style={{ position: 'fixed', inset: 0, zIndex: 10060, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 0.6rem 1rem', overflowY: 'auto' }}>
+      <div role="dialog" aria-modal="true" aria-label={label} style={{ background: 'var(--surface)', borderRadius: 10, width: '100%', maxWidth, boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', maxHeight: 'min(calc(100vh - 2rem), 100%)' }} onMouseDown={(e) => e.stopPropagation()}>
         <div style={{ padding: '1rem 1.1rem 0.6rem', display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start', borderBottom: '1px solid var(--border)' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{label}</h3>
           <button type="button" aria-label="Close" disabled={busy} onClick={onClose} style={{ ...btn, minHeight: 32, padding: '0.2rem 0.6rem' }}>×</button>
@@ -147,6 +154,58 @@ export function SubmittalFoldModal({ from, rows, partsByItem, suggestedIntoId, b
             The {fromTag} row leaves this draft.
           </span>
         </p>
+      ) : null}
+    </Shell>
+  )
+}
+
+const GRADE_SKIP_WORDS: Record<GradeSkip['why'], (n: number) => string> = {
+  not_on_schedule: (n) => `${n === 1 ? 'is' : 'are'} not on the schedule, so ${n === 1 ? 'it stays' : 'they stay'} Proposed`,
+  two_tags_differ: (n) => `${n === 1 ? 'lists' : 'list'} two tags the schedule names differently; grade ${n === 1 ? 'it' : 'them'} with Edit`,
+}
+const STATUS_TONE: Record<string, string> = { as_specified: 'var(--text-green-700)', alternate: 'var(--text-amber-700)', missing: 'var(--text-red-700)' }
+
+/** v2.4609 · each Proposed row the schedule names: what the plans say, what the row reads, and the status it will take. */
+export function SubmittalScheduleGradeModal({ rows, skipped, busy = false, onConfirm, onClose }: { rows: ReadonlyArray<GradePlanRow>; skipped: ReadonlyArray<GradeSkip>; busy?: boolean; onConfirm: () => void; onClose: () => void }) {
+  const groups = (['not_on_schedule', 'two_tags_differ'] as const).map((why) => ({ why, tags: skipped.filter((s) => s.why === why).map((s) => s.tag) })).filter((g) => g.tags.length > 0)
+  const summary = gradeSummary(rows)
+  return (
+    <Shell
+      label="Grade the rows against the schedule"
+      busy={busy}
+      onClose={onClose}
+      maxWidth={680}
+      footer={
+        <>
+          <button type="button" disabled={busy} onClick={onClose} style={btn}>Cancel</button>
+          <button type="button" disabled={busy || rows.length === 0} onClick={onConfirm} style={btnPrimary} data-testid="grade-confirm">
+            {busy ? 'Grading…' : `Grade ${rows.length} row${rows.length === 1 ? '' : 's'}`}
+          </button>
+        </>
+      }
+    >
+      <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
+        The schedule names {rows.length} row{rows.length === 1 ? '' : 's'} that read Proposed. Each takes the product the plans named and the status the comparison gives. Parts, houses, lead times, reasons and cut sheets stay as they are.
+        {summary ? <> <b style={{ fontWeight: 600 }} data-testid="grade-summary">{summary}.</b></> : null}
+      </p>
+      {rows.map((r) => (
+        <section key={r.itemId} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }} data-testid="grade-row">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.1rem 0.6rem', alignItems: 'baseline' }}>
+            <b style={{ color: 'var(--text-strong)', fontSize: '0.9rem', overflowWrap: 'anywhere' }}>{r.tag}</b>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: STATUS_TONE[r.to] ?? 'var(--text-strong)' }} data-testid="grade-to">{STATUS_LABELS[r.to]}{r.near ? ' · check the model' : ''}</span>
+          </div>
+          <span style={{ ...quiet, overflowWrap: 'anywhere' }}>The plans: {[r.specified.manufacturer, r.specified.model].filter(Boolean).join(' ') || r.specified.description || '(no product named)'}</span>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>Your row: {r.product ? productHead(r.product) : <span style={{ color: 'var(--text-red-700)' }}>no product yet</span>}</span>
+        </section>
+      ))}
+      {groups.length > 0 ? (
+        <ul style={{ margin: 0, paddingLeft: '1.1rem', ...quiet, lineHeight: 1.5 }} data-testid="grade-skipped">
+          {groups.map((g) => (
+            <li key={g.why}>
+              {g.tags.join(', ')} {GRADE_SKIP_WORDS[g.why](g.tags.length)}.
+            </li>
+          ))}
+        </ul>
       ) : null}
     </Shell>
   )

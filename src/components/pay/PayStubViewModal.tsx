@@ -48,7 +48,7 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
         alignItems: 'center',
         justifyContent: 'center',
         zIndex,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         boxSizing: 'border-box',
       }}
     >
@@ -65,7 +65,7 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
           borderRadius: 8,
           maxWidth: 900,
           width: '100%',
-          height: '90vh',
+          height: 'min(90vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',

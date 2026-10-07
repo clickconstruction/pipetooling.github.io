@@ -1,3 +1,4 @@
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import type { WorkMonth } from './forecastWorkMonths'
 import type { LienMonthHistoryEntry } from './lienMonthHistory'
@@ -26,10 +27,10 @@ export function affidavitMonthRows(work: ReadonlyArray<WorkMonth>, history: Read
     const h = byMonth.get(m.key)
     const hours = hoursWords(m.hours)
     if (h?.outcome === 'sent' || m.notice?.state === 'sent') {
-      return { key: m.key, status: 'lien', words: `${hours} · notice sent${h?.at ? ` ${formatYmdMonthDay(h.at.slice(0, 10))}` : ''}` }
+      return { key: m.key, status: 'lien', words: `${hours} · notice sent${h?.at ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(h.at))}` : ''}` }
     }
     if (h?.outcome === 'skipped') {
-      return { key: m.key, status: 'unsecured', words: `${hours} · skipped${h.at ? ` ${formatYmdMonthDay(h.at.slice(0, 10))}` : ''}${h.byName ? ` by ${h.byName}` : ''} — given up on purpose; the lien does not cover it` }
+      return { key: m.key, status: 'unsecured', words: `${hours} · skipped${h.at ? ` ${formatYmdMonthDay(calendarYmdInAppTzFromIso(h.at))}` : ''}${h.byName ? ` by ${h.byName}` : ''} — given up on purpose; the lien does not cover it` }
     }
     if (h?.outcome === 'missed' || m.notice?.state === 'closed') {
       const closed = h?.deadline || m.notice?.due || ''

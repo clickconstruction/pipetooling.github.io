@@ -3310,7 +3310,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
         >
@@ -3451,7 +3452,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => !saving && setCallbackModalOpen(false)}
         >
@@ -3528,7 +3530,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
         >
@@ -3539,7 +3542,7 @@ export default function Prospects() {
               padding: '1.5rem',
               maxWidth: 560,
               width: '90%',
-              maxHeight: '85vh',
+              maxHeight: 'min(85vh, 100%)',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
               display: 'flex',
               flexDirection: 'column',
@@ -3664,7 +3667,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => setCopyBlankFieldsModalOpen(false)}
         >
@@ -3709,7 +3713,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => setTimerHistoryModalOpen(false)}
         >
@@ -3719,7 +3724,7 @@ export default function Prospects() {
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 480,
-              maxHeight: '80vh',
+              maxHeight: 'min(80vh, 100%)',
               width: '90%',
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
               display: 'flex',
@@ -3783,7 +3788,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => setMyTimeModalOpen(false)}
         >
@@ -3862,7 +3868,8 @@ export default function Prospects() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 50,
+            zIndex: 750,
+            paddingTop: 'var(--app-top-chrome, 0px)',
           }}
           onClick={() => !saving && setNewProspectModalOpen(false)}
         >

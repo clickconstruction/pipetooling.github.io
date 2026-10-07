@@ -298,6 +298,33 @@ export function buildGcNoticeBandRow(job: GcNoticeBandJobInput, todayYmd: string
   }
 }
 
+export type GcNoticeBandWrongItem = {
+  jobId: string
+  stage: GcNoticeBandStage
+  status: string
+  open: number
+  /** What looks wrong on the job, the red readings before the amber ones. */
+  readings: Array<Pick<GcNoticeBandReading, 'key' | 'label' | 'tone'>>
+}
+
+/**
+ * The jobs that look wrong (v2.4540), each once, in the order the band draws them — group by
+ * group, row by row — so the list under "N look wrong" reads top to bottom like the table.
+ */
+export function gcNoticeBandWrongItems(band: Pick<GcNoticeBand, 'groups'>): GcNoticeBandWrongItem[] {
+  const seen = new Set<string>()
+  const out: GcNoticeBandWrongItem[] = []
+  for (const g of band.groups) {
+    for (const r of g.rows) {
+      if (r.readings.length === 0 || seen.has(r.jobId)) continue
+      seen.add(r.jobId)
+      const readings = r.readings.map((rd) => ({ key: rd.key, label: rd.label, tone: rd.tone }))
+      out.push({ jobId: r.jobId, stage: r.stage, status: r.status, open: r.open, readings: [...readings.filter((rd) => rd.tone === 'red'), ...readings.filter((rd) => rd.tone !== 'red')] })
+    }
+  }
+  return out
+}
+
 export function buildGcNoticeBand(jobs: ReadonlyArray<GcNoticeBandJobInput>, todayYmd: string, order: GcNoticeBandOrder = 'stage', addressWords: (jobId: string) => string = () => ''): GcNoticeBand {
   const rows = jobs.map((j) => buildGcNoticeBandRow(j, todayYmd))
   const byOpen = (a: GcNoticeBandRow, b: GcNoticeBandRow) => b.open - a.open || a.jobId.localeCompare(b.jobId)

@@ -1,0 +1,558 @@
+<meta charset="utf-8">
+<title>Submittals Three Redraws</title>
+<style>
+  /* Layout: a short verdict, then three redraws as a worklist. Each opens a window: the live screen on top, the redraw under it at the same width, then the second look that changed the first draft. Drawn in the app's own tokens so the mock-ups read like the screen. */
+  :root {
+    --page: #f0f2f5; --surface: #ffffff; --subtle: #f9fafb; --muted-bg: #f3f4f6; --bg-200: #e5e7eb;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --strong: #111827; --base: #1a1a1a; --muted: #6b7280; --faint: #8a93a1;
+    --link: #2563eb; --amber: #b45309; --red: #b91c1c; --green: #15803d; --violet: #7c3aed;
+    --blue-tint: #eff6ff; --border-blue: #bfdbfe; --blue-700: #1d4ed8; --blue: #2563eb;
+    --green-tint: #f0fdf4; --amber-tint: #fffbeb; --red-tint: #fef2f2; --violet-tint: #f3effe;
+    --save: #16a34a; --bar: #5f6b7a; --bar-after: #1d4ed8; --on-bar: #ffffff;
+    --scrim: rgba(17,24,39,0.55);
+    --shadow: 0 6px 18px rgba(0,0,0,0.10);
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414; --violet-tint: #2a2147;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  } }
+  :root[data-theme="dark"] {
+    --page: #111827; --surface: #1f2937; --subtle: #18212f; --muted-bg: #374151; --bg-200: #4b5563;
+    --border: #374151; --border-strong: #56606f;
+    --strong: #f9fafb; --base: #f3f4f6; --muted: #9ca3af; --faint: #8892a3;
+    --link: #60a5fa; --amber: #fbbf24; --red: #f87171; --green: #4ade80; --violet: #a78bfa;
+    --blue-tint: #1e3358; --border-blue: #1e40af; --blue-700: #93c5fd; --blue: #3b82f6;
+    --green-tint: #12301f; --amber-tint: #3a2a0c; --red-tint: #3b1414; --violet-tint: #2a2147;
+    --save: #16a34a; --bar: #4b5563; --bar-after: #1e40af; --on-bar: #ffffff;
+    --scrim: rgba(0,0,0,0.65);
+    --shadow: 0 6px 18px rgba(0,0,0,0.45); color-scheme: dark;
+  }
+  body { background: var(--page); color: var(--base); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; display: flex; flex-direction: column; gap: 28px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; color: var(--strong); text-wrap: balance; }
+  h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  p { margin: 0; }
+  .head { display: flex; flex-direction: column; gap: 8px; }
+  .verdict { font-size: 17px; color: var(--strong); font-weight: 600; max-width: 62ch; }
+  .lede { max-width: 70ch; }
+  .muted { color: var(--muted); }
+  .band { display: flex; flex-direction: column; gap: 10px; }
+  .list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .item { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 4px 12px; padding: 16px; align-items: start; border-top: 1px solid var(--border); }
+  .item:first-child { border-top: none; }
+  .num { min-width: 26px; height: 24px; padding: 0 4px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--blue-tint); color: var(--blue-700); margin-top: 1px; box-sizing: border-box; }
+  .item h3 { margin: 0; font-size: 15.5px; color: var(--strong); line-height: 1.3; }
+  .item p { font-size: 14px; max-width: 68ch; margin-top: 3px; }
+  .tally { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tally b { color: var(--strong); }
+  .tally .to { color: var(--green); font-weight: 700; }
+  .open { font: inherit; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); cursor: pointer; white-space: nowrap; }
+  .open:hover { border-color: var(--blue); color: var(--blue-700); }
+  .open:focus-visible, .nav button:focus-visible, .x:focus-visible, .view button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+  .plan { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .plan ol, .plan ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; max-width: 72ch; }
+  .plan b { color: var(--strong); }
+  @media (max-width: 640px) { .item { grid-template-columns: 34px minmax(0, 1fr); } .item .open { grid-column: 2; justify-self: start; margin-top: 8px; } }
+
+  /* the window */
+  dialog { border: none; padding: 0; border-radius: 10px; background: var(--page); color: var(--base); width: min(1240px, calc(100vw - 24px)); max-height: calc(100vh - 24px); box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+  dialog::backdrop { background: var(--scrim); }
+  .dlg { display: flex; flex-direction: column; max-height: calc(100vh - 24px); }
+  .dlg-head { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; background: var(--surface); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .dlg-head > div:first-child { flex: 1; min-width: 200px; }
+  .dlg-head h3 { margin: 0; font-size: 17px; color: var(--strong); text-wrap: balance; }
+  .dlg-head p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .view { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; }
+  .view button { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 11px; border: none; border-left: 1px solid var(--border-strong); background: var(--surface); color: var(--muted); cursor: pointer; }
+  .view button:first-child { border-left: none; }
+  .view button[aria-pressed="true"] { background: var(--blue); color: #fff; }
+  .x { font: inherit; font-size: 20px; line-height: 1; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; flex-shrink: 0; }
+  .dlg-body { overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .dlg-body > * { flex-shrink: 0; }
+  .panel { border-radius: 8px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); min-width: 0; }
+  .bar { padding: 6px 14px; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 700; color: var(--on-bar); background: var(--bar); display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .bar span { font-weight: 500; letter-spacing: 0.02em; text-transform: none; opacity: 0.9; }
+  .panel.after .bar { background: var(--bar-after); }
+  .mock { padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; min-width: 0; background: var(--page); }
+  .note { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 13.5px; }
+  .note.bad { background: var(--red-tint); }
+  .note.good { background: var(--green-tint); }
+  .best { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--violet); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .best h4 { margin: 0; font-size: 15px; color: var(--strong); }
+  .best .cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 18px; }
+  @media (max-width: 860px) { .best .cols { grid-template-columns: minmax(0, 1fr); } }
+  .best h5 { margin: 0 0 4px; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .best ol, .best ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 7px; font-size: 14px; }
+  .best li b { color: var(--strong); }
+  .why { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 14px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; }
+  .why dt { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; padding-top: 2px; }
+  .why dd { margin: 0; max-width: 82ch; }
+  .dlg-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 18px; background: var(--surface); border-top: 1px solid var(--border); }
+  .nav { display: flex; gap: 8px; }
+  .nav button { font: inherit; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); cursor: pointer; }
+  .count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  /* mock pieces, the app's own shapes */
+  .b { display: inline-block; font-size: 12.5px; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--strong); font-weight: 500; white-space: nowrap; }
+  .b.pri { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 600; }
+  .b.grn { background: var(--save); border-color: var(--save); color: #fff; font-weight: 600; }
+  .b.sm { font-size: 11.5px; padding: 2px 7px; }
+  .b.q { border-radius: 50%; width: 18px; height: 18px; padding: 0; text-align: center; line-height: 17px; font-size: 11px; color: var(--blue-700); border-color: var(--blue); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .rowf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .between { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .small { font-size: 12px; color: var(--muted); }
+  .strong { color: var(--strong); font-weight: 600; }
+  .ttl { font-size: 16px; font-weight: 700; color: var(--strong); }
+  .ttl u { color: var(--link); }
+  .ipair { display: inline-flex; border: 1px solid var(--violet); border-radius: 5px; vertical-align: middle; }
+  .ipair span { width: 24px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--violet); }
+  .ipair span + span { border-left: 1px solid var(--violet); }
+  .phases { display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: flex-end; }
+  .ph { display: flex; flex-direction: column; gap: 3px; }
+  .ph i { font-style: normal; font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+  .pills { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .pill { font-size: 11.5px; padding: 2px 9px; border-radius: 999px; border: 1.5px solid var(--border-strong); color: var(--muted); white-space: nowrap; }
+  .pill.done { border-color: var(--green); color: var(--green); }
+  .pill.cur { border-color: var(--blue); color: var(--blue-700); background: var(--blue-tint); font-weight: 700; }
+  .pill.wait { border-color: var(--amber); color: var(--amber); background: var(--amber-tint); font-weight: 700; }
+  .newhere { background: var(--blue-tint); border: 1px solid var(--border-blue); padding: 6px 10px; border-radius: 6px; }
+  .stepline { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 2px 8px; align-items: start; }
+  .dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border-strong); display: inline-flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; color: var(--muted); box-sizing: border-box; }
+  .dot.ok { border-color: var(--green); color: var(--green); }
+  .dot.cur { border-color: var(--blue); background: var(--blue); color: #fff; }
+  .rep { background: var(--amber-tint); box-shadow: inset 0 -2px 0 var(--amber); padding: 0 2px; border-radius: 2px; }
+  .rep sup { font-size: 9px; font-weight: 800; color: var(--amber); margin-left: 2px; }
+  .door { outline: 2px dashed var(--red); outline-offset: 2px; }
+  .legend { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .legend b { color: var(--strong); }
+  .pop { border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow); background: var(--surface); padding: 6px; display: flex; flex-direction: column; width: min(320px, 100%); }
+  .pop div { padding: 6px 8px; border-radius: 5px; display: flex; flex-direction: column; }
+  .pop div:first-child { background: var(--blue-tint); }
+  .pop b { color: var(--strong); font-size: 13px; }
+  .pop span { font-size: 12px; color: var(--muted); }
+  .scroll { overflow-x: auto; }
+  table.t { border-collapse: collapse; width: 100%; font-size: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+  table.t th { text-align: left; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--subtle); }
+  table.t td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.t tr.sub td { border-bottom: 1px dotted var(--border); }
+  table.t tr.last td, table.t td[rowspan] { border-bottom: 1px solid var(--border-strong); }
+  table.t.wide { min-width: 1040px; }
+  table.t.fit { min-width: 720px; }
+  .dash { color: var(--faint); }
+  .chip { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--blue-tint); color: var(--blue-700); white-space: nowrap; }
+  .chip.red { background: var(--red-tint); color: var(--red); }
+  .chip.amb { background: var(--amber-tint); color: var(--amber); }
+  .chip.f { background: var(--surface); border: 1px solid var(--border-strong); color: var(--strong); font-weight: 600; font-size: 11.5px; padding: 2px 9px; }
+  .chip.f.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .red { color: var(--red); font-weight: 700; }
+  .amb { color: var(--amber); font-weight: 700; }
+  .grn { color: var(--green); font-weight: 700; }
+  .phone { width: 290px; max-width: 100%; border: 5px solid var(--border-strong); border-radius: 20px; padding: 10px; background: var(--page); display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; }
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .phones figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .phones figcaption { font-size: 12px; color: var(--muted); max-width: 290px; }
+  .peek { overflow: hidden; border: 1px solid var(--border); border-radius: 6px; }
+  .win { border: 1px solid var(--border-strong); border-radius: 8px; box-shadow: var(--shadow); padding: 14px; display: flex; flex-direction: column; gap: 9px; background: var(--surface); max-width: 100%; box-sizing: border-box; }
+  .win h4 { margin: 0; font-size: 15px; color: var(--strong); }
+  .field { border: 1px solid var(--border-strong); border-radius: 4px; padding: 4px 7px; font-size: 12px; color: var(--strong); background: var(--surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; box-sizing: border-box; }
+  .field.empty { color: var(--faint); }
+  .field.need { border-color: var(--amber); color: var(--amber); background: var(--amber-tint); font-weight: 600; }
+  .lbl { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 5px; overflow: hidden; font-size: 11.5px; }
+  .seg span { padding: 3px 8px; border-left: 1px solid var(--border-strong); color: var(--muted); white-space: nowrap; }
+  .seg span:first-child { border-left: none; }
+  .seg .on { background: var(--blue-tint); color: var(--blue-700); font-weight: 700; }
+  .seg .ord { background: var(--amber-tint); color: var(--amber); font-weight: 700; }
+  .partbox { border: 1px solid var(--border); border-radius: 6px; padding: 7px; display: flex; flex-direction: column; gap: 6px; }
+  .prow { display: grid; grid-template-columns: 20px minmax(140px, 1fr) 44px 128px 84px 104px 96px; gap: 6px; align-items: center; padding: 4px 0; border-bottom: 1px dotted var(--border); }
+  .prow.h { border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+  .prow .nm { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .grp { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; margin-top: 4px; }
+  .two { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 14px; }
+  @media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Bids → Submittals · findings 10, 11 and 12 · drawn Oct 5, 2026 · built the same day</div>
+    <h1>Three redraws for the Submittals tab</h1>
+    <p class="verdict">Each one was drawn, then asked one question: is this the best we can do? The answer changed all three. What you open below is the second draft.</p>
+    <p class="lede">The “Current” side of each window is the live SpaceX bid (BP375) as it looked on the morning of Oct 5, read only, nothing changed. The “After” side is the drawing the build was made from.</p>
+  </header>
+
+  <section class="plan" style="border-left:4px solid var(--green)">
+    <p><b>Where this stands.</b> All three are built, in the order you gave: 12 as v2.4537, 11 as v2.4542, 10 as v2.4543. The drawings below are left as they were drawn. Each item says where the build differs.</p>
+  </section>
+
+  <section class="band">
+    <h2>The three redraws</h2>
+    <div class="list">
+      <div class="item">
+        <span class="num">10</span>
+        <div>
+          <h3>The top of the tab says each thing once</h3>
+          <p>Today the takeoff count is written three times, the revision twice and the row counts twice. There are twelve help doors on the screen. The redraw gives each fact one home and help one door.</p>
+          <div class="tally"><span>Lines above step 1 <b>9</b> → <span class="to">6</span></span><span>Help doors <b>12</b> → <span class="to">6</span></span><span>Facts written more than once <b>4</b> → <span class="to">0</span></span></div>
+          <p class="muted" style="font-size:13px"><b class="grn">Shipped · v2.4543.</b> As built: the revision’s name is still on the header line and on its switch in step 2, because the switch is a control. Walk me through it in the Help menu starts at the first step. The rows table gained a “Need a reason” count so nothing the old header counted is lost.</p>
+        </div>
+        <button class="open" data-open="r10">Open the before and after</button>
+      </div>
+      <div class="item">
+        <span class="num">11</span>
+        <div>
+          <h3>A rows table shaped for a takeoff bid</h3>
+          <p>Three of nine columns never hold anything on a bid built from the takeoff. The GC’s answers are squeezed into 102 pixels, away from the parts they are about. On a phone the table is a 273 pixel window onto a 1,251 pixel sheet.</p>
+          <div class="tally"><span>Columns <b>9</b> → <span class="to">5</span></span><span>Cells that are always a dash <b>28</b> → <span class="to">0</span></span><span>Phone: sideways scrolling → <span class="to">a card per fixture</span></span></div>
+          <p class="muted" style="font-size:13px"><b class="grn">Shipped · v2.4542.</b> As built: Split stays a visible button, since it only shows on a row that can split. Only Part of… and × went behind ⋯. The row’s count, like “1 of 3 rejected”, stays under the tag. The words “sheet needed” were kept.</p>
+        </div>
+        <button class="open" data-open="r11">Open the before and after</button>
+      </div>
+      <div class="item">
+        <span class="num">12</span>
+        <div>
+          <h3>An Edit window that fits on one screen</h3>
+          <p>A lavatory with eight parts takes twenty four lines and two screens of scrolling. Nothing in a part has a heading. The part the GC rejected looks like every other part.</p>
+          <div class="tally"><span>Lines for 8 parts <b>24</b> → <span class="to">8</span></span><span>Three-way switches <b>8</b> → <span class="to">0</span></span><span>Scrolling <b>2 screens</b> → <span class="to">about 1</span></span></div>
+          <p class="muted" style="font-size:13px"><b class="grn">Shipped · v2.4537.</b> As built: the window is 1,040 px wide, not 940, so a part name has 384 px. On a phone a part is three short lines with every field showing, not two with the stage behind a tap. LAV-1 went from 1,459 px of content to 747.</p>
+        </div>
+        <button class="open" data-open="r12">Open the before and after</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="plan">
+    <h2>The order they were built in</h2>
+    <ol>
+      <li><b>12 first.</b> It is the window she opens most, and it stands alone. One file changes.</li>
+      <li><b>11 second.</b> The rows table became its own small file in yesterday’s split, so this touches that file and nothing around it.</li>
+      <li><b>10 last.</b> It is the smallest gain and it moves lines the walkthrough points at, so its stops need checking after.</li>
+    </ol>
+    <p class="muted" style="font-size:13.5px">Each shipped as its own change with a release note and a guide update. Her first week will still show which columns she reads on a bid that has a schedule. That shape of the table kept Specified and Status for that reason.</p>
+  </section>
+</div>
+
+<!-- ============ 10 ============ -->
+<dialog id="r10"><div class="dlg">
+  <div class="dlg-head"><div><h3>10 · The top of the tab says each thing once</h3><p>BP375 SpaceX · everything above the rows</p></div>
+    <div class="view" role="group" aria-label="Show"><button type="button" data-view="both" aria-pressed="true">Both</button><button type="button" data-view="current" aria-pressed="false">Current</button><button type="button" data-view="after" aria-pressed="false">After</button></div>
+    <button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <section class="panel current" data-panel="current">
+      <div class="bar">Current <span>the live screen · repeated facts shaded, help doors ringed</span></div>
+      <div class="mock">
+        <div class="between"><span class="ttl"><u>BP375</u> SPACEX BA-02N Architectural <span class="ipair"><span>○</span><span>+</span></span> <span class="b q door">?</span> <u class="small door">Words on this page</u></span><span class="small">×</span></div>
+        <span class="small">Submittals · plumbing fixtures &amp; equipment · <span class="rep">26 fixtures on the takeoff<sup>A</sup></span> · <span class="rep">no schedule yet<sup>B</sup></span> · <u>choose from the takeoff</u></span>
+        <span class="small">Working on <span class="rep"><span class="strong">Rev 1 · draft · Sep 29</span><sup>C</sup></span> · <span class="rep">14 rows · 13 proposed · 1 missing · 7 of 13 sheets in<sup>D</sup></span></span>
+        <div class="card">
+          <div class="rowf" style="justify-content:flex-end"><span class="b sm">See what the GC sees</span><span class="b sm door">Walk me through it ▶</span></div>
+          <div class="phases">
+            <div class="ph"><i>Build</i><div class="pills"><span class="pill done">✓ Sources</span><span class="pill done">✓ Rev 1</span><span class="pill cur">3 Reasons &amp; sheets</span></div></div>
+            <div class="ph"><i>Send</i><div class="pills"><span class="pill">4 Package</span><span class="pill">5 Share</span></div></div>
+            <div class="ph"><i>Their answer</i><div class="pills"><span class="pill wait">6 Their call</span><span class="pill cur">7 Resubmit</span></div></div>
+            <div class="ph"><i>Order</i><div class="pills"><span class="pill">8 Procure</span></div></div>
+          </div>
+          <span><span class="strong">Next:</span> structura sent 4 rows back. 10 rows still have no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.</span>
+          <div><span class="b pri">Rev 2 from the 4 rows sent back and the 10 with no answer</span></div>
+          <div class="between newhere"><span class="small"><span class="strong">New here?</span> Walk through how Submittals works, from the schedule to the GC’s approval. About a minute.</span><span class="rowf"><span class="b pri sm door">Walk me through it ▶</span><u class="small">Not now</u></span></div>
+        </div>
+        <span class="small" style="text-align:right">☐ Open every stage</span>
+        <div class="stepline"><span class="dot ok">✓</span><div class="between"><span class="strong">1 · Where the rows come from ▴</span><span class="small grn" style="font-weight:500"><span class="rep">26 on the takeoff<sup>A</sup></span> · <span class="rep">no schedule yet<sup>B</sup></span> · <u>choose from the takeoff</u></span></div><span></span><span class="small">Pick where the rows come from. Each row is one product you will install. <span class="b q door">?</span></span>
+          <span></span><div class="rowf" style="align-items:stretch"><div class="card" style="flex:1 1 220px"><span><span class="strong">The takeoff</span> <span class="small">· <span class="rep">26 fixtures, 22 with a part<sup>A</sup></span></span></span><span class="small">One row per fixture you tick. The part under it is the product.</span><div><span class="b pri sm">Add from the takeoff</span></div></div><div class="card" style="flex:1 1 220px"><span><span class="strong">The plans’ schedule</span> <span class="small">· <span class="rep">none yet<sup>B</sup></span></span></span><span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1.</span><div><span class="b pri sm">Type or paste the schedule</span></div></div></div></div>
+        <div class="stepline"><span class="dot ok">✓</span><div class="between"><span class="strong">2 · Rev 1 ▾</span><span class="small"><span class="rep">Rev 1 · draft · Sep 29<sup>C</sup></span></span></div><span></span><span class="small">Rev 1 is the first version of your submittal. A Rev 2 happens only when the GC sends rows back, or a product changes after you share. <span class="b q door">?</span></span></div>
+        <div class="stepline"><span class="dot cur">3</span><div class="between"><span class="strong">3 · Reasons &amp; cut sheets ▴</span><span class="small"><span class="rep">14 rows. 1 still needs a product. 6 still need a cut sheet.<sup>D</sup></span></span></div><span></span><span class="small">Check each row and its parts. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product. <span class="b q door">?</span></span></div>
+        <span class="small">Steps 4 to 8 follow, each with its own line of explanation and its own <span class="b q door">?</span></span>
+        <div class="legend"><span><b>A</b> the takeoff count, 3 times</span><span><b>B</b> no schedule, 3 times</span><span><b>C</b> the revision, twice</span><span><b>D</b> the row and sheet counts, twice</span><span><b>Ringed</b> 12 help doors: 4 at the top, 8 on the steps</span></div>
+      </div>
+      <div class="note bad">The page spends nine lines before the first step, and four of them repeat something a step says better. “Choose from the takeoff” is a link twice and a button once. A folded step still prints its explanation.</div>
+    </section>
+
+    <section class="panel after" data-panel="after">
+      <div class="bar">After <span>a drawing · same bid, same state</span></div>
+      <div class="mock">
+        <div class="between"><span class="ttl"><u>BP375</u> SPACEX BA-02N Architectural <span class="ipair"><span>○</span><span>+</span></span> <span class="b sm" style="border-color:var(--blue);color:var(--blue-700)">? Help ▾</span></span><span class="small">×</span></div>
+        <span class="small"><span class="strong">Rev 1 · draft</span> · Plumbing fixtures &amp; equipment</span>
+        <div class="card">
+          <div class="between" style="align-items:flex-end">
+            <div class="phases">
+              <div class="ph"><i>Build</i><div class="pills"><span class="pill done">✓ Sources</span><span class="pill done">✓ Rev 1</span><span class="pill cur">3 Reasons &amp; sheets</span></div></div>
+              <div class="ph"><i>Send</i><div class="pills"><span class="pill">4 Package</span><span class="pill">5 Share</span></div></div>
+              <div class="ph"><i>Their answer</i><div class="pills"><span class="pill wait">6 Their call</span><span class="pill cur">7 Resubmit</span></div></div>
+              <div class="ph"><i>Order</i><div class="pills"><span class="pill">8 Procure</span></div></div>
+            </div>
+            <span class="b sm">See what the GC sees</span>
+          </div>
+          <span><span class="strong">Next:</span> structura sent 4 rows back. 10 rows still have no answer. Fix what was sent back. Then tap the green button. The rows with no answer go on the new version too.</span>
+          <div><span class="b pri">Rev 2 from the 4 rows sent back and the 10 with no answer</span></div>
+        </div>
+        <span class="small" style="text-align:right">☐ Open every stage</span>
+        <div class="stepline"><span class="dot ok">✓</span><span class="strong">1 · Where the rows come from ▴</span><span></span><span class="small">Pick where the rows come from. Each row is one product you will install. <span class="b q">?</span></span>
+          <span></span><div class="rowf" style="align-items:stretch"><div class="card" style="flex:1 1 220px"><span><span class="strong">The takeoff</span> <span class="small">· 26 fixtures, 22 with a part</span></span><span class="small">One row per fixture you tick. The part under it is the product.</span><div><span class="b pri sm">Add from the takeoff</span></div></div><div class="card" style="flex:1 1 220px"><span><span class="strong">The plans’ schedule</span> <span class="small">· none yet</span></span><span class="small">Optional. A tag is the plan’s name for a fixture, like WC-1.</span><div><span class="b pri sm">Type or paste the schedule</span></div></div></div></div>
+        <div class="stepline"><span class="dot ok">✓</span><div class="between"><span class="strong">2 · Rev 1 ▾</span><span class="small">started Sep 29 · 14 rows</span></div></div>
+        <div class="stepline"><span class="dot cur">3</span><span class="strong">3 · Reasons &amp; cut sheets ▴</span><span></span><span class="small">Check each row and its parts. Is it the product the plans asked for? If not, say why. Add its cut sheet, the maker’s page for the product. <span class="b q">?</span></span><span></span><span class="small">The rows table follows, with its counts as the first line (redraw 11).</span></div>
+        <span class="small">Steps 4 and 5 are folded: one line each. Steps 6, 7 and 8 are open, each with its explanation and its “?”.</span>
+        <div class="two" style="margin-top:6px">
+          <div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">What ? Help opens</span>
+            <div class="pop"><div><b>Walk me through it</b><span>About a minute. It starts at the step you are on.</span></div><div><b>Words on this page</b><span>Cut sheet, revision, tag and twelve more.</span></div><div><b>Open the guide</b><span>The full written guide, in a new tab.</span></div></div></div>
+          <div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">On a first visit only</span>
+            <div class="between newhere"><span class="small"><span class="strong">New here?</span> Walk through how Submittals works. About a minute.</span><span class="rowf"><span class="b pri sm">Walk me through it ▶</span><u class="small">Not now</u></span></div>
+            <span class="small">It sits under the Next line until she presses either button, then never again. While it shows, it is the only walkthrough button on the page.</span></div>
+        </div>
+      </div>
+      <div class="note good">Six lines before the first step. The revision is named once at the top, the source once on its cards, the counts once on step 3. A folded step is one line with its summary. An open step drops the summary, because its contents say it, and keeps its explanation and its own “?”.</div>
+    </section>
+
+    <section class="best">
+      <h4>Is this the best we can do?</h4>
+      <div class="cols">
+        <div><h5>What the second look changed</h5><ol>
+          <li><b>The step “?” marks stay, on open steps only.</b> The first draft folded all eight into the one help button. That loses the best thing about them: each one starts the walkthrough at its own step. Hiding them on folded steps removes the clutter and keeps that.</li>
+          <li><b>A folded step is one line, and an open step drops its summary.</b> The first draft left every explanation and every summary printed. Reading the live page showed where the repeats come from: step 1 is open, so its summary and its two cards say the same thing an inch apart.</li>
+          <li><b>Help is a labelled button with three choices spelled out,</b> not a bare “?”. Words on this page went in yesterday at your request, so it must stay easy to find. It is the second line of a three line menu.</li>
+          <li><b>“Choose from the takeoff” lives once,</b> on the takeoff card where the button already is. The first draft kept it as a link in the header.</li>
+        </ol></div>
+        <div><h5>Looked at and left out</h5><ul>
+          <li>Dropping the explanations for good. They are the plain-words teaching of the page. They stay on whatever step is open.</li>
+          <li>Moving “See what the GC sees” into Help. It is an action she uses before sharing, so it keeps its own button.</li>
+          <li>Shortening the Next line. Its wording shipped two days ago to fix finding 2. It gets a week of use first.</li>
+        </ul></div>
+      </div>
+    </section>
+    <dl class="why"><dt>What changes</dt><dd>Two header lines become one. The title’s “?”, Words on this page and the strip’s walkthrough button become one Help button. A folded step shows its summary and no explanation. An open step shows its explanation and no summary.</dd><dt>Size</dt><dd>Medium. Many small moves in the tab’s header and the step frame. The walkthrough’s stops point at some of these lines, so each stop is checked after.</dd><dt>What it costs</dt><dd>Walk me through it and Words on this page are one click further away after the first visit.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button type="button" data-prev>← Previous</button><button type="button" data-next>Next →</button></div></div>
+</div></dialog>
+
+<!-- ============ 11 ============ -->
+<dialog id="r11"><div class="dlg">
+  <div class="dlg-head"><div><h3>11 · A rows table shaped for a takeoff bid</h3><p>BP375 SpaceX · step 3 · 14 rows, no schedule on the bid · 4 of the rows shown</p></div>
+    <div class="view" role="group" aria-label="Show"><button type="button" data-view="both" aria-pressed="true">Both</button><button type="button" data-view="current" aria-pressed="false">Current</button><button type="button" data-view="after" aria-pressed="false">After</button></div>
+    <button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <section class="panel current" data-panel="current">
+      <div class="bar">Current <span>the live table · 1,251 px wide, nine columns</span></div>
+      <div class="mock">
+        <div class="scroll"><table class="t wide">
+          <tr><th>Tag</th><th>Specified</th><th>Submitted</th><th>Status ?</th><th>Reason ?</th><th>Lead time</th><th>Sheet ?</th><th>Their call</th><th></th></tr>
+          <tr><td class="strong">DWH-1</td><td><span class="dash">—</span><br><span class="small">DWH1 &amp; ET</span></td><td><span class="strong">RHEEM</span> PROPH40-T2-RH400-SO<br><span class="strong">WATTS</span> LFN36M1<br><span class="small">0556031 3/4 M BRASS WATER SERVICE VACUUM RELIEF VALVE LEAD FREE</span><br><span class="small">National Wholesale</span></td><td><span class="chip">Proposed</span></td><td class="dash">—</td><td class="dash">—</td><td><span class="grn">✓ p.6–11, 13</span><br><span class="small">SPACEX BA-2 CORE &amp; SHELL.pdf</span></td><td class="dash">—</td><td style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr>
+          <tr><td class="strong">FCO</td><td><span class="dash">—</span><br><span class="small">FCO</span></td><td><span class="strong">ZURN</span> ZN1400-2NL<br><span class="small">2" FLOOR CLEAN OUT WITH NICKEL BRONZE TOP</span><br><span class="small">National Wholesale</span></td><td><span class="chip">Proposed</span></td><td class="dash">—</td><td class="dash">—</td><td class="amb">sheet needed</td><td class="dash">—</td><td style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr>
+          <tr><td class="strong">LAV-1</td><td><span class="dash">—</span><br><span class="small">LAV 1</span></td><td><span class="strong">TSL.MON.B.38.2.PS1.BK</span><br><span class="small">MONOLITH B SERIES</span><br><span class="strong">TOTO</span> T25S51E#CP <span class="chip red">rejected</span><br><span class="strong">BOBRICK</span> B-8236<br><span class="small">Ordered, not submitted: supply × 2, grid drain, P-trap, stop, flange</span><br><span class="small">from LAV 1 assembly SPACEX · National Wholesale</span></td><td><span class="chip">Proposed</span></td><td class="dash">—</td><td class="dash">—</td><td><span class="grn">✓ p.30–47</span><br><span class="small">SPACEX BA-2 CORE &amp; SHELL.pdf</span></td><td style="width:102px"><span class="red">1 of 3 rejected</span><br><span class="small">2 with no answer yet</span><br><span class="small">structura · entered by Wendi · Oct 2</span><br><span class="small">“TOTO T25S51E#CP: TEL145”</span></td><td style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr>
+          <tr><td class="strong">UTILITY SINK</td><td><span class="dash">—</span><br><span class="small">UTILITY SINK</span></td><td><span class="dash">—</span><br><span class="small">National Wholesale</span></td><td><span class="chip amb">Missing</span></td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td><td style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">×</span></td></tr>
+        </table></div>
+      </div>
+      <div class="note bad">On all 14 rows Reason and Lead time are a dash, and Specified only repeats the fixture’s name. Status says Proposed 13 times. The GC’s answer is a summary in a 102 pixel column, so she reads “1 of 3 rejected” and then hunts for which one. The house and the file name are printed on every row.</div>
+    </section>
+
+    <section class="panel after" data-panel="after">
+      <div class="bar">After <span>a drawing · the same four rows</span></div>
+      <div class="mock">
+        <div class="rowf"><span class="chip f on">All 14</span><span class="chip f">Need a cut sheet 6</span><span class="chip f">No product 1</span><span class="chip f">A part sent back 4</span><span class="chip f">No answer yet 9</span></div>
+        <span class="small">Every row is <span class="chip">Proposed</span> because this bid has no schedule to check against. <u>Type the schedule</u> to change that. Every part comes from National Wholesale.</span>
+        <div class="scroll"><table class="t fit">
+          <tr><th>Fixture</th><th>Product and parts</th><th>Their answer</th><th>Cut sheet</th><th></th></tr>
+          <tr class="sub"><td rowspan="2"><span class="strong">DWH-1</span><br><span class="small">DWH1 &amp; ET</span></td><td><span class="strong">RHEEM</span> PROPH40-T2-RH400-SO</td><td rowspan="2" class="small">No answer yet</td><td rowspan="2"><span class="grn">✓ p.6–11, 13</span></td><td rowspan="2" style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">⋯</span></td></tr>
+          <tr class="last"><td><span class="strong">WATTS</span> LFN36M1 <span class="small">3/4 brass vacuum relief valve, lead free</span></td></tr>
+          <tr class="last"><td><span class="strong">FCO</span></td><td><span class="strong">ZURN</span> ZN1400-2NL <span class="small">2" floor clean out, nickel bronze top</span></td><td class="small">No answer yet</td><td><span class="amb">Needs a cut sheet</span><br><u class="small">Assign pages</u></td><td style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">⋯</span></td></tr>
+          <tr class="sub"><td rowspan="4"><span class="strong">LAV-1</span><br><span class="small">LAV 1</span><br><span class="small">structura · typed in by Wendi · Oct 2</span></td><td><span class="strong">TSL.MON.B.38.2.PS1.BK</span> <span class="small">Monolith B series</span></td><td class="dash">no answer yet</td><td rowspan="4"><span class="grn">✓ p.30–47</span></td><td rowspan="4" style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">⋯</span></td></tr>
+          <tr class="sub"><td><span class="strong">TOTO</span> T25S51E#CP</td><td><span class="chip red">Rejected</span> <span class="small">“TEL145”</span></td></tr>
+          <tr class="sub"><td><span class="strong">BOBRICK</span> B-8236</td><td class="dash">no answer yet</td></tr>
+          <tr class="last"><td colspan="2" class="small">Also ordered, not shown to the GC: supply × 2, grid drain, P-trap, stop, flange</td></tr>
+          <tr class="last"><td><span class="strong">UTILITY SINK</span></td><td><span class="amb">No product yet</span> <u class="small">Add the product</u></td><td class="dash">—</td><td class="dash">—</td><td style="white-space:nowrap"><span class="b sm">Edit</span> <span class="b sm">Their answer</span> <span class="b sm">⋯</span></td></tr>
+        </table></div>
+        <span class="small">⋯ holds Split, Part of… and Take off the submittal. The chips above are the step’s own counts, now pressable: press “Need a cut sheet 6” and the table shows those six.</span>
+      </div>
+      <div class="note good">Five columns, and each one carries something on every row. Each part sits on its own line with the GC’s answer beside it, so “Rejected” is next to the faucet it is about. What is the same on every row is said once above the table.</div>
+    </section>
+
+    <section class="panel after" data-panel="after">
+      <div class="bar">After, on a phone <span>and on a bid that has a schedule</span></div>
+      <div class="mock">
+        <div class="phones">
+          <figure><div class="phone">
+            <span class="lbl">Current</span>
+            <div class="peek"><table class="t" style="width:273px;table-layout:fixed;border:none"><tr><th style="width:120px">Tag</th><th style="width:78px">Specified</th><th>Submitted</th></tr>
+              <tr><td class="strong">LAV-1</td><td><span class="dash">—</span><br><span class="small">LAV 1</span></td><td style="white-space:nowrap;overflow:hidden"><span class="strong">TSL.M</span></td></tr>
+              <tr><td class="strong">UTILITY SINK</td><td><span class="dash">—</span><br><span class="small">UTILITY SINK</span></td><td class="dash">—</td></tr></table></div>
+            <span class="small">→ swipe 978 px more to reach Edit</span>
+          </div><figcaption>Today the phone shows a 273 px window onto the 1,251 px table. The tag slides away as she swipes to the buttons.</figcaption></figure>
+          <figure><div class="phone">
+            <span class="lbl">After</span>
+            <div class="card"><div class="between"><span class="strong">LAV-1 <span class="small" style="font-weight:400">LAV 1</span></span><span class="grn" style="font-size:11.5px">✓ p.30–47</span></div>
+              <span><span class="strong">TSL.MON.B.38.2.PS1.BK</span><br><span class="dash" style="font-size:11.5px">no answer yet</span></span>
+              <span><span class="strong">TOTO</span> T25S51E#CP<br><span class="chip red">Rejected</span> <span class="small">“TEL145”</span></span>
+              <span><span class="strong">BOBRICK</span> B-8236<br><span class="dash" style="font-size:11.5px">no answer yet</span></span>
+              <div class="rowf"><span class="b sm">Edit</span><span class="b sm">Their answer</span><span class="b sm">⋯</span></div></div>
+            <div class="card"><div class="between"><span class="strong">UTILITY SINK</span><span class="dash" style="font-size:11.5px">no sheet</span></div><span class="amb">No product yet</span><div class="rowf"><span class="b sm">Edit</span><span class="b sm">⋯</span></div></div>
+          </div><figcaption>A card per fixture. Nothing scrolls sideways, and the buttons are under the row they act on.</figcaption></figure>
+          <figure style="flex:1 1 380px"><span class="lbl">On a bid with a schedule (an example, not a real bid)</span>
+            <div class="scroll"><table class="t" style="min-width:520px"><tr><th>Tag</th><th>Specified</th><th>Submitted</th><th>Status</th><th>Their answer</th><th>Cut sheet</th></tr>
+              <tr class="last"><td class="strong">DWH-1</td><td><span class="strong">A.O. SMITH</span> DRE-52</td><td><span class="strong">RHEEM</span> PROPH40-T2</td><td><span class="chip amb">Alternate</span><br><span class="small">lead time: spec is 3–4 wk out · ours 1 wk</span></td><td class="small">No answer yet</td><td class="grn">✓ p.6–11</td></tr>
+              <tr class="last"><td class="strong">WC-1</td><td><span class="strong">TOTO</span> CT708UVG#01</td><td><span class="strong">TOTO</span> CT708UVG#01</td><td><span class="chip">As specified</span></td><td><span class="chip" style="background:var(--green-tint);color:var(--green)">Approved</span></td><td class="grn">✓ p.19–24</td></tr></table></div>
+            <figcaption style="max-width:none">Specified comes back, because there is something to compare. Status, reason and lead time share one cell. The table has two fixed shapes, chosen by whether the bid has a schedule.</figcaption></figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="best">
+      <h4>Is this the best we can do?</h4>
+      <div class="cols">
+        <div><h5>What the second look changed</h5><ol>
+          <li><b>Two fixed shapes, not columns that come and go.</b> The first draft hid any column that was empty. Then typing one reason on one row would make a column appear and the whole table jump. Now the shape changes only when the bid gains a schedule, which is something she does on purpose.</li>
+          <li><b>Each part is its own line with its answer in the next cell.</b> The first draft lined the answers up beside the parts with line breaks. They drift apart as soon as a long part name wraps.</li>
+          <li><b>“No answer yet” is said once per row</b> when nothing on the row is answered. The first draft printed it beside every part.</li>
+          <li><b>Their answer keeps its own button.</b> The first draft put it under ⋯. On her road she types answers from an email, so it is the button she presses most.</li>
+          <li><b>The counts became filters.</b> Step 3 already says “6 still need a cut sheet”. Pressing that number now shows the six. This is an addition, and it can be left out without hurting the rest.</li>
+        </ol></div>
+        <div><h5>Looked at and left out</h5><ul>
+          <li>Cards on a desktop. A table lets her run her eye down the cut sheet column. Cards are for the phone only.</li>
+          <li>Making the answer cell itself open Their answer. A cell that is secretly a button is hard to find.</li>
+          <li>Dropping the fixture’s takeoff name under the tag. When the tag was typed by hand it is the only link back to the takeoff.</li>
+        </ul></div>
+      </div>
+    </section>
+    <dl class="why"><dt>What changes</dt><dd>The table draws one of two shapes. Parts become lines with their own answer. Split, Part of… and × move under ⋯. The house and the file name are said once when every row shares them. On a phone each fixture is a card.</dd><dt>Size</dt><dd>Medium. It is the rows table’s own file since yesterday’s split. The printed cover table and the GC’s page do not change.</dd><dt>What it costs</dt><dd>Split and Take off are one click further away. A bid with two supply houses still prints the house on each row.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button type="button" data-prev>← Previous</button><button type="button" data-next>Next →</button></div></div>
+</div></dialog>
+
+<!-- ============ 12 ============ -->
+<dialog id="r12"><div class="dlg">
+  <div class="dlg-head"><div><h3>12 · An Edit window that fits on one screen</h3><p>BP375 SpaceX · Edit on LAV-1 · eight parts, one of them rejected</p></div>
+    <div class="view" role="group" aria-label="Show"><button type="button" data-view="both" aria-pressed="true">Both</button><button type="button" data-view="current" aria-pressed="false">Current</button><button type="button" data-view="after" aria-pressed="false">After</button></div>
+    <button class="x" data-close aria-label="Close">×</button></div>
+  <div class="dlg-body">
+    <section class="panel current" data-panel="current">
+      <div class="bar">Current <span>the live window · 760 px wide · 1,459 px of content in a 698 px pane</span></div>
+      <div class="mock">
+        <div class="win" style="width:760px">
+          <h4>LAV-1 · LAV 1</h4>
+          <div class="field" style="width:112px">LAV-1</div>
+          <div class="between"><span class="lbl">Parts · each one is bought on its own</span><span class="small">3 the GC sees · 5 order only · from LAV 1 assembly SPACEX</span></div>
+          <div class="partbox"><div class="rowf"><span class="field" style="flex:1">TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES</span><span class="b sm">↑</span><span class="b sm">↓</span></div>
+            <div class="rowf"><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span><span class="small">each fixture</span><span class="field" style="width:54px">1</span><span class="field" style="width:150px">National Wholesale ▾</span><span class="field empty" style="width:96px">lead: 3 wk</span></div>
+            <div class="rowf"><span class="field" style="width:140px">the fixture’s stage ▾</span></div></div>
+          <div class="partbox"><div class="rowf"><span class="field" style="flex:1">TOTO T25S51E#CP</span><span class="b sm">↑</span><span class="b sm">↓</span></div>
+            <div class="rowf"><span class="seg"><span class="on">GC sees it</span><span>Order only</span><span>Left out</span></span><span class="small">each fixture</span><span class="field" style="width:54px">1</span><span class="field" style="width:150px">National Wholesale ▾</span><span class="field empty" style="width:96px">lead: 3 wk</span></div>
+            <div class="rowf"><span class="field" style="width:140px">the fixture’s stage ▾</span></div></div>
+          <div class="partbox"><div class="rowf"><span class="field" style="flex:1">BRASSCRAFT/PLUMBSHOP PLS1-16AF 3/8 COMP X 1/2 FIP X 16 IN SS SUPPLY</span><span class="b sm">↑</span><span class="b sm">↓</span></div>
+            <div class="rowf"><span class="seg"><span>GC sees it</span><span class="ord">Order only</span><span>Left out</span></span><span class="small">each fixture</span><span class="field" style="width:54px">2</span><span class="field" style="width:150px">National Wholesale ▾</span><span class="field empty" style="width:96px">lead: 3 wk</span></div>
+            <div class="rowf"><span class="field" style="width:140px">the fixture’s stage ▾</span></div></div>
+          <span class="small" style="text-align:center">… five more parts, three lines each …</span>
+          <div><span class="b sm">+ Add a part</span></div>
+          <span class="lbl">Status</span>
+          <div class="pills"><span class="pill">As specified</span><span class="pill">Superseded</span><span class="pill">Equal</span><span class="pill">Alternate</span><span class="pill">Design change</span><span class="pill">Missing</span><span class="pill">Accessory</span></div>
+          <span class="lbl">Note · what the GC will read</span><div class="field empty">&nbsp;</div>
+          <span class="lbl">Lead time</span><span class="small">Set on each part above. The row reads the longest.</span>
+          <span class="lbl">Cut sheet</span><div class="rowf"><span class="field" style="width:230px">SPACEX BA-2 CORE &amp; SHELL.pdf ▾</span><span class="field" style="width:80px">30–47</span><span class="small">p.30–47</span></div>
+          <span class="lbl">Their answer</span><div class="between"><span class="small">Rejected · 1 rejected · 2 to go · structura · entered by Wendi</span><span class="b sm">Save and enter their answer…</span></div>
+          <div class="between"><span class="small">Proposed</span><span class="rowf"><span class="b">Cancel</span><span class="b grn">Save</span></span></div>
+        </div>
+      </div>
+      <div class="note bad">The title repeats the tag, and the tag box has no label. No box in a part has a heading. The grey “lead: 3 wk” is only an example, but it reads like a real lead time on all eight parts. The faucet the GC rejected looks like every other part. The row is Proposed and no status is lit. “Lead time” is a heading over a sentence that says it moved.</div>
+    </section>
+
+    <section class="panel after" data-panel="after">
+      <div class="bar">After <span>a drawing · the same fixture, all eight parts · about 940 px wide</span></div>
+      <div class="mock">
+        <div class="win" style="width:940px">
+          <div class="between"><h4>Edit LAV-1</h4><span class="small">from the takeoff: LAV 1 assembly SPACEX</span></div>
+          <div class="rowf"><span class="lbl">Tag</span><span class="field" style="width:200px">LAV-1</span><span class="small">the plan’s name for this fixture</span></div>
+          <div class="scroll"><div style="min-width:700px">
+            <div class="prow h"><span></span><span class="lbl">Part</span><span class="lbl">Each</span><span class="lbl">House</span><span class="lbl">Lead time</span><span class="lbl">Stage</span><span class="lbl">Shown to</span></div>
+            <div class="grp"><span class="strong">The GC sees these · 3</span><span class="small">in this order on the submittal</span></div>
+            <div class="prow"><span class="small">↕</span><div class="nm"><span class="field">TSL.MON.B.38.2.PS1.BK MONOLITH B SERIES</span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">GC ▾</span></div>
+            <div class="prow"><span class="small">↕</span><div class="nm"><span class="field">TOTO T25S51E#CP</span><span><span class="chip red">Rejected Oct 2</span> <span class="small">“TEL145” · this is the part to change</span></span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">GC ▾</span></div>
+            <div class="prow"><span class="small">↕</span><div class="nm"><span class="field">BOBRICK B-8236</span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">GC ▾</span></div>
+            <div class="grp"><span class="strong">Order only · 5</span><span class="small">bought for this fixture, never shown to the GC</span></div>
+            <div class="prow"><span></span><div class="nm"><span class="field">BRASSCRAFT/PLUMBSHOP PLS1-16AF 3/8 COMP X 1/2 FIP X 16 IN SS SUPPLY</span></div><span class="field">2</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">Order ▾</span></div>
+            <div class="prow"><span></span><div class="nm"><span class="field">HYDRAPRO H20008 CP BRASS COMMERCIAL LAVATORY GRID DRAIN WITH OVERFLOW</span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">Order ▾</span></div>
+            <div class="prow"><span></span><div class="nm"><span class="field">MAINLINE MLZ8700 1-1/4 CHROME PLATED 17 GAUGE SEMI CAST BRASS P-TRAP</span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">Order ▾</span></div>
+            <div class="prow"><span></span><div class="nm"><span class="field">BRASSCRAFT PLB113XP 1/2 NOM COMP STOP</span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">Order ▾</span></div>
+            <div class="prow"><span></span><div class="nm"><span class="field">MAINLINE ML90105 POLISHED CHROME FLANGE</span></div><span class="field">1</span><span class="field">National ▾</span><span class="field need">add</span><span class="field">fixture’s ▾</span><span class="field">Order ▾</span></div>
+          </div></div>
+          <div class="between"><span class="b sm">+ Add a part</span><span class="small">Shown to: GC · Order only · Left out. Changing it moves the part to that group.</span></div>
+          <div class="two">
+            <div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">What the GC reads</span>
+              <div class="pills"><span class="pill cur">Proposed</span><span class="pill">As specified</span><span class="pill">Superseded</span><span class="pill">Equal</span><span class="pill">Alternate</span><span class="pill">Design change</span><span class="pill">Missing</span><span class="pill">Accessory</span></div>
+              <div class="field empty">A note for the GC, if this row needs one</div></div>
+            <div style="display:flex;flex-direction:column;gap:6px"><span class="lbl">Cut sheet</span>
+              <div class="rowf"><span class="field" style="flex:1 1 150px">SPACEX BA-2 CORE &amp; SHELL.pdf ▾</span><span class="lbl">Pages</span><span class="field" style="width:70px">30–47</span></div></div>
+          </div>
+          <div class="between" style="border-top:1px solid var(--border);padding-top:8px"><span class="small"><span class="strong">Their answer:</span> 1 of 3 rejected · 2 with no answer yet · structura · typed in by Wendi · Oct 2</span><span class="rowf"><span class="b sm">Save and enter their answer…</span><span class="b">Cancel</span><span class="b grn">Save</span></span></div>
+        </div>
+        <div class="phones">
+          <figure><div class="phone"><span class="lbl">After, on a phone · two lines a part</span>
+            <span class="strong" style="font-size:12px">The GC sees these · 3</span>
+            <div class="card" style="padding:7px"><span class="field">TOTO T25S51E#CP</span><span><span class="chip red">Rejected Oct 2</span> <span class="small">“TEL145”</span></span><div class="rowf" style="gap:5px"><span class="field">1</span><span class="field">National ▾</span><span class="field need">add lead</span><span class="field">GC ▾</span></div></div>
+            <div class="card" style="padding:7px"><span class="field">BOBRICK B-8236</span><div class="rowf" style="gap:5px"><span class="field">1</span><span class="field">National ▾</span><span class="field need">add lead</span><span class="field">GC ▾</span></div></div>
+          </div><figcaption>The stage moves behind a tap on the part, since it is almost always “the fixture’s stage”.</figcaption></figure>
+        </div>
+      </div>
+      <div class="note good">One line per part, under headings. The answer to “what does the GC see” is the first group. The rejected faucet says so on its own line, which is why she opened the window. A lead time that is missing asks for one in amber. The status the row has is lit.</div>
+    </section>
+
+    <section class="best">
+      <h4>Is this the best we can do?</h4>
+      <div class="cols">
+        <div><h5>What the second look changed</h5><ol>
+          <li><b>The window gets wider.</b> The first draft put a six column table inside the same 760 pixels. That leaves about 220 pixels for a part name, and these names run to 70 letters. At 940 the name gets about 400 pixels and the columns still fit.</li>
+          <li><b>Parts are grouped by who sees them.</b> The first draft kept a control on every part and nothing else. Grouping answers the question the window’s own header asks, “3 the GC sees · 5 order only”, without counting switches. The up and down arrows only show where order matters, on the GC’s group.</li>
+          <li><b>The rejected part is marked where it sits.</b> Not in the first draft at all. Today the window says “1 rejected” at the bottom and leaves her to remember which.</li>
+          <li><b>An empty lead time says “add”.</b> Seeing the live window showed the grey “lead: 3 wk” example on every part. Step 8 says 43 parts have no lead time, and this is where they are typed.</li>
+          <li><b>Two leftovers go.</b> The Lead time heading over a sentence, and the stray “Proposed” beside Cancel.</li>
+        </ol></div>
+        <div><h5>Looked at and left out</h5><ul>
+          <li>Editing parts right in the rows table with no window. Eight parts with five fields each need the room.</li>
+          <li>Folding the order-only parts away. She changes them as often as the others, and one line each is cheap.</li>
+          <li>A “same house for all” shortcut. Step 8 already has “Tick the 43” for filling many parts at once.</li>
+        </ul></div>
+      </div>
+    </section>
+    <dl class="why"><dt>What changes</dt><dd>The title reads “Edit LAV-1”. The tag has a label. Parts are one line each under headings, in three groups. Proposed joins the status choices and is lit. A row added by hand opens titled “Add a row”, and Save waits until it has a tag or a part.</dd><dt>Size</dt><dd>Medium. One window and the parts list inside it.</dd><dt>What it costs</dt><dd>“Shown to” is a small menu instead of three always-visible choices, so changing it is two clicks, not one.</dd></dl>
+  </div>
+  <div class="dlg-foot"><span class="count"></span><div class="nav"><button type="button" data-prev>← Previous</button><button type="button" data-next>Next →</button></div></div>
+</div></dialog>
+
+<script>
+  (function () {
+    var ids = ['r10', 'r11', 'r12'];
+    function setView(d, v) {
+      d.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-view') === v ? 'true' : 'false'); });
+      d.querySelectorAll('[data-panel]').forEach(function (p) { p.hidden = v !== 'both' && p.getAttribute('data-panel') !== v; });
+    }
+    function show(id) {
+      ids.forEach(function (x) { var o = document.getElementById(x); if (o.open) o.close(); });
+      var d = document.getElementById(id);
+      d.querySelector('.count').textContent = (ids.indexOf(id) + 1) + ' of ' + ids.length;
+      if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', '');
+      d.querySelector('.dlg-body').scrollTop = 0;
+    }
+    document.querySelectorAll('[data-open]').forEach(function (b) {
+      b.addEventListener('click', function () { show(b.getAttribute('data-open')); });
+    });
+    ids.forEach(function (id, i) {
+      var d = document.getElementById(id);
+      d.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { setView(d, b.getAttribute('data-view')); }); });
+      d.querySelector('[data-close]').addEventListener('click', function () { d.close(); });
+      d.querySelector('[data-prev]').addEventListener('click', function () { show(ids[(i + ids.length - 1) % ids.length]); });
+      d.querySelector('[data-next]').addEventListener('click', function () { show(ids[(i + 1) % ids.length]); });
+      d.addEventListener('click', function (e) { if (e.target === d) d.close(); });
+      d.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight') show(ids[(i + 1) % ids.length]);
+        if (e.key === 'ArrowLeft') show(ids[(i + ids.length - 1) % ids.length]);
+      });
+    });
+    var h = (location.hash || '').replace('#', '');
+    if (ids.indexOf(h) >= 0) show(h);
+  })();
+</script>

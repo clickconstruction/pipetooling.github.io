@@ -61,6 +61,8 @@ function row(over: Partial<TeamSummaryBreakdown> & { name: string }): TeamSummar
     vehicleArrangement: over.vehicleArrangement ?? 'none',
     vehicleRate: over.vehicleRate ?? null,
     vehicleTruckName: over.vehicleTruckName ?? null,
+    vehicleFixedCost: over.vehicleFixedCost ?? 0,
+    vehicleFuelOffJobs: over.vehicleFuelOffJobs ?? 0,
     vehicleCost: over.vehicleCost ?? 0,
     allocatedLabor: over.allocatedLabor ?? Math.max(0, gross - net - (over.allocatedParts ?? 0)),
     overheadSessions: [],
@@ -286,32 +288,57 @@ describe('cost-line tags (v2.2725)', () => {
   })
 })
 
-describe('wheels on labor (v2.2735)', () => {
-  it('draws the vehicle deal as a drawer line, a verdict segment and a bar chip', () => {
-    const company = row({ name: 'Mal', totalHours: 176, fieldHours: 165.5, gross: 49063, net: 23326, overheadLaborCost: -604, overheadBurden: -828, vehicleArrangement: 'company', vehicleRate: 8.32, vehicleTruckName: '2019 Ford F-150', vehicleCost: -(165.5 * 8.32), profitAfterOverhead: 23326 - 604 - 828 - 165.5 * 8.32 })
-    const own = row({ name: 'Mic', totalHours: 148, fieldHours: 148, gross: 20000, net: 12000, overheadBurden: -740, vehicleArrangement: 'own_fuel_paid', vehicleRate: 6.1, vehicleCost: -(148 * 6.1), profitAfterOverhead: 12000 - 740 - 148 * 6.1 })
-    const none = row({ name: 'Tau', totalHours: 85, gross: 687, net: 367, overheadLaborCost: -1367, overheadBurden: -19 })
+describe('wheels on labor (v2.2735; v2.4653 fuel stays on the jobs)', () => {
+  // Mal: company truck, $2.24 fixed per field hour over 165.5 h, $48.10 of fuel on no job.
+  const fixedMal = -(165.5 * 2.24)
+  const company = row({ name: 'Mal', totalHours: 176, fieldHours: 165.5, gross: 49063, net: 23326, overheadLaborCost: -604, overheadBurden: -828, vehicleArrangement: 'company', vehicleRate: 2.24, vehicleTruckName: '2019 Ford F-150', vehicleFixedCost: fixedMal, vehicleFuelOffJobs: -48.1, vehicleCost: fixedMal - 48.1, profitAfterOverhead: 23326 - 604 - 828 + fixedMal - 48.1 })
+  // Mic: own vehicle, no fixed rate, $88 of fuel on no job.
+  const own = row({ name: 'Mic', totalHours: 148, fieldHours: 148, gross: 20000, net: 12000, overheadBurden: -740, vehicleArrangement: 'own_fuel_paid', vehicleRate: 0, vehicleFuelOffJobs: -88, vehicleCost: -88, profitAfterOverhead: 12000 - 740 - 88 })
+  const none = row({ name: 'Tau', totalHours: 85, gross: 687, net: 367, overheadLaborCost: -1367, overheadBurden: -19 })
+
+  it('draws the vehicle line as fixed costs plus fuel on no job, a verdict segment and a bar chip', () => {
     const v = buildReviewVerdict([company, own, none], null)
-    expect(v.wheels.company).toBeCloseTo(165.5 * 8.32)
-    expect(v.wheels.own).toBeCloseTo(148 * 6.1)
+    expect(v.wheels.company).toBeCloseTo(-fixedMal + 48.1)
+    expect(v.wheels.own).toBeCloseTo(88)
     expect(v.segments.map((s) => s.key)).toEqual(['costs', 'overheadLabor', 'burden', 'wheelsCompany', 'wheelsOwn', 'profit'])
+    expect(v.segments.find((s) => s.key === 'wheelsOwn')?.label).toBe('Own-vehicle fuel on no job')
     expect(v.segments.reduce((s, seg) => s + seg.share, 0)).toBeCloseTo(1, 5)
-    const m = buildReviewPersonMath(company, { partsRate: 5 })
-    const wheels = m.lines.find((l) => l.key === 'wheels')!
+    const wheels = buildReviewPersonMath(company, { partsRate: 5 }).lines.find((l) => l.key === 'wheels')!
     expect(wheels.label).toBe('− 🚚 2019 Ford F-150')
-    expect(wheels.usd).toBeCloseTo(-1376.96)
-    expect(wheels.why).toContain('165.5 field h × $8.32')
+    expect(wheels.usd).toBeCloseTo(fixedMal - 48.1)
+    expect(wheels.why).toBe('165.5 field h × $2.24 fixed + $48.10 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
     const own_ = buildReviewPersonMath(own, { partsRate: 5 }).lines.find((l) => l.key === 'wheels')!
-    expect(own_.label).toBe('− 🚗 Own-vehicle fuel')
+    expect(own_.label).toBe('− 🚗 Own-vehicle fuel on no job')
+    expect(own_.why).toBe('$88.00 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
     expect(buildReviewPersonMath(none, { partsRate: 5 }).lines.some((l) => l.key === 'wheels')).toBe(false)
     const bars = buildReviewRankedBars([company, own, none], 'profit').bars
-    expect(bars.find((b) => b.name === 'Mal')?.vehicle).toEqual({ arrangement: 'company', rate: 8.32, truckName: '2019 Ford F-150' })
+    expect(bars.find((b) => b.name === 'Mal')?.vehicle).toEqual({ arrangement: 'company', rate: 2.24, truckName: '2019 Ford F-150' })
     expect(bars.find((b) => b.name === 'Tau')?.vehicle).toBeNull()
   })
-  it('still writes a $0 line when the deal has no rate yet', () => {
-    const r = row({ name: 'New', totalHours: 40, fieldHours: 40, gross: 1000, net: 500, overheadBurden: -200, vehicleArrangement: 'company', vehicleRate: null, vehicleCost: 0 })
+
+  it('a company truck with no fixed costs on file says so, and charges only the fuel on no job', () => {
+    const r = row({ name: 'New', totalHours: 40, fieldHours: 40, gross: 1000, net: 500, overheadBurden: -200, vehicleArrangement: 'company', vehicleRate: 0, vehicleFuelOffJobs: -12, vehicleCost: -12 })
     const l = buildReviewPersonMath(r, { partsRate: 5 }).lines.find((x) => x.key === 'wheels')!
-    expect(l.usd).toBe(0)
-    expect(l.why).toContain('no rate yet')
+    expect(l.usd).toBe(-12)
+    expect(l.why).toBe('no insurance, registration or service on file for the truck + $12.00 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
+  })
+
+  it('an own vehicle with a manual fixed rate shows both parts', () => {
+    const r = row({ name: 'Ann', totalHours: 20, fieldHours: 20, gross: 1000, net: 500, overheadBurden: -100, vehicleArrangement: 'own_fuel_paid', vehicleRate: 1.5, vehicleFixedCost: -30, vehicleFuelOffJobs: -5, vehicleCost: -35 })
+    const l = buildReviewPersonMath(r, { partsRate: 5 }).lines.find((x) => x.key === 'wheels')!
+    expect(l.why).toBe('20.0 field h × $1.50 fixed + $5.00 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
+  })
+
+  it('a company deal with no rate yet points at Wheels, not at missing fixed costs', () => {
+    const r = row({ name: 'Lee', totalHours: 10, fieldHours: 0, gross: 0, net: 0, vehicleArrangement: 'company', vehicleRate: null, vehicleFuelOffJobs: -0, vehicleCost: -0 })
+    const l = buildReviewPersonMath(r, { partsRate: 5 }).lines.find((x) => x.key === 'wheels')!
+    expect(l.why).toBe('no fixed rate yet, see People → Vehicles → Wheels + $0.00 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
+  })
+
+  it('a refund on no job that outweighs the fuel reads as money back, never as $-', () => {
+    const r = row({ name: 'Ann', totalHours: 20, fieldHours: 20, gross: 1000, net: 500, overheadBurden: -100, vehicleArrangement: 'own_fuel_paid', vehicleRate: 1.5, vehicleFixedCost: -30, vehicleFuelOffJobs: 12.35, vehicleCost: -17.65 })
+    const l = buildReviewPersonMath(r, { partsRate: 5 }).lines.find((x) => x.key === 'wheels')!
+    expect(l.why).toBe('20.0 field h × $1.50 fixed, and a $12.35 fuel refund on no job in the period comes back; their fuel on jobs is in the ⛽ line above')
+    expect(l.usd).toBeCloseTo(-17.65)
   })
 })

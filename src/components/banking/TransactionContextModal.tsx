@@ -213,14 +213,14 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: '1rem', boxSizing: 'border-box' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="tx-context-title"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 760, width: '100%', maxHeight: 'min(90vh, 720px)', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 760, width: '100%', maxHeight: 'min(90vh, 720px, 100%)', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', boxSizing: 'border-box' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <div>

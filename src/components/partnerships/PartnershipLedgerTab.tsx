@@ -737,7 +737,7 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
           onClick={(e) => {
             if (e.target === e.currentTarget) setInfoCard(null)
           }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
         >
           <div
             role="dialog"

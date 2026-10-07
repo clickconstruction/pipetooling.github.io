@@ -23,6 +23,8 @@ export function buildPhysicalInvoiceDetailFromJob(
     payments: details.payments,
     // v2.3592: every bill on the job, so an unlinked payment lands on the oldest bill that needs it.
     invoices: details.invoices.map((i) => ({ id: i.id, amount: i.amount, status: i.status, sequence_order: i.sequence_order, billed_at: i.billed_at })),
+    // v2.4534: the job's total, so money that paid work on no bill is not printed on this one.
+    jobTotal: details.revenue ?? null,
     billingKind,
     invoiceId,
     invoiceSequenceOrder: inv?.sequence_order ?? null,

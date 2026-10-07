@@ -79,7 +79,7 @@ export function ContractsTabHelpModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
     >
@@ -93,7 +93,7 @@ export function ContractsTabHelpModal({
           padding: '1.1rem 1.25rem',
           maxWidth: 460,
           width: '100%',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflowY: 'auto',
         }}
         onClick={(e) => e.stopPropagation()}

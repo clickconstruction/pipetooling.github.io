@@ -8,6 +8,7 @@
  * asGc=true plus the owner's name for the statement's AS GC tag.
  */
 
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { jobCarriesOpenBills, jobPrintsShellRemainder } from './portalBillMembership.ts'
 import { attributeJobPayments } from './paymentAttribution.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
@@ -88,6 +89,7 @@ export type PortalBillOut = {
   serviceTag: string | null
   jobAddress: string | null
   amount: number
+  /** The day `billed_at` (an instant) falls on in the company's zone. */
   billedOn: string | null
   payUrl: string | null
   checkRef: string
@@ -158,8 +160,25 @@ export function portalPaymentMethod(p: Pick<PortalPaymentRow, 'payment_type' | '
   return type || (ref ? `#${ref}` : deposit ? 'bank deposit' : 'Payment')
 }
 
-/** Per-bill paid totals and payment rows under the oldest-bill-first rule (v2.3592), grouped by job. */
-function attributePortalPayments(invoices: readonly PortalInvoiceRow[], payments: readonly PortalPaymentRow[]): {
+/** A sent bill of one of the viewer's jobs, as the attribution kernel reads it. */
+export type PortalSentBillRow = { id: string; job_id: string; amount: number | string | null; status: string | null; sequence_order?: number | null; billed_at?: string | null }
+
+/**
+ * Per-bill paid totals and payment rows under the one rule (`paymentAttribution.ts`), grouped by job.
+ *
+ * `invoices` is the OPEN bills the page lists. Which bill an unlinked payment pays is decided
+ * across every sent bill of the job, paid ones included, so `sentBills` (v2.4534) is that list:
+ * a paid bill takes its unlinked money before an open one does, as it does in the office. With
+ * the whole list in hand the job's total goes to the kernel too, so money that paid the part of
+ * the job on no bill is on no bill here either. A job with no `sentBills` rows (the read failed)
+ * falls back to the open bills alone and no total, the reading before v2.4534.
+ */
+function attributePortalPayments(
+  invoices: readonly PortalInvoiceRow[],
+  payments: readonly PortalPaymentRow[],
+  jobs: readonly PortalJobRow[] = [],
+  sentBills: readonly PortalSentBillRow[] | null = null,
+): {
   paymentsByInvoice: Map<string, number>
   paymentRowsByInvoice: Map<string, PortalBillPaymentOut[]>
 } {
@@ -174,8 +193,16 @@ function attributePortalPayments(invoices: readonly PortalInvoiceRow[], payments
     if (!jobId) continue
     paymentsByJob.set(jobId, [...(paymentsByJob.get(jobId) ?? []), p])
   }
+  const sentByJob = new Map<string, PortalSentBillRow[]>()
+  for (const b of sentBills ?? []) sentByJob.set(b.job_id, [...(sentByJob.get(b.job_id) ?? []), b])
+  const totalByJob = new Map(jobs.map((j) => [j.id, j.revenue]))
   for (const [jobId, jobInvoices] of invoicesByJob) {
-    const r = attributeJobPayments(jobInvoices, paymentsByJob.get(jobId) ?? [])
+    const sent = sentByJob.get(jobId) ?? []
+    // The whole list: every sent bill, plus any listed bill the sent read did not carry.
+    const listedOnly = jobInvoices.filter((i) => !sent.some((b) => b.id === i.id))
+    const r = sent.length > 0
+      ? attributeJobPayments([...sent, ...listedOnly], paymentsByJob.get(jobId) ?? [], totalByJob.get(jobId))
+      : attributeJobPayments(jobInvoices, paymentsByJob.get(jobId) ?? [])
     for (const inv of jobInvoices) {
       const b = r.byBill.get(inv.id)
       if (!b) continue
@@ -209,8 +236,10 @@ export function buildPortalBills(args: {
   markGcRows: boolean
   /** customer_id → display name, for AS GC owner labels. */
   ownerNames?: Record<string, string>
+  /** Every sent bill (billed or paid) on these jobs, for the payment rule (v2.4534). */
+  sentBills?: readonly PortalSentBillRow[] | null
 }): PortalBillOut[] {
-  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {} } = args
+  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {}, sentBills = null } = args
 
   const openBillJobs = jobs.filter((j) => jobCarriesOpenBills(j.status))
   const jobById = new Map(openBillJobs.map((j) => [j.id, j]))
@@ -218,7 +247,7 @@ export function buildPortalBills(args: {
 
   // v2.3592: which bill an unlinked payment pays — oldest bill first, per job, the same kernel the
   // office's Bill tab, the bill's paper and the demand letter read. A bill shows only its share.
-  const { paymentsByInvoice, paymentRowsByInvoice } = attributePortalPayments(invoices, payments)
+  const { paymentsByInvoice, paymentRowsByInvoice } = attributePortalPayments(invoices, payments, jobs, sentBills)
 
   const asGcFields = (job: PortalJobRow): Pick<PortalBillOut, 'asGc' | 'ownerName'> => {
     const asGc = markGcRows && jobIsAsGc(job, viewerCustomerId)
@@ -245,7 +274,7 @@ export function buildPortalBills(args: {
       serviceTag: jobTradeTag(job),
       jobAddress: (job.job_address ?? '').trim() || null,
       amount: open,
-      billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
+      billedOn: inv.billed_at ? todayYmdInAppTz(new Date(inv.billed_at)) : null,
       payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
       checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
       ...asGcFields(job),
@@ -315,12 +344,14 @@ export function buildPortalSharedBills(args: {
   viewerCustomerId: string
   /** customer_id → display name for every party on these jobs (owners and GCs). */
   partyNames?: Record<string, string>
+  /** Every sent bill (billed or paid) on these jobs, for the payment rule (v2.4534). */
+  sentBills?: readonly PortalSentBillRow[] | null
 }): PortalSharedBillOut[] {
-  const { jobs, invoices, payments, viewerCustomerId, partyNames = {} } = args
+  const { jobs, invoices, payments, viewerCustomerId, partyNames = {}, sentBills = null } = args
   const openBillJobs = jobs.filter((j) => jobCarriesOpenBills(j.status))
   const jobById = new Map(openBillJobs.map((j) => [j.id, j]))
   // v2.3592: the shared card reads the same oldest-bill-first share as the owed ledger.
-  const { paymentsByInvoice } = attributePortalPayments(invoices, payments)
+  const { paymentsByInvoice } = attributePortalPayments(invoices, payments, jobs, sentBills)
   const billedToFor = (job: PortalJobRow, inv: PortalInvoiceRow | null): string => {
     const party = effectiveInvoiceParty(job, inv)
     if (party === 'other') return (inv?.bill_to_name ?? '').trim() || 'someone else'
@@ -351,7 +382,7 @@ export function buildPortalSharedBills(args: {
       amount: open,
       billedAmount: round2(Number(inv.amount ?? 0)),
       totalPaid: paid,
-      billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
+      billedOn: inv.billed_at ? todayYmdInAppTz(new Date(inv.billed_at)) : null,
       billedTo: billedToFor(job, inv),
       viewerRole: viewerRoleFor(job),
     })

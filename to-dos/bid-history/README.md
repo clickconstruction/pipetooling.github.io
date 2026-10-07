@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: planned 2026-09-30 — the ask, the read of Wendi's bid, the design and its three "is this the best we can do?" passes, the mock-up · nothing built · PR 1 (capture) is safe to ship on its own and should go first, because history starts the day it deploys; PR 0 waits a day for Wendi's answer
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751 · left: PR 0b, PR 0c, and PRs 2–5 (the History view, Put back) after the owner's calls
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -13,12 +13,15 @@ summary: >
   from CountTooling"); and Put back, per value and per removed row, so an estimator recovers her
   own work without a dev. Three small fixes stop the losses at the source and can ship first.
 next: >
-  The owner's four calls (who sees whose edits; how long to keep; may a non-dev put a row back;
-  which bid columns count), then PR 1 the capture migration — it is safe without any call and
-  every day it waits is a day with no history. PR 0's three loss fixes are independent and can go
-  in any order, before or after.
+  The owner answers the four calls (who sees whose edits; how long to keep — three years is
+  planned; may a non-dev put a row back — planned yes, for whoever can edit the bid; which bid
+  columns the pane shows by default) and one raised on 2026-10-06: when a bid is adopted into a
+  package its history stays under the old bid id — should the pane follow the adopt and show both?
+  Then PR 2 (the read-only pane), PR 3 (the pill and the under-cell lines), PR 4 (Put back), PR 5.
+  Meanwhile PR 0b (the Labor sync keeps typed hours through a rename) and PR 0c (archive coverage
+  for three tables) need no answer.
 size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
-blocker: none for PR 0 and PR 1; the owner's calls before PR 2–4 are shown to anyone.
+blocker: PRs 2–4 wait on the owner's four calls (and the adopt question). None for 0b and 0c.
 ---
 
 # Bid history: every value anyone entered on a bid, and a way to put one back
@@ -42,7 +45,8 @@ could look like?"
 - **Deletes are kept, for a dev, for 90 days.** `deleted_records_archive` (a BEFORE DELETE trigger
   over the bid's cascade closure) and Settings → Data & recovery → *Recently deleted*, which puts a
   whole bundle back, all or nothing. Three bid tables are not covered: `bid_count_row_custom_costs`
-  (which also has no FK to its count row, so its rows are orphaned by a delete), `bid_takeoff_stage_splits`,
+  (its count-row key came with v2.4413 on 2026-10-02, so a removed count row now takes its quoted
+  cost with it; the archive still does not keep it), `bid_takeoff_stage_splits`,
   `bid_submittal_takeoff_choices`.
 - **Two things called "history" on the tabs are not this bid's past**: `bid_pricing_history` is the
   Pricing tab's win/loss calibration strip from other bids; `takeoff_fixture_history` is "what this
@@ -50,8 +54,9 @@ could look like?"
 - **Undo exists twice, one level each**: the ten-second toast after a counts import
   (`countsImportUndo.ts`) and the margin brush's Undo sweep, both in memory.
 - **Two ways work vanishes without any delete being pressed**:
-  - the Cover Letter's per-bid Inclusions, Exclusions and Terms boxes are React state only
-    (`Bids.tsx` ~556, `BidsCoverLetterTab.tsx` ~2128) — typed, shown, never saved; a reload empties them;
+  - the Cover Letter's per-bid Inclusions, Exclusions and Terms boxes were React state only
+    (`Bids.tsx` ~556, `BidsCoverLetterTab.tsx` ~2128) — typed, shown, never saved; a reload emptied them
+    (fixed in v2.4737, PR 0a: three columns on `bids`);
   - the Labor tab's load sync (`useBidPricingEngine.ts` ~685) deletes every hours row whose fixture
     name no longer matches a count row and mints book defaults in its place, so a re-import that
     renames fixtures (the `[Group]` fix of v2.4188 changes names) wipes typed hours.
@@ -74,26 +79,32 @@ Bids page. Off, the tabs are as today. On: every editable number shows its past 
 text; a side pane lists everything that happened on the bid, newest first, grouped into actions; any
 old value or removed row has **Put back**.
 
-**Capture — one table, one trigger, no client.** `bid_changes`: `bid_id`, `table_name`, `record_id`,
-`count_row_id` (when the row hangs off one), `op` (insert · update · delete), `changed` (the columns
-that changed), `old` and `new` (those columns only, jsonb), `label` (the row's human name, computed
-at write time: the count row's fixture, the part's name, the labor row's fixture, the bid column's
-word — so the reader never joins back to a row that may be gone), `changed_by` (`auth.uid()`; null
-for a robot or the system), `changed_at`, `action` (the request's tag, see captions), `by_app`
-(true when the write was the app's own doing, not a person's press). One generic
-`AFTER INSERT OR UPDATE OR DELETE` trigger, `record_bid_change()`, attached to the tables that hold
-what people type: `bids` (a chosen column list: value, dates, notes, outcome, the selected books,
-the alternate tags — not `updated_at` and not the robot columns), `bids_count_rows`,
+**Capture — one table, one trigger, no client.** `bid_changes`: `bid_id`, `bid_version_id` (the
+version the row belongs to, so the reader's "an earlier Lav-1" fallback stays inside one version),
+`table_name`, `record_id`, `count_row_id` (when the row hangs off one; a count row's own id),
+`op` (insert · update · delete), `changed` (the columns that changed), `old_values` and
+`new_values` (those columns only, jsonb), `label` (the row's human name, computed at write time:
+the count row's fixture, the part's name, the labor row's fixture; none for a `bids` row, since one
+row can carry several columns and the reader words each — so the reader never joins back to a row
+that may be gone), `changed_by` (`auth.uid()`; null for a robot or the system), `changed_at`,
+`action` (the request's tag, see captions), `by_app` (true when the write was the app's own doing,
+not a person's press). One generic `AFTER INSERT OR UPDATE OR DELETE` trigger,
+`record_bid_change()`, attached to the seventeen tables that hold what people type: `bids` (48
+columns: everything Edit Bid saves and the Pricing, Cover Letter and SOV picks — not `updated_at`,
+the stamps or the robot columns — under `UPDATE OF`), `bids_count_rows`,
 `bid_count_row_custom_prices`, `bid_count_row_custom_costs`, `bid_pricing_assignments`,
-`bids_takeoff_rough_part_lines`, `bids_takeoff_template_mappings`, `bid_takeoff_stage_splits`,
-`cost_estimates`, `cost_estimate_labor_rows` and the five direct-cost row tables, `bid_sov_lines`,
-`bid_payment_schedule_rows`, `bid_versions`. It is the contract-text history's pattern
+`bids_takeoff_rough_part_lines`, `bid_takeoff_stage_splits`, `cost_estimates`,
+`cost_estimate_labor_rows` and the five direct-cost row tables, `bid_sov_lines`,
+`bid_payment_schedule_rows`, `bid_versions`. Not `bids_takeoff_template_mappings`: it is By
+Stage's, unwritten since v2.4396. It is the contract-text history's pattern
 (`20260928050129`): SECURITY DEFINER, writes only when something actually changed
 (`IS DISTINCT FROM`), swallows its own errors so a save can never fail. Deletes are recorded too
 (old values only), so history outlives the archive's 90-day purge; the archive stays the thing a
-restore reads. Volume is small — about 500 bid-table writes a week across every bid — so keep three
-years, purged by `pg_cron` like the archive. RLS: read for whoever can open the bid (office roles,
-and an estimator within her service types, the same rule as `bidsTabOpenFor`); no client writes.
+restore reads. The volume was guessed at about 500 bid-table writes a week and never checked
+(Wendi's bid alone had 47 deletes in one day, and a copy writes a row per copied row), so plan for
+hundreds of thousands of rows over three years, purged by `pg_cron` like the archive. RLS: read for
+whoever can read the bid under their own `bids` policies (an estimator every bid, a primary only
+theirs), and a dev after it is deleted; no client writes.
 
 **Actions, not rows.** Each REST call is its own transaction and the import inserts one row at a
 time, so a transaction id cannot group a burst. The reader groups instead: same person, same bid,
@@ -175,11 +186,11 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 
 | PR | What | Size |
 |---|---|---|
-| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid | S |
+| 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid — **live v2.4737** (three columns on `bids`, in the ledger's list) | S |
 | 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
-| 0c | `bid_count_row_custom_costs` FK + archive coverage for three tables | XS (migration) |
-| 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` | S — ship first |
-| 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger | S — with or right after PR 1 |
+| 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) | XS (migration) |
+| 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
+| 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **live v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left for PR 2's reader) | S |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
 | 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) | M |
 | 4 | Put back: `put_back_bid_change` for a value, `restore_deleted_record` for a row | S–M |
@@ -226,5 +237,22 @@ waits a day for her answer, while PR 1 ships regardless.
 
 ## Where it stands
 
-Planned 2026-09-30. Nothing built. Owner's calls open (front matter). PR 1 needs no call and no
-answer from Wendi; PR 0 waits a day for hers, so the right loss gets fixed.
+Planned 2026-09-30. **PR 1 built 2026-10-05 as v2.4598**, directed and reviewed by PUNCHLIST: two
+migrations (`20261007040000_bid_changes`, then `20261007041000_bid_changes_triggers`, the
+seventeen triggers alone so their write locks are held for nothing else), the CI test
+`bidChangesCapture.test.ts`, and the full-schema bed `npm run test:pg:bid-changes`. It ran on a
+scratch Postgres 15 with stub tables (33 assertions; the bed itself needs docker and has not run, and the PR merges only after it runs green);
+not pushed. What the build settled, beyond the decision above (the migration docs hold the detail):
+
+- A row trigger, not statement triggers: measured, the statement design still passes 64
+  subtransactions on a copy and is 3–7 times slower per single-row save; concurrent reads showed
+  no cost from the subtransactions.
+- A child removed with its parent takes the parent's fixture, version or bid from the delete
+  archive's snapshot; a row is never written without its bid; a deleted bid writes one row.
+- `bid_id` has no foreign key: a deleted bid's history stays for a dev and returns if the bid is
+  put back.
+- Not captured yet, and typed on a bid: `bid_sov_stage_overrides` (keyed `(bid_id, stage)`, no
+  `id`) and the entries of a bid's own price book. PR 1b also needs a transaction-local mark for
+  the app's writes made inside a person's request (the labor minted on send, the copies).
+
+Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right loss gets fixed.

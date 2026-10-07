@@ -32,6 +32,7 @@ import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActiv
 import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 import { telHrefFor } from '../lib/phoneContact'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 /**
  * Customer Hub — the dedicated page per customer at /customers/:id.
@@ -214,7 +215,8 @@ export default function CustomerDetail() {
   const address = (data?.customer.address ?? '').trim()
 
   const sinceLabel = useMemo(() => {
-    const dm = (data?.customer.date_met ?? data?.customer.created_at ?? '').slice(0, 10)
+    // date_met is a `date`; created_at is an instant, read as its day in the company calendar.
+    const dm = data?.customer.date_met ? data.customer.date_met.slice(0, 10) : calendarYmdInAppTzFromIso(data?.customer.created_at ?? '')
     if (!dm) return null
     const d = new Date(`${dm}T12:00:00Z`)
     if (Number.isNaN(d.getTime())) return null

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds, fetchAllRowsChunkedIn } from '../lib/supabasePaging'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type BilledLienClockJob = {
   id: string
@@ -99,7 +100,8 @@ export function useBilledLienClocks(jobs: ReadonlyArray<BilledLienClockJob> | nu
               noticedByJob.set(r.job_id, set)
               continue
             }
-            const when = (r.filed_at ?? r.created_at ?? '').slice(0, 10)
+            // filed_at is a `date`; a row without one dates from the day it was made, in the company calendar.
+            const when = r.filed_at ? r.filed_at.slice(0, 10) : calendarYmdInAppTzFromIso(r.created_at ?? '')
             if (!when) continue
             if (r.kind === 'affidavit') {
               const prev = filedByJob.get(r.job_id)

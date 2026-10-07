@@ -12,6 +12,7 @@ import {
   type PhoneDockPageKey,
 } from '../../lib/phoneDock'
 import { PhoneDockGlyph } from './PhoneDockGlyph'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 export type PhoneDockModeRow = {
   key: string
@@ -39,7 +40,7 @@ export type PhoneDockMoreSheetProps = {
 const SUGGESTION_DAYS = 90
 
 async function loadOwnMinutes(userId: string): Promise<ActivityMinutesRow[]> {
-  const since = new Date(Date.now() - SUGGESTION_DAYS * 86400_000).toISOString().slice(0, 10)
+  const since = ymdAddDays(todayYmdInAppTz(), -SUGGESTION_DAYS)
   const { data, error } = await supabase
     .from('user_app_activity_page_daily')
     .select('page, active_seconds')
@@ -195,6 +196,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
         alignItems: 'flex-end',
         justifyContent: 'center',
         zIndex: 1004,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
     >
       <div
@@ -208,7 +210,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           borderRadius: '14px 14px 0 0',
           width: '100%',
           maxWidth: 640,
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: '0.6rem 0.85rem calc(0.85rem + env(safe-area-inset-bottom))',

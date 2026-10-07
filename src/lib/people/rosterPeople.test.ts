@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPayRosterIndex, isPayRosterRow, payRosterNames, type RosterPerson } from './rosterPeople'
+import { archivedRosterNames, buildPayRosterIndex, isPayRosterRow, payRosterNames, type RosterPerson } from './rosterPeople'
 
 function row(over: Partial<RosterPerson> & { pay_name: string }): RosterPerson {
   return {
@@ -79,5 +79,44 @@ describe('pay roster membership from the roster view', () => {
         { person_name: 'Mario Lozano' },
       ]),
     ).toEqual(['Ana Ruiz', 'Mario Lozano'])
+  })
+})
+
+describe('archived names from the roster view (punch list #29)', () => {
+  const archived = { is_archived: true, is_pay_roster: false, is_active_roster: false }
+
+  it('an archived account answers to its pay, account and roster names, trimmed', () => {
+    const rows = [
+      row({ pay_name: 'Dana Whitfield ', account_name: 'Dana Whitfield', roster_name: 'Dana W.', user_archived_at: '2026-09-01', ...archived }),
+      row({ pay_name: 'Sam Ortiz', account_name: 'Sam Ortiz' }),
+    ]
+    expect([...archivedRosterNames(rows)].sort()).toEqual(['Dana W.', 'Dana Whitfield'])
+  })
+
+  it('an archived roster-only person is in the set too (the RPC knew accounts only)', () => {
+    const rows = [row({ pay_name: 'Old Sub Crew', roster_name: 'Old Sub Crew', has_login: false, account_kind: 'external', person_archived_at: '2026-08-01', ...archived })]
+    expect([...archivedRosterNames(rows)]).toEqual(['Old Sub Crew'])
+  })
+
+  it('a living person never hides behind an archived namesake, whatever the case', () => {
+    const rows = [
+      row({ pay_name: 'Jordan Lee', account_name: 'Jordan Lee', user_archived_at: '2025-12-01', ...archived }),
+      row({ pay_name: 'jordan lee', roster_name: 'jordan lee', has_login: false, account_kind: 'external' }),
+      row({ pay_name: 'Pat Moore', account_name: 'Pat Moore', user_archived_at: '2026-01-01', ...archived }),
+    ]
+    expect([...archivedRosterNames(rows)]).toEqual(['Pat Moore'])
+  })
+
+  it('a twin or a sample that is not archived is not in the set (the pay roster drops those)', () => {
+    const rows = [
+      row({ pay_name: 'Twin Estimator 1', account_kind: 'twin', is_digital_twin: true, is_pay_roster: false, is_active_roster: false }),
+      row({ pay_name: 'Sample helper', account_kind: 'sample', is_sample: true, is_pay_roster: false, is_active_roster: false }),
+    ]
+    expect(archivedRosterNames(rows).size).toBe(0)
+  })
+
+  it('blank names are not names; no rows, no set', () => {
+    expect(archivedRosterNames([row({ pay_name: '  ', account_name: '', roster_name: null, ...archived })]).size).toBe(0)
+    expect(archivedRosterNames([]).size).toBe(0)
   })
 })

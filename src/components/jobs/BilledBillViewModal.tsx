@@ -14,7 +14,7 @@ export default function BilledBillViewModal({
   onAfterStripeDetailsLoaded,
   onAfterOobUnwindSuccess,
   onAfterVoidStripeInvoiceSuccess,
-  overlayZIndex = 60,
+  overlayZIndex = 760,
 }: {
   invoice: InvoiceWithJobForBillView | null
   onClose: () => void

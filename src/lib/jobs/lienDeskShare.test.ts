@@ -4,7 +4,7 @@ import type { LienCalendarJob } from './lienCalendar'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
-import { buildLienStatusPayload, lienShareHouseJobs, lienShareJobName, lienShareScopeFacts, lienShareScopeOptions } from './lienDeskShare'
+import { buildLienStatusPayload, lienShareHouseJobs, lienShareJobName, lienShareScopeFacts, lienShareScopeOptions, lienStatusJobFor } from './lienDeskShare'
 import { buildLienSupplierJobs } from './lienJobSuppliers'
 import { lienStatusText } from '../../../supabase/functions/_shared/lienDeskStatus'
 
@@ -156,7 +156,7 @@ describe('one GC', () => {
   })
 })
 
-describe('lienShareScopeOptions — the What to send menu', () => {
+describe('lienShareScopeOptions — the Which liens menu', () => {
   it('the whole desk first, then each GC with a notice, most money first', () => {
     const opts = lienShareScopeOptions(data)
     expect(opts.map((o) => o.name)).toEqual(['Everything on the desk', 'Southern Post Construction', 'RMC- Dudley Mason', 'Loberg Contracting', 'Michael Holub'])
@@ -226,5 +226,18 @@ describe('the houses choice — lien jobs where a supply house is also owed (v2.
     expect(lienStatusText(p)).toContain('2 lien jobs still owe a supply house.')
     // Every other choice leaves the list out.
     expect(buildLienStatusPayload({ data, calendarRows, todayYmd: TODAY, nowIso: NOW, scope: 'all', houses })).not.toHaveProperty('houses')
+  })
+})
+
+describe('a notice sent for approval in the evening keeps its day (v2.4468)', () => {
+  it('dates Waiting since by the Central day', () => {
+    // 00:30 UTC on Sep 25 is 7:30 pm CDT on Sep 24; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const since = (submitted_at: string) => {
+      const q = buildLienDeskQueue([row(878, '2026-07', '2026-10-15', GC.SP, 38625)], [item(878, 'awaiting_approval', ['2026-07'], { submitted_at })], {}, TODAY)
+      return lienStatusJobFor({ ...data, queue: q } as LienDeskData, q.entries[0]!)?.sinceYmd
+    }
+    expect(since('2026-09-25T00:30:00Z')).toBe('2026-09-24')
+    expect(since('2026-12-02T00:30:00Z')).toBe('2026-12-01')
+    expect(since('2026-09-25T12:00:00Z')).toBe('2026-09-25')
   })
 })

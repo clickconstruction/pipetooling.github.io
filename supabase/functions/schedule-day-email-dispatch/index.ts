@@ -4,6 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendResendHtmlEmail } from '../_shared/recurringJobReportCore.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { buildScheduleEmail, type ScheduleDayBlockRow } from '../_shared/scheduleDayEmail.ts'
+import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,7 +94,7 @@ serve(async (req) => {
     for (const reqRow of requests) {
       const { data: u, error: uErr } = await admin
         .from('users')
-        .select('email, archived_at').eq('is_sample', false)
+        .select('email, archived_at').match(REAL_ACCOUNT)
         .eq('id', reqRow.recipient_user_id)
         .maybeSingle()
 

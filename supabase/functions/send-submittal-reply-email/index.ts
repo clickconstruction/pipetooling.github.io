@@ -55,7 +55,7 @@ serve(async (req) => {
     const a = ask as { id: string; body: string; person_id: string | null } | null
     if (!a?.person_id) return json({ error: 'The question has no person to answer.' }, 400)
     const { data: person } = await admin.from('bid_submittal_people').select('id, name, email, token, closed_at').eq('id', a.person_id).maybeSingle()
-    const p = person as { id: string; name: string; email: string; token: string | null; closed_at: string | null } | null
+    const p = person as { id: string; name: string; email: string | null; token: string | null; closed_at: string | null } | null
     if (!p || !p.email) return json({ error: 'No address on file for that person.' }, 400)
     let token = p.token
     if (!token) {
@@ -74,7 +74,8 @@ serve(async (req) => {
     if (!resendKey) return json({ error: 'Email is not configured on the server.' }, 500)
     const link = `${appOrigin(body.public_origin)}/submittal?t=${encodeURIComponent(token)}`
     const mail = buildSubmittalReplyEmail({ companyName: PORTAL_COMPANY.name, bidLabel, tags: Array.isArray(r.tags) ? r.tags : [], askedBody: a.body, replyBody: r.body, personName: p.name, link, phone: PORTAL_COMPANY.phone })
-    const sent = await sendEmailViaResend(p.email, mail.subject, mail.text, mail.html, resendKey, { replyTo, emailType: 'submittal_reply' })
+    // Sent copies (docs/SENT_COPIES.md): the reply as the reviewer read it is kept, under the bid.
+    const sent = await sendEmailViaResend(p.email, mail.subject, mail.text, mail.html, resendKey, { replyTo, emailType: 'submittal_reply', file: { kind: 'submittal_reply', recipientName: p.name, bidId, source: { table: 'bid_submittal_messages', id: r.id }, sentBy: user.id } })
     if (!sent.success) return json({ error: sent.error ?? 'Send failed' }, 502)
     await admin.from('bid_submittal_events').insert({ room_id: r.room_id, person_id: p.id, event_type: 'reply', metadata: { message_id: r.id, answers: a.id, to: p.email, resend_email_id: sent.resendEmailId ?? null } })
     return json({ ok: true, to: p.email })

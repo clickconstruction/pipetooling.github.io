@@ -120,3 +120,12 @@ describe('tipPaymentNote', () => {
     expect(tipPaymentNote(plan[0]!)).toBe('Tip recorded in HouseCall Pro (HCP collected $370.00 total)')
   })
 })
+
+describe('planHcpTipsSweep · a job made in the evening keeps its day (v2.4471)', () => {
+  it('dates the tip from the Central day the ledger row was made when HCP gives no day', () => {
+    // 00:30 UTC on Feb 20 is 6:30 pm CST on Feb 19.
+    const noDays = hcp({ paidOn: null, completedOn: null, createdOn: null })
+    expect(planHcpTipsSweep([job({ created_at: '2026-02-20T00:30:00Z' })], [noDays], new Set())[0]).toMatchObject({ paidOn: '2026-02-19', dateSource: 'ledger_created' })
+    expect(planHcpTipsSweep([job({ created_at: '2026-02-20T12:00:00Z' })], [noDays], new Set())[0]!.paidOn).toBe('2026-02-20')
+  })
+})

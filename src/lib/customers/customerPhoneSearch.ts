@@ -5,6 +5,7 @@
  * recently active, and an archived customer is never listed — a search can
  * still find one, marked.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export interface PhoneCustomer {
   id: string
@@ -16,7 +17,7 @@ export interface PhoneCustomer {
   /** The account person — the search matches it, the row does not print it. */
   masterName: string
   masterEmail: string
-  /** The newest of the last job, payment, bid or estimate; '' when none. */
+  /** The newest of the last job, payment, bid or estimate; '' when none. A payment's `paid_on` is a day, the rest are instants. */
   lastActivityIso: string
   openBalance: number
   openJobs: number
@@ -78,7 +79,7 @@ export function azPhoneCustomers(rows: ReadonlyArray<PhoneCustomer>, shown: numb
 
 /** `3 d ago`, `today`, `Mar 2025` — how long since the customer was last active. */
 export function phoneActivityWords(iso: string, todayYmd: string): string {
-  const day = (iso ?? '').slice(0, 10)
+  const day = (iso ?? '').includes('T') ? calendarYmdInAppTzFromIso(iso) : (iso ?? '').slice(0, 10)
   if (!day) return ''
   const ms = Date.parse(`${todayYmd}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`)
   if (Number.isNaN(ms)) return ''

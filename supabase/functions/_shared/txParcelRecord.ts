@@ -324,6 +324,9 @@ export type PropertyRecordFields = {
   parcel_id: string
   parcel_source: string
   parcel_tax_year: string
+  /** The justice precinct (v2.4771): typed on the record (`hand`), or from the office's court map (`map`). Optional for callers that predate it. */
+  jp_precinct?: string
+  jp_precinct_source?: string
 }
 
 /**
@@ -382,6 +385,8 @@ export function countySourceLabel(source: string): string {
       return 'from the map pin'
     case 'city':
       return 'guessed from the city — confirm it'
+    case 'map':
+      return "from the office's court map"
     case 'manual':
       return 'typed'
     default:

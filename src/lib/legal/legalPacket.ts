@@ -13,9 +13,8 @@
  *   - the WORTH panel (balance after the firm's cut and costs, and the flags
  *     that argue against pursuing) — facts, no invented odds,
  *   - the § 53.056 LIEN CLOCK per job (notice + affidavit deadlines),
- *   - the "what was said" TIMELINE with the sharing default: entries dated
- *     before the first bill are held back from counsel unless the office
- *     overrides them one by one.
+ *   - the "what was said" TIMELINE with the sharing default (#85 item 29):
+ *     every entry goes to counsel unless the office holds it back, one by one.
  *
  * Pure: no React, no supabase. Inputs are row shapes the existing kernels type;
  * the loader hook fetches them. An "account" is the PAYER — the GC when one
@@ -43,11 +42,16 @@ function demandSnapshotExhibits(fields: unknown): number {
   return Array.isArray(f?.enclosures) ? f.enclosures.length : 0
 }
 import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
-import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../jobs/lienProperty'
-import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
+import type { CustomerAddressRow } from '../jobs/lienProperty'
+import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRow, type LegalPropertyLine } from './legalProperty'
+import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { isSentBill } from '../jobs/paymentAttribution'
+import { invoiceWrittenDown, legalJobMoneyOf, type LegalJobMoney } from './legalJobMoney'
+import { invoiceSentWords, paymentHowWords } from './legalMoney'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -55,8 +59,8 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 export const LEGAL_DEFAULT_FEE = { contingencyPct: 0.33, filingCost: 350 } as const
 export type LegalFeeModel = { contingencyPct: number; filingCost: number }
 
-/** Entries dated before the first bill are held back from counsel by default; the office overrides per entry. */
-export const LEGAL_SHARE_DEFAULT = 'after_first_bill' as const
+/** Every entry goes to counsel by default (#85 item 29); the office holds one back per entry. */
+export const LEGAL_SHARE_DEFAULT = 'share_all' as const
 
 // ---------------------------------------------------------------------------
 // Payer grouping
@@ -84,17 +88,28 @@ export function payerForJob(
   return { key: `n:${name.toLowerCase()}`, customerId: null, name, viaGc: false }
 }
 
-/** Money still open on a billed invoice: amount − payments applied to it, never below 0. */
+/** Money still open on a billed invoice counting only the payments linked to it, never below 0. The packet reads `legalJobMoney`, which also counts payments with no bill. */
 export function invoiceOpenAmount(inv: Pick<JobsLedgerInvoice, 'id' | 'amount'>, payments: JobWithDetails['payments']): number {
   const applied = (payments ?? []).filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + Number(p.amount ?? 0), 0)
   return Math.max(0, Number(inv.amount ?? 0) - applied)
 }
 
-/** What the account still owes on one job: open billed lines when any exist, else the job-level remainder (the "No line" shell). */
+const round2 = (n: number): number => Math.round(n * 100) / 100
+
+/**
+ * One job's money under the app's one rule for payments (punch list #85 item 5). The rule lives in
+ * `_shared/legalJobMoney.ts` (item 20 review) so `submit-legal-portal`'s settlement floor and every
+ * reader here add up the same way; this is the packet's door to it.
+ */
+export { invoiceWrittenDown, type LegalJobMoney } from './legalJobMoney'
+
+export function legalJobMoney(job: JobWithDetails): LegalJobMoney {
+  return legalJobMoneyOf({ revenue: job.revenue, payments_made: job.payments_made, invoices: job.invoices ?? [], payments: job.payments ?? [] })
+}
+
+/** What the account still owes on one job — `legalJobMoney(job).balance`, the one number the desk, the firm and the prints share. */
 export function jobOpenBalance(job: JobWithDetails): number {
-  const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
-  if (billed.length > 0) return billed.reduce((s, i) => s + invoiceOpenAmount(i, job.payments), 0)
-  return Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  return legalJobMoney(job).balance
 }
 
 export type LegalAccountSummary = LegalPayer & {
@@ -113,6 +128,12 @@ export function daysBetweenYmd(fromYmd: string, toYmd: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
+/**
+ * A `date` column's day (`last_bill_date`, `last_work_date`, `paid_on`, `sent_on`, a filing's
+ * `filed_at` / `served_at`, a demand letter's `sent_at`). An instant's day is
+ * `calendarYmdInAppTzFromIso`: its first ten characters are the UTC date, tomorrow after 7 pm
+ * Central. The legal-portal function reads the same days for the held rule, so the two sides agree.
+ */
 function ymdOfIso(iso: string | null | undefined): string | null {
   if (!iso) return null
   const s = String(iso)
@@ -123,10 +144,10 @@ function ymdOfIso(iso: string | null | undefined): string | null {
 export function jobAgingYmd(job: JobWithDetails): string | null {
   const billedYmds = (job.invoices ?? [])
     .filter((i) => i.status === 'billed')
-    .map((i) => ymdOfIso(i.billed_at))
+    .map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || null)
     .filter((y): y is string => y != null)
     .sort()
-  return billedYmds[0] ?? ymdOfIso(job.last_bill_date) ?? ymdOfIso(job.collections_at) ?? null
+  return billedYmds[0] ?? ymdOfIso(job.last_bill_date) ?? (calendarYmdInAppTzFromIso(job.collections_at ?? '') || null)
 }
 
 /** Group Collections jobs into payer accounts, largest balance first (the desk re-sorts by net). */
@@ -146,7 +167,7 @@ export function groupCollectionsByPayer(
       const d = daysBetweenYmd(aging, todayYmd)
       acc.oldestDays = acc.oldestDays == null ? d : Math.max(acc.oldestDays, d)
     }
-    const flagged = ymdOfIso(job.collections_at)
+    const flagged = calendarYmdInAppTzFromIso(job.collections_at ?? '') || null
     if (flagged) {
       const d = daysBetweenYmd(flagged, todayYmd)
       acc.reviewDays = acc.reviewDays == null ? d : Math.max(acc.reviewDays, d)
@@ -197,7 +218,12 @@ export type LegalPacketInput = {
   customer: LegalCustomerLike
   contacts: ReadonlyArray<LegalContactLike>
   contactEntries: ReadonlyArray<LegalContactEntryLike>
+  /** The payer's own property records — used only for an exact address match when a job names no record (item 6). */
   addresses: ReadonlyArray<CustomerAddressRow>
+  /** The records the jobs name (`jobs_ledger.customer_address_id`), fetched by id whatever customer holds them (item 6). Absent on an older caller. */
+  jobAddresses?: ReadonlyArray<CustomerAddressRow>
+  /** The jobs' owner overrides (`job_property_owners`, no email) — the override wins for the owner block (item 6). */
+  jobOwners?: ReadonlyArray<LegalJobOwnerRow>
   contracts: ReadonlyArray<JobContractRowLike>
   signedEstimates: ReadonlyArray<SignedEstimateLike>
   demandLetters: ReadonlyArray<JobDemandLetterRow>
@@ -214,7 +240,7 @@ export type LegalPacketInput = {
   threadNotes: ReadonlyArray<LegalThreadNoteLike>
   /** For naming who flagged Collections. */
   users: ReadonlyArray<{ id: string; name: string | null }>
-  /** Per-entry sharing overrides keyed by timeline entry key: true = hold back, false = share (PR 2 stores them). */
+  /** Per-entry holds keyed by timeline entry key: true = hold back from counsel (PR 2 stores them). Since #85 item 29 everything else goes; a `false` is a no-op. */
   holdOverrides?: Readonly<Record<string, boolean>>
   fee?: LegalFeeModel
 }
@@ -223,10 +249,34 @@ export type LegalLedgerEntry = {
   ymd: string | null
   jobId: string
   jobLabel: string
-  kind: 'invoice' | 'payment' | 'write_down'
+  /**
+   * `invoice` at what was billed (before any write-down) · `write_down` the agreed reduction ·
+   * `payment` (a refund is a payment with a positive amount) · `off_bill` work on no bill that
+   * the job's payments covered, or a no-line job's total · `settled` the part of a bill marked
+   * paid that no payment covers · `unexplained` what is left between the rows and the job's
+   * balance (item 5: the rows always reach the Balance, and a gap says so out loud).
+   */
+  kind: 'invoice' | 'payment' | 'write_down' | 'off_bill' | 'settled' | 'unexplained' | 'credit'
+  /** The line's words, without the job number (the views print it in its own column). */
   text: string
   /** Positive for invoices, negative for payments / write-downs. */
   amount: number
+}
+
+/** A job's record for the claim, as facts: was a bill sent, did the field place a crew there, is a dispute logged. */
+export type LegalJobRecord = {
+  /** `sent`: a billed or paid line reached the customer (`invoiceReachedCustomer`); `not_sent`: lines exist, none sent; `none`: no bill line. */
+  bill: 'sent' | 'not_sent' | 'none'
+  /**
+   * `gps`: a report or clock session carries a GPS location; `no_gps`: field records, none with a
+   * location; `none`: nothing from the field. A location is a recorded latitude, never checked
+   * against the job's address, so the words say *a GPS location*, not *on site*.
+   */
+  field: 'gps' | 'no_gps' | 'none'
+  /** Clock sessions on the job nobody has approved yet (said beside the field record; 0 or absent when none). */
+  awaitingApproval?: number
+  /** A dispute logged on the account in call mode. */
+  dispute: boolean
 }
 
 export type LegalJobLine = {
@@ -242,22 +292,34 @@ export type LegalJobLine = {
   contract: JobContractCoverage
   /** Empty when a sworn account holds for this job. */
   swornMissing: string[]
+  /**
+   * The facts behind `swornMissing`, as data (punch list #85, item 4): what the firm's words
+   * read, so a wording change on the desk can never empty the firm's facts.
+   */
+  record: LegalJobRecord
   /** The largest open billed line — what a write-down or Mark Paid opens on. */
   primaryInvoiceId: string | null
+  /** What is still open on that line (0 when there is none) — ranks the jobs of an account (v2.4570). */
+  primaryInvoiceOpen: number
+  /** The property this job stands on (item 6): the job's own record and owner override, the same line as in `account.properties`. */
+  property: LegalPropertyLine
 }
 
-export type LegalPropertyLine = {
-  address: string
-  county: string
-  owner: string
-  legalDescription: string
-  parcelId: string
-  propertyKind: string
-  homestead: boolean
-  lienReady: boolean
-  /** From customerAddressLienGaps — empty means lien-ready. */
-  gaps: string[]
+/**
+ * The account's largest open bill line (v2.4570): the job and line the desk's own Write down…
+ * opens on. Before, it opened on the first job's line, and said there was none when the first
+ * job had no billed line though another did.
+ */
+export function legalLargestOpenLine(jobs: ReadonlyArray<Pick<LegalJobLine, 'jobId' | 'primaryInvoiceId' | 'primaryInvoiceOpen'>>): { jobId: string; invoiceId: string } | null {
+  let best: { jobId: string; invoiceId: string; open: number } | null = null
+  for (const j of jobs) {
+    if (!j.primaryInvoiceId) continue
+    if (!best || j.primaryInvoiceOpen > best.open) best = { jobId: j.jobId, invoiceId: j.primaryInvoiceId, open: j.primaryInvoiceOpen }
+  }
+  return best ? { jobId: best.jobId, invoiceId: best.invoiceId } : null
 }
+
+export type { LegalPropertyLine, LegalJobOwnerRow } from './legalProperty'
 
 export type LegalDemandLine = {
   jobLabel: string
@@ -286,6 +348,8 @@ export type LegalFilingLine = {
   county: string
   recordingNumber: string
   sends: number
+  /** The day the paper went out (item 9): its first send's `sent_on`, else the day the record was made. A notice is mailed, never filed, so this is its date. */
+  wentOutYmd: string | null
   /** The saved copy's link (v2.3763), '' when none. */
   documentUrl: string
 }
@@ -310,7 +374,9 @@ export function legalLienClockWords(c: { status: LegalLienClockStatus; noticeLef
 export type LegalLienClockLine = {
   jobId: string
   jobLabel: string
+  /** `legalLastWorkBasis`: the last approved session, else the job's last work date, else its creation day. */
   lastWorkYmd: string | null
+  lastWorkSource: LegalLastWorkSource
   /** '' for original contractors (no monthly notice) or when unknown. */
   noticeDeadline: string
   filingDeadline: string
@@ -334,7 +400,9 @@ export type LegalSaidEntry = {
   text: string
   by: string | null
   jobLabel: string | null
-  /** Shared under the default rule (on or after the first bill). */
+  /** A promise the customer made themselves, on their statement page: no one in the office recorded it. */
+  fromCustomer?: boolean
+  /** Shared under the default rule — always true since #85 item 29 (share everything unless held); kept for the readers that compare. */
   sharedByDefault: boolean
   /** What actually goes to counsel after overrides. */
   shared: boolean
@@ -346,8 +414,10 @@ export type LegalEvidenceJob = {
   reports: number
   reportsWithGps: number
   latestReport: LegalReportLike | null
+  /** Approved clock sessions that were not rejected or revoked — the one evidence rule (item 25); hours, days and GPS read only these. */
   sessions: number
-  approvedSessions: number
+  /** Live sessions nobody has approved yet: said, never counted. */
+  awaitingApproval: number
   sessionsWithGps: number
   hours: number
   firstWorkYmd: string | null
@@ -399,6 +469,10 @@ export type LegalPacket = {
   account: {
     payer: LegalPayer
     customerAddress: string
+    /** The payer's county from its primary property record, '' when none (v2.4764, the defendant's venue). */
+    customerCounty: string
+    /** The payer's justice precinct from the same record (v2.4771), '' until the court map names it. */
+    customerPrecinct: string
     customerType: string
     paymentTerms: string
     paymentTermsNote: string | null
@@ -545,23 +619,19 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const emails = uniqStrings([...input.contacts.map((c) => c.email), ...ci.emails, ...jobs.map((j) => j.customer_email)])
   const phones = uniqStrings([...input.contacts.map((c) => c.phone), ...ci.phones, ...jobs.map((j) => j.customer_phone)])
 
-  const properties: LegalPropertyLine[] = input.addresses.map((a) => ({
-    address: a.address,
-    county: (a.county ?? '').trim(),
-    owner: [a.owner_company, a.owner_name].map((s) => (s ?? '').trim()).filter(Boolean).join(' · '),
-    legalDescription: (a.legal_description ?? '').trim(),
-    parcelId: (a.parcel_id ?? '').trim(),
-    propertyKind: (a.property_kind ?? '').trim(),
-    homestead: a.homestead,
-    lienReady: customerAddressLienReady(a),
-    gaps: customerAddressLienGaps(a),
-  }))
-  const propertyKind = properties[0]?.propertyKind ?? ''
+  // Property per job (item 6): each job's own record and owner override; the lien clock reads each job's kind.
+  const resolved = resolveLegalJobProperties(jobs, { labelOf: (id) => labelByJob.get(id) ?? '—', jobAddresses: input.jobAddresses ?? [], payerAddresses: input.addresses, owners: input.jobOwners ?? [] })
+  const properties: LegalPropertyLine[] = resolved.properties
+  const propertyOf = (jobId: string): LegalPropertyLine => resolved.byJob.get(jobId) as LegalPropertyLine
+  const propertyKindOf = (jobId: string): string => resolved.byJob.get(jobId)?.propertyKind ?? ''
 
   // --- Evidence (needed before sworn-account checks) -----------------------
   const evidence: LegalEvidenceJob[] = jobs.map((j) => {
     const reports = input.reports.filter((r) => r.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    const sessions = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified)
+    // One evidence rule (item 25): an approved session that was not rejected or revoked counts, as in the
+    // timeline's work months (`workMonthsFromSessions`); the rest are said as awaiting approval.
+    const live = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified)
+    const sessions = live.filter((s) => s.approved)
     const notes = input.threadNotes.filter((n) => n.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     const workDays = sessions.map((s) => s.workDate).sort()
     return {
@@ -571,7 +641,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       reportsWithGps: reports.filter((r) => r.hasGps).length,
       latestReport: reports[0] ?? null,
       sessions: sessions.length,
-      approvedSessions: sessions.filter((s) => s.approved).length,
+      awaitingApproval: live.length - sessions.length,
       sessionsWithGps: sessions.filter((s) => s.hasGps).length,
       hours: Math.round(sessions.reduce((s, x) => s + hoursBetween(x.clockedInAt, x.clockedOutAt), 0) * 10) / 10,
       firstWorkYmd: workDays[0] ?? null,
@@ -583,94 +653,115 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     }
   })
   const evidenceByJob = new Map(evidence.map((e) => [e.jobId, e] as const))
+  // One fallback chain for the lien clock and the Paper tab (item 25), the timeline kernel's own:
+  // the last approved session, else the job's last work date, else its creation day.
+  const lastWorkByJob = new Map(jobs.map((j) => {
+    const days = input.clockSessions.filter((s) => s.jobId === j.id && !s.disqualified && s.approved).map((s) => s.workDate)
+    return [j.id, legalLastWorkBasis(days, j)] as const
+  }))
 
   const accountTouches = input.chaseTouches.filter((t) =>
     t.jobId ? jobIds.has(t.jobId) : account.customerId != null && t.customerId === account.customerId,
   )
   const disputeOnRecord = accountTouches.some((t) => t.outcome === 'dispute')
 
-  /** What a sworn account still needs on this job: an invoice the customer received, field evidence with GPS, no dispute. */
-  const swornMissingFor = (j: JobWithDetails): string[] => {
-    const missing: string[] = []
+  /** The job's record as facts (item 4 of punch list #85) — the sworn-account rule below reads it. */
+  const recordFor = (j: JobWithDetails): LegalJobRecord => {
     const billed = (j.invoices ?? []).filter((i) => i.status === 'billed' || i.status === 'paid')
-    if (billed.length === 0) missing.push('a bill line')
-    else if (!billed.some(invoiceReachedCustomer)) missing.push('a bill the customer received')
     const ev = evidenceByJob.get(j.id)
-    if (!ev || ev.reports + ev.sessions === 0) missing.push('field evidence on the property')
-    else if (ev.reportsWithGps + ev.sessionsWithGps === 0) missing.push('field evidence with GPS')
-    if (disputeOnRecord) missing.push('no dispute on record')
+    return {
+      bill: billed.length === 0 ? 'none' : billed.some(invoiceReachedCustomer) ? 'sent' : 'not_sent',
+      field: !ev || ev.reports + ev.sessions === 0 ? 'none' : ev.reportsWithGps + ev.sessionsWithGps === 0 ? 'no_gps' : 'gps',
+      awaitingApproval: ev ? ev.awaitingApproval : 0,
+      dispute: disputeOnRecord,
+    }
+  }
+
+  /** What a sworn account still needs on this job: an invoice the customer received, field evidence with GPS, no dispute. */
+  const swornMissingFor = (r: LegalJobRecord): string[] => {
+    const missing: string[] = []
+    if (r.bill === 'none') missing.push('a bill line')
+    else if (r.bill === 'not_sent') missing.push('a bill the customer received')
+    if (r.field === 'none') missing.push('field evidence on the property')
+    else if (r.field === 'no_gps') missing.push('field evidence with GPS')
+    if (r.dispute) missing.push('no dispute on record')
     return missing
   }
 
+  const moneyByJob = new Map(jobs.map((j) => [j.id, legalJobMoney(j)] as const))
   const jobLines: LegalJobLine[] = jobs.map((j) => {
     const aging = jobAgingYmd(j)
-    const openBilled = (j.invoices ?? [])
-      .filter((i) => i.status === 'billed')
-      .map((i) => ({ id: i.id, open: invoiceOpenAmount(i, j.payments) }))
-      .sort((a, b) => b.open - a.open)
+    const record = recordFor(j)
+    const money = moneyByJob.get(j.id) as LegalJobMoney
+    const openBilled = [...money.openByInvoice.entries()].map(([id, open]) => ({ id, open })).sort((a, b) => b.open - a.open)
     return {
       jobId: j.id,
       label: labelByJob.get(j.id) ?? '—',
       name: j.job_name,
       address: j.job_address,
-      balance: jobOpenBalance(j),
+      balance: money.balance,
       agingDays: aging ? daysBetweenYmd(aging, todayYmd) : null,
       collectionsNote: (j.collections_note ?? '').trim() || null,
       collectionsBy: userName(j.collections_by),
-      collectionsYmd: ymdOfIso(j.collections_at),
+      collectionsYmd: calendarYmdInAppTzFromIso(j.collections_at ?? '') || null,
       contract: coverage.get(j.id) ?? { kind: 'none' },
-      swornMissing: swornMissingFor(j),
+      record,
+      swornMissing: swornMissingFor(record),
       primaryInvoiceId: openBilled[0]?.id ?? null,
+      primaryInvoiceOpen: openBilled[0]?.open ?? 0,
+      property: propertyOf(j.id),
     }
   })
 
+  // The statement of account (item 5): bills at what was billed, the write-down beneath, every payment,
+  // then the rows that explain the rest of the job's balance, so the column always reaches the Balance.
   const ledger: LegalLedgerEntry[] = []
   let billedTotal = 0
   let paidTotal = 0
   let writtenDown = 0
   for (const j of jobs) {
     const label = labelByJob.get(j.id) ?? '—'
+    const money = moneyByJob.get(j.id) as LegalJobMoney
+    const rows: LegalLedgerEntry[] = []
+    const push = (ymd: string | null, kind: LegalLedgerEntry['kind'], text: string, amount: number) => {
+      rows.push({ ymd, jobId: j.id, jobLabel: label, kind, text, amount: round2(amount) })
+    }
+    const billYmd = new Map<string, string | null>()
     for (const inv of j.invoices ?? []) {
-      if (inv.status !== 'billed' && inv.status !== 'paid') continue
+      if (!isSentBill(inv.status)) continue
       const amt = Number(inv.amount ?? 0)
-      billedTotal += amt
-      const channel = (inv.external_send_channel ?? '').trim()
-      const sentYmd = ymdOfIso(inv.sent_to_customer_at)
-      ledger.push({
-        ymd: ymdOfIso(inv.billed_at) ?? sentYmd,
-        jobId: j.id,
-        jobLabel: label,
-        kind: 'invoice',
-        text: `Invoice · ${label}${channel ? ` · sent ${channel === 'stripe_manual' ? 'stripe' : channel}` : ''}${sentYmd ? ` ${sentYmd}` : ''}${
-          inv.stripe_invoice_status ? ` · ${inv.stripe_invoice_status}` : ''
-        }${invoiceReachedCustomer(inv) ? '' : ' · never sent'}`,
-        amount: amt,
-      })
-      const wd = inv.agreed_write_down_previous_amount
-      if (inv.agreed_write_down_at && typeof wd === 'number' && wd > amt) {
-        writtenDown += wd - amt
-        ledger.push({
-          ymd: ymdOfIso(inv.agreed_write_down_at),
-          jobId: j.id,
-          jobLabel: label,
-          kind: 'write_down',
-          text: `Agreed write-down · ${label}${inv.agreed_write_down_note ? ` · ${inv.agreed_write_down_note}` : ''}`,
-          amount: -(wd - amt),
-        })
+      const wd = invoiceWrittenDown(inv)
+      const sentYmd = calendarYmdInAppTzFromIso(inv.sent_to_customer_at ?? '') || null
+      const ymd = calendarYmdInAppTzFromIso(inv.billed_at ?? '') || sentYmd
+      billYmd.set(inv.id, ymd)
+      billedTotal += amt + wd
+      push(ymd, 'invoice', `Invoice · ${invoiceSentWords(inv.external_send_channel, sentYmd, invoiceReachedCustomer(inv))}`, amt + wd)
+      if (wd > 0) {
+        writtenDown += wd
+        const note = (inv.agreed_write_down_note ?? '').trim()
+        push(calendarYmdInAppTzFromIso(inv.agreed_write_down_at ?? '') || null, 'write_down', `Agreed write-down${note ? ` · ${note}` : ''}`, -wd)
       }
     }
+    let offBillYmd: string | null = null
     for (const p of j.payments ?? []) {
       const amt = Number(p.amount ?? 0)
       paidTotal += amt
-      ledger.push({
-        ymd: ymdOfIso(p.paid_on) ?? ymdOfIso(p.sent_on),
-        jobId: j.id,
-        jobLabel: label,
-        kind: 'payment',
-        text: `Payment · ${label}${p.payment_type ? ` · ${p.payment_type}` : ''}${p.reference_number ? ` · ref ${p.reference_number}` : ''}`,
-        amount: -amt,
-      })
+      const ymd = ymdOfIso(p.paid_on) ?? ymdOfIso(p.sent_on)
+      if ((!p.invoice_id || !billYmd.has(p.invoice_id)) && ymd && (offBillYmd == null || ymd < offBillYmd)) offBillYmd = ymd
+      const how = paymentHowWords(p.payment_type, p.reference_number)
+      push(ymd, 'payment', `${amt < 0 ? 'Refund' : 'Payment'}${how ? ` · ${how}` : ''}`, -amt)
     }
+    if (!money.shell && money.offBill > 0) push(offBillYmd, 'off_bill', 'Work on no bill, covered by the payments on this job', money.offBill)
+    for (const s of money.settledShort) push(billYmd.get(s.invoiceId) ?? null, 'settled', 'Marked paid, no payment recorded for this part', -s.amount)
+    // A shell job's balance is its total less money; a credit is clamped out of it, so the rows foot to 0 there.
+    const target = money.shell ? money.balance - money.credit : money.balance
+    const gap = round2(target - rows.reduce((s, e) => s + e.amount, 0))
+    if (Math.abs(gap) >= 0.005) {
+      if (money.shell) push(ymdOfIso(j.last_bill_date), 'off_bill', 'Job total not yet split into bills (difference)', gap)
+      else push(null, 'unexplained', 'Difference the records do not explain', gap)
+    }
+    if (money.credit > 0) push(null, 'credit', `Credit to the customer of ${formatLegalMoney(money.credit)}: paid beyond every bill on this job, not in the demand`, money.shell ? money.credit : 0)
+    ledger.push(...rows)
   }
   ledger.sort((a, b) => (a.ymd ?? '9999').localeCompare(b.ymd ?? '9999'))
   const firstBillYmd = ledger.filter((e) => e.kind === 'invoice' && e.ymd).map((e) => e.ymd as string).sort()[0] ?? null
@@ -690,6 +781,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     county: f.county,
     recordingNumber: f.recording_number,
     sends: Array.isArray(f.sends) ? f.sends.length : 0,
+    wentOutYmd: (Array.isArray(f.sends) ? f.sends.map((s) => ymdOfIso((s as { sent_on?: string | null }).sent_on ?? null)).filter((x): x is string => Boolean(x)).sort()[0] : undefined) ?? (calendarYmdInAppTzFromIso(f.created_at ?? '') || null),
     documentUrl: normalizeDocumentUrl((f as unknown as LienFilingDocument).document_url),
   }))
   const filedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'affidavit' && f.filed_at).map((f) => f.job_id))
@@ -697,9 +789,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const releasedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'release_of_record').map((f) => f.job_id))
 
   const lienClock: LegalLienClockLine[] = jobs.map((j) => {
-    const ev = evidenceByJob.get(j.id)
-    const lastWorkYmd = ev?.lastWorkYmd ?? null
-    const clock = computeJobLienClock({ lastWorkYmd, propertyKind, isSub: account.viaGc })
+    const { ymd: lastWorkYmd, source: lastWorkSource } = lastWorkByJob.get(j.id) ?? { ymd: null, source: 'none' as const }
+    const clock = computeJobLienClock({ lastWorkYmd, propertyKind: propertyKindOf(j.id), isSub: account.viaGc })
     const noticeLeft = clock.noticeDeadline ? daysLeft(clock.noticeDeadline, todayYmd) : null
     const filingLeft = clock.filingDeadline ? daysLeft(clock.filingDeadline, todayYmd) : null
     let status: LegalLienClockStatus = 'no_work'
@@ -710,7 +801,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     else status = 'closed'
     const suitDeadline = suitDeadlineFor(clock.filingDeadline)
     const suitLeft = suitDeadline ? daysLeft(suitDeadline, todayYmd) : null
-    return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status, suitDeadline, suitLeft, served: servedJobIds.has(j.id), released: releasedJobIds.has(j.id) }
+    return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, lastWorkSource, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status, suitDeadline, suitLeft, served: servedJobIds.has(j.id), released: releasedJobIds.has(j.id) }
   })
 
   // Where each job stands + the paper that went out (#41 PR 1) — the desk's timeline kernel and the envelopes, from the same rows.
@@ -718,15 +809,17 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     jobs,
     labelOf: (id) => labelByJob.get(id) ?? '—',
     openBalanceOf: (id) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 },
-    lastWorkOf: (id) => evidenceByJob.get(id)?.lastWorkYmd ?? null,
+    lastWorkOf: (id) => lastWorkByJob.get(id)?.ymd ?? null,
+    lastWorkSourceOf: (id) => lastWorkByJob.get(id)?.source ?? 'none',
     sessions: input.clockSessions,
     filings: lienFilingsLive,
-    propertyKind,
+    propertyKind: '',
+    propertyKindOf,
     isSub: account.viaGc,
     todayYmd,
   })
   const openBalanceOf = (id: string) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 }
-  const envelopes = attachEnvelopeAnswers(buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind }), { items: input.lienDeskItems ?? [], openBalanceOf, todayYmd })
+  const envelopes = attachEnvelopeAnswers(buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind: '', propertyKindOf }), { items: input.lienDeskItems ?? [], openBalanceOf, todayYmd })
 
   const demandLetters: LegalDemandLine[] = liveDemandLetters(input.demandLetters.filter((d) => jobIds.has(d.job_id))).map((d) => ({
     jobLabel: labelByJob.get(d.job_id) ?? '—',
@@ -753,17 +846,18 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     const state = outcomeById.get(p.id)?.state ?? 'open'
     raw.push({
       key: `promise:${p.id}`,
-      ymd: ymdOfIso(p.createdAt) ?? p.promisedYmd,
+      ymd: calendarYmdInAppTzFromIso(p.createdAt) || p.promisedYmd,
       kind: 'promise',
       text: `Promised to pay by ${p.promisedYmd}${p.saidBy ? ` — ${p.saidBy}` : p.source === 'customer' ? ' — the customer, on their statement page' : ''}${p.channel ? ` (${p.channel})` : ''} · ${state}${p.note ? ` — ${p.note}` : ''}`,
       by: p.heardByName,
+      fromCustomer: p.source === 'customer',
       jobLabel: labelByJob.get(p.jobId) ?? null,
     })
   }
   for (const t of accountTouches) {
     raw.push({
       key: `call:${t.id}`,
-      ymd: ymdOfIso(t.createdAt) ?? todayYmd,
+      ymd: calendarYmdInAppTzFromIso(t.createdAt) || todayYmd,
       kind: 'call',
       text: `Collection call · ${t.outcome.replace('_', ' ')}${t.note ? ` — ${t.note}` : ''}${t.promisedYmd ? ` · named ${t.promisedYmd}` : ''}`,
       by: t.createdByName,
@@ -771,14 +865,14 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     })
   }
   for (const l of jobLines) {
-    if (l.collectionsNote) raw.push({ key: `note:${l.jobId}`, ymd: l.collectionsYmd ?? todayYmd, kind: 'note', text: `Moved to Collections — ${l.collectionsNote}`, by: l.collectionsBy, jobLabel: l.label })
+    if (l.collectionsNote) raw.push({ key: `note:${l.jobId}`, ymd: l.collectionsYmd ?? todayYmd, kind: 'note', text: `Sent to collections: ${l.collectionsNote}`, by: l.collectionsBy, jobLabel: l.label })
   }
   const timeline: LegalSaidEntry[] = raw
     .map((e) => {
-      const sharedByDefault = firstBillYmd == null || e.ymd >= firstBillYmd
-      const override = holdOverrides[e.key]
-      const shared = override == null ? sharedByDefault : !override
-      return { ...e, sharedByDefault, shared }
+      // #85 item 29 (owner, 2026-10-05): everything goes to counsel unless the office holds it back.
+      // Only `true` holds; an old `false` (share a pre-bill entry) is the default now and changes nothing.
+      const shared = holdOverrides[e.key] !== true
+      return { ...e, sharedByDefault: true, shared }
     })
     .sort((a, b) => a.ymd.localeCompare(b.ymd) || a.key.localeCompare(b.key))
   const heldCount = timeline.filter((e) => !e.shared).length
@@ -793,7 +887,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const swornJobs = jobLines.filter((l) => l.swornMissing.length === 0).length
   // A petition pleads the jobs that qualify: one job with a sworn-account basis is a theory; the others stay gaps.
   const swornHolds = swornJobs > 0
-  const lienable = properties.some((p) => p.lienReady) && lienClock.some((c) => c.status === 'notice_open' || c.status === 'affidavit_open' || c.status === 'filed')
+  // A lien is on the table on a job whose own property record is complete and whose window is open or filed (item 6: per job, not the first address).
+  const lienable = lienClock.some((c) => propertyOf(c.jobId)?.lienReady && (c.status === 'notice_open' || c.status === 'affidavit_open' || c.status === 'filed'))
   const theory: LegalTheory = anySigned
     ? { key: 'contract', label: theoryLabel('contract'), basis: 'a signed agreement is on file' }
     : swornHolds
@@ -803,7 +898,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
         : { key: 'none', label: theoryLabel('none'), basis: 'nothing an attorney can plead yet' }
 
   // --- Worth ----------------------------------------------------------------
-  const balance = jobLines.reduce((s, l) => s + l.balance, 0)
+  const balance = round2(jobLines.reduce((s, l) => s + l.balance, 0))
   const flags: string[] = []
   const noteText = jobLines.map((l) => l.collectionsNote ?? '').join(' ')
   const noMoney = NO_MONEY_RE.test(noteText)
@@ -820,11 +915,11 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   const steps: LegalStep[] = []
   for (const e of ledger) {
     if (e.kind === 'invoice') steps.push({ ymd: e.ymd, sortKey: e.ymd ?? '9999', kind: 'billed', text: e.text, jobLabel: e.jobLabel })
-    if (e.kind === 'payment') steps.push({ ymd: e.ymd, sortKey: e.ymd ?? '9999', kind: 'payment', text: `${e.text} · $${(-e.amount).toFixed(2)}`, jobLabel: e.jobLabel })
+    if (e.kind === 'payment') steps.push({ ymd: e.ymd, sortKey: e.ymd ?? '9999', kind: 'payment', text: `${e.text} · ${formatLegalMoney(-e.amount)}`, jobLabel: e.jobLabel })
   }
   for (const a of agreements) {
     if (a.coverage.kind === 'signed') {
-      const y = ymdOfIso(a.coverage.signedAt)
+      const y = calendarYmdInAppTzFromIso(a.coverage.signedAt ?? '') || null
       steps.push({ ymd: y, sortKey: y ?? '0000', kind: 'contract', text: `Agreement signed${a.coverage.signerName ? ` by ${a.coverage.signerName}` : ''} (${a.coverage.source})`, jobLabel: a.jobLabel })
     }
   }
@@ -843,7 +938,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     })
   }
   for (const f of lienFilings) {
-    const y = f.filedYmd ?? f.servedYmd
+    const y = f.filedYmd ?? f.servedYmd ?? f.wentOutYmd
     steps.push({ ymd: y, sortKey: y ?? '9999', kind: 'filing', text: `${f.kind}${f.filedYmd ? ' filed' : ''}${f.recordingNumber ? ` · ${f.recordingNumber}` : ''}${f.servedYmd ? ` · served ${f.servedYmd}` : ''}`, jobLabel: f.jobLabel })
   }
   steps.sort((a, b) => a.sortKey.localeCompare(b.sortKey))
@@ -888,10 +983,14 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   }
   if (demandLetters.filter((d) => d.sentYmd).length === 0) gaps.push({ key: 'demand', severity: 'warn', label: 'No final demand letter sent', detail: 'Most firms send their own, but one already on record with a tracking number shortens the first call.', jobId: jobs[0]?.id ?? null, fix: 'lien_instruments' })
   else if (demandLetters.some((d) => d.sentYmd && d.deadlineYmd && !d.deadlinePassed)) gaps.push({ key: 'demand_open', severity: 'warn', label: 'A demand deadline has not passed yet', detail: 'Referring before the letter’s own deadline undercuts the letter.', jobId: null, fix: 'none' })
-  if (properties.length === 0) gaps.push({ key: 'property', severity: 'warn', label: 'No property record on the customer', detail: 'County, owner of record and legal description decide whether a lien is on the table.', jobId: null, fix: 'edit_customer' })
-  else for (const p of properties) if (p.gaps.length > 0) gaps.push({ key: `property:${p.address}`, severity: 'warn', label: `Property record incomplete · ${p.address}`, detail: `Missing ${p.gaps.join(', ')}.`, jobId: null, fix: 'edit_customer' })
+  // Per property the jobs stand on (item 6). The fix opens Lien instruments on the first job, where the job's property record and owner are set.
+  for (const p of properties) {
+    const on = p.jobLabels.join(', ')
+    if (p.source === 'job_address') gaps.push({ key: `property:${p.key}`, severity: 'warn', label: `No property record linked to ${on}`, detail: `County, owner of record and legal description decide whether a lien is on the table. Link ${p.address || 'the job address'} to its property record.`, jobId: p.jobIds[0] ?? null, fix: 'lien_instruments' })
+    else if (p.gaps.length > 0) gaps.push({ key: `property:${p.key}`, severity: 'warn', label: `Property record incomplete · ${p.address} (${on})`, detail: `Missing ${p.gaps.filter((g) => g !== NO_PROPERTY_RECORD_GAP).join(', ')}.`, jobId: p.jobIds[0] ?? null, fix: 'lien_instruments' })
+  }
   for (const e of evidence) {
-    if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
+    if (e.reports === 0 && e.sessions === 0) gaps.push({ key: `evidence:${e.jobId}`, severity: 'warn', label: `No field evidence on ${e.jobLabel}`, detail: e.awaitingApproval > 0 ? `No field reports, and ${e.awaitingApproval} clock session${e.awaitingApproval === 1 ? ' is' : 's are'} awaiting approval. Approve them in Hours: only approved sessions count as evidence or date the lien clock.` : 'No field reports and no clock sessions — nothing places a crew on the property.', jobId: e.jobId, fix: 'none' })
   }
   if (timeline.every((e) => e.kind === 'note')) gaps.push({ key: 'never_asked', severity: 'warn', label: 'Never asked when they would pay', detail: 'No promise, no collection call and no contact on record. One call in call mode gives the attorney a “they said…” line.', jobId: null, fix: 'call_mode' })
   if (verdict === 'not worth it') gaps.push({ key: 'worth', severity: 'warn', label: `Estimated net is $${Math.round(net).toLocaleString('en-US')} — consider writing it down`, detail: theory.key === 'none' ? 'Nothing to plead yet and the firm’s cut plus costs eat the balance. Write down / stop pursuing keeps the record and clears the row.' : 'The firm’s cut and costs eat what is left. Write down / stop pursuing keeps the record and clears the row.', jobId: jobs[0]?.id ?? null, fix: 'write_down' })
@@ -909,7 +1008,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     { title: 'Lien notices and filings', count: lienFilings.length },
     { title: 'What was said — contacts, promises, calls', count: timeline.filter((e) => e.shared).length },
     { title: 'Field reports and clock sessions', count: evidence.reduce((s, e) => s + e.reports + e.sessions, 0) },
-    { title: 'Property record', count: properties.length },
+    { title: 'Property record', count: properties.filter((p) => p.source !== 'job_address').length },
   ]
   const exhibits: LegalExhibit[] = []
   for (const c of exhibitCandidates) {
@@ -923,6 +1022,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     account: {
       payer: { key: account.key, customerId: account.customerId, name: account.name, viaGc: account.viaGc },
       customerAddress: (input.customer?.address ?? '').trim(),
+      customerCounty: payerCounty(input.addresses),
+      customerPrecinct: payerPrecinct(input.addresses),
       customerType: (input.customer?.customer_type ?? '').trim(),
       paymentTerms: paymentTermsLabel(input.customer?.payment_terms),
       paymentTermsNote: (input.customer?.payment_terms_note ?? '').trim() || null,
@@ -957,6 +1058,27 @@ export function quickNet(balance: number, fee: LegalFeeModel = LEGAL_DEFAULT_FEE
   return balance - balance * fee.contingencyPct - fee.filingCost
 }
 
+/** The clock sessions cell, one wording for the desk, the firm's view and both prints (item 25): `2 approved (2 with GPS) · 1 awaiting approval`. */
+export function legalSessionWords(e: Pick<LegalEvidenceJob, 'sessions' | 'sessionsWithGps' | 'awaitingApproval'>): string {
+  const counted = `${e.sessions} approved${e.sessions ? ` (${e.sessionsWithGps} with GPS)` : ''}`
+  return e.awaitingApproval ? `${counted} · ${e.awaitingApproval} awaiting approval` : counted
+}
+
+/** `$1,234.50`; a negative number reads `−$1,234.50` (the sign before the dollar, never `$-`). */
 export function formatLegalMoney(n: number): string {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return n < 0 && abs !== '0.00' ? `−$${abs}` : `$${abs}`
+}
+
+/** The payer's county: its primary property record's, else the first record's; '' when none says. */
+function payerRecord(rows: ReadonlyArray<CustomerAddressRow>): CustomerAddressRow | undefined {
+  return rows.find((r) => (r as { is_primary?: boolean | null }).is_primary) ?? rows[0]
+}
+
+function payerCounty(rows: ReadonlyArray<CustomerAddressRow>): string {
+  return (payerRecord(rows)?.county ?? '').trim()
+}
+
+function payerPrecinct(rows: ReadonlyArray<CustomerAddressRow>): string {
+  return ((payerRecord(rows) as { jp_precinct?: string | null } | undefined)?.jp_precinct ?? '').trim()
 }

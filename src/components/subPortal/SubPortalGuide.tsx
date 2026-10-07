@@ -92,7 +92,7 @@ export function SubPortalGuideSheet({ lang, open, onClose, phone }: { lang: SubP
   )
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'rgba(22,40,60,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }} data-screen-only>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 750, background: 'rgba(22,40,60,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingTop: 'var(--app-top-chrome, 0px)' }} data-screen-only>
       <style>{`
         .spg{background:${PAPER};color:${INK};width:100%;max-height:92vh;border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 -12px 40px rgba(0,0,0,0.25)}
         @media (min-width:760px){.spg-wrap{align-items:center !important;padding:20px}.spg{max-width:780px;border-radius:16px;max-height:90vh}}
@@ -112,7 +112,7 @@ export function SubPortalGuideSheet({ lang, open, onClose, phone }: { lang: SubP
         @keyframes spg-pulse{0%,100%{box-shadow:0 0 0 0 rgba(31,122,58,0.5)}50%{box-shadow:0 0 0 8px rgba(31,122,58,0)}}
         @media (prefers-reduced-motion:reduce){.spg-pulse{animation:none}.spg-st i{transition:none}}
       `}</style>
-      <div className="spg-wrap" style={{ display: 'flex', width: '100%', justifyContent: 'center', alignItems: 'flex-end', maxHeight: '100vh' }} onClick={onClose}>
+      <div className="spg-wrap" style={{ display: 'flex', width: '100%', justifyContent: 'center', alignItems: 'flex-end', maxHeight: 'min(100vh, 100%)' }} onClick={onClose}>
         <div className="spg" role="dialog" aria-modal="true" aria-label={g.header} onClick={(e) => e.stopPropagation()}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', borderBottom: `1px solid ${HAIR}`, background: CARD }}>
             <span aria-hidden style={{ fontFamily: 'Georgia, serif', fontWeight: 700, color: COPPER, fontSize: 18 }}>?</span>

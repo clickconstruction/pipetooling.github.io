@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 
@@ -181,6 +182,11 @@ serve(async (req) => {
       from: COMPANY_EMAIL_FROM,
       subject,
     })
+    // Sent copies (docs/SENT_COPIES.md): the notice as it went, with its PDF, is kept on the job.
+    await fileSentEmailBestEffort(
+      { kind: 'hazmat_notice', jobIds: [jobId], customerId: jl.customer_id, source: { table: 'job_hazmat_incidents', id: incidentId }, sentBy: user.id },
+      { to: [customerEmailIn], from: COMPANY_EMAIL_FROM, subject, html: htmlBody, attachments: [{ filename: pdfFilename, content: pdfBase64 }], resendEmailId: resendSent.id ?? null },
+    )
 
     // Stamp the send on the incident + audit trail (v2.1039). Service role:
     // job_hazmat_incidents and job_activity_events have no client write

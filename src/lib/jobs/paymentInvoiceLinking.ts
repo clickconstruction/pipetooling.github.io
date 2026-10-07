@@ -20,6 +20,8 @@
  * table offers the hand-off to instead.
  */
 
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+
 export type LinkableInvoiceSlice = {
   id: string
   status: string
@@ -86,11 +88,11 @@ export function paymentRowNeedsInvoiceLink(
   return handTypedBillsOf(invoices).length > 0
 }
 
-/** The linked invoice's bill reference day (YYYY-MM-DD): billed_at's date part, else the est. bill date. */
+/** The linked invoice's bill reference day (YYYY-MM-DD): billed_at's day in APP_CALENDAR_TZ, else the est. bill date. */
 function invoiceBilledYmd(inv: LinkableInvoiceSlice | undefined): string | null {
   if (!inv) return null
-  const billed = (inv.billed_at ?? '').trim()
-  if (billed.length >= 10) return billed.slice(0, 10)
+  const billed = calendarYmdInAppTzFromIso((inv.billed_at ?? '').trim())
+  if (billed) return billed
   const est = (inv.estimated_bill_date ?? '').trim()
   return /^\d{4}-\d{2}-\d{2}/.test(est) ? est.slice(0, 10) : null
 }

@@ -12,7 +12,7 @@ import type { ChecksDepositIn, ChecksEventIn, ChecksJobIn } from './gcChecksAppl
 export type GcChecksInputs = { jobs: ChecksJobIn[]; events: ChecksEventIn[]; deposits: ChecksDepositIn[] }
 
 const JOBS_SELECT =
-  'id, hcp_number, click_number, job_name, job_address, customer_id, gc_customer_id, bill_to_party, lien_retainage_held, ' +
+  'id, hcp_number, click_number, job_name, job_address, customer_id, gc_customer_id, bill_to_party, lien_retainage_held, revenue, ' +
   'invoices:jobs_ledger_invoices(id, job_id, sequence_order, amount, status, billed_at, bill_to_party, bill_to_email), ' +
   'payments:jobs_ledger_payments(id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number, mercury_transaction_id, sequence_order, created_at)'
 

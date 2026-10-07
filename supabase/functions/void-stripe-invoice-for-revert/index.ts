@@ -24,6 +24,12 @@ interface Body {
   stripe_mode?: StripeBillingMode
   /** Subcontractor Collect Payment send-back: must match team + approved flow + invoice id. */
   collect_payment_send_back_job_id?: string
+  /**
+   * v2.4803: why a paid-by-check mark is being reversed, when it is not that the check did
+   * not clear — "Moved to J922 · wrong job". The credit note's memo and the `removed`
+   * event's reason read it; without it both say the payment did not clear (v2.4082).
+   */
+  reason?: string
 }
 
 type InvoiceRow = {
@@ -123,6 +129,7 @@ serve(async (req) => {
     }
 
     const collectBackJobId = body.collect_payment_send_back_job_id?.trim() || null
+    const reverseReason = (body.reason ?? '').trim().slice(0, 200) || null
 
     const admin = createClient(supabaseUrl, serviceKey)
 
@@ -311,7 +318,9 @@ serve(async (req) => {
             amount: cnAmount,
             out_of_band_amount: cnAmount,
             reason: 'order_change',
-            memo: 'Payment did not clear — bill sent back in ClickTooling to be billed again.',
+            memo: reverseReason
+              ? `${reverseReason} — bill sent back in ClickTooling to be billed again.`
+              : 'Payment did not clear — bill sent back in ClickTooling to be billed again.',
             metadata: { pt_oob_revert: '1', pt_send_back: '1' },
           })
           reversedCreditNoteId = cn.id
@@ -387,7 +396,7 @@ serve(async (req) => {
         note: null,
         mercury_transaction_id: null,
         sequence_order: null,
-        reason: `oob_mark_reversed: payment did not clear (Stripe ${stripeInvId}${reversedCreditNoteId ? `, credit note ${reversedCreditNoteId}` : ''})`,
+        reason: `oob_mark_reversed: ${reverseReason ?? 'payment did not clear'} (Stripe ${stripeInvId}${reversedCreditNoteId ? `, credit note ${reversedCreditNoteId}` : ''})`,
         actor_user_id: user.id,
         actor_name: actorName,
       })

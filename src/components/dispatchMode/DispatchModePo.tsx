@@ -710,12 +710,12 @@ export default function DispatchModePo() {
           aria-label="Other options"
           className="dispatch-po-overlay"
           onClick={() => setOtherListOpen(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1010, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1010, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingTop: 'var(--app-top-chrome, 0px)' }}
         >
           <div
             className="dispatch-po-sheet"
             onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 480, maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface)', borderRadius: '12px 12px 0 0', padding: '1rem', boxSizing: 'border-box' }}
+            style={{ width: '100%', maxWidth: 480, maxHeight: 'min(70vh, 100%)', overflowY: 'auto', background: 'var(--surface)', borderRadius: '12px 12px 0 0', padding: '1rem', boxSizing: 'border-box' }}
           >
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.6rem' }}>
               <span style={{ fontWeight: 700 }}>Other {otherListOpen === 'for_person' ? 'people' : 'supply houses'}</span>
@@ -758,7 +758,7 @@ export default function DispatchModePo() {
           aria-label="Confirm move"
           className="dispatch-po-overlay"
           onClick={() => setMoveTarget(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1011, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1011, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
         >
           <div className="dispatch-po-dialog" onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: 'var(--surface)', borderRadius: 12, padding: '1rem', boxSizing: 'border-box' }}>
             <p style={{ margin: '0 0 0.25rem', fontWeight: 700 }}>

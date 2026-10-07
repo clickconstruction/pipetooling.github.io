@@ -175,7 +175,7 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.steps['demand-letter']?.state).toBe('na')
     rows.invoices[0]!.sent_to_customer_at = '2026-07-20T12:00:00Z'
     j = customerJourney(palmer, rows, NOW)
-    expect(j.steps['demand-letter']).toMatchObject({ state: 'never', headline: 'Eligible — a bill is 45+ days past', action: { to: '/jobs?jobDetail=j1' } })
+    expect(j.steps['demand-letter']).toMatchObject({ state: 'never', headline: 'Eligible — a bill is 45+ days past', action: { label: 'Open the job\u2019s liens', to: '/jobs?tab=stages&lienwindow=j1&lientab=demand' } })
     rows.invoices[0]!.stripe_invoice_status = 'paid'
     j = customerJourney(palmer, rows, NOW)
     expect(j.steps['bill-email']).toMatchObject({ state: 'paid', detail: '2 bills paid' })
@@ -279,9 +279,17 @@ describe('personJourney — a real person on the strips', () => {
     )
     expect(j.steps['firm-confirm-email']).toMatchObject({ state: 'signed', headline: '1 address confirmed · 1 waiting', detail: 'Ann, Bo' })
     expect(j.steps['firm-portal']).toMatchObject({ state: 'sent', link: '/legal?t=ltok' })
+    expect(j.steps['firm-welcome-email']).toMatchObject({ state: 'never', headline: 'Link not sent from the desk yet' })
+    const sent = firmJourney(f, { portalLinks: [{ id: 'l2', token: 'ltok', revoked_at: null, created_at: '2026-09-11T00:00:00Z' }], recipients: [], queue: [], linkSends: [{ source_id: 'l1', sent_at: '2026-09-11T12:00:00Z', recipient_emails: ['old@firm.example'] }, { source_id: 'l2', sent_at: '2026-09-12T12:00:00Z', recipient_emails: ['ann@firm.example', 'bo@firm.example'] }] }, NOW)
+    expect(sent.steps['firm-welcome-email']).toMatchObject({ state: 'sent', headline: 'Sent Sep 12', detail: 'ann@firm.example, bo@firm.example' })
     expect(j.steps['firm-now-email']).toMatchObject({ state: 'sent', headline: 'Last Sep 14', detail: '1 email' })
     expect(j.steps['firm-digest-email']).toMatchObject({ state: 'never', headline: 'No digest sent yet' })
     expect(j.summary).toBe('2 recipients · 1 confirmed · portal link made')
+  })
+
+  it('the firm: a live link with no token (hash-only at rest, #85 item 22) still counts, and opens as the office preview', () => {
+    const j = firmJourney({ kind: 'firm', id: 'f1', name: 'Sample & Partner' }, { portalLinks: [{ token: null, revoked_at: null, created_at: '2026-09-11T00:00:00Z' }], recipients: [], queue: [] }, NOW)
+    expect(j.steps['firm-portal']).toMatchObject({ state: 'sent', link: '/legal?firm=f1&preview=1' })
   })
 
   it('every step of every applicable journey gets an answer, for every subject kind', () => {

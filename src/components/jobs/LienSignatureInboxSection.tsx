@@ -190,7 +190,7 @@ export default function LienSignatureInboxSection() {
           role="dialog"
           aria-modal="true"
           aria-label="Email the signed release"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300, paddingTop: 'var(--app-top-chrome, 0px)' }}
           onClick={() => !sendBusy && setSendConfirm(null)}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', padding: '1rem 1.25rem', borderRadius: 8, width: 'min(400px, calc(100vw - 2rem))' }}>

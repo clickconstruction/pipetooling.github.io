@@ -41,7 +41,7 @@ export interface ReferenceUnsealFields {
   bid_value: number | string | null
   outcome: string | null
   loss_category: string | null
-  /** bid_date_sent ?? created_at, YMD or ISO. */
+  /** 'YYYY-MM-DD': bid_date_sent, else created_at's day in the company calendar (the caller reads it). */
   when: string | null
 }
 

@@ -52,7 +52,7 @@ const rows: LienCalendarJob[] = [
 
 /** A job's row on the board, found by its number. */
 function rowOf(number: string): HTMLElement {
-  return screen.getByRole('button', { name: new RegExp(`^${number}`) }).closest('[role="row"]') as HTMLElement
+  return screen.getByText(number).closest('[role="row"]') as HTMLElement
 }
 
 /** The Overdue section's bar (the pill of the same name filters instead). */
@@ -118,6 +118,46 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.queryByText('Knight')).toBeNull()
   })
 
+  it('an overdue job is listed with its property under that property’s next date; Overdue picked alone lists it again (v2.4526)', () => {
+    // 226's window closed long ago; it sits at 628 Terrell Rd, where 890 owes a notice Oct 15.
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    expect(closed.runway.state).toBe('closed')
+    mount({ rows: [...rows, closed] })
+    // The pill still counts it in Overdue; the bar says where it is listed.
+    expect(screen.getByRole('button', { name: /^Overdue · 2 jobs · \$1,308/ })).toBeTruthy()
+    expect(overdueBar().textContent).toContain('2 jobs · 1 listed here · 1 is listed under Next month')
+    const next = screen.getByTestId('lien-cal-bucket-next_month')
+    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
+    const guest = rowOf('226 PLUM')
+    expect(next.contains(guest)).toBe(true)
+    expect(guest.getAttribute('data-closed-here')).toBe('true')
+    expect(within(guest).getByTestId('lien-cal-row-money').textContent).toContain('still owed')
+    // Its property's own job comes first, the overdue one after it, then the GC's other property.
+    expect(within(next).getAllByRole('row').map((r) => r.textContent?.match(/^\d+ PLUM/)?.[0])).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
+    // The GC's money is its notices only.
+    expect(within(next).getByText(/2 notices owed · 1 window closed/)).toBeTruthy()
+    // Overdue opened under All lists only the job with nothing ahead at its property.
+    fireEvent.click(overdueBar())
+    expect(within(screen.getByTestId('lien-cal-bucket-overdue')).queryByText('Older Terrell job')).toBeNull()
+    expect(within(screen.getByTestId('lien-cal-bucket-overdue')).getByText('Knight')).toBeTruthy()
+    // Picked on its own, Overdue is whole.
+    fireEvent.click(screen.getByRole('button', { name: /^Overdue · 2 jobs/ }))
+    const alone = screen.getByTestId('lien-cal-bucket-overdue')
+    expect(within(alone).getByText('Older Terrell job')).toBeTruthy()
+    expect(within(alone).getByText('Knight')).toBeTruthy()
+    expect(overdueBar().textContent).toContain('2 jobs · nothing left to file · money still owed')
+  })
+
+  it('on a phone the overdue job sits under its property’s heading too, greyed (v2.4526)', () => {
+    const closed: LienCalendarJob = { jobId: 'x', number: '226 PLUM', name: 'Older Terrell job', customer: 'Dudley Mason', gcId: 'gc1', gcName: 'RMC · Dudley Mason', address: '628 Terrell Rd, San Antonio, TX', openBalance: 650, isSub: true, runway: buildLienPayRunway({ ...base, openBalance: 650, lastWorkYmd: '2026-03-10', isSub: true }) }
+    mount({ rows: [...rows, closed], isMobile: true })
+    const next = within(screen.getByTestId('lien-cal-phone')).getByTestId('lien-cal-bucket-next_month')
+    expect(within(next).getAllByTestId('lien-cal-property').map((p) => p.textContent)).toEqual(['628 Terrell Rd', 'Other properties'])
+    const guest = within(next).getByText('Older Terrell job').closest('[role="row"]') as HTMLElement
+    expect(guest.getAttribute('data-closed-here')).toBe('true')
+    expect(within(next).getAllByRole('row').map((r) => r.textContent?.match(/^\d+ PLUM/)?.[0])).toEqual(['890 PLUM', '226 PLUM', '881 PLUM'])
+  })
+
   it('groups: the GC row folds its flags with a count, its jobs draw their marks; Overdue opens to its rows', () => {
     mount()
     const rmc = screen.getByTestId('lien-cal-group-gc:gc1')
@@ -154,6 +194,22 @@ describe('LienDeskCalendarTab', () => {
     expect(screen.getByText('Aug 20')).toBeTruthy()
     expect(screen.getByText('Aug · no hours')).toBeTruthy()
     expect(screen.getByTitle(/No approved hours — the board counts from the month the job was created \(Aug 3\)/)).toBeTruthy()
+  })
+
+  it('the work tick’s label is a door to the last day of work when the desk passes one; plain otherwise (v2.4735)', () => {
+    const onOpenLastWork = vi.fn()
+    const { onOpen } = mount({ onOpenLastWork })
+    const doors = screen.getAllByTestId('lien-cal-work-door')
+    expect(doors.length).toBe(4)
+    const amber = doors.find((d) => d.textContent === 'Aug · no hours')!
+    expect(amber.getAttribute('title')).toMatch(/click to change the last day of work$/)
+    fireEvent.click(amber)
+    expect(onOpenLastWork).toHaveBeenCalledTimes(1)
+    expect(onOpen).not.toHaveBeenCalled()
+    cleanup()
+    mount()
+    expect(screen.queryAllByTestId('lien-cal-work-door')).toHaveLength(0)
+    expect(screen.getByText('Aug · no hours').tagName).toBe('SPAN')
   })
 
   it('a job row says only what its GC row does not; under a GC the dashed dot is the GC’s (v2.4265)', () => {
@@ -200,7 +256,7 @@ describe('LienDeskCalendarTab', () => {
 
   it('a row and a hollow flag open the job; the search narrows the buckets and their counts', () => {
     const { onOpen } = mount()
-    fireEvent.click(screen.getByRole('button', { name: /^890 PLUM/ }))
+    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rizvi/ }))
     expect(onOpen).toHaveBeenCalledWith('a')
     fireEvent.click(within(rowOf('881 PLUM')).getByRole('button', { name: /A § 53.056 notice is owed for August 2026/ }))
     expect(onOpen).toHaveBeenLastCalledWith('b')
@@ -300,6 +356,37 @@ describe('the pen (v2.4153)', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalledWith('promise'))
     expect(screen.queryByTestId('lien-cal-pen')).toBeNull()
   })
+  it('the job number is its own door: it opens the job, and the rest of the row still opens the Lien window (v2.4531)', () => {
+    const onOpenJobWindow = vi.fn()
+    const { onOpen } = mount({ onOpenJobWindow })
+    const number = within(rowOf('890 PLUM')).getByRole('button', { name: '890 PLUM' })
+    expect(number.getAttribute('title')).toBe('Open the job: its history, its bills and Edit')
+    fireEvent.click(number)
+    expect(onOpenJobWindow).toHaveBeenCalledWith('a')
+    expect(onOpen).not.toHaveBeenCalled()
+    // The name, and the address line under it, open the Lien window as before.
+    fireEvent.click(within(rowOf('890 PLUM')).getByRole('button', { name: /^Rizvi/ }))
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(rowOf('890 PLUM')).getByText(/628 Terrell Rd/))
+    expect(onOpen).toHaveBeenCalledTimes(2)
+    expect(onOpenJobWindow).toHaveBeenCalledTimes(1)
+    cleanup()
+    // On a phone too.
+    const phoneJob = vi.fn()
+    const phone = mount({ onOpenJobWindow: phoneJob, isMobile: true })
+    fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByRole('button', { name: '890 PLUM' }))
+    expect(phoneJob).toHaveBeenCalledWith('a')
+    expect(phone.onOpen).not.toHaveBeenCalled()
+    fireEvent.click(within(screen.getByTestId('lien-cal-phone')).getByText('Rizvi'))
+    expect(phone.onOpen).toHaveBeenCalledWith('a')
+  })
+
+  it('with no door for the job, the number is plain and nothing about the row changes', () => {
+    mount()
+    expect(screen.queryByTestId('lien-cal-job-no')).toBeNull()
+    expect(within(rowOf('890 PLUM')).queryByRole('button', { name: '890 PLUM' })).toBeNull()
+  })
+
   it('without the pen the dot opens the job', () => {
     const { onOpen } = mount()
     fireEvent.click(screen.getByRole('button', { name: 'Record when Ana Garza expects to pay · 512 PLUM' }))
@@ -344,15 +431,17 @@ describe('the pen (v2.4153)', () => {
     it('the lens keeps the months and shows only those jobs; a second press brings the rest back', () => {
       mount({ supplierMarks: marks })
       const lens = screen.getByTestId('lien-cal-houses-lens')
+      // On a computer it sits in the date row beside the search, not among the pills (v2.4430).
+      expect(screen.getByTestId('lien-cal-dates').contains(lens)).toBe(true)
       expect(lens.getAttribute('aria-pressed')).toBe('false')
       expect(lens.textContent).toContain('2')
       fireEvent.click(lens)
       expect(lens.getAttribute('aria-pressed')).toBe('true')
       expect(within(screen.getByTestId('lien-cal-pills')).getByRole('button', { name: /^All · 2 jobs/ })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: /^881 PLUM/ })).toBeNull()
-      expect(screen.getByRole('button', { name: /^890 PLUM/ })).toBeTruthy()
+      expect(screen.queryByText('881 PLUM')).toBeNull()
+      expect(screen.getByText('890 PLUM')).toBeTruthy()
       fireEvent.click(lens)
-      expect(screen.getByRole('button', { name: /^881 PLUM/ })).toBeTruthy()
+      expect(screen.getByText('881 PLUM')).toBeTruthy()
     })
 
     it('draws no lens when no job on the board owes a house', () => {
@@ -364,9 +453,8 @@ describe('the pen (v2.4153)', () => {
 
     it('a phone row carries the money at the right of its dates', () => {
       mount({ supplierMarks: marks, isMobile: true })
-      const row = screen.getByRole('button', { name: /^890 PLUM/ })
+      const row = rowOf('890 PLUM')
       expect(row.querySelector('[data-lien-supplier-mark]')?.textContent).toContain('$1,670')
-      expect(screen.getByTestId('lien-cal-houses-lens').textContent).not.toContain('Houses owed')
     })
   })
 })

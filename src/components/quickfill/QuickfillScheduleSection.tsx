@@ -1775,7 +1775,7 @@ export function QuickfillScheduleSection({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '1rem',
+            padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
             zIndex: 1003,
           }}
           role="presentation"

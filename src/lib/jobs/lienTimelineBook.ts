@@ -28,6 +28,9 @@ export interface LienBookJob {
   propertyKind: string
   homestead: boolean
   county: string
+  /** The justice precinct from the property record (v2.4771), '' until the office's court map names it; the note says *2 or 3 — on the line*. */
+  precinct?: string
+  precinctNote?: string
   /** The owner of record as the desk resolves it — the override on the job, else the property record. '' when none. */
   ownerName: string
   openBalance: number
@@ -74,7 +77,7 @@ function lensFor(t: LienTimeline): LienBookLens {
   const n = t.next
   if (n.kind === 'lien_gone') return n.aside ? 'due' : 'dead'
   if (n.kind === 'serve' || n.kind === 'release' || n.kind === 'retainage') return 'due'
-  if (n.kind === 'notice' || n.kind === 'affidavit') return n.daysLeft != null && n.daysLeft <= LIEN_DESK_LEAD_DAYS ? 'due' : 'later'
+  if (n.kind === 'notice' || n.kind === 'late_notice' || n.kind === 'affidavit') return n.daysLeft != null && n.daysLeft <= LIEN_DESK_LEAD_DAYS ? 'due' : 'later'
   if (n.kind === 'suit') return t.steps.find((s) => s.kind === 'suit')?.state === 'due' ? 'due' : 'later'
   return 'later'
 }

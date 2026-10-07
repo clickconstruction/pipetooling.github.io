@@ -11,12 +11,14 @@ import { canMarkTallyPayroll } from '../lib/people/payWeekLinks'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
-import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { MercuryTransactionNoteIcon } from '../components/icons/MercuryTransactionNoteIcon'
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
 import { TallyJobTransactionsModal } from '../components/tally/TallyJobTransactionsModal'
 import { TallyClockWindowAllocateModal } from '../components/tally/TallyClockWindowAllocateModal'
 import { TallySortModeCardList } from '../components/tally/TallySortModeCardList'
+import { TallyTeamQueue } from '../components/tally/TallyTeamQueue'
+import { mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
 import { formatTallyCurrency, formatTallyPostedParts } from '../lib/tally/formatTallyPosted'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
@@ -228,6 +230,10 @@ export default function JobTally() {
   const [activeTab, setActiveTab] = useState<JobTallyTab>('transactions')
   const [role, setRole] = useState<string | null>(null)
   const isDevTally = role === 'dev'
+  // #72 PR 2a: office roles land on the team's queue (Team); My card is their own card's table.
+  const isTallyOffice = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  const tallyTxView: 'team' | 'mine' = searchParams.get('view') === 'mine' ? 'mine' : 'team'
+  const showTallyTeam = isTallyOffice && tallyTxView === 'team'
   // T5-03 (J7-9): "Mark payroll" follows payroll access (dev, controller, pay-approved master) —
   // DB policy + RPC widened in 20260906130000. Payroll RULES stay dev-only (isDevTally).
   const { canAccessPay: tallyCanAccessPay } = usePeopleAccess(authUser?.id)
@@ -854,7 +860,7 @@ export default function JobTally() {
   const selectedJob = jobs.find((j) => j.id === selectedJobId)
 
   return (
-    <div style={{ padding: '1rem', maxWidth: 480, margin: '0 auto' }}>
+    <div style={{ padding: '1rem', maxWidth: showTallyTeam && activeTab === 'transactions' ? 760 : 480, margin: '0 auto' }}>
       <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <Link to="/dashboard" style={{ fontSize: '0.875rem', color: 'var(--text-link)', textDecoration: 'none' }}>
           ← Dashboard
@@ -931,7 +937,35 @@ export default function JobTally() {
         </button>
       </div>
 
-      {activeTab === 'transactions' && (
+      {activeTab === 'transactions' && isTallyOffice ? (
+        <div role="group" aria-label="Whose card charges" style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.25rem' }}>
+          {(['team', 'mine'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={tallyTxView === v}
+              onClick={() =>
+                setSearchParams(
+                  (p) => {
+                    const next = new URLSearchParams(p)
+                    if (v === 'team') next.delete('view')
+                    else next.set('view', 'mine')
+                    return next
+                  },
+                  { replace: true },
+                )
+              }
+              style={tabStyle(tallyTxView === v)}
+            >
+              {v === 'team' ? 'Team' : 'My card'}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {activeTab === 'transactions' && showTallyTeam && <TallyTeamQueue />}
+
+      {activeTab === 'transactions' && !showTallyTeam && (
         <div style={{ padding: '0.5rem 0 1rem' }}>
           <div
             style={{
@@ -1894,12 +1928,13 @@ export default function JobTally() {
                 style={{
                   position: 'fixed',
                   inset: 0,
-                  zIndex: 100,
+                  zIndex: 800,
                   background: 'rgba(0,0,0,0.4)',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'stretch',
                   justifyContent: 'flex-end',
+                  paddingTop: 'var(--app-top-chrome, 0px)',
                 }}
                 onClick={() => setJobPickerOpen(false)}
               >
@@ -1908,7 +1943,7 @@ export default function JobTally() {
                     background: 'var(--surface)',
                     borderTopLeftRadius: 16,
                     borderTopRightRadius: 16,
-                    maxHeight: '70vh',
+                    maxHeight: 'min(70vh, 100%)',
                     overflow: 'auto',
                     padding: '1rem',
                   }}
@@ -2302,7 +2337,7 @@ export default function JobTally() {
         onClose={() => setTallyClockAllocateRow(null)}
         userId={authUser?.id ?? null}
         transactionId={tallyClockAllocateRow?.mercury_transaction_id ?? null}
-        postedAtIso={tallyClockAllocateRow?.posted_at ?? null}
+        swipeAtIso={tallyClockAllocateRow ? mercurySwipeAtIso(tallyClockAllocateRow.raw, tallyClockAllocateRow.posted_at) : null}
         transactionAmount={
           tallyClockAllocateRow != null ? Number(tallyClockAllocateRow.amount) : 0
         }

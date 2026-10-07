@@ -2,7 +2,9 @@
  * Add the contract (v2.4301): file a contract that is already signed — a Drive link or a scan —
  * and tick the other jobs of the same customer the paper names. Never every job: the anchor
  * job is always on it, every other job is the office's tick. The same sheet edits which jobs a
- * paper covers (`mode: 'edit'`, from the Customer page's Agreements card).
+ * paper covers (`mode: 'edit'`, from the Customer page's Agreements card). A paper signed by
+ * two files both names (v2.4657): the Second signer box starts with the one the anchor job's
+ * draft names.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -11,6 +13,7 @@ import { FinishedDateInput } from '../FinishedDateInput'
 import { isHttpUrl } from '../../lib/jobs/jobContractDocument'
 import { buildCoverableJobs, coversEditDiff, coversSheetWords, type CoversPaper } from '../../lib/jobs/jobContractCovers'
 import {
+  anchorCoSignerName,
   coveredJobIds,
   fileContractForJobs,
   loadContractRowsForJobs,
@@ -68,6 +71,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
   const [file, setFile] = useState<File | null>(null)
   const [scanOpen, setScanOpen] = useState(false)
   const [signer, setSigner] = useState(p.signerName)
+  const [coSigner, setCoSigner] = useState('')
   const [signedOn, setSignedOn] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -81,6 +85,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
     setFile(null)
     setScanOpen(false)
     setSigner(p.signerName)
+    setCoSigner('')
     setSignedOn('')
     setError(null)
     let cancelled = false
@@ -92,6 +97,9 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
         if (cancelled) return
         setJobs(list)
         setRows(contractRows)
+        // The anchor job's draft named a second signer: start the box with them, unless one was typed.
+        const named = anchorCoSignerName(contractRows, p.anchorJob?.id ?? null)
+        if (named) setCoSigner((typed) => typed || named)
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load the jobs.')
       } finally {
@@ -141,7 +149,7 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
         showToast('Saved. The paper covers the jobs you ticked.', 'success')
       } else {
         const ids = [...(anchorId ? [anchorId] : []), ...list.filter((j) => picked.has(j.id)).map((j) => j.id)]
-        const r = await fileContractForJobs({ jobIds: ids, signerName: signer, signedOn, link, file, authUserId: user?.id ?? null })
+        const r = await fileContractForJobs({ jobIds: ids, signerName: signer, coSignerName: coSigner, signedOn, link, file, authUserId: user?.id ?? null })
         showToast(
           r.uploadError
             ? `Filed for ${r.filed === 1 ? 'this job' : `${r.filed} jobs`}, but the scan did not upload: ${r.uploadError}`
@@ -330,6 +338,12 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
                 Signed by
               </label>
               <input id="add-contract-signer" type="text" value={signer} disabled={busy} onChange={(e) => setSigner(e.target.value)} style={field} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
+              <label htmlFor="add-contract-cosigner" style={label}>
+                Second signer
+              </label>
+              <input id="add-contract-cosigner" type="text" value={coSigner} disabled={busy} placeholder="Only if two people signed" onChange={(e) => setCoSigner(e.target.value)} style={field} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
               <label htmlFor="add-contract-date" style={label}>

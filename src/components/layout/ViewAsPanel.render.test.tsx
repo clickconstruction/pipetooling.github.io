@@ -12,6 +12,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { ViewAsPanel } from './ViewAsPanel'
+import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
 import { settle } from '../../test/renderSmokeMocks'
 
 describe('ViewAsPanel', () => {
@@ -28,5 +29,13 @@ describe('ViewAsPanel', () => {
     expect(screen.getByText('Nobody matches.')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Close'))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('stands above the dock, so the last person in the list is never under it (v2.4431)', async () => {
+    render(<ViewAsPanel onClose={vi.fn()} />)
+    await settle()
+    const backdrop = screen.getByRole('presentation')
+    expect(backdrop.style.position).toBe('fixed')
+    expect(Number(backdrop.style.zIndex)).toBeGreaterThan(DISPATCH_MODE_FOOTER_Z_INDEX)
   })
 })

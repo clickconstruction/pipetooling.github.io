@@ -9,8 +9,8 @@
  * pinned, phone first.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
-import { RoomRevisionBody } from '../components/bids/SubmittalRoomView'
-import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { RoomHeader, RoomRevisionBody, RoomRevisionChips } from '../components/bids/SubmittalRoomView'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { useSearchParams } from 'react-router-dom'
 
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
@@ -19,20 +19,25 @@ import { describeThreadEntry, parseSubmittalRoomPayload, pendingKey, ROOM_ROLE_L
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import { ROOM_ROLES, rollUpPartDecisions, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
+import type { RecordRoomPayload, RecordRoomRevision } from '../../supabase/functions/_shared/submittalRecord'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
-import { buildProcurementLog, floatText, procurementHeadline, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
+import { buildProcurementLog, floatText, shortDate as logDate, statusText, tagStagesFrom, type ProcurementItemSource, type ProcurementRecord, type ProcurementStage, type StageDates } from '../lib/submittals/procurementLog'
+import { procurementNextLine, procurementSteps, type ProcurementStepTone } from '../lib/submittals/procurementBoard'
+import { rowsThatStand } from '../lib/submittals/standingRows'
 import type { StageSplitRecord, StageSplitSource } from '../lib/bids/materialsByStage'
 
 // The live build's env carries a trailing slash — strip it so the function URLs read one slash.
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 
-type View = { kind: 'loading' } | { kind: 'dead'; message: string } | { kind: 'closed'; payload: SubmittalRoomPayload } | { kind: 'empty'; message: string } | { kind: 'open'; payload: SubmittalRoomPayload }
+type View = { kind: 'loading' } | { kind: 'dead'; message: string } | { kind: 'closed'; payload: RecordRoomPayload } | { kind: 'empty'; message: string } | { kind: 'open'; payload: RecordRoomPayload }
 
 const COPPER = '#b0662f'
 const paper: CSSProperties = { minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 0.95rem' }
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const quiet: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
+// v2.4684 · the colour of a step's note: sent back amber, something to order dark, late red.
+const STEP_TONE: Record<ProcurementStepTone, string> = { back: 'var(--text-amber-700)', go: 'var(--text-strong)', late: '#b42318', quiet: 'var(--text-muted)' }
 
 function shortDate(iso: string | null): string {
   if (!iso) return ''
@@ -65,6 +70,8 @@ export default function SubmittalRoom() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  // v2.4599 · the room's writes carry the office's preview flag too, so the function refuses them (it refuses a verified office session either way).
+  const reviewUrl = `${supabaseUrl}/functions/v1/submit-submittal-review${preview ? `?${PUBLIC_PREVIEW_PARAM}=1` : ''}`
   // What customers see (v2.3511): the sample token renders the sample room; identifying and deciding stay on this page and save nothing.
   const sample = sampleStateFromToken(token)
   const [view, setView] = useState<View>({ kind: 'loading' })
@@ -162,7 +169,7 @@ export default function SubmittalRoom() {
       setIdentifyOpen(false)
       return
     }
-    const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+    const res = await fetch(reviewUrl, {
       method: 'POST',
       headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'identify', token, name: idName, email: idEmail, role: idRole, viaToken: me ? me.token : viaToken !== token ? viaToken : null, website: '' }),
@@ -205,7 +212,7 @@ export default function SubmittalRoom() {
     setAskError(null)
     setAskedOk(null)
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+      const res = await fetch(reviewUrl, {
         method: 'POST',
         headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'message', token: who.token, submittalId: rev?.id ?? null, body: text, tags: askTags, website: '' }),
@@ -251,7 +258,7 @@ export default function SubmittalRoom() {
     setSending(true)
     setSendError(null)
     try {
-      const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+      const res = await fetch(reviewUrl, {
         method: 'POST',
         headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'decide', token: me.token, submittalId: rev.id, decisions }),
@@ -298,28 +305,21 @@ export default function SubmittalRoom() {
   }
 
   const payload = view.kind === 'open' || view.kind === 'closed' ? view.payload : null
-  const rev: RoomRevision | null = payload && view.kind === 'open' ? payload.revisions.find((r) => r.id === revId) ?? payload.revisions[0] ?? null : null
-  const pdfHref = (r: RoomRevision) => sample ? '#' : `${supabaseUrl}/functions/v1/open-submittal-pdf?t=${encodeURIComponent(token)}&r=${encodeURIComponent(r.id)}`
+  const rev: RecordRoomRevision | null = payload && view.kind === 'open' ? payload.revisions.find((r) => r.id === revId) ?? payload.revisions[0] ?? null : null
+  const pdfHref = (r: RecordRoomRevision) => sample ? '#' : `${supabaseUrl}/functions/v1/open-submittal-pdf?t=${encodeURIComponent(token)}&r=${encodeURIComponent(r.id)}`
 
   return (
     <div data-theme="light" style={paper}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 6rem' }}>
         {sample ? <SampleModeBanner /> : null}
+        {preview && !sample ? (
+          // v2.4608 · opened from the office's door: say so before anyone presses (the function refuses every write either way).
+          <div role="status" data-theme="light" data-testid="room-preview-banner" style={{ margin: '0 0 0.9rem', padding: '0.45rem 0.75rem', borderRadius: 6, background: 'var(--bg-amber-50)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.8rem', fontWeight: 600 }}>
+            You are looking as the office. Nothing here is counted or saved.
+          </div>
+        ) : null}
         {payload ? (
-          <header style={{ marginBottom: '0.9rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, paddingBottom: '0.7rem', borderBottom: `3px solid var(--text-strong)` }}>
-              <div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>{payload.company.name.toUpperCase()}</div>
-                {payload.company.tagline ? <div style={{ ...label, marginTop: 4, letterSpacing: '0.22em' }}>{payload.company.tagline}</div> : null}
-              </div>
-              {payload.company.phone ? <div style={{ ...quiet, fontSize: '0.75rem', textAlign: 'right' }}>{payload.company.phone}</div> : null}
-            </div>
-            <div style={{ marginTop: '0.9rem' }}>
-              <div style={{ ...label, color: COPPER }}>Product review</div>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.25 }}>{payload.bid.projectName || payload.bid.label}</div>
-              <div style={quiet}>Plumbing fixtures &amp; equipment{payload.bid.address ? ` · ${payload.bid.address}` : ''}</div>
-            </div>
-          </header>
+          <RoomHeader company={payload.company} bid={payload.bid} />
         ) : null}
 
         {view.kind === 'loading' ? <p style={{ ...quiet, padding: '3rem 0', textAlign: 'center' }}>Loading…</p> : null}
@@ -337,15 +337,7 @@ export default function SubmittalRoom() {
 
         {view.kind === 'open' && payload && rev ? (
           <>
-            {payload.revisions.length > 1 ? (
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.8rem' }} data-testid="room-revisions">
-                {payload.revisions.map((r) => (
-                  <button key={r.id} type="button" aria-pressed={r.id === rev.id} onClick={() => setRevId(r.id)} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === rev.id ? 'var(--text-strong)' : 'var(--surface)', color: r.id === rev.id ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === rev.id ? 700 : 500, cursor: 'pointer' }}>
-                    Rev {r.rev}{r.current ? ' · current' : ''}{r.sharedAt ? ` · ${shortDate(r.sharedAt)}` : ''}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            <RoomRevisionChips revisions={payload.revisions} selectedId={rev.id} onSelect={setRevId} />
 
             <RoomRevisionBody
               rev={rev}
@@ -360,7 +352,7 @@ export default function SubmittalRoom() {
               ) : null}
             />
 
-            {payload.procurement && rev.current ? <ProcurementCard rev={rev} procurement={payload.procurement} companyName={payload.company.name} /> : null}
+            {payload.procurement && rev.current ? <ProcurementCard revisions={[rev, ...payload.revisions.filter((r) => r.id !== rev.id && r.rev < rev.rev).sort((a, b) => b.rev - a.rev)]} procurement={payload.procurement} companyName={payload.company.name} /> : null}
 
             {Object.keys(pending).length > 0 ? (
               <div style={{ ...card, marginTop: 10, borderColor: COPPER }} data-testid="room-pending">
@@ -381,7 +373,7 @@ export default function SubmittalRoom() {
             ) : null}
             <div style={{ ...card, marginTop: 12, background: 'var(--bg-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }} data-testid="room-footer">
               <span style={{ fontSize: '0.85rem' }}>
-                <b>{rev.counts.decided} decided · {rev.rows.filter((r) => (r.kind === 'differs' || r.kind === 'proposed') && !foldPending(r, pending, me?.name ?? '', '').decision).length} to go</b>
+                <b>{rev.counts.decided} decided · {rev.rows.filter((r) => (r.kind === 'differs' || r.kind === 'proposed') && !foldPending(r, pending, me?.name ?? '', '').decision).length} to answer</b>
                 {Object.keys(pending).length > 0 ? <span style={quiet}> · {Object.keys(pending).length} to send</span> : null}
               </span>
               {rev.counts.open > 0 && me?.mayDecide !== false ? (
@@ -474,7 +466,8 @@ export default function SubmittalRoom() {
       </div>
 
       {identifyOpen ? (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '1rem' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setIdentifyOpen(false) }}>
+        // window-z: allow — the submittal room is a public page with no dock and nothing else stacked on it.
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) setIdentifyOpen(false) }}>
           <form role="dialog" aria-modal="true" aria-label={identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'} style={{ ...card, maxWidth: 520, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 8 }} onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void identify() }}>
             <div style={{ ...label, color: COPPER }}>{identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'}</div>
             <p style={{ margin: 0, fontSize: '0.9rem' }}>{identifyFor === 'ask' ? 'Tell us who you are, so the answer reaches you. Asked once.' : 'Tell us who you are, so the record says so. Asked once.'}</p>
@@ -506,12 +499,16 @@ export default function SubmittalRoom() {
  * only; the PO and the supply house stay on the office's screen. Derived here with the
  * same kernel the office uses, from the pieces the room fetch carries.
  */
-function ProcurementCard({ rev, procurement, companyName }: { rev: RoomRevision; procurement: NonNullable<SubmittalRoomPayload['procurement']>; companyName: string }) {
+function ProcurementCard({ revisions, procurement, companyName }: { /** The current revision first, then the shared ones before it, newest first. */ revisions: RoomRevision[]; procurement: NonNullable<SubmittalRoomPayload['procurement']>; companyName: string }) {
+  // 2026-10-02 · a resubmit from the rows sent back leaves the approved rows on the revision before; they are
+  // released, so the card lists them too (`rowsThatStand`, the office's log reads the same way).
+  const stands = rowsThatStand(revisions.map((r) => ({ rev: r.rev, rows: r.rows })), (r) => r.decision?.kind === 'approved' || (r.parts ?? []).some((p) => p.decision?.kind === 'approved'))
+  const sources = [...(revisions[0]?.rows ?? []).map((row) => ({ row, standsOnRev: null as number | null })), ...stands.map((s) => ({ row: s.row, standsOnRev: s.rev }))]
   // A row with parts (2026-10-01): a line per part the GC sees, each with its own call; the order-only parts never reach the room.
-  const items: ProcurementItemSource[] = rev.rows
-    .filter((r) => r.tag.trim())
-    .flatMap((r): ProcurementItemSource[] => {
-      const base = { tag: r.tag.trim(), supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, shared: true }
+  const items: ProcurementItemSource[] = sources
+    .filter(({ row }) => row.tag.trim())
+    .flatMap(({ row: r, standsOnRev }): ProcurementItemSource[] => {
+      const base = { tag: r.tag.trim(), supplyHouse: null, leadTimeDays: r.leadTimeDays ?? null, shared: true, standsOnRev }
       const parts = (r.parts ?? []).filter((p) => p.procureKey)
       if (parts.length === 0) return [{ ...base, product: r.proposed || r.plans || '(no product)', decision: r.decision ? { kind: r.decision.kind, at: r.decision.at } : null }]
       return parts.map((p, k) => ({ ...base, product: p.head, decision: p.decision ? { kind: p.decision.kind, at: p.decision.at } : r.decision ? { kind: r.decision.kind, at: r.decision.at } : null, partKey: p.procureKey, partOrder: k + 1 }))
@@ -519,15 +516,35 @@ function ProcurementCard({ rev, procurement, companyName }: { rev: RoomRevision;
   const records: ProcurementRecord[] = procurement.records.map((x, i) => ({ id: `room-${i}`, tag: x.tag, partKey: x.partKey ?? null, label: x.label, leadTimeDays: x.leadTimeDays, stage: (x.stage as ProcurementStage | null) ?? null, orderedOn: x.orderedOn, poRef: '', expectedOn: x.expectedOn, deliveredOn: x.deliveredOn, note: x.note, sortOrder: x.sortOrder }))
   const splits: StageSplitRecord[] = procurement.splits.map((sp) => ({ countRowId: sp.countRowId, lineId: sp.lineId, partId: sp.partId, weights: { rough_in: sp.roughIn, top_out: sp.topOut, trim_set: sp.trimSet }, source: (['hand', 'rule', 'book', 'assembly'].includes(sp.source) ? sp.source : 'hand') as StageSplitSource }))
   const tagStage = tagStagesFrom(procurement.countRows, splits, items.map((i) => i.tag))
-  const rows = buildProcurementLog({ items, records, tagStage, stageDates: procurement.stageDates as StageDates }).filter((r) => r.status !== 'not_submitted' && r.status !== 'awaiting' || r.isHand)
+  // v2.4684 · the four steps and the Next sentence are the office's own kernels in the GC's voice (punch list #89, item 6):
+  // every line counted once, over every line, so the first step counts what still waits on them. The table below
+  // lists what is released or further along; the rows waiting on them are the revision above.
+  const all = buildProcurementLog({ items, records, tagStage, stageDates: procurement.stageDates as StageDates })
+  const rows = all.filter((r) => r.status !== 'not_submitted' && r.status !== 'awaiting' || r.isHand)
   if (rows.length === 0) return null
+  const steps = procurementSteps(all, null, 'gc')
+  const next = procurementNextLine(all, todayYmdInAppTz(), null, 'gc')
   const hasRequired = rows.some((r) => r.requiredOn)
   return (
     <div style={{ ...card, marginTop: 10 }} data-testid="room-procurement">
       <div style={{ ...label, color: COPPER }}>Procurement</div>
       <div style={{ ...quiet, marginTop: 4 }}>
-        {procurement.lastUpdateAt ? `Updated ${logDate(procurement.lastUpdateAt.slice(0, 10))} by ${companyName}` : `As it stands today, from ${companyName}`} · {procurementHeadline(rows)}
+        {procurement.lastUpdateAt ? `Updated ${logDate(calendarYmdInAppTzFromIso(procurement.lastUpdateAt))} by ${companyName}` : `As it stands today, from ${companyName}`}
       </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 6, marginTop: 8 }} data-testid="room-procurement-steps">
+        {steps.map((st) => (
+          <div key={st.key} style={{ background: 'var(--bg-subtle)', borderRadius: 6, padding: '0.35rem 0.5rem', display: 'grid', gap: 2, minWidth: 0 }} data-testid={`room-procurement-step-${st.key}`}>
+            <span style={{ ...label, letterSpacing: '0.05em' }}>{st.label}</span>
+            <b style={{ fontSize: '1.2rem', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: st.count === 0 ? 'var(--text-muted)' : 'var(--text-strong)', fontWeight: st.count === 0 ? 500 : 700 }}>{st.count}</b>
+            <span style={{ fontSize: '0.72rem', minHeight: '1.1em', color: STEP_TONE[st.tone], fontWeight: st.tone === 'quiet' ? 400 : 600 }}>{st.note}</span>
+          </div>
+        ))}
+      </div>
+      {next.length > 0 ? (
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-strong)', marginTop: 8 }} data-testid="room-procurement-next">
+          <b>Next:</b> {next.join(' ')}
+        </div>
+      ) : null}
       <div style={{ overflowX: 'auto', marginTop: 8 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', minWidth: 420 }}>
           <thead>

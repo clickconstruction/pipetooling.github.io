@@ -5,7 +5,7 @@ roles: assistant, controller
 keywords: start here, new, assistant, controller, office, orientation, what field sees, job mode, call dispatch, ask estimating, training mode, new hire
 order: 7
 ---
-You run the day from the office: dispatch, billing, people, and paperwork. Controllers additionally see payroll and money detail that assistants don't.
+You run the day from the office: dispatch, billing, people, and paperwork. Controllers also see payroll and money detail that assistants don't.
 
 ## Your day
 
@@ -17,35 +17,41 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 {{chip:blue|3}} **Dispatch inbox** — field requests waiting on an answer
 :::
 
-1. **Dashboard** — clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight. On a phone the Dashboard is in office order: the clock row is one line (**Clocked in · 3:12** with {{button:outline|Focus}} and {{button:outline|Clock out}}), My Schedule hides while you have no blocks, and everything under the money tiles — Who's in, Crew Day, My Inbox, Team inboxes, Recent reports, Billing pipeline, My Time — is one line each with {{button:outline|Open ▾}}. Every one of those lines says how many — *Crew Day · 12 people · 14 jobs · 8 flags*, *Recent reports · 3 new · 12 listed*, *My Time · 6.2 h this week*. **Job report** and **Tally** are two small links under the clock row instead of two squares. With Dispatch Mode on, **Needs you** is a one-line door to the Inbox tab, where the list walks one card at a time.
-2. **Jobs → Pipeline** — the busiest board in the app: every job by billing state, with search, GC and development filters, and print. Set progress, bill, and collect from here.
-3. **Schedule** — who is where, day by day. See [dispatch mode](?g=dispatch-mode) and [scheduling people onto jobs](?g=schedule-dispatch).
-4. **Quickfill** — the fast path for filling in hours and job time.
-5. **People** — accounts, hours, contracts, and [your subs](?g=review-your-subs).
+1. **Dashboard** shows clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight. On a phone the Dashboard is in office order:
+   - The clock row is one line, ***Clocked in · 3:12***, with {{button:outline|Focus}} and {{button:outline|Clock out}}.
+   - My Schedule hides while you have no blocks.
+   - Everything under the money tiles is one line each, with {{button:outline|Open ▾}}. The lines are Who's in, Crew Day, My Inbox, Team inboxes, Recent reports, Billing pipeline and My Time.
+   - Every one of those lines says how many, like *Crew Day · 12 people · 14 jobs · 8 flags*, *Recent reports · 3 new · 12 listed* or *My Time · 6.2 h this week*.
+   - **Job report** and **Tally** are two small links under the clock row, instead of two squares.
+   - With Dispatch Mode on, **Needs you** is a one-line door to the Inbox tab. There the list walks one card at a time.
+2. **Jobs → Pipeline** is the busiest board in the app. The board shows every job by billing state, with search, GC and development filters, and print. A development is a neighborhood a builder is putting up. Set progress, bill, and collect from here.
+3. **Schedule** shows who is where, day by day. See [dispatch mode](?g=dispatch-mode) and [scheduling people onto jobs](?g=schedule-dispatch).
+4. **Quickfill** is the fast path for filling in hours and job time.
+5. **People** holds accounts, hours, contracts, and [your subs](?g=review-your-subs).
 
 ## Money
 
-[Bill a customer and get paid](?g=ready-to-bill-pipeline) is the main flow; [bill part of a job to someone else](?g=bill-part-of-a-job-to-someone-else) covers split billing. What you owe subs lives in [sub labor outstanding](?g=sub-labor-outstanding) and per-step work orders in [pay a sub per step](?g=pay-a-sub-per-step).
+[Bill a customer and get paid](?g=ready-to-bill-pipeline) is the main flow. Split billing is covered in [bill part of a job to someone else](?g=bill-part-of-a-job-to-someone-else). What you owe subs lives in [sub labor outstanding](?g=sub-labor-outstanding). Per-step work orders are in [pay a sub per step](?g=pay-a-sub-per-step).
 
-- **An owner calls about a lien letter.** Open the Lien desk (Jobs → Pipeline → Collections header {{button:outline|⏱ Lien desk}}) and press {{button:blue|☎ Someone's calling ›}} before you say anything past hello — it finds the letter they are holding and gives you the words one card at a time. [Answer an owner who calls about a lien letter](?g=answer-an-owner-who-calls-about-a-lien-letter) has the whole call.
+- **An owner calls about a lien letter.** A lien is a legal claim on a property for an unpaid bill. Open the Lien desk from the Collections header on Jobs → Pipeline, with {{button:outline|Lien desk}}. That button wears the orange gavel. Press the {{button:blue|☎}} button before you say anything past hello. The button finds the letter they are holding, then gives you the words one card at a time. [Answer an owner who calls about a lien letter](?g=answer-an-owner-who-calls-about-a-lien-letter) has the whole call.
 
 ## What the field sees
 
-- **Subs and helpers** open the app in **Job Mode** — one card with Clock In, today's stops, Leave Report and a Schedule / Inbox / Customers tab bar — and see only their own assigned steps, their own schedule, and their own pay balance, nothing company-wide. When a sub says "I don't see the job," it's usually because the step isn't assigned to them yet. When a helper says "there's nothing to clock into," their Clock In sheet is already telling them to call dispatch — that call is coming to you; add the block and the job appears as a pick.
-- **What the field sends you.** The purple **Ask estimating** button in their header drops a question into the estimators' inbox; the blue dispatch button and the red phone/photo taps on a job land in your **Dispatch inbox**. Closing a request there sends the tech a push (**Dispatch answered**) and shows your note under *My requests* in their Job Mode Inbox — so write the answer, not just "done".
+- **Subs and helpers** open the app in **Job Mode**. Job Mode is one card with Clock In, today's stops and Leave Report. A Schedule / Inbox / Customers tab bar runs along the bottom. Subs and helpers see only their own assigned steps, their own schedule, and their own pay balance. Nothing company-wide shows for them. When a sub says "I don't see the job," it's usually because the step isn't assigned to them yet. A helper may say there's nothing to clock into. The helper's Clock In sheet is already telling them to call dispatch. That call is coming to you. Add the block, their time on the schedule, and the job appears as a pick.
+- **What the field sends you.** The purple **Ask estimating** button in their header drops a question into the estimators' inbox. The blue dispatch button and the red phone or photo taps on a job land in your **Dispatch inbox**. Closing a request there sends the tech a push alert, **Dispatch answered**. Your note also shows under *My requests* in their Job Mode Inbox. So write the answer, not just "done".
 - **Superintendents** see projects, jobs, and dispatch, but not payroll or company totals.
 - **Primaries** see their own jobs, estimates, and bills only.
 
-**Settings → Guides** has "Viewing guides for" chips — flip to any role to read exactly what they can, which is the quickest way to answer "where do I click?" over the phone.
+**Settings → Guides** has "Viewing guides for" chips. Flip to any role to read exactly what they can. The chips are the quickest way to answer "where do I click?" over the phone.
 
 ## Bringing on a new hire
 
-Sign-ins are created by a dev from People → Users → **+ Hire** (see [hire someone](?g=hire-someone) and [invite someone to sign in](?g=invite-someone-to-sign-in)). Two things worth asking for when you hand over the name and email: the right **role** (the dialog makes them choose one — a field hire should be Subcontractor or Helper, never Leader), and **Start in training mode** if you'd like the person to look around for a few days without being able to change anything. Training mode still lets them clock in and out, so their hours are real from day one — see [put someone in read-only training mode](?g=read-only-training-mode) for what they'll experience.
+Sign-ins are created by a dev from People → Users → **+ Hire**. See [hire someone](?g=hire-someone) and [invite someone to sign in](?g=invite-someone-to-sign-in). Two things are worth asking for when you hand over the name and email. The first is the right **role**. The dialog makes them choose one. A field hire should be Subcontractor or Helper, never Leader. The second is **Start in training mode**, if you'd like the person to look around for a few days. In training mode the person can't change anything. Training mode still lets them clock in and out, so their hours are real from day one. See [put someone in read-only training mode](?g=read-only-training-mode) for what they'll experience.
 
 ## When a link isn't for your role
 
-Open a link to a page your role can't use — the owner's Crew P&L, the controller's Payroll — and the app says so once ({{chip:blue|Crew P&L is for the owner — you're on Reports.}}) and lands you on the nearest tab you can use. Nothing is broken; the page just isn't yours. Ask the owner or controller if you need what's on it.
+A link may open a page your role can't use, like the owner's Crew P&L or the controller's Payroll. The app says so once, with {{chip:blue|Crew P&L is for the owner — you're on Reports.}} The app lands you on the nearest tab you can use. Nothing is broken. The page just isn't yours. Ask the owner or controller if you need what's on it.
 
 ## Controller-only
 
-Payroll, wage detail, and money visibility that assistants don't have. Everything else on this page is shared — including **Banking** (User Sort, Drag Sort, Accounting, Card Review, Category Review, Reconciliation) and the tabbed **Job window**: a controller sees the same queues, can split and label the same transactions, and opens the same {{chip:blue|Job · Edit · Bill}} window an assistant does. If a Banking queue looks empty or a split is refused for a controller, that is a bug, not a permission.
+Payroll, wage detail, and money visibility that assistants don't have. Everything else on this page is shared, including **Banking**. Banking holds User Sort, Drag Sort, Accounting, Card Review, Category Review and Reconciliation. The tabbed **Job window** is shared too. A controller sees the same queues and can split and label the same transactions. A controller opens the same {{chip:blue|Job · Edit · Bill}} window an assistant does. A Banking queue may look empty, or a split may be refused, for a controller. The cause is a bug, not a permission.

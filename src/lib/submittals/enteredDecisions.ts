@@ -64,7 +64,7 @@ export function enteredOnProblem(on: string | null | undefined, todayYmd: string
 
 /**
  * The instant a call is recorded at. Today (or blank) is now. An earlier day is that day at
- * noon UTC: the same calendar day in the company's zone and in the log's date slice.
+ * noon UTC: the same calendar day in the company's zone, where the procurement log reads it.
  */
 export function enteredDecisionAt(on: string | null | undefined, now: Date, todayYmd: string): string {
   const d = (on ?? '').trim()

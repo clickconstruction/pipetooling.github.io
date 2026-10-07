@@ -46,7 +46,7 @@ Jobs created from a won bid or an accepted estimate are already covered and neve
 Two things keep the count honest. Both show on the card's third line. It reads {{chip:gray|Floor $2,500 · 9 small jobs not counted · 3 marked not needed}}:
 
 - **The floor.** A dev sets a dollar amount on the card. Press {{button:outline|change}}, type the amount, and press Enter. 0 removes it. A job whose amount is under the floor leaves the count, the **No contract** filter and the sweep. A job with **no amount** always stays in. Unknown is not small.
-- **Not needed.** Open the job's Contract modal and press {{button:outline|Not needed…}} in the footer. Pick why: {{chip:blue|GC job — their subcontract}}, {{chip:gray|Service call}} or {{chip:gray|Warranty / no charge}}. Or say it in your own words. Then press {{button:blue|Mark not needed}}. The row reads {{chip:gray|No contract · not needed}}. The job leaves the count, and nothing goes to the customer. Changed your mind? The modal shows the answer with {{button:outline|Needed after all}}.
+- **Not needed.** Open the job's Contract window. Under the rail, press **Not needed…**. Pick why: {{chip:blue|GC job — their subcontract}}, {{chip:gray|Service call}} or {{chip:gray|Warranty / no charge}}. Or say it in your own words. Then press {{button:blue|Mark not needed}}. The row reads {{chip:gray|No contract · not needed}}. The job leaves the count, and nothing goes to the customer. Changed your mind? The window shows the answer with {{button:outline|Needed after all}}.
 
 :::example A builder's job
 Summit GC sends you their subcontract; you don't send them a service agreement. Mark the job **Not needed · GC job — their subcontract**, or better, file their signed subcontract (below) so the row reads signed.
@@ -133,7 +133,7 @@ The line under the doors says when a copy last went out and to whom. Older signe
 
 Both spouses sign a homestead's improvement contract. Some jobs have two decision-makers. On the paper, under the customer's signature frame, press **+ a second signer**. Type their full name, and their email if you have it. The paper now shows two frames, *Sam signs here · Alex signs here*. The PDF prints two pairs of pen rules. The customer's page shows a frame for each. Either may sign first. While both frames are open the page asks **Who is signing now?** Once one has signed, the other sees *Sam has signed — waiting on Alex's signature* and the form for their own frame. When the second signer's email is on file, they get the link the moment the first signature lands.
 
-The agreement reads {{chip:green|✍ Signed}} only when both frames are filled. The signed copy goes out only then too. Until then the chip and the window's pill say **1 of 2 signed**. The window says who it is waiting on. Reminders keep going. To take the second signer off a draft, open the frame and press **Remove the second signer**. Once the agreement is out, *Edit & re-send* or *Void & redo* is the way, as for any other change.
+The agreement reads {{chip:green|✍ Signed}} only when both frames are filled. The signed copy goes out only then too. Until then the chip and the window's pill say **1 of 2 signed**. The window says who it is waiting on. Reminders keep going. To take the second signer off a draft, open the frame and press **Remove the second signer**. Once the agreement is out, *Edit & re-send* or *Void & redo* is the way, as for any other change. When both people sign on paper instead, the filing sheet has a box for each name.
 
 ## Already have their contract? The field on the job
 
@@ -141,11 +141,13 @@ Open the job with **Edit Job** and find **Customer Contract**. While nothing is 
 
 ## Already signed? File the Google Doc
 
-Most signed contracts live in Google Docs. Open the Contract modal and press {{button:outline|📄 File a signed contract}} in its top-right corner. In Google Docs use **Share → Copy link** and paste it into the box. Check who signed and the date. Today is filled in. Type its year in full, or the record waits. Press {{button:blue|Record as signed}}. Nothing goes to the customer. The row reads {{chip:green|✍ On file · Google Doc}} and the doc opens from the signed record.
+Most signed contracts live in Google Docs. Open the Contract window. Under the rail, press **File their signed contract**. In Google Docs use **Share → Copy link** and paste it into the box. A builder's subcontract starts with the GC in **Signed by**. Check who signed and the date. Today is filled in. Type its year in full, or the record waits. Press {{button:blue|Record as signed}}. Nothing goes to the customer. The row reads {{chip:green|✍ On file · Google Doc}} and the doc opens from the signed record.
 
 Have a paper scan instead? The small **Have a scan or photo instead?** link under the date opens a file field. A record needs the link or a file, not just a name and date.
 
 {{gif:get-a-job-contract-signed-file.gif|From the Pipeline row, the chip opens the Contract modal. File a signed contract opens the sheet. The pasted Google Doc link turns into the green linked line, and Record as signed lights up}}
+
+Did two people sign the paper? Type the second name in **Second signer**. A second signer named on the draft is already in that box. Each name is filed as its own signature. The record names both people. Clear the box when only one person signed. When the second signer already signed through the link, the sheet says so and keeps that signature.
 
 ## One signed paper for several jobs
 
@@ -155,7 +157,7 @@ A builder often signs one paper that names several of their jobs. File it once a
 2. On the contract strip, press {{button:outline|Add the contract}}.
 3. Paste the Google Drive link. Have a scan instead? Press **Have a scan or photo instead?** and pick the file.
 4. Under **Which jobs does it cover?** this job is already ticked. Tick each other job the paper names. Paid jobs sit behind **Show their paid jobs**.
-5. Check **Signed by** and **Signed on**. A blank date files it as signed today.
+5. Check **Signed by** and **Signed on**. A blank date files it as signed today. Did two people sign the paper? Put the second name in **Second signer**.
 6. Press the green button. It counts the jobs, as in {{button:green|File for 3 jobs}}.
 
 Nothing is sent to the customer. Each ticked job reads {{chip:green|✍ On file · Google Doc}}. The strip on each one names the jobs the paper covers.

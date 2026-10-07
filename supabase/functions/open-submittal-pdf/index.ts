@@ -2,11 +2,13 @@
  * The room's "Download the PDF" door (Submittals stage 4a): GET ?t=<room or person
  * token>&r=<submittal id> → a five-minute signed link to the revision's stored package,
  * as a redirect (the open-test-report-pdf pattern). No auth: the token is the capability;
- * the revision must belong to the token's bid and have been shared. The bucket has no
+ * the revision must belong to the token's bid and be on the GC's record: shared, or answered
+ * by email with its package built (`_shared/submittalRecord.ts`, 2026-10-06). The bucket has no
  * outsider policy — this is the only customer-facing way to the file.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { loadRevisionStandings, onRecord } from '../_shared/submittalRecord.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -48,7 +50,9 @@ serve(async (req) => {
 
     const { data: rev } = await admin.from('bid_submittals').select('id, bid_id, rev_number, shared_at, package_path').eq('id', revId).maybeSingle()
     const s = rev as { id: string; bid_id: string; rev_number: number; shared_at: string | null; package_path: string | null } | null
-    if (!s || s.bid_id !== bidId || !s.shared_at || !s.package_path) return textResponse('This package is not available.', 404)
+    if (!s || s.bid_id !== bidId || !s.package_path) return textResponse('This package is not available.', 404)
+    // A revision answered by email is on the GC's record with its package (2026-10-06): serve it as a shared one.
+    if (!s.shared_at && !onRecord(await loadRevisionStandings(admin, bidId)).some((r) => r.id === s.id)) return textResponse('This package is not available.', 404)
 
     const { data: bid } = await admin.from('bids').select('bid_number, project_name').eq('id', bidId).maybeSingle()
     const b = bid as { bid_number: string | null; project_name: string | null } | null

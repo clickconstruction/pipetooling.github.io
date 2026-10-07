@@ -10,6 +10,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 
 import SubmittalRoom from './SubmittalRoom'
+import { sampleSubmittalRoomResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
+import { answeredByEmailAt, onRecord, revisionStandings } from '../../supabase/functions/_shared/submittalRecord'
+import { roomCounts, type RoomRow } from '../../supabase/functions/_shared/submittalRoomPayload'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: () => Promise.resolve({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
 
@@ -60,7 +64,7 @@ describe('SubmittalRoom', () => {
   it('draws the room in the customer\'s words: the differing rows first, the matches folded, the PDF door, the strip', async () => {
     const f = mockFetch(200, payload())
     mount('/submittal?t=roomtoken')
-    expect(await screen.findByText('1 row needs a call')).toBeTruthy()
+    expect(await screen.findByText('1 product needs your answer')).toBeTruthy()
     expect(String(f.mock.calls[0]?.[0])).toMatch(/get-submittal-room\?t=roomtoken$/)
     const cards = screen.getAllByTestId('room-row')
     expect(cards.map((c) => c.querySelector('b')?.textContent)).toEqual(['DWH-1', 'FV-1', 'PRV-1'])
@@ -75,6 +79,104 @@ describe('SubmittalRoom', () => {
     expect(document.body.textContent).not.toMatch(/\$|NWS|Alternate/)
     fireEvent.click(screen.getByRole('button', { name: 'Rev 1 · Sep 15' }))
     expect(screen.getByText('Everything matches the plans')).toBeTruthy()
+  })
+
+  it('2026-10-02 · the procurement card after a resubmit from the rows sent back: the row approved on Rev 1 stands on it, ordered; the row asked again on Rev 2 waits', async () => {
+    const procurement = {
+      records: [{ tag: 'WC-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-23', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 }],
+      countRows: [],
+      splits: [],
+      stageDates: {},
+      lastUpdateAt: null,
+    }
+    const approved = { kind: 'approved', note: null, byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-20T16:00:00Z' }
+    const rejected = { kind: 'rejected', note: 'hold the 199', byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-20T16:00:00Z' }
+    mockFetch(200, payload({
+      revisions: [
+        { id: 'rev-2', rev: 2, sharedAt: '2026-09-22T15:00:00Z', current: true, hasPackage: true, rows: [row({ id: 'b', tag: 'DWH-1', kind: 'differs', proposed: 'A.O. Smith BTH-199', why: 'x' })], counts: { total: 1, matches: 0, differs: 1, notQuoted: 0, added: 0, decided: 0, open: 1 } },
+        { id: 'rev-1', rev: 1, sharedAt: '2026-09-16T15:00:00Z', current: false, hasPackage: true, rows: [row({ id: 'a', tag: 'WC-1', kind: 'matches', decision: approved, leadTimeDays: 0 }), row({ id: 'z', tag: 'DWH-1', kind: 'differs', proposed: 'A.O. Smith BTH-120', why: 'x', decision: rejected })], counts: { total: 2, matches: 1, differs: 1, notQuoted: 0, added: 0, decided: 2, open: 0 } },
+      ],
+      procurement,
+    }))
+    mount('/submittal?t=roomtoken')
+    const cardEl = await screen.findByTestId('room-procurement')
+    const lines = screen.getAllByTestId('room-procurement-row').map((r) => r.textContent ?? '')
+    expect(lines).toHaveLength(1)
+    expect(lines[0]).toContain('WC-1')
+    expect(lines[0]).toContain('Ordered 09/23')
+    // DWH-1 is Rev 2's to call: Rev 1's rejection says nothing on the card, and a row waiting on the GC is not listed —
+    // but the first step counts it, and the Next sentence asks for it (v2.4684).
+    expect(cardEl.textContent).not.toContain('DWH-1')
+    expect(screen.getAllByTestId(/^room-procurement-step-/).map((b) => b.textContent)).toEqual(['Waiting on you1', 'To order0nothing approved yet', 'On order1next arrives 09/23', 'On site0'])
+    expect(screen.getByTestId('room-procurement-next').textContent).toBe('Next: Nothing can be ordered until you answer. 1 part waits on your answer.')
+  })
+
+  describe('2026-10-06 · a revision answered by email lands in the room as the record (BP398)', () => {
+    const approved = { kind: 'approved', note: null, byName: 'Dana W.', byPersonId: 'p1', at: '2026-10-02T17:00:00Z' }
+    const rowsOf: Record<string, Array<Record<string, unknown>>> = {
+      // Rev 2, shared Sep 16: WC-1 came back sent back.
+      r2: [row({ id: 'w2', tag: 'WC-1', kind: 'differs', proposed: 'TOTO TET1LA32', why: 'x', decision: { kind: 'revise', note: 'use the CT728', byName: 'Dana W.', byPersonId: 'p1', at: '2026-09-17T15:00:00Z' } })],
+      // Rev 3, answered by email Oct 2 and typed in, never shared: WC-1 approved, and the kitchen sinks and toilets.
+      r3: [
+        row({ id: 'w3', tag: 'WC-1', kind: 'matches', proposed: 'TOTO CT728CUVG', decision: approved, leadTimeDays: 0 }),
+        row({ id: 'k3', tag: 'KS-1', kind: 'matches', plans: 'Elkay LRAD2522', proposed: 'Elkay LRAD2522', decision: approved, leadTimeDays: 0 }),
+        row({ id: 't3', tag: 'WC-2', kind: 'matches', plans: 'TOTO CST454', proposed: 'TOTO CST454', decision: approved, leadTimeDays: 0 }),
+      ],
+      r4: [row({ id: 'd4', tag: 'DWH-1', kind: 'differs', proposed: 'Bradford White RE2HP50', why: 'x' })],
+    }
+    const procurement = {
+      records: [
+        { tag: 'WC-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-29', expectedOn: null, deliveredOn: null, note: '', sortOrder: 0 },
+        { tag: 'KS-1', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-10-01', expectedOn: null, deliveredOn: null, note: '', sortOrder: 1 },
+        { tag: 'WC-2', label: '', leadTimeDays: null, stage: null, orderedOn: '2026-09-30', expectedOn: null, deliveredOn: null, note: '', sortOrder: 2 },
+      ],
+      countRows: [],
+      splits: [],
+      stageDates: {},
+      lastUpdateAt: null,
+    }
+    /** The revisions get-submittal-room serves, by the one rule in `_shared/submittalRecord.ts`. */
+    const served = (rev4Shared: boolean) =>
+      onRecord(
+        revisionStandings(
+          [
+            { id: 'r4', rev_number: 4, shared_at: rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: rev4Shared ? 'p4.pdf' : null },
+            { id: 'r3', rev_number: 3, shared_at: null, package_path: 'p3.pdf' },
+            { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z', package_path: 'p2.pdf' },
+          ],
+          new Map([['r3', [{ decision_source: 'entered', review_decision: 'approved', reviewed_at: '2026-10-02T17:00:00Z' }]]]),
+        ),
+      ).map((r, i) => {
+        const rows = rowsOf[r.id] ?? []
+        return { id: r.id, rev: r.rev_number, sharedAt: r.shared_at, answeredByEmailAt: answeredByEmailAt(r), current: i === 0, hasPackage: !!r.package_path, rows, counts: roomCounts(rows as unknown as RoomRow[]) }
+      })
+    const cardLines = () => screen.getAllByTestId('room-procurement-row').map((r) => r.textContent ?? '')
+
+    it('before Rev 4 is shared: Rev 3 is current, answered by email, its line says so, and the card keeps every tag with WC-1 released', async () => {
+      mockFetch(200, payload({ revisions: served(false), procurement }))
+      mount('/submittal?t=roomtoken')
+      expect((await screen.findByTestId('room-revisions')).textContent).toMatch(/Rev 3 · current · answered by email · Oct 2.*Rev 2 · Sep 16/)
+      expect(screen.getByTestId('room-emailed-line').textContent).toBe('You answered this revision by email. Our office typed your answers in here, as the record.')
+      const lines = cardLines()
+      expect(lines.map((l) => l.match(/^[A-Z]+-\d/)?.[0])).toEqual(['KS-1', 'WC-1', 'WC-2'])
+      expect(screen.getByTestId('room-procurement').textContent).not.toMatch(/Sent back/)
+    })
+
+    it('after Rev 4 is shared: Rev 4 current, Rev 3 under it as the record, and the card still keeps Kitchen sinks and Toilets', async () => {
+      mockFetch(200, payload({ revisions: served(true), procurement }))
+      mount('/submittal?t=roomtoken')
+      expect((await screen.findByTestId('room-revisions')).textContent).toMatch(/Rev 4 · current · Oct 6.*Rev 3 · answered by email · Oct 2.*Rev 2 · Sep 16/)
+      expect(screen.queryByTestId('room-emailed-line')).toBeNull()
+      const lines = cardLines()
+      expect(lines.find((l) => l.startsWith('KS-1'))).toContain('Ordered 10/01')
+      expect(lines.find((l) => l.startsWith('WC-2'))).toContain('Ordered 09/30')
+      expect(lines.find((l) => l.startsWith('WC-1'))).toContain('Ordered 09/29')
+      fireEvent.click(screen.getByRole('button', { name: 'Rev 3 · answered by email · Oct 2' }))
+      expect(screen.getByTestId('room-emailed-line')).toBeTruthy()
+      // The answers read as the reviewer gave them, with no staff name.
+      fireEvent.click(screen.getByRole('button', { name: /Show the 3 rows as the plans specify/ }))
+      expect(document.body.textContent).toMatch(/Approved · Dana W\./)
+    })
   })
 
   it('the procurement card (v2.4087): released, ordered and delivered tags with when they land against the schedule — status and dates, never a PO or a house', async () => {
@@ -98,7 +200,11 @@ describe('SubmittalRoom', () => {
     mount('/submittal?t=roomtoken')
     const cardEl = await screen.findByTestId('room-procurement')
     expect(cardEl.textContent).toContain('Updated 09/28 by Click Plumbing')
-    expect(cardEl.textContent).toContain('2 released · 3 ordered · 1 delivered · 1 behind schedule')
+    // v2.4684 · the office's four steps and its Next sentence, in the GC's words: KS-1 waits on them, nothing to order,
+    // two on order (the interceptor late), WC-1 on site. The delivered WC-1 is not counted as ordered too.
+    expect(screen.getAllByTestId(/^room-procurement-step-/).map((b) => b.textContent)).toEqual(['Waiting on you1', 'To order0nothing approved yet', 'On order21 late', 'On site1last 09/26'])
+    expect(screen.getByTestId('room-procurement-next').textContent).toBe('Next: Nothing can be ordered until you answer. 1 part waits on your answer. 1 part on order arrives late.')
+    expect(cardEl.textContent).not.toContain('released ·')
     const lines = screen.getAllByTestId('room-procurement-row').map((r) => r.textContent)
     // DWH-1: ordered 09/24 + 6 wk → 11/05 against Trim Set 11/17 → on time. WC-1 delivered → on site. The interceptor: 8 wk from 09/18 → 11/13 against Rough In 10/06 → late.
     expect(lines[0]).toContain('DWH-1')
@@ -118,7 +224,7 @@ describe('SubmittalRoom', () => {
   it('a personal link names its person; a watching person can tap but not send', async () => {
     mockFetch(200, payload({ person: { id: 'p1', name: 'Dana Whitfield', role: 'architect', mayDecide: false } }))
     mount('/submittal?t=persontoken')
-    await screen.findByText('1 row needs a call')
+    await screen.findByText('1 product needs your answer')
     expect(screen.getByText(/This link was made for/).textContent).toMatch(/Dana Whitfield · architect · watching/)
     expect(screen.getByTestId('room-send').textContent).toMatch(/Reviewing as Dana Whitfield · architect · watching/)
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Approve' }))
@@ -158,7 +264,7 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
     const calls = mockRoomAndPosts()
     const replace = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {})
     mount('/submittal?t=roomtoken')
-    await screen.findByText('1 row needs a call')
+    await screen.findByText('1 product needs your answer')
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Approve' }))
     const sheet = await screen.findByRole('dialog', { name: 'Before you decide' })
     fireEvent.change(within(sheet).getByLabelText('Your name'), { target: { value: 'Tom Reyes' } })
@@ -185,7 +291,7 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
   it('Just looking clears the tapped decision; Approve all marks every open differing row', async () => {
     mockRoomAndPosts()
     mount('/submittal?t=roomtoken')
-    await screen.findByText('1 row needs a call')
+    await screen.findByText('1 product needs your answer')
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Reject' }))
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Before you decide' })).getByRole('button', { name: 'Just looking' }))
     expect(screen.queryByTestId('room-pending')).toBeNull()
@@ -197,11 +303,11 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
   it('a watching person cannot send; a stale revision answer shows the office\'s words', async () => {
     const f = vi.fn((url: string, _init?: RequestInit) => {
       if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Logan Parsons', role: 'builder', mayDecide: false } })) } as Response)
-      return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'A newer revision has been shared since you opened this page. Reload to see it.', code: 'stale_revision' }) } as Response)
+      return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'A newer revision has been added since you opened this page. Reload to see it.', code: 'stale_revision' }) } as Response)
     })
     vi.stubGlobal('fetch', f)
     mount('/submittal?t=logantoken')
-    await screen.findByText('1 row needs a call')
+    await screen.findByText('1 product needs your answer')
     expect(screen.getByRole('button', { name: 'Watching only' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Approve all/ })).toBeNull()
   })
@@ -279,7 +385,7 @@ describe('SubmittalRoom · a call on each part (2026-10-01)', () => {
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, decided: 2 }) } as Response)
     }))
     mount('/submittal?t=ptok')
-    await screen.findByText('1 row needs a call')
+    await screen.findByText('1 product needs your answer')
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on TOTO TET2LBI31#SS' })).getByRole('button', { name: 'Revise' }))
     fireEvent.change(screen.getByLabelText('Note on WC-1 · TOTO TET2LBI31#SS'), { target: { value: 'plans call 1.0 gpf' } })
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on TOTO CT728CUVG#01' })).getByRole('button', { name: 'Approve' }))
@@ -288,6 +394,22 @@ describe('SubmittalRoom · a call on each part (2026-10-01)', () => {
     expect(calls[0]?.body).toEqual({ action: 'decide', token: 'ptok', submittalId: 'rev-3', decisions: [{ itemId: 'wc', partId: 'valve', decision: 'revise', note: 'plans call 1.0 gpf' }, { itemId: 'wc', partId: 'bowl', decision: 'approved' }] })
     // The page reads the row the way the office will: a part sent back sends the row back.
     expect(screen.getByTestId('room-row').textContent).toMatch(/2 parts · 1 approved · 1 revise/)
-    expect(screen.getByTestId('room-footer').textContent).toMatch(/1 decided · 0 to go/)
+    expect(screen.getByTestId('room-footer').textContent).toMatch(/1 decided · 0 to answer/)
   })
 })
+
+describe('SubmittalRoom · the What customers see sample (v2.4595, #62)', () => {
+  it('the sample room draws through the page like a real one: the parts the GC sees, the proposed card, the to-follow row; the order-only row and part never show', async () => {
+    mockFetch(200, sampleSubmittalRoomResponse('live', PORTAL_COMPANY, '2026-10-05'))
+    mount('/submittal?t=sample')
+    await screen.findByText('3 products need your answer')
+    const cards = screen.getAllByTestId('room-row')
+    const wc = cards.find((c) => c.textContent?.includes('WC-1'))!
+    expect(within(wc).getAllByTestId('room-part').map((p) => p.textContent ?? '')).toEqual([expect.stringContaining('TOTO CT728CUVG#01'), expect.stringContaining('TOTO SS114#01'), expect.stringContaining('ZURN Z1203-N')])
+    expect(cards.find((c) => c.textContent?.includes('SH-1'))!.textContent).toContain('for your review')
+    expect(cards.find((c) => c.textContent?.includes('MB-1'))!.textContent).toContain('No product yet — to follow.')
+    expect(document.body.textContent).not.toContain('HB-1')
+    expect(document.body.textContent).not.toContain('KTCR19X')
+  })
+})
+

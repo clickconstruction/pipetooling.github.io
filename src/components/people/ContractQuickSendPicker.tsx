@@ -60,7 +60,7 @@ export function ContractQuickSendPicker({
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 14 }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 714, paddingTop: 'var(--app-top-chrome, 0px)' }}
       onClick={() => {
         if (!busy) onClose()
       }}
@@ -75,7 +75,7 @@ export function ContractQuickSendPicker({
           borderRadius: 8,
           padding: '1rem 1.1rem',
           width: 'min(92vw, 360px)',
-          maxHeight: '80vh',
+          maxHeight: 'min(80vh, 100%)',
           overflow: 'auto',
           boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
         }}

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
@@ -12,7 +13,7 @@ import type { QuickfillJobClockSummary } from '../../lib/quickfillCompleteNoBill
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 function formatShortDate(iso: string | null | undefined): string {
-  const t = (iso ?? '').slice(0, 10)
+  const t = calendarYmdInAppTzFromIso(iso ?? '')
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t)
   if (!m) return '—'
   const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))

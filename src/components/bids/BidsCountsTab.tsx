@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -9,7 +10,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
 import { recordNavClick } from '../../lib/navClickTelemetry'
-import { importUndoIsEmpty, importUndoPlan, type ImportUndoPlan } from '../../lib/bids/countsImportUndo'
+import { describeImportUndo, importUndoIsEmpty, importUndoPlan, type ImportUndoPlan, type ImportUndoReinsertRow, type ImportUndoRestoreRow } from '../../lib/bids/countsImportUndo'
+import { buildCountsImportWritePlan, countsImportReviewIsEmpty, describeCountsImportApplied, reviewCountsImport, type CountsImportChoices, type CountsImportReview } from '../../lib/bids/countsImportReview'
+import { CountsImportReviewModal, type CountRowAttachedWork } from './CountsImportReviewModal'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -38,6 +41,9 @@ import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type Brea
 import { referenceGradeChip, referenceGradeChipApplies } from '../../lib/bids/referenceGradeChip'
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
+
+/** v2.4720: rows per insert statement on an import (PostgREST takes the whole array; chunked only so a huge paste stays well under the request limit). */
+const COUNTS_IMPORT_INSERT_CHUNK = 500
 
 type BidsCountsTabProps = {
   /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
@@ -143,6 +149,16 @@ export function BidsCountsTab({
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
   const [countsImportError, setCountsImportError] = useState<string | null>(null)
+  // v2.4720: one import at a time. A slow import looked hung, people pressed Import again, and the
+  // second run appended every row a second time. The ref drops a press while a run is in flight
+  // (set before the first await, so a double click is caught); the state greys the doors.
+  const countsImportInFlightRef = useRef(false)
+  const [countsImportBusy, setCountsImportBusy] = useState(false)
+  // v2.4699: the import review — a paste onto a sheet that already has rows is sorted against
+  // them (update / add / remove / same) and nothing is written until Apply.
+  const [countsReview, setCountsReview] = useState<{ review: CountsImportReview; parsed: ReturnType<typeof parseCountsImportText>; attached: Map<string, CountRowAttachedWork>; existingCount: number } | null>(null)
+  const [countsReviewBusy, setCountsReviewBusy] = useState(false)
+  const [countsReviewError, setCountsReviewError] = useState<string | null>(null)
   // v2.3227: the Count & import door asked for the dialog. Deliberately the
   // paste box, not handleCountsImportClick — that one imports straight from the
   // clipboard when it can, which a person who only clicked a step did not ask for.
@@ -430,9 +446,9 @@ export function BidsCountsTab({
     setClearAllCountsBusy(true)
     try {
       await withSupabaseRetry(
-        async () => (activeBidVersionId
+        async () => withBidAction(activeBidVersionId
           ? supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).eq('bid_version_id', activeBidVersionId)
-          : supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).is('bid_version_id', null)),
+          : supabase.from('bids_count_rows').delete().eq('bid_id', bid.id).is('bid_version_id', null), BID_ACTIONS.countsClearAll),
         'clear all bid count rows'
       )
       setClearAllCountsOpen(false)
@@ -499,25 +515,28 @@ export function BidsCountsTab({
       .limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
     let inserted = 0
-    // Ids come back per insert so an import can be undone row-for-row (Tier-2 #42).
+    // Ids come back from the insert so an import can be undone row-for-row (Tier-2 #42).
     const insertedIds: string[] = []
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]
-      if (!row) continue
-      const { data: insertedRow, error } = await supabase.from('bids_count_rows').insert({
-        bid_id: bidId,
-        bid_version_id: activeBidVersionId,
-        fixture: row.fixture,
-        count: row.count,
-        group_tag: row.group_tag,
-        page: row.page,
-        sequence_order: maxSeq + 1 + i,
-        // Explicit when the caller knows (import stamps from the name; quick add from its toggle); NULL = infer.
-        unit: row.unit ?? null,
-      }).select('id').single()
+    const payload = rows.map((row, i) => ({
+      bid_id: bidId,
+      bid_version_id: activeBidVersionId,
+      fixture: row.fixture,
+      count: row.count,
+      group_tag: row.group_tag,
+      page: row.page,
+      sequence_order: maxSeq + 1 + i,
+      // Explicit when the caller knows (import stamps from the name; quick add from its toggle); NULL = infer.
+      unit: row.unit ?? null,
+    }))
+    // v2.4720: one insert per batch, not one per row — a 35-row copy used to be 35 round trips,
+    // which is what looked hung. RETURNING keeps the VALUES order, so the ids line up with the rows.
+    for (let i = 0; i < payload.length; i += COUNTS_IMPORT_INSERT_CHUNK) {
+      const chunk = payload.slice(i, i + COUNTS_IMPORT_INSERT_CHUNK)
+      // Tagged as one import (bid history, PR 1b), so the ledger reads the batches as one action.
+      const { data, error } = await withBidAction(supabase.from('bids_count_rows').insert(chunk).select('id'), BID_ACTIONS.countsImport)
       if (error) return { inserted, insertedIds, error: error.message }
-      inserted++
-      if (insertedRow?.id) insertedIds.push(insertedRow.id)
+      inserted += chunk.length
+      for (const r of data ?? []) if (r?.id) insertedIds.push(r.id)
     }
     return { inserted, insertedIds }
   }
@@ -538,6 +557,17 @@ export function BidsCountsTab({
           if (error) throw error
         }
       }
+      // v2.4699: a reviewed import also updated and removed rows — put the old values back and
+      // re-insert the removed rows under their old ids (bare: their parts went with them).
+      for (const r of plan.restoreRows) {
+        const { error } = await supabase.from('bids_count_rows').update(r.before).eq('id', r.id)
+        if (error) throw error
+      }
+      if (plan.reinsertRows.length > 0) {
+        // A removed row may carry no sequence_order; the insert type takes a number or nothing, never null.
+        const { error } = await supabase.from('bids_count_rows').insert(plan.reinsertRows.map(({ sequence_order, ...r }) => (sequence_order == null ? r : { ...r, sequence_order })))
+        if (error) throw error
+      }
       if (plan.restoreSourceLink) {
         const { data: rows, error } = await supabase.from('bids').update({ count_tooling_plans_link: plan.restoreSourceLink.to }).eq('id', bidId).select('id')
         if (error) throw error
@@ -545,7 +575,7 @@ export function BidsCountsTab({
         await onCountSourceLinkSaved?.(bidId)
       }
       refreshAfterCountsChange()
-      showToast(`Import undone — ${plan.deleteRowIds.length} row${plan.deleteRowIds.length === 1 ? '' : 's'} removed.`, 'success')
+      showToast(describeImportUndo(plan), 'success')
     } catch (e) {
       refreshAfterCountsChange()
       showToast(formatErrorMessage(e, 'Could not undo the import'), 'error')
@@ -558,8 +588,10 @@ export function BidsCountsTab({
     sourceLinkBefore: string | null | undefined
     sourceLinkWritten: string | null
     message: string
+    restoreRows?: ImportUndoRestoreRow[]
+    reinsertRows?: ImportUndoReinsertRow[]
   }) {
-    const plan = importUndoPlan({ insertedIds: args.insertedIds, sourceLinkBefore: args.sourceLinkBefore, sourceLinkWritten: args.sourceLinkWritten })
+    const plan = importUndoPlan({ insertedIds: args.insertedIds, sourceLinkBefore: args.sourceLinkBefore, sourceLinkWritten: args.sourceLinkWritten, restoreRows: args.restoreRows, reinsertRows: args.reinsertRows })
     if (importUndoIsEmpty(plan)) {
       showToast(args.message, 'success')
       return
@@ -595,62 +627,168 @@ export function BidsCountsTab({
     return part ? ` · ${part}` : ''
   }
 
-  async function handleCountsImport() {
-    setCountsImportError(null)
-    const { rows, skippedCount, sourceLink, alternateGroups } = parseCountsImportText(countsImportText)
-    if (rows.length === 0) {
-      setCountsImportError(skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
-      return
-    }
+  /**
+   * v2.4699: both doors come here. An empty sheet takes the paste as it always did; a sheet with
+   * rows is compared first and the review decides what is written. Returns the error to show at
+   * the door, or null when the paste was taken (or handed to the review).
+   */
+  async function importParsedCounts(parsed: ReturnType<typeof parseCountsImportText>): Promise<string | null> {
     const bidId = selectedBidForCounts?.id
-    if (!bidId) return
+    if (!bidId) return null
+    const { rows, skippedCount, sourceLink, alternateGroups } = parsed
+    if (countRows.length > 0) {
+      const review = reviewCountsImport({ incoming: rows, existing: countRows, alternateTags: altTags, importAlternateGroups: alternateGroups, scope: parsed.scope })
+      if (countsImportReviewIsEmpty(review)) {
+        showToast(`All ${rows.length} row${rows.length === 1 ? '' : 's'} match this bid exactly. Nothing to import.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`, 'success')
+        return null
+      }
+      const attached = await loadCountRowAttachedWork([...review.changed.map((c) => c.existing.id), ...review.missing.map((m) => m.id)])
+      setCountsReviewError(null)
+      setCountsReview({ review, parsed, attached, existingCount: countRows.length })
+      return null
+    }
     const sourceLinkBefore = selectedBidForCounts?.count_tooling_plans_link
     const { inserted, insertedIds, error } = await insertCountRows(bidId, rows)
     if (error) {
-      setCountsImportError(`Failed to insert: ${error}`)
       if (inserted > 0) refreshAfterCountsChange()
-      return
+      return `Failed to insert: ${error}`
     }
-    setCountsImportText('')
-    setCountsImportOpen(false)
     refreshAfterCountsChange()
     const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
     if (alternateGroups.length > 0) await saveAlternateTags(bidId, mergeAlternateTags(altTags, alternateGroups))
     const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}${importedAlternatesPart(rows, alternateGroups)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
     showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
+    return null
+  }
+
+  /** What hangs off each row the review may update or remove — parts and prices. Non-fatal: an empty map just hides the words. */
+  async function loadCountRowAttachedWork(ids: string[]): Promise<Map<string, CountRowAttachedWork>> {
+    const out = new Map<string, CountRowAttachedWork>()
+    if (ids.length === 0) return out
+    try {
+      const [parts, assigned, custom] = await Promise.all([
+        supabase.from('bids_takeoff_rough_part_lines').select('count_row_id').in('count_row_id', ids),
+        supabase.from('bid_pricing_assignments').select('count_row_id').in('count_row_id', ids),
+        supabase.from('bid_count_row_custom_prices').select('count_row_id').in('count_row_id', ids),
+      ])
+      const get = (id: string) => out.get(id) ?? { parts: 0, priced: false }
+      for (const r of parts.data ?? []) out.set(r.count_row_id, { ...get(r.count_row_id), parts: get(r.count_row_id).parts + 1 })
+      for (const r of [...(assigned.data ?? []), ...(custom.data ?? [])]) out.set(r.count_row_id, { ...get(r.count_row_id), priced: true })
+    } catch {
+      /* the review still opens; the attached-work words are a courtesy */
+    }
+    return out
+  }
+
+  /** Apply the review: updates first (they keep every link), then inserts, then deletes, then the source link. One Undo covers all of it. */
+  async function applyCountsReview(choices: CountsImportChoices) {
+    const bid = selectedBidForCounts
+    if (!bid || !countsReview || countsReviewBusy) return
+    const { review, parsed } = countsReview
+    const plan = buildCountsImportWritePlan(review, choices)
+    const restoreRows: ImportUndoRestoreRow[] = []
+    const reinsertRows: ImportUndoReinsertRow[] = []
+    let insertedIds: string[] = []
+    setCountsReviewBusy(true)
+    setCountsReviewError(null)
+    try {
+      for (const u of plan.updates) {
+        const { error } = await supabase.from('bids_count_rows').update(u.patch).eq('id', u.id)
+        if (error) throw error
+        restoreRows.push({ id: u.id, before: u.before })
+      }
+      if (plan.inserts.length > 0) {
+        const ins = await insertCountRows(bid.id, plan.inserts)
+        insertedIds = ins.insertedIds
+        if (ins.error) throw new Error(ins.error)
+      }
+      if (plan.deletes.length > 0) {
+        const byId = new Map(countRows.map((r) => [r.id, r]))
+        for (const d of plan.deletes) {
+          const full = byId.get(d.id)
+          if (full) reinsertRows.push({ id: full.id, bid_id: full.bid_id, bid_version_id: full.bid_version_id ?? null, fixture: full.fixture, count: full.count, group_tag: full.group_tag ?? null, page: full.page ?? null, unit: full.unit ?? null, sequence_order: full.sequence_order ?? null })
+        }
+        const { error } = await supabase.from('bids_count_rows').delete().in('id', plan.deletes.map((d) => d.id))
+        if (error) throw error
+      }
+    } catch (e) {
+      setCountsReviewBusy(false)
+      setCountsReviewError(formatErrorMessage(e, 'Could not apply the import'))
+      refreshAfterCountsChange()
+      return
+    }
+    setCountsReviewBusy(false)
+    setCountsReview(null)
+    setCountsImportText('')
+    setCountsImportOpen(false)
+    refreshAfterCountsChange()
+    const sourceLinkBefore = bid.count_tooling_plans_link
+    const sourceLinkWritten = await persistCountSourceLink(bid.id, parsed.sourceLink)
+    if (parsed.alternateGroups.length > 0) await saveAlternateTags(bid.id, mergeAlternateTags(altTags, parsed.alternateGroups))
+    const msg = `${describeCountsImportApplied(plan, review.same.length)}.${parsed.skippedCount > 0 ? ` ${parsed.skippedCount} lines skipped.` : ''}`
+    showImportedToastWithUndo({ bidId: bid.id, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg, restoreRows, reinsertRows })
+  }
+
+  /** v2.4720: the one-at-a-time gate both doors pass through. Returns false when a run is already in flight. */
+  function beginCountsImport(): boolean {
+    if (countsImportInFlightRef.current) return false
+    countsImportInFlightRef.current = true
+    setCountsImportBusy(true)
+    return true
+  }
+  function endCountsImport() {
+    countsImportInFlightRef.current = false
+    setCountsImportBusy(false)
+  }
+
+  async function handleCountsImport() {
+    if (!beginCountsImport()) return
+    try {
+      setCountsImportError(null)
+      const parsed = parseCountsImportText(countsImportText)
+      if (parsed.rows.length === 0) {
+        setCountsImportError(parsed.skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
+        return
+      }
+      const error = await importParsedCounts(parsed)
+      if (error) {
+        setCountsImportError(error)
+        return
+      }
+      setCountsImportText('')
+      setCountsImportOpen(false)
+    } finally {
+      endCountsImport()
+    }
   }
 
   async function handleCountsImportClick() {
     const bidId = selectedBidForCounts?.id
     if (!bidId) return
+    if (!beginCountsImport()) return
     try {
-      const text = await navigator.clipboard.readText()
-      const trimmed = text.trim()
-      const { rows, skippedCount, sourceLink, alternateGroups } = parseCountsImportText(trimmed)
-      if (rows.length > 0) {
-        const sourceLinkBefore = selectedBidForCounts?.count_tooling_plans_link
-        const { inserted, insertedIds, error } = await insertCountRows(bidId, rows)
-        if (error) {
-          showToast(`Failed to insert: ${error}`, 'error')
-          if (inserted > 0) refreshAfterCountsChange()
+      try {
+        const text = await navigator.clipboard.readText()
+        const trimmed = text.trim()
+        const parsed = parseCountsImportText(trimmed)
+        const { skippedCount } = parsed
+        if (parsed.rows.length > 0) {
+          const error = await importParsedCounts(parsed)
+          if (error) showToast(error, 'error')
           return
         }
-        refreshAfterCountsChange()
-        const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
-        if (alternateGroups.length > 0) await saveAlternateTags(bidId, mergeAlternateTags(altTags, alternateGroups))
-        const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}${importedAlternatesPart(rows, alternateGroups)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
-        showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
-        return
+        if (trimmed && skippedCount > 0) {
+          showToast('No valid rows in clipboard. Use tab-delimited: Fixture, Count, Plan Page', 'error')
+        }
+      } catch {
+        /* clipboard unavailable */
       }
-      if (trimmed && skippedCount > 0) {
-        showToast('No valid rows in clipboard. Use tab-delimited: Fixture, Count, Plan Page', 'error')
-      }
-    } catch {
-      /* clipboard unavailable */
+      setCountsImportText('')
+      setCountsImportError(null)
+      setCountsImportOpen(true)
+    } finally {
+      endCountsImport()
     }
-    setCountsImportText('')
-    setCountsImportError(null)
-    setCountsImportOpen(true)
   }
 
   function exportCountsToCsv() {
@@ -810,10 +948,12 @@ export function BidsCountsTab({
                   type="button"
                   id="counts-import-tooling"
                   onClick={handleCountsImportClick}
-                  style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
+                  disabled={countsImportBusy}
+                  aria-busy={countsImportBusy || undefined}
+                  style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer', textAlign: 'center', opacity: countsImportBusy ? 0.7 : 1 }}
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page. A [Group] prefix becomes the group; CountTooling's Alternate heading marks the group as an alternate."
                 >
-                  Import from /Tooling
+                  {countsImportBusy ? 'Importing…' : 'Import from /Tooling'}
                 </button>
               </div>
             </div>
@@ -847,10 +987,12 @@ export function BidsCountsTab({
                   type="button"
                   id="counts-import-tooling"
                   onClick={handleCountsImportClick}
-                  style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
+                  disabled={countsImportBusy}
+                  aria-busy={countsImportBusy || undefined}
+                  style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer', textAlign: 'center', opacity: countsImportBusy ? 0.7 : 1 }}
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page. A [Group] prefix becomes the group; CountTooling's Alternate heading marks the group as an alternate."
                 >
-                  Import from /Tooling
+                  {countsImportBusy ? 'Importing…' : 'Import from /Tooling'}
                 </button>
                 <button
                   type="button"
@@ -1384,6 +1526,17 @@ export function BidsCountsTab({
         onCancel={() => { if (!clearAllCountsBusy) { setClearAllCountsOpen(false); setClearAllCountsConfirm('') } }}
         onConfirm={() => { void handleClearAllCounts() }}
       />
+      {countsReview && selectedBidForCounts && (
+        <CountsImportReviewModal
+          review={countsReview.review}
+          existingCount={countsReview.existingCount}
+          attached={countsReview.attached}
+          busy={countsReviewBusy}
+          error={countsReviewError}
+          onApply={(choices) => void applyCountsReview(choices)}
+          onCancel={() => { if (!countsReviewBusy) { setCountsReview(null); setCountsReviewError(null) } }}
+        />
+      )}
       {countsImportOpen && selectedBidForCounts && (
         <ModalShell>
             <h2 style={{ margin: '0 0 1rem 0' }}>Import Counts</h2>
@@ -1394,6 +1547,7 @@ export function BidsCountsTab({
               id="counts-import-text"
               value={countsImportText}
               onChange={(e) => { setCountsImportText(e.target.value); setCountsImportError(null) }}
+              disabled={countsImportBusy}
               placeholder={'Fixture or Tie-in\tCount\tPlan Page (optional)\nToilet\t5\tA-101\nLavatory Sink\t3\n4 columns: Fixture\tCount\tGroup/Tag\tPlan Page'}
               rows={8}
               style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', fontFamily: 'monospace', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', resize: 'vertical' }}
@@ -1405,25 +1559,28 @@ export function BidsCountsTab({
               <button
                 type="button"
                 onClick={() => { setCountsImportOpen(false); setCountsImportText(''); setCountsImportError(null) }}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
+                disabled={countsImportBusy}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: countsImportBusy ? 'wait' : 'pointer' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleCountsImport}
-                disabled={!countsImportText.trim()}
-                title={!countsImportText.trim() ? 'Paste fixture/count data to import' : undefined}
+                disabled={!countsImportText.trim() || countsImportBusy}
+                aria-busy={countsImportBusy || undefined}
+                title={!countsImportText.trim() ? 'Paste fixture/count data to import' : countsImportBusy ? 'Importing — one moment' : undefined}
                 style={{
                   padding: '0.5rem 1rem',
                   background: countsImportText.trim() ? '#059669' : '#d1d5db',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
-                  cursor: countsImportText.trim() ? 'pointer' : 'not-allowed',
+                  cursor: countsImportBusy ? 'wait' : countsImportText.trim() ? 'pointer' : 'not-allowed',
+                  opacity: countsImportBusy ? 0.7 : 1,
                 }}
               >
-                Import
+                {countsImportBusy ? 'Importing…' : 'Import'}
               </button>
               {!countsImportText.trim() && (
                 <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem' }}>Paste data to import</span>

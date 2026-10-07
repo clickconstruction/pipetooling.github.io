@@ -7,7 +7,9 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import {
   isLienWaiverFormType,
+  lienReleaseFormLabel,
   lienReleaseSnapshotToWaiverFields,
+  unconditionalFollowUpForm,
   type JobLienReleaseRow,
   type LienUnconditionalQueueRow,
 } from '../../lib/jobs/lienReleaseTracking'
@@ -26,8 +28,9 @@ import LienReleaseModal from '../jobs/LienReleaseModal'
  * release" action opens. One row per conditional lien release whose check
  * has cleared and whose unconditional follow-up hasn't been issued — the job,
  * the release, the payment that cleared it — with the follow-up issued right
- * from the row (the Release of Lien window preset to unconditional-progress
- * on the covered bill lines, exactly as the Bill Customer strip does). The
+ * from the row (the Release of Lien window preset to the unconditional of the
+ * same kind — a final stays a final, v2.4564 — on the covered bill lines,
+ * exactly as the Bill Customer strip does). The
  * job name opens the Job window for context; the queue stays open beneath it.
  *
  * Stacking: this overlay sits at 1000 so the Job window (1010), Bill Customer
@@ -153,7 +156,7 @@ export function DashboardLienReleaseQueueModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: QUEUE_OVERLAY_Z_INDEX,
-          padding: '1rem',
+          padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
           boxSizing: 'border-box',
         }}
       >
@@ -166,7 +169,7 @@ export function DashboardLienReleaseQueueModal({
             background: 'var(--surface)',
             borderRadius: 8,
             width: 'min(880px, calc(100vw - 2rem))',
-            maxHeight: 'min(90vh, 860px)',
+            maxHeight: 'min(90vh, 860px, 100%)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -301,7 +304,7 @@ export function DashboardLienReleaseQueueModal({
                           verticalAlign: 'middle',
                         }}
                       >
-                        Conditional · progress
+                        {lienReleaseFormLabel(row.release.form_type)}
                       </span>
                       <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{money(row.amount)}</span>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginTop: '0.1rem' }}>
@@ -368,8 +371,9 @@ export function DashboardLienReleaseQueueModal({
           onClose={() => setIssue(null)}
           job={issue.job}
           invoice={(issue.job.invoices ?? []).find((i) => issue.row.invoiceIds.includes(i.id)) ?? null}
+          invoiceIds={issue.row.invoiceIds}
           signerNameFallback={profileName?.trim() ?? ''}
-          initialFormType="unconditional_progress"
+          initialFormType={unconditionalFollowUpForm(issue.row.release.form_type)}
           onIssued={onChanged}
         />
       ) : null}

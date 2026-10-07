@@ -1,4 +1,4 @@
-import { buildLienCalendar, kindsQueue, lienCalendarRowMatches, type LienCalendarGroup, type LienCalendarJob } from './lienCalendar'
+import { buildLienCalendar, kindsQueue, lienAddressKey, lienCalendarRowMatches, type LienCalendarGroup, type LienCalendarJob, type LienCalendarPropertyRows } from './lienCalendar'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { daysBetweenYmd } from './lienPayRunway'
 import { LIEN_DESK_LEAD_DAYS } from './lienDesk'
@@ -16,6 +16,11 @@ import { LIEN_DESK_LEAD_DAYS } from './lienDesk'
  * Pure: the tab draws the pills, the section bars and the counts on the date row
  * from this; each bucket's rows are grouped the way the board groups them
  * (`buildLienCalendar`: by GC, direct, lien gone).
+ *
+ * v2.4526: an Overdue job is still counted in Overdue, but when its property has a job with a
+ * date ahead it is LISTED there, under that property, greyed (`placeOverdueWithProperty`). One
+ * property reads in one place: the notice about to go out beside the older money owed at the
+ * same address. Overdue lists only the jobs with nothing ahead at their property.
  */
 
 export type LienCalendarBucketKey = 'overdue' | 'this_month' | 'next_month' | 'later'
@@ -86,6 +91,12 @@ export type LienCalendarBucket = {
   draft: { ymd: string; jobIds: string[]; label: string } | null
   /** The stretch of the axis the bucket covers, [fromYmd, toYmd); a null end runs to the axis's edge. */
   span: { fromYmd: string | null; toYmd: string | null }
+  /** Overdue only: how many of its jobs are listed with their property under a later bucket (`groups` leaves them out). */
+  away: number
+  /** Overdue only, when some are away: every one of its jobs and the plain facts, for when Overdue is shown on its own. */
+  whole: { groups: LienCalendarGroup[]; facts: string } | null
+  /** The later buckets: how many Overdue jobs are listed here, under their property. */
+  guests: number
 }
 
 export type LienCalendarBoard = {
@@ -188,7 +199,130 @@ function bucketOf(key: LienCalendarBucketKey, jobs: LienCalendarJob[], todayYmd:
     empty,
     draft,
     span,
+    away: 0,
+    whole: null,
+    guests: 0,
   }
+}
+
+/** The address as a heading: the street and the city, nothing from the state on. */
+function propertyLabel(job: Pick<LienCalendarJob, 'address'>): string {
+  return job.address.replace(/[,\s]+(TX|Texas)\b.*$/i, '').trim() || 'One property'
+}
+
+/**
+ * Two jobs at one property: the same linked record, the same typed address, or one typed address
+ * that is the other cut short at a word ("628 Terrell Rd" and "628 Terrell Rd, San Antonio, TX").
+ * The short one must still name a number and two more words, so "12 Oak" matches nothing.
+ */
+export function lienSameProperty(a: Pick<LienCalendarJob, 'address' | 'addressId'>, b: Pick<LienCalendarJob, 'address' | 'addressId'>): boolean {
+  if (a.addressId && b.addressId && a.addressId === b.addressId) return true
+  const x = lienAddressKey(a.address)
+  const y = lienAddressKey(b.address)
+  if (!x || !y || !/^\d/.test(x) || !/^\d/.test(y)) return false
+  if (x === y) return true
+  const [short, long] = x.length < y.length ? [x, y] : [y, x]
+  return short.split(' ').length >= 3 && long.startsWith(`${short} `)
+}
+
+type Host = { job: LienCalendarJob; bucket: number; groupKey: string; ymd: string }
+
+function hostBefore(a: Host, b: Host): boolean {
+  if (a.bucket !== b.bucket) return a.bucket < b.bucket
+  if (a.ymd !== b.ymd) return a.ymd < b.ymd
+  return a.job.runway.sortKey < b.job.runway.sortKey
+}
+
+/**
+ * Lists each Overdue job with its property (v2.4526). A job in a later bucket with a date still
+ * ahead hosts its property; an Overdue job at that property moves under the host's group, in the
+ * bucket of the property's earliest date. Counts and money do not move: Overdue's `jobs` and
+ * `total` still hold every overdue job, a group's `jobs`, `total` and word are still its own.
+ */
+export function placeOverdueWithProperty(buckets: ReadonlyArray<LienCalendarBucket>, todayYmd: string): LienCalendarBucket[] {
+  const overdue = buckets.find((b) => b.key === 'overdue')
+  if (!overdue || overdue.jobs.length === 0) return [...buckets]
+
+  const hosts: Host[] = []
+  buckets.forEach((b, bucket) => {
+    if (b.key === 'overdue') return
+    for (const g of b.groups) {
+      for (const job of g.jobs) {
+        const next = lienNextDate(job)
+        if (next) hosts.push({ job, bucket, groupKey: g.key, ymd: next.ymd })
+      }
+    }
+  })
+
+  // bucket index → group key → host job id → the overdue jobs listed with it
+  const placed = new Map<number, Map<string, Map<string, { host: Host; closed: LienCalendarJob[] }>>>()
+  const away = new Set<string>()
+  for (const job of overdue.jobs) {
+    let host: Host | null = null
+    for (const h of hosts) {
+      if (lienSameProperty(h.job, job) && (!host || hostBefore(h, host))) host = h
+    }
+    if (!host) continue
+    away.add(job.jobId)
+    const byGroup = placed.get(host.bucket) ?? placed.set(host.bucket, new Map()).get(host.bucket)!
+    const byHost = byGroup.get(host.groupKey) ?? byGroup.set(host.groupKey, new Map()).get(host.groupKey)!
+    const slot = byHost.get(host.job.jobId) ?? byHost.set(host.job.jobId, { host, closed: [] }).get(host.job.jobId)!
+    slot.closed.push(job)
+  }
+  if (away.size === 0) return [...buckets]
+
+  const where = [...placed.keys()].sort()
+  const whereWords = where.length === 1 ? `listed under ${buckets[where[0]!]!.title}` : 'listed with their property'
+
+  return buckets.map((b, bucket) => {
+    if (b.key === 'overdue') {
+      const here = b.jobs.filter((j) => !away.has(j.jobId))
+      return {
+        ...b,
+        groups: bucketOf('overdue', here, todayYmd).groups,
+        facts: [plural(b.jobs.length, 'job', 'jobs'), `${here.length} listed here`, `${away.size} ${away.size === 1 ? 'is' : 'are'} ${whereWords}`].join(' · '),
+        away: away.size,
+        whole: { groups: b.groups, facts: b.facts },
+      }
+    }
+    const byGroup = placed.get(bucket)
+    if (!byGroup) return b
+    let guests = 0
+    const groups = b.groups.map((g) => {
+      const byHost = byGroup.get(g.key)
+      if (!byHost) return g
+      const order = new Map(g.jobs.map((j, i) => [j.jobId, i]))
+      const slots = [...byHost.values()].sort((x, y) => (order.get(x.host.job.jobId) ?? 0) - (order.get(y.host.job.jobId) ?? 0))
+      const claimed = new Set<string>()
+      const byProperty: LienCalendarPropertyRows[] = slots.map((slot) => {
+        const here = [slot.host.job, ...slot.closed]
+        const jobs = g.jobs.filter((j) => !claimed.has(j.jobId) && here.some((p) => p.jobId === j.jobId || lienSameProperty(p, j)))
+        for (const j of jobs) claimed.add(j.jobId)
+        return { key: `p:${slot.host.job.jobId}`, label: propertyLabel(slot.host.job), jobs, closed: [...slot.closed].sort((x, y) => y.openBalance - x.openBalance) }
+      })
+      const rest = g.jobs.filter((j) => !claimed.has(j.jobId))
+      if (rest.length) byProperty.push({ key: 'rest', label: null, jobs: rest, closed: [] })
+      const n = slots.reduce((s, slot) => s + slot.closed.length, 0)
+      guests += n
+      // Said before "4 at one property", which is the first thing a narrow row cuts off.
+      const closedWords = ` · ${n} ${n === 1 ? 'window' : 'windows'} closed`
+      const sub = / · \d+ at one property$/.test(g.sub) ? g.sub.replace(/( · \d+ at one property)$/, `${closedWords}$1`) : `${g.sub}${closedWords}`
+      return { ...g, sub, byProperty }
+    })
+    return { ...b, groups, guests }
+  })
+}
+
+/** A group's rows as the board draws them: a heading per property and its overdue jobs greyed, when the group lists any; else its jobs. */
+export type LienCalendarRow = { kind: 'label'; key: string; label: string } | { kind: 'job'; key: string; job: LienCalendarJob; closed: boolean }
+
+export function lienGroupRows(g: Pick<LienCalendarGroup, 'jobs' | 'byProperty'>): LienCalendarRow[] {
+  if (!g.byProperty) return g.jobs.map((job) => ({ kind: 'job', key: job.jobId, job, closed: false }))
+  return g.byProperty.flatMap((p): LienCalendarRow[] => [
+    { kind: 'label', key: p.key, label: p.label ?? 'Other properties' },
+    ...p.jobs.map((job): LienCalendarRow => ({ kind: 'job', key: job.jobId, job, closed: false })),
+    ...p.closed.map((job): LienCalendarRow => ({ kind: 'job', key: job.jobId, job, closed: true })),
+  ])
 }
 
 export function buildLienCalendarBoard(rows: ReadonlyArray<LienCalendarJob>, query: string, todayYmd: string): LienCalendarBoard {
@@ -201,7 +335,7 @@ export function buildLienCalendarBoard(rows: ReadonlyArray<LienCalendarJob>, que
     split[key].push(j)
     live.push(j)
   }
-  const buckets = LIEN_CALENDAR_BUCKET_KEYS.map((key) => bucketOf(key, split[key], todayYmd))
+  const buckets = placeOverdueWithProperty(LIEN_CALENDAR_BUCKET_KEYS.map((key) => bucketOf(key, split[key], todayYmd)), todayYmd)
   return {
     buckets,
     count: live.length,

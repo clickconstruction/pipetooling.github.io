@@ -593,3 +593,28 @@ describe('vehicleCheckinDueList (v2.2199)', async () => {
     expect(noPool.map((r) => r.vehicle.id)).toEqual(['a'])
   })
 })
+
+describe('a problem closed or a task done in the evening keeps its day (v2.4473)', () => {
+  it('dates the ledger row by the Central day', () => {
+    // 00:30 UTC on Aug 13 is 7:30 pm CDT on Aug 12; 00:30 UTC on Dec 2 is 6:30 pm CST on Dec 1.
+    const task = (over: Partial<VehicleMaintenanceTask>): VehicleMaintenanceTask => ({
+      id: 't1', vehicle_id: 'v1', title: 'Change battery', note: null, source_problem_report_id: null,
+      checklist_item_id: null, checklist_instance_id: null, assigned_user_id: null, due_date: null,
+      created_by: 'u3', created_at: '2026-08-12T10:00:00Z', completed_at: null, completed_by: null,
+      ...over,
+    })
+    const rows = buildVehicleLedger({
+      readings: [],
+      possessions: [],
+      valueEntries: [],
+      problemReports: [prob({ resolved_at: '2026-08-13T00:30:00Z' })],
+      maintenanceTasks: [task({ completed_at: '2026-12-02T00:30:00+00:00' }), task({ id: 't2', completed_at: '2026-08-13T12:00:00Z' })],
+      userNameById: new Map(),
+    })
+    expect(rows.filter((r) => r.kind !== 'problem').map((r) => [r.kind, r.dateYmd])).toEqual([
+      ['task_done', '2026-12-01'],
+      ['task_done', '2026-08-13'],
+      ['problem_resolved', '2026-08-12'],
+    ])
+  })
+})

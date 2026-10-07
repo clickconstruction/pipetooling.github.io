@@ -15,15 +15,21 @@
  *     (2026-10-01) the call lands on the part named (or on every part the GC sees), and the
  *     row carries the roll-up (`rollUpPartDecisions`); refused when the
  *     room or the person's link is closed (410), the person is marked watching (403), the
- *     revision is not the newest shared one (409 stale_revision), or the rows are not on
+ *     revision is not the newest on the GC's record (409 stale_revision; shared, or answered by email
+ *     with its package, `_shared/submittalRecord.ts`), or the rows are not on
  *     that revision (404). A `decided` event with the counts.
  * No JWT — the token is the credential; service role behind it (the sign-bid-room pattern).
+ * v2.4599: identify, message and decide are refused (403, `code: 'office' | 'preview'`) when the
+ * request carries a verified office session or `?preview=1` (`officeWriteVerdict`); a reviewer's
+ * page sends the anon key and is never refused.
  * The rules live in `_shared/submittalReviewActions.ts`, tested from the app.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
-import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource } from '../_shared/submittalRoomPayload.ts'
+import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, officeRoleOf, officeWriteVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, planDecideWrites, resolveIdentify } from '../_shared/submittalReviewActions.ts'
+import { isPreviewFlag, PUBLIC_PREVIEW_PARAM } from '../_shared/publicViewCounting.ts'
+import { asRoomRole, rollUpPartDecisions, ROOM_ROLE_LABELS, type RoomPartSource, gcRoomItems } from '../_shared/submittalRoomPayload.ts'
+import { loadRevisionStandings, onRecord } from '../_shared/submittalRecord.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,7 +49,7 @@ function newToken(): string {
 }
 
 type RoomRow = { id: string; bid_id: string; status: string; closed_at: string | null }
-type PersonRow = { id: string; room_id: string; name: string; email: string; role: string; may_decide: boolean; token: string | null; closed_at: string | null; first_seen_at: string | null }
+type PersonRow = { id: string; room_id: string; name: string; email: string | null; role: string; may_decide: boolean; token: string | null; closed_at: string | null; first_seen_at: string | null }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
@@ -52,6 +58,14 @@ serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
     const action = body.action
+    // v2.4599 · the office is never the GC: a write from a verified office session or the office's
+    // preview is refused before anything is read or written, with a reason the page shows.
+    if (action === 'identify' || action === 'message' || action === 'decide') {
+      const preview = isPreviewFlag(new URL(req.url).searchParams.get(PUBLIC_PREVIEW_PARAM))
+      const officeRole = await officeRoleOf(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
+      const refusal = officeWriteVerdict(action, { preview, officeRole })
+      if (!refusal.ok) return json({ error: refusal.error, code: refusal.code }, refusal.status)
+    }
 
     const roomByToken = async (t: string): Promise<{ room: RoomRow | null; person: PersonRow | null }> => {
       const { data } = await admin.from('bid_submittal_rooms').select('id, bid_id, status, closed_at').eq('token', t).maybeSingle()
@@ -89,7 +103,7 @@ serve(async (req) => {
         const { data: cur } = await admin.from('bid_submittal_people').select('token, first_seen_at, name').eq('id', personId).maybeSingle()
         const c = cur as { token: string | null; first_seen_at: string | null; name: string } | null
         token = c?.token ?? newToken()
-        await admin.from('bid_submittal_people').update({ token, first_seen_at: c?.first_seen_at ?? now, last_seen_at: now, ...(c?.name?.trim() ? {} : { name: v.name }) }).eq('id', personId)
+        await admin.from('bid_submittal_people').update({ token, first_seen_at: c?.first_seen_at ?? now, last_seen_at: now, ...(c?.name?.trim() ? {} : { name: v.name }), ...(res.claimEmail ? { email: v.email } : {}) }).eq('id', personId)
       } else {
         token = newToken()
         const { data: ins, error } = await admin
@@ -119,22 +133,24 @@ serve(async (req) => {
       const v = parsed.value
       const { room, person } = await roomByToken(v.token)
       if (!room || !person) return json({ error: 'Tell us who you are first.', code: 'identify' }, 401)
-      const { data: sub } = await admin.from('bid_submittals').select('id, bid_id, rev_number, shared_at').eq('id', v.submittalId).maybeSingle()
-      const s = sub as { id: string; bid_id: string; rev_number: number; shared_at: string | null } | null
-      const { data: newest } = await admin.from('bid_submittals').select('id').eq('bid_id', room.bid_id).not('shared_at', 'is', null).order('rev_number', { ascending: false }).limit(1).maybeSingle()
+      const { data: sub } = await admin.from('bid_submittals').select('id, bid_id, rev_number').eq('id', v.submittalId).maybeSingle()
+      const s = sub as { id: string; bid_id: string; rev_number: number } | null
+      // The GC's record (2026-10-06): shared, or answered by email with its package. The newest on it is current.
+      const record = onRecord(await loadRevisionStandings(admin, room.bid_id))
       const verdict = decideVerdict({
         roomStatus: room.closed_at ? 'closed' : room.status,
         personClosed: !!person.closed_at,
         mayDecide: person.may_decide,
         submittalBelongs: !!s && s.bid_id === room.bid_id,
-        submittalShared: !!s?.shared_at,
-        currentSubmittalId: (newest as { id: string } | null)?.id ?? null,
+        submittalOnRecord: !!s && record.some((r) => r.id === s.id),
+        currentSubmittalId: record[0]?.id ?? null,
         submittalId: v.submittalId,
       })
       if (!verdict.ok) return json({ error: verdict.error, code: verdict.code }, verdict.status)
       const ids = v.decisions.map((d) => d.itemId)
-      const { data: rows } = await admin.from('bid_submittal_items').select('id').eq('submittal_id', v.submittalId).in('id', ids)
-      const onRevision = new Set(((rows ?? []) as Array<{ id: string }>).map((r) => r.id))
+      // An order-only row (2026-10-02) is not the reviewer's to call: it reads as not on the revision.
+      const { data: rows } = await admin.from('bid_submittal_items').select('id, order_only').eq('submittal_id', v.submittalId).in('id', ids)
+      const onRevision = new Set(gcRoomItems((rows ?? []) as Array<{ id: string; order_only?: boolean | null }>).map((r) => r.id))
       const applied = v.decisions.filter((d) => onRevision.has(d.itemId))
       if (applied.length === 0) return json({ error: 'Those rows are not on this revision.', code: 'not_found' }, 404)
       const now = new Date().toISOString()
@@ -209,8 +225,7 @@ serve(async (req) => {
         }
       }
       if (!submittalId) {
-        const { data: newest } = await admin.from('bid_submittals').select('id, rev_number').eq('bid_id', room.bid_id).not('shared_at', 'is', null).order('rev_number', { ascending: false }).limit(1).maybeSingle()
-        const n = newest as { id: string; rev_number: number } | null
+        const n = onRecord(await loadRevisionStandings(admin, room.bid_id))[0] ?? null
         submittalId = n?.id ?? null
         revNumber = n?.rev_number ?? null
       }

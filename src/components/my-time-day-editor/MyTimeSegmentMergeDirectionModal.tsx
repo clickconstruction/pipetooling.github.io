@@ -68,7 +68,7 @@ export function MyTimeSegmentMergeDirectionModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: overlayZIndex,
-        padding: 16,
+        padding: 'calc(16px + var(--app-top-chrome, 0px)) 16px 16px',
       }}
       onClick={onClose}
       role="presentation"

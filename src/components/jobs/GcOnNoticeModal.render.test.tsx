@@ -39,6 +39,37 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
     }),
   }
 })
+// The desk's writes (v2.4541, the undo): the approve path and its undo are watched; everything else is the real module.
+const io = vi.hoisted(() => ({ saved: 0, drafts: [] as Array<{ itemId: string | null; jobId: string; coverNote: boolean; fields: { batchReason?: string; coverLetter?: string } }>, printed: [] as Array<{ ids: string[]; userId: string | null }>, approved: [] as string[], undone: [] as Array<{ ids: string[]; userId: string | null }>, policies: [] as Array<{ policy: string; note: string }>, unshared: [] as unknown[] }))
+vi.mock('../../lib/jobs/lienDeskIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
+  return {
+    ...actual,
+    saveLienDeskDraft: async (input: (typeof io.drafts)[number]) => {
+      io.drafts.push(input)
+      return `item-${(io.saved += 1)}`
+    },
+    approveLienDeskItem: async (id: string) => void io.approved.push(id),
+    markLienDeskItemsPrinted: async (ids: string[], userId: string | null) => void io.printed.push({ ids: [...ids], userId }),
+    undoLienDeskApprovals: async (ids: string[], userId: string | null) => {
+      io.undone.push({ ids: [...ids], userId })
+      return ids.length
+    },
+    setCustomerLienNoticePolicy: async (_id: string, policy: string, note: string) => void io.policies.push({ policy, note }),
+  }
+})
+vi.mock('../../lib/jobsDocuments/printWindow', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobsDocuments/printWindow')>('../../lib/jobsDocuments/printWindow')
+  return { ...actual, openHtmlPrintWindow: () => true }
+})
+vi.mock('../../lib/jobs/ownerBillShareIo', () => ({
+  shareBillsWithOwnersOfJobs: async () => ({ owners: 2, turnedOn: { jobIds: ['j994'], invoiceIds: ['inv-9'], on: true } }),
+  unshareBillsTurnedOn: async (w: unknown) => void io.unshared.push(w),
+}))
+vi.mock('../../hooks/useLegalMatters', async () => {
+  const actual = await vi.importActual<typeof import('../../hooks/useLegalMatters')>('../../hooks/useLegalMatters')
+  return { ...actual, legalRpc: async () => null }
+})
 const hookState: { data: GcOnNoticeData | null; loading: boolean } = { data: null, loading: false }
 const refetch = vi.fn()
 vi.mock('../../hooks/useGcOnNoticeData', () => ({ useGcOnNoticeData: () => ({ data: hookState.data, loading: hookState.loading, refetch }) }))
@@ -99,6 +130,13 @@ afterEach(() => {
   cleanup()
   resetPropertyLookupCache()
   confirmMock.mockClear()
+  io.saved = 0
+  io.drafts = []
+  io.approved = []
+  io.printed = []
+  io.undone = []
+  io.policies = []
+  io.unshared = []
 })
 
 const fixture = (id: string, job_id: string, name: string, price: number, invoice_id: string | null = null, sequence_order = 0) =>
@@ -118,6 +156,9 @@ describe('GcOnNoticeModal', () => {
     renderWithProviders(<GcOnNoticeModal {...baseProps} onOpenEditJob={onOpenEditJob} onOpenJob={onOpenJob} authRole="master_technician" />)
     await settle()
     const band = screen.getByTestId('gc-notice-band')
+    // v2.4538: the band is its title alone, no paragraph under it.
+    expect(within(band).getByRole('heading', { name: 'Jobs with unpaid work under this GC' })).toBeTruthy()
+    expect(band.textContent).not.toContain('Mark the record right')
     // the head line: the stages on record and how many read wrong (1016 and 1002 are billed with no percent; 1031 is working with no percent; 994 reads right)
     const head = screen.getByTestId('gc-notice-band-head').textContent ?? ''
     expect(head).toContain('Working 1 · Billed 3')
@@ -146,9 +187,98 @@ describe('GcOnNoticeModal', () => {
     // the row itself opens the job
     fireEvent.click(rows[0]!)
     expect(onOpenJob).toHaveBeenCalledWith('j1031')
+    // v2.4545: each group's count is its own button. Working's one wrong job jumps straight to its
+    // row, with no list; Billed's two open a list of those two only.
+    const groupTriggers = screen.getAllByTestId('gc-notice-band-group').map((g) => within(g).getByTestId('gc-notice-band-wrong'))
+    expect(groupTriggers.map((b) => [b.textContent, b.dataset.jump ?? 'no'])).toEqual([['1 looks wrong ↓', 'yes'], ['2 look wrong ▾', 'no']])
+    expect(groupTriggers[0]!.getAttribute('aria-label')).toMatch(/^Working: 1 looks wrong\. Jump to 1031 · /)
+    const opened = onOpenJob.mock.calls.length
+    fireEvent.click(groupTriggers[0]!)
+    expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+    await waitFor(() => expect(rows[0]!.dataset.flash).toBe('yes'))
+    expect(onOpenJob.mock.calls.length).toBe(opened)
+    fireEvent.click(groupTriggers[1]!)
+    const scoped = screen.getByTestId('gc-notice-band-wrong-list')
+    expect(scoped.getAttribute('aria-label')).toBe('Billed: the 2 jobs that look wrong')
+    const scopedText = within(scoped).getAllByTestId('gc-notice-band-wrong-item').map((i) => i.textContent ?? '')
+    expect(scopedText).toHaveLength(2)
+    expect(scopedText.some((t) => t.includes('1016 · Lot 9'))).toBe(true)
+    expect(scopedText.some((t) => t.includes('1031'))).toBe(false)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
     // fold and reorder
     fireEvent.click(within(band).getByTestId('gc-notice-band-toggle'))
     expect(screen.queryAllByTestId('gc-notice-band-row')).toHaveLength(0)
+  })
+  it('v2.4540 · "N look wrong" lists the jobs that look wrong; picking one unfolds the band, scrolls to its row and lights it', async () => {
+    const d = data()
+    d.jobs = [
+      { ...d.jobs[0]!, jobId: 'j1031', jobStatus: 'working' },
+      { ...d.jobs[0]!, jobId: 'j994', jobStatus: 'billed' },
+      d.jobs[0]!,
+    ]
+    d.desk.jobsById = {
+      ...d.desk.jobsById,
+      j1031: { id: 'j1031', hcp_number: '1031', click_number: null, job_name: 'Lot 14', job_address: '14 Elm, Austin TX', customer_id: 'c1', gc_customer_id: 'g1', status: 'working', last_work_date: null, revenue: 10000, payments_made: 0 } as never,
+      j994: { id: 'j994', hcp_number: '994', click_number: null, job_name: 'Miller residence', job_address: '9 Oak, Austin TX', customer_id: 'c2', gc_customer_id: 'g1', status: 'billed', last_work_date: null, revenue: 10000, payments_made: 0 } as never,
+    }
+    const fixture = (id: string, job_id: string, name: string, price: number, invoice_id: string | null = null, seq = 0) => ({ id, job_id, name, count: 1, line_unit_price: price, line_adjustment: null, percent_off: null, tax_rate_percent: null, is_fixed: false, invoice_id, sequence_order: seq }) as never
+    const invoice = (id: string, job_id: string, amount: number, status: string) => ({ id, job_id, sequence_order: 0, amount, status, billed_at: '2026-08-21T12:00:00Z', created_at: '2026-08-21T12:00:00Z', stripe_invoice_id: null }) as never
+    d.workByJob = {
+      j1031: { status: 'working', pctComplete: null, fixtures: [fixture('f1', 'j1031', 'Rough In', 6000)], invoices: [], payments: [] },
+      j994: { status: 'billed', pctComplete: 100, fixtures: [fixture('f3', 'j994', 'Trim set complete', 10000, 'i1')], invoices: [invoice('i1', 'j994', 10000, 'billed')], payments: [] },
+    }
+    hookState.data = d
+    // The band remembers its fold per browser; the case before this one left it folded.
+    localStorage.removeItem('gcNoticeBandOpen')
+    const scrolled: Element[] = []
+    const realScroll = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function scrollIntoView(this: Element) {
+      scrolled.push(this)
+    }
+    try {
+      renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+      await settle()
+      const band = screen.getByTestId('gc-notice-band')
+      // The head line's count; each group's header row has its own since v2.4545.
+      const trigger = within(screen.getByTestId('gc-notice-band-head')).getByTestId('gc-notice-band-wrong')
+      const wrongRows = screen.getAllByTestId('gc-notice-band-row').filter((r) => r.dataset.wrong === 'yes')
+      expect(trigger.textContent).toContain(`${wrongRows.length} look${wrongRows.length === 1 ? 's' : ''} wrong`)
+      expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+
+      // Pointing at the words opens the list: one row per wrong job, in the table's order, each with what looks wrong.
+      fireEvent.mouseEnter(trigger.parentElement!)
+      const list = await screen.findByTestId('gc-notice-band-wrong-list')
+      const items = within(list).getAllByTestId('gc-notice-band-wrong-item')
+      expect(items.map((i) => i.dataset.jobId)).toEqual(wrongRows.map((r) => r.dataset.jobId))
+      expect(items[0]!.textContent).toContain('1031 · Lot 14')
+      expect(items[0]!.textContent).toContain('set % done')
+      // Esc closes the list and nothing else.
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+      expect(screen.getByRole('dialog', { name: 'Put a GC on notice' })).toBeTruthy()
+
+      // A click pins it open (touch, keyboard); fold the table, then pick: the band unfolds and the row is found.
+      fireEvent.click(within(band).getByTestId('gc-notice-band-toggle'))
+      expect(screen.queryAllByTestId('gc-notice-band-row')).toHaveLength(0)
+      fireEvent.click(trigger)
+      const last = within(screen.getByTestId('gc-notice-band-wrong-list')).getAllByTestId('gc-notice-band-wrong-item').slice(-1)[0]!
+      const pickedId = last.dataset.jobId!
+      fireEvent.click(last)
+      expect(screen.queryByTestId('gc-notice-band-wrong-list')).toBeNull()
+      const lit = await waitFor(() => {
+        const row = screen.getAllByTestId('gc-notice-band-row').find((r) => r.dataset.flash === 'yes')
+        if (!row) throw new Error('no row lit')
+        return row
+      })
+      expect(lit.dataset.jobId).toBe(pickedId)
+      expect(scrolled).toContain(lit)
+      // No other row is lit.
+      expect(screen.getAllByTestId('gc-notice-band-row').filter((r) => r.dataset.flash === 'yes')).toHaveLength(1)
+    } finally {
+      Element.prototype.scrollIntoView = realScroll
+      localStorage.removeItem('gcNoticeBandOpen')
+    }
   })
   it('reads the brief and the step bar, lists the owners with the roll’s answer, names a closed window, and offers the leader Approve all', async () => {
     hookState.data = data()
@@ -162,6 +292,18 @@ describe('GcOnNoticeModal', () => {
     expect(brief.textContent).toContain('open on bills · 3 jobs')
     expect(brief.textContent).toContain('not yet billed · 1 job')
     expect(screen.getByText(/first notice we've sent them/)).toBeTruthy()
+    // v2.4539: the chip and What this does share the title's line; the words open under it on a click.
+    const titleLine = screen.getByRole('heading', { name: /Put Harborline Builders on notice/ }).parentElement!.parentElement!
+    expect(titleLine.contains(screen.getByText(/first notice we've sent them/))).toBe(true)
+    const what = screen.getByRole('button', { name: /What this does/ })
+    expect(titleLine.contains(what)).toBe(true)
+    expect(what.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByText(/One § 53.056 notice per job naming every unnoticed month/)).toBeNull()
+    fireEvent.click(what)
+    expect(what.getAttribute('aria-expanded')).toBe('true')
+    expect(screen.getByText(/One § 53.056 notice per job naming every unnoticed month/)).toBeTruthy()
+    fireEvent.click(what)
+    expect(screen.queryByText(/One § 53.056 notice per job naming every unnoticed month/)).toBeNull()
     // the step bar (v2.3665): four steps, each with its live status; owners still wants someone (1016 is missing)
     const bar = screen.getAllByTestId('gc-notice-stepbar-step')
     expect(bar.map((b) => b.textContent?.replace(/^[✓\d]/, ''))).toEqual([
@@ -225,6 +367,84 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(screen.getByTestId('gc-notice-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it('Approve all can be undone from the run window: it asks first, names what goes back and what stays, then takes it back (v2.4541)', async () => {
+    hookState.data = data()
+    const view = renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    await settle()
+    // No run has been started in this sitting: nothing to undo.
+    expect(screen.queryByTestId('run-undo')).toBeNull()
+    fireEvent.click(screen.getByTestId('gc-notice-approve-all'))
+    // The click approved the two ready notices and, with its ticks, moved the standing rule.
+    await waitFor(() => expect(io.approved).toEqual(['item-1', 'item-2']))
+    expect(io.policies).toEqual([expect.objectContaining({ policy: 'send' })])
+    // The re-read lands (the hook is a stub here, so the test hands it the new read), and the run window opens with the offer under its title.
+    hookState.data = data()
+    view.rerender(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    const strip = await screen.findByTestId('run-undo')
+    expect(strip.textContent).toContain('You just approved these 2 notices for Harborline Builders. Pressed it by mistake?')
+    fireEvent.click(within(strip).getByRole('button', { name: 'Undo the approval…' }))
+    const ask = await screen.findByRole('alertdialog', { name: 'Undo the approval for Harborline Builders?' })
+    expect(ask.textContent).toContain('2 notices go back to drafts. Nothing is mailed or recorded.')
+    expect(ask.textContent).toContain('The standing rule goes back to Ask each time.')
+    expect(ask.textContent).toContain('The bills this run showed to owners are hidden from them again.')
+    expect(ask.textContent).toContain('This stays:')
+    expect(ask.textContent).toContain('The Legal desk matter. Close it on the Legal desk if you do not want it.')
+    // Keep the run is the safe answer, and it changes nothing.
+    expect(document.activeElement).toBe(within(ask).getByRole('button', { name: 'Keep the run' }))
+    fireEvent.click(within(ask).getByRole('button', { name: 'Keep the run' }))
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull())
+    expect(io.undone).toEqual([])
+    expect(screen.getByTestId('run-undo')).toBeTruthy()
+    // Undo: the notices go back, the rule goes back, the owners' bills are hidden again, the run window closes.
+    fireEvent.click(within(screen.getByTestId('run-undo')).getByRole('button', { name: 'Undo the approval…' }))
+    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Undo the approval' }))
+    await waitFor(() => expect(io.undone).toEqual([{ ids: ['item-1', 'item-2'], userId: 'u1' }]))
+    await waitFor(() => expect(screen.queryByTestId('run-undo')).toBeNull())
+    expect(io.policies.map((p) => p.policy)).toEqual(['send', 'ask'])
+    expect(io.policies[1]!.note).toBe('Undone: the run was approved by mistake')
+    expect(io.unshared).toEqual([{ jobIds: ['j994'], invoiceIds: ['inv-9'], on: true }])
+    expect(screen.queryByText(/Send the run/)).toBeNull()
+  })
+
+  it('printing the packet from this window\u2019s run stamps the notices printed, as the Lien desk\u2019s run does (v2.4558)', async () => {
+    const base = data()
+    // One notice already approved and waiting in the run.
+    const approved = { id: 'it-994', job_id: 'j994', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, cover_note: false, printed_at: null } as never
+    const queue = buildLienDeskQueue(base.rows, [approved], { harborline: 'ask' }, TODAY)
+    hookState.data = { ...base, desk: { ...base.desk, queue, items: [approved] } }
+    refetch.mockClear()
+    const onChanged = vi.fn()
+    renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" onChanged={onChanged} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Open the run · 1/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Print the packet/ }))
+    await waitFor(() => expect(io.printed).toEqual([{ ids: ['it-994'], userId: 'u1' }]))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(refetch).toHaveBeenCalled()
+  })
+
+  it('the leader\u2019s window opens on what the office sent him, and Approve all saves that, not the defaults (v2.4571)', async () => {
+    const base = data()
+    // The office edited the letter and the reason, then pressed Send all to the leader: the draft waits with both.
+    const waiting = {
+      id: 'it-994', job_id: 'j994', kind: 'notice_53_056', status: 'awaiting_approval', months: ['2026-08'], cover_note: true, printed_at: null,
+      fields: { notice: { claimAmount: '18750.00' }, gcEmail: 'ap@harborline.test', batchReason: 'Payment promise broken twice — Dana promised Friday twice', coverLetter: 'THE OFFICE\u2019S OWN LETTER' },
+    } as never
+    const folded = buildGcOnNotice(base.rows, [waiting], (id) => (({ j994: 'on_file', j1016: 'missing', j1002: 'public', j1031: 'on_file' }) as OwnerStates)[id as keyof OwnerStates], TODAY)
+    hookState.data = { ...base, jobs: folded.jobs, summary: folded.summary, desk: { ...base.desk, items: [waiting] } }
+    renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    await settle()
+    expect((screen.getByLabelText('Reason note') as HTMLInputElement).value).toBe('Dana promised Friday twice')
+    expect((screen.getByRole('radio', { name: 'Payment promise broken twice' }) as HTMLInputElement).checked).toBe(true)
+    fireEvent.click(screen.getByTestId('gc-notice-approve-all'))
+    await waitFor(() => expect(io.drafts.length).toBeGreaterThan(0))
+    const saved = io.drafts.find((d) => d.jobId === 'j994')!
+    expect(saved.itemId).toBe('it-994')
+    expect(saved.fields.coverLetter).toBe('THE OFFICE\u2019S OWN LETTER')
+    expect(saved.fields.batchReason).toBe('Payment promise broken twice — Dana promised Friday twice')
+    expect(saved.coverNote).toBe(true)
   })
 
   it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', async () => {

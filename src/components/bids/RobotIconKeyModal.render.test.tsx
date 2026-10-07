@@ -18,6 +18,9 @@ describe('RobotIconKeyModal', () => {
     expect(block.textContent).toContain(`${GATE_B_STREAK} in a row within ${GATE_B_PCT}%`)
     // The explainer comes before the first state row, so the "why" is read before the "what".
     const dialog = screen.getByRole('dialog', { name: 'What the robot icon means' })
+    // The window leaves room for an iPhone's status bar, and its panel cannot grow back under it (v2.4447).
+    expect(dialog.getAttribute('style')).toContain('padding: calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem')
+    expect(dialog.firstElementChild?.getAttribute('style')).toContain('max-height: min(85vh, 100%)')
     const html = dialog.innerHTML
     expect(html.indexOf('robot-key-envelope')).toBeLessThan(html.indexOf('Robot is on it'))
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))

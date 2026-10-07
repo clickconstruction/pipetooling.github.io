@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGcNoticeBand, buildGcNoticeBandRow, gcNoticeBandLinePartWords, gcNoticeBandReadings, gcNoticeBandStageWords, pourGcNoticeBandLines, type GcNoticeBandJobInput, type GcNoticeJobWork } from './gcNoticeJobsBand'
+import { buildGcNoticeBand, buildGcNoticeBandRow, gcNoticeBandWrongItems, gcNoticeBandLinePartWords, gcNoticeBandReadings, gcNoticeBandStageWords, pourGcNoticeBandLines, type GcNoticeBandJobInput, type GcNoticeJobWork } from './gcNoticeJobsBand'
 
 const TODAY = '2026-09-25'
 
@@ -118,5 +118,31 @@ describe('gcNoticeBandLinePartWords — a part-done line says how much of it is 
   })
   it('a part-paid line lists its money', () => {
     expect(gcNoticeBandLinePartWords({ state: 'part', price: 1000, paid: 400, billed: 0, done: 100 })).toBe('$400 paid · $100 done')
+  })
+})
+
+describe('gcNoticeBandWrongItems — the jobs that look wrong, in the order the band draws them (v2.4540)', () => {
+  const jobs = [J372, J305, J706, J651, J868, J273, J258]
+
+  it('lists each wrong job once, group by group, with its red readings before its amber ones', () => {
+    const band = buildGcNoticeBand(jobs, TODAY, 'stage')
+    const items = gcNoticeBandWrongItems(band)
+    const drawn = band.groups.flatMap((g) => g.rows).filter((r) => r.readings.length > 0)
+    expect(items.map((i) => i.jobId)).toEqual(drawn.map((r) => r.jobId))
+    expect(items).toHaveLength(band.counts.wrong)
+    for (const it of items) {
+      const tones = it.readings.map((r) => r.tone)
+      expect(tones).toEqual([...tones.filter((t) => t === 'red'), ...tones.filter((t) => t === 'amber')])
+    }
+    const j372 = items.find((i) => i.jobId === '372')!
+    expect(j372).toMatchObject({ stage: 'waiting', status: 'waiting', open: 26400 })
+    expect(j372.readings[0]!.label).toBe('Waiting, but 80% done and a bill out')
+  })
+
+  it('follows the order the band is in, and is empty when every record reads right', () => {
+    const byOpen = buildGcNoticeBand(jobs, TODAY, 'open')
+    expect(gcNoticeBandWrongItems(byOpen).map((i) => i.jobId)).toEqual(byOpen.groups[0]!.rows.filter((r) => r.readings.length > 0).map((r) => r.jobId))
+    const right = buildGcNoticeBand(jobs, TODAY).groups.map((g) => ({ ...g, rows: g.rows.filter((r) => r.readings.length === 0) }))
+    expect(gcNoticeBandWrongItems({ groups: right })).toEqual([])
   })
 })

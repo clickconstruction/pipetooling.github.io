@@ -11,8 +11,8 @@ describe('bid room payload parser parity', () => {
       gcName: 'NORTHSTAR',
       serviceTypeName: 'Plumbing',
       sections: [
-        { name: 'To Plans', isAlternate: false, revenueSum: 249971.29, fixtureRows: [{ fixture: 'ft of 4IN WASTE', count: 537.27 }] },
-        { name: 'VE', isAlternate: true, revenueSum: 97558.12, fixtureRows: [{ fixture: 'ft of 4IN WASTE', count: 200 }] },
+        { name: 'To Plans', isAlternate: false, revenueSum: 249971.29, fixtureRows: [{ fixture: 'ft of 4IN WASTE', count: 537.27 }], bidVersionId: 'v-tp' },
+        { name: 'VE', isAlternate: true, revenueSum: 97558.12, fixtureRows: [{ fixture: 'ft of 4IN WASTE', count: 200 }], bidVersionId: 'v-ve' },
       ],
       inclusions: 'inc',
       exclusions: 'exc',
@@ -22,6 +22,8 @@ describe('bid room payload parser parity', () => {
     const wire = JSON.parse(JSON.stringify(built))
     expect(parseSharedBidRoomPayload(wire)).toEqual(parseBidRoomRevisionPayload(wire))
     expect(parseSharedBidRoomPayload(wire)).toEqual(built)
+    // v2.4728: an option carries its version through both parsers.
+    expect(parseSharedBidRoomPayload(wire)!.options.map((o) => o.bid_version_id)).toEqual(['v-tp', 'v-ve'])
   })
 
   it('both refuse baseless payloads', () => {

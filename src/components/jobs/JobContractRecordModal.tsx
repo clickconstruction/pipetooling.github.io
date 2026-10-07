@@ -13,11 +13,10 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { buildJobContractDocumentHtml, isGoogleDocsUrl, jobContractHeading, parseJobContractFields, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
-import { formatContractStamp, jobContractSignatureAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
-import { signedRecordId } from '../../lib/signedRecordId'
+import { formatContractStamp, jobContractSignatureAuditLine, jobContractSignatureBlocks, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
 
@@ -79,8 +78,10 @@ export function useJobContractRecordUrls(row: JobContractRow | null, open: boole
   return { signatureUrl, pdfUrl, paperUrl, coSignatureUrl }
 }
 
-export function buildJobContractRecordHtml(row: JobContractRow, job: JobContractRecordJob, signatureUrl: string | null): string {
+export function buildJobContractRecordHtml(row: JobContractRow, job: JobContractRecordJob, signatureUrl: string | null, coSignatureUrl: string | null = null): string {
   const issuer = getPhysicalInvoiceIssuerForDocument()
+  // v2.4590: a second signer prints a second block, as the stored PDF does.
+  const blocks = jobContractSignatureBlocks(row, { signatureUrl, coSignatureUrl, record: { jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '0' } })
   return buildJobContractDocumentHtml({
     heading: jobContractHeading(job),
     jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—',
@@ -93,16 +94,9 @@ export function buildJobContractRecordHtml(row: JobContractRow, job: JobContract
     termsHtml: renderContractBodyToSafeHtml(row.body_html, row.body_format),
     templateName: row.template_name,
     issuer: issuer.companyName ? issuer : null,
-    signature: row.signed_at
-      ? {
-          printedName: row.signer_printed_name ?? '',
-          auditLine: jobContractSignatureAuditLine(row) ?? '',
-          imageUrl: signatureUrl,
-          recordId: signedRecordId('J', effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '0', row.id),
-          whenLabel: formatContractStamp(row.signed_at) ? `${formatContractStamp(row.signed_at)} CT` : null,
-          paper: row.signer_mode === 'paper',
-        }
-      : null,
+    signature: blocks.signature,
+    coSignerName: blocks.coSignerName,
+    coSignature: blocks.coSignature,
   })
 }
 
@@ -222,7 +216,8 @@ export default function JobContractRecordModal({ open, onClose, row, job }: JobC
             <button
               type="button"
               onClick={() => {
-                if (!openHtmlPrintWindow(buildJobContractRecordHtml(row, job, urls.signatureUrl))) showToast('Allow pop-ups to print the contract.', 'error')
+                // A print counts as a send (docs/SENT_COPIES.md): the contract is filed on the job as it printed.
+                if (!printAndFile(buildJobContractRecordHtml(row, job, urls.signatureUrl), { kind: 'job_contract_print', title: `Contract${row.template_name ? ` · ${row.template_name}` : ''}`, recipientName: row.recipient_name ?? '', jobIds: [row.job_id], source: { table: 'job_contracts', id: row.id } })) showToast('Allow pop-ups to print the contract.', 'error')
               }}
               style={{ padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
             >

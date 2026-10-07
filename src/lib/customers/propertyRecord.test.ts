@@ -14,6 +14,7 @@ import {
   titleCaseUpperWords,
   type ParcelRecord,
   type PropertyRecordFields,
+  countySourceLabel,
 } from './propertyRecord'
 import { proposalFromLookupPayload } from './propertyLookupClient'
 import { setExtraTxCountyMappings } from '../txCountyLookup'
@@ -325,5 +326,12 @@ describe('proposalFromLookupPayload (client side of the edge function)', () => {
   it('passes failures through by code', () => {
     expect(proposalFromLookupPayload('x', { ok: false, error: 'not_found', detail: 'Google: not_found' })).toEqual({ ok: false, error: 'not_found' })
     expect(proposalFromLookupPayload('x', null)).toEqual({ ok: false, error: 'empty response' })
+  })
+})
+
+describe('countySourceLabel (v2.4778)', () => {
+  it('names the court map as a county source', () => {
+    expect(countySourceLabel('map')).toBe("from the office's court map")
+    expect(countySourceLabel('manual')).toBeTruthy()
   })
 })

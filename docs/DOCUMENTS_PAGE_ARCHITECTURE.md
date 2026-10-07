@@ -8,7 +8,7 @@ covers:
   - src/pages/Documents.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from the `npm run map -- src/pages/Documents.tsx` fact sheet) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map` before trusting a range.
@@ -19,6 +19,7 @@ last_updated: 2026-09-25
 
 - **Mounted by:** `src/App.tsx` only — `lazy(() => import('./pages/Documents'))` (line 45), `<Route path="documents" element={<Documents />} />` (line 338). ROUTES: `/documents` → `Documents`, 1926 lines. Default export, **no props**.
 - **Who reaches it:** dev / master / assistant-like (every non-banking route), estimator (`estimatorAllowedPaths`), primary (`PRIMARY_PATHS`), superintendent (`SUPERINTENDENT_PATHS`) in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts); subcontractor-like roles are bounced. Nav: the Layout gear menu (`Layout.tsx` 1658–1686, hidden in farm mode) and the phone dock (`phoneDock.ts` `documents`, `notField`). No in-app `?tab=` deep links point here (grep of `src/` at `a05cef4c4`).
+- **Sent tab (v2.4573):** `?tab=sent`, office only (`canReadSentCopies`), is its own file from the start — [`DocumentsSentLedger.tsx`](../src/components/documents/DocumentsSentLedger.tsx) over `loadSentCopies` — and shares nothing with the four ledgers below. See [`SENT_COPIES.md`](./SENT_COPIES.md).
 - **Shape:** unusual for a big page — it is **already componentized inside one file**. The four ledgers are module-level functions with one clean prop (`DocumentsLedgerEmbedProps = { embedSearch?: string }`, line 249), each owning its own state, loader and modals. The parent (`Documents`, 88 lines) owns only the `?tab=` router and the Company-tab role gate. Nothing is shared between ledgers at runtime; the Search tab re-mounts all four in "embedded" mode.
 
 **Hook census (fact sheet):** 26 `useState` · 0 `useReducer` · 4 effects · 5 `useMemo` · 4 `useCallback` · 0 `useRef` · 14 custom hooks · 6 components · 18 module functions · 18 commits in 90 days (last 2026-09-11, `11ce04c24`, v2.3331 test reports).
@@ -112,7 +113,7 @@ Already extracted and mounted here: [`DocumentsAddDriveLinkModal`](../src/compon
   5. `job_test_reports` 781–801 — all statuses, mapped through `testReportDocumentRow`; fail-soft.
 - **Handler:** `openTestReportDocument` 816–834 — `tr.door.kind === 'pdf'` (status `sent` **and** a `pdf_path`, per `testReportDocumentRow`) → `supabase.storage.from('job-test-reports').createSignedUrl(path, 300)` → `openInExternalBrowser`; otherwise (drafts, or sent without a PDF) → `fetchJobWithDetailsById` → `testReportModal.openTestReport({ job, reportId, onChanged: load })`; returns silently when the context is absent.
 - **Write:** Drive link save 865–877 — `jobs_ledger.update({ google_drive_link })` with **no `.select` / refusal check**.
-- **Render:** main row 931–1017 (Drive folder icon or **+**; `J<num> · name` title via `effectiveJobLedgerNumber` + `getBidServiceTypeTag`; `jobPickerStatusChip`; revenue); child rows: billed invoices 1018–1047 (→ `DocumentsJobBilledInvoiceModal`), contracts 1048–1077 (signed → `openContractWindow` loads the job with `fetchJobWithDetailsById` and opens `JobContractModal` with `initialRecordId` — v2.4183; unsigned → `openHtmlPreviewWindow(buildJobContractRecordHtml(con, r, null))`), test reports 1078–1103, lien releases 1104–1173 (form-type fallback + typed-signature builder 1105–1117 → `buildLienWaiverPrintHtml` preview).
+- **Render:** main row 931–1017 (Drive folder icon or **+**; `J<num> · name` title via `effectiveJobLedgerNumber` + `getBidServiceTypeTag`; `jobPickerStatusChip`; revenue); child rows: billed invoices 1018–1047 (→ `DocumentsJobBilledInvoiceModal`), contracts 1048–1077 (signed → `openContractWindow` loads the job with `fetchJobWithDetailsById` and opens `JobContractModal` with `initialRecordId` — v2.4183; unsigned → `openHtmlPreviewWindow(buildJobContractRecordHtml(con, r, null))`; the row's audit line is `jobContractSignersAuditLine`, which names both signers of a two-frame agreement — v2.4590), test reports 1078–1103, lien releases 1104–1173 (form-type fallback + typed-signature builder 1105–1117 → `buildLienWaiverPrintHtml` preview).
 - **Money:** `formatJobRevenueUsd` (531–534, **dollars**) for job revenue, invoice amounts and lien-release amounts. Display only.
 - **Links out:** `/jobs?edit=<id>` 964.
 - **Helpers:** `jobLedgerCustomerLines` 508–522, `documentsJobLedgerStatusLabel` 524–529, `formatJobRevenueUsd` 531–534, `documentsJobInvoiceMatchesSearch` 597–611, `documentsJobsRowMatchesSearch` 613–636; `TEST_REPORT_BUCKET` 506.

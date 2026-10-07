@@ -26,6 +26,8 @@ This guide is about our waiver to a GC. The waiver we collect from a sub is in [
 
 Untick the box if the GC does not want a waiver this time. The bill then goes alone.
 
+The tick shows only when Bill Customer is opened on one bill. With no tick, the bill goes alone. Add the waiver from the Bill tab, as below.
+
 ## A bill already sent
 
 1. Open the job and go to its **Bill** tab.
@@ -74,7 +76,7 @@ The window walks you down its left side in six steps. A line with an arrow joins
 
 A green tick means a step is done. The blue number is the step to do now. An amber mark means a step needs a fix, and the steps after it wait. The footer always says which step you are on.
 
-The page on the right stays in view while you work. It marks the part the current step fills.
+The page on the right stays in view while you work. When step 5 is the one to do, the page marks the signature line. Opening a folded step marks that step's part.
 
 :::example The steps on a job
 {{chip:green|1 · Pick the bills · Done}}
@@ -101,6 +103,8 @@ Two switches in step 2 pick the form. The app sets both from the bill.
 - **Progress** or **Final**. Progress means more bills will follow. Final means this is the last bill on the job.
 
 The line under the switches says why. It also shows the two facts it read from the bill. Change a switch if the bill has it wrong.
+
+Clicking **Unconditional** asks first. A window says an unconditional waiver gives up all your rights. It says most GCs will accept a conditional one, even when they ask for the other. Speak to your master plumber before you go on. {{button:blue|Stay conditional}} changes nothing. {{button:red|Acknowledge and choose Unconditional}} switches the form. The two *Waive the … paid* buttons in the notes below ask the same question first.
 
 {{gif:send-a-gc-our-lien-waiver-window.gif|The Release of Lien window: the six steps down the left and the page beside them}}
 
@@ -141,9 +145,9 @@ Commas appear as you type, so 17777.51 shows as 17,777.51. Leaving the box adds 
 
 ## Set who signs for the company
 
-Do this once. It fills the signer and his title on every waiver.
+A dev does this once. It fills the signer and his title on every waiver.
 
-1. Open [Settings, Jobs & billing](/settings?tab=settings-jobs&focus=issuer.signerName). The link lands on the right line.
+1. Open [Settings, Jobs & billing](/settings?tab=settings-jobs&focus=issuer.signerName). For a dev, the link lands on the right line.
 2. The **Physical invoice** block is open. Find the line **Signs for the company**. Type the leader's name.
 3. Type his title in **His title**. For example, Owner. Or Responsible Master Plumber.
 4. Click {{button:blue|Save}}.
@@ -154,16 +158,16 @@ The Release of Lien window now opens on him. His name and title print under the 
 
 ## Get the leader to sign
 
-Step 5 names the leader who signs. It opens on the company's signer. Pick another leader from the list if this job needs one. There are two ways to sign.
+Step 5 names the leader who signs. Step 5 opens on the company's signer. Pick another leader from the list if this job needs one. A draft you come back to keeps the leader you picked. There are two ways to sign.
 
 - {{button:blue|✍ He is here, he signs now}} opens the signing pad right here. Use this when he is with you. Hand him the phone, or turn your screen to him.
 - {{button:outline|Send it to his desk}} sends the waiver to his Dashboard. He signs it when he is next at his own screen. It comes back to the window signed.
 
 Signing on paper instead? Click **Print it**, then **Mark issued**.
 
-While it waits at his desk, step 5 says who it waits for. Click **Cancel request** to take it back.
+While the waiver waits at his desk, step 5 says who it waits for. Step 5 names that leader each time the window opens. Click **Cancel request** to take it back.
 
-Step 5 also shows when no title will print. Click **Add his title in Settings** to set it once.
+Step 5 also shows when no title will print. A dev clicks **Add his title in Settings** to set it once.
 
 When he signs now, the waiver's page opens. Its foot has a blue box marked **Sign here, on the line**. He draws his signature on that line with a finger or the mouse. His name is already printed under the line, so there is nothing to type. He cannot type the signature either. The line takes only drawing whenever the signer is not the person signed in. This holds on every door into it, including {{button:outline|Sign it ›}} on the Bill tab. The record names him as the signer and names your device.
 
@@ -195,7 +199,7 @@ A leader with waivers waiting sees a card on his [Dashboard](/dashboard). It rea
 4. Sign on the line at the foot of the page. Draw it with a finger or the mouse. At your own desk you may click **Type it instead**. Tick the box. Click {{button:amber|✍ Sign · send to the GC}}.
 5. The waiver goes to the GC by email. The next row loads.
 
-Untick **Send once signed** to sign without sending. The office sends it later from the job.
+Untick the **Send to** line to sign without sending. The office sends it later from the job.
 
 ## Send it or download it
 

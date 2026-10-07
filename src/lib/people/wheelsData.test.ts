@@ -52,7 +52,10 @@ const members = [
 const loadCategoryTags = vi.fn(async () => ({ tags, members }))
 const fetchLabelIdByTxId = vi.fn(async (_ids: readonly string[]) => new Map([['tx2', 'lbl-fuel'], ['tx6', 'lbl-other']]))
 vi.mock('../banking/categoryTagsData', () => ({ loadCategoryTags: () => loadCategoryTags(), fetchLabelIdByTxId: (ids: readonly string[]) => fetchLabelIdByTxId(ids) }))
-const fetchAttributions = vi.fn(async (_ids: string[], _label: string) => [{ mercury_transaction_id: 'tx1', user_id: 'u-ana' }])
+const fetchAttributions = vi.fn(async (_ids: string[], _label: string) => [
+  { mercury_transaction_id: 'tx1', user_id: 'u-ana' },
+  { mercury_transaction_id: 'tx7', user_id: 'u-ana' },
+])
 vi.mock('../fetchMercuryRelationsByTxIds', () => ({ fetchAttributionsByMercuryTxIds: (ids: string[], label: string) => fetchAttributions(ids, label) }))
 const loadDirectory = vi.fn(async () => ({ nicknameByCard: { 'card-b': 'Truck 2 card' } as Record<string, string>, roleByCard: { 'card-c': 'company' } as Record<string, string> }))
 vi.mock('../banking/debitCards', () => ({ loadDebitCardDirectory: () => loadDirectory() }))
@@ -77,12 +80,14 @@ const data: Record<string, unknown[]> = {
     { id: 'tx4', amount: -25, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // company card
     { id: 'tx5', amount: -30, kind: 'debitCardTransaction', mercury_category: 'Restaurants', counterparty_name: 'Cafe' }, // meals
     { id: 'tx6', amount: -20, kind: 'debitCardTransaction', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // labelled into no tag: untagged
+    { id: 'tx7', amount: 10, kind: 'other', mercury_category: 'Gas Stations', counterparty_name: 'Shell' }, // a refund to Ana's card: Mercury files it as kind 'other'
   ],
   raw: [
     { id: 'tx1', raw: { cardId: 'card-a' } },
     { id: 'tx2', raw: { cardId: 'card-b' } },
     { id: 'tx3', raw: null },
     { id: 'tx4', raw: { cardId: 'card-c' } },
+    { id: 'tx7', raw: { cardId: 'card-a' } },
   ],
   clock_sessions: [
     session({}), // Ana 8 h field
@@ -141,8 +146,8 @@ describe('loadWheelsSnapshot', () => {
     expect(argsOf(sv.steps, 'lte')).toEqual([['service_date', '2026-09-07']])
     expect(argsOf(q('vehicle_possessions').steps, 'order')).toEqual([['start_date', { ascending: false }]])
     expect(argsOf(q('vehicle_insurance_periods').steps, 'order')).toEqual([['start_date', { ascending: false }]])
-    expect(fetchLabelIdByTxId).toHaveBeenCalledWith(['tx1', 'tx2', 'tx3', 'tx4', 'tx5', 'tx6'])
-    expect(fetchAttributions).toHaveBeenCalledWith(['tx1', 'tx2'], 'wheels') // only card fuel is anyone's fuel
+    expect(fetchLabelIdByTxId).toHaveBeenCalledWith(['tx1', 'tx2', 'tx3', 'tx4', 'tx5', 'tx6', 'tx7'])
+    expect(fetchAttributions).toHaveBeenCalledWith(['tx1', 'tx2', 'tx7'], 'wheels') // only card fuel is anyone's fuel — a refund to the card included
   })
 
   it('picks the fuel tag, splits its charges into card / off-card / company-card, and attributes card fuel to people', async () => {
@@ -161,20 +166,21 @@ describe('loadWheelsSnapshot', () => {
       ['v2', 'Chevy Van', null, null, 0], // motor pool
     ])
     // 90 days = 12.857 weeks: insurance 35/wk on plan, registration 7/wk, one costed service, Bob has no fuel.
-    expect(snap.trucks[0]!.cost).toEqual({ fuel: 0, insurance: 450, registration: 90, service: 120, total: 660, ratePerFieldHour: 165 })
-    expect(snap.trucks[1]!.cost).toEqual({ fuel: 0, insurance: 0, registration: 0, service: 0, total: 0, ratePerFieldHour: null }) // no insurance period: not on plan
+    expect(snap.trucks[0]!.cost).toEqual({ fuel: 0, insurance: 450, registration: 90, service: 120, total: 660, ratePerFieldHour: 165, fixedRatePerFieldHour: 165 })
+    expect(snap.trucks[1]!.cost).toEqual({ fuel: 0, insurance: 0, registration: 0, service: 0, total: 0, ratePerFieldHour: null, fixedRatePerFieldHour: null }) // no insurance period: not on plan
   })
 
   it('builds a row per pay-config person — company holders first — linking names to logins by trimmed name', async () => {
     const snap = await loadWheelsSnapshot(input)
-    expect(snap.rows.map((r) => [r.name, r.userId, r.arrangement, r.fuelUsd, r.fieldHours, r.computedRate, r.effectiveRate])).toEqual([
+    // Ana's fuel is $60 less the $10 refund to her card; the fixed rate is what Review charges besides fuel on no job.
+    expect(snap.rows.map((r) => [r.name, r.userId, r.arrangement, r.fuelUsd, r.fieldHours, r.computedFixedRate, r.fixedRate])).toEqual([
       ['Bob ', 'u-bob', 'company', 0, 4, 165, 165],
-      ['Ana', 'u-ana', 'own_fuel_paid', 60, 8, 7.5, 7.5],
-      ['Cy', null, 'none', 0, 0, null, 2.5], // unknown arrangement → none; manual override wins
+      ['Ana', 'u-ana', 'own_fuel_paid', 50, 8, 0, 0],
+      ['Cy', null, 'none', 0, 0, null, 2.5], // unknown arrangement → none; a manual fixed rate wins
     ])
-    expect(snap.rows[0]!.note).toBe('2022 Ford F-150 · $660 ÷ 4.0 field h')
-    expect(snap.rows[2]!.note).toBe('manual override')
-    expect(snap.comparison).toEqual({ ownAvg: 7.5, companyAvg: 165 })
+    expect(snap.rows[0]!.note).toBe('2022 Ford F-150 · $660 fixed ÷ 4.0 field h; fuel stays on the jobs')
+    expect(snap.rows[2]!.note).toBe('manual fixed rate; fuel stays on the jobs')
+    expect(snap.comparison).toEqual({ ownAvg: 6.25, companyAvg: 165 })
   })
 
   it('without a flagged fuel tag (or with only a name match) the fuel side is empty but trucks and rows still build', async () => {

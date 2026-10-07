@@ -10,7 +10,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; PeopleContractsTab dossiers; PeopleOverheadTab dossiers; Stage-A candidates; Test coverage; Cross-surface duplication; Recommended extraction order; What must stay in the parents; Preserve-quirks list; Recent churn
-last_updated: 2026-09-25
+last_updated: 2026-10-04
 ---
 
 ## What this surface is
@@ -59,6 +59,7 @@ Two **cross-component couplings via the DB, not via props** (neither blocks extr
 | Pool trend chart + day panel | O | 1036–1067, render 1359–1378 | ~35 + 20 | low-med (day panel moves week scope) | low | `overheadPoolTrend`, `overheadPoolDayLines` | **extracted** (`OverheadPoolTrendCard`, `OverheadPoolDayModal`) |
 | People table | O | 1073–1083, render 1389–1394 | ~17 | low | low | `overheadPeopleTable`, `overheadPeopleCellModel` | **extracted** (`OverheadPeopleTable` → `OverheadPeopleCellModal`) |
 | Hygiene strip | O | view-model 1160–1201, render 1395–1427 | ~75 | low | low | `overheadHygiene` 14 tests | inline |
+| Man hours card | O | one mount between the three-lenses strip and the pool trend chart (after the map's anchors) | ~10 in the tab | low (reads the Office job id + its loading flag) | low | `manHoursByPeriod` 17, `manHoursChart` 16, `manHoursWho` 4, `ManHoursCard.render` 9, `ManHoursChart.render` 4, `ManHoursWho.render` 3 | **extracted from birth** (`ManHoursCard` → `ManHoursChart`, `ManHoursWho`) |
 | Day table + totals footer | O | render 1554–1884 | 331 | med (merged rows, opens modal) | low-med | row merge tested; totals none | inline → `OverheadDayTable` |
 | Breakdown modal (5 scopes) | O | model 920–1029; render 1886–2271; list 91–173 | 110 + 386 + 83 | med (5 data inputs + the modal pointer via model deps) | med | **model untested (money math)** | inline — Stage A the model first |
 | Office-job modal + job picker | O | 232–245, 789–816, render 2273–2554 | ~40 + 281 | low-med (writes office job id) | low | settings lib tested | inline → `OverheadOfficeJobModals` |
@@ -188,6 +189,18 @@ Avg daily cost (7/30/90) and overhead per $100 revenue cards over `overheadAvgDa
 
 View-model `overheadHygieneCards` (1160–1201 — pending approvals, unpriced hours, unassigned salary time; one card per dirty indicator); render 1395–1427, **below** the pool chart and people table (not directly under the lenses). Kernel `buildOverheadHygieneSummary` (14 tests) runs inside the snapshot loader.
 
+### Man hours card
+
+[`ManHoursCard`](../src/components/people/ManHoursCard.tsx) sits right under the three-lenses strip, above the pool trend chart (v2.4530; it was born above the day table, a screen and a half down). It shows the office against the field by pay week, month, quarter and year: field, office, bid and not-on-a-job hours, the total, the office share, hours per week and people. Hours only; no wage is read.
+
+- **Self-loading.** One paged read of `clock_sessions` on mount ([`loadManHoursSessions`](../src/lib/manHours/loadManHoursSessions.ts): closed, not rejected or revoked, nine columns, no date floor since the Year zoom shows every year). The tab passes `overheadOfficeJobLedgerId` and `overheadSettingsLoading`, so a new Office job re-folds without a refetch and no number shows before the Office job is known. A failed read shows in the card with **Try again**; it does not use the tab's error banner.
+- **Kernel.** [`manHoursByPeriod.ts`](../src/lib/manHours/manHoursByPeriod.ts) reuses the day table's rules (`isRecordedClockSession`, `approvedClosedSessionHours`, `overheadBucketForSession`), and a test holds a week on the card equal to that week's two day-table columns. It adds what the day table leaves out: time on no job and no bid, and the hours still waiting for approval. A session on both a field job and a bid is field here, once; the day table counts it in both columns.
+- **Periods.** `MAN_HOURS_ZOOMS`: 13 pay weeks (`payWeekStart`, Sun–Sat), 12 months, 8 quarters, every year. No gaps: a period with no hours is a row of zeros. `soFar`, `fromFirstDay` and `coveredDays` mark and size a part period; today is `todayYmdInAppTz()`.
+- **Picture.** [`ManHoursChart`](../src/components/people/ManHoursChart.tsx) draws what [`manHoursChart.ts`](../src/lib/manHours/manHoursChart.ts) places: stacked bars for hours (field, office, bids, not on a job) and, on the same columns, the office share as its own line; a headline for the newest finished period; a hover/focus box per column. Colors are the `--man-hours-*` tokens in `index.css` (one checked set per theme; bids are orange because the tab's blue beside its purple fails for color-blind readers).
+- **Opening a number.** One period is always picked: the newest finished one until a row or a bar is clicked; a zoom change starts over. [`ManHoursWho`](../src/components/people/ManHoursWho.tsx) lists who made it up ([`manHoursWho.ts`](../src/lib/manHours/manHoursWho.ts); names ride the session read as `users(name)`) and holds three doors: *Show these days in the table below* (Week zoom → the tab's `showOverheadWeekOf`, then a scroll to the toolbar's `#overhead-day-table`, and a second scroll once the table's rows are in when the week changed, since the reloading table is one line tall and the first scroll stops short), *Approve waiting hours* (`/people?tab=hours&approvals=1`) and *Match hours to a job* (`/people?tab=hours&match=1`).
+- **Fitting the screen.** The chart measures its own width (`useMeasuredWidth`) and draws at real pixel size, so nothing scrolls sideways and a narrow chart names every nth column (`manHoursLabeledColumns`). The card measures itself too: at 980 px and up the who list stands beside the picture (`layout="side"`: doors under the title, rows scrolling under a pinned header); under 560 px a row's chips drop under its name and the who list tightens the way the side panel does (`compact`), so its six columns fit a 375 px screen. The Period and Person columns are pinned.
+- **Scale.** About 2,500 sessions as of 2026-10, roughly 4,400 a year. Past about 20,000, move the fold to a database function returning one row per day and side.
+
 ### Day table + totals footer (render 1554–1884)
 
 Single combined loading gate (all four weekly loading flags); thead 1572–1633 (Simple vs Advanced column order differ); rows 1637–1778 (every $ cell → `setOverheadBreakdownModal({ workDate, scope })`, scopes `'bid'|'office'|'officeParts'|'total'|'otherJobs'`; per-row `overheadFactorTotalOverOtherJobs`); tfoot 1780–1881 (footer Overhead % = the same factor on period sums — weighted ratio). `formatOverheadTabWorkDateLabel` (73–82) labels rows in `APP_CALENDAR_TZ`; `overheadValueCellButtonStyle` (1092–1101). Extraction: `OverheadDayTable` taking `rows`, `totals`, `simpleView`, `onOpenBreakdown`.
@@ -243,6 +256,7 @@ No render smoke exists for either tab (`PeopleContractsTab.render.test.tsx` / `P
 | O 90-day panel | `overheadPoolSnapshot` 9, `overheadAvgDailyCost` 9, `overheadRateMethods` 8, `overheadHygiene` 14, `overheadPoolTrend` 5, `overheadLensSeries` 6, `overheadPoolDayLines` 6, `overheadPeopleTable` 6, `overheadPeopleCellModel` 7 | `overheadPeopleParts` (transfer filter + card attribution) | low-med |
 | O breakdown modal | (inputs tested) | `overheadBreakdownModalModel` — per-scope totals, Materials recompute, grand totals | **money math untested — Stage A first** |
 | O settings / toolbar | `overheadOfficeJobSettings` 5, `overheadTableViewStorage` 5 | week math | low |
+| O man hours card | `manHoursByPeriod` 17 (one holds the card to the day table), `manHoursChart` 16, `manHoursWho` 4 (one holds the list to the period), `ManHoursCard.render` 9, `ManHoursChart.render` 4, `ManHoursWho.render` 3 | `loadManHoursSessions` (a paged read) | low |
 
 ## Cross-surface duplication
 

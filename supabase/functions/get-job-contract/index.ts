@@ -65,7 +65,9 @@ serve(async (req) => {
         contract.body_html = html
         contract.body_format = doc.book_body_format === 'plain' || doc.book_body_format === 'markdown' ? doc.book_body_format : 'html'
         contract.template_name = doc.document_name ?? contract.template_name
-        contract.template_version_date = (doc.book_version_date as string | null) ?? (typeof doc.updated_at === 'string' ? doc.updated_at.slice(0, 10) : contract.template_version_date)
+        // The Book's rule (effectiveBookVersionPlainDate): the set version date, else the day of the last edit in the company calendar.
+        const editedAt = typeof doc.updated_at === 'string' ? doc.updated_at : ''
+        contract.template_version_date = (doc.book_version_date as string | null) ?? (editedAt && !Number.isNaN(Date.parse(editedAt)) ? todayYmdInAppTz(new Date(editedAt)) : contract.template_version_date)
       }
       return json(body)
     }

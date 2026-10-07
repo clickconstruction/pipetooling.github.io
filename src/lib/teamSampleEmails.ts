@@ -30,6 +30,7 @@ import type { CtRosterDiff } from '../../supabase/functions/_shared/ctRosterDiff
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienStatusPayload } from '../../supabase/functions/_shared/lienDeskStatus'
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -264,7 +265,7 @@ export function sampleBilledReportPayload(todayYmd: string): BilledReportPayload
       customer_email: contacts[r.customer_id ?? '']?.email ?? null,
       customer_phone: contacts[r.customer_id ?? '']?.phone ?? null,
       detail: r.job_name?.includes('rough-in') ? 'Draw 2 of 3' : 'Final',
-      ref_date: (r.billed_at ?? '').slice(0, 10),
+      ref_date: calendarYmdInAppTzFromIso(r.billed_at ?? ''),
       ref_is_estimate: false,
       days_past: days,
       remaining: r.remaining,

@@ -519,15 +519,27 @@ export type JobsStagesBoardLists = {
   billedRows: StageRow[]
   /** Billed jobs NOT flagged into Collections (the "Billed Awaiting Payment" section). */
   billedActiveJobs: JobWithDetails[]
-  /** Billed jobs flagged difficult-to-collect (the "Collections" section). */
+  /** Billed jobs flagged difficult-to-collect and still chased (the "Collections" section's rows). */
   collectionsJobs: JobWithDetails[]
+  /** Collections jobs the office marked Uncollectible (punch list #94, v2.4792): the band under Collections, in no total. */
+  uncollectibleJobs: JobWithDetails[]
   billedActiveRows: StageRow[]
   collectionsRows: StageRow[]
+  uncollectibleRows: StageRow[]
 }
 
 /** In Collections = billed AND flagged; a DB trigger clears the flag when the job transitions to paid (v2.1642). */
 export function jobInCollections(j: Pick<JobWithDetails, 'status' | 'collections_at'>): boolean {
   return ((j.status ?? 'working') as string) === 'billed' && j.collections_at != null
+}
+
+/**
+ * Uncollectible (punch list #94, v2.4788) = in Collections AND marked by the office (`uncollectible_at`,
+ * `set_job_uncollectible`). Mirrors `jobIsUncollectible` in the bill-truth kernel. The field is optional
+ * here so a caller typed ahead of the generated columns still compiles; a job without it is never marked.
+ */
+export function jobUncollectible(j: Pick<JobWithDetails, 'status' | 'collections_at'> & { uncollectible_at?: string | null }): boolean {
+  return jobInCollections(j) && j.uncollectible_at != null
 }
 
 function jobHasReadyToBillInvoice(j: JobWithDetails): boolean {
@@ -576,15 +588,22 @@ export function buildJobsStagesBoardLists(
   const readyToBillRows = buildReadyToBillStageRows(readyToBillJobs)
   const billedRows = buildBilledStageRows(billedJobs, billedInvoices)
   const billedActiveJobs = billedJobs.filter((j) => !jobInCollections(j))
-  const collectionsJobs = billedJobs.filter((j) => jobInCollections(j))
+  // v2.4792: a Collections job the office gave up on leaves the Collections rows for the band under them.
+  const collectionsJobs = billedJobs.filter((j) => jobInCollections(j) && !jobUncollectible(j))
+  const uncollectibleJobs = billedJobs.filter((j) => jobUncollectible(j))
   const collectionsJobIds = new Set(collectionsJobs.map((j) => j.id))
+  const uncollectibleJobIds = new Set(uncollectibleJobs.map((j) => j.id))
   const billedActiveRows = buildBilledStageRows(
     billedActiveJobs,
-    billedInvoices.filter((iw) => !collectionsJobIds.has(iw.job.id)),
+    billedInvoices.filter((iw) => !collectionsJobIds.has(iw.job.id) && !uncollectibleJobIds.has(iw.job.id)),
   )
   const collectionsRows = buildBilledStageRows(
     collectionsJobs,
     billedInvoices.filter((iw) => collectionsJobIds.has(iw.job.id)),
+  )
+  const uncollectibleRows = buildBilledStageRows(
+    uncollectibleJobs,
+    billedInvoices.filter((iw) => uncollectibleJobIds.has(iw.job.id)),
   )
   return {
     filtered,
@@ -599,8 +618,10 @@ export function buildJobsStagesBoardLists(
     billedRows,
     billedActiveJobs,
     collectionsJobs,
+    uncollectibleJobs,
     billedActiveRows,
     collectionsRows,
+    uncollectibleRows,
   }
 }
 

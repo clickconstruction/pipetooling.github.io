@@ -10,7 +10,9 @@ import {
   lienReleaseFieldsFromSnapshot,
   lienReleaseFormLabel,
   lienReleasesOwingUnconditional,
+  lienReleaseCheckStillClearing,
   liveLienReleases,
+  unconditionalFollowUpForm,
   type JobLienReleaseRow,
   type LienQueuePayment,
 } from './lienReleaseTracking'
@@ -222,11 +224,21 @@ describe('buildLienUnconditionalQueue (the Dashboard queue)', () => {
 
   it('falls back to the payment created date and a plain label when the row is bare; unknown jobs get empty identity', () => {
     const releases = [release({ id: 'r1', job_id: 'job-x', invoice_ids: ['inv-1'], amount: 100 })]
-    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-09-03T04:00:00Z' })], jobs)
+    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-09-03T17:00:00Z' })], jobs)
     expect(rows[0]?.clearedOn).toBe('2026-09-03')
     expect(rows[0]?.clearedBy).toBe('Payment')
     expect(rows[0]?.jobNumber).toBe('')
     expect(rows[0]?.jobName).toBe('')
+  })
+
+  it('an evening issue and an evening payment with no paid day read their own Central day', () => {
+    // Issued 7:30 pm CDT on Oct 2; the payment, with no paid_on, recorded 6:30 pm CST on Dec 1.
+    const releases = [release({ id: 'r1', job_id: 'job-1', invoice_ids: ['inv-1'], amount: 100, created_at: '2026-10-03T00:30:00+00:00' })]
+    const rows = buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, created_at: '2026-12-02T00:30:00Z' })], jobs)
+    expect(rows[0]?.issuedOn).toBe('2026-10-02')
+    expect(rows[0]?.clearedOn).toBe('2026-12-01')
+    // A paid_on is a date and wins as stored.
+    expect(buildLienUnconditionalQueue(releases, [payment({ invoice_id: 'inv-1', amount: 100, paid_on: '2026-12-05', created_at: '2026-12-02T00:30:00Z' })], jobs)[0]?.clearedOn).toBe('2026-12-05')
   })
 
   it('lienQueuePaymentLabel: type + reference, either alone, or "Payment"', () => {
@@ -234,5 +246,49 @@ describe('buildLienUnconditionalQueue (the Dashboard queue)', () => {
     expect(lienQueuePaymentLabel({ payment_type: 'wire', reference_number: null })).toBe('Wire')
     expect(lienQueuePaymentLabel({ payment_type: null, reference_number: '9' })).toBe('#9')
     expect(lienQueuePaymentLabel({ payment_type: '  ', reference_number: '' })).toBe('Payment')
+  })
+})
+
+describe('the unconditional is not offered early or in the wrong form (v2.4564)', () => {
+  const cond = release({ id: 'c1', invoice_ids: ['inv-a'], amount: 1000, created_at: '2026-09-01T00:00:00Z' })
+  const check = { id: 'p1', invoice_id: 'inv-a', amount: 1000, paid_on: '2026-10-01', payment_type: 'check', reference_number: '4471', created_at: '2026-10-01T15:00:00Z' } as LienQueuePayment
+  const ach = { ...check, payment_type: 'ach' } as LienQueuePayment
+  const job = (p: LienQueuePayment) => ({ payments: [p] as unknown as JobWithDetails['payments'], payments_made: 0 })
+
+  it('a check on the bill waits its seven days; a bank transfer does not', () => {
+    expect(lienReleaseClearance(cond, job(check), '2026-10-05')).toBe('waiting')
+    expect(lienReleaseClearance(cond, job(check), '2026-10-08')).toBe('cleared')
+    expect(lienReleaseClearance(cond, job(ach), '2026-10-05')).toBe('cleared')
+    // Without a day the old answer stands: applied payments reach the amount.
+    expect(lienReleaseClearance(cond, job(check))).toBe('cleared')
+    expect(lienReleaseCheckStillClearing(cond, [check], '2026-10-05')).toBe(true)
+    expect(lienReleaseCheckStillClearing(cond, [check], '2026-10-08')).toBe(false)
+  })
+
+  it('the Dashboard count and queue wait with it', () => {
+    const applied = appliedByInvoiceIdFromPayments([check])
+    expect(computeLienUnconditionalOwed([cond], applied, { payments: [check], todayYmd: '2026-10-05' }).count).toBe(0)
+    expect(computeLienUnconditionalOwed([cond], applied, { payments: [check], todayYmd: '2026-10-08' }).count).toBe(1)
+    expect(buildLienUnconditionalQueue([cond], [check], new Map(), '2026-10-05')).toEqual([])
+    expect(buildLienUnconditionalQueue([cond], [check], new Map(), '2026-10-08').map((r) => r.releaseId)).toEqual(['c1'])
+  })
+
+  it('an unconditional still in draft does not settle the debt; an issued or signed one does', () => {
+    const paid = jobPayments([{ invoice_id: 'inv-a', amount: 1000 }])
+    const uncond = (status: string | null) => release({ id: 'u1', form_type: 'unconditional_progress', invoice_ids: ['inv-a'], created_at: '2026-09-20T00:00:00Z', status } as Partial<JobLienReleaseRow>)
+    expect(lienReleasesOwingUnconditional([cond, uncond('draft')], paid).map((r) => r.id)).toEqual(['c1'])
+    expect(lienReleasesOwingUnconditional([cond, uncond('issued')], paid)).toEqual([])
+    expect(lienReleasesOwingUnconditional([cond, uncond('signed')], paid)).toEqual([])
+    expect(lienReleasesOwingUnconditional([cond, uncond(null)], paid)).toEqual([])
+  })
+
+  it('a conditional still in draft owes nothing', () => {
+    const paid = jobPayments([{ invoice_id: 'inv-a', amount: 1000 }])
+    expect(lienReleasesOwingUnconditional([release({ ...cond, status: 'draft' } as Partial<JobLienReleaseRow>)], paid)).toEqual([])
+  })
+
+  it('a conditional final is owed an unconditional final', () => {
+    expect(unconditionalFollowUpForm('conditional_final')).toBe('unconditional_final')
+    expect(unconditionalFollowUpForm('conditional_progress')).toBe('unconditional_progress')
   })
 })

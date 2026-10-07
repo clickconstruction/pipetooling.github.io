@@ -39,7 +39,8 @@ type Props = {
   ownerName: string
   userId: string | null
   onChanged: () => void
-  onOpenEditJob: (jobId: string) => void
+  /** Opens Edit Job; the pane always asks for the Property record row (#87 E — the door's hover promises it). */
+  onOpenEditJob: (jobId: string, focus?: 'property-record') => void
 }
 
 const btnPlain: CSSProperties = { padding: '1px 8px', fontSize: '0.72rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
@@ -85,7 +86,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
   }, [hasOwner, jobAddress])
 
   const door = (
-    <button type="button" onClick={() => onOpenEditJob(jobId)} style={btnPlain} title="Edit Job → Property record: link or add the property, then its owner of record">
+    <button type="button" onClick={() => onOpenEditJob(jobId, 'property-record')} style={btnPlain} title="Edit Job → Property record: link or add the property, then its owner of record">
       Find the owner ›
     </button>
   )

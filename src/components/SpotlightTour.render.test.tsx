@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
-import { SpotlightTour } from './SpotlightTour'
+import { SpotlightTour, spotlightTourStepsPresent } from './SpotlightTour'
 import { findBlockingOverlays } from '../lib/blockingOverlay'
 
 const steps = [
@@ -57,6 +57,23 @@ describe('SpotlightTour', () => {
     expect(screen.getByTestId('tour-missing').textContent).toBe('Appears later.')
     fireEvent.click(screen.getByRole('button', { name: '← Back' }))
     expect(screen.getByRole('dialog', { name: 'First stop' })).toBeTruthy()
+  })
+  it('2026-10-04 · a centred stop with terms: the card lists each word and its meaning, cuts no hole, shows nothing as missing, and is kept with no anchor on the page', () => {
+    if (typeof window.matchMedia !== 'function') window.matchMedia = (() => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })) as unknown as typeof window.matchMedia
+    Element.prototype.scrollIntoView = () => {}
+    const words = { anchor: 'tour-words', title: 'The words', body: 'Read them once.', center: true, terms: [{ word: 'Cut sheet', means: 'The maker’s page for one product.' }, { word: 'Tag', means: 'The plan’s name for a fixture.' }] }
+    // No element carries its anchor, and it has no missing line: a centred stop is kept all the same.
+    expect(spotlightTourStepsPresent([words, { anchor: 'tour-gone', title: 'Gone', body: 'x' }])).toEqual([words])
+    renderWithProviders(<SpotlightTour steps={[words, ...steps]} onClose={() => {}} />)
+    const card = screen.getByRole('dialog', { name: 'The words' })
+    const terms = screen.getByTestId('tour-terms')
+    expect([...terms.querySelectorAll('dt')].map((e) => e.textContent)).toEqual(['Cut sheet', 'Tag'])
+    expect([...terms.querySelectorAll('dd')].map((e) => e.textContent)).toEqual(['The maker’s page for one product.', 'The plan’s name for a fixture.'])
+    expect(screen.queryByTestId('tour-missing')).toBeNull()
+    expect(card.textContent).toContain('1 of 3')
+    fireEvent.click(screen.getByRole('button', { name: 'Next →' }))
+    expect(screen.getByRole('dialog', { name: 'First stop' })).toBeTruthy()
+    expect(screen.queryByTestId('tour-terms')).toBeNull()
   })
 
   it('GC mode, the tour round five: a tour without onStep renders exactly as before, stop by stop', () => {

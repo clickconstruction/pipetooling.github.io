@@ -16,8 +16,10 @@ import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { listPayer, paySpeedPayer } from './billToParty'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import {
   billedExpectedPayModel,
+  billedReferenceYmd,
   daysBetweenYmd,
   type CustomerSegment,
   type ExpectedPayModel,
@@ -135,11 +137,6 @@ export type PaymentChaseQueue = {
   brokenCount: number
 }
 
-function ymdFromIso(iso: string): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(iso)
-  return m?.[1] ?? null
-}
-
 export function buildPaymentChaseQueue(
   rows: StageRow[],
   paySpeeds: PaySpeedData | null,
@@ -215,7 +212,7 @@ export function buildPaymentChaseQueue(
       label: name ? `${number} · ${name}` : number,
       open,
       amount: typeof r.inv.amount === 'number' ? r.inv.amount : null,
-      billedYmd: r.inv.billed_at ? ymdFromIso(r.inv.billed_at) : (effectiveInvoiceEstBillDate(r.inv) ?? null),
+      billedYmd: billedReferenceYmd({ billedAtIso: r.inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(r.inv) }),
       sentChannel: inv.external_send_channel ?? null,
       sentAtIso: inv.sent_to_customer_at ?? null,
       stripeInvoiceId: inv.stripe_invoice_id ?? null,
@@ -270,7 +267,7 @@ export function buildPaymentChaseQueue(
     const sorted = custTouches.slice().sort((x, y) => (x.createdAt < y.createdAt ? 1 : -1))
     const latest = sorted[0]
     if (latest) {
-      const touchYmd = ymdFromIso(latest.createdAt)
+      const touchYmd = calendarYmdInAppTzFromIso(latest.createdAt) || null
       const sinceTouch = touchYmd ? daysBetweenYmd(touchYmd, todayYmd) : null
       if (latest.outcome === 'cant_reach' && sinceTouch != null) {
         const snooze = latest.snoozeDays ?? DEFAULT_SNOOZE_DAYS

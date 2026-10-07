@@ -154,8 +154,8 @@ export function DashboardLienWaiversToSignModal({ open, onClose, rows, onChanged
   const payorName = picked ? payorById[picked.job_id] || (recipient !== 'loading' && recipient ? recipient.name : '') : ''
 
   return (
-    <div role="presentation" onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: OVERLAY_Z, padding: '1rem', boxSizing: 'border-box' }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="lien-waivers-sign-title" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1100px, calc(100vw - 2rem))', maxHeight: 'min(92vh, 900px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} data-testid="lien-waivers-sign">
+    <div role="presentation" onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: OVERLAY_Z, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem', boxSizing: 'border-box' }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="lien-waivers-sign-title" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1100px, calc(100vw - 2rem))', maxHeight: 'min(92vh, 900px, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} data-testid="lien-waivers-sign">
         <div style={{ padding: isNarrow ? '0.75rem 0.85rem' : '0.9rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <FileCheck2 size={18} aria-hidden style={{ color: 'var(--text-link)' }} />
           <h2 id="lien-waivers-sign-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700 }}>Waivers to sign</h2>

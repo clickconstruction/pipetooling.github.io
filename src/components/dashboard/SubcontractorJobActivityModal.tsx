@@ -98,11 +98,11 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
         position: 'fixed',
         inset: 0,
         background: 'rgba(0,0,0,0.45)',
-        zIndex: 58,
+        zIndex: 758,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
       onClick={onClose}
     >
@@ -116,7 +116,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
           borderRadius: 8,
           maxWidth: 520,
           width: '100%',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',

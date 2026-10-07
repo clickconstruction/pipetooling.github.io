@@ -2,6 +2,7 @@
  * (same resolution as the Job Summary % column) whose `jobs_ledger.revenue` is unset or $0.
  * Pure — no React/supabase. */
 import { jobSummaryPaidInvoiceOpts, resolveJobSummaryPercentComplete } from './jobSummaryPercentComplete'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 export type QuickfillCompleteNoBillJobShape = {
   id: string
@@ -89,7 +90,7 @@ export function buildJobClockSummaries(
     } else if (r.clocked_in_at && !r.clocked_out_at) {
       s.hasOpenSession = true
     }
-    const d = (r.work_date ?? '').slice(0, 10) || (r.clocked_in_at ?? '').slice(0, 10)
+    const d = (r.work_date ?? '').slice(0, 10) || calendarYmdInAppTzFromIso(r.clocked_in_at ?? '')
     if (/^\d{4}-\d{2}-\d{2}$/.test(d)) s.dateSet.add(d)
   }
   const out = new Map<string, QuickfillJobClockSummary>()

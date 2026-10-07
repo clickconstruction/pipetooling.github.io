@@ -8,11 +8,13 @@
  *   expected  = ordered + the lead time from the pick, unless the house gave a date;
  *   required  = the start of the stage the item belongs to, on the job's stage windows;
  *   float     = required − expected; order by = required − lead time while unordered.
- * Pure: dates are ISO `YYYY-MM-DD` strings, "today" is passed in. The reads live in
- * `./procurementLogIo.ts`; the sheet and the text of an update are built here too.
+ * Pure: dates are ISO `YYYY-MM-DD` strings, "today" is passed in, and a call's `at` is an
+ * instant read as its day in the company's zone. The reads live in `./procurementLogIo.ts`;
+ * the sheet and the text of an update are built here too.
  */
 import { escapeHtml } from '../bidDocuments/htmlDoc'
 import { isPlausibleDate } from '../dateBoxEntry'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { compareTags } from './buildSubmittalRows'
 import { describeLeadTime } from './leadTime'
 import { isCarrier } from './itemParts'
@@ -131,6 +133,29 @@ export function readTypedLogDate(text: string, asOf: string): TypedLogDate {
 
 export type ProcurementDecisionKind = 'approved' | 'revise' | 'rejected'
 
+export type ProcurementDecision = { kind: ProcurementDecisionKind; /** When the call was recorded: `reviewed_at`, an instant, never a bare day. */ at: string | null }
+
+/**
+ * The call a part's line reads (2026-10-02). Its own, when the GC called that part. A row no
+ * part of which was called was called whole, so its call covers every part. Once any part has a
+ * call of its own, the row's call is the roll-up of its parts — one part sent back sends the row
+ * back — and says nothing about a part nobody called: that part is still open. Only an approved
+ * roll-up (every part the GC sees approved) reaches further, to release the order-only parts
+ * with their fixture.
+ */
+export function partLineDecision(input: {
+  /** The GC sees this part; an order-only part is never called itself. */
+  onSubmittal: boolean
+  own: ProcurementDecision | null
+  row: ProcurementDecision | null
+  /** Some part the GC sees on this row carries a call of its own. */
+  rowCalledByPart: boolean
+}): ProcurementDecision | null {
+  if (input.onSubmittal && input.own) return input.own
+  if (!input.rowCalledByPart) return input.row
+  return input.row?.kind === 'approved' ? input.row : null
+}
+
 /** A submittal row as the log reads it (the newest revision's items). */
 export type ProcurementItemSource = {
   tag: string
@@ -138,7 +163,7 @@ export type ProcurementItemSource = {
   product: string
   supplyHouse: string | null
   leadTimeDays: number | null
-  decision: { kind: ProcurementDecisionKind; at: string | null } | null
+  decision: ProcurementDecision | null
   /** The revision has been shared (a row with no decision is then "awaiting"). */
   shared: boolean
   /** The takeoff count row the item came from (v2.4107); two rows sharing one were split from it (v2.4118). */
@@ -149,6 +174,8 @@ export type ProcurementItemSource = {
   partOrder?: number
   /** Bought, not on the GC's submittal (trim): released with its fixture, off the GC's copies. */
   orderOnly?: boolean
+  /** 2026-10-02 · the whole fixture is order only: no GC call is waited for, so the line is ready to order as it stands. */
+  noGc?: boolean
   /** How many to order: the fixtures counted × how many go on one. */
   quantity?: number | null
   /** The part's own stage, when it differs from the fixture's. */
@@ -166,6 +193,10 @@ export type ProcurementItemSource = {
   addedByHand?: boolean
   /** A row with no product yet (a Missing row): the line reads the plans' words (2026-10-02). */
   noProduct?: boolean
+  /** 2026-10-02 · the row was approved on this earlier revision and the newest no longer holds its tag (`rowsThatStand`): released there, still to order. */
+  standsOnRev?: number | null
+  /** v2.4587 · what the reviewer wrote on the part, else on the row: the *They wrote* on a line sent back. */
+  reviewNote?: string | null
 }
 
 /** A `bid_procurement_items` row. */
@@ -228,6 +259,8 @@ export type ProcurementRow = {
   partKey?: string | null
   /** Bought, not on the GC's submittal: kept off the GC's copies. */
   orderOnly?: boolean
+  /** Its fixture is order only: ready to order with no GC call (`releasedOn` stays null — nobody released it). */
+  noGc?: boolean
   /** How many to order, when the takeoff says. */
   quantity?: number | null
   /** The submittal row behind the line; null on a hand row. */
@@ -238,6 +271,10 @@ export type ProcurementRow = {
   assembly?: string | null
   addedByHand?: boolean
   noProduct?: boolean
+  /** The earlier revision the row stands approved on; null when the newest revision holds it. */
+  standsOnRev?: number | null
+  /** What the reviewer wrote with their answer; '' or null for nothing. */
+  reviewNote?: string | null
 }
 
 export type ProcurementLogInput = {
@@ -254,7 +291,9 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
   const isHand = source == null
   const decision = source?.decision ?? null
   const submittal: ProcurementRow['submittal'] = source ? (decision ? decision.kind : source.shared ? 'open' : 'none') : 'none'
-  const releasedOn = decision?.kind === 'approved' && decision.at ? decision.at.slice(0, 10) : null
+  // The call's day in the company's zone: the UTC date of `at` is tomorrow after 7 PM Central.
+  const calledOn = decision?.at ? calendarYmdInAppTzFromIso(decision.at) || null : null
+  const releasedOn = decision?.kind === 'approved' ? calledOn : null
   const leadTimeDays = isHand ? rec.leadTimeDays : source!.leadTimeDays
   const requiredOn = stage ? stageDates[stage] ?? null : null
   let expectedOn: string | null = null
@@ -274,7 +313,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     ? 'delivered'
     : rec.orderedOn
       ? 'ordered'
-      : submittal === 'approved'
+      : submittal === 'approved' || source?.noGc
         ? 'released'
         : submittal === 'revise' || submittal === 'rejected'
           ? 'sent_back'
@@ -292,7 +331,10 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     assembly: source?.assembly ?? null,
     addedByHand: source?.addedByHand ?? false,
     noProduct: source?.noProduct ?? false,
+    standsOnRev: source?.standsOnRev ?? null,
+    reviewNote: source?.reviewNote ?? null,
     orderOnly: source?.orderOnly ?? false,
+    noGc: source?.noGc ?? false,
     quantity: source?.quantity ?? null,
     isHand,
     recordId: rec.id,
@@ -300,7 +342,7 @@ function rowFrom(source: ProcurementItemSource | null, rec: ProcurementRecord, s
     supplyHouse: source?.supplyHouse ?? null,
     stage,
     submittal,
-    submittalAt: decision?.at ? decision.at.slice(0, 10) : null,
+    submittalAt: calledOn,
     releasedOn,
     orderedOn: rec.orderedOn,
     poRef: rec.poRef,
@@ -341,7 +383,7 @@ export function buildProcurementLog(input: ProcurementLogInput): ProcurementRow[
     const rec = byTag.get(tag)
     if (rec && (rec.orderedOn || rec.poRef || rec.expectedOn || rec.deliveredOn || rec.note)) {
       const first = input.items.find((it) => it.tag === tag)!
-      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1, itemId: first.itemId ?? null })
+      sources.push({ tag, product: 'the fixture, as logged before its parts', supplyHouse: null, leadTimeDays: rec.leadTimeDays, decision: first.decision, shared: first.shared, sourceCountRowId: first.sourceCountRowId ?? null, partOrder: -1, itemId: first.itemId ?? null, standsOnRev: first.standsOnRev ?? null })
     }
   }
   const tagged = sources
@@ -365,10 +407,9 @@ export type ProcurementLens = 'to_order' | 'by_tag' | 'by_house'
 export type ProcurementSection = { key: string; title: string; note: string; rows: ProcurementRow[]; /** A fixture listing two carriers (2026-10-02). */ warn?: string; /** By tag: where the order-only parts start, after the GC's. */ orderOnlyFrom?: number }
 
 /**
- * The log grouped three ways (2026-10-01). **To order**: what to buy now (released, not ordered;
- * by house, the soonest order-by first), then what waits on the GC, then what is on order, then
- * what has landed. **By tag**: one group per tag, its lines in the row's order. **By house**: one
- * group per house, a line with no house last.
+ * The log's lines grouped (2026-10-01). **By tag**: one group per tag, its lines in the row's
+ * order. **By house**: one group per house, a line with no house last. **To order** groups
+ * nothing here: it is drawn as orders (`orderSections`).
  */
 export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: ProcurementLens): ProcurementSection[] {
   const byKey = (list: ProcurementRow[], keyOf: (r: ProcurementRow) => string) => {
@@ -382,28 +423,15 @@ export function procurementSections(rows: ReadonlyArray<ProcurementRow>, lens: P
       const gc = list.filter((r) => !r.orderOnly)
       const orderOnly = list.filter((r) => r.orderOnly)
       const carriers = gc.filter((r) => r.partKey && isCarrier(r.product)).length
-      return { key: `tag:${k}`, title: k, note: tagRollUp(list), rows: [...gc, ...orderOnly], ...(carriers > 1 ? { warn: 'Two carriers' } : {}), ...(gc.length > 0 && orderOnly.length > 0 ? { orderOnlyFrom: gc.length } : {}) }
+      return { key: `tag:${k}`, title: k, note: `${tagRollUp(list)}${list.length > 0 && list.every((r) => r.noGc) ? `${tagRollUp(list) ? ' · ' : ''}order only, no GC approval` : ''}`, rows: [...gc, ...orderOnly], ...(carriers > 1 ? { warn: 'Two carriers' } : {}), ...(gc.length > 0 && orderOnly.length > 0 ? { orderOnlyFrom: gc.length } : {}) }
     })
   }
   if (lens === 'by_house') {
     const houses = [...byKey([...rows], (r) => r.supplyHouse ?? '').entries()].sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
     return houses.map(([k, list]) => ({ key: `house:${k}`, title: k || 'No house yet', note: lineCount(list), rows: list }))
   }
-  const toBuy = rows.filter((r) => r.status === 'released')
-  const waiting = rows.filter((r) => r.status === 'awaiting' || r.status === 'sent_back' || r.status === 'not_submitted')
-  const onOrder = rows.filter((r) => r.status === 'ordered')
-  const landed = rows.filter((r) => r.status === 'delivered')
-  const soonest = (a: ProcurementRow, b: ProcurementRow) => (a.orderBy ?? '9999').localeCompare(b.orderBy ?? '9999') || compareTags(a.tag ?? '', b.tag ?? '')
-  const out: ProcurementSection[] = []
-  const houses = [...byKey(toBuy, (r) => r.supplyHouse ?? '').entries()].map(([k, list]) => [k, list.sort(soonest)] as const).sort(([a, la], [b, lb]) => soonest(la[0]!, lb[0]!) || (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
-  for (const [k, list] of houses) {
-    const first = list.find((r) => r.orderBy)?.orderBy ?? null
-    out.push({ key: `buy:${k}`, title: k ? `Order now · ${k}` : 'Order now · no house yet', note: `${lineCount(list)}${first ? ` · the first by ${shortDate(first)}` : ''}${k ? '' : ' · set a house to order'}`, rows: list })
-  }
-  if (waiting.length > 0) out.push({ key: 'waiting', title: 'Waiting on the GC', note: `${lineCount(waiting)} · not ordered until they approve it`, rows: waiting })
-  if (onOrder.length > 0) out.push({ key: 'on_order', title: 'On order', note: lineCount(onOrder), rows: onOrder })
-  if (landed.length > 0) out.push({ key: 'landed', title: 'Delivered', note: lineCount(landed), rows: landed })
-  return out
+  // To order is drawn as orders, not as lines: `orderSections` in procurementOrders.ts (v2.4600).
+  return []
 }
 
 function lineCount(list: ReadonlyArray<ProcurementRow>): string {
@@ -440,10 +468,26 @@ export function lineStatus(r: ProcurementRow): LineStatus {
     if (r.late && r.expectedOn && r.floatDays != null) return { tone: 'late', text: `Arrives ${shortDate(r.expectedOn)}, ${-r.floatDays} d late`, sub: extra([`ordered ${shortDate(r.orderedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`, po]) }
     return { tone: 'ordered', text: r.expectedOn ? `Ordered · arrives ${shortDate(r.expectedOn)}` : `Ordered ${shortDate(r.orderedOn)}`, sub: extra([r.expectedOn && `ordered ${shortDate(r.orderedOn)}`, po]) }
   }
-  if (r.status === 'released') return { tone: 'act', text: r.orderBy ? `Order by ${shortDate(r.orderBy)}` : 'Released, not ordered', sub: extra([r.releasedOn && `released ${shortDate(r.releasedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`]) }
+  if (r.status === 'released') return { tone: 'act', text: r.orderBy ? `Order by ${shortDate(r.orderBy)}` : r.noGc ? 'Ready to order' : 'Released, not ordered', sub: extra([r.noGc ? 'no GC approval needed' : r.releasedOn && `released ${shortDate(r.releasedOn)}`, r.requiredOn && `needed ${shortDate(r.requiredOn)}`]) }
   if (r.status === 'sent_back') return { tone: 'back', text: r.submittal === 'rejected' ? 'Rejected by the GC' : 'Sent back by the GC', sub: extra([]) }
   if (r.status === 'awaiting') return { tone: 'waiting', text: 'Waiting on the GC', sub: extra([]) }
   return { tone: 'none', text: '', sub: extra([]) }
+}
+
+/**
+ * The door a line offers to the window where the office records what the GC said (2026-10-02):
+ * only on a line the GC's answer still holds — waiting on it, not shared yet, or sent back — and
+ * only for a part the GC sees. A hand line, an order-only part, a row with no product, and a line
+ * that is released, ordered or delivered get none: the row's own Their answer button is there.
+ */
+export type AnswerDoor = 'enter' | 'change'
+export const ANSWER_DOOR_WORDS: Record<AnswerDoor, string> = { enter: 'Enter their answer…', change: 'Change their answer…' }
+export function answerDoor(r: ProcurementRow): AnswerDoor | null {
+  if (r.isHand || !r.itemId || r.orderOnly || r.noGc) return null
+  if (!r.partKey && r.noProduct) return null
+  if (r.status === 'sent_back') return 'change'
+  if (r.status === 'awaiting' || r.status === 'not_submitted') return 'enter'
+  return null
 }
 
 export type OrderBlockers = { noLead: string[]; noHouse: string[]; noStage: string[]; noProduct: Array<{ key: string; tag: string; itemId: string | null }> }
@@ -469,28 +513,32 @@ export function orderBlockers(rows: ReadonlyArray<ProcurementRow>): OrderBlocker
   return out
 }
 
-export type HouseFold = { key: string; house: string | null; rows: ProcurementRow[]; parts: number; orderOnly: number }
+/** One of the three facts a line can be missing before it can be ordered. */
+export type BlockerKind = 'lead' | 'house' | 'stage'
+export const BLOCKER_KINDS: ReadonlyArray<BlockerKind> = ['lead', 'house', 'stage']
+/** "5 parts with **no stage**": the words after the count. */
+export const BLOCKER_WORDS: Record<BlockerKind, string> = { lead: 'no lead time', house: 'no house', stage: 'no stage' }
 
-/**
- * Lines folded one per house (2026-10-02, To order's *Waiting on the GC*: BP375's 44 waiting
- * lines became four): the named houses A–Z, then the lines with no house yet.
- */
-export function foldByHouse(rows: ReadonlyArray<ProcurementRow>): HouseFold[] {
-  const by = new Map<string, ProcurementRow[]>()
-  for (const r of rows) by.set(r.supplyHouse ?? '', [...(by.get(r.supplyHouse ?? '') ?? []), r])
-  return [...by.entries()]
-    .sort(([a], [b]) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
-    .map(([k, list]) => ({ key: `fold:${k}`, house: k || null, rows: list, parts: list.length, orderOnly: list.filter((r) => r.orderOnly).length }))
+/** The line keys a blocker names. */
+export function blockerKeys(b: OrderBlockers, kind: BlockerKind): string[] {
+  return kind === 'lead' ? b.noLead : kind === 'house' ? b.noHouse : b.noStage
 }
 
-/** "22 parts · 4 order only" · "18 parts · 10 order only · pick a house to order" */
-export function houseFoldNote(f: HouseFold): string {
-  return [`${f.parts} part${f.parts === 1 ? '' : 's'}`, f.orderOnly > 0 ? `${f.orderOnly} order only` : '', f.house ? '' : 'pick a house to order'].filter(Boolean).join(' · ')
+/**
+ * The log narrowed to the lines one blocker names (Wendi, 2026-10-02: "5 parts have no stage but
+ * doesnt say what parts they are"). No blocker picked, or one that names nothing any more, is the
+ * whole log: a fixed line leaves the short list, and the last one fixed brings every line back.
+ */
+export function rowsForBlocker(rows: ReadonlyArray<ProcurementRow>, b: OrderBlockers, kind: BlockerKind | null): { rows: ProcurementRow[]; only: BlockerKind | null } {
+  const keys = kind ? new Set(blockerKeys(b, kind)) : null
+  if (!kind || !keys || keys.size === 0) return { rows: [...rows], only: null }
+  return { rows: rows.filter((r) => keys.has(r.key)), only: kind }
 }
 
 /** No line has gone to the GC yet: the log says so once instead of on every line. */
 export function logIsDraft(rows: ReadonlyArray<ProcurementRow>): boolean {
-  const sent = rows.filter((r) => !r.isHand)
+  // An order-only fixture's lines never go to the GC, so they say nothing about the draft (2026-10-02).
+  const sent = rows.filter((r) => !r.isHand && !r.noGc)
   return sent.length > 0 && sent.every((r) => r.submittal === 'none')
 }
 
@@ -509,14 +557,6 @@ export function procurementCounts(rows: ReadonlyArray<ProcurementRow>): Procurem
   return c
 }
 
-/** "5 released · 4 ordered · 1 delivered · 2 behind schedule" */
-export function procurementHeadline(rows: ReadonlyArray<ProcurementRow>): string {
-  const c = procurementCounts(rows)
-  const bits = [`${c.released} released`, `${c.ordered} ordered`, `${c.delivered} delivered`]
-  if (c.late > 0) bits.push(`${c.late} behind schedule`)
-  if (c.sentBack > 0) bits.push(`${c.sentBack} sent back`)
-  return bits.join(' · ')
-}
 
 /** "12 d" · "−14 d" · "on site" · "order by 11/03" · "" */
 export function floatText(r: Pick<ProcurementRow, 'floatDays' | 'deliveredOn' | 'orderBy'>): string {

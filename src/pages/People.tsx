@@ -29,6 +29,8 @@ import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { dropDayBookDoorParams, type DayBookDoor } from '../lib/people/dayBookDoor'
 import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
+import PeopleSpendingTab from '../components/people/PeopleSpendingTab'
+import { canOpenSpending } from '../lib/people/spendingAccess'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
@@ -114,7 +116,7 @@ import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHours
 import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
 import { buildHoursGridRoster, EMPTY_HOURS_ROSTER_MESSAGE, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
 import { hoursGridDayCost, recordedHoursLookup, sortPeopleByTotalDesc } from '../lib/people/hoursGridCost'
-import { buildPayRosterIndex, fetchRosterPeople, type PayRosterIndex } from '../lib/people/rosterPeople'
+import { archivedRosterNames, buildPayRosterIndex, fetchRosterPeople, type PayRosterIndex } from '../lib/people/rosterPeople'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
@@ -806,6 +808,21 @@ export default function People() {
     }, { replace: true })
   }, [searchParams, canAccessHours, canAccessPay, setSearchParams])
 
+  // `?tab=hours&match=1` (the Overhead Man hours card's "Match hours to a job" door) opens
+  // Match sessions on arrival and strips the flag so a reload doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get('match') !== '1') return
+    if (!canAccessHours) return
+    setActiveTab('hours')
+    setMatchSessionsOpen(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', 'hours')
+      next.delete('match')
+      return next
+    }, { replace: true })
+  }, [searchParams, canAccessHours, setSearchParams])
+
   useEffect(() => {
     const section = searchParams.get('section')
     if (section !== 'rejected' || !canAccessHours) return
@@ -1067,22 +1084,20 @@ export default function People() {
     }
   }
 
-  async function loadArchivedUserNames() {
-    if (!canAccessPay && !canAccessHours && !canAccessContracts) return
-    const { data, error } = await supabase.rpc('get_archived_user_names')
-    if (error) return
-    const arr = Array.isArray(data) ? data : []
-    const names = arr.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
-    setArchivedUserNames(new Set(names))
-  }
-
-  /** People spine (v2.3698): the pay lists take the roster view's verdict — a sample, a twin or an archived person with a pay-config row is not on them. */
+  /**
+   * People spine (v2.3698): one read of the roster view answers two questions. The pay lists take
+   * its verdict (a sample, a twin or an archived person with a pay-config row is not on them), and
+   * since v2.4671 (#29) the archived folds and filters take its names (`archivedRosterNames`) in
+   * place of `get_archived_user_names()`: Offsets, Contracts, Review, the Teams filter, the Hours grid.
+   */
   async function loadRosterPeople() {
-    if (!canAccessPay && !canAccessHours) return
+    if (!canAccessPay && !canAccessHours && !canAccessContracts) return
     try {
-      setPayRoster(buildPayRosterIndex(await fetchRosterPeople(supabase)))
+      const rows = await fetchRosterPeople(supabase)
+      setPayRoster(buildPayRosterIndex(rows))
+      setArchivedUserNames(archivedRosterNames(rows))
     } catch {
-      // No verdict: every pay row stays (the pre-v2.3698 list), never a blank grid.
+      // No verdict: every pay row stays (the pre-v2.3698 list), never a blank grid, and nothing folds as archived.
     }
   }
 
@@ -1272,9 +1287,9 @@ export default function People() {
       }
       // J7-6: the archived-name set decides which pay-config rows the grid hides. It used to load
       // only under canAccessPay, so an hours-only assistant saw every archived helper as a
-      // zero-hour row the owner's grid did not have. Every viewer who can open the grid loads it.
+      // zero-hour row the owner's grid did not have. Every viewer who can open the grid loads it
+      // (since v2.4671 from the roster read, which also brings the pay roster's verdict).
       if (canAccessHours || canAccessPay) {
-        loads.push(loadArchivedUserNames())
         loads.push(loadRosterPeople())
       }
       void Promise.all(loads).finally(() => setHoursTabLoading(false))
@@ -1334,22 +1349,21 @@ export default function People() {
     if (activeTab === 'review' && isDev) {
       const t = setTimeout(() => {
         void loadPayConfig()
-        void loadArchivedUserNames()
         void loadRosterPeople()
       }, 80)
       return () => clearTimeout(t)
     }
   }, [activeTab, isDev])
 
-  /** Contracts groups archived people at the bottom (v2.1409) and Offsets folds them into an Archived users section (v2.1669) — both need the archived-user-name set, which otherwise only loads for pay/hours/review surfaces. */
+  /** Contracts groups archived people at the bottom (v2.1409) and Offsets folds them into an Archived users section (v2.1669) — both need the archived-name set, which otherwise only loads for pay/hours/review surfaces. */
   useEffect(() => {
     if ((activeTab === 'contracts' && canAccessContracts) || activeTab === 'offsets') {
       const t = setTimeout(() => {
-        void loadArchivedUserNames()
+        void loadRosterPeople()
       }, 80)
       return () => clearTimeout(t)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadArchivedUserNames is a stable page-level loader (same convention as the review-tab effect above)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRosterPeople is a stable page-level loader (same convention as the review-tab effect above)
   }, [activeTab, canAccessContracts])
 
   // ---- Inline Team Summary callbacks (replace the old iframe postMessage handlers) ----
@@ -1896,6 +1910,7 @@ export default function People() {
     users: true,
     subs: true,
     person: canOpenPersonDesk(authRole),
+    spending: canOpenSpending(authRole),
     day_book: canSeeDayBook,
     whos_where: canSeeWhosWhere,
     hours: canOpenHoursTab,
@@ -2143,7 +2158,7 @@ export default function People() {
         />
       ) : null}
       {payStubDeleteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -2789,6 +2804,7 @@ export default function People() {
         <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} memory={dayBookMemoryRef} />
       )}
       {activeTab === 'whos_where' && canSeeWhosWhere && <PeopleWhosWhereTab authRole={authRole} />}
+      {activeTab === 'spending' && canOpenSpending(authRole) && <PeopleSpendingTab canSeePayroll={canAccessPay} />}
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (
@@ -2805,7 +2821,7 @@ export default function People() {
       )}
 
       {formOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }} onClick={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={(e) => { if (e.target === e.currentTarget && !saving) closeForm() }}>
           <div role="dialog" aria-modal="true" aria-labelledby="roster-form-title" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, width: 'min(480px, 94vw)', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             <div>
               <h2 id="roster-form-title" style={{ margin: 0, fontSize: '1.125rem' }}>{editing ? 'Edit person' : 'Add to roster'}</h2>
@@ -2879,7 +2895,7 @@ export default function People() {
         </div>
       )}
       {inviteConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 710, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <p style={{ marginBottom: '1rem' }}>They&apos;ll get an email to set their own password.</p>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -2891,7 +2907,7 @@ export default function People() {
       )}
 
       {editingUserNote && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001, paddingTop: 'var(--app-top-chrome, 0px)' }}>
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: 500, width: '90%' }}>
             <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.125rem' }}>Full name, title, and phone</h3>
             <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{editingUserNote.name}</p>

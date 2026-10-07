@@ -70,7 +70,7 @@ export function JobWindowStatusSheet({ open, job, authRole, onChanged, onClose }
   }, [open, onClose])
   if (!open) return null
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1020 }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1020, paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div
         role="dialog"
         aria-modal="true"

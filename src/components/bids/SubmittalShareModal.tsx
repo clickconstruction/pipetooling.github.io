@@ -8,6 +8,8 @@
  * (the owner's switch is not built); the office sends the link its own way.
  */
 import { useState, type CSSProperties } from 'react'
+import { useLeaveGuard } from '../../hooks/useLeaveGuard'
+import { LeaveQuestion } from './SubmittalLeaveGuard'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -57,6 +59,8 @@ export function SubmittalShareModal({
   const [doneFiles, setDoneFiles] = useState(untrimmedFiles > 0)
   const [rebuild, setRebuild] = useState(true)
   const [busy, setBusy] = useState(false)
+  // 2026-10-04 · a person typed and not yet on the room: a stray click outside asks before it loses them.
+  const guard = useLeaveGuard({ dirty: people.some((p) => p.name.trim() !== '' || p.email.trim() !== ''), onClose, busy })
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const existingLink = room ? roomLink(origin, room.token) : null
   const filled = people.filter((p) => p.name.trim() && p.email.trim())
@@ -96,7 +100,7 @@ export function SubmittalShareModal({
         // on_conflict cannot name — so read who is already in and insert only the new.
         const { data: already, error: readErr } = await db.from('bid_submittal_people').select('email').eq('room_id', (theRoom as SubmittalRoomRow).id)
         if (readErr) throw readErr
-        const have = new Set(((already ?? []) as Array<{ email: string }>).map((p) => p.email.toLowerCase()))
+        const have = new Set(((already ?? []) as Array<{ email: string | null }>).map((p) => (p.email ?? '').toLowerCase()).filter(Boolean))
         const fresh = filled.filter((p) => !have.has(p.email.trim().toLowerCase()))
         if (fresh.length > 0) {
           const { error } = await db.from('bid_submittal_people').insert(
@@ -130,7 +134,7 @@ export function SubmittalShareModal({
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '1.5rem 1rem', overflowY: 'auto' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: Z, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(1.5rem + var(--app-top-chrome, 0px)) 1rem 1.5rem', overflowY: 'auto' }} role="presentation" onClick={(e) => { if (e.target === e.currentTarget) guard.requestClose() }}>
       <div role="dialog" aria-modal="true" aria-label={`Share Rev ${revision.rev_number}`} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 640, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)', padding: '1.1rem 1.25rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }} onMouseDown={(e) => e.stopPropagation()}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Share Rev {revision.rev_number} · the review room</h3>
@@ -184,10 +188,11 @@ export function SubmittalShareModal({
           </label>
         </div>
 
+        {guard.asking ? <LeaveQuestion what="The people you typed are not on the room yet." onLeave={onClose} onKeep={guard.keep} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
           <span style={smallMuted}>No email leaves the app — paste the link into the chain you are already in.</span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={onClose} style={btn}>Not now</button>
+            <button type="button" disabled={busy} onClick={guard.requestClose} style={btn}>Not now</button>
             <button type="button" disabled={busy} onClick={() => void share()} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>
               {room?.shared_at ? `Share Rev ${revision.rev_number}` : `Share Rev ${revision.rev_number} · mint the link`}
             </button>

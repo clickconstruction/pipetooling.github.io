@@ -35,7 +35,8 @@ export function DeletePricingVersionModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 50,
+        zIndex: 750,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >

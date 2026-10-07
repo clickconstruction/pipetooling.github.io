@@ -72,6 +72,7 @@ export function BidEvaluateChecklistModal({ onClose }: { onClose: () => void }) 
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1000,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
     >
       <div role="dialog" aria-modal="true"
@@ -81,7 +82,7 @@ export function BidEvaluateChecklistModal({ onClose }: { onClose: () => void }) 
           borderRadius: 8,
           maxWidth: 700,
           width: '90%',
-          maxHeight: '80vh',
+          maxHeight: 'min(80vh, 100%)',
           overflowY: 'auto',
         }}
       >

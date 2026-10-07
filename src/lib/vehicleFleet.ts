@@ -1,4 +1,5 @@
 import { formatCurrency } from './format'
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 
 /**
  * Vehicles fleet kernels (v2.1644, People → Vehicles redesign): pure math for
@@ -691,7 +692,7 @@ export function buildVehicleLedger(args: {
       rows.push({
         key: `problem-resolved-${r.id}`,
         kind: 'problem_resolved',
-        dateYmd: r.resolved_at.slice(0, 10),
+        dateYmd: calendarYmdInAppTzFromIso(r.resolved_at),
         label: note ? `Resolved · ${r.description} — ${note}` : `Resolved · ${r.description}`,
         odometer: null,
         amount: null,
@@ -728,7 +729,7 @@ export function buildVehicleLedger(args: {
     rows.push({
       key: `task-done-${t.id}`,
       kind: 'task_done',
-      dateYmd: t.completed_at.slice(0, 10),
+      dateYmd: calendarYmdInAppTzFromIso(t.completed_at),
       label: by ? `Task done · ${t.title} — by ${by}` : `Task done · ${t.title}`,
       odometer: null,
       amount: null,

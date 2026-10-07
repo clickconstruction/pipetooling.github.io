@@ -31,11 +31,11 @@ export function RobotIconKeyModal({ onClose }: { onClose: () => void }) {
       aria-label="What the robot icon means"
       onClick={onClose}
       onKeyDown={(e) => { if (e.key === 'Escape') onClose() }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.5rem', maxWidth: 520, width: '100%', maxHeight: '85vh', overflowY: 'auto' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.25rem 1.5rem', maxWidth: 520, width: '100%', maxHeight: 'min(85vh, 100%)', overflowY: 'auto' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.85rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem' }}>What the robot icon means</h2>

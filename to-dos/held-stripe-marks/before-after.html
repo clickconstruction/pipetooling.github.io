@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A check on a Stripe bill — before and after</title>
+<style>
+  :root { --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb; --blue: #2563eb; --blue-bg: #eff6ff; --green: #15803d; --red: #b91c1c; --amber-bg: #fef3c7; --amber: #92400e; }
+  body { margin: 0; padding: 24px 16px; font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--ink); background: #f9fafb; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0 0 4px; }
+  h2 { font-size: 17px; font-weight: 600; margin: 32px 0 12px; }
+  p.lede { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
+  .boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .board { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .board h3 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+  .win { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+  .win .t { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+  .win .s { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .field { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .box { border: 1px solid #d1d5db; border-radius: 4px; padding: 4px 8px; margin-top: 2px; background: #fff; }
+  .note { margin-top: 8px; padding: 8px 10px; border-radius: 6px; font-size: 13px; line-height: 1.4; }
+  .note.amber { background: var(--amber-bg); color: var(--amber); }
+  .note.blue { background: var(--blue-bg); color: #1e3a8a; border: 1px solid #bfdbfe; }
+  .btn { display: inline-block; padding: 6px 12px; border-radius: 4px; font-size: 13px; margin-top: 10px; }
+  .btn.blue { background: var(--blue); color: #fff; }
+  .line { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+  .line .amt { font-weight: 600; white-space: nowrap; }
+  .line .mid { flex: 1; color: var(--ink); }
+  .line .sub { display: block; color: var(--muted); font-size: 12px; }
+  .line .sub.red { color: var(--red); }
+  .menu { border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; font-size: 13px; max-width: 280px; }
+  .menu div { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  .menu div:last-child { border-bottom: 0; }
+  .menu .danger { color: var(--red); }
+  .menu .off { color: #9ca3af; }
+  .menu small { display: block; color: var(--muted); font-size: 11px; }
+  .menu .new { background: var(--blue-bg); }
+  ol { margin: 4px 0 0; padding-left: 20px; font-size: 13px; }
+  .assume { background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-top: 24px; font-size: 14px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<h1>A check on a Stripe bill — before and after</h1>
+<p class="lede">Punch list #98. PR 1 (v2.4801): Mark Paid · Check records the row and leaves Stripe open for seven days. PR 2: the checks Stripe already holds move in one press too.</p>
+
+<h2>Board 1 · Mark Paid, pick Check</h2>
+<div class="boards">
+  <div class="board"><h3>Before</h3>
+    <div class="win"><div class="t">Record a cash or check payment</div><div class="s">186 · Dudley Mason</div>
+      <div class="field">Payment amount ($)</div><div class="box">6200</div>
+      <div class="field">Payment type</div><div class="box">Check ▾</div>
+      <div class="note amber">Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment received outside Stripe (check, cash, etc.), so the pay link stops working and no reminder goes out.</div>
+      <span class="btn blue">Record $6,200.00</span>
+    </div>
+  </div>
+  <div class="board"><h3>After (PR 1)</h3>
+    <div class="win"><div class="t">Record a cash or check payment</div><div class="s">186 · Dudley Mason</div>
+      <div class="field">Payment amount ($)</div><div class="box">6200</div>
+      <div class="field">Payment type</div><div class="box">Check ▾</div>
+      <div class="note blue">The bill reads Paid here now. Stripe closes the invoice on Oct 14, 7 days after the check's date, once the check has cleared. Until then this payment can be moved to another job or taken off like any other, and the pay link stays open.</div>
+      <span class="btn blue">Record $6,200.00</span>
+    </div>
+  </div>
+</div>
+
+<h2>Board 2 · The payment line on the Bill tab, and its ⋯ menu</h2>
+<div class="boards">
+  <div class="board"><h3>Before</h3>
+    <div class="line"><span class="amt">$6,200.00</span><span class="mid">Oct 7 · check recorded in Stripe · pays the $6,200 bill<span class="sub">check 1042</span></span><span>⋯</span></div>
+    <div class="menu"><div>View the Stripe bill</div><div class="danger">Check didn't clear…</div></div>
+  </div>
+  <div class="board"><h3>After (PR 1, for seven days)</h3>
+    <div class="line"><span class="amt">$6,200.00</span><span class="mid">Oct 7 · check · typed by hand · pays the $6,200 bill<span class="sub">check 1042</span><span class="sub">Stripe closes the bill Oct 14, once the check has cleared</span></span><span>⋯</span></div>
+    <div class="menu"><div>Edit details</div><div>View the Stripe bill</div><div class="new">Move to job…<small>it keeps its date, amount and bank link</small></div><div class="danger">Remove<small>takes the payment off the job</small></div></div>
+  </div>
+</div>
+
+<h2>Board 3 · PR 2: Move to job… on a check Stripe already holds</h2>
+<div class="boards">
+  <div class="board"><h3>Today</h3>
+    <div class="menu"><div>View the Stripe bill</div><div class="danger">Check didn't clear…</div><div class="off">Move to job…<small>hidden — Stripe owns it</small></div></div>
+  </div>
+  <div class="board"><h3>After (PR 2)</h3>
+    <div class="win"><div class="t">Move this payment</div><div class="s">$6,200 · Oct 7 · check 1042</div>
+      <div class="field">To which job</div><div class="box">J922 · Michael Palmer · open Stripe bill $6,200</div>
+      <div class="field">What happens, in order</div>
+      <ol><li>A credit note reverses the paid mark on J186's Stripe bill</li><li>J186's $6,200 bill is sent back; J186 is Ready to Bill for a fresh bill</li><li>The check is marked paid on J922's open Stripe bill</li><li>Both jobs get the grey line: moved → J922 · Taunya · wrong job</li></ol>
+      <div class="field">Why</div><div class="box">wrong job</div>
+      <span class="btn blue">Move $6,200 to J922</span>
+    </div>
+  </div>
+</div>
+
+<div class="assume"><strong>Assumptions.</strong> Seven days is the owner's existing number for a check (2026-10-01), not a new one. The pay link staying open for the week is the accepted cost. PR 2's destination rule — auto-mark the one open Stripe bill that fits, else a plain payment row — is the owner's call of 2026-10-07; the window's exact words are a guess until it is built.</div>
+</body>
+</html>

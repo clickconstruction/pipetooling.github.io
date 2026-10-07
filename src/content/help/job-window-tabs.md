@@ -5,9 +5,9 @@ roles: dev, master_technician, assistant, controller
 keywords: job window, tabs, phone, action bar, status sheet, next verb, arrived, leaving, costs, cost timeline, parts cost, team labor, history, day grid, days worked, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
 order: 65
 ---
-A job now opens as one window with five tabs. No more separate Job Detail and Edit Job modals bounce you between each other.
+A job now opens as one window with six tabs. No more separate Job Detail and Edit Job modals bounce you between each other.
 
-The window is **one window with five tabs**. One **✕** closes the whole thing. **Escape** closes it too. On a phone the window fills the screen. The tabs wrap to fit. The **✕** sits at the top right.
+The window is **one window with six tabs**. One **✕** closes the whole thing. **Escape** closes it too. On a phone the window fills the screen. The tabs wrap to fit. The **✕** sits at the top right.
 
 Under the tab bar, **every tab** shows the same job header. It holds the job name and the action icons. The icons are share, supply house, send as task, calendar, mail, 📝 write up a change, and ⚙. The 📝 shows only for people who switched *Write up a change from the field* on in Settings. The header also holds the **Street View photo** with the 📍 map link. The icons work from any tab. You open the job calendar while billing. You share the job while editing. The address stays one glance away. So you always know which house you are on. The **supply house** storefront icon turns **teal** once a job-account packet has gone out for this job. You hover it to see who got it and when. You click it for the history or to resend. See [share a job with a supply house](?g=share-job-with-supply-house).
 
@@ -17,7 +17,7 @@ On a phone the window carries a bar under the body. The bar stays put while you 
 
 The status shows as a chip beside the job's name. ***Job total · Billed · Paid*** sit under the customer. The street view photo waits behind a *street view ▸* link. **Arrived** and **Leaving** appear only for people on the job's crew.
 
-## The five tabs
+## The six tabs
 
 - {{chip:blue|Job}} is the read view. It shows the photo and address, the customer and contacts, and the **Job accounts** line. That line reads *Ferguson ✓ · Reece none yet*. You tap a chip for what to say at the counter or to ask the office. See *open a job account before buying parts*. The tab also shows the numbered activity feed, the work and bill dates, and a compact **Costs** card. The card has one line each for team labor, sub labor, parts, and margin. You tap it to open the Costs tab. This is where "open job detail" lands.
 - {{chip:blue|Edit}} is the job itself: numbers, name, address, service type, and the people-and-customer rows below. The row's ✎ Edit button lands here. So does the ⚙ on the Job tab.
@@ -26,13 +26,15 @@ The status shows as a chip beside the job's name. ***Job total · Billed · Paid
 
 - {{chip:blue|History}} is the day grid. It has one row per day worked, coloured by how many people were on site. It is the same view Projects → Job History shows. Now it is there for every job, project or not.
 
+- {{chip:blue|Documents}} is the job's paperwork. It lists the job's pay applications, each with its number, its period and the payment due. You press **Open the file** to see the file that was sent. You press **Open** to change the application. See *fill out an AIA G702-G703*. Under them come the job's **Bills**. You press a bill's name to open it, or **PDF** to get the invoice in a new tab. Then comes the job's **Contract**. A signed contract opens the Contract window. Then come the job's **Test reports**. A sent report opens the PDF the GC received. A draft opens the Test report window. Then comes the job's **Lien paper**. That is its lien notices, demand letters and releases of lien. A release opens the page as it was signed. A notice or a letter opens the Lien window. The tab ends with the job's folders.
+
 ## Where is the team labor number?
 
 Owners, controllers and master techs see **Team labor** as the first line of the Job tab's Costs card. It is also the first row of the cost block on the **Costs** tab. It shows the total, then *8.0 h · Malachi* or *277.5 h · 7 people* under it. You tap it for the per-person split. That row is the same number the Cost Timeline's 👷 markers add up to. It is the same one Job Summary's **Labor** column shows. So the three always agree. A salaried day counts as 8 h on whichever job the person was clocked to. Hourly people count their recorded session hours. Other roles see just the Parts line on the card. They see the block as **Parts Cost** on the Costs tab, without the row. The dollars come from wages.
 
 ## The History tab
 
-The job may still owe money. Or a lien paper or demand letter may be out. Then **History** shows the job's **lien timeline** above the grid. A lien is a legal claim on the property for unpaid work. The timeline lists every deadline in order and whose move it is. It shows the demand letter with its reply-by day, and a *Waiting on* line. It is the same strip the Lien window's header draws. See *send lien notices from the Lien desk* → *Where a job stands*. **History** looks back 180 days by default. You move the range to see more. You tap a day to see who was there and what it cost. Nothing on this tab edits anything. On a phone the grid becomes a list. It has one row per day worked, newest first, with the names and the people count. A one-line gap shows where days went by with no work. You tap a row for the same day detail. Above it, one bar holds the range. It has the dates and the {{chip:blue|90d}} {{chip:gray|180d}} {{chip:gray|365d}} presets. It has a line with the days worked and the most people on site. You tap **Edit** for the date pickers. Picking a preset puts them away.
+The job may still owe money. Or a lien paper or demand letter may be out. Then **History** shows the job's **lien timeline** above the grid. A lien is a legal claim on the property for unpaid work. The timeline lists every deadline in order and whose move it is. It shows the demand letter with its reply-by day, and a *Waiting on* line. It is the same strip the Lien window's header draws. On this tab it is the calendar. The verdict sits first in a tinted band. Every window is drawn, the closed ones too. See *send lien notices from the Lien desk* → *Where a job stands*. Under it, **Days on the job** is a calendar. One line counts the days worked, first day to last. It also gives the most people on one day, and the hours. Under the line, **Who** lists each person with their days. Tap a name and only their days stay lit. Tap it again to see everyone. Then comes one month grid for every month the job had work. On a sub job each month also carries its § 53.056 notice line. It uses the lien timeline's own words and colors. The number in a day is how many people clocked in. Weekends sit back. Today has a blue ring. A day still clocked in has an amber corner. Tap a day to see who was there, their hours and what the day cost. Nothing on this tab edits anything. The calendar shows the whole job by default. {{chip:blue|Whole job}} {{chip:gray|Last 90d}} {{chip:gray|Last 365d}} {{chip:gray|Dates…}} narrow it. Dates… shows From and To pickers. On a phone the months stack one under the other.
 
 ## The Edit tab reads as rows
 

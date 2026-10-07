@@ -116,7 +116,11 @@ export type PortalPayload = {
   checks: PortalChecksPayload | null
   /** Waivers (v2.4278): one row per sent bill the viewer pays, with the conditional and unconditional lien waivers it carries — `_shared/portalWaivers.ts`; [] from a function without it. */
   waivers: PortalWaiverRow[]
+  /** Records for an owner (punch list #86): the request the office offered on this portal and not yet sent — to sign, or signed; null from an older function. */
+  ownerRecords: PortalOwnerRecords | null
 }
+
+export type PortalOwnerRecords = { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null; /** Sent on the portal (shape B): the day, and the packet's PDF as a signed URL, or null while the copy is still being kept. */ sent: { on: string; downloadUrl: string | null } | null }
 
 export type PortalChecksPayload = { jobs: ChecksJobIn[]; events: ChecksEventIn[] }
 
@@ -170,7 +174,10 @@ export type PortalAgreement = {
   templateName: string | null
   amountCents: number | null
   signedAt: string | null
+  /** Who signed — both signers of a two-frame agreement (v2.4596), and on a part-signed one, who has so far. */
   signerName: string | null
+  /** v2.4596: "Sam Owner signed · waiting on Alex Owner" while one of two has signed; absent from an older function. */
+  signingProgress?: string | null
   sentAt: string | null
   signUrl: string | null
 }
@@ -299,6 +306,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         amountCents: typeof a.amountCents === 'number' && Number.isFinite(a.amountCents) ? Math.round(a.amountCents) : null,
         signedAt: typeof a.signedAt === 'string' && a.signedAt ? a.signedAt : null,
         signerName: typeof a.signerName === 'string' && a.signerName.trim() ? a.signerName : null,
+        signingProgress: typeof a.signingProgress === 'string' && a.signingProgress.trim() ? a.signingProgress.trim() : null,
         sentAt: typeof a.sentAt === 'string' && a.sentAt ? a.sentAt : null,
         signUrl: typeof a.signUrl === 'string' && /^https?:\/\//.test(a.signUrl) ? a.signUrl : null,
       })
@@ -339,6 +347,23 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       })
     }
   }
+  let ownerRecords: PortalOwnerRecords | null = null
+  if (r.ownerRecords && typeof r.ownerRecords === 'object') {
+    const o = r.ownerRecords as Record<string, unknown>
+    const sg = o.signed && typeof o.signed === 'object' ? (o.signed as Record<string, unknown>) : null
+    const st = o.sent && typeof o.sent === 'object' ? (o.sent as Record<string, unknown>) : null
+    if (typeof o.id === 'string' && o.id && typeof o.offeredOn === 'string') {
+      ownerRecords = {
+        id: o.id,
+        address: typeof o.address === 'string' ? o.address : '',
+        ownerName: typeof o.ownerName === 'string' ? o.ownerName : '',
+        offeredOn: o.offeredOn,
+        signed: sg && typeof sg.on === 'string' ? { on: sg.on, name: typeof sg.name === 'string' ? sg.name : '' } : null,
+        sent: st && typeof st.on === 'string' ? { on: st.on, downloadUrl: typeof st.downloadUrl === 'string' && /^https?:\/\//.test(st.downloadUrl) ? st.downloadUrl : null } : null,
+      }
+    }
+  }
+
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
@@ -360,6 +385,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
     waivers,
+    ownerRecords,
     testReports: parsePortalTestReports(r.testReports),
     bankTransfer: bankTransferDetailsForPortal(parseBankTransferDetails(r.bankTransfer)),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
@@ -391,6 +417,7 @@ export function parsePortalChecks(raw: unknown): PortalChecksPayload | null {
       gc_customer_id: null,
       bill_to_party: null,
       lien_retainage_held: typeof j.lien_retainage_held === 'number' ? j.lien_retainage_held : null,
+      revenue: typeof j.revenue === 'number' ? j.revenue : null,
       invoices: invoices
         .filter((i) => i != null && typeof i === 'object' && typeof i.id === 'string' && i.id)
         .map((i) => ({ id: i.id as string, job_id: jobId, sequence_order: typeof i.sequence_order === 'number' ? i.sequence_order : null, amount: num(i.amount), status: str(i.status, 'billed'), billed_at: ymd(i.billed_at) })),

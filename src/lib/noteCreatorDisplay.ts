@@ -6,7 +6,13 @@ export type NoteCreatorUserRow = {
   email: string | null
 }
 
-export type BidSubmissionEntryWithCreator = Database['public']['Tables']['bids_submission_entries']['Row'] & {
+/** The columns `SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR` asks for: the type says what the list loads, not the whole row. */
+type BidSubmissionEntryListRow = Pick<
+  Database['public']['Tables']['bids_submission_entries']['Row'],
+  'id' | 'bid_id' | 'contact_method' | 'created_at' | 'created_by' | 'notes' | 'occurred_at' | 'gc_customer_id'
+>
+
+export type BidSubmissionEntryWithCreator = BidSubmissionEntryListRow & {
   created_by_user?: NoteCreatorUserRow | NoteCreatorUserRow[] | null
   /** Per-GC note scope (v2.2217): the GC this note is about; embed carries the name for the feed pill. */
   gc_customer?: { name: string | null } | { name: string | null }[] | null

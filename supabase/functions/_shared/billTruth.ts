@@ -28,7 +28,9 @@
  *   is in — the 8 progress bills on working jobs count; decision 6,
  *   2026-09-05), plus ONE job-shell row for each `billed` job that has zero
  *   billed invoice rows (legacy / HCP-era jobs: `revenue − payments_made`).
- *   Rows on jobs flagged into Collections go to `collections` instead;
+ *   Rows on jobs flagged into Collections go to `collections` instead, and
+ *   rows on Collections jobs marked Uncollectible (punch list #94) to
+ *   `uncollectible` — shown, dated, never in `owed`;
  *   `owed` = both. Membership is by STATUS, not by remainder: a billed row
  *   that is fully paid but never marked Paid stays a member with
  *   `remaining 0` and `settled: true` (it needs a Mark Paid, not a chase),
@@ -86,6 +88,8 @@ export type BillTruthJob = {
   payments_made: number | null
   /** Difficult-to-collect flag; in Collections = status 'billed' AND set. */
   collections_at?: string | null
+  /** Given up on (punch list #94, v2.4784): Uncollectible = in Collections AND set. Out of every owed total. */
+  uncollectible_at?: string | null
 }
 
 export type BillTruthInvoice = {
@@ -115,6 +119,8 @@ export type BillTruthOpenRow = {
   settled: boolean
   /** Row belongs to a job flagged into Collections. */
   inCollections: boolean
+  /** Row belongs to a Collections job the office marked Uncollectible — in no owed total. */
+  uncollectible: boolean
 }
 
 export type BillTruthBucket = { rows: BillTruthOpenRow[]; count: number; total: number }
@@ -124,8 +130,10 @@ export type BillTruth = {
   readyToBill: BillTruthDraftBucket
   /** Open bills on jobs NOT flagged into Collections (the "Billed Awaiting Payment" pile). */
   billed: BillTruthBucket
-  /** Open bills on Collections-flagged jobs. */
+  /** Open bills on Collections-flagged jobs the office still chases (not marked Uncollectible). */
   collections: BillTruthBucket
+  /** Open bills on Collections jobs marked Uncollectible (v2.4784): shown, dated, never owed — out of `collections` and `owed`. */
+  uncollectible: BillTruthBucket
   /** billed + collections — everything customers owe. */
   owed: { count: number; total: number }
   paidInFull: { jobCount: number }
@@ -174,6 +182,11 @@ export function jobPrintsBilledShell(jobStatus: string | null | undefined): bool
 /** In Collections = billed AND flagged (mirrors `jobInCollections` in jobsStagesBoard.ts). */
 export function jobIsInCollections(job: Pick<BillTruthJob, 'status' | 'collections_at'>): boolean {
   return (job.status ?? '') === 'billed' && job.collections_at != null
+}
+
+/** Uncollectible = in Collections AND marked (mirrors `jobUncollectible` in jobsStagesBoard.ts; punch list #94). */
+export function jobIsUncollectible(job: Pick<BillTruthJob, 'status' | 'collections_at' | 'uncollectible_at'>): boolean {
+  return jobIsInCollections(job) && job.uncollectible_at != null
 }
 
 export function isBilledInvoiceStatus(status: string | null | undefined): boolean {
@@ -232,6 +245,7 @@ export function openBillRowsForJob(
 ): BillTruthOpenRow[] {
   if (!billOnOpenJob(job.status)) return []
   const inCollections = jobIsInCollections(job)
+  const uncollectible = jobIsUncollectible(job)
   const rows: BillTruthOpenRow[] = []
   for (const inv of invoicesOnJob) {
     if (!isBilledInvoiceStatus(inv.status)) continue
@@ -247,6 +261,7 @@ export function openBillRowsForJob(
       remaining,
       settled: isSettledRemainder(remaining),
       inCollections,
+      uncollectible,
     })
   }
   if (rows.length === 0 && jobPrintsBilledShell(job.status)) {
@@ -262,6 +277,7 @@ export function openBillRowsForJob(
       remaining,
       settled: isSettledRemainder(remaining),
       inCollections,
+      uncollectible,
     })
   }
   return rows
@@ -332,6 +348,7 @@ export function computeBillTruth(input: BillTruthInput): BillTruth {
   const applied = appliedByInvoiceId(input.payments)
   const billedRows: BillTruthOpenRow[] = []
   const collectionsRows: BillTruthOpenRow[] = []
+  const uncollectibleRows: BillTruthOpenRow[] = []
   let paidJobCount = 0
   for (const job of input.jobs) {
     if (billIsOnPaidJob(job.status)) {
@@ -339,13 +356,15 @@ export function computeBillTruth(input: BillTruthInput): BillTruth {
       continue
     }
     for (const row of openBillRowsForJob(job, invoicesByJob.get(job.id) ?? [], applied)) {
-      if (row.inCollections) collectionsRows.push(row)
+      if (row.uncollectible) uncollectibleRows.push(row)
+      else if (row.inCollections) collectionsRows.push(row)
       else billedRows.push(row)
     }
   }
 
   const billed = billedRows.length ? finishBucket(billedRows) : emptyBucket()
   const collections = collectionsRows.length ? finishBucket(collectionsRows) : emptyBucket()
+  const uncollectible = uncollectibleRows.length ? finishBucket(uncollectibleRows) : emptyBucket()
 
   let excludedCount = 0
   let excludedTotal = 0
@@ -359,6 +378,7 @@ export function computeBillTruth(input: BillTruthInput): BillTruth {
     readyToBill: finishDraftBucket(readyToBill),
     billed,
     collections,
+    uncollectible,
     owed: { count: billed.count + collections.count, total: billed.total + collections.total },
     paidInFull: { jobCount: paidJobCount },
     onPaidJobs: finishDraftBucket(onPaidJobs),

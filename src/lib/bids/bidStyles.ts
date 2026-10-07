@@ -37,12 +37,24 @@ export const bidDetailCloseXStyle: CSSProperties = {
   lineHeight: 1,
 }
 
+/**
+ * The open bid's × on a phone (v2.4451): in the card's top-right corner, inside its right
+ * padding. Every bid-detail card is padded `1.5rem 2rem`, so a × no wider than 2rem never covers
+ * the title, the Mark buttons or the open step strip. It used to float 0.75rem in, over the first
+ * line of whatever came first. `bidStyles.test.ts` holds the nine cards to that padding.
+ */
+export const BID_DETAIL_CLOSE_FLOAT_WIDTH = '2rem'
+
 export const bidDetailCloseFloatMobileStyle: CSSProperties = {
   ...bidDetailCloseXStyle,
   position: 'absolute',
-  top: '0.75rem',
-  right: '0.75rem',
+  top: 0,
+  right: 0,
+  width: BID_DETAIL_CLOSE_FLOAT_WIDTH,
+  height: '2.5rem',
+  padding: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   zIndex: 2,
-  background: 'var(--surface)',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
 }

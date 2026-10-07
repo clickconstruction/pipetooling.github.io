@@ -28,7 +28,7 @@ export function PersonalTimeOffModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 1100,
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
       }}
     >
       <div
@@ -41,7 +41,7 @@ export function PersonalTimeOffModal({
           borderRadius: 12,
           width: '96%',
           maxWidth: 480,
-          maxHeight: '86vh',
+          maxHeight: 'min(86vh, 100%)',
           overflowY: 'auto',
           padding: '1rem',
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)',

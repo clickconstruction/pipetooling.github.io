@@ -997,6 +997,34 @@ describe('statement round (v2.2771)', () => {
   })
 })
 
+describe('bid follow-ups (v2.4426, punch list #80)', () => {
+  it('no item when no promised call is due', () => {
+    expect(buildNeedsYouItems(inputs({})).some((i) => i.key === 'bid-followups')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ bidFollowupsDue: null })).some((i) => i.key === 'bid-followups')).toBe(false)
+  })
+
+  it('a call due today is amber and names the builders and the dollars', () => {
+    const item = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 2, overdueCount: 0, value: 75_900, names: ['City of Riverton', 'Hilltop Builders'] } })).find((i) => i.key === 'bid-followups')
+    expect(item).toMatchObject({ severity: 'amber', kicker: 'Calls you promised', title: '2 bid follow-ups are due', figure: '2', actionLabel: 'Open the call queue' })
+    expect(item?.detail).toMatch(/^City of Riverton · Hilltop Builders — \$[\d.,k]+ pending\.$/i)
+  })
+
+  it('a missed day is red and says so', () => {
+    const one = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 1, overdueCount: 1, value: 0, names: ['City of Riverton'] } })).find((i) => i.key === 'bid-followups')
+    expect(one).toMatchObject({ severity: 'red', title: 'One bid follow-up is due', detail: 'City of Riverton. The day has passed.' })
+    const some = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 3, overdueCount: 1, value: 0, names: ['A', 'B', 'C'] } })).find((i) => i.key === 'bid-followups')
+    expect(some?.detail).toBe('A · B · C. 1 is past the day.')
+    const all = buildNeedsYouItems(inputs({ bidFollowupsDue: { count: 2, overdueCount: 2, value: 0, names: ['A', 'B'] } })).find((i) => i.key === 'bid-followups')
+    expect(all?.detail).toBe('A · B. Every day has passed.')
+  })
+
+  it('ranks with the revenue chase: above the lost-bids hygiene card', () => {
+    const items = buildNeedsYouItems(inputs({ lostBidNudge: { count: 9, value: 1000 }, lostBidNudgeLoading: false, bidFollowupsDue: { count: 1, overdueCount: 0, value: 0, names: ['A'] } }))
+    const keys = items.map((i) => i.key)
+    expect(keys.indexOf('bid-followups')).toBeLessThan(keys.indexOf('lost-bids'))
+  })
+})
+
 describe('lost-bids card ↔ Why we lost lens scope gloss (J14-F6)', () => {
   it('the card names its all-trade scope and says the lens opens on one trade, so 60 → 59 reads as scope, not drift', () => {
     const items = buildNeedsYouItems(inputs({ role: 'estimator', lostBidNudge: { count: 60, value: 1_250_000 }, lostBidNudgeLoading: false }))
@@ -1112,7 +1140,7 @@ describe('legal-review (Legal portal PR 2)', () => {
 })
 
 describe('legal-firm-activity (Legal portal PR 4)', () => {
-  const activity = { count: 3, fees: 1, feeTotal: 450, steps: 0, questions: 1, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }
+  const activity = { count: 3, fees: 1, feeTotal: 450, steps: 0, questions: 1, settlements: 0, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }
   it('one amber card naming payments to apply, questions and fees', () => {
     const it1 = buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: activity })).find((i) => i.key === 'legal-firm-activity')!
     expect(it1.title).toBe('The law firm has 3 things for you')
@@ -1125,6 +1153,11 @@ describe('legal-firm-activity (Legal portal PR 4)', () => {
   it('fees alone stay blue; absent when disabled or empty', () => {
     expect(buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: { ...activity, count: 1, questions: 0, answers: 0, signoffs: 0, payments: 0 } })).find((i) => i.key === 'legal-firm-activity')!.severity).toBe('blue')
     expect(buildNeedsYouItems(inputs({ legalFirmActivityEnabled: false, legalFirmActivity: activity })).some((i) => i.key === 'legal-firm-activity')).toBe(false)
+  })
+  it('a settlement under the floor leads, amber (#85 item 20)', () => {
+    const it1 = buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: { ...activity, count: 1, fees: 0, questions: 0, payments: 0, settlements: 1 } })).find((i) => i.key === 'legal-firm-activity')!
+    expect(it1.detail).toMatch(/^1 settlement below your floor to sign off/)
+    expect(it1.severity).toBe('amber')
   })
 })
 
@@ -1145,7 +1178,7 @@ describe('submittals (stage 4b)', () => {
     expect(lead.severity).toBe('red')
     const back = items.find((i) => i.key === 'submittal-sent-back')!
     expect(back.title).toBe('2 rows sent back on B375 SpaceX Rev 2, no resubmit yet')
-    expect(back.detail).toContain('Rev 3 from the rows sent back')
+    expect(back.detail).toContain('A Rev 3 draft with those rows is one tap on the Submittals tab. Nothing is sent until you share it')
     const un = items.find((i) => i.key === 'submittal-unopened')!
     expect(un.title).toBe('2 shared submittals sit unopened — B398 ZZ Test longest, 8 days')
     expect(un.detail).toContain('Marco Ellis has not opened their link')
@@ -1227,5 +1260,47 @@ describe('lien-waivers-to-sign (v2.4276)', () => {
     expect(buildNeedsYouItems(inputs({ lienWaiversToSign: { count: 0, total: 0 } }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ lienWaiversToSignEnabled: false, lienWaiversToSign: { count: 2, total: 100 } }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ lienWaiversToSign: null }))).toEqual([])
+  })
+})
+
+describe('vehicle-records-missing (v2.4700)', () => {
+  const ram = { vehicleId: 'v-ram', name: '2016 Ford F-250', holderUserId: 'u-1', holderName: 'Sam P.', missing: ['insurance', 'registration', 'service'] as const, insuranceOnPlan: false }
+  const gap = (id: string, name: string, missing: Array<'insurance' | 'registration' | 'service'>, holderName: string | null = 'Lee', insuranceOnPlan = false) => ({ vehicleId: id, name, holderUserId: `u-${id}`, holderName, missing, insuranceOnPlan })
+
+  it('one vehicle reads as its own sentence: what is missing, who drives it, where to add it', () => {
+    const items = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [{ ...ram, missing: [...ram.missing] }] }))
+    const item = items.find((i) => i.key === 'vehicle-records-missing')!
+    expect(item.title).toBe('The 2016 Ford F-250 has no insurance, registration or service on file')
+    expect(item.detail).toBe('Sam P. drives it. Add them on People → Vehicles. Review prices a company truck from these, so until they are entered they count as $0 there.')
+    expect(item).toMatchObject({ kicker: 'Vehicles', figure: '1', severity: 'gray', actionLabel: 'Open Vehicles' })
+  })
+
+  it('several vehicles list the first three with what each is missing, then how many more', () => {
+    const gaps = [
+      { ...ram, missing: [...ram.missing] },
+      gap('a', '2019 Ford F-150', ['insurance', 'service']),
+      gap('b', '2021 Ford Transit', ['registration'], null),
+      gap('c', '2018 Chevy Express', ['service']),
+    ]
+    const item = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: gaps })).find((i) => i.key === 'vehicle-records-missing')!
+    expect(item.title).toBe('4 vehicles are missing insurance, registration or service')
+    expect(item.detail).toBe(
+      '2016 Ford F-250 (Sam P.): insurance, registration and service. 2019 Ford F-150 (Lee): insurance and service. 2021 Ford Transit: registration. And 1 more. Add them on People → Vehicles. Review prices a company truck from these, so until they are entered they count as $0 there.',
+    )
+    expect(item.figure).toBe('4')
+  })
+
+  it('a vehicle on an insurance plan at $0 is insured: the words name the missing cost, not the coverage', () => {
+    const one = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [{ ...ram, missing: [...ram.missing], insuranceOnPlan: true }] }))
+    expect(one.find((i) => i.key === 'vehicle-records-missing')!.title).toBe('The 2016 Ford F-250 has no insurance cost, registration or service on file')
+    const two = buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [{ ...ram, missing: [...ram.missing], insuranceOnPlan: true }, gap('a', '2019 Ford F-150', ['insurance'], 'Lee', false)] }))
+    expect(two.find((i) => i.key === 'vehicle-records-missing')!.detail).toContain('2016 Ford F-250 (Sam P.): insurance cost, registration and service. 2019 Ford F-150 (Lee): insurance. ')
+  })
+
+  it('shows only when enabled and something is missing', () => {
+    const gaps = [{ ...ram, missing: [...ram.missing] }]
+    expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: false, vehicleRecordGaps: gaps })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: null })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [] })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
   })
 })

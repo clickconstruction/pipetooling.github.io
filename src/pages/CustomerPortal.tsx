@@ -4,11 +4,13 @@ import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
 import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
+import { PortalOwnerRecordsCard } from '../components/portal/PortalOwnerRecordsCard'
 import { buildBankTransferMemo } from '../lib/bankTransferDetails'
 import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
+import { probeLegalPortalKey } from '../lib/legal/legalPortalProbe'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
 import type { CSSProperties, FormEvent } from 'react'
@@ -101,6 +103,8 @@ export default function CustomerPortal() {
   // "Payment received — statement updated": a bill this page showed before is
   // gone (or smaller) and the balance dropped. Read-only detection; no writes.
   const [paymentLanded, setPaymentLanded] = useState(false)
+  // Where an unknown slug goes once the legal probe answers (v2.4750).
+  const [fallThrough, setFallThrough] = useState<'legal' | 'sub' | null>(null)
   // Load generation: an unmount or a link change invalidates in-flight fetches and pending refetch timers.
   const genRef = useRef(0)
   const invalidateLoads = () => {
@@ -216,10 +220,25 @@ export default function CustomerPortal() {
   }, [])
 
   // Shared printed namespace (sub-portal train): a my.clickplumbing.com slug
-  // that isn't a customer's may be a sub's — fall through to the sub portal,
-  // which renders the same friendly error when it's neither.
-  if (state.kind === 'error' && slug && !token) {
-    return <Navigate to={`/s/${slug}`} replace />
+  // that isn't a customer's may be the law firm's key (v2.4750: one cheap probe
+  // first, so a dead sub link still lands on the sub portal's own error) or a
+  // sub's — fall through to the sub portal, which renders the same friendly
+  // error when it's neither.
+  const slugMiss = state.kind === 'error' && Boolean(slug) && !token
+  useEffect(() => {
+    if (!slugMiss) return
+    let live = true
+    void probeLegalPortalKey(slug).then((yes) => {
+      if (live) setFallThrough(yes ? 'legal' : 'sub')
+    })
+    return () => {
+      live = false
+    }
+  }, [slugMiss, slug])
+  if (slugMiss) {
+    if (fallThrough === 'legal') return <Navigate to={`/legal?t=${encodeURIComponent(slug)}`} replace />
+    if (fallThrough === 'sub') return <Navigate to={`/s/${slug}`} replace />
+    return null
   }
 
   return (
@@ -488,6 +507,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {payload.propertyNotices.map((n) => (
         <PortalPropertyNoticeCard key={n.key} notice={n} phone={payload.company.phone} companyName={payload.company.name} />
       ))}
+      {/* Records for an owner (punch list #86): sign for the records the office offered here; nothing shows until the office sends. */}
+      {payload.ownerRecords ? <PortalOwnerRecordsCard records={payload.ownerRecords} token={requestToken} companyName={payload.company.name} phone={payload.company.phone} todayYmd={todayYmd} /> : null}
       {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} waivers={payload.waivers} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
@@ -548,7 +569,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 <div style={{ color: a.status === 'signed' ? INK : COPPER, fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>
                   {a.status === 'signed'
                     ? `✍ Signed${a.signerName ? ` by ${a.signerName}` : ''}${a.signedAt ? ` · ${new Date(a.signedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}`
-                    : 'Waiting for your signature'}
+                    : a.signingProgress || 'Waiting for your signature'}
                 </div>
               </div>
               {a.signUrl ? (

@@ -1,5 +1,5 @@
 /**
- * The contract field on a job (Contract sweep refresh — to-dos/contract-sweep-refresh).
+ * The contract field on a job (Contract sweep refresh — docs/recent-features/v2.3669.md).
  *
  * Some customers already have a contract with us, kept in Google Drive. When a job has nothing
  * on file, its Customer Contract row shows a field for that link; filing it is the ordinary

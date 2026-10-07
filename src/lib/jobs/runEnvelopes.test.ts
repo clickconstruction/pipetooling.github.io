@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { envelopeKey, runCopies, runEnvelopes } from './runEnvelopes'
+import { envelopeCourtesy, envelopeKey, runCopies, runEnvelopes } from './runEnvelopes'
 import type { RunNotice } from './lienDeskRun'
 
 const fields = { noticeDate: '2026-09-22', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Dudley Mason', contractedWithIfDifferent: '', claimAmount: '0.00', contactPerson: 'Robert', claimantAddress: '' }
@@ -57,5 +57,28 @@ describe('runEnvelopes', () => {
     expect(env.email).toBe('owner@lp.test')
     expect(env.tracking).toBe('9407 1')
     expect(env.method).toBe('certified_mail')
+  })
+})
+
+describe('envelopeCourtesy (punch list #87 B)', () => {
+  const ticked = (n: RunNotice): RunNotice => ({ ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: true } : r)) })
+  it('offers the tick on the original contractor\u2019s envelope only, on while every copy inside is ticked, one email per notice', () => {
+    const a = ticked(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78240', email: 'owner@lp.test' }))
+    const b = ticked(notice('i2', 'j1017', '1017 · Dudley (Wurzbach)', { name: 'Wurzbach Owner LLC', address: '1 Wurzbach Rd, San Antonio, TX' }))
+    const envs = runEnvelopes([a, b])
+    expect(envs.map((e) => e.label)).toEqual(['Owner of record', 'Original contractor', 'Owner of record'])
+    // The owner has an email on file and still gets no tick.
+    expect(envelopeCourtesy(envs[0]!)).toBeNull()
+    expect(envelopeCourtesy(envs[1]!)).toEqual({ emails: ['ap@dudley.test'], copies: 2, on: true })
+    // One copy unticked: the tick reads off, so the click turns every copy back on.
+    const half = runEnvelopes([a, { ...b, recipients: b.recipients.map((r) => ({ ...r, courtesy: false })) }])
+    expect(envelopeCourtesy(half[1]!)!.on).toBe(false)
+  })
+  it('offers none when the envelope goes by email or no email is on file', () => {
+    const a = ticked(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl, San Antonio, TX 78240' }))
+    const env = runEnvelopes([a])[1]!
+    expect(envelopeCourtesy({ ...env, method: 'email' })).toBeNull()
+    const blank = ticked(notice('i1', 'j1016', '1016 · Dudley (Lenox)', { name: 'Lenox Hill Owner LP', address: '9703 Lenox Hl' }, { name: 'RMC- Dudley Mason', address: '100 Builder Way', email: '' }))
+    expect(envelopeCourtesy(runEnvelopes([blank])[1]!)).toBeNull()
   })
 })

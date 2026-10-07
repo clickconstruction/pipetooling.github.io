@@ -322,6 +322,8 @@ export function EmailReportPersonEditor({
         ) : null}
       </div>
 
+      {/* Pinned to the foot of the window's scrolling body, with what a save or a send said, so neither is ever below the fold. */}
+      <div data-testid="email-report-person-actions" style={{ position: 'sticky', bottom: 0, zIndex: 1, background: 'var(--surface)', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
       {error ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>{error}</p> : null}
       {sendResult ? <p style={{ color: 'var(--text-green-700)', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>{sendResult}</p> : null}
 
@@ -342,6 +344,7 @@ export function EmailReportPersonEditor({
             Remove
           </button>
         ) : null}
+      </div>
       </div>
     </div>
   )

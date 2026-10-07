@@ -17,8 +17,13 @@ import {
 } from '../../lib/dispatchInboxBadge'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
-/** The bar's stacking level: a phone overlay whose bottom matters stands above it (the sheets at 1003–1004, the modal shell at 1100). */
-export const DISPATCH_MODE_FOOTER_Z_INDEX = 1000
+/**
+ * The bar's stacking level: above everything a page draws, under every window. A window is a
+ * fixed layer that spans the screen's height, and its z-index is above this number — the windows
+ * that stood at 10–121 keep their old number on top of it (60 → 760, v2.4431), the rest stand at
+ * 900 and from 1000 up. `npm run check:window-z` fails a window that is drawn under it.
+ */
+export const DISPATCH_MODE_FOOTER_Z_INDEX = 700
 
 type TabKey = 'dashboard' | 'schedule' | 'inbox' | 'customers' | 'po'
 

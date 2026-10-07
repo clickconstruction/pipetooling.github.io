@@ -2971,6 +2971,7 @@ export function DashboardTeamActiveClockStrip({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: STRIP_REJECT_MODAL_Z,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={(e) => {
         if (e.target !== e.currentTarget) return

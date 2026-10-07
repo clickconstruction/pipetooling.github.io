@@ -14,6 +14,7 @@
  * The stored row is untouched; `source: 'auto'` marks a derived stage for the
  * chip and the stamp. Pure.
  */
+import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { normalizeSubSheetStage, normalizeSubSheetStageSource, type SubSheetStage, type SubSheetStageSource } from './subSheetStage'
 
 export type SubSheetStageEvidence = {
@@ -75,7 +76,7 @@ export function effectiveSubSheetStage(e: SubSheetStageEvidence): EffectiveSubSh
 
   const end = (e.workEndYmd ?? '').trim() || null
   const windowOver = !!end && end < e.todayYmd
-  const windowFires = windowOver && !(handMoved && changedAt!.slice(0, 10) > end!)
+  const windowFires = windowOver && !(handMoved && calendarYmdInAppTzFromIso(changedAt!) > end!)
   if (windowFires) return { stage: 'walkthrough', source: 'auto', changedAt: `${end}T12:00:00`, derived: true, reason: 'window' }
 
   return keep

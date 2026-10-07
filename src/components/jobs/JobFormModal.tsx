@@ -95,7 +95,7 @@ import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePl
 import { fixtureRowsFromDb } from '../../lib/jobs/jobFormFixtureHydrate'
 import { applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
 import { discountSnapshot } from '../../lib/jobs/discountActivity'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
 import { portalTokenUrl } from '../../lib/portal/gcPortalLink'
@@ -2439,6 +2439,7 @@ export default function JobFormModal({
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: JOB_FORM_OVERLAY_Z_INDEX,
+          paddingTop: 'var(--app-top-chrome, 0px)',
         }}
       >
         <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>
@@ -3123,7 +3124,7 @@ export default function JobFormModal({
                 job={null}
                 initialAmount={recordPaymentTarget.amount}
                 stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
-                billedYmd={recordPaymentTarget.inv.billed_at ? String(recordPaymentTarget.inv.billed_at).slice(0, 10) : null}
+                billedYmd={calendarYmdInAppTzFromIso(String(recordPaymentTarget.inv.billed_at ?? '')) || null}
                 zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
                 onClose={() => setRecordPaymentTarget(null)}
                 onSuccess={async () => {
@@ -3137,6 +3138,7 @@ export default function JobFormModal({
               open={paymentMoveRow != null}
               payment={paymentMoveRow}
               fromJob={editing}
+              stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
               onClose={() => setPaymentMoveRow(null)}
               onMoved={() => {
                 void (async () => {

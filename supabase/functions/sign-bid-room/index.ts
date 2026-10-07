@@ -13,7 +13,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
-import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow } from '../_shared/bidRoomOutcome.ts'
+import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow, wonVersionIdsForSignature } from '../_shared/bidRoomOutcome.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { bidRoomActivityStaffEmail } from '../_shared/bidRoomActivityStaffEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
@@ -349,8 +349,15 @@ serve(async (req) => {
     })
 
     const plan = planRoomOutcome({ outcome: 'won', roomCustomerId: room.customer_id, versions, bidOutcome: bid.outcome })
-    if (plan.packetVersionIds.length > 0) {
-      await admin.from('bid_versions').update({ outcome: 'won', outcome_at: today, loss_category: null }).in('id', plan.packetVersionIds)
+    // v2.4728: a letter with options — the signed option's version alone wins; it becomes the
+    // bid's active version so the job, the takeoff and the labor follow what was signed.
+    const chosenVersionId = chosen.bid_version_id ?? null
+    const wonVersionIds = wonVersionIdsForSignature(plan.packetVersionIds, chosenVersionId)
+    if (wonVersionIds.length > 0) {
+      await admin.from('bid_versions').update({ outcome: 'won', outcome_at: today, loss_category: null }).in('id', wonVersionIds)
+    }
+    if (chosenVersionId && wonVersionIds.length === 1) {
+      await admin.from('bids').update({ selected_bid_version_id: chosenVersionId }).eq('id', bid.id)
     }
     if (plan.autoLostVersionIds.length > 0) {
       await admin.from('bid_versions').update({ outcome: 'lost', outcome_at: today }).in('id', plan.autoLostVersionIds)
@@ -358,8 +365,9 @@ serve(async (req) => {
     if (plan.bidOutcomeSet === 'won') await admin.from('bids').update({ outcome: 'won' }).eq('id', bid.id)
     // v2.4197: the signature answers the with-and-without alternates — the same two fields the
     // Won dialog writes: the taken groups, and the agreed value (the sent base plus their add-ons).
-    if (payload.add_ons.length > 0 && plan.bidOutcomeSet === 'won') {
-      const sentBase = bid.bid_value != null && Number.isFinite(Number(bid.bid_value)) ? Number(bid.bid_value) : chosen.total_cents / 100
+    if ((payload.add_ons.length > 0 || chosenVersionId) && plan.bidOutcomeSet === 'won') {
+      // v2.4728: an option carries its own sent value — the agreed value is the option signed, not the bid's lead.
+      const sentBase = chosenVersionId ? chosen.total_cents / 100 : bid.bid_value != null && Number.isFinite(Number(bid.bid_value)) ? Number(bid.bid_value) : chosen.total_cents / 100
       const agreed = Math.round((sentBase + takenAddOns.reduce((s, a) => s + a.total_cents, 0) / 100) * 100) / 100
       // v2.4225: the add-ons the customer left unticked are DECLINED — said by the signature, not
       // inferred. Only the room's own add-ons are answered here; an alternate the room did not
@@ -383,6 +391,7 @@ serve(async (req) => {
       metadata: {
         option_key: chosen.key,
         option_name: chosen.name,
+        ...(chosenVersionId ? { option_version_id: chosenVersionId } : {}),
         total_cents: grandCents,
         add_ons_taken: takenAddOns.map((a) => a.name),
         add_on_keys: takenAddOns.map((a) => a.key),

@@ -51,9 +51,19 @@ async function expectSettledNoSidewaysOverflow(page: Page, label: string) {
     .toBeLessThanOrEqual(0)
 }
 
-const PAGES: Array<{ path: string; marker: RegExp | string }> = [
+/**
+ * The Working header's count pill (`StagesSectionBandTitle`, v2.4512). It reads "…" until
+ * the section's count lands, so a number here means the board has rendered with its data.
+ * The phone board hides the header with CSS; the pill is still in the DOM.
+ */
+const STAGES_READY = { within: '#stages-working .stagesBandCount', marker: /^\d+$/ }
+
+/** `marker` is looked for in `within`, or anywhere in `main` when there is none. */
+type SmokePage = { path: string; marker: RegExp | string; within?: string }
+
+const PAGES: SmokePage[] = [
   { path: '/dashboard', marker: 'My Schedule' },
-  { path: '/jobs?tab=stages', marker: /Working \(\d+\)/ },
+  { path: '/jobs?tab=stages', ...STAGES_READY },
   { path: '/estimates', marker: 'Estimates' },
   { path: '/quickfill', marker: /Quickfill/i },
   { path: '/people', marker: /People|Users/ },
@@ -62,29 +72,33 @@ const PAGES: Array<{ path: string; marker: RegExp | string }> = [
   // Bid Board phone cards: the header row (jump-icon cluster + inline due chip)
   // used to run past the card and scroll the whole page sideways.
   { path: '/bids?tab=bid-board', marker: /Bid Board/ },
+  // Bids → Labor with no bid picked still shows the labor book, whose column grew to the
+  // entries table's widest row until v2.4453. The marker waits for real entries, since
+  // "0 entries" shows before the book loads and would measure an empty table.
+  { path: '/bids?tab=labor', marker: /[1-9]\d* entries/ },
 ]
 
-for (const { path, marker } of PAGES) {
+for (const { path, marker, within } of PAGES) {
   test(`no sideways overflow at 375px: ${path}`, async ({ page }) => {
     await page.goto(path)
-    await expect(page.locator('main')).toContainText(marker, { timeout: 20000 })
+    await expect(page.locator(within ?? 'main')).toContainText(marker, { timeout: 20000 })
     await expectNoSidewaysOverflow(page, path)
   })
 }
 
 // The header is global, so two pages are enough to pin it; both already have
 // cold-load coverage above, which keeps the marker waits honest.
-const TABLET_PAGES: Array<{ path: string; marker: RegExp | string }> = [
+const TABLET_PAGES: SmokePage[] = [
   { path: '/dashboard', marker: 'My Schedule' },
-  { path: '/jobs?tab=stages', marker: /Working \(\d+\)/ },
+  { path: '/jobs?tab=stages', ...STAGES_READY },
 ]
 
 for (const width of TABLET_WIDTHS) {
-  for (const { path, marker } of TABLET_PAGES) {
+  for (const { path, marker, within } of TABLET_PAGES) {
     test(`no sideways overflow at ${width}px: ${path}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1024 })
       await page.goto(path)
-      await expect(page.locator('main')).toContainText(marker, { timeout: 20000 })
+      await expect(page.locator(within ?? 'main')).toContainText(marker, { timeout: 20000 })
       await expectSettledNoSidewaysOverflow(page, `${path} @ ${width}px`)
     })
   }
@@ -92,7 +106,7 @@ for (const width of TABLET_WIDTHS) {
 
 test('Stages tables scroll inside their own wrappers, not the page', async ({ page }) => {
   await page.goto('/jobs?tab=stages')
-  await expect(page.locator('main')).toContainText(/Working \(\d+\)/, { timeout: 20000 })
+  await expect(page.locator(STAGES_READY.within)).toHaveText(STAGES_READY.marker, { timeout: 20000 })
   await expectNoSidewaysOverflow(page, 'stages after load')
   // Every board table's scroll container must clip to the viewport while the
   // table itself is wider (the v2.984 contract: wide tables scroll internally).

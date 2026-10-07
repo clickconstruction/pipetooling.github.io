@@ -147,8 +147,8 @@ export function UsersTabPayCells({ cells, userId, onOpenWorkday }: { cells: PayC
 /** The salaried workday editor for one person — the desk's own modal, hosted by the Pay lens. */
 export function WorkdayScheduleModal({ userId, payName, canEditPastDayOverrides, onClose }: { userId: string; payName: string; canEditPastDayOverrides: boolean; onClose: () => void }) {
   return (
-    <div role="dialog" aria-modal="true" aria-label="Workday schedule" style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(720px, 96vw)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}>
+    <div role="dialog" aria-modal="true" aria-label="Workday schedule" style={{ position: 'fixed', inset: 0, zIndex: DESK_EDITOR_Z, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 'var(--app-top-chrome, 0px)' }} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(720px, 96vw)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.1rem', boxShadow: '0 16px 40px rgba(0,0,0,0.25)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{payName} · workday schedule</h2>
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }}>

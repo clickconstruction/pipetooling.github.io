@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-05
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -153,13 +153,13 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 
 ## Shared substrate
 
-- **`loadData()` (655–750) — the role fork.** Loads the own `users` row (role, estimator flags, name/email/phone → `applyProfileRow`) then `refreshSelfPaySalaryForPayName`; for dev | master | assistant-like: `user_dashboard_buttons` + `user_dashboard_preferences` (699–713), `report_templates` + `user_report_notification_preferences` (715–721), goal-picker `users` (723–728); for dev: the full `users` list (733–741); for dev | estimator: `loadServiceTypes()` (746–748). Callers: effect 785–787, `SettingsPeopleTab onActiveAccountsDataChanged` (1426), `useSettingsPeopleDirectory onDataChanged` (464), `SettingsAdvancedTab onRoleMaybeChanged` (1753). **Its whole middle branch is Dashboard-tab data** — it dissolves as order #2/#4 land.
-- **`users` (186, dev-only list)** feeds `useSettingsJobsAdmin` (typed but never read — quirk #14), `useSettingsPeopleDirectory`, `SettingsDashboardTab` (the four financial-pin rosters only), `SettingsPeopleTab`, `SettingsJobsTab`, `SettingsTemplatesTab`, `EasterEggsSettingsBlock`. `ActiveAccountsPanel` loads its own copy (app-level modal) and reconciles via `onActiveAccountsDataChanged → loadData`.
+- **`loadData()` (655–750) — the role fork.** Loads the own `users` row (role, estimator flags, name/email/phone → `applyProfileRow`) then `refreshSelfPaySalaryForPayName`; for dev | master | assistant-like: `user_dashboard_buttons` + `user_dashboard_preferences` (699–713), `report_templates` + `user_report_notification_preferences` (715–721), goal-picker `users` (723–728); for dev: the full `users` list (733–741); for dev | estimator: `loadServiceTypes()` (746–748). Callers: effect 785–787, `useSettingsPeopleDirectory onDataChanged` (464), `SettingsAdvancedTab onRoleMaybeChanged` (1753). **Its whole middle branch is Dashboard-tab data** — it dissolves as order #2/#4 land.
+- **`users` (186, dev-only list)** feeds `useSettingsJobsAdmin` (typed but never read — quirk #14), `useSettingsPeopleDirectory`, `SettingsDashboardTab` (the four financial-pin rosters only), `SettingsPeopleTab`, `SettingsJobsTab`, `SettingsTemplatesTab`, `EasterEggsSettingsBlock`. No account control reads or writes it: since v2.4348 those are on the person's desk (`PersonDeskAccessSection` over `usePersonDesk` and `lib/people/accountWrites.ts`) and in + Hire (`HirePersonModal` over `lib/people/hireWrites.ts`).
 - **`serviceTypes`** (from `useSettingsCatalogs`) is the only cross-tab datum outside the shell: estimator sync effect (955–961), `visibleServiceTypesForMaterials` (1056–1058), and `loadData`'s `loadServiceTypes` call.
 - **`financialPinsSectionOpen`** lives in `useSettingsFinancialPins` but is the **Page pins** collapse for every role; the deep-link effect (1010) and the search pick (1143) open it.
 - **`app_settings`**: new blocks own their keys via `src/lib/appSettingsKeys.ts` + per-domain lib fetch/save modules — **the seam to follow**; the parent itself no longer touches `app_settings` (hooks do: JobsAdmin, ProspectsCatalog, MyReports, the tab-instantiated TemplatesEngine; BackupExports reads the whole table for the settings export).
 - **Toasts / errors.** `showToast` success: 1 call in the parent (`saveReportNotificationPreferences`), 1 in the Dashboard child. Failures write the page-wide `error` (quirk #4).
-- **Seam-hook precedents** (all `src/hooks/`, none unit-tested): parent-instantiated `useSettingsCatalogs` (1,359 lines), `useSettingsJobsAdmin` (168), `useSettingsProspectsCatalog` (223), `useSettingsPeopleDirectory` (373), `useSettingsFinancialPins` (139), `useSettingsMyReports` (92), `useSettingsAccount` (331), `useSettingsBackupExports` (650); tab-instantiated `useSettingsTemplatesEngine` (729). Self-contained-section precedent: `useActiveAccountsManagement`, `useDeletedRecordsArchive`.
+- **Seam-hook precedents** (all `src/hooks/`, none unit-tested): parent-instantiated `useSettingsCatalogs` (1,359 lines), `useSettingsJobsAdmin` (168), `useSettingsProspectsCatalog` (223), `useSettingsPeopleDirectory` (373), `useSettingsFinancialPins` (139), `useSettingsMyReports` (92), `useSettingsAccount` (331), `useSettingsBackupExports` (650); tab-instantiated `useSettingsTemplatesEngine` (729). Self-contained-section precedent: `useDeletedRecordsArchive`.
 
 ---
 
@@ -188,6 +188,7 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 ### 3. Jobs & billing
 
 - **Render:** `SettingsGroup id="settings-jobs"` 1506–1554. Dev: `SettingsJobsTab` 1507–1534 (24 props: 23 from `useSettingsJobsAdmin` + `users` — company owner account `app_settings.company_owner_user_id` (one-company v2.2972, replaced per-user `job_owner_override_<userId>`), re-assign jobs (`jobs_ledger.master_user_id` + RPC `list_job_counts_by_master_for_dev_settings`), default labor rate; plus self-contained `HideHcpFieldSettingsBlock`, `SubPortalPaySettingsBlock`, `LegalFirmSettingsBlock`, `TripChargeAmountsSettingsBlock`, `JobAddressCityListSettingsBlock`, `TxCountyMapSettingsBlock`, `DevelopmentsSettingsBlock`). Dev | master | assistant-like: `JobBookSettingsSection` 1538–1540 (`onDbError → setError`), `TestReportSettingsBlock` 1542 (v2.3298). Dev | master: `OwnerAutoConfirmSettingsBlock` 1544 (v2.3450). Dev: `StripeInvoiceFooterDevSettingsBlock`, `PhysicalInvoiceIssuerDevSettingsBlock` (`focusField` from `settingsFocus`; holds **Signs for the company**, the lien waivers' signer, v2.4285), `PhysicalInvoiceFooterDevSettingsBlock`, `BillCustomerMemoDevSettingsBlock` 1545–1552; `SettingsHcpReconcileSection` 1553.
+- **Uncollectible: the accountant's list** (v2.4795, punch list #94): `UncollectibleListSettingsBlock` after the law-firm block — self-contained, reads the jobs still marked Uncollectible (`uncollectibleReport.ts` groups them by year; *Download CSV* through `saveBlobAs`).
 - **Tests:** `companyOwner.test.ts`, `SettingsHcpReconcileSection.render.test.tsx` + `lib/settings/hcpReconcile.test.ts`, `txCountySettings.test.ts`. Hook untested.
 - **Approach (order #5):** instantiate `useSettingsJobsAdmin` inside `SettingsJobsTab` (tab is kept-mounted and dev-gated → identical load timing); drop the unread `users` param in a separate no-behavior commit.
 

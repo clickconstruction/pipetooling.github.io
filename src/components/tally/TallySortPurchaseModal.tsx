@@ -11,6 +11,7 @@ import {
   type SortModeSplitLine,
 } from '../../lib/tally/sortModeSplit'
 import { formatTallyCurrency, formatTallyPostedParts } from '../../lib/tally/formatTallyPosted'
+import { mercurySwipeAtIso } from '../../lib/mercurySwipeTime'
 import { tallyUniqueJobSplitEntries, type TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
 import type { Json } from '../../types/database'
 
@@ -50,7 +51,7 @@ const jobButtonBase: CSSProperties = {
 
 /**
  * Sort mode (mobile Tally): one purchase at a time. The day's jobs — clock
- * sessions ∪ schedule blocks on the posted day ±1 — render as big buttons.
+ * sessions ∪ schedule blocks on the day the card was swiped ±1 — render as big buttons.
  * Tap one job → assign the whole amount; tap two+ → split (even by default,
  * amounts editable with auto-balance). Saves via the same replace RPC the
  * clock-window modal uses; every save offers Undo (replace back).
@@ -114,7 +115,7 @@ export function TallySortPurchaseModal({
     setDayJobs([])
     setLines([])
     setSaveError(null)
-    void fetchSortModeDayJobs(userId, row.posted_at, ledgerPrefixMap).then(({ data, error }) => {
+    void fetchSortModeDayJobs(userId, mercurySwipeAtIso(row.raw, row.posted_at) ?? row.posted_at, ledgerPrefixMap).then(({ data, error }) => {
       if (cancelled) return
       setDayJobs(data)
       setDayJobsError(error)
@@ -128,7 +129,8 @@ export function TallySortPurchaseModal({
 
   if (!open) return null
 
-  const posted = row ? formatTallyPostedParts(row.posted_at) : null
+  // The day the card was swiped: Mercury posts it later, often the next day.
+  const bought = row ? formatTallyPostedParts(mercurySwipeAtIso(row.raw, row.posted_at)) : null
   const remainder = sortModeSplitRemainder(lines, total)
   const selectedIds = new Set(lines.map((l) => l.jobId))
 
@@ -208,6 +210,7 @@ export function TallySortPurchaseModal({
         alignItems: 'flex-end',
         justifyContent: 'center',
         zIndex: 1160,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={() => {
         if (!saving && !undoBusy) onClose()
@@ -223,7 +226,7 @@ export function TallySortPurchaseModal({
           borderRadius: '14px 14px 0 0',
           width: '100%',
           maxWidth: 480,
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           overflowY: 'auto',
           padding: '0.85rem 0.85rem calc(1rem + env(safe-area-inset-bottom))',
           display: 'flex',
@@ -285,7 +288,7 @@ export function TallySortPurchaseModal({
                 {(row.counterparty_name ?? '').trim() || 'Card purchase'}
               </div>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 1 }}>
-                {posted ? `${posted.weekday} ${posted.date}` : '—'} · your jobs from the day before through the day after
+                {bought ? `Bought ${bought.weekday} ${bought.date}. ` : ''}Your jobs from the day before through the day after.
               </div>
             </div>
 

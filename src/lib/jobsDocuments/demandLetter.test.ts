@@ -14,6 +14,11 @@ import {
   paymentsAppliedToInvoice,
   buildDemandLetterText,
   buildDemandStatement,
+  demandDate,
+  demandSubject,
+  exhibitInvoiceDocument,
+  recipientLines,
+  statementTable,
   letterheadContactLines,
   demandDebtorParty,
   demandInvoicesPhrase,
@@ -157,6 +162,22 @@ describe('prefill', () => {
     expect(f.lienFilingDeadline).toBe('2026-10-15')
     expect(f.includeTheftOfServices).toBe(false)
     expect(f.invoiceDate).toBe('2026-07-15')
+  })
+
+  it('the invoice date is the first bill\'s day in the company zone, evenings included', () => {
+    const base = {
+      job,
+      issuer: { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr', phone: '', email: '', tagline: '', licenseLine: '' },
+      senderName: 'Malachi',
+      senderEmailFallback: 'office@x.com',
+      recipient: { name: 'Knight Contracting', email: 'ap@k.com', address: 'Flower Mound' },
+      priorNotices: [],
+      propertyKind: 'non_residential',
+      todayYmd: '2026-12-20',
+    }
+    // 7:30 pm CDT on Oct 2 (the +00:00 shape), and 6:30 pm CST on Dec 1 ahead of a later bill.
+    expect(buildDemandLetterPrefill({ ...base, invoices: [inv('a', 100, '2026-10-03T00:30:00.123+00:00')] }).invoiceDate).toBe('2026-10-02')
+    expect(buildDemandLetterPrefill({ ...base, invoices: [inv('b', 100, '2026-12-05T18:00:00Z'), inv('a', 100, '2026-12-02T00:30:00Z')] }).invoiceDate).toBe('2026-12-01')
   })
 })
 
@@ -319,6 +340,20 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     expect(text).toContain("This letter is Click Plumbing and Electrical's final formal demand")
   })
 
+  it('a bill marked billed or sent in a Central evening reads that day on the statement', () => {
+    // 7:30 pm CDT on Oct 2, also in PostgREST's +00:00 shape.
+    const [billed] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-10-03T00:30:00Z' }), doc: null, stripe: null }])
+    expect(billed?.sentYmd).toBe('2026-10-02')
+    const [sent] = buildDemandStatement(job, [{ inv: inv({ billed_at: null, sent_to_customer_at: '2026-10-03T00:30:00.123+00:00' }), doc: null, stripe: null }])
+    expect(sent?.sentYmd).toBe('2026-10-02')
+    // 6:30 pm CST on Dec 1; the due date is a date and stays as stored; noon UTC reads its own day.
+    const [winter] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-12-02T00:30:00Z' }), doc: null, stripe: null }])
+    expect(winter?.sentYmd).toBe('2026-12-01')
+    expect(winter?.dueYmd).toBe('2026-09-05')
+    const [noon] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-10-03T12:00:00Z' }), doc: null, stripe: null }])
+    expect(noon?.sentYmd).toBe('2026-10-03')
+  })
+
   it('paid and balance come from the payments applied to that invoice', () => {
     const paidJob = { ...job, payments: [{ invoice_id: 'inv-1', amount: 500 }, { invoice_id: 'other', amount: 999 }] } as unknown as JobWithDetails
     const [st] = buildDemandStatement(paidJob, [{ inv: inv({}), doc: null, stripe: null }])
@@ -474,8 +509,20 @@ describe('paymentsAppliedToInvoice (v2.3515)', () => {
     expect(paymentsAppliedToInvoice(job, 's0')).toBe(500)
   })
 
-  // Job 273: three open bills, $38,780 unlinked. Each bill claims only what it absorbed.
-  it('job 273: oldest first covers all three bills once, the rest is the job\'s surplus', () => {
+  // v2.4534: with the job's total, the $38,780 paid the $38,780 of the job that is on no bill.
+  // The letter read $0.00 beside a § 53.056 notice for $17,585 until then.
+  it('job 273 with its $56,365 total: nothing has been paid on the three bills', () => {
+    const inv2 = (id: string, amount: number, seq: number) => ({ id, amount, status: 'billed', sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
+    const job = { revenue: 56365, invoices: [inv2('a', 13420, 0), inv2('b', 665, 1), inv2('c', 3500, 2)], payments: [pay(8880, null), pay(12000, null), pay(1200, null), pay(16700, null)] }
+    expect(['a', 'b', 'c'].map((id) => paymentsAppliedToInvoice(job, id))).toEqual([0, 0, 0])
+    // Job 102: the $3,000 check paid the $3,000 of the $8,355 job its one bill left out.
+    expect(paymentsAppliedToInvoice({ revenue: 8355, invoices: [inv('a', 5355)], payments: [pay(3000, null)] }, 'a')).toBe(0)
+    // A job wholly on its bill: the deposit still comes off it.
+    expect(paymentsAppliedToInvoice({ revenue: 5355, invoices: [inv('a', 5355)], payments: [pay(3000, null)] }, 'a')).toBe(3000)
+  })
+
+  // Job 273 read without its total (a caller that has none): each bill claims only what it absorbed.
+  it('job 273 without the job\'s total: oldest first covers all three bills once, the rest is the job\'s surplus', () => {
     const inv2 = (id: string, amount: number, seq: number) => ({ id, amount, status: 'billed', sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
     const job = { invoices: [inv2('a', 13420, 0), inv2('b', 3500, 1), inv2('c', 665, 2)], payments: [pay(38780, null)] }
     expect(paymentsAppliedToInvoice(job, 'a')).toBe(13420)
@@ -535,5 +582,68 @@ describe('prefill reads the same rule (v2.3515)', () => {
     const f = buildDemandLetterPrefill(ctx(job, [s2]))
     expect(f.paymentsReceived).toBe('0.00')
     expect(f.outstanding).toBe('9800.00')
+  })
+})
+
+describe('the letter as a page (v2.4577)', () => {
+  const second: DemandStatementInvoice = {
+    invoiceNumber: '#867-2609010101',
+    sentYmd: '2026-09-01',
+    dueYmd: '2026-09-02',
+    lines: [
+      { description: 'Change order: irrigation piping', qty: '', amount: '307.50' },
+      { description: 'Change order: drainage pipe', qty: '2', amount: '317.50' },
+    ],
+    total: '625.00',
+    paid: '0.00',
+    balance: '625.00',
+  }
+  const fields: DemandLetterFields = { ...FIELDS, statement: [STMT_867, second], outstanding: '2335.00', serviceAddress: '380 TX-123, Seguin, TX 78155', recipientAddress: '2209 N. 23rd St., McAllen, TX 78501' }
+
+  it('opens with the addressee, the subject and the boxed amount, and ends demand → notice history → signature → enclosures', () => {
+    const model = buildDemandLetterModel({ ...fields, enclosures: [{ label: 'A-1', kind: 'invoice', title: 'Invoice #1', pages: 1 }] }, '2026-09-14')
+    expect(model.slice(0, 4).map((b) => b.kind)).toEqual(['senderBlock', 'addressBlock', 'subject', 'amountBox'])
+    expect(model.find((b) => b.kind === 'subject')).toMatchObject({ kicker: 'Final demand for payment', text: '380 TX-123, Seguin, TX 78155', detail: 'Two unpaid invoices' })
+    expect(model.find((b) => b.kind === 'amountBox')).toEqual({ kind: 'amountBox', balance: '$2,335.00', deadline: demandDate(fields.deadlineDate) })
+    const headings = model.filter((b) => b.kind === 'heading').map((b) => (b.kind === 'heading' ? b.text : ''))
+    expect(headings).toEqual(['Statement of account', 'Demand', 'Notice history'])
+    expect(model.slice(-2).map((b) => b.kind)).toEqual(['signature', 'enclosures'])
+    // The remedies are numbered from 1; the notice history stays bulleted.
+    const numbered = model.filter((b) => b.kind === 'listItem' && b.n != null).map((b) => (b.kind === 'listItem' ? b.n : 0))
+    expect(numbered).toEqual(numbered.map((_, i) => i + 1))
+    expect(numbered.length).toBeGreaterThan(0)
+  })
+
+  it('the addressee reads as an envelope does', () => {
+    expect(recipientLines('Southern Post Construction', '2209 N. 23rd St., McAllen, TX 78501')).toEqual(['Southern Post Construction', '2209 N. 23rd St.', 'McAllen, TX 78501'])
+    expect(recipientLines('A', '1 Main St\nSuite 2\nAustin, TX 78701')).toEqual(['A', '1 Main St', 'Suite 2', 'Austin, TX 78701'])
+    expect(recipientLines('', '')).toEqual(['—'])
+    expect(demandSubject([STMT_867], '')).toEqual({ text: 'Invoice #867-2608180928', detail: '' })
+  })
+
+  it('the statement is one row per invoice; a bill of several lines names each charge; Billed and Paid appear only when something was paid', () => {
+    const t = statementTable({ invoices: [STMT_867, second], balance: '2335.00' })
+    expect(t.hasPaid).toBe(false)
+    expect(t.rows.map((r) => r.invoice)).toEqual(['#867-2608180928', '#867-2609010101'])
+    expect(t.rows[0]).toMatchObject({ lines: [{ text: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', amount: '' }], sent: 'Aug 18, 2026', due: 'Sep 5, 2026', balance: '$1,710.00' })
+    expect(t.rows[1]!.lines).toEqual([{ text: 'Change order: irrigation piping', amount: '$307.50' }, { text: 'Change order: drainage pipe · Qty 2', amount: '$317.50' }])
+    expect(t.total).toBe('$2,335.00')
+    const paid = statementTable({ invoices: [{ ...STMT_867, paid: '500.00', balance: '1210.00' }, second], balance: '1835.00' })
+    expect(paid.hasPaid).toBe(true)
+    expect(paid.rows[0]).toMatchObject({ billed: '$1,710.00', paid: '−$500.00', balance: '$1,210.00' })
+    const html = buildDemandLetterEmailHtml({ ...fields, statement: [{ ...STMT_867, paid: '500.00', balance: '1210.00' }, second] }, '2026-09-14')
+    expect(html).toContain('>Billed<')
+    expect(html).toContain('sent Aug 18, 2026')
+    expect(buildDemandLetterEmailHtml(fields, '2026-09-14')).not.toContain('>Billed<')
+    // The page draws no dash: a subject of two lines, columns for a notice's day and an exhibit's label.
+    const page = buildDemandLetterEmailHtml({ ...fields, priorNotices: [{ date: '2026-07-15', label: 'Invoice sent' }], enclosures: [{ label: 'A-1', kind: 'invoice', title: 'Invoice #1', pages: 1 }] }, '2026-09-14')
+    expect(page).not.toMatch(/—|--/)
+  })
+
+  it('the invoice exhibit prints the number and the due day the letter states', () => {
+    const doc = { invoiceNumberDisplay: '#2', dueDateDisplay: 'September 16, 2026', jobName: 'kept' } as unknown as PhysicalInvoiceDocument
+    expect(exhibitInvoiceDocument(doc, { invoiceNumber: '#878-2609171138', dueYmd: '2026-09-17' })).toMatchObject({ invoiceNumberDisplay: '#878-2609171138', dueDateDisplay: 'September 17, 2026', jobName: 'kept' })
+    // Nothing better known: the document keeps its own.
+    expect(exhibitInvoiceDocument(doc, { invoiceNumber: '', dueYmd: '' })).toMatchObject({ invoiceNumberDisplay: '#2', dueDateDisplay: 'September 16, 2026' })
   })
 })

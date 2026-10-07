@@ -17,11 +17,11 @@ import { approvedClosedSessionHours, overheadBucketForSession, type OverheadCloc
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../overheadOfficeJobSettings'
 import { costLineTags, sumTagChargesByJob } from '../mercuryTagSplit'
 import { fetchLabelIdByTxId } from '../banking/categoryTagsData'
-import { categoryTagForCharge, type CategoryTagLookups } from '../banking/categoryTags'
-import { fetchAttributionsByMercuryTxIds } from '../fetchMercuryRelationsByTxIds'
+import type { CategoryTagLookups } from '../banking/categoryTags'
 import { ymdAddYears } from './reviewDateRange'
 import { fetchJobStatusesByIds, laborRowJobId, paged, throwIfQueryError } from './reviewLoaderQueries'
 import { loadWheelsSnapshot } from './wheelsData'
+import { loadFuelOffJobsByUserId } from './reviewVehicleFuel'
 import type { TeamLaborItem, TeamLedgerRow, TeamPeriodLaborRow, TeamReviewUnion, TeamReviewVehicle } from './teamReviewTypes'
 
 /**
@@ -341,61 +341,48 @@ export async function loadTeamReviewUnion(
   const cardRowsAll = cardChargeRows as Array<{ job_id: string; amount: number; mercury_transaction_id: string | null }>
   const cardTxIds = [...new Set(cardRowsAll.map((r) => r.mercury_transaction_id).filter((id): id is string => !!id))]
 
-  // Wheels on Labor (v2.2735): people with a vehicle deal are priced per
-  // field hour (own vehicle → labor side, company truck → burden side), so
-  // their fuel-tag card charges leave the job purchase sums — otherwise the
-  // fuel would count twice and land on co-workers by labor share.
+  // Wheels on Labor (v2.2735). Since v2.4653 (punch list #52 PR 5) fuel stays on the jobs it was
+  // put on, here as on every job screen: a vehicle deal's fuel is no longer taken out of the job
+  // purchases. The person's vehicle line charges only what is not on a job — the deal's fixed
+  // $/field h and their fuel on no job in the period (`loadFuelOffJobsByUserId`).
   const vehicleByPersonName: Record<string, TeamReviewVehicle> = {}
   const [wheels, cardExclusions] = await Promise.all([
     loadWheelsSnapshot({ todayYmd: denverCalendarDayKey(Date.now()), users }).catch(() => null),
     loadCardChargeExclusions(cardTxIds),
   ])
-  if (wheels) {
-    for (const r of wheels.rows) {
-      if (r.arrangement === 'none') continue
-      vehicleByPersonName[r.name] = { arrangement: r.arrangement, rate: r.effectiveRate, truckName: r.truck?.name ?? null, note: r.note }
+  const dealRows = (wheels?.rows ?? []).filter((r) => r.arrangement !== 'none')
+  const fuelOffJobs =
+    dealRows.length > 0
+      ? await loadFuelOffJobsByUserId({ startYmd: start, endYmd: end, lookups: tagLookups, fuelTagId: wheels?.fuelTag?.id ?? null, officeJobId: officeJobLedgerId }).catch(() => null)
+      : null
+  for (const r of dealRows) {
+    vehicleByPersonName[r.name] = {
+      arrangement: r.arrangement,
+      fixedRate: r.fixedRate,
+      fuelOffJobsUsd: r.userId ? (fuelOffJobs?.get(r.userId) ?? 0) : 0,
+      truckName: r.truck?.name ?? null,
+      note: fuelOffJobs ? r.note : `${r.note}; the card charges could not be read, so fuel on no job reads $0`,
     }
   }
-  const nameByUserId = new Map(users.map((u) => [u.id, u.name]))
 
   let labelIdByTxId = new Map<string, string>()
   const categoryByTxId = new Map<string, unknown>()
-  const excludedTxIds = new Set<string>()
   if (cardTxIds.length > 0 && tagLookups.tagsById.size > 0) {
-    const [labels, categoryRows, attributions] = await Promise.all([
+    const [labels, categoryRows] = await Promise.all([
       fetchLabelIdByTxId(cardTxIds).catch(() => new Map<string, string>()),
       fetchAllRowsChunkedIn(
         cardTxIds,
-        (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category, kind').in('id', chunk).order('id').range(f, t),
+        (chunk, f, t) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(f, t),
         'load team summary card categories',
       ).catch(() => [] as unknown[]),
-      Object.keys(vehicleByPersonName).length > 0 ? fetchAttributionsByMercuryTxIds(cardTxIds, 'review wheels').catch(() => []) : Promise.resolve([]),
     ])
     labelIdByTxId = labels
-    const kindByTxId = new Map<string, string>()
-    for (const r of categoryRows as Array<{ id: string; mercury_category: unknown; kind: string }>) {
-      categoryByTxId.set(r.id, r.mercury_category)
-      kindByTxId.set(r.id, r.kind)
-    }
-    const fuelTagId = wheels?.fuelTag?.id ?? null
-    if (fuelTagId) {
-      for (const a of attributions) {
-        const name = a.user_id ? nameByUserId.get(a.user_id) : null
-        if (!name || !vehicleByPersonName[name]) continue
-        // Only card purchases are priced by the deal (v2.2739); an ACH filed under a vehicle label stays on the job.
-        if (kindByTxId.get(a.mercury_transaction_id) !== 'debitCardTransaction') continue
-        const cat = categoryByTxId.get(a.mercury_transaction_id)
-        const tag = categoryTagForCharge(tagLookups, labelIdByTxId.get(a.mercury_transaction_id) ?? null, typeof cat === 'string' ? cat : null)
-        if (tag?.id === fuelTagId) excludedTxIds.add(a.mercury_transaction_id)
-      }
-    }
+    for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
   }
-  const cardRowsAfterFuel = excludedTxIds.size > 0 ? cardRowsAll.filter((r) => !r.mercury_transaction_id || !excludedTxIds.has(r.mercury_transaction_id)) : cardRowsAll
-  // Then the ONE card-charge rule Job Summary applies (v2.2692, `cardChargeAllocationFilter`):
-  // Internal Transfers out; an invoice-linked charge counted once. The fuel removal above
-  // stays — it is Review's own pricing choice (Wheels), not a composition difference.
+  // The ONE card-charge rule Job Summary applies (v2.2692, `cardChargeAllocationFilter`):
+  // Internal Transfers out; an invoice-linked charge counted once. Nothing else comes off.
   const cardSummary = summarizeCardChargeAllocations(
-    cardRowsAfterFuel.map((r) => ({ ...r, mercury_transaction_id: r.mercury_transaction_id ?? '' })),
+    cardRowsAll.map((r) => ({ ...r, mercury_transaction_id: r.mercury_transaction_id ?? '' })),
     cardExclusions,
   )
   const cardRows = cardSummary.counted

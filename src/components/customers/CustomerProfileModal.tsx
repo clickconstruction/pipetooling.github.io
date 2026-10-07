@@ -24,6 +24,10 @@ import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEv
 import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { telHrefFor } from '../../lib/phoneContact'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { readCustomerProfileView, writeCustomerProfileView, type CustomerProfileView } from '../../lib/customers/customerProfileView'
+import CustomerViewSwitch from './CustomerViewSwitch'
+import CustomerTimelineView from './CustomerTimelineView'
 
 /**
  * Customer profile modal (v2.1322): everything the app knows about one
@@ -61,7 +65,7 @@ function Dot({ color }: { color: string }) {
 const JOBS_LIST_COLLAPSE_COUNT = 4
 const BIDS_LIST_COLLAPSE_COUNT = 3
 
-export default function CustomerProfileModal({ customerId, onClose }: { customerId: string; onClose: () => void }) {
+function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { customerId: string; onClose: () => void; onShowTimeline: () => void }) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
   const jobDetail = useJobDetailModal()
@@ -123,7 +127,8 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
   const contact = data ? extractContactFromCustomer(data.customer) : { phone: '', email: '' }
   const address = (data?.customer.address ?? '').trim()
   const sinceLabel = useMemo(() => {
-    const dm = (data?.customer.date_met ?? data?.customer.created_at ?? '').slice(0, 10)
+    // date_met is a `date`; created_at is an instant, read as its day in the company calendar.
+    const dm = data?.customer.date_met ? data.customer.date_met.slice(0, 10) : calendarYmdInAppTzFromIso(data?.customer.created_at ?? '')
     if (!dm) return null
     const d = new Date(`${dm}T12:00:00Z`)
     if (Number.isNaN(d.getTime())) return null
@@ -156,12 +161,12 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
       role="dialog"
       aria-modal="true"
       aria-label="Customer profile"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 70, padding: '1rem' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(660px, 100%)', maxHeight: '88vh', overflow: 'auto' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(660px, 100%)', maxHeight: 'min(88vh, 100%)', overflow: 'auto' }}
       >
         {error ? (
           <div style={{ padding: '1.25rem' }}>
@@ -199,14 +204,17 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
                     Archived
                   </span>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={onClose}
-                  aria-label="Close"
-                  style={{ marginLeft: 'auto', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
-                >
-                  ×
-                </button>
+                <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <CustomerViewSwitch view="profile" onChange={(v) => (v === 'timeline' ? onShowTimeline() : undefined)} />
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close"
+                    style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}
+                  >
+                    ×
+                  </button>
+                </span>
               </div>
               {sinceLabel || data.gcLastStatementSentAt ? (
                 <div style={{ marginTop: 3, fontSize: '0.75rem', color: 'var(--text-faint)' }}>
@@ -555,6 +563,35 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
             </div>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The Customer profile window: the Profile and, since punch list #97, the Timeline. A door may
+ * name the view; otherwise the window opens on the one last picked on this device.
+ */
+export default function CustomerProfileModal({ customerId, onClose, initialView }: { customerId: string; onClose: () => void; initialView?: CustomerProfileView }) {
+  const [view, setView] = useState<CustomerProfileView>(() => initialView ?? readCustomerProfileView())
+  const choose = (next: CustomerProfileView) => {
+    setView(next)
+    writeCustomerProfileView(next)
+  }
+  if (view === 'profile') return <CustomerProfilePanel customerId={customerId} onClose={onClose} onShowTimeline={() => choose('timeline')} />
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Customer timeline"
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 770, padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, width: 'min(1160px, 100%)', height: 'min(92vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      >
+        <CustomerTimelineView customerId={customerId} onClose={onClose} onShowProfile={() => choose('profile')} />
       </div>
     </div>
   )

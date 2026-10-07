@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimeline, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
+import { buildLienTimeline, keepDatesWhole, LIEN_KIND_UNKNOWN_WORDS, lienDateWords, lienFirmMoveWords, lienFirmNext, lienFirmWaitingOn, lienTimelineFoldSummary, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
 
 const TODAY = '2026-09-23'
 
@@ -92,9 +92,10 @@ describe('buildLienTimeline — residential, one month missed and unnoted, the n
   })
 })
 
-describe('buildLienTimeline — every window closed, nothing sent (650 ATI Schertz)', () => {
+describe('buildLienTimeline — every window closed, nothing sent, and the affidavit window closed too (650 ATI Schertz, read Oct 20)', () => {
   const t = buildLienTimeline(
     base({
+      todayYmd: '2026-10-20',
       lastMonth: '2026-06',
       months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }],
       noticeState: 'to_draft',
@@ -111,10 +112,46 @@ describe('buildLienTimeline — every window closed, nothing sent (650 ATI Scher
     expect(t.next.aside).toContain('Write the closed window down')
     expect(t.next.tone).toBe('red')
   })
+  it('the law firm reads the fact, with no office screen named and no waiting line (punch list #85, item 3)', () => {
+    expect(lienFirmNext(t.next)).toEqual({ words: 'The lien window closed with nothing filed. The lien is gone; the money is still owed.', aside: 'The office referred the account to you.' })
+    expect(lienFirmWaitingOn(t)).toBeNull()
+    expect(t.next.words).toContain('Collections')
+    expect(lienFirmMoveWords('ours')).toBe('the office')
+    expect(lienFirmMoveWords('counsel')).toBe('you')
+    expect(lienFirmMoveWords('gc')).toBe('the GC')
+  })
   it('once someone notes the miss, the aside goes quiet', () => {
-    const noted = buildLienTimeline(base({ lastMonth: '2026-06', months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' }] }))
+    const noted = buildLienTimeline(base({ todayYmd: '2026-10-20', lastMonth: '2026-06', months: [{ key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '2026-09-21T15:00:00Z' }] }))
     expect(noted.next.aside).toBe('')
     expect(noted.steps.find((s) => s.kind === 'notice')?.words).toBe('window closed · noted')
+  })
+})
+
+describe('buildLienTimeline — every window closed unsent while the affidavit window is still open: the late notice (v2.4708, 890 Dudley Mason read Oct 6)', () => {
+  // The owner's reading of 2026-10-06, against counsel's 2026-09-22 memo (answer 6): a late § 53.056 notice still carries the affidavit.
+  const late = buildLienTimeline(base({ todayYmd: '2026-10-06', propertyKind: 'residential', lastMonth: '2026-07', months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }], noticeState: '' }))
+  it('the lien is not gone; the affidavit is due, waiting on the late notice', () => {
+    expect(late.lienGone).toBe(false)
+    expect(kinds(late)).toEqual(['last_work=done', 'notice:2026-07=missed', 'retainage=undated', 'affidavit=due', 'serve=later', 'suit=later'])
+    const a = late.steps.find((s) => s.kind === 'affidavit')!
+    expect(a.words).toBe('9 days · send the late notice first')
+    expect(a.opensWords).toBe('opens when the late notice is mailed')
+    expect(a.dateWords).toBe('Oct 15')
+    expect(late.steps.find((s) => s.kind === 'notice')?.words).toBe('window closed · not noted')
+  })
+  it('Next says to send it late, then file; Waiting on is us; the Windows aside still speaks', () => {
+    expect(late.next.kind).toBe('late_notice')
+    expect(late.next.words).toBe('Send the Jul notice late, then file the affidavit — 9 days.')
+    expect(late.next.aside).toBe('The notice window closed; the affidavit can still be filed by Oct 15.')
+    expect(late.next.tone).toBe('amber')
+    expect(late.waitingOn).toEqual({ who: 'ours', words: 'the late notice, then the affidavit by Oct 15' })
+    expect(late.windowsAside).toContain('the lien can be filed any day until Oct 15')
+    expect(lienFirmNext(late.next).words).toBe(late.next.words)
+  })
+  it('once the affidavit window closes too, the lien is gone as before', () => {
+    const gone = buildLienTimeline(base({ todayYmd: '2026-10-20', propertyKind: 'residential', lastMonth: '2026-07', months: [{ key: '2026-07', deadline: '2026-09-15', fromCreation: false, outcome: 'missed', at: '' }], noticeState: '' }))
+    expect(gone.lienGone).toBe(true)
+    expect(gone.next.kind).toBe('lien_gone')
   })
 })
 
@@ -430,5 +467,24 @@ describe('the Lien window’s folded strip on a phone (v2.4398)', () => {
     const unknown = buildLienTimeline(base({ propertyKind: '', lastMonth: '2026-09', months: [open('2026-09', '2026-10-15')] }))
     expect(unknown.kindUnknown).toBe(true)
     expect(lienTimelineFoldSummary(unknown).notes).toContain(LIEN_KIND_UNKNOWN_WORDS)
+  })
+})
+
+describe('keepDatesWhole (v2.4633)', () => {
+  it('binds the month to its day, the day to its year, and a month to its year; the words around them still wrap', () => {
+    expect(keepDatesWhole('open since Aug 1')).toBe('open since Aug\u00a01')
+    expect(keepDatesWhole('Jan 17, 2028')).toBe('Jan\u00a017,\u00a02028')
+    expect(keepDatesWhole('Sep 2026 clock hours')).toBe('Sep\u00a02026 clock hours')
+    expect(keepDatesWhole('42 days · on the same notice')).toBe('42 days · on the same notice')
+    expect(keepDatesWhole('sent Oct 1 · noted')).toBe('sent Oct\u00a01 · noted')
+  })
+})
+
+describe('the last day of work set by hand (v2.4676)', () => {
+  it('the LAST WORK node says so, and the creation words give way', () => {
+    const t = buildLienTimeline(base({ lastMonth: '2026-08', lastMonthFromCreation: false, lastMonthByHand: true }))
+    expect(t.steps[0]!.words).toBe('last day set by hand')
+    const c = buildLienTimeline(base({ lastMonth: '2026-08', lastMonthFromCreation: true }))
+    expect(c.steps[0]!.words).toBe('dated from the job’s creation · no clock hours')
   })
 })

@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -20,6 +20,23 @@ import {
   type BidTabValues,
 } from '../../lib/bidTabCapture'
 import { buildCallQueue, type CallQueueBid, type CallQueueBuilder } from '../../lib/bids/callQueue'
+import {
+  EMPTY_FOLLOWUP_PICK,
+  applyFollowupToEntry,
+  bidFollowupColumns,
+  buildFollowupChangeEntry,
+  builderFollowupYmd,
+  followupDateLabel,
+  followupReasonLabel,
+  followupTag,
+  noteWithoutFollowupSentence,
+  type BidFollowup,
+  type BidFollowupColumns,
+  type FollowupPick,
+} from '../../lib/bids/bidNextFollowup'
+import { noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { FollowupPickPanel, type FollowupPickPerson } from './FollowupPickPanel'
 import { bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
@@ -55,12 +72,30 @@ export type BidsCallQueueTabProps = {
   onReloadBids: () => void
   /** Jump to this bid's builder card on the By-builder lens (call session lives there). */
   onOpenBuilderCard: (bid: BidWithBuilder) => void
+  /** The people on every customer: who a call-again day can name (v2.4420). */
+  contactPersons?: ReadonlyArray<{ id: string; customer_id: string; name: string; phone: string | null; note: string | null }>
+  /** After a person is added to a customer from the queue. */
+  onReloadContactPersons?: () => void
 }
 
 type QueueRowKey = 'chase' | 'reasons' | 'tabs'
+/** The four pills over the queue: where the open bids stand today. */
+type WhenKey = 'due' | 'overdue' | 'none' | 'later'
+/** Contacts that end with "when do we call again?": the three questions open under the tap. */
+const ASKS_CALL_AGAIN: ReadonlySet<PendingChaseActionKey> = new Set(['left_message', 'still_pending', 'rebid'])
 
 /** One queue entry = one bid × one GC (Bids by GC, v2.2164). `id` stays the bid id (writes); `rowKey` is unique. */
-type MappedBid = CallQueueBid & { rowKey: string; label: string; project: string; raw: BidWithBuilder; gc: GcOutcomeRow }
+type MappedBid = CallQueueBid & {
+  rowKey: string
+  label: string
+  project: string
+  raw: BidWithBuilder
+  gc: GcOutcomeRow
+  /** The bid's call-again day, who and why, off the bid row. */
+  followupCols: BidFollowupColumns
+  /** The customer this row's people belong to: the row's GC, else the bid's customer. */
+  peopleCustomerId: string | null
+}
 
 const taskLabelStyle: CSSProperties = {
   fontSize: '0.72rem',
@@ -112,6 +147,8 @@ export function BidsCallQueueTab({
   onError,
   onReloadBids,
   onOpenBuilderCard,
+  contactPersons,
+  onReloadContactPersons,
 }: BidsCallQueueTabProps) {
   const confirmDialog = useConfirmDialog()
   const { role: authRole } = useAuth()
@@ -122,9 +159,40 @@ export function BidsCallQueueTab({
   const [lostPickerBidId, setLostPickerBidId] = useState<string | null>(null)
   const [tabOpenBidId, setTabOpenBidId] = useState<string | null>(null)
   const [savingBidId, setSavingBidId] = useState<string | null>(null)
+  // Call-again days (v2.4420). `pickFor` is the row whose three questions are open: under a
+  // contact tap, or as "change date" on a parked bid.
+  const [whenKey, setWhenKey] = useState<WhenKey | null>(null)
+  const [laterOpen, setLaterOpen] = useState(false)
+  const [pickFor, setPickFor] = useState<{ rowKey: string; action: PendingChaseActionKey | 'change' } | null>(null)
+  const [pick, setPick] = useState<FollowupPick>(EMPTY_FOLLOWUP_PICK)
+  const [builderPrefs, setBuilderPrefs] = useState<Record<string, { next_followup_at: string | null; snoozed_until: string | null }>>({})
+  const [setByEntryId, setSetByEntryId] = useState<Record<string, { text: string; iso: string; by: string }>>({})
 
   // One instant per mount keeps every memo on the same clock.
   const nowIso = useMemo(() => new Date().toISOString(), [])
+  const todayYmd = useMemo(() => todayYmdInAppTz(new Date(nowIso)), [nowIso])
+
+  // The builder's own day (the call window's "Next follow-up", or a snooze): a bid with no day
+  // of its own takes it. Fail-soft: without it bids stand on their own days.
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(async () => supabase.from('customer_followup_prefs').select('customer_id, next_followup_at, snoozed_until'), 'load builder follow-up dates')
+        if (cancelled || !Array.isArray(rows)) return
+        const next: Record<string, { next_followup_at: string | null; snoozed_until: string | null }> = {}
+        for (const r of rows as Array<{ customer_id: string; next_followup_at: string | null; snoozed_until: string | null }>) {
+          next[r.customer_id] = { next_followup_at: r.next_followup_at, snoozed_until: r.snoozed_until }
+        }
+        setBuilderPrefs(next)
+      } catch {
+        // quiet
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const mapped = useMemo<MappedBid[]>(
     () =>
@@ -135,6 +203,7 @@ export function BidsCallQueueTab({
         const fromEntries = lastContactFromEntries[b.id] ?? null
         const lastContactIso =
           fromBid && fromEntries ? (fromBid > fromEntries ? fromBid : fromEntries) : fromBid ?? fromEntries
+        const followupCols = bidFollowupColumns(b)
         // Bids by GC: one entry per GC the bid went to, with that GC's outcome / value / reason.
         return gcOutcomeRowsForBid(b, { key: builderKey, name: builderName }, gcPacketsByBid[b.id]).map((row) => ({
           id: b.id,
@@ -148,6 +217,10 @@ export function BidsCallQueueTab({
           lastContactIso,
           lossCategory: row.lossCategory,
           hasTab: bidTabValuesFromRow(b).low != null,
+          // One day per bid: every GC row of the bid shares it.
+          nextFollowupYmd: followupCols.nextYmd,
+          followupCols,
+          peopleCustomerId: entryGcIdFromPacketKey(row.packetKey) ?? b.customer_id ?? null,
           label: bidLensLabel(b, ledgerPrefixMap),
           project: (b.project_name ?? '').trim() || '—',
           raw: b,
@@ -157,7 +230,54 @@ export function BidsCallQueueTab({
     [bids, gcPacketsByBid, lastContactFromEntries, ledgerPrefixMap],
   )
 
-  const queue = useMemo(() => buildCallQueue(mapped, nowIso), [mapped, nowIso])
+  const builderNextYmdByKey = useMemo(() => {
+    const out: Record<string, string | null> = {}
+    for (const [customerId, prefs] of Object.entries(builderPrefs)) out[customerId] = builderFollowupYmd(prefs, todayYmd)
+    return out
+  }, [builderPrefs, todayYmd])
+
+  const queue = useMemo(() => buildCallQueue(mapped, nowIso, { todayYmd, builderNextYmdByKey }), [mapped, nowIso, todayYmd, builderNextYmdByKey])
+  const followupOf = (b: CallQueueBid): BidFollowup | null => queue.followupByBid.get(b) ?? null
+
+  const personById = useMemo(() => {
+    const map = new Map<string, FollowupPickPerson & { customer_id: string }>()
+    for (const p of contactPersons ?? []) map.set(p.id, p)
+    return map
+  }, [contactPersons])
+  const peopleFor = (b: MappedBid): FollowupPickPerson[] => (b.peopleCustomerId ? (contactPersons ?? []).filter((p) => p.customer_id === b.peopleCustomerId) : [])
+
+  // "Last time": the log entry each open bid's day came from: what was said, when, by whom.
+  const dayEntryIdsKey = useMemo(
+    () => [...new Set(mapped.filter((b) => b.outcome === 'pending' && b.followupCols.entryId).map((b) => b.followupCols.entryId as string))].sort().join(','),
+    [mapped],
+  )
+  useEffect(() => {
+    if (!dayEntryIdsKey) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('bids_submission_entries')
+              .select('id, notes, occurred_at, created_by_user:users!bids_submission_entries_created_by_fkey(name, email)')
+              .in('id', dayEntryIdsKey.split(',')),
+          'load call-again notes',
+        )
+        if (cancelled || !Array.isArray(rows)) return
+        const next: Record<string, { text: string; iso: string; by: string }> = {}
+        for (const r of rows as Array<{ id: string; notes: string | null; occurred_at: string; created_by_user?: Parameters<typeof noteByLineFromEmbed>[0] }>) {
+          next[r.id] = { text: noteWithoutFollowupSentence(r.notes), iso: r.occurred_at, by: noteByLineFromEmbed(r.created_by_user).replace(/^By /, '') }
+        }
+        setSetByEntryId(next)
+      } catch {
+        // quiet: the card just does not say what was said last time
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [dayEntryIdsKey])
   const bidsByBuilder = useMemo(() => {
     const map = new Map<string, MappedBid[]>()
     for (const b of mapped) {
@@ -171,6 +291,8 @@ export function BidsCallQueueTab({
   const visibleBuilders = useMemo(() => {
     let list = queue.builders
     if (filterKey !== 'all') list = list.filter((b) => b[filterKey].todo.length > 0)
+    if (whenKey === 'later') list = list.filter((b) => b.chase.later.length > 0)
+    else if (whenKey) list = list.filter((b) => b.chase.todo.some((x) => queue.followupByBid.get(x)?.state === whenKey))
     const q = searchQuery.trim().toLowerCase()
     if (q) {
       list = list.filter(
@@ -185,12 +307,74 @@ export function BidsCallQueueTab({
       )
     }
     return list
-  }, [queue.builders, filterKey, searchQuery, bidsByBuilder, ledgerPrefixMap])
+  }, [queue.builders, queue.followupByBid, filterKey, whenKey, searchQuery, bidsByBuilder, ledgerPrefixMap])
+
+  /** Parked bids of the builders in view, soonest day first. */
+  const laterRows = useMemo(() => {
+    const rows = visibleBuilders.flatMap((builder) => builder.chase.later.map((cb) => ({ builder, b: cb as MappedBid, f: queue.followupByBid.get(cb)! })))
+    return rows.sort((x, y) => ((x.f.dueYmd ?? '') < (y.f.dueYmd ?? '') ? -1 : (x.f.dueYmd ?? '') > (y.f.dueYmd ?? '') ? 1 : x.builder.builderName.localeCompare(y.builder.builderName)))
+  }, [visibleBuilders, queue.followupByBid])
+
+  function openPick(b: MappedBid, action: PendingChaseActionKey | 'change') {
+    setLostPickerBidId(null)
+    setTabOpenBidId(null)
+    if (action === 'change') {
+      // Start from the day the bid has: its own, or the builder's it is standing on.
+      const person = b.followupCols.personId ? personById.get(b.followupCols.personId) : null
+      setPick({ ymd: followupOf(b)?.dueYmd ?? b.followupCols.nextYmd, personId: person?.id ?? null, personName: person?.name ?? null, reason: b.followupCols.reason })
+    } else {
+      setPick(EMPTY_FOLLOWUP_PICK)
+    }
+    setPickFor({ rowKey: b.rowKey, action })
+  }
+
+  /** "+ person" in the questions: the person joins the customer for good. */
+  async function addPersonFor(b: MappedBid, name: string, phone: string): Promise<FollowupPickPerson | null> {
+    if (!b.peopleCustomerId) return null
+    try {
+      const rows = await withSupabaseRetry(
+        async () => supabase.from('customer_contact_persons').insert({ customer_id: b.peopleCustomerId as string, name, phone: phone || null }).select('id, name, phone, note'),
+        'add contact person',
+      )
+      const made = Array.isArray(rows) ? (rows[0] as FollowupPickPerson | undefined) : undefined
+      if (!made) throw new Error('nothing was saved')
+      onError(null)
+      onReloadContactPersons?.()
+      return made
+    } catch (err) {
+      onError(err instanceof Error ? `Could not add the person: ${err.message}` : 'Could not add the person.')
+      return null
+    }
+  }
+
+  /** A day moved, or removed, with no call: a note in the log, never a contact. */
+  function saveDayChange(b: MappedBid, next: FollowupPick) {
+    if (!authUserId) {
+      onError('You must be signed in to change the date.')
+      return
+    }
+    if (savingBidId) return
+    const entry = buildFollowupChangeEntry({ bidId: b.id, userId: authUserId, nowIso: new Date().toISOString(), gcCustomerId: entryGcIdFromPacketKey(b.gc.packetKey), pick: next, todayYmd })
+    setSavingBidId(b.id)
+    void (async () => {
+      try {
+        await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(entry), 'save call-again date')
+        onError(null)
+        setPickFor(null)
+        onReloadBids()
+      } catch (err) {
+        onError(err instanceof Error ? `Could not save the date: ${err.message}` : 'Could not save the date.')
+      } finally {
+        setSavingBidId(null)
+      }
+    })()
+  }
 
   function toggleRow(builderKey: string, row: QueueRowKey) {
     setNoteDraft('')
     setLostPickerBidId(null)
     setTabOpenBidId(null)
+    setPickFor(null)
     setOpenRow((cur) => (cur && cur.builderKey === builderKey && cur.row === row ? null : { builderKey, row }))
   }
 
@@ -201,7 +385,7 @@ export function BidsCallQueueTab({
 
   /** One chase tap — entry + last_contact stamp (+ outcome / tab when given), then reload.
       Tier-2 #21: a Won on a multi-GC row states the cascade (other GCs Lost, bid Won) before writing. */
-  function chaseAction(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null) {
+  function chaseAction(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null, followup: FollowupPick = EMPTY_FOLLOWUP_PICK) {
     if (action === 'won' && packetScoped(b) && b.gc.packetKey != null) {
       const plan = wonCascadePlan({ outcome: b.raw.outcome ?? null }, cascadePackets(gcPacketsByBid[b.id] ?? []), b.gc.packetKey)
       if (wonCascadeNeedsConfirm(plan)) {
@@ -211,10 +395,10 @@ export function BidsCallQueueTab({
         return
       }
     }
-    chaseActionNow(b, action, lossCategory, tab, tabEntries)
+    chaseActionNow(b, action, lossCategory, tab, tabEntries, followup)
   }
 
-  function chaseActionNow(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null) {
+  function chaseActionNow(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null, followup: FollowupPick = EMPTY_FOLLOWUP_PICK) {
     if (!authUserId) {
       onError('You must be signed in to log a call.')
       return
@@ -230,13 +414,16 @@ export function BidsCallQueueTab({
       // Per-GC Phase 1: the call is with THIS row's GC — stamp the entry.
       gcCustomerId: entryGcIdFromPacketKey(b.gc.packetKey),
     })
+    // The day to call again rides the same log row: the columns, and a plain sentence in the note.
+    const entry = applyFollowupToEntry(writes.entry, followup, todayYmd)
     setSavingBidId(b.id)
     setNoteDraft('')
     setLostPickerBidId(null)
     setTabOpenBidId(null)
+    setPickFor(null)
     void (async () => {
       try {
-        await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(writes.entry), 'log call note')
+        await withSupabaseRetry(async () => supabase.from('bids_submission_entries').insert(entry), 'log call note')
         // Per-GC Phase 1: the entry insert above fires the last_contact sync trigger — no hand-bump.
         const patch: Record<string, string | number | null> = {}
         if (writes.outcomeUpdate && packetScoped(b)) {
@@ -336,16 +523,17 @@ export function BidsCallQueueTab({
     })()
   }
 
-  const noteInput = (
+  const noteInputFor = (placeholder: string) => (
     <input
       type="text"
       value={noteDraft}
       onChange={(e) => setNoteDraft(e.target.value)}
-      placeholder="what they said (optional — saved with the next tap)"
+      placeholder={placeholder}
       aria-label="Call note"
       style={{ flex: 1, minWidth: '14rem', maxWidth: '30rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.78rem', font: 'inherit' }}
     />
   )
+  const noteInput = noteInputFor('what they said (optional — saved with the next tap)')
 
   function bidHeadline(b: MappedBid, extra: string) {
     return (
@@ -358,6 +546,75 @@ export function BidsCallQueueTab({
           {extra}
         </span>
       </div>
+    )
+  }
+
+  const toneStyle: Record<'red' | 'amber' | 'blue', CSSProperties> = {
+    red: { background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid var(--border-red)' },
+    amber: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', border: '1px solid var(--border-amber)' },
+    blue: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border-blue)' },
+  }
+  function dayTag(f: BidFollowup | null) {
+    const tag = f ? followupTag(f, todayYmd) : null
+    if (!tag) return null
+    return (
+      <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0.08rem 0.5rem', borderRadius: 999, whiteSpace: 'nowrap', ...toneStyle[tag.tone] }}>{tag.label}</span>
+    )
+  }
+
+  /** Who to ask for, and what was said when the day was set. Only for a bid standing on its own day. */
+  function promiseLine(b: MappedBid, f: BidFollowup | null) {
+    if (!f || f.source !== 'bid') return null
+    const person = b.followupCols.personId ? personById.get(b.followupCols.personId) : null
+    // The person belongs to one GC: on a bid sent to two, name them only on their own GC's row.
+    const personHere = person && (!b.peopleCustomerId || person.customer_id === b.peopleCustomerId) ? person : null
+    const said = b.followupCols.entryId ? setByEntryId[b.followupCols.entryId] : undefined
+    if (!personHere && !said) return null
+    return (
+      <div style={{ marginTop: '0.3rem', fontSize: '0.78rem', color: 'var(--text-700)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.55rem', maxWidth: '40rem' }}>
+        {personHere ? (
+          <div>
+            Ask for <strong>{personHere.name}</strong>
+            {personHere.phone ? (
+              <>
+                {' · '}
+                <a href={telHrefFor(personHere.phone)} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
+                  {'☎'} {personHere.phone}
+                </a>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {said ? (
+          <div>
+            Last time, {followupDateLabel(calendarYmdInAppTzFromIso(said.iso), todayYmd)}
+            {said.text ? (
+              <>
+                : <strong>“{said.text}”</strong>
+              </>
+            ) : null}
+            <span style={{ color: 'var(--text-muted)' }}> — {said.by}</span>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  function pickPanel(b: MappedBid, opts: { saveLabel: string; noDayHint: string; onSave: () => void; canRemove: boolean }) {
+    return (
+      <FollowupPickPanel
+        todayYmd={todayYmd}
+        value={pick}
+        onChange={setPick}
+        people={peopleFor(b)}
+        onAddPerson={b.peopleCustomerId ? (name, phone) => addPersonFor(b, name, phone) : undefined}
+        saving={savingBidId != null}
+        saveLabel={opts.saveLabel}
+        onSave={opts.onSave}
+        onCancel={() => setPickFor(null)}
+        noDayHint={opts.noDayHint}
+        onRemove={opts.canRemove ? () => saveDayChange(b, EMPTY_FOLLOWUP_PICK) : undefined}
+      />
     )
   }
 
@@ -376,9 +633,22 @@ export function BidsCallQueueTab({
             const b = cb as MappedBid
             const quiet = b.lastContactIso ?? b.sentIso
             const quietDays = quiet ? Math.max(0, Math.floor((Date.parse(nowIso) - Date.parse(quiet)) / 86_400_000)) : null
+            const f = followupOf(b)
+            const promised = f != null && f.state !== 'none'
+            const waiting = promised && f.source === 'bid' ? followupReasonLabel(b.followupCols.reason) : null
+            const asking = pickFor && pickFor.rowKey === b.rowKey && pickFor.action !== 'change' ? pickFor.action : null
             return (
               <div key={b.rowKey} style={{ marginBottom: '0.55rem' }}>
-                {bidHeadline(b, `${b.sentIso ? ` · sent ${shortDate(b.sentIso)}` : ''}${quietDays != null ? ` · quiet ${quietDays}d` : ''}`)}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  {bidHeadline(
+                    b,
+                    `${b.sentIso ? ` · sent ${shortDate(b.sentIso)}` : ''}${
+                      promised ? (waiting && b.followupCols.reason !== 'other' ? ` · waiting on ${waiting.charAt(0).toLowerCase()}${waiting.slice(1)}` : '') : quietDays != null ? ` · quiet ${quietDays}d` : ''
+                    }`,
+                  )}
+                  {dayTag(f)}
+                </div>
+                {promiseLine(b, f)}
                 {lostPickerBidId === b.rowKey ? (
                   <div style={{ marginTop: '0.35rem' }}>
                     <BidLossCategoryChips value={null} onSelect={(key) => chaseAction(b, 'lost', key)} />
@@ -402,17 +672,28 @@ export function BidsCallQueueTab({
                         key={a.key}
                         type="button"
                         disabled={savingBidId != null}
-                        onClick={() =>
-                          a.key === 'lost' ? setLostPickerBidId(b.rowKey) : a.key === 'bid_tab' ? setTabOpenBidId(b.rowKey) : chaseAction(b, a.key)
-                        }
+                        aria-pressed={ASKS_CALL_AGAIN.has(a.key) ? asking === a.key : undefined}
+                        onClick={() => {
+                          if (a.key === 'lost') {
+                            setPickFor(null)
+                            setLostPickerBidId(b.rowKey)
+                          } else if (a.key === 'bid_tab') {
+                            setPickFor(null)
+                            setTabOpenBidId(b.rowKey)
+                          } else if (ASKS_CALL_AGAIN.has(a.key)) {
+                            // A second tap on the lit chip closes the questions without saving.
+                            if (asking === a.key) setPickFor(null)
+                            else openPick(b, a.key)
+                          } else chaseAction(b, a.key)
+                        }}
                         style={{
                           fontSize: '0.75rem',
                           padding: '0.22rem 0.6rem',
                           borderRadius: 999,
                           cursor: 'pointer',
-                          border: '1px solid var(--border-strong)',
-                          background: a.key === 'won' ? 'var(--bg-emerald-tint)' : a.key === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)',
-                          color: a.key === 'won' ? 'var(--text-emerald-800)' : a.key === 'lost' ? 'var(--text-red-800)' : 'var(--text-700)',
+                          border: asking === a.key ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                          background: asking === a.key ? '#3b82f6' : a.key === 'won' ? 'var(--bg-emerald-tint)' : a.key === 'lost' ? 'var(--bg-red-tint)' : 'var(--surface)',
+                          color: asking === a.key ? '#fff' : a.key === 'won' ? 'var(--text-emerald-800)' : a.key === 'lost' ? 'var(--text-red-800)' : 'var(--text-700)',
                           opacity: savingBidId != null ? 0.6 : 1,
                           font: 'inherit',
                         }}
@@ -422,10 +703,22 @@ export function BidsCallQueueTab({
                     ))}
                   </div>
                 )}
+                {/* With the questions open the note sits with them, above Save, not under it. */}
+                {asking ? <div style={{ display: 'flex', marginTop: '0.45rem' }}>{noteInputFor('what they said (optional)')}</div> : null}
+                {asking
+                  ? pickPanel(b, {
+                      saveLabel: 'Save',
+                      noDayHint: 'No day picked: back in the queue in 7 days.',
+                      onSave: () => chaseAction(b, asking, null, null, null, pick),
+                      canRemove: false,
+                    })
+                  : null}
               </div>
             )
           })}
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>{noteInput}</div>
+          {pickFor && pickFor.action !== 'change' && builder.chase.todo.some((cb) => (cb as MappedBid).rowKey === pickFor.rowKey) ? null : (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>{noteInput}</div>
+          )}
         </div>
       )
     }
@@ -534,6 +827,13 @@ export function BidsCallQueueTab({
     { key: 'tabs', label: 'Tab gettable', count: queue.totals.tabsCount },
   ]
 
+  const whenPills: Array<{ key: WhenKey; label: string; count: number; title: string }> = [
+    { key: 'due', label: 'Due', count: queue.totals.dueCount, title: 'Bids whose call-again day is today' },
+    { key: 'overdue', label: 'Overdue', count: queue.totals.overdueCount, title: 'Bids whose call-again day has passed' },
+    { key: 'none', label: 'No date yet', count: queue.totals.noDateCount, title: 'Bids with no day set and no contact in the last seven days' },
+    { key: 'later', label: 'Later', count: queue.totals.laterCount, title: 'Bids parked on a day still ahead' },
+  ]
+
   if (queue.builders.length === 0) {
     return (
       <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
@@ -561,6 +861,38 @@ export function BidsCallQueueTab({
           style={{ flex: '1 1 11rem', minWidth: '10rem', maxWidth: '18rem', font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
         />
       </div>
+      {/* v2.4420: where the open bids stand today. A pill narrows the list; a second tap clears it. */}
+      <div role="group" aria-label="Calls by when they are due" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.55rem 0 0' }}>
+        {whenPills.map((w) => {
+          const active = whenKey === w.key
+          return (
+            <button
+              key={w.key}
+              type="button"
+              aria-pressed={active}
+              title={w.title}
+              onClick={() => {
+                setWhenKey(active ? null : w.key)
+                if (w.key === 'later' && !active) setLaterOpen(true)
+              }}
+              style={{
+                fontFamily: 'inherit',
+                fontSize: '0.8125rem',
+                padding: '0.25rem 0.75rem',
+                borderRadius: 999,
+                cursor: 'pointer',
+                border: `1px solid ${active ? '#3b82f6' : 'var(--border-strong)'}`,
+                background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
+                fontWeight: active ? 700 : 500,
+              }}
+            >
+              {w.label}
+              <span style={{ fontSize: '0.72rem', marginLeft: '0.3rem', fontWeight: 600, color: w.key === 'overdue' && w.count > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{w.count}</span>
+            </button>
+          )
+        })}
+      </div>
       <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.5rem 0 0.15rem' }}>
         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginRight: '0.15rem' }}>Show</span>
         {filterChips.map((f) => {
@@ -580,7 +912,8 @@ export function BidsCallQueueTab({
                 background: active ? 'var(--surface)' : 'transparent',
                 color: 'var(--text-700)',
                 fontWeight: active ? 600 : 400,
-                font: 'inherit',
+                // fontFamily, not the `font` shorthand: the shorthand beside a longhand resets on re-render (the v2.770 pill bug).
+                fontFamily: 'inherit',
               }}
             >
               {f.label}
@@ -590,13 +923,76 @@ export function BidsCallQueueTab({
         })}
       </div>
       <p style={{ margin: '0.35rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        One list, worked top to bottom — whoever has waited longest first. Every card shows the same three rows; click a row to
-        open the bids behind the number right here. {'📞'} opens the builder card for a full call session.
+        One list, worked top to bottom. Calls you promised for a day come first, then whoever has waited longest. Every card
+        shows the same three rows; click a row to open the bids behind the number right here. {'📞'} opens the builder card for
+        a full call session.
       </p>
 
-      {visibleBuilders.length === 0 ? (
+      {laterRows.length > 0 ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', marginBottom: '0.6rem' }}>
+          <button
+            type="button"
+            aria-expanded={laterOpen}
+            onClick={() => setLaterOpen((v) => !v)}
+            style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', fontFamily: 'inherit', fontSize: '0.78rem', padding: '0.5rem 0.9rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-700)', textAlign: 'left' }}
+          >
+            <span>
+              <span style={{ display: 'inline-block', width: '0.9rem' }}>{laterOpen ? '▾' : '▸'}</span>
+              <strong>Later</strong> · {laterRows.length} bid{laterRows.length === 1 ? '' : 's'} waiting on a date
+              {laterOpen ? '' : ` · next ${followupDateLabel(laterRows[0]!.f.dueYmd ?? todayYmd, todayYmd)}`}
+            </span>
+            <span style={{ color: 'var(--text-muted)' }}>${formatCurrency(laterRows.reduce((sum, r) => sum + (Number.isFinite(r.b.value) ? r.b.value : 0), 0))} pending</span>
+          </button>
+          {laterOpen
+            ? laterRows.map(({ builder, b, f }) => {
+                const person = f.source === 'bid' && b.followupCols.personId ? personById.get(b.followupCols.personId) : null
+                const personHere = person && (!b.peopleCustomerId || person.customer_id === b.peopleCustomerId) ? person : null
+                const waiting = f.source === 'bid' ? followupReasonLabel(b.followupCols.reason) : null
+                const changing = pickFor?.rowKey === b.rowKey && pickFor.action === 'change'
+                return (
+                  <div key={b.rowKey} data-testid="call-queue-later-row" style={{ borderTop: '1px solid var(--border)', padding: '0.45rem 0.9rem', fontSize: '0.8125rem' }}>
+                    <div style={{ display: 'flex', gap: '0.4rem 0.9rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                      <strong style={{ minWidth: '6.2rem', fontVariantNumeric: 'tabular-nums' }}>{followupDateLabel(f.dueYmd ?? todayYmd, todayYmd)}</strong>
+                      <span style={{ flex: '1 1 16rem' }}>
+                        <strong>{builder.builderName}</strong> · {b.label} · {b.project}
+                        {b.value > 0 ? ` · $${formatCurrency(b.value)}` : ''}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 12rem' }}>
+                        {[waiting && b.followupCols.reason !== 'other' ? waiting : null, personHere ? `ask for ${personHere.name}` : null, f.source === 'builder' ? 'the builder’s date' : null].filter(Boolean).join(' · ') || '—'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => (changing ? setPickFor(null) : openPick(b, 'change'))}
+                        style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', fontFamily: 'inherit', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                      >
+                        change date
+                      </button>
+                    </div>
+                    {changing
+                      ? pickPanel(b, {
+                          saveLabel: 'Save the date',
+                          noDayHint: 'Pick a day, or No date to put the bid back in the queue.',
+                          onSave: () => {
+                            if (pick.ymd) saveDayChange(b, pick)
+                            else onError('Pick a day to call again, or use No date.')
+                          },
+                          canRemove: b.followupCols.nextYmd != null,
+                        })
+                      : null}
+                  </div>
+                )
+              })
+            : null}
+        </div>
+      ) : null}
+
+      {whenKey === 'later' ? (
+        laterRows.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No bid is waiting on a date. Pick a day under Left message or Still pending and it lands here.</p>
+        ) : null
+      ) : visibleBuilders.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          Nothing matches — clear the search or switch the filter back to All calls.
+          {whenKey ? 'Nothing here today. Tap the pill again to see every call.' : 'Nothing matches — clear the search or switch the filter back to All calls.'}
         </p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
@@ -606,8 +1002,12 @@ export function BidsCallQueueTab({
                 key: 'chase',
                 label: 'Chase',
                 todo: builder.chase.todo.length > 0 ? `${builder.chase.todo.length} pending` : null,
-                todoSub: builder.chase.oldestQuietDays != null ? `quiet ${builder.chase.oldestQuietDays}d` : null,
-                done: `${builder.chase.freshCount} of ${builder.stats.pending} fresh`,
+                todoSub:
+                  builder.due?.state === 'overdue' ? `promised ${followupDateLabel(builder.due.earliestYmd ?? todayYmd, todayYmd)}`
+                  : builder.due?.state === 'due' ? 'promised for today'
+                  : builder.chase.oldestQuietDays != null ? `quiet ${builder.chase.oldestQuietDays}d`
+                  : null,
+                done: `${builder.chase.freshCount} of ${builder.stats.pending} fresh${builder.chase.later.length > 0 ? ` · ${builder.chase.later.length} later` : ''}`,
               },
               {
                 key: 'reasons',
@@ -639,6 +1039,7 @@ export function BidsCallQueueTab({
               >
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-strong)' }}>{builder.builderName}</span>
+                  {builder.due && builder.due.state !== 'none' ? dayTag(followupOf(builder.chase.todo[0]!)) : null}
                   {builder.phone ? (
                     <a href={telHrefFor(builder.phone)} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}>
                       {'☎'} {builder.phone}

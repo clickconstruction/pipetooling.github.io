@@ -125,3 +125,12 @@ describe('backfillPaymentNote', () => {
     expect(backfillPaymentNote(plan[0]!)).toBe('HCP payment backfill · date from HCP paid-in-full date')
   })
 })
+
+describe('planHcpPaymentBackfill · a job made in the evening keeps its day (v2.4471)', () => {
+  it('dates the payment from the Central day the ledger row was made', () => {
+    // 00:30 UTC on Feb 27 is 6:30 pm CST on Feb 26; 00:30 UTC on Oct 3 is 7:30 pm CDT on Oct 2.
+    expect(planHcpPaymentBackfill([job({ hcp_number: '999', created_at: '2026-02-27T00:30:00Z' })], [], new Set())[0]).toMatchObject({ paidOn: '2026-02-26', dateSource: 'ledger_created' })
+    expect(planHcpPaymentBackfill([job({ hcp_number: '999', created_at: '2026-10-03T00:30:00+00:00' })], [], new Set())[0]!.paidOn).toBe('2026-10-02')
+    expect(planHcpPaymentBackfill([job({ hcp_number: '999', created_at: '2026-02-27T12:00:00Z' })], [], new Set())[0]!.paidOn).toBe('2026-02-27')
+  })
+})

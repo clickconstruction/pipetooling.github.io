@@ -144,7 +144,8 @@ export default function EstimateAcceptedNotifySettingsModal({ onClose }: { onClo
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: 760,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
       onClick={onClose}
     >
@@ -155,7 +156,7 @@ export default function EstimateAcceptedNotifySettingsModal({ onClose }: { onClo
           padding: '1.5rem',
           borderRadius: 8,
           width: 'min(560px, calc(100vw - 2rem))',
-          maxHeight: '85vh',
+          maxHeight: 'min(85vh, 100%)',
           overflow: 'auto',
           boxSizing: 'border-box',
         }}

@@ -25,6 +25,7 @@ import { refreshStripeInvoiceLinks } from '../_shared/stripeInvoiceLinkRefreshIo
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
+import { framesWaitingLine, signerNamesLine } from '../_shared/jobContractSigners.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -380,9 +381,11 @@ serve(async (req) => {
       viewerCustomerId: link.customer_id,
       markGcRows: link.audience === 'all',
       ownerNames,
+      // v2.4534: which bill an unlinked payment pays is decided across every sent bill of the job.
+      sentBills: portalInv,
     })
     const owedBills = bills
-    const sharedBills = buildPortalSharedBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, partyNames })
+    const sharedBills = buildPortalSharedBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, partyNames, sentBills: portalInv })
     // The jobs this viewer owes on — the promise's scope (v2.3346).
     const owedJobIds = owedJobIdsForViewer(jobs, invoices, link.customer_id)
 
@@ -400,6 +403,53 @@ serve(async (req) => {
           .eq('kind', 'notice_53_056')
           .is('voided_at', null)
         propertyNotices = buildPortalPropertyNotices({ jobs, filings: (filingRows ?? []) as PortalNoticeFilingRow[], viewerCustomerId: link.customer_id })
+      }
+    }
+
+    // Records for an owner, on their portal (punch list #86, PR 1): the request the office offered
+    // to this customer that is not yet sent — what to sign, or that they signed. Never the packet.
+    let ownerRecords: { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null; sent: { on: string; downloadUrl: string | null } | null } | null = null
+    {
+      const { data: reqRows } = await admin
+        .from('lien_owner_record_requests')
+        .select('id, owner_name, property_address, file, sent_at, updated_at')
+        .eq('customer_id', link.customer_id)
+        .order('updated_at', { ascending: false })
+        .limit(10)
+      for (const r of (reqRows ?? []) as Array<{ id: string; owner_name: string; property_address: string; file: Record<string, unknown> | null; sent_at: string | null }>) {
+        const f = (r.file && typeof r.file === 'object' ? r.file : {}) as Record<string, unknown>
+        const offer = f.offer as { at?: string } | null | undefined
+        if (!offer || typeof offer.at !== 'string') continue
+        const ack = f.acknowledgment as { signedOn?: string; printedName?: string } | null | undefined
+        // Sent on their portal (PR 2 / PR 4): the packet's PDF copy, as a signed URL good for an hour. A send by
+        // another way shows nothing here: the owner has the paper.
+        const sentRec = f.sent as { at?: string; how?: string } | null | undefined
+        let sent: { on: string; downloadUrl: string | null } | null = null
+        if (r.sent_at && sentRec && sentRec.how === 'portal') {
+          const { data: copies } = await admin
+            .from('sent_documents')
+            .select('copy_path, copy_type')
+            .eq('kind', 'owner_records_packet')
+            .eq('source_table', 'lien_owner_record_requests')
+            .eq('source_id', r.id)
+            .not('copy_path', 'is', null)
+            .order('sent_at', { ascending: false })
+            .limit(1)
+          const path = ((copies ?? [])[0] as { copy_path: string | null } | undefined)?.copy_path ?? null
+          const { data: signedUrl } = path ? await admin.storage.from('sent-documents').createSignedUrl(path, 3600, { download: true }) : { data: null }
+          sent = { on: (typeof sentRec.at === 'string' ? sentRec.at : r.sent_at).slice(0, 10), downloadUrl: signedUrl?.signedUrl ?? null }
+        } else if (r.sent_at) {
+          continue
+        }
+        ownerRecords = {
+          id: r.id,
+          address: r.property_address,
+          ownerName: r.owner_name,
+          offeredOn: offer.at.slice(0, 10),
+          signed: ack && typeof ack.signedOn === 'string' ? { on: ack.signedOn, name: typeof ack.printedName === 'string' ? ack.printedName : '' } : null,
+          sent,
+        }
+        break
       }
     }
 
@@ -478,6 +528,7 @@ serve(async (req) => {
       amountCents: number | null
       signedAt: string | null
       signerName: string | null
+      signingProgress: string | null
       sentAt: string | null
       signUrl: string | null
     }> = []
@@ -485,7 +536,7 @@ serve(async (req) => {
       const jobById = new Map(jobs.map((j) => [j.id, j]))
       const { data: conRaw } = await admin
         .from('job_contracts')
-        .select('job_id, status, template_name, public_token, fields, signed_at, signer_printed_name, last_sent_at, voided_at')
+        .select('job_id, status, template_name, public_token, fields, signed_at, signer_printed_name, last_sent_at, voided_at, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name')
         .in('job_id', jobs.map((j) => j.id))
         .in('status', ['sent', 'signed'])
         .is('voided_at', null)
@@ -500,6 +551,11 @@ serve(async (req) => {
         signed_at: string | null
         signer_printed_name: string | null
         last_sent_at: string | null
+        recipient_name: string | null
+        signer_consented_at: string | null
+        co_signer_name: string | null
+        co_signed_at: string | null
+        co_signer_printed_name: string | null
       }>) {
         const j = jobById.get(c.job_id)
         if (!j) continue
@@ -511,7 +567,9 @@ serve(async (req) => {
           templateName: c.template_name,
           amountCents: typeof amt === 'number' && Number.isFinite(amt) ? Math.round(amt) : null,
           signedAt: c.signed_at,
-          signerName: c.signer_printed_name,
+          // v2.4596: both signers of a two-frame agreement, in the app's words (_shared/jobContractSigners.ts).
+          signerName: signerNamesLine(c) || c.signer_printed_name,
+          signingProgress: c.status === 'signed' ? null : framesWaitingLine(c) || null,
           sentAt: c.last_sent_at,
           signUrl: c.public_token ? `${origin}/contract/sign?t=${encodeURIComponent(c.public_token)}` : null,
         })
@@ -656,6 +714,7 @@ serve(async (req) => {
       waivers,
       promise,
       bankTransfer,
+      ownerRecords,
     })
   } catch (e) {
     console.error('customer-portal error', e)

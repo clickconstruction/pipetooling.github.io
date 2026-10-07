@@ -41,7 +41,7 @@ const report = buildGcChecksReport({
   gcId: GC,
   jobs,
   events: [{ id: 'e1', kind: 'moved', payment_id: 'p2', from_job_id: 'maple', to_job_id: 'oak', amount: 12000, created_at: '2026-09-26T16:00:00Z' }],
-  deposits: [{ id: 'dep-1', posted_at: '2026-09-25T00:00:00Z', amount: 18900, applied: 18400 }],
+  deposits: [{ id: 'dep-1', posted_at: '2026-09-25T15:00:00Z', amount: 18900, applied: 18400 }],
   sinceYmd: '2026-06-01',
 })
 

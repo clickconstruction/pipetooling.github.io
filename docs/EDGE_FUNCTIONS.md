@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-30
+last_updated: 2026-10-06
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -92,6 +92,8 @@ when_to_read:
    - [twin-mcp](#twin-mcp)
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
+   - [gc-drive-access](#gc-drive-access)
+   - [gc-plan-question-email](#gc-plan-question-email)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -112,6 +114,8 @@ when_to_read:
    - [get-job-contract](#get-job-contract)
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
+   - [close-held-stripe-marks](#close-held-stripe-marks)
+   - [remind-bid-followups](#remind-bid-followups)
    - [share-job-contract](#share-job-contract)
    - [send-submittal-reply-email](#send-submittal-reply-email)
    - [file-submittal-package](#file-submittal-package)
@@ -120,12 +124,14 @@ when_to_read:
    - [send-rfq-email](#send-rfq-email)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
+   - [sign-owner-records](#sign-owner-records)
    - [bid-basis-grant](#bid-basis-grant)
    - [sub-portal](#sub-portal)
    - [submit-sub-portal](#submit-sub-portal)
    - [legal-portal](#legal-portal)
    - [submit-legal-portal](#submit-legal-portal)
    - [legal-notify-dispatch](#legal-notify-dispatch)
+   - [legal-send-firm-link](#legal-send-firm-link)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -143,7 +149,9 @@ when_to_read:
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
    - [property-lookup](#property-lookup)
+   - [lien-pay-offer](#lien-pay-offer)
    - [owner-confirm-nightly](#owner-confirm-nightly)
+   - [court-precinct-nightly](#court-precinct-nightly)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -188,6 +196,7 @@ when_to_read:
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
+   - [mark-stripe-invoice-uncollectible](#mark-stripe-invoice-uncollectible)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [reverse-stripe-invoice-out-of-band-payment](#reverse-stripe-invoice-out-of-band-payment)
    - [stripe-invoice-agreed-write-down](#stripe-invoice-agreed-write-down)
@@ -213,7 +222,7 @@ when_to_read:
 
 ## Overview
 
-PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. Nearly all functions validate the caller inside the handler — a user JWT (`auth.getUser` + role check), a webhook signature (`stripe-webhook`, `mercury-webhook`, `resend-webhook`), or a cron secret (`X-Cron-Secret`) — with gateway verification disabled via a `[functions.<name>] verify_jwt = false` block in [`supabase/config.toml`](../supabase/config.toml). **Two exceptions**: `merge-users` and `schedule-share-dispatch` have no `[functions.*]` block, so the gateway default (`verify_jwt = true`) applies to them per repo config.
+PipeTooling uses Supabase Edge Functions (Deno runtime) for privileged server-side operations that require elevated permissions or external API access. Nearly all functions validate the caller inside the handler — a user JWT (`auth.getUser` + role check), a webhook signature (`stripe-webhook`, `mercury-webhook`, `resend-webhook`), or a cron secret (`X-Cron-Secret`) — with gateway verification disabled via a `[functions.<name>] verify_jwt = false` block in [`supabase/config.toml`](../supabase/config.toml). **One exception**: `merge-users` has no `[functions.*]` block, so the gateway default (`verify_jwt = true`) applies to it per repo config. A function a pg_cron job calls needs the block, because the call carries `X-Cron-Secret` and no JWT and a plain `supabase functions deploy` without it turns the gateway check on.
 
 **Field collect payment (Stripe):** The app uses **hosted Stripe invoices** and **`stripe-webhook`** (**`invoice.paid`**) with **`complete_job_collect_payment_flow_for_invoice`** — not physical Stripe Terminal readers. **`update-collect-payment-stripe-customer-email`** lets subcontractors correct payer email before **`send-stripe-invoice`**. Older **`terminal-connection-token`** / **`create-terminal-collect-payment-intent`** functions are **not** in the repo (see **`RECENT_FEATURES.md`** v2.344).
 
@@ -238,7 +247,7 @@ Not every function takes an `Authorization` header — each function authenticat
 
 ### Role-Based Access Control
 
-JWT-validating functions check the caller's role from the `public.users` table. The nine roles:
+JWT-validating functions check the caller's role from the `public.users` table. A function that looks a sender or a recipient up there takes only a real account (v2.4658, punch list #29): `.match(REAL_ACCOUNT)` from [`_shared/realAccount.ts`](../supabase/functions/_shared/realAccount.ts) refuses View-as sample accounts and digital twins (twins are estimators). That is the `users` half of `roster_people`'s rule, which a function cannot read as the service role. Archived stays with each caller. `src/lib/people/realAccountSweep.test.ts` fails CI on a hand-written `.eq('is_sample', false)`; `node scripts/sweep-real-account.mjs` rewrites one. The nine roles:
 - **dev**: Full admin access (create/archive/restore users, set passwords, claim-dev administration, Stripe data surfaces)
 - **master_technician**: Broad operational access; limited admin (e.g. login-as-user impersonation)
 - **assistant**: Office staff — most operational functions (billing, notifications, reports) but no user administration
@@ -270,6 +279,8 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 ## Functions
 
 ### send-supply-house-job-account
+
+> **v2.4574 — the email is kept as it went**: the job account email is filed (`supply_house_job_account`) on the job, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) after the send log. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -819,6 +830,10 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### dev-mcp
 
+> **v2.4624 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `legal-send-firm-link` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
+
+> **v2.4459 — a bill's day from `billed_at`**: `get_customer`'s money comes from [`_shared/customerProfileStats.ts`](../supabase/functions/_shared/customerProfileStats.ts), which now reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` for the days-to-pay median and a job row's oldest open bill, as the profile screen does. Redeploy after merge.
+
 **Purpose**: The **dev's** MCP server (v2.3640 — [`docs/dev-mcp/README.md`](./dev-mcp/README.md); plan and naming in `to-dos/mcp-servers.md`): a coding agent reads the app **as the dev whose key it is**. `initialize` / `tools/list` / `tools/call` over stateless JSON-RPC POST (GET → 405, no SSE) through the shared shell `_shared/mcpJsonRpc.ts`. The key (`X-Dev-Token` or `Authorization: Bearer`, sha256-matched in `dev_mcp_credentials`, not revoked) resolves to a `users` row that must be an active, non-twin `dev` — re-checked on every call. The function then mints **that person's own session** (`auth.admin.generateLink` magiclink → `verifyOtp` with the hashed token; no email is sent, nothing is stored; cached in memory per warm instance until a minute before expiry) and reads business data one way only: **`GET /rest/v1/…` with that session**. PostgREST runs GET in a read-only transaction, so a writing RPC fails with `25006` whatever it is named, and RLS plus every `auth.uid()` check apply as on the screen. The service role is used only to resolve the key, mint the session and write the call log.
 
 **Verbs**: `whoami`; the generated catalog — `find_rpc(text)`, `find_table(text)`, `get_table(table)` (`dev-mcp/catalog.ts`, written by `node scripts/build-dev-mcp-catalog.mjs` from `src/types/database.ts`; `src/lib/devMcp/devMcpCatalog.test.ts` fails CI when stale); `call_read(rpc, args?, limit?)`; `read_rows(table, select?, filters?, order?, limit?)` (default 50, max 200). What a call may name and how it becomes a GET is the pure kernel `_shared/devMcpDoor.ts`: names must be in the catalog; five credential tables are never read (`DENIED_TABLES`); filter ops are `eq neq gt gte lt lte like ilike is in` on catalog columns; keys named `token` / `secret` / `password` / `api_key` / `hash` (whole or `_suffix`) are **redacted at any depth** in every reply and cannot be filtered on; a request over 6,000 URL characters is refused and a reply over 80,000 characters is cut with a plain-words tail. Every `tools/call` writes one `dev_mcp_calls` row (verb, target, args, status ok · error · refused, rows, ms) — fail-soft.
@@ -853,6 +868,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### twin-mcp
+
+> **v2.4470 — a reference's age reads its day in the company zone**: `score_backtest`'s `stale` flag, on the first score and on an amend, dates the reference from `bid_date_sent` (a `date`), else its `created_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date, as the app's Reference grade window now does. Redeploy after merge.
 
 **Purpose**: The digital-twin **MCP server** (Model Context Protocol, streamable-HTTP) — lets any MCP-capable agent (Claude, Grok/xAI, GPT, …) hold a twin seat: `initialize` / `tools/list` / `tools/call` over stateless JSON-RPC POST (GET → 405, no SSE; spec-permitted). The live `tools/list` is the count (48 at v2.3544). The verbs by family — each is detailed in the paragraph below that introduced it, in version order:
 
@@ -927,11 +944,13 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **The pricer learns (v2.3275 / v1.4.1 — Price Matrix PR 5)**: **`get_component_corrections(limit?)`** — the estimator's undigested teaching from `fixture_component_corrections` (action, bid, row, the line, her words) for the pricer to read at the start of a session; **`extend_component_rules`** gains `digest_correction_ids` — the rules it minted stamp those corrections `digested_at` (+ `rule_id`), and an empty `rules` list with ids marks one-offs as read. **`finish_price_matrix`** now clears `reviewed_at` on a (re-)finish so the Pricing chip and the Dashboard's *Robot pricing* Needs You card surface the news again. The Console's *Pricing robot · what it learned* card lists active rules with provenance and a Retire door; the Scoreboard's *Pricing robot* card reads the agreement (robot picks the estimator kept) from the same rows.
 
-**Submittal robot (v2.3544, Submittals stage 6b)** — four tools, estimator or pricer keys: the seat gate (`seatGate` in `_shared/twinSeatGate.ts` — `PRICER_VERBS` / `SHARED_VERBS` / `SUBMITTAL_VERBS`) answers them to either seat, and a `read_schedule` task the twin holds (working) opens that one bid's plans through `get_plan_pages` and `plan-fetch` (`twinMayReadPlans`; v2.3630 / v1.4.2 — a pricer is still refused every other bid verb, `stage_plan_pdf` included); the contracts in `_shared/submittalRobot.ts`, the brief `docs/twins/submittals.md` (`get_submittal_guide`). `next_submittal_task` claims the oldest queued `bid_submittal_tasks` row (queued → working by conditional update, one at a time) and returns the bid, the kind (`read_schedule` · `file_cut_sheets` · `read_redlines`), a 15-minute signed link to the file for the file kinds, the tags already on the bid and the revision's rows. `put_submittal_result` writes the reading: schedule rows → `bid_specified_products` as `source = robot`, `confirmed_at null` (this robot's earlier unconfirmed rows replaced; a tag a person already holds is never overwritten); page guesses / redline annotations → `result`. `finish_submittal_task` flips ready with a summary, or blocked with the reason. A person confirms on the Submittals tab; the robot never sends and never decides.
+**Submittal robot (v2.3544, Submittals stage 6b)** — four tools, estimator or pricer keys: the seat gate (`seatGate` in `_shared/twinSeatGate.ts` — `PRICER_VERBS` / `SHARED_VERBS` / `SUBMITTAL_VERBS`) answers them to either seat, and a `read_schedule` task the twin holds (working) opens that one bid's plans through `get_plan_pages` and `plan-fetch` (`twinMayReadPlans`; v2.3630 / v1.4.2 — a pricer is still refused every other bid verb, `stage_plan_pdf` included); the contracts in `_shared/submittalRobot.ts`, the brief `docs/twins/submittals.md` (`get_submittal_guide`). `next_submittal_task` claims the oldest queued `bid_submittal_tasks` row (queued → working by conditional update, one at a time) and returns the bid, the kind (`read_schedule` · `file_cut_sheets` · `read_redlines`), a 15-minute signed link to the file for the file kinds, the tags already on the bid and the revision's rows. `put_submittal_result` writes the reading: schedule rows → `bid_specified_products` as `source = robot`, `confirmed_at null` (this robot's earlier unconfirmed rows replaced; a tag a person already holds is never overwritten); page guesses / redline annotations → `result`. `finish_submittal_task` flips ready with a summary, or blocked with the reason. A person confirms on the Submittals tab; the robot never sends and never decides. `next_submittal_task` leaves order-only rows out of `rows_on_revision`, as it leaves out Missing rows (redeploy after `20261002193129`).
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`**, and for the CT bridge reads (`get_work_state.ct_takeoff`, credential mirroring) **`CT_MANAGE_USER_URL`** + **`CT_MANAGE_USER_SECRET`**; for the TakeoffTooling leg the four `TT_TWIN_LOGIN_URL` / `TAKEOFFTOOLING_TWIN_LOGIN_SECRET` / `TT_MANAGE_USER_URL` / `TT_MANAGE_USER_SECRET`; optional `APP_ORIGIN`. Twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential.
 
 ---
+
+`paste_counts` writes through an admin client that carries `x-bid-action: robot-paste` (v2.4736, bid history PR 1b), so `record_bid_change()` files a robot's rows and assignments as the robot's one action.
 
 ### twin-setup
 
@@ -959,6 +978,30 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` (bid number accepts `b`/`bp` prefixes) → `{ success, folder_id, folder_link, folder_created, plans_link, plans_reused, upload_note, stamped }`. Drive secrets unset → **503** with a setup pointer.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the Jobs folder inside the Shared Drive). Optional `DRIVE_IMPERSONATE_USER` (domain-wide delegation) — leave unset unless the delegation grant actually exists; set-but-ungranted breaks every upload at token exchange.
+
+---
+
+### gc-drive-access
+
+**Purpose**: GC mode's Drive door (v2.4754, real build step 5 of `to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md`). The owner's rule (2026-10-04): every set of plans lives in Google Drive and its link says whether *anyone with the link* can open it, "versus this link is only accessible by some, please correct". Two presses: **make_folders** makes the project's folder in the jobs Shared Drive with **Plans** and **Team only** inside, shares Plans with anyone with the link (reader), records the folder on `gc_projects.drive_folder_url` and the Plans link on set 0 when it has none (idempotent: an existing folder is reused, a recorded folder returned as it is); **check** reads who can open a Drive file or folder as the service account sees its permissions (`anyone` when a permission of type anyone is on it, `restricted` otherwise, `null` with a note when the service account cannot see it at all) and, given a project and rev, records it on that set (`drive_access`, `drive_checked_on`). A Shared Drive may refuse the anyone-with-the-link share; the reason comes back in words and the page says it.
+
+**Endpoint**: `POST /functions/v1/gc-drive-access` · **Auth**: staff JWT validated in-body, office roles only (dev / master_technician / assistant / controller / estimator); `verify_jwt = false`. **Body**: `{ make_folders: { project_id } }` → `{ success, folder_url, folder_created, plans_url, team_url, plans_shared, reason, set_plans_link }`, or `{ check: { url, project_id?, rev? } }` → `{ success, access, seen, note, checked_on, recorded }`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts`.
+
+**Doors**: the dev-only GC projects page (`/gc`) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
+
+---
+
+### gc-plan-question-email
+
+**Purpose**: GC mode's question to the architect (v2.4799, real build step 8 of `to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md`). A company asks about the plans by phone or email and the office records it (`gc_record_question`); this sends the question to the project's architect, a customer row, at the email in its `contact_info`, with the project manager (else the sender) as Reply-To, and records the send on the question (`sent_to_architect_on`, the office's day). The answer is typed back into the app (`gc_answer_question`) and rides in the next set's note. Refuses, in words, a question already answered, a project with no architect on record and an architect with no email.
+
+**Endpoint**: `POST /functions/v1/gc-plan-question-email` · **Auth**: staff JWT validated in-body, office roles only (dev / master_technician / assistant / controller / estimator); `verify_jwt = false`. **Body**: `{ question_id }` → `{ success, to, sent_on }`. The words are built in `_shared/gcPlanQuestionEmail.ts` (shared with the sample on What customers see); the send is filed as a sent copy (kind `gc_plan_question`, the architect's customer id, source `gc_plan_questions`).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_plan_question`.
+
+**Doors**: the dev-only GC projects page (`/gc`), the questions window's **Email it to the architect** (`src/lib/gc/gcIo.ts`, `sendQuestionToArchitect`).
 
 ---
 
@@ -1166,6 +1209,14 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.4650 — records for an owner**: the payload gains `ownerRecords` — the request the office offered on this portal and has not sent (`lien_owner_record_requests` for the link's customer with `file.offer` and no `sent_at`): `{ id, address, ownerName, offeredOn, signed: { on, name } | null }`, or null. The packet itself is never in the payload.
+>
+> **v2.4651 — sent on the portal**: `ownerRecords` is the latest offered request, sent or not; one sent *On their portal* (`file.sent.how = 'portal'`) carries `sent { on, downloadUrl }` — the packet's PDF copy in `sent_documents` (kind `owner_records_packet`, source the request), as a signed URL good for an hour with `download: true`; null while the copy is still being kept. A request sent any other way is left out: the owner has the paper.
+
+> **v2.4596 — a second signer**: *Your agreements* reads the frames. The select adds `recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name`, and the function names who signed through [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts), the kernel the app reads too (v2.4590). `signerName` is both signers on a two-frame agreement. A part-signed one gains `signingProgress` (*Sam Owner signed · waiting on Alex Owner*), which the page shows in place of *Waiting for your signature*. An older client ignores the new field. **Redeploy required.**
+
+> **v2.4456 — an instant reads its own day**: the payload's days cut from a `timestamptz` read in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not as the UTC date: `billedOn` on `bills` and `sharedBills` ([`_shared/portalMergedBills.ts`](../supabase/functions/_shared/portalMergedBills.ts)), `checks.jobs[].invoices[].billed_at` ([`_shared/portalChecks.ts`](../supabase/functions/_shared/portalChecks.ts)), a notice's fallback `mailedOn` ([`_shared/portalPropertyNotices.ts`](../supabase/functions/_shared/portalPropertyNotices.ts)), and a waiver's `ymd` and `billedYmd` ([`_shared/portalWaivers.ts`](../supabase/functions/_shared/portalWaivers.ts)). Redeploy after merge.
+
 > **v2.4278 — lien waivers** (our lien waiver to the GC, PR 4): the payload gains `waivers[]` — one row per sent bill the viewer pays, with the conditional and unconditional lien waivers it carries as *none · signing · signed · sent*, the bill's place (*Bill 2 of 3*), paid and final flags, **pre-scoped by [`_shared/portalWaivers.ts`](../supabase/functions/_shared/portalWaivers.ts)** to the who-pays rule; each signed PDF is a signed URL good for an hour from the private `lien-release-documents` bucket, minted here. Rows only for jobs under a GC or bills that already carry a waiver. A read failure leaves `waivers` empty, never the page.
 >
 > **v2.4304 — signed only, and the owner too**: `waivers[]` now carries a bill only once a waiver on it is **signed** (signed or sent; a waiver still being signed, or none, never reaches the page — the release read is `status = 'signed'`), each half with its `formType` and `signerName` (`signer_printed_name`), and an `audience`: `payer` (the viewer pays the bill) or `owner` (the bill is on the viewer's own property and the office shared it with them, `statementRoleFor` = shared — open **or paid**, since the unconditional comes after payment). The `underGc` gate is gone: a homeowner's bill with a signed waiver shows it. `bills[]` and `sharedBills[]` carry `invoiceId` so the page can put the waiver note on its bill. The sample `sample-gc` payload carries three sample waivers.
@@ -1183,6 +1234,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Stages** (v2.2933; rewritten v2.3132, Stage Plan PR 5): for `gc` / `all` links, jobs whose `gc_shares_stage_dates` is on and whose `gc_customer_id` is the viewer contribute `stages[]` — one `{ jobId, jobLabel, jobAddress, view, askWindowId, askWindow, entries: [] }` per job with something to show. `view` is the `GcView` from the shared Stage Plan kernel (`_shared/stagePlan.ts`, the same rules the Bill tab and the Edit drawer run): the line items whose eye (`jobs_ledger_fixtures.shared_with_gc`) is on, Order rows as one numbered sequence (`done` / `now` / `next` / `later`, the live row's percent in words, one `askable` step — the `next` one), Any rows under `also`. `askWindowId` is the `job_stage_windows` row behind the next step (where a "Need other dates?" ask lands) and `askWindow` its span. Loader `_shared/gcStages.ts` → `loadGcStageInputs` (fixtures with `stage_kind` / `shared_with_gc`, windows, orders **without** `display_name`, sheets, invoices, payments) + `gcPortalStages`; tested from `src/lib/subs/gcStages.test.ts`. Never a name, never "offered", never money. `entries` is kept empty one release so a stale client prints nothing.
 
 > **v2.3590 — live pay links**: the invoice select adds `stripe_invoice_id, stripe_mode, stripe_invoice_status`; every open Stripe bill past the stale margin (`linkMayBeStale`, 25 days after `billed_at`, or an unknown billed date) is re-fetched from Stripe through [`_shared/stripeInvoiceLinkRefreshIo.ts`](../supabase/functions/_shared/stripeInvoiceLinkRefreshIo.ts) before `buildPortalBills` runs, the row's `hosted_invoice_url` replaced and the payload's `payUrl` built from the fresh link — so Pay never opens Stripe's "link expired" page. Young bills cost no Stripe call; a failure leaves the stored link standing (the nightly `refresh-stripe-invoice-links` renews it anyway).
+
+> **v2.4534 — off-bill work first, across every sent bill**: `buildPortalBills` / `buildPortalSharedBills` take `sentBills` — the billed and paid bills of the viewer's jobs, the rows already read for *Your payments* (`portalInv`) — and the rule runs over that whole list with the job's `revenue`, so a paid bill takes its unlinked money before an open one and money that paid the part of the job on no bill is on no bill ([`_shared/paymentAttribution.ts`](../supabase/functions/_shared/paymentAttribution.ts)). A job whose sent bills did not load falls back to the open bills alone and no total. *Your payments* (`_shared/portalChecks.ts`) carries a job's `revenue` only when the viewer pays every sent bill on it.
 
 > **v2.3592 — which bill a payment pays**: payments are read **by job** (`job_id, invoice_id, amount, paid_on, payment_type, sequence_order` over the open-bill jobs), not by invoice, so a job-level payment reaches the kernel; `buildPortalBills` / `buildPortalSharedBills` attribute per job through `_shared/paymentAttribution.ts` (oldest bill first — the same rule the office's Bill tab, the bill's paper and the demand letter read), and a bill's `totalPaid` / `payments` are its share only.
 
@@ -1211,6 +1264,12 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Who counts** (v2.2875, journey-map #37): the row is skipped when the request is an office peek — `?preview=1` (the globe modal's iframe / Preview as customer / Full screen / Edit-chips fetch add it; `CustomerPortal.tsx` forwards it) **or** an `Authorization` bearer that is a verifiable user access token (the page sends the browser's own session when it has one; `admin.auth.getUser` checks it — any valid account is staff, since customers never sign in). Shared decision: [`_shared/publicViewCounting.ts`](../supabase/functions/_shared/publicViewCounting.ts) `publicViewDecision(req, admin, anonKey)`, twin + tests in `src/lib/publicViewCounting*.ts`. Unverifiable tokens count as customers. **Staff-only payload block**: when the session verifies, the response also carries `officeViewStats: { opens, lastOpenedAt }` — the customer's own view rows, read with the service role — which feeds the globe gear's **Opened** row ("Opened 3 times · last Sep 3"). A customer's payload never includes it.
 
 **Receipt landings** (v2.2878, journey-map J22-F3): the Stripe invoice footer's portal link carries `?paid=1`, and the page then calls `…customer-portal?token=…&return=stripe`; a refetch after a PAY ONLINE tab sends `return=refresh` (bounded: immediate, +6 s, +20 s). `return=stripe` logs one structured **`portal_return_from_stripe`** line (`customer_id`, `audience`, `via`) and `portal_statement_rendered` gains `return_from` — function-log telemetry like the statement line, because `public_page_views.via` is CHECK-limited to `token`/`slug`. Refetches still append a view row each; skipping `return=refresh` in the counter belongs to the view-counting work (#37). **Redeploy required.**
+
+### sign-owner-records
+
+**Purpose** (v2.4650, punch list #86 PR 1): an owner of record signs the acknowledgment of a records request on their portal. POST `{ token, requestId, printedName, mode: 'type' | 'draw', signaturePngBase64?, esignConsent }`. The portal link is the capability (raw token or its hash, as `customer-portal` reads it; `verify_jwt = false`). The request must belong to the link's customer, carry `file.offer` (the office pressed **Offer it on their portal ›**), and be neither signed nor sent — otherwise 404 / 409 with a plain sentence. The name must match the roll's `owner_name` or `file.offer.alsoAllowed` letter for letter ([`_shared/ownerNameMatch.ts`](../supabase/functions/_shared/ownerNameMatch.ts)); a miss answers 422 `{ error, nameMismatch: true }` naming the roll's owner. A drawn signature is kept in the private `sent-documents` bucket at `<request id>/acknowledgment-signature-<uuid>.png`; the consent goes to `esign_consents` as `lien_owner_record_request` (migration `20261006040000`). **Writes** `lien_owner_record_requests.file`: `request` (`how: 'portal'`, from the typed name) when none is on file, and `acknowledgment { signedOn, link: '', printedName, mode, signaturePath?, consentedAt }`. Returns `{ ok, signedOn, printedName }`. Nothing is shown to the owner until the office records the packet as sent.
+
+**Reads by**: [`PortalOwnerRecordsCard.tsx`](../src/components/portal/PortalOwnerRecordsCard.tsx), from `customer-portal`'s `ownerRecords` (the offered, unsent request for the link's customer: id, address, the roll's owner name, the offer day, and `signed { on, name }` once signed).
 
 ### submit-portal-request
 
@@ -1244,6 +1303,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### sub-portal
 
+> **v2.4458 — a stage, a progress report and a signature read their own day**: a sheet card's `stageChangedOn` (`people_labor_jobs.stage_changed_at`), `progress.on` (`progress_at`) and `agreement.signedOn` (`step_commitments.signed_at`, else `accepted_at`) read in `APP_CALENDAR_TZ` through `ymdInAppTzFromIso` in [`_shared/subPortalStatement.ts`](../supabase/functions/_shared/subPortalStatement.ts), the helper the payment trace already used, not as the UTC date. Redeploy after merge.
+
 > **v2.3067 — addresses cleaned** (journey map SP-3): every address the function returns — sheet cards (`buildSubSheets` in `_shared/subPortalStatement.ts`) and the Your-days bookings — passes through `cleanPortalAddress`, which strips the literal `Null` / `undefined` tokens an import can leave in a job address ("… San Antonio, TX Null") and tidies the punctuation. **Redeploy required** (shared module bundled at deploy).
 
 **Purpose**: Payload for the no-login subcontractor "Work & pay" portal (`/sub?t=<token>` and `/s/<slug>`, sub-portal train — the customer portal's person-keyed sibling): resolves the capability token (raw lookup + sha256 fallback in `sub_portal_links`, revoked → 404) or a custom address slug (`sub_portal_slugs`; no mint-on-demand; first public resolve locks the slug) and returns only that person's statement — Sub Labor sheets with line items and agreed/paid/backcharges/open (junction-first via `people_labor_job_assignees`; legacy multi-name sheets stay office-only), the last-90-days payment ledger (**memos are sub-visible** unless `hidden_from_sub`; the amount always shows) with its `paymentTraces` (v2.3605: `people_labor_job_payment_events` for the sub's sheets → `buildSubPaymentTraceLines` — a payment moved off or removed from one of their sheets, as *what happened and that the office did it*, never the reason; only the sheet it left; same window; dated by the company calendar, not the UTC day; not money), all-time totals (open floors per sheet), open `step_commitments` offers with the frozen `offer_scope_snapshot`, paperwork **status only** from `person_contract_documents` (signed/on-file/expiring ≤60d/expired/needs-signature — never document contents), and pay-run settings (`app_settings.sub_pay_run_day` / `sub_pay_explainer` + the computed next run date). Statement shaping lives in the shared pure module [`_shared/subPortalStatement.ts`](../supabase/functions/_shared/subPortalStatement.ts), unit-tested from `src/lib/subPortal/subPortalStatement.test.ts`. Carries `requestToken` + `slug` like the customer payload. `/p/<slug>` dual-resolves client-side (customer first, sub fallback) — one printed `my.clickplumbing.com` namespace, uniqueness enforced across both slug tables by the set RPCs.
@@ -1271,6 +1332,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **View counting**: each validated load appends a `public_page_views` row (`surface='sub_portal'`, `entity_id` = person id, `via` token/slug), fire-and-forget. **v2.2875**: office peeks — `?preview=1` (the sub globe's iframe / Preview / the story's *Show me on their portal* add it; `SubPortal.tsx` forwards it) or a verifiable staff access token in `Authorization` — do not **count**, via the same `publicViewDecision` as `customer-portal`. **v2.2922 (visit trail, migration `20260906030000`)**: every load is now **written**, stamped `viewer` = `outside` (counts) · `staff` (+ `viewer_user_id` from the verified session; `publicViewDecision` returns `staffUserId` and `viewer`) · `preview`; the flag wins over the session, so a staff preview is a preview. If the insert with the viewer columns fails (function deployed before the migration) the counted loads fall back to the old row shape, so outside opens are never lost. Office readers get the trail through the `sub_portal_visit_summary` / `sub_portal_visits` RPCs (not this function's payload). Deploy order: push the migration, then deploy.
 
 ### submit-sub-portal
+
+> **v2.4458 — redeploy only**: bundles [`_shared/subPortalStatement.ts`](../supabase/functions/_shared/subPortalStatement.ts), whose sheet cards now read their days in `APP_CALENDAR_TZ` ([sub-portal](#sub-portal)). Nothing this function writes or returns changes; redeploy after merge so the bundle matches the repo.
 
 **Job link (v2.3080)**: `mark_work_done` and `progress` find the sheet's job through `people_labor_jobs.job_ledger_id` (watcher notifications, the `sub_progress` activity event); the case-sensitive `hcp_number = job_number` lookups are gone — a sheet with no link notifies nobody and writes no event.
 
@@ -1358,13 +1421,13 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-submittal-room
 
-**Purpose** (v2.3485, Submittals stage 4a-i): the **review room**'s public fetch — the one link per bid at `/submittal?t=…` that the GC forwards to the customer's architect or designer. Serves every *shared* submittal revision of the bid in the customer's words (which rows match the plans, which differ and why; never a price, a quote, a supply house, a bill or a stage date), newest first, plus the person when the token is a personal one.
+**Purpose** (v2.3485, Submittals stage 4a-i): the **review room**'s public fetch — the one link per bid at `/submittal?t=…` that the GC forwards to the customer's architect or designer. Serves every submittal revision on the GC's record in the customer's words (which rows match the plans, which differ and why; never a price, a quote, a supply house, a bill or a stage date), newest first, plus the person when the token is a personal one. On the record means shared, or since v2.4667 answered by email with its package built (see *The GC's record* below).
 
-**Endpoint**: `GET /functions/v1/get-submittal-room?t=<room token | personal token>[&preview=1]` → `{ status: 'open', closedAt, bid: { label, projectName, address }, company: { name, tagline, phone }, person: { id, name, role, mayDecide } | null, revisions: [{ id, rev, sharedAt, current, hasPackage, rows: RoomRow[], counts }] }`. A closed room or a closed personal link answers **410** with the same shape and `status: 'closed'`; nothing shared yet answers 404 `{ code: 'empty' }`; an unknown token 404. Rows are built by [`_shared/submittalRoomPayload.ts`](../supabase/functions/_shared/submittalRoomPayload.ts) (`roomRowsFrom`, `whySentence`, `roomCounts`), tested from the app as a twin (`src/lib/submittals/submittalRoomPayload.test.ts`). The company comes from the test-report settings row (`test_report_settings_v1`).
+**Endpoint**: `GET /functions/v1/get-submittal-room?t=<room token | personal token>[&preview=1]` → `{ status: 'open', closedAt, bid: { label, projectName, address }, company: { name, tagline, phone }, person: { id, name, role, mayDecide } | null, revisions: [{ id, rev, sharedAt, answeredByEmailAt, current, hasPackage, rows: RoomRow[], counts }] }`. A closed room or a closed personal link answers **410** with the same shape and `status: 'closed'`; nothing shared yet answers 404 `{ code: 'empty' }`; an unknown token 404. Rows are built by [`_shared/submittalRoomPayload.ts`](../supabase/functions/_shared/submittalRoomPayload.ts) (`roomRowsFrom`, `whySentence`, `roomCounts`), tested from the app as a twin (`src/lib/submittals/submittalRoomPayload.test.ts`). The company comes from the test-report settings row (`test_report_settings_v1`).
 
 **Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. A `view` event is written unless the request is a staff session or carries `?preview=1` (`_shared/publicViewCounting.ts`); a personal token's view also bumps `bid_submittal_people.open_count` / `last_seen_at`. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
 
-**Procurement (v2.4087)**: an open room's payload adds `procurement` when the office has any `bid_procurement_items` row or any tag is approved — the records without the PO, the bid's count rows and stage splits, the job's stage dates (`_shared/procurementStageDates.ts`) and the last update's `sent_at`; every `RoomRow` carries `leadTimeDays`. The page derives released / expected / required / float with the app's own kernel. Its own try/catch: a missing table leaves the card absent, never breaks the room.
+**Procurement (v2.4087)**: an open room's payload adds `procurement` when the office has any `bid_procurement_items` row or any tag is approved on any shared revision (v2.4449; before, the newest only, which hid the card after a resubmit from the rows sent back) — the records without the PO, the bid's count rows and stage splits, the job's stage dates (`_shared/procurementStageDates.ts`) and the last update's `sent_at`; every `RoomRow` carries `leadTimeDays`. The page derives released / expected / required / float with the app's own kernel. Its own try/catch: a missing table leaves the card absent, never breaks the room.
 
 **Proposed rows (v2.4107)**: an item with `status = 'proposed'` (built from the takeoff on a bid with no schedule) is `RoomRowKind 'proposed'` — ordered right after the differing rows, counted in `counts.proposed` and open until decided, its why sentence *What we intend to install; the plans' schedule was not on the bid to compare against.* Redeploy after `20260929015024` is applied.
 
@@ -1372,33 +1435,35 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Parts (v2.4322)**: each row carries `parts` — the parts the GC sees from `bid_submittal_item_parts` (`on_submittal = true`; an order-only part never reaches the room), model first (`splitPartLabel`), each with its own `decision` and `carried` when an approval came forward from the revision before (`roomPartsFrom`). A row with no parts has no `parts` key. A missing table reads as no parts.
 
-**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (again after `20260928204228` for the procurement card, after `20260929015024` for proposed rows, and after `20261001200000` for parts).
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (again after `20260928204228` for the procurement card, after `20260929015024` for proposed rows, after `20261001200000` for parts, and after `20261002193129` for order-only rows; once more for v2.4449's card gate, no migration; and for v2.4482's words on a proposed row). An order-only row (`bid_submittal_items.order_only`) never leaves the function: `gcRoomItems` drops it before the rows, the parts and the counts are built, and `officeOnlyTags` keeps its procurement lines out of `procurement.records`.
 
+
+**The GC's record (v2.4667)**: which revisions are served comes from one rule in [`_shared/submittalRecord.ts`](../supabase/functions/_shared/submittalRecord.ts), read by this function, `open-submittal-pdf` and `submit-submittal-review` alike, and by the tab's lines. A revision is on the record when it was shared, or when it holds a reviewer's answer on a row or part the GC sees AND has a built package (`package_path`): it went out by email as that package, and the answer came back the same way. The answers that count are `decision_source` 'entered' (typed in by the office), 'robot' (read from their file, confirmed by a person) or 'room' (given on the link once the revision was on the record); a part's 'carried' call and an order-only row or part never count. The newest revision on the record is current. Such a revision carries `answeredByEmailAt`, the newest typed answer's own day, which the page's chip reads (*Rev 3 · answered by email · Oct 2*). The package is the guard: an answer typed on a revision with no package does not publish it, it waits until its package is built. Before this, the three functions each read "has a share date", while the office's procurement log already counted a typed answer as real. On BP398, Rev 3 was answered by email on Oct 2 and never shared, so the page would have dropped it the day Rev 4 was shared, and its card would have lost Kitchen sinks and Toilets. `loadRevisionStandings` reads the calls only on the revisions nobody shared. Tests: `src/lib/submittals/submittalRecord.test.ts` (the rule and the loader on BP398's shape), `src/pages/SubmittalRoom.render.test.tsx` (the page before and after the Rev 4 share). **Deploy**: with `open-submittal-pdf` and `submit-submittal-review`, no migration.
 
 **Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.
 ---
 
-**v2.3511 (What customers see PR 4):** the sample tokens (`sample` open, `sample-done` reviewed) answer from `sampleSubmittalRoomResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no person. The room page shows the Sample banner; identify and decide stay on the page.
+**v2.3511 (What customers see PR 4):** the sample tokens (`sample` open, `sample-done` reviewed) answer from `sampleSubmittalRoomResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no person. The room page shows the Sample banner; identify and decide stay on the page. Since v2.4595 the sample's rows are sample submittal rows and parts run through `roomRowsFrom` → `roomCounts`, the same call as a real bid (a fixture of parts with a call per part, a proposed row, an order-only row and part that never reach the page), so the sample cannot say what a real room cannot; `src/lib/submittals/sampleSubmittalRoom.test.ts` pins it.
 
 ### open-submittal-pdf
 
-**Purpose** (v2.3485, Submittals stage 4a-i): the room's **Download the PDF** door — `GET /functions/v1/open-submittal-pdf?t=<room or personal token>&r=<submittal id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-test-report-pdf` pattern) on the private `bid-submittals` bucket, with a download name like *Submittal Rev 2 - B398 ZZ Test.pdf*. The revision must belong to the token's bid, have been shared, and carry a `package_path`. The bucket has no outsider policy; this is the only customer-facing way to the file (staff open packages from the tab through a client-minted signed URL, v2.3467).
+**Purpose** (v2.3485, Submittals stage 4a-i): the room's **Download the PDF** door — `GET /functions/v1/open-submittal-pdf?t=<room or personal token>&r=<submittal id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-test-report-pdf` pattern) on the private `bid-submittals` bucket, with a download name like *Submittal Rev 2 - B398 ZZ Test.pdf*. The revision must belong to the token's bid, be on the GC's record (shared, or since v2.4667 answered by email with its package built; `_shared/submittalRecord.ts`, read only when the revision has no share date), and carry a `package_path`. The bucket has no outsider policy; this is the only customer-facing way to the file (staff open packages from the tab through a client-minted signed URL, v2.3467).
 
 **Authentication**: none (`verify_jwt = false`); a closed personal link is refused. Errors are short `text/plain` sentences. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
-**Used by**: the room page's *Download Rev N PDF* link. **Deploy**: `bash scripts/deploy-functions.sh open-submittal-pdf`.
+**Used by**: the room page's *Download Rev N PDF* link. **Deploy**: `bash scripts/deploy-functions.sh open-submittal-pdf` (again for v2.4667, with the two room functions, no migration).
 
 ---
 ### submit-submittal-review
 
 **Purpose** (v2.3487, Submittals stage 4a-ii): the review room's writes — who is looking, and their decisions. `POST /functions/v1/submit-submittal-review` with `{ action: 'identify' | 'decide', … }`.
 
-- `identify` `{ token (room or personal), name, email, role, viaToken?, website }` → `{ ok, personToken, person: { id, name, role, mayDecide } }`. Attaches to a pre-named row by email (`bid_submittal_people`, case-insensitive), recognises the same person on their own link, else inserts a new person — `how = 'identified'`, or `'forwarded'` when `viaToken` was someone else's personal link; mints the personal token when missing; the room's anonymous `view` events from the same address in the last 30 minutes become this person's (so the trail reads *opened · decided*); writes an `identified` event. `website` is a honeypot (a filled one gets a fake success). A closed room answers 410. At most 20 identifications per address per room per hour (429).
-- `decide` `{ token (personal), submittalId, decisions: [{ itemId, partId?, decision: 'approved' | 'revise' | 'rejected', note? }] }` → `{ ok, decided, counts }`. On a row with parts (v2.4322) the call lands on the part named, or on every part the GC sees when none is named (`planDecideWrites`); the part's own review columns are written, then the row's from `rollUpPartDecisions` (a part sent back sends the row back; every part approved approves it; otherwise open). Refused when the room or the person's link is closed (410 `closed`), the person is marked watching (403 `watching`), the revision is not the bid's newest shared one (409 `stale_revision` — the page tells the person to reload), or none of the rows are on that revision (404). Writes the items' `review_decision · review_note · reviewed_by_name · reviewed_by_email · reviewed_by_person_id · reviewed_at` and a `decided` event with the counts. The rules are pure in [`_shared/submittalReviewActions.ts`](../supabase/functions/_shared/submittalReviewActions.ts), tested from the app as a twin (`src/lib/submittals/submittalReviewActions.test.ts`).
+- `identify` `{ token (room or personal), name, email, role, viaToken?, website }` → `{ ok, personToken, person: { id, name, role, mayDecide } }`. Attaches to a pre-named row by email (`bid_submittal_people`, case-insensitive), recognises the same person on their own link — a person the office named with no email is the visitor who arrives on that person's link, and takes the address they give (`resolveIdentify` → `claimEmail`) — else inserts a new person — `how = 'identified'`, or `'forwarded'` when `viaToken` was someone else's personal link; mints the personal token when missing; the room's anonymous `view` events from the same address in the last 30 minutes become this person's (so the trail reads *opened · decided*); writes an `identified` event. `website` is a honeypot (a filled one gets a fake success). A closed room answers 410. At most 20 identifications per address per room per hour (429).
+- `decide` `{ token (personal), submittalId, decisions: [{ itemId, partId?, decision: 'approved' | 'revise' | 'rejected', note? }] }` → `{ ok, decided, counts }`. On a row with parts (v2.4322) the call lands on the part named, or on every part the GC sees when none is named (`planDecideWrites`); the part's own review columns are written, then the row's from `rollUpPartDecisions` (a part sent back sends the row back; every part approved approves it; otherwise open). Refused when the room or the person's link is closed (410 `closed`), the person is marked watching (403 `watching`), the revision is not the newest on the bid's GC record (409 `stale_revision` — the page tells the person to reload; since v2.4667 the record is shared revisions plus those answered by email with a package, `_shared/submittalRecord.ts`, and `decideVerdict` reads `submittalOnRecord`), or none of the rows are on that revision (404). Writes the items' `review_decision · review_note · reviewed_by_name · reviewed_by_email · reviewed_by_person_id · reviewed_at` and a `decided` event with the counts. The rules are pure in [`_shared/submittalReviewActions.ts`](../supabase/functions/_shared/submittalReviewActions.ts), tested from the app as a twin (`src/lib/submittals/submittalReviewActions.test.ts`).
 
-**Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+**Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. **The office is never the GC (v2.4599):** `identify`, `message` and `decide` answer 403 before anything is read or written when the request carries a verified office session (`code: 'office'`: the bearer is a user's token, not the anon key; the auth server resolves it; that user's `users.role` opens Bids — dev · master_technician · assistant · controller · estimator · primary · superintendent; `officeRoleOf` in `_shared/submittalReviewActions.ts`) or `?preview=1` (`code: 'preview'`). The page shows the `error` where the press was; a reviewer's page sends the anon key, never reaches the auth server and is never refused. `src/lib/submittals/submitSubmittalReview.run.test.ts` runs this file's own handler against a fake database. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
 
-**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh submit-submittal-review` (after `20260916015805`; again after `20261001200000` for calls on parts).
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh submit-submittal-review` (after `20260916015805`; again after `20261001200000` for calls on parts, after `20261002193129`: a call on an order-only row is dropped like a row not on the revision; and after `20261002211435`: a named person may have no email; again for v2.4667, with `get-submittal-room` and `open-submittal-pdf`, no migration).
 
 
 **Stage 5a (v2.3528) — `action: 'message'`** `{ token (personal or room), submittalId?, body, tags?, website }`: one `bid_submittal_messages` row (`reviewer` or `watcher` — a watcher may ask), an `asked` event, and one high-priority inbox row (`estimator_requests` when the estimating group has anyone, else `dispatch_requests`) with `pending_payload.kind = 'submittal_message'` carrying the question, the room, the message and the person. A room-token caller who has not identified gets 403 `identify_first`; a closed room or link 410; **five asks an hour per person**, then 429. The `decide` branch now also posts a `system` entry (`kind: 'decision'`, *Dana decided 3 rows · 2 revise · 1 reject*) so the thread is the timeline; calls on parts name the rows and the parts (*Dana decided 1 row · 2 parts · 1 approve · 1 revise*, v2.4332).
@@ -1435,6 +1500,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-rfq-email
 
+> **v2.4574 — the request is kept as it went**: each email to a supply house is filed in `sent_documents` through `sendEmailViaResend`'s `file` option — `rfq`, `rfq_reminder` or `rfq_resent` — keyed to the bid, with the request (`bid_rfqs`) as its source. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose**: The **RFQ Desk** sender (lane B, v2.2636) — system-sent supply-house price requests with tracking, nudges, and previews (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).
@@ -1452,6 +1519,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3512 (What customers see PR 6):** the request and reminder emails are built by `_shared/rfqEmail.ts` → `buildRfqEmail` (wording moved verbatim), re-exported by `src/lib/rfqEmail.ts` so the tab renders the same email over the sample.
 
 ### send-bid-room-link
+
+> **v2.4574 — the email is kept as it went**: the email carrying the bid room's link is filed (`bid_room_link`), keyed to the room's bid and customer (the room select adds `bid_id, customer_id`). [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -1477,6 +1546,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 > **v2.4197 — add-ons**: the sign body takes `addOnKeys: string[]` (keys of the revision's `add_ons`, the with-and-without alternates; unknown keys ignored). The frozen estimate carries one line per taken add-on and the grand total, the `signed` event carries `add_ons_taken` / `add_on_keys`, the staff notice totals the grand total, and when the plan marks the bid won the function writes `bids.accepted_alternate_tags` and `agreed_value` (the sent base plus the taken add-ons) and, since v2.4225, `bids.declined_alternate_tags` — the room's add-ons left unticked; an alternate the room did not carry keeps its prior answer. **Redeploy `sign-bid-room` and `get-bid-proposal-room`** (both bundle `_shared/bidRoomPayload.ts`, which now parses `add_ons`).
 
+> **v2.4728 — the option taken**: an option on the revision may carry `bid_version_id` (a letter with options, v2.4723). A signature then wins that version alone (`wonVersionIdsForSignature` in `_shared/bidRoomOutcome.ts`; the other options in the packet stay as they were), sets `bids.selected_bid_version_id` to it, writes `agreed_value` as the option's own total plus the taken add-ons, and the `signed` event carries `option_version_id`. **Redeploy `sign-bid-room` and `get-bid-proposal-room`** (`_shared/bidRoomPayload.ts` parses the id).
+
 **Endpoint**: `POST /functions/v1/sign-bid-room` — `{ token, revision_id, action: 'sign'|'decline', … }` (sign: `optionKey`, `printedName`, `agreedTerms`, optional `signaturePngBase64`; decline: `category`?, `note`?)
 
 **Consent ledger (v2.3118)**: the body may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the signature row commits, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'estimate'` for both the frozen proposal row and a change order answered in the room.
@@ -1492,6 +1563,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### send-job-contract
+
+> **v2.4574 — the email is kept as it went**: the signing email is filed in `sent_documents` (`kind` `job_contract`, the job, the contract as its source) through `sendEmailViaResend`'s `file` option. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
 
@@ -1511,6 +1584,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### get-job-contract
 
+> **v2.4474 — the sample agreement's wording date reads in the company zone**: on the What customers see sample, the Contract Book document's date is its `book_version_date`, else its `updated_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date — the Book's own rule (`effectiveBookVersionPlainDate` in `src/lib/contractBookVersionDate.ts`). Redeploy after merge.
+
 > **v2.4186 — a second signer**: the payload also carries the second frame — `co_signer_name`, `co_signed_at`, `co_signer_printed_name`, `co_signer_mode`, `co_signer_consented_at`, `co_signature_url` (a signed URL for the drawn mark) — all null on a one-frame row and on the sample tokens. The page (`JobContractSign.tsx`) builds its frames from them (`lib/jobs/jobContractSigners.ts`).
 
 **Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681). The sample tokens (`sample`, `sample-done`, v2.3510) answer with the fixture agreement; since v2.4098 its terms are the office's own — the newest customer document in the Contract Book (`contract_template_documents`, `audience = 'customer'`, newest `book_version_date` then `updated_at`) — so Settings → Contracts & terms can read a card on this page and find its wording; the fixture's stand-in terms print only when the Book holds no customer document.
@@ -1528,6 +1603,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **v2.3510 (What customers see PR 2):** the sample tokens (`sample` out for signature, `sample-done` signed) answer from `sampleJobContractResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no event. The signing page shows the Sample banner and saves nothing.
 
 ### sign-job-contract
+
+> **v2.4574 — what goes to the signers is kept**: the customer's signed copy (`job_contract_signed_copy`, with the PDF) and the other signer's *your signature is next* email (`job_contract_next_signer`) are filed on the job. The notice to our own staff is not. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4186 — a second signer**: the body takes `signer: 'primary' | 'co'` (default `primary`). A `co` signature on a row with no `co_signer_name` is 400 `no_co_signer`; a frame already filled is 409 `frame_signed` (the page reloads to the current state). The frame's columns are written (`signer_*` or `co_signer_*`); `status: 'signed'`, `signed_at` and `next_reminder_at: null` only when the other frame is already filled. A partial frame logs `co_signed` (`metadata.signer`, `metadata.waiting_on`) and, when the other signer's email is known (`co_signer_email` or `recipient_email`), emails them *✍ <name> signed — your signature is next* with the same link, then answers `{ ok, signed_at: null, mode, complete: false, signer, waiting_on }`. The completing frame logs `signed`, builds the PDF with both frames (`coSignerName` / `coSignature`; the other frame's drawn mark fetched from the bucket), emails the customer's signed copy with the second signer in cc and the office notice naming both, and answers `{ …, complete: true }`. One-frame rows behave exactly as before.
 
@@ -1551,6 +1628,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### remind-job-contracts
 
+> **v2.4574 — each reminder is kept**: a reminder email is filed (`job_contract_reminder`, the job, the contract), with no sender since it sends itself. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 **Purpose**: The reminder lane for contracts out for signature (Contract Desk PR 5, v2.2690).
 
 **Endpoint**: `POST /functions/v1/remind-job-contracts` — `{}` (optional `dry_run: true`); `X-Cron-Secret` header (or `cron_secret` in the body) must match.
@@ -1565,7 +1644,25 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
 
+### remind-bid-followups
+
+**Purpose**: The phone reminder for a bid's call-again day (punch list #80, v2.4427): one push on the morning of the day to the person who owns the bid.
+
+**Endpoint**: `POST /functions/v1/remind-bid-followups` — `{}` (optional `dry_run: true`: reports what would be sent in `preview` and writes nothing); `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. Scheduled hourly (`:08`) by pg_cron job `bid-followup-reminders` (migration `20261002160000`).
+
+**Behavior**: Kill switch `app_settings` `bid_followup_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Before 8 AM office time (`APP_CALENDAR_TZ`) it does nothing, so the hourly schedule needs no daylight-saving arithmetic. Otherwise it reads up to 200 bids with `next_followup_on <= today` and no outcome and keeps the ones `bidDueForReminder` passes ([`_shared/bidFollowupReminder.ts`](../supabase/functions/_shared/bidFollowupReminder.ts)): sent, not adopted, the day still standing (no contact logged on or after it), not a digital twin's bid, and no `bid_followup_reminders` row for that bid and day. For each it inserts the ledger row **first** (the unique `(bid_id, due_on)` key makes a second tick a no-op), then pushes to every device of the recipient: the bid's account manager, else its estimator, else whoever set the day (`next_followup_entry_id` → `created_by`). The words are the function's own: *Bid follow-up due today* (or *was due Sep 20*), *City of Riverton, BP82 City re-pipe. Ask for J. Rayburn.*; the notification opens `/bids?tab=call-queue`. A push that reached a device is logged to `notification_history` (`template_type = 'bid_followup'`) and counted in the ledger row's `push_sent`. A person with no device still gets the ledger row: the Dashboard's Needs You item is their reminder. One reminder per bid and day; a day moved later is a new day.
+
+**Response**: `{ ok, due, reminded, sent }`.
+
 ### share-job-contract
+
+> **v2.4596 — the signed copy names both signers**: *Email a copy…* says *signed by Sam Owner and Alex Owner* on a two-frame agreement, through `signerNamesLine` from [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts). The rebuilt PDF still prints each frame's own name. Since v2.4590 the window's *Download the PDF* and *Download & mark handed over* send the draft's `co_signer_name`. `draft_pdf` has read that since v2.4186, so that part needs no deploy. **Redeploy required** for the email's words.
+
+> **v2.4574 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. The same change adds the missing import of `signedRecordId`: since v2.4186 the paths that rebuild a signed PDF (a contract whose stored PDF is missing, an accepted estimate's first share) threw. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4186 — a second signer**: the unsigned PDF (`draft_pdf`, `send_to_sign`) carries `coSignerName` — from the row's `co_signer_name`, or the draft body's `co_signer_name` for a job with no row yet — so two pairs of pen rules print, each named; a signed row rebuilt from its frozen columns (no stored PDF) carries the second frame's signature.
 
@@ -1584,6 +1681,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 ---
 
 ### send-submittal-reply-email
+
+> **v2.4574 — the reply is kept as it went**: the reply email is filed (`submittal_reply`), keyed to the bid, with the message as its source. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The office's answer to a question asked on a bid's review room reaches the person who asked (Submittals stage 5a, v2.3528).
 
@@ -1605,9 +1704,48 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
 
+> **v2.4810 — documents from the office**: each matter carries `documents[]` (`id, title, shows, mime, sizeBytes, addedOn, addedByName, url`) and `heldDocumentCount`, from `legal_matter_documents` (live rows; a held one only counts), each `url` a 15-minute signed link from the private `legal-matter-documents` bucket ([`_shared/legalMatterDocuments.ts`](../supabase/functions/_shared/legalMatterDocuments.ts); `shapeMatterForCounsel` cuts each to those keys, never the storage path or a hold reason). Until migration `20261007230000` is pushed the read fails quietly and the list is empty. **Redeploy required.**
+
+> **v2.4789 — the key's floor is 5 characters** (a short address such as `snell-law-e77` is 13; before, 16 refused it as *Missing token*), the ceiling 128. `submit-legal-portal` keeps the same floor. **Redeploy required.**
+
+> **v2.4771 — the precinct**: the lien book's and the matter's address columns (`LIEN_BOOK_ADDRESS_COLUMNS`, [`_shared/legalLienBookShape.ts`](../supabase/functions/_shared/legalLienBookShape.ts)) add `jp_precinct` and `jp_precinct_note` from the office's court map (migration `20261007110000`). **Redeploy after that migration is pushed** — before it the select names a column that does not exist.
+
+> **v2.4756 — the guess gate**: the firm's address is short on purpose (`<name the office picks>-<3 characters>`), so before any key lookup the function asks `legal_portal_guess_gate(ip, false)` ([`_shared/legalPortalGuessGate.ts`](../supabase/functions/_shared/legalPortalGuessGate.ts); the caller's IP from `clientIpFromEdgeRequest`) and answers 429 `GUESS_LOCKED_MSG` to a caller with ten misses in the hour; a miss (no link, or revoked) calls the gate with `true`. The probe counts too. A right key is never refused; the office's preview by firm id never asks the gate. The gate's RPC missing (before the push) reads as not locked. **Redeploy required.**
+> **v2.4755 — who the firm calls**: the payload adds `officeContacts: { phone, assistants: string[], controllers: [{ name, phone }] }` — the letterhead's number (`PORTAL_COMPANY.phone`) and the real, unarchived `users` in the `assistant` and `controller` roles (`name, phone, role`), shaped by [`_shared/legalOfficeContacts.ts`](../supabase/functions/_shared/legalOfficeContacts.ts). The page draws the strip under the letterhead and the print's two lines from it; an older payload reads as the letterhead's number alone. **Redeploy required.**
+
+> **v2.4750 — the probe**: `GET ?token=<key>&probe=1` answers `{ ok: true, firmName }` for a live key (and the usual 404 otherwise) with no payload and no view row. The customer page asks it before an unknown `my.clickplumbing.com` slug falls through to the sub portal, because a key minted since v2.4750 is a slug (`<firm>-<tail>`, [`_shared/legalPortalAddress.ts`](../supabase/functions/_shared/legalPortalAddress.ts)). **Redeploy required.**
+
+> **v2.4678 — property per job** (punch list #85 item 6): the matter path's `jobs_ledger` select adds `customer_address_id`; the function then reads the records those ids name from `customer_addresses` (by id, whichever customer holds them — on a GC-paid job the payer's own rows are the GC's offices) and the jobs' `job_property_owners` (`job_id, owner_mode, owner_name, company_name, mailing_address`, no `owner_email`). Each matter carries them as `jobAddresses` and `jobOwners`; `addresses` (the payer's rows) stays for an exact-address fallback. The page's kernel resolves one property per job (`resolveLegalJobProperties`) and runs each job's lien clock from its own kind. An older page ignores the new fields; the new page reads an older payload as no linked records. Needs `supabase functions deploy legal-portal` after merge.
+
+> **v2.4662 — each person's `failingSince`**: `recipients[]` gains `failingSince`, the company-zone day of `legal_firm_recipients.send_failed_since` (null while emails go through), which the Notifications page shows against the person. The recipients read is `select('*')` so it never fails before migration [`20261006055407`](./migrations/20261006055407_legal_notify_per_recipient.md) is pushed; only the mapped fields leave. **Redeploy required.**
+> **v2.4646 — no raw errors to the firm** (punch list #85, item 7): the top-level `catch` returns `unexpectedErrorBody(fn, e)` from [`_shared/legalPortalErrors.ts`](../supabase/functions/_shared/legalPortalErrors.ts): status 500, `{ error: "The office’s system could not answer. Please try again in a minute, or contact the office.", ref }`, the real error logged as `<fn>: unexpected error (ref XXXXXXXX)`. The deliberate 4xx sentences are unchanged. The page (`LegalPortal.tsx`) prints through `firmFacingErrorLine`, which keeps a 5xx body's words only when they are one of the three the functions write. **Redeploy required.**
+> **v2.4680 — share everything with counsel by default**: an entry is held only when the office held it back (`held_overrides[key] === true`); the first-bill rule is gone, the held count (`heldCount`, hard-coded 0 before) is real, and `sharedOverrides` marks every entry sent (#85 item 29, owner's decision 2026-10-05). On the first load after the deploy, the firm's portal shows the pre-bill contacts, promises and calls that used to be held by default. **Redeploy required.**
+> **v2.4681 — a settled matter stays until the office closes it**: the matters read is `stage in LEGAL_PORTAL_STAGES and closed_at is null` ([`_shared/legalStages.ts`](../supabase/functions/_shared/legalStages.ts), #85 item 16), so a firm end (settled) stays on the portal for the check and the last costs. **Redeploy required.**
+> **v2.4645 — pulled-back matters stay readable (#85 item 16)**: the payload adds `pulledMatters` — the firm's matters at `review` with `pulled_at` set (newest 50): `{ id, payerName, pulledAt, reason, entries }`, none of the customer's records. Reads as `[]` until migration `20261006150000` adds the columns. **Redeploy required.**
+> **v2.4648 — the undo stamps**: entries carry `voided_at`, `voided_via_portal`, `void_reason` (migration `20261006160000`); until it is pushed the read falls back to the old columns, so the portal never opens empty. **Redeploy required.**
+> **v2.4643 — the settlement floor**: each matter carries `settlementFloor: { amount, pct }` from `legal_matters` (both null = none, and before the migration). The page shows *You may settle at $X or above. Below that, ask.* **Redeploy after the migration.**
+
+> **v2.4626 — the office's stamp reaches the firm**: the entries select adds `acknowledged_at` (#85 item 17). The firm's acts read *seen* once the office acknowledges them, and an office ask the desk withdrew reads *withdrawn* instead of asking the firm again. **Redeploy required.**
+
+> **v2.4616 — the lien book, stripped** (punch list #85, item 2): `readLienBook` selects the columns [`_shared/legalLienBookShape.ts`](../supabase/functions/_shared/legalLienBookShape.ts) names (`LIEN_BOOK_COUNSEL_SELECT`) and `shapeLienBookForCounsel` cuts every desk item, filing, owner and address row again before it is sent — dates, dollars, the property and the owner of record; never a desk item's `fields`, hold reason or word, a filing's note, sends or link, an owner's email or an address note. The grid still covers every billed job with a lien month (the owner's call, re-asked 2026-10-05). The client reads the same list through `src/lib/legal/legalLienBookShape.ts`.
+
+> **v2.4669 — no-store, short PDF links, the hash first** (punch list #85, item 22): every answer and the preflight carry `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; signed agreement PDFs open for `SIGNED_PDF_SECONDS = 15 * 60` (was 3600), and the page reloads its payload at ten minutes so the links on screen stay fresh; the link is looked up by `token_hash` first, the raw `token` column second. The page's quiet reload sends `&refresh=1`, and the function writes no `public_page_views` row for it (the same visit). **Redeploy required.**
+
+> **v2.4647 — the office previews by firm id** (punch list #85, item 22, with migration `20261006072618_legal_portal_links_hash_only.sql`): once the token is hash-only at rest the office no longer holds the firm's key, so `GET ?firm=<legal_firms.id>&preview=1` with a signed-in session answers that firm's portal when the caller's own session passes `legal_office_can_read()` (checked with the anon key and the caller's JWT, `officePreviewFirm`); 401 *Sign in to the office app to preview the firm's portal.* otherwise. No link lookup, no counted view (the preview flag and the staff session both say so). The page shows an *Office preview* band and saves no act. **Redeploy required.**
+
+> **v2.4596 — a second signer**: the contract select adds `recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name`. The firm's page runs the coverage kernel (`buildJobContractCoverage`), which names both signers of a two-frame agreement since v2.4590: *Signed … by Sam Owner and Alex Owner*. Without the deploy the page names the first signer, as before. **Redeploy required.**
+
+> **v2.4638 — the sample tells one story; promises measured as the desk does** (punch list #85, item 9): `sampleLegalPortalResponse` now carries a GC-paid commercial matter (property record, dated check, § 53.056 notice with the owner's answers, a passed final demand, one promise kept and one broken, the firm's fee, question and the office's answer), sample particulars and a three-job `lienBook`; the firm's page builds the same fixture itself for the sample token. For real matters, `promiseRecords[].billedTotal` is [`billedAtPromise`](../supabase/functions/_shared/legalPromiseBilled.ts): the job's billed or paid lines dated at or before the promise, the rule of the desk's `list_payment_promise_records` (it summed every bill on the job, so a promise kept on a first draw read as broken). **Redeploy required.** Since the review: the invoice select adds `created_at`, and a bill's date is `COALESCE(billed_at, created_at)`, the RPC's own.
+
+> **v2.4465 — the held rule reads days in the company zone**: the first bill's day (`billed_at`, else `sent_to_customer_at`) and each entry's day (`customer_contacts.contact_date`, a promise's or a call's `created_at`, the collections note's `collections_at`) read as `todayYmdInAppTz(new Date(iso))`, not as their UTC date, and so does `releasedAt`. The packet kernel (`src/lib/legal/legalPacket.ts`) reads the same days on the desk and the firm's page, so the two sides agree on what is held. `paid_on` is a `date` and keeps the file's `ymd`. Redeploy after merge.
+
+> **v2.4642 — contacts scoped to the matter's jobs** (punch list #85, item 24): `customer_contacts` (the payer's general contact log) has no job column and went out account-wide, date-filtered only. The rule now, in [`_shared/legalContactScope.ts`](../supabase/functions/_shared/legalContactScope.ts): an entry whose text names one of the matter's jobs by number (HCP, else Click; `1042`, `#1042`, `J1042`, `job 1042`, never inside money, a decimal, a date, a phone or a longer number) goes; an entry that names only the payer's other jobs stays home; an entry that names no job is account history and goes. The function reads the payer's jobs (`customer_id` or `gc_customer_id` = the payer, `id, hcp_number, click_number`) for the numbers. The held-before-first-bill rule still applies after. **Redeploy required.**
+
 **Purpose**: Payload for the collections law firm's no-login portal (`/legal?t=<token>`, Legal portal train PR 3, v2.3319): resolves the firm's capability token (raw lookup + sha256 fallback in `legal_portal_links`, revoked → 404; no slug) and returns the firm, Click's particulars for filing (`app_settings.legal_particulars_v1`) and every matter the office marked attorney-ready — `legal_matters.stage IN ('referred','demand','suit','judgment')` for that firm — with the raw records the packet kernel (`src/lib/legal/legalPacket.ts`, via `src/lib/legal/legalPortalPayload.ts`) assembles on the page: jobs (+ invoices, payments, the GC name), the customer, contact persons, `customer_addresses`, `job_contracts` (signed PDFs as **one-hour signed URLs** from `job-contract-documents`), accepted estimates, `job_demand_letters`, `job_lien_filings` (every column — the packet groups them by `packet_id` into envelopes and draws the job's lien timeline from them, the approved sessions and the job row's `created_at` / `lien_contract_ended_on` / `lien_retainage_held` / `lien_payment_bond`, v2.3787), `job_lien_desk_items` as `lienDeskItems` (v2.3797: the jobs' live `notice_53_056` items with `fields` **shaped down to `letterTwo` / `gcAuthorizedDirectPay` / `ownerCall`** — the owner's call and pile, letter two's clock and the GC's written okay under each envelope; the cover letter, a skip's reason and the leader's spoken word never leave), `job_payment_promises` (+ promise-record inputs so the page classifies kept/broken), `job_payment_chase_touches`, `customer_contacts`, `reports` (+ template names), `clock_sessions`, thread notes, `legal_matter_entries` — and `lienBook` (v2.3789): the Lien desk's Timeline book raw (`list_lien_notice_months` / `list_lien_affidavit_windows` at 400 days as the service role — migration `20260924030000` — plus the live desk items, the affidavit and release filings, the jobs, GCs, property records and owner overrides), which the page folds with `assembleLienBookInput` + `buildLienTimelineBook` for counsel's grid; null when unreadable.
 
-**Held entries never leave.** The office's *to counsel* decisions (`legal_matters.held_overrides`) are applied under the service role with the desk's rule: an entry dated before the account's first bill is held unless the override says share; one on or after it goes unless the override says hold. Timeline keys `contact:<id>` · `promise:<id>` · `call:<id>` · `note:<job id>`; a held collections note is blanked on the job. The payload's `sharedOverrides` carries only the pre-bill entries the office shared.
+> **v2.4644 — the matter, shaped** (punch list #85, item 23): every matter-path select names its columns from [`_shared/legalMatterShape.ts`](../supabase/functions/_shared/legalMatterShape.ts) (`MATTER_COUNSEL_SELECT`, the `legal_matters` row and the `jobAddresses` / `jobOwners` reads included; no `select('*')` left on the matter path) and each built matter goes through `shapeMatterForCounsel`, which cuts every row to its list before it is sent. Out: the Drive and photo links and status on jobs, the Stripe id on invoices, the payer's credit terms and every `contact_info` key but the three emails and three phones, an address's note and bookkeeping, the contract's storage paths and Doc link, an estimate's total, a demand letter's address, email, debtor party, invoice ids, exhibits column and whole draft (`fields` keeps `feeClockYmd` and the enclosures' label, kind, title and pages), a filing's note, draft fields, invoice ids and creator (`sends` keeps recipient, method, tracking, day), and job-note bodies and authors (notes travel as `{ jobId, createdAt }` for the per-job count; read up to 2000 rows, was 500 with bodies). In: `acknowledged_at` on entries (the page tells a withdrawn ask and a seen act by it) and `customer_address_id` on jobs (item 6). `MATTER_PROPERTY_OWNER_COLUMNS` (no `owner_email`) is ready for item 6. **Redeploy required.**
+
+**Held entries never leave.** The office's *to counsel* decisions (`legal_matters.held_overrides`) are applied under the service role with the desk's rule: since v2.4680 (#85 item 29) every entry goes unless its override is `true`; the office's reasons (`held_overrides._reasons`) never leave, and the matter's `heldCount` says how many were held. Timeline keys `contact:<id>` · `promise:<id>` · `call:<id>` · `note:<job id>`; a held collections note is blanked on the job. The payload's `sharedOverrides` marks every entry that arrived as shared (`false`), so a page still on the old pre-bill rule shows them too.
 
 **View counting**: every validated load inserts a `public_page_views` row (`surface = 'legal_portal'`, `entity_id` = firm id) stamped by `publicViewDecision` — office previews (`?preview=1`) and staff sessions do not count.
 
@@ -1617,13 +1755,35 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### submit-legal-portal
 
+> **v2.4756 — the guess gate**: the same gate as `legal-portal` around `resolveLink`: 429 for a locked caller before the lookup, a miss noted after. **Redeploy required.**
+
+> **v2.4646 — no raw errors to the firm** (punch list #85, item 7): the top-level `catch` (as in [legal-portal](#legal-portal)) returns `unexpectedErrorBody(fn, e)` from [`_shared/legalPortalErrors.ts`](../supabase/functions/_shared/legalPortalErrors.ts): status 500, `{ error: "The office’s system could not answer. Please try again in a minute, or contact the office.", ref }`, the real error logged as `<fn>: unexpected error (ref XXXXXXXX)`. The deliberate 4xx sentences are unchanged. The page (`LegalPortal.tsx`) prints through `firmFacingErrorLine`, which keeps a 5xx body's words only when they are one of the three the functions write. **Redeploy required.**
+
+> **v2.4625 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose firm emails now speak the firm's words ([legal-notify-dispatch](#legal-notify-dispatch)). The confirm email itself is unchanged; the confirmed page reads *one email per event or a weekly digest*.
+> **v2.4645 — every step**: `step` takes all of `_shared/legalStages.ts` `LEGAL_FIRM_STEPS` (adds `post_judgment`, `payment_plan`, `uncollectible`, `dismissed`). **Deploy after migration `20261006150000`** (the stage CHECK); before it, the new steps answer *Could not record the step*.
+> **v2.4648 — undo with a reason (#85 item 18, PR 2)**: `kind: 'void'` with `entryId` and `note` (the reason) stamps the firm's own entry `voided_at`, `voided_via_portal = true`, `void_reason` (and `meta.voidedBy`), by [`_shared/legalPortalActs.ts`](../supabase/functions/_shared/legalPortalActs.ts) `firmVoidProblem`: its fees and costs, and a payment the office has not applied. An insert that hits the new unique index on `(matter_id, meta->>'clientId')` is answered as a duplicate. **Deploy after migration `20261006160000`.**
+> **v2.4649 — redeploy only**: bundles `_shared/legalEmails.ts`, whose now and digest builders grew the new events ([legal-notify-dispatch](#legal-notify-dispatch)); the confirm email it sends is unchanged.
+
+> **v2.4643 — settlement authority (#85 item 20)**: the matter is read with `select('*')`, so the floor columns (migration `20261006140000`) arrive when pushed and read as *no floor* before. A `settled` step takes an `amount` (required when a floor is set). Under the floor ([`_shared/legalSettlement.ts`](../supabase/functions/_shared/legalSettlement.ts): dollars, or a percent of the open balance by the packet's rule, `matterOpenBalance`) the act is saved as a `question` entry with `meta.flavor = 'settlement'`, `proposedAmount`, `floor`, the stage does not move, and the reply's `notice` says so. At or above it, the step moves the stage with the amount on the entry. **Redeploy after the migration.**
+
+> **v2.4640 — acts a firm can trust (#85 item 18, PR 1)**: every matter act may carry `occurredOn` (validated by [`_shared/legalPortalActs.ts`](../supabase/functions/_shared/legalPortalActs.ts) `legalActDateProblem`: a real day, not in the future, at most three years back), `clientId` (a uuid; an entry on the matter with the same `meta.clientId` is answered `{ ok, entryId, duplicate: true }` and nothing is written) and `recordedById` (a live person on the firm's `legal_firm_recipients` → `meta.recordedBy = { id, name }`). The hourly limit is 60 acts per matter. PR 2's migration adds the unique index behind `clientId`. **Redeploy required.**
+
+> **v2.4622 — no honeypot**: the `website` check is gone, and the portal's two hidden `website` boxes with it. The page never sent the field, so the trap guarded nothing; wired, a password manager that fills every box would have made a real act answer `{ ok: true }` and save nothing. A body that still carries `website` is saved like any other. **Redeploy required.**
+> **v2.4662 — a confirmation that does not go is kept against the person; turning emails back on rotates the stop link**: `sendConfirm` sets or clears `legal_firm_recipients.send_failed_since` / `send_error` from the send (`legalRecipientSendPatch`, [`_shared/legalNotifyLedger.ts`](../supabase/functions/_shared/legalNotifyLedger.ts)), so the person carries the "not reaching" line on both sides until an email gets through. `recipient_resume` sets a new `unsubscribe_salt` and clears the hash in a second write, so a stop link in an old, perhaps forwarded, email no longer pauses them. Migration [`20261006055407`](./migrations/20261006055407_legal_notify_per_recipient.md) first. **Redeploy required.**
+> **v2.4681 — lifecycle (#85 item 16)**: the matter must be on the portal by `_shared/legalStages.ts` `legalMatterOnPortal` (a working stage, or an end the office has not closed). A `settled` step moves the stage and no longer stamps `closed_at`; the office's close is the end. A step that would move the stage backward (`firmStepDecision`: judgment → demand, or anything after an end) is recorded with `meta.proposed = true`, `meta.from`, and the stage is left alone; the reply carries a `notice` the page shows. **Redeploy required.**
+> **v2.4640 — acts a firm can trust (#85 item 18, PR 1)**: every matter act may carry `occurredOn` (validated by [`_shared/legalPortalActs.ts`](../supabase/functions/_shared/legalPortalActs.ts) `legalActDateProblem`: a real day, not in the future, at most three years back), `clientId` (a uuid; an entry on the matter with the same `meta.clientId` is answered `{ ok, entryId, duplicate: true }` and nothing is written) and `recordedById` (a live person on the firm's `legal_firm_recipients` → `meta.recordedBy = { id, name }`). The hourly limit is 60 acts per matter. PR 2's migration adds the unique index behind `clientId`. **Redeploy required.**
+
+> **v2.4457 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose digest now reads its days in `APP_CALENDAR_TZ` ([legal-notify-dispatch](#legal-notify-dispatch)). This function sends only the confirm email, which carries no date, so nothing it sends changes; redeploy after merge so the bundle matches the repo.
+
+> **v2.4669 — no-store, the hash first** (punch list #85, item 22): every answer and the preflight carry `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; `resolveLink` reads `token_hash` first and the raw `token` column second, as [legal-portal](#legal-portal) does. **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose**: The firm's acts on its portal (Legal portal train PR 4, v2.3322): one POST, token-authenticated like `submit-sub-portal`. `{ token, matterId, kind, … }` with `kind` one of **`fee` · `cost`** (`amount`, `note` — rolls into the matter's total demand), **`step`** (`stage` = `demand` · `suit` · `judgment` · `settled`, optional `note` — moves `legal_matters.stage`; `settled` also stamps `closed_at`), **`question`** (`note`), **`answer`** (v2.3790: `askId` — an office ask, a `question` entry with `via_portal = false` on this matter and not withdrawn — with `note` and, for a sign-off, `signedOff` true / false; the body defaults to *Signed off* / *Not yet*), **`payment_received`** (`amount`, `note` — money the firm holds; the office applies it to the job and records the firm's cut from the desk). Every act is one `legal_matter_entries` row with `via_portal = true` and `acknowledged_at NULL` — exactly what the office's "The law firm has N things for you" Needs You card reads; the desk's Fees & steps tab answers, applies or acknowledges each (`legal_add_entry`, `legal_acknowledge_entry`).
 
 **Recipients** (v2.3325): `recipient_add` (`name`, `email`, `role`, optional `mode` / `scope`; 12 people per firm; one live row per address; sends the confirmation email with a hashed token), `recipient_rules` (`recipientId`, `mode`, `scope`, `digestWeekday` 1–7, `digestTime` HH:MM), `recipient_stop` / `recipient_resume` (`paused_at`), `recipient_resend`. No `matterId` needed for these.
 
-**Guards**: honeypot `website` (pretends success, writes nothing); the matter must belong to the token's firm and be in the with-firm set (403 otherwise); 30 portal acts per firm per hour (429); amounts 0 < n ≤ 1,000,000; bodies capped at 2,000 chars. The firm never marks anything paid, edits a job, or emails a customer through us.
+**Guards**: the link is the key; the matter must belong to the token's firm and be in the with-firm set (403 otherwise); 60 portal acts per matter per hour since v2.4640 (429, naming the matter and when the limit lifts; 30 per firm before); amounts 0 < n ≤ 1,000,000; bodies capped at 2,000 chars. The firm never marks anything paid, edits a job, or emails a customer through us.
 
 **Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `POST /functions/v1/submit-legal-portal`. **Deploy**: after the v2.3313 migration (entries table) — alongside `legal-portal`.
 
@@ -1633,19 +1793,49 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### legal-notify-dispatch
 
+> **v2.4750 — the address with the firm's name**: `portalLink` writes the firm's own link through `legalPortalAddress` — `my.clickplumbing.com/<key>` for a slug key, the direct `/legal?t=` form for one made before. `legal_portal_link_token(firm_id)` now returns the firm's own link (`purpose = 'firm'`), never a person's. **Redeploy required.**
+
+> **v2.4647 — the portal link from Vault** (punch list #85, item 22): the link each email carries comes from `legal_portal_link_token(firm_id)`, a service-role-only RPC over Vault, once migration `20261006072618_legal_portal_links_hash_only.sql` empties the raw column; before that migration the RPC is missing and the raw `token` column still answers, so the deploy can go first. **Redeploy required, before the migration is pushed.**
+
+> **v2.4625 — the firm's words**: [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) — the referred email says *{company} has referred X to {firm}*, a pull-back is *Referral withdrawn: X*, the digest prints each matter's stage through `legalFirmStageWords` (*referred · demand sent · suit filed · judgment entered*) and its events as *Referral withdrawn*, and every email's footer names `companyName` instead of a fixed brand (punch list #85, item 3). Redeploy after merge.
+> **v2.4662 — each person stamped on success, retried, and shown; stop links minted once; the cron secret in constant time** (punch list #85 item 26, migration [`20261006055407`](./migrations/20261006055407_legal_notify_per_recipient.md)). The "now" lane keeps a per-person ledger on each event (`legal_notification_queue.sent_to`, rules in [`_shared/legalNotifyLedger.ts`](../supabase/functions/_shared/legalNotifyLedger.ts)): the people who were to hear it are frozen on its first tick; a person is stamped only when Resend took their email; a refused send is tried again each tick, twelve tries at most (an hour), and a person who stopped or left meanwhile is skipped; `sent_now_at` is stamped once everyone is sent, given up or skipped. Every send, now or digest, sets or clears the person's `send_failed_since` / `send_error`, which the desk's **✉ Firm's emails** and the portal's Notifications page show. `unsubscribeLink` derives the person's token as an HMAC of their id and `unsubscribe_salt` under the service key, so every email carries the same stop link; the hash is written only when missing or stale. `X-Cron-Secret` is compared with `constantTimeEqual`. The response adds `retrying` and `gaveUp`. Before the migration's column exists the event is stamped after one pass, as before. **Push the migration, then redeploy.**
+> **v2.4649 — every office event (#85 item 17, PR 2)**: the queue's triggers are `referred` · `answer` (payload adds `question`, the firm's question it answers) · `pulled` · `ask` (`flavor`, `jobLabel`) · `note` · `applied` (`amount`) · `fee_seen` (`amount`, digest only: the now lane stamps it without sending). `legalNowTriggerOf` ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts)) skips a trigger it does not know instead of wording it as a pull-back. **Deploy this BEFORE pushing migration `20261006170000`** — the old dispatcher words every unknown trigger as *Pulled back*.
+
+> **v2.4624 — the confirm page's expired words**: `GET ?confirm=<t>&json=1` with a token that matches nobody answers `reason` = `LEGAL_CONFIRM_EXPIRED_REASON` ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts)): ask whoever added you to press *Resend the confirmation* next to your name on the portal's Notifications tab, instead of *ask someone to add you again* (a second add of the same address is refused while the first row lives). The app page falls back to the same words. **Redeploy required.**
+> **v2.4681 — the digest's open matters** read the portal's rule (`_shared/legalStages.ts`, #85 item 16): an open settled matter is still listed. **Redeploy required.**
+> **v2.4645 — the pull-back's reason**: the `pulled` event's payload carries `reason` (trigger in migration `20261006150000`); the now email and the digest print it ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts)). **Redeploy required.**
+
+> **v2.4574 — what the firm is sent is kept**: a send-now notice (`legal_notice`) and a digest (`legal_digest`) are filed with the recipient and the firm as the name they went to. They name no job; they are found on the Documents page once step 4 of the plan lands. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
+> **v2.4457 — the digest's days**: the weekly digest ([`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) `buildLegalDigestEmail`) prints a matter's *since* (`legal_matters.released_at`) and each event's day (`legal_notification_queue.created_at`) in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not as the UTC date, which read the next day for anything after 7 pm Central. Redeploy after merge.
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 _v2.3351:_ an event is heard by whoever is subscribed when it happens and never replayed to whoever joins later — with no confirmed recipients (or no digest people) the open queue rows are stamped consumed on each tick instead of waiting.
 
-**Purpose**: The firm's emails (Legal portal train PR 5, v2.3325). Two doors. **`POST`** from pg_cron (`legal-notify-dispatch`, `1-56/5 * * * *`, `X-Cron-Secret`): (1) drains `legal_notification_queue` rows without `sent_now_at` — every confirmed, unpaused recipient at the firm with `mode = 'now'` (and, for `scope = 'mine'`, only when named as the matter's `handling_name`) gets one email per event (`referred` · `answer` · `pulled`), then the row is stamped; (2) digests — each confirmed, unpaused `mode = 'digest'` recipient whose `digest_weekday` matches the Central weekday and whose `digest_time` has passed, and who has not had today's digest (`last_digest_at`), gets one email listing every open matter for the firm plus the events since their last digest; events are stamped `digested_at` once the firm's last eligible digest of the day went. A firm with `legal_firms.paused_at` sends nothing; the queue waits. **`GET ?confirm=<token>`** activates a recipient (`confirmed_at`; nothing is sent to an address before this) and **`GET ?unsubscribe=<token>`** pauses one — plain HTML pages, the token is the capability (hashes at rest; the unsubscribe token rotates per email).
+**Purpose**: The firm's emails (Legal portal train PR 5, v2.3325). Two doors. **`POST`** from pg_cron (`legal-notify-dispatch`, `1-56/5 * * * *`, `X-Cron-Secret`): (1) drains `legal_notification_queue` rows without `sent_now_at` — every confirmed, unpaused recipient at the firm with `mode = 'now'` (and, for `scope = 'mine'`, only when named as the matter's `handling_name`) gets one email per event (`referred` · `answer` · `pulled`), stamped per person in `sent_to` and retried until settled (v2.4662), then the row is stamped; (2) digests — each confirmed, unpaused `mode = 'digest'` recipient whose `digest_weekday` matches the Central weekday and whose `digest_time` has passed, and who has not had today's digest (`last_digest_at`), gets one email listing every open matter for the firm plus the events since their last digest; events are stamped `digested_at` once the firm's last eligible digest of the day went. A firm with `legal_firms.paused_at` sends nothing; the queue waits. **`GET ?confirm=<token>`** activates a recipient (`confirmed_at`; nothing is sent to an address before this) and **`GET ?unsubscribe=<token>`** pauses one — plain HTML pages, the token is the capability (hashes at rest; the unsubscribe token is minted once per person since v2.4662).
 
 **Sends**: `sendEmailViaResend` (`RESEND_API_KEY`); the portal link from `APP_ORIGIN`; every email ends with the one-click stop link. Wording is fixed (catalog ids `legal_referral`, `legal_digest`; the confirmation is `legal_recipient_confirm`, sent by `submit-legal-portal`).
 
-**Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`.
+**Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`, and `LEGAL_UNSUBSCRIBE_SECRET` (v2.4662: the key of every stop link; falls back to `SUPABASE_SERVICE_ROLE_KEY`, so rotating the service key would otherwise break the links already sent; with both empty an email goes with no stop link and the error is logged). Setting it later re-mints each person's stop link at their next email.
 
 **v2.3512 (What customers see PR 6):** the now and digest emails and the confirm / unsubscribe pages are built by `_shared/legalEmails.ts`; `GET ?confirm=sample` / `?unsubscribe=sample` render the two pages for Ann Sample without touching a row.
 
 **v2.3521:** the confirm / unsubscribe pages moved to the app (`/legal/confirm?t=…`, `&stop=1`) because the platform relays this function's HTML as text/plain. `GET ?confirm=<t>&json=1` / `?unsubscribe=<t>&json=1` do the work and answer JSON for that page; the bare link shape 302-redirects there. `unsubscribeLink` builds the app URL.
+
+### legal-send-firm-link
+
+> **v2.4750 — one link of several**: the body takes `linkId`, one of the firm's live links (the window's *Send…* on a person's row); without it the firm's own link (`purpose = 'firm'`) goes. The key is read by `legal_portal_link_token_by_id(p_link_id)` (service role, Vault); a `token` the card sends must equal it. A person's link greets the person by the row's `label`. The address is `legalPortalAddress(APP_ORIGIN, key)`: the short form for a slug key. 409 *That link is no longer live* for a dead `linkId`. **Redeploy required.**
+
+**Purpose**: The Legal desk's **🌐 Firm's link → Send the firm their link** (v2.4624, punch list #85 item 21): one welcome email from the company to the firm, carrying the active portal link. [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts) `buildLegalWelcomeEmail` writes it: the greeting (the firm's handling person, else the firm), who is writing, what the portal is, the link as a button and as text, how many accounts wait there, **what to do first** (open Notifications and add each person who should hear from us; each confirms by email), what the firm finds there, *keep the link inside the firm*, and the office phone; an optional line the office typed sits under the opening; signed by the sender with reply-to their address. A full plain-text part. No stop link: it is one email a person sent, and its footer says nothing else is emailed unless someone at the firm adds the address.
+
+**Endpoint**: `POST /functions/v1/legal-send-firm-link` — `{ firmId, useOnFile?: boolean (default true), typed?: string, note?: string, token?: string }`. Addresses: the firm's `legal_firms.email` when `useOnFile`, then each typed address (commas, semicolons, spaces), each once, at most three ([`_shared/legalFirmLink.ts`](../supabase/functions/_shared/legalFirmLink.ts) `legalFirmLinkAddresses`, the card's own check). One email: the first address on To, the rest on Cc. The link is the firm's active `legal_portal_links` row: its raw `token`, or the `token` the card sends when it matches that row (raw or `token_hash`), or, when the row keeps no token and the card sent none, the Vault copy read with `legal_portal_link_token(p_firm_id)` (service role; punch list #85 item 22), so the send keeps working once tokens are hash-only at rest. The link's origin is `APP_ORIGIN`; a body origin is ignored. The filed copy (`sent_documents`, kind `legal_firm_link`) has the token cut to `?t=…` ([SENT_COPIES.md](./SENT_COPIES.md)). No active link → 409 *Create the firm's link first*; no readable token → 409 *Press Rotate, then send the new link*.
+
+**Returns**: `{ ok: true, sentTo: string[], sentAt }`; a refused send → 502 `{ ok: false, error }`; 400 for addresses, 401 / 403 for the caller.
+
+**Sent copies**: filed with `file: { kind: 'legal_firm_link', source: { table: 'legal_portal_links', id }, recipientName: firm, sentBy }` ([`SENT_COPIES.md`](./SENT_COPIES.md)). The card reads its line *Sent to … on … by …* from those rows for the active link (`legalFirmLinkSentLine`), so a Rotate starts it over. Catalog id `legal_firm_link` (`emailType`).
+
+**Auth**: `verify_jwt = false` in `config.toml`; the caller's JWT is checked in the handler (`auth.getUser`), then `legal_office_can_read()` through the caller's own client (dev, master, assistant, controller — the roles that mint the link). The send-bid-room-link pattern. **Deploy**: `supabase functions deploy legal-send-firm-link` (new). Secrets: `RESEND_API_KEY`, `APP_ORIGIN` (fallback when the card sends no origin).
 
 ### get-estimate-public-terms
 
@@ -1706,6 +1896,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### send-estimate-to-customer
+
+> **v2.4574 — the email is kept as it went**: after a successful send the function files the email the customer read through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — `kind` `estimate`, or `estimate_resent` for `mode: 'resend'` — keyed to the estimate's job, customer and bid (the row select adds `customer_id, job_ledger_id, bid_id`) with the estimate as its source. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read draft estimate, generate token hash, set `sent`, persist resolved **`customer_experience_sent`**, email Resend link to `{public_origin}/estimate/accept?t=…`.
 
@@ -1776,6 +1968,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### send-contract-for-signature
+
+> **v2.4574 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
 
@@ -1993,6 +2187,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-one
 
+> **v2.4783 — the county on every ok answer**: `county` is Google's `administrative_area_level_2` on a Google answer, else the county the point sits in from the Census geographies lookup ([`_shared/censusGeocode.ts`](../supabase/functions/_shared/censusGeocode.ts) `censusCountyFromPoint`, free, no key), for cache hits too; '' when neither knows. The job form's *On the map* line reads it. **Redeploy required** (the old answer has no county; the line then reads *placed*).
+
 **Purpose**: Single-address geocoding for **`address_geocodes`** (**`dev`**, **`master_technician`**, **`assistant`**, **`estimator`** only): same cache and upsert as batch. **Map** bulk resolution uses **`geocode-address-batch`** from [`useMapPageData.ts`](../src/hooks/useMapPageData.ts). **`geocode-one`** covers **Review geocodes** **`refresh_google_only`**, **Settings** default map label lookup ([`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts)), and any caller that wants one row per request. For a normal (non **`refresh_google_only`**) miss: **Nominatim** first, then **Google** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates.
 
 **Endpoint**: `POST /functions/v1/geocode-one`
@@ -2049,6 +2245,26 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Implementation**: [`supabase/functions/property-lookup/index.ts`](../supabase/functions/property-lookup/index.ts); kernel [`supabase/functions/_shared/txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) (client re-export [`src/lib/customers/propertyRecord.ts`](../src/lib/customers/propertyRecord.ts)); the parcel identify (tolerance ladder, timeout) in [`_shared/txParcelIdentify.ts`](../supabase/functions/_shared/txParcelIdentify.ts) since **v2.3450**, shared with `owner-confirm-nightly`; client invoke [`src/lib/customers/propertyLookupClient.ts`](../src/lib/customers/propertyLookupClient.ts).
 
 ---
+
+### lien-pay-offer
+
+**Purpose**: The money side of the **pay offer** (**v2.4704**; the choice and the words are v2.4713): the leader's discount on each bill behind a § 53.056 notice if it is paid in full by a day. Two actions. **`apply`** — the Lien desk calls it right after *Record the run* inserts a notice's `job_lien_filings` row and marks its desk item sent: the offer is read off the desk item the filing closed (`job_lien_desk_items.sent_filing_id` → `offer_pct`, `offer_by`, `offer_set_by`), and for every enclosed Stripe bill still open (`invoice_ids`, `status = billed`, Stripe says `open`) a **credit note** is created for the percent of what Stripe then asks for (`reason: order_change`, memo *10% off if paid in full by Nov 15 — lien notice offer*, metadata `pipetooling_lien_offer`, `filing_id`, `offer_by`), and the row remembers it (`lien_offer_pct / _by / _set_by / _filing_id / _credit_note_id / _credit_cents / _applied_at`). So the scanned code, Stripe's hosted page and Stripe's own emails show the lower amount. A bill already carrying a live credit is skipped (a second call is harmless); a row write that fails voids the credit again; an offer whose day has passed is not applied. **The ledger's amount is never changed here** — `stripe-webhook` writes it down once the bill is paid in full, so an affidavit always swears the full balance. **`expire`** — pg_cron (`lien-pay-offer-nightly`, 06:05 UTC, `20261007020000`) a few minutes after midnight Central: every live credit whose day has passed (`lien_offer_by < today`, neither taken nor ended, at most 200 a night) is **voided** on Stripe and the row marked `lien_offer_ended_at`, so the code shows the full amount again; a bill Stripe says is paid is marked `lien_offer_taken_at` instead, with a warning line (the webhook normally did it first). One structured line per run: `{"event":"lien_pay_offer_expire","today","dry_run","candidates","ended","taken","failed"}`; per apply: `{"event":"lien_pay_offer_apply","filing","pct","by","applied","skipped","failed","by_user"}`.
+
+**Request**: `POST /functions/v1/lien-pay-offer` with `{ "action": "apply", "filing_id": "<uuid>" }` (the caller's JWT; role dev · master_technician · assistant · controller, not a `read_only` training account → 403 otherwise) or `{ "action": "expire", "dry_run"?: true }` with `X-Cron-Secret` (or `cron_secret` in the body) = `CRON_SECRET` → 401 otherwise. Gateway `verify_jwt = false` (the cron has no JWT).
+
+**Response**: apply → `{ ok: true, pct, by, applied: [{ id, credit_cents, credit_note_id }], skipped: [{ id, reason }], failed: [{ id, reason }] }`, or `{ ok: true, applied: [], …, reason: "no offer on the notice" | "the offer’s day has passed" }`; expire → `{ ok: true, today, dry_run, ended: [ids], taken: [ids], failed: [{ id, reason }] }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`); the row's `stripe_mode` picks the key.
+
+**Implementation**: [`supabase/functions/lien-pay-offer/index.ts`](../supabase/functions/lien-pay-offer/index.ts); the pure part — the cents, the state of a bill's offer, what the page reads, the write-down, which credits expire — in [`_shared/lienPayOffer.ts`](../supabase/functions/_shared/lienPayOffer.ts), re-exported by [`src/lib/jobs/lienPayOfferShared.ts`](../src/lib/jobs/lienPayOfferShared.ts) and tested from `src/lib/jobs/lienPayOfferShared.test.ts`; the desk's call in [`src/lib/jobs/lienDeskRunIo.ts`](../src/lib/jobs/lienDeskRunIo.ts). **Deploy**: `supabase functions deploy lien-pay-offer`.
+
+### court-precinct-nightly
+
+> **v2.4778 — a record with no county takes the area's**: when the point falls in an area and the record's `county` is blank, the write adds `county` and `county_source = 'map'` (migration `20261007140000` admits the value). **Redeploy after the push.**
+
+**Purpose** (v2.4770, which court, step 4): put every property record (`customer_addresses`) in its justice precinct from the office's own court map (`court_areas`, migration `20261007110000`), using the point the geocode cache (`address_geocodes`) already holds for its address. One rule with the Map page: [`_shared/courtAreasClassify.ts`](../supabase/functions/_shared/courtAreasClassify.ts) over the dependency-free geometry in [`_shared/courtGeometry.ts`](../supabase/functions/_shared/courtGeometry.ts). A record typed by hand (`jp_precinct_source = 'hand'`) is never touched; every other record with a point is classified against the active areas of its own county and written only when the precinct or the on-the-line note changed (`jp_precinct`, `jp_precinct_note`, `jp_precinct_source = 'map'`, `jp_precinct_at`). Outside every area clears the precinct; no point in the cache is skipped (owner-confirm-nightly and the Map page fill the cache). Reads up to 5,000 records, 200 at a time.
+
+**Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `court-precinct-nightly`, 06:20 UTC, migration `20261007120000`), or a signed-in office user — the function checks `is_office_staff()` under the caller's JWT, which is how the Map page's **Classify now** calls it (`supabase.functions.invoke`). `verify_jwt = false` in `config.toml`. **Body**: `{ dry_run?: boolean }`. **Answer**: `{ ok, dryRun, areas, rows, placed, outside, onLine, noPoint, written }`. **Deploy**: `supabase functions deploy court-precinct-nightly` after the two migrations are pushed.
 
 ### owner-confirm-nightly
 
@@ -2268,6 +2484,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-email
 
+> **v2.4574 — a report that leaves the company is kept**: when a subscription names an outside address (`recipient_email`), the report email is filed (`field_report`) on its job and bid. A subscription that names one of our own users is our own mail and is not filed. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4180 — the email is a kernel**: `buildReportEmail`, `ReportContent`, `renderFieldValue` and `escapeHtml` moved verbatim into [`_shared/fieldReportEmail.ts`](../supabase/functions/_shared/fieldReportEmail.ts); `index.ts` imports them, so Settings → What the team sees renders the email on sample data (punch list #60, lift 11 of 14). Redeploy after merge.
 
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
@@ -2296,7 +2514,7 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 // or { error: string } with 400/401/403/404/500
 ```
 
-**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`ReportEmailRecipientsPanel.tsx`](../src/components/dashboard/ReportEmailRecipientsPanel.tsx) "Send now" for `manual` (mounted from the Dashboard's Recent Reports card and, since v2.3480, Jobs → Reports).
+**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`EmailReportPersonEditor.tsx`](../src/components/jobs/emailReports/EmailReportPersonEditor.tsx) for `manual` (one person's editor inside [`EmailReportsModal.tsx`](../src/components/jobs/EmailReportsModal.tsx), opened from Jobs → Reports and the Dashboard's Recent Reports card).
 
 **Deploy**: `supabase functions deploy send-report-email` (manual, per repo convention).
 
@@ -2943,6 +3161,8 @@ const response = await supabase.functions.invoke('claim-dev', {
 
 ### test-email
 
+> **v2.4557 — a self-test for sent copies**: `file_copy_only: true` (with the usual `to`, `subject`, `body`) sends **nothing** and files the message as a `sent_documents` row of `kind` `self_test`, with one small attachment, through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — the way to prove the helper against the live bucket and table after a deploy. The row names no job, so no list shows it; a dev deletes it afterwards. Answers `{ success: true, sent: false, filed: 'attempted' }`. **Redeploy required.**
+
 **Purpose**: Test email templates with Resend API integration
 
 **Endpoint**: `POST /functions/v1/test-email`
@@ -3164,6 +3384,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ### send-test-report
 
+> **v2.4574 — the email is kept too**: the PDF was already stored in `job-test-reports`; after the stamp the function now also files the email as it was read, with the PDF beside it, as a `sent_documents` row (`kind` `test_report`, the job, the report as its source), so it lists under *Sent from this job* with everything else. A `sample: true` send goes to the dev alone and is not filed. **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.3301, Test reports PR 3): email a job's hydrostatic / pinpoint / gas **test report** to the GC (or the customer) with the PDF attached and the job's Stripe pay link in the body — the hand-written Gmail the office sent from plumbingtooling.com, as one button. The PDF arrives from the client (jsPDF, [`sendTestReport.ts`](../src/lib/jobs/sendTestReport.ts)); the function **stores the exact bytes** in the private `job-test-reports` bucket as `<job_id>/<report_id>-v<n>.pdf` (a re-send is the next version, never an overwrite), sends through Resend (To + cc + attachment, `email_type: 'test_report'`), stamps the `job_test_reports` row sent (`sent_at/to/cc/by`, `sent_pay_url`, `pdf_path`, `pdf_version`, `certifier_name/license` snapshot), and posts the job activity line. Send surface: the Test report modal's send sheet ([`TestReportSendSheet`](../src/components/jobs/TestReportSendSheet.tsx)); email wording from [`_shared/testReportEmail.ts`](../supabase/functions/_shared/testReportEmail.ts).
@@ -3190,6 +3412,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 ### auto-send-test-reports
 
+> **v2.4574 — the email is kept too**: the shared sender ([`_shared/testReportSend.ts`](../supabase/functions/_shared/testReportSend.ts)) takes `file` and files the email and the PDF after the send; this function passes `test_report`, the job, the GC and the report, with no sender. **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.3316, Test reports dial B): every ten minutes pg_cron (`20260911201244_auto_send_test_reports_cron.sql`) calls this; when Settings → Test reports → Sending is *Send PASS reports automatically* (`app_settings.test_report_settings_v1.autoSend = 'pass'`, **off by default**), it takes up to ten hydrostatic **PASS** drafts older than the 15-minute grace period whose job has a **GC with an email** on the customer card and a **billed Stripe invoice with a pay link**, renders the paper server-side with pdf-lib ([`_shared/testReportPdfLib.ts`](../supabase/functions/_shared/testReportPdfLib.ts), the twin of the browser renderer), files it as the next version in `job-test-reports`, emails the GC (cc the standing copy, `email_type: 'test_report'`), stamps the row sent with `sent_by NULL` and the certifier snapshot (guarded by `status = 'draft'`), and posts *Sent automatically: …* on the job as the job's master. FAIL, pinpoint, gas, and anything missing a bill or a GC email are skipped with a reason in the response and stay on the Dashboard for a person.
@@ -3199,6 +3423,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 ---
 
 ### send-lien-release-email
+
+> **v2.4574 — the release is kept as it went**: after the sent stamp the function files the email and the signed release PDF through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `lien_release`, keyed to the job, the customer it went to (the GC when the address is the GC's billing email) and the release (`source_table` `job_lien_releases`). The account card's code is drawn into the kept page. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3212,13 +3438,15 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 ### send-lien-filing-email
 
+> **v2.4574 — the notice is kept as it went**: after a successful send the function files the email and its PDF — `kind` `lien_notice`, or `demand_letter` for `email_type: 'demand_letter'` — keyed to the job, with `recipient_label` as the name it went to. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
-**Purpose** (v2.2645, Lien Instruments phase 3): email a **lien-instrument PDF** — today the § 53.056 notice of claim — to a named recipient (the owner of record or the original contractor) as a **courtesy channel** beside the recorded certified-mail send. The caller records the send on its `job_lien_filings` row afterward (`sends` jsonb, method `email`, tracking `resend:<id> → <address>`); the statutory path stays traceable physical delivery. Client caller: the § 53.056 tab of [`LienFilingTabs`](../src/components/jobs/LienFilingTabs.tsx).
+**Purpose** (v2.2645, Lien Instruments phase 3): email a **lien-instrument PDF** — today the § 53.056 notice of claim — to a named recipient (the owner of record or the original contractor) as a **courtesy channel** beside the recorded certified-mail send. The caller records the send on its `job_lien_filings` row afterward (`sends` jsonb, method `email`, tracking `resend:<id> → <address>`); the statutory path stays traceable physical delivery. Client callers: the § 53.056 tab of [`LienFilingTabs`](../src/components/jobs/LienFilingTabs.tsx), and the Lien desk's run ([`lienDeskRunIo.ts`](../src/lib/jobs/lienDeskRunIo.ts)) for an envelope sent by email and, since v2.4666, for the original contractor's courtesy PDF beside a mailed envelope. The run sends that one after the notice records, passes a `subject` and `email_text` for its form and route (`runCourtesyEmailWords`), and leaves it out of `sends`.
 
 **Endpoint**: `POST /functions/v1/send-lien-filing-email` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client — the access check is an RLS read of the `jobs_ledger` row (office/master only). `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`.
 
-Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename?, email_type? }` — `email_type` (v2.3436) is `'lien_filing_notice'` (default) or `'demand_letter'` (the final demand letter packet: the letter and its exhibits as one PDF, from the Lien instruments modal's *Email with the PDF…*); it sets the send log's `email_type` and the default subject/body. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record. Sends are logged with `email_type: 'lien_filing_notice'` (v2.2664), the row's id in the Settings email catalog.
+Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename?, email_type? }` — `email_type` (v2.3436) is `'lien_filing_notice'` (default) or `'demand_letter'` (the final demand letter packet: the letter and its exhibits as one PDF, from the job's Lien window's (`LienInstrumentsModal`) *Email with the PDF…*); it sets the send log's `email_type` and the default subject/body. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record. Sends are logged with `email_type: 'lien_filing_notice'` (v2.2664), the row's id in the Settings email catalog.
 
 ### send-lien-desk-summary
 
@@ -3229,6 +3457,8 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 Body: `{ mode: 'send' | 'test', payload, recipient_user_ids?, subject?, note? }`. `send`: 1–5 user ids, each a desk role with an email, not archived, not a sample or digital twin (else 400 naming the person); one email per person, worded *Waiting for your approval* for a master technician. `test`: one copy to the sender with `[TEST]` on the subject. `subject` (≤ 200, line breaks removed) defaults to `lienStatusSubject`; `note` (≤ 280) prints on top as *<sender> wrote:*. Success: `{ sent_to: string[], failed: { name, error }[] }`; 502 when nobody got it. Every send logs `email_send_log` as `lien_desk_summary` through `sendEmailViaResend`; the function writes nothing else.
 
 ### send-physical-invoice-email
+
+> **v2.4557 — the bill is kept as it went**: after a successful send the function files the email and its attachments (the invoice PDF, any companion PDFs) through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row (`kind` `bill`, or `bill_resent` for `resend: true`) keyed to the job, the payer and the invoice (`source_table` `jobs_ledger_invoices`), with the files in the private `sent-documents` bucket. Best effort: a copy that cannot be kept never fails the send. A re-email, which wrote nothing before, now leaves this row. The plan: [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3305,6 +3535,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-gc-statement-email
 
+> **v2.4574 — the statement is kept as it went**: after the send log the function files the statement as the GC read it through [`fileSentEmailBestEffort`](../supabase/functions/_shared/fileSentCopy.ts) — one `sent_documents` row, `kind` `gc_statement`, keyed to the GC (`customer_id`); the portal code is drawn into the kept page. `gc_statement_emails` still says that it went and for how much; this is the page itself, which was rebuilt from live data before. A statement names many jobs and is filed under the GC, not under each job. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 **Purpose** (v2.1418): Email a **GC statement** (what is owed, one property at a time — built client-side by [`gcStatementEmail.ts`](../src/lib/jobsDocuments/gcStatementEmail.ts) over [`_shared/gcStatementByProperty.ts`](../supabase/functions/_shared/gcStatementByProperty.ts)) from GC Review's **Email…** dialog, then audit into **`gc_statement_emails`** via the **service-role** client (the table has no client write policies) and best-effort log to `email_send_log`. Since v2.1420 it also carries GC Review's **Share all** email — the whole report (every GC/development section + grand total) as `group_by: 'all'`.
@@ -3328,6 +3560,12 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### gc-statement-email-dispatch
+
+> **v2.4574 — the statement is kept as it went**: each scheduled statement is filed the same way as a manual one (`gc_statement`, the GC as `customer_id`, the requester as the sender). **Redeploy required.**
+
+> **v2.4534 — the job's total in the received block**: `receivedFor` selects `revenue` with each job, so [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) applies unlinked money to the part of the job on no bill before a bill (`_shared/paymentAttribution.ts`). The *paid by* line under a bill (`render.ts` `rowPaidBy`) reads the total too since v2.4536: the RPC's rows do not carry it, so the dispatcher selects `id, revenue` for `payloadJobIds(payload)` and `attachJobTotals` sets each row's `job_total`; a failed read leaves the rows as they came and the statement still goes.
+
+> **v2.4455 — a move and a deposit read their own day**: [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) reads a payment move's `created_at` and a deposit's `posted_at` as their day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not their UTC date. The statement's payments block prints only the received day (`paid_on`), so the email does not change; redeploy after merge so the bundle matches the repo.
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
@@ -3391,6 +3629,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### payment-forecast-email-dispatch
 
+> **v2.4460 — a bill's day reads in the company zone**: `billedReferenceYmd` in [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not its UTC date, as the app's `billedExpectedPay.ts` now does. A bill marked billed after 7 pm Central lands in the right week. Redeploy after merge.
+
 > **v2.4376 — one payment is enough**: `PAY_SPEED_MIN_SAMPLES` in `_shared/paymentForecastCore.ts` is 1 (was 3), as in the app; `money-waiting-email-dispatch` imports the same constant. Redeploy both.
 
 > **v2.4365 — the payer's pace**: [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) looks each row's pay speed up under `payer_id` (whoever the bill went to; the payload carries it since migration `20261002030000`, whose medians are keyed on the payer) and names `payer_name`, falling back to `customer_id` / `customer_name` on an older payload (`rowPaySpeedKey`). Redeploy after the push.
@@ -3406,6 +3646,8 @@ interface SendPhysicalInvoiceEmailBody {
 **Deploy**: `supabase functions deploy payment-forecast-email-dispatch --no-verify-jwt`. Requires migration `20260824133529` (table + payload RPC + pg_cron).
 
 ### money-waiting-email-dispatch
+
+> **v2.4460 — a bill's wait counts from its own day**: [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) takes each bill's day from `paymentForecastCore`'s `billedReferenceYmd`, which now reads `billed_at` in `APP_CALENDAR_TZ`. A bill marked billed after 7 pm Central no longer waits a day short. Redeploy after merge.
 
 > **v2.4367 — filed by payer**: [`_shared/moneyWaitingCore.ts`](../supabase/functions/_shared/moneyWaitingCore.ts) groups each row under `payer_id` / `payer_name` (whoever the bill went to; the payload carries them since migration `20261002030000`), falling back to `customer_id` for a bill typed to someone else or an older payload (`moneyWaitingRowPayer`, the app's `listPayer`). Redeploy after the push.
 
@@ -3490,6 +3732,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-hazmat-notice-email
 
+> **v2.4574 — the notice is kept as it went**: after a successful send the function files the email and the notice PDF — `kind` `hazmat_notice`, keyed to the job, its customer and the incident (`source_table` `job_hazmat_incidents`). Best effort; it runs before the incident stamp and cannot fail it. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.
 
 > **v2.1085 — Bill-to override**: when the incident's linked fee invoice (`job_hazmat_incidents.invoice_id` → `jobs_ledger_invoices.bill_to_email`) bills an alternate recipient, the notice `customer_email` may match **either** that address or the job customer email — the payer of the fee should receive the notice.
@@ -3538,6 +3782,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+> **v2.4557 — the bill is kept as it went**: the payer's own bill email (`kind` `bill`, with Stripe's PDF when it was attached) and each live copy (`bill_copy`) are filed in `sent_documents` through `sendEmailViaResend`'s new `file` option ([`fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts)), keyed to the job and the invoice. The statement's code, an inline image in the email, is drawn into the kept page. A test-mode bill and its single test copy go to ourselves and are not filed; a bill Stripe emails itself (the fallback) has no message of ours to keep. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
+
 > **v2.4127 — the bill comes from the company**: the bill email and every copy send as [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (`mailboxWithName`, [`_shared/mailboxWithName.ts`](../supabase/functions/_shared/mailboxWithName.ts)); `sendEmailViaResend` takes `options.from` for it and `email_send_log.from_email` records it. Staff emails keep `EMAIL_FROM`. Punch list #53, PR 1.
 
 
@@ -3644,6 +3890,29 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 
 ---
 
+### mark-stripe-invoice-uncollectible
+
+**Purpose**: The office gave up on a Collections job (v2.4792, punch list #94 — the owner's call): its Stripe invoice is marked **uncollectible** too, so the pay link stops asking. Stripe still accepts a late payment on an uncollectible invoice; the webhook then pays the job and the paid trigger clears the Uncollectible stamp. Called by `JobsStagesTab` after `set_job_uncollectible` succeeds, once per billed line with a Stripe invoice; a failure here never undoes the mark in the ledger (the toast says Stripe was not marked).
+
+**Endpoint**: `POST /functions/v1/mark-stripe-invoice-uncollectible`
+
+**Authentication**: Bearer JWT, validated in-function (`auth.getUser`) + RLS **`SELECT`** on **`jobs_ledger_invoices`** through the caller's own client.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, the Stripe secret for the row's mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or the legacy key).
+
+#### Request body
+
+```typescript
+interface MarkStripeInvoiceUncollectibleBody {
+  jobs_ledger_invoice_id: string
+  stripe_mode?: 'test' | 'live' // the row's own mode wins; a mismatch is 409 (v2.1116's rule)
+}
+```
+
+#### Response
+
+`{ success: true, stripe_status }` after `stripe.invoices.markUncollectible`; `{ success: true, idempotent: true, stripe_status }` when the invoice is already uncollectible, paid or void, or is a draft; `{ success: true, idempotent: true, stripe_status: null }` for a row with no Stripe invoice. 400 when the row is not `billed`; 403 when the caller cannot read it; 502 with Stripe's words when Stripe refuses. **Deploy required** (new function).
+
 ### record-stripe-invoice-out-of-band-payment
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
@@ -3691,9 +3960,29 @@ interface RecordStripeInvoiceOobBody {
 
 **Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
 
+> **v2.4801 — a check holds the close**: Mark Paid · **Check** at the whole open balance no longer calls this function; the window records the row with `mark_invoice_paid` and the daily [`close-held-stripe-marks`](#close-held-stripe-marks) sweep pays the Stripe invoice out of band seven days later with the same `pt_*` metadata. Cash, wire, ACH, card and every part payment still come here.
+
+---
+
+### close-held-stripe-marks
+
+**Purpose** (v2.4801, `docs/recent-features/v2.4801.md`): the sweep behind *a check on a Stripe bill holds the Stripe close*. Mark Paid · Check records the ledger row only, so the bill reads Paid in the app while the Stripe invoice stays open and, for `CHECK_CLEAR_DAYS` (7), the row moves or comes off like any hand-typed payment. This function closes the Stripe side once the check has had its days.
+
+**Endpoint**: `POST /functions/v1/close-held-stripe-marks` — `{}`; optional `dry_run: true` (decide, write nothing) and `invoice_id: '<jobs_ledger_invoices.id>'` (one bill, for a hand run). `X-Cron-Secret` header (or `cron_secret` in the body) must match.
+
+**What it does**: reads every `jobs_ledger_invoices` row with `status = 'paid'`, a `stripe_invoice_id`, and `stripe_invoice_status` not `paid` / `void` / `uncollectible` (a *held mark*). For each, with the service role: the bill's payments; skip unless at least one is a check (`/check|cheque|\bck\b/i`, no credit note), the payments cover the amount, every check's `paid_on + 7` is on or before today (company time zone), and no linked Mercury deposit is `failed`. Then Stripe (the row's `stripe_mode`): an invoice already `paid` / `void` / `uncollectible` just has its status stamped on the row; an `open` one whose `amount_remaining` is within the ledger's covered cents gets the `pt_paid_on` / `pt_payment_type` / `pt_reference` / `pt_internal_note` / `pt_recorded_by` metadata from the latest check row (`created_by` rides as the recorder) and `invoices.pay({ paid_out_of_band: true })`; the `stripe-webhook` paid handler no-ops on the already-paid app row and stamps `stripe_invoice_status`, which this function stamps as well. Anything else is reported, never forced (`stripe_remaining_mismatch`, `check_without_date`, `bank_returned`).
+
+**Response**: `{ ok, today, dry_run, held, closed: [{ invoice_id, job_id, result: 'closed' | 'would_close', detail? }], skipped: [...result: 'clearing' | 'no_check' | 'not_covered' | 'bank_returned' | 'stripe_already_paid' | …], errors: [...] }`.
+
+**Schedule**: pg_cron `held-stripe-marks-sweep`, daily `17 11 * * *` UTC (migration `20261007213000_held_stripe_marks`). **Kill switch**: `app_settings` key `held_stripe_marks_sweep_disabled_v1` = `'1'`.
+
+**Gateway**: `verify_jwt = false`; the cron secret is the credential. **Secrets**: `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, the Stripe key for the row's mode. Deploy: `supabase functions deploy close-held-stripe-marks`.
+
 ---
 
 ### reverse-stripe-invoice-out-of-band-payment
+
+> **v2.4803**: the whole-bill credit note carries the request's `reason` as its memo (it had none), so Stripe's record says why — *Moved to J922 · wrong job* when the Move window on a Stripe-held check calls here first.
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 
@@ -3852,6 +4141,8 @@ Amounts are in **cents**, matching Stripe invoice objects.
 
 **Purpose**: When sending a **billed** **`jobs_ledger_invoices`** row back to **Ready to Bill**, void or delete the Stripe invoice (draft delete, open → void), then clear Stripe columns and set **`status = ready_to_bill`**. Prevents leaving a collectible Stripe invoice after the in-app send-back.
 
+
+> **v2.4803 — `reason`**: an optional body field. When the function reverses our own paid-by-check mark (v2.4082) it becomes the credit note's memo (*<reason> — bill sent back in ClickTooling to be billed again.*) and the `removed` event's `oob_mark_reversed: <reason>` in place of *payment did not clear*. The Move window on a Stripe-held check sends *Moved to J922 · wrong job*; every other caller sends nothing and reads as before.
 **Endpoint**: `POST /functions/v1/void-stripe-invoice-for-revert`
 
 **Authentication**: Bearer JWT + RLS **`SELECT`** on the invoice (same pattern as **create-stripe-invoice**). **`verify_jwt = false`** on the gateway.
@@ -3899,6 +4190,8 @@ interface Body {
 ### stripe-webhook
 
 > **v2.1115 — livemode enforcement (A2)**: every event's mode (`event.livemode`, cross-checked against which signing secret verified — `stripeWebhookSecretsWithModes()`) is recorded into `stripe_webhook_events.livemode` and **must match `jobs_ledger_invoices.stripe_mode`** before any row is touched: mismatch → `200 {applied:false, reason:'mode_mismatch'}` with a warn log; NULL-mode legacy rows **self-heal** their `stripe_mode` from the verified event mode. `credit_note.created` now retrieves with the **event-mode** API key (previously test-first, silently failing live credit-note syncs when both keys were configured). Redeploy required.
+
+**The pay offer** (**v2.4704**): on `invoice.paid` / `invoice.payment_succeeded`, a bill carrying a live offer credit (`lien_offer_credit_note_id`, neither taken nor ended) is written down **before** `mark_invoice_paid_from_stripe` runs — that RPC records the ledger's remaining amount, not Stripe's — through `service_apply_agreed_write_down_from_stripe` (new amount = the ledger amount less `lien_offer_credit_cents`; actor = `lien_offer_set_by`, the leader who gave the offer; note *Lien notice offer: 10% off, paid in full Nov 3 (by Nov 15) (Stripe credit note cn_…)*) and marked `lien_offer_taken_at`. A refused write-down is a warning line and the bill is still marked paid. The decision is `_shared/lienPayOffer.ts`'s `lienOfferWriteDown`.
 
 **Purpose**: Handle Stripe invoice lifecycle events: **`invoice.paid`** / **`invoice.payment_succeeded`** marks the matching **`jobs_ledger_invoices`** row paid via **`mark_invoice_paid_from_stripe`**, then **`complete_job_collect_payment_flow_for_invoice`** when a **`job_collect_payment_flows`** row is **`approved_for_terminal`** for that Stripe invoice (field collect payment hosted page). **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** sync **`stripe_invoice_status`** only (does not downgrade app **`status`** when the row is already **`paid`**). **`credit_note.created`** **`invoices.retrieve`** + **`syncJobsLedgerStripeInvoiceStatus`** after **reverse-stripe-invoice-out-of-band-payment** credit notes.
 
@@ -3953,7 +4246,7 @@ interface Body {
 
 **Request**: `GET /functions/v1/pay-link?id=<uuid>`. No auth (`verify_jwt = false`): the id is the capability, exactly as Stripe's own hosted link is — a UUID, never guessed; anything that is not one is a 400 before the database is touched. A row that is not a billed or paid Stripe invoice (a draft, a paper bill) is a 404 `{ error: "not_found" }`. **Rate limit**: 60 opens a minute per client address and 600 across the isolate, in memory (best effort) → 429.
 
-**Response**: `{ ok: true, state: "open"|"paid"|"void", url, number, jobName, company, phone, amountRemainingCents, currency, paidOn }` — `url` null only when neither Stripe nor the row has a link; `number` and `amountRemainingCents` null when Stripe was not reachable (the page then shows no amount); `paidOn` only on a paid bill.
+**Response**: `{ ok: true, state: "open"|"paid"|"void", url, number, jobName, company, phone, amountRemainingCents, currency, paidOn, offer }` — `url` null only when neither Stripe nor the row has a link; `number` and `amountRemainingCents` null when Stripe was not reachable (the page then shows no amount); `paidOn` only on a paid bill; `offer` (**v2.4704**, the pay offer — `{ pct, by, state: "live"|"ended"|"taken", fullCents }` from the row's `lien_offer_*` columns through `_shared/lienPayOffer.ts`'s `lienOfferForPayLink`, today in the company's calendar; `fullCents` = Stripe's balance plus the credit, only while live) or null. The function never writes Stripe for the offer: the credit is already on the bill (`lien-pay-offer`), so Stripe's balance *is* the lower amount; the page only says why, and until when.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`).
 
@@ -4052,6 +4345,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Implementation**: [`supabase/functions/ar-returned-checks/index.ts`](../supabase/functions/ar-returned-checks/index.ts); the sender in [`_shared/arReturnCaseNotify.ts`](../supabase/functions/_shared/arReturnCaseNotify.ts); the words in [`_shared/bankReturnedDeposits.ts`](../supabase/functions/_shared/bankReturnedDeposits.ts), tested from `src/lib/jobs/bankReturnNotice.test.ts` and `src/lib/jobs/bankReturnedDeposits.test.ts`.
 ### sync-resend-emails
+
+> **Sent copies (v2.4557)**: an email that goes outside the company is also kept — the message as it was read and each attachment — by [`_shared/fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts) (`fileSentEmailBestEffort`; what it builds is the pure [`sentCopyEmail.ts`](../supabase/functions/_shared/sentCopyEmail.ts)). A caller of `sendEmailViaResend` passes `options.file` (`{ kind, jobIds, customerId, bidId, personId, source, sentBy }`); a function with its own Resend call invokes the helper after the send. `email_send_log` stays the delivery log; `sent_documents` is the copy. Which functions file and which are owed is held by `src/lib/sent/sentCopiesEmailCoverage.test.ts`; the plan is [`SENT_COPIES.md`](./SENT_COPIES.md).
 
 > **App-side logging (v2.1341)**: every sender function now writes its own `email_send_log` row at send time (source `'app'`) via [`_shared/logEmailSend.ts`](../supabase/functions/_shared/logEmailSend.ts) — best-effort, service-role PostgREST insert with `on_conflict=resend_email_id` ignore-duplicates so a faster webhook row wins. The shared [`resendSendEmail.ts`](../supabase/functions/_shared/resendSendEmail.ts) helper covers its 7 callers; the 6 direct-Resend functions (`send-workflow-notification`, `send-estimate-to-customer`, `send-contract-for-signature`, `send-physical-invoice-email`, `send-hazmat-notice-email`, `test-email`) call the logger inline. This sync (and the webhook) remain enrichment: delivery-status updates and history backfill.
 
@@ -4424,6 +4719,11 @@ supabase functions list
 
 # Check function logs
 supabase functions logs create-user
+
+# Every repo function deployed and running this checkout's code: index.ts and every file it
+# imports, _shared included (scripts/check-edge-function-drift.mjs)
+npm run check:edge-drift             # reads the functions whose code changed since their deploy
+npm run check:edge-drift -- --full   # reads every deployed function (the daily CI run)
 ```
 
 ### Local Testing

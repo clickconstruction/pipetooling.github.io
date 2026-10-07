@@ -18,7 +18,10 @@
  * `gc-statement-email-dispatch` calls it for the statement's "Payments we have
  * received". `src/lib/jobs/gcChecksAppliedIo.ts` reads the rows on the client;
  * the print and CSV builders live in `src/lib/jobsDocuments/gcChecksAppliedReport.ts`.
+ * A move's `created_at` and a deposit's `posted_at` are instants, read as their
+ * day in the company's zone; `paid_on` and `sent_on` are calendar days already.
  */
+import { todayYmdInAppTz } from './appTimeZone.ts'
 import { attributeJobPayments, isSentBill, type PaymentSlice } from './paymentAttribution.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
 import {
@@ -68,6 +71,11 @@ export type ChecksJobIn = {
   gc_customer_id?: string | null
   bill_to_party?: string | null
   lien_retainage_held?: number | string | null
+  /**
+   * The job's total price (v2.4534). Give it only with EVERY sent bill of the job in `invoices`:
+   * the part of the job on no bill takes unlinked money first, and a short list would overstate it.
+   */
+  revenue?: number | string | null
   invoices: ChecksInvoiceIn[]
   payments: ChecksPaymentIn[]
 }
@@ -234,7 +242,7 @@ type JobFacts = {
 
 function jobFacts(job: ChecksJobIn): JobFacts {
   const sent = sentBillsInOrder(job)
-  const attribution = attributeJobPayments<ChecksPaymentIn>(job.invoices, job.payments)
+  const attribution = attributeJobPayments<ChecksPaymentIn>(job.invoices, job.payments, job.revenue)
   const billPaid = (b: SentBill) => (attribution.byBill.get(b.id)?.applied ?? 0) >= num(b.amount) - 0.005
   return {
     job,
@@ -335,7 +343,7 @@ export function buildGcChecksReport(input: {
       d.sentYmd = minYmd(d.sentYmd, ymd(p.sent_on))
       const dep = p.mercury_transaction_id ? deposits.get(p.mercury_transaction_id) : undefined
       if (dep) {
-        d.depositedYmd = d.depositedYmd ?? ymd(dep.posted_at)
+        d.depositedYmd = d.depositedYmd ?? (dep.posted_at ? todayYmdInAppTz(new Date(dep.posted_at)) : null)
         d.unapplied = Math.max(d.unapplied, round2(Math.max(0, num(dep.amount) - dep.applied)))
       }
       if ((p.created_at ?? '') > d.createdAt) d.createdAt = p.created_at ?? ''
@@ -348,7 +356,7 @@ export function buildGcChecksReport(input: {
     if (e.kind !== 'moved' || !e.payment_id) continue
     for (const d of drafts.values()) {
       if (!d.paymentIds.has(e.payment_id)) continue
-      d.wasOn.push({ amount: round2(num(e.amount)), fromJobLabel: labelFor(e.from_job_id), toJobLabel: labelFor(e.to_job_id), onYmd: e.created_at.slice(0, 10) })
+      d.wasOn.push({ amount: round2(num(e.amount)), fromJobLabel: labelFor(e.from_job_id), toJobLabel: labelFor(e.to_job_id), onYmd: todayYmdInAppTz(new Date(e.created_at)) })
     }
   }
 
@@ -478,5 +486,5 @@ export function findChecks(checks: readonly GcCheck[], query: string): GcCheck[]
  * balance with no bill behind it — then what the job has been paid so far.
  */
 export function billPaidByWords(job: ChecksJobIn, invoice: Pick<ChecksInvoiceIn, 'id' | 'amount'> | null): string {
-  return sharedBillPaidByWords({ bills: job.invoices, payments: job.payments, retainageHeld: job.lien_retainage_held }, invoice)
+  return sharedBillPaidByWords({ bills: job.invoices, payments: job.payments, retainageHeld: job.lien_retainage_held, total: job.revenue }, invoice)
 }

@@ -108,6 +108,7 @@ const NEEDS_YOU_ACTION_LABELS: Record<string, string> = {
   '#tally-self': 'Open tally',
   '#tally-team': 'Sort for the team',
   '#lost-bids': 'Start call mode',
+  '#bid-followups': 'Open the call queue',
 }
 
 export function needsYouStats(rows: UsageClickRow[]): NeedsYouStats {

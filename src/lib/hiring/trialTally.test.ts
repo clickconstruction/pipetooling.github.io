@@ -189,3 +189,13 @@ describe('trialTally — the nudge', () => {
     expect(['yes', 'no', 'unsure', null].map((v) => trialVerdictMark(v as never)).join('')).toBe('✓✗?–')
   })
 })
+
+describe('Keep trying pressed in the evening keeps its day (v2.4476)', () => {
+  it('labels the press with its Central day', () => {
+    const verdicts = [verdict(mike, '2026-09-18', 'no'), verdict(luis, '2026-09-19', 'no')]
+    const days = [day('2026-09-18', [mike]), day('2026-09-19', [luis])]
+    // 00:30 UTC on Sep 21 is 7:30 pm CDT on Sep 20.
+    const evening = buildTrialTally(row({ days, verdicts, deferred_at: '2026-09-21T00:30:00Z', deferred_by: 'maria', deferred_by_name: 'Maria Lopez' }), { todayYmd: TODAY })
+    expect(evening.deferred?.label).toBe('Keep trying — Maria Sep 20')
+  })
+})

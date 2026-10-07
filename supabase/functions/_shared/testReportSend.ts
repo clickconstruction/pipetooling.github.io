@@ -2,8 +2,11 @@
  * The pieces a test-report send shares between the office button
  * (send-test-report) and dial B (auto-send-test-reports), v2.3316: where the
  * PDF is filed, the Resend call with the attachment, and the activity line.
- * Dependency-free apart from fetch.
+ * Since v2.4559 the send also files the email and its PDF as a sent copy when the caller
+ * says what it is (`file`, docs/SENT_COPIES.md).
  */
+import { type SentEmailFiling, fileSentEmailBestEffort } from './fileSentCopy.ts'
+
 export const TEST_REPORT_BUCKET = 'job-test-reports'
 
 /** `<job_id>/<report_id>-v<n>.pdf` — a re-send is the next version, never an overwrite. */
@@ -26,6 +29,8 @@ export async function sendTestReportEmailViaResend(args: {
   html: string
   pdfFilename: string
   pdfBase64: string
+  /** Sent copies: what this email is, so the message and the PDF are kept on the job. */
+  file?: SentEmailFiling
 }): Promise<{ ok: true; id: string | null } | { ok: false; error: string; status: number }> {
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -45,6 +50,9 @@ export async function sendTestReportEmailViaResend(args: {
     return { ok: false, error: errorData.message || `Resend ${res.status}`, status: res.status }
   }
   const sent = (await res.json().catch(() => ({}))) as { id?: string }
+  if (args.file) {
+    await fileSentEmailBestEffort(args.file, { to: args.to, cc: args.cc, from: args.from, subject: args.subject, html: args.html, attachments: [{ filename: args.pdfFilename, content: args.pdfBase64 }], resendEmailId: sent.id ?? null })
+  }
   return { ok: true, id: sent.id ?? null }
 }
 

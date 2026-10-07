@@ -18,6 +18,7 @@ export default function NewProjectModal() {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: NEW_PROJECT_MODAL_Z_INDEX,
+        paddingTop: 'var(--app-top-chrome, 0px)',
       }}
     >
       <div
@@ -29,7 +30,7 @@ export default function NewProjectModal() {
           padding: '1rem 1.5rem 1.5rem',
           borderRadius: 8,
           width: 'min(960px, 96vw)',
-          maxHeight: '92vh',
+          maxHeight: 'min(92vh, 100%)',
           overflow: 'auto',
           boxSizing: 'border-box',
         }}

@@ -134,13 +134,90 @@ export function propertyKindClockWords(propertyKind: string | null | undefined, 
 
 /** Gate 1, owner on file: where the name came from, so a job-level override is never mistaken for the record. */
 export function ownerSourceWords(source: 'job_override' | 'property_record' | 'none'): string {
-  if (source === 'job_override') return 'Set on this job — the property record’s owner is not used here.'
-  if (source === 'property_record') return 'From the property record — every job at this property uses it.'
+  if (source === 'job_override') return 'Set on this job · the property record’s owner is not used here.'
+  if (source === 'property_record') return 'From the property record · every job here uses it.'
   return ''
+}
+
+/** Gate 3's one line (v2.4718): "Residential · Bexar County", or "Not set" while the kind is blank. */
+export function propertyKindLine(propertyKind: string | null | undefined, county: string): string {
+  const kind = (propertyKind ?? '').trim()
+  const where = county.trim() ? ` · ${county.trim()} County` : ''
+  if (!kind) return `Not set${where}`
+  return `${kind === 'residential' ? 'Residential' : 'Commercial'}${where}`
+}
+
+/** The rule the kind sets, short, for the muted line under gate 3. */
+export function propertyKindRuleWords(propertyKind: string | null | undefined): string {
+  const kind = (propertyKind ?? '').trim()
+  if (kind === 'residential') return 'Notice due the 15th of the 2nd month after the work'
+  if (kind) return 'Notice due the 15th of the 3rd month after the work'
+  return 'Commercial dates shown; a residential property is a month earlier'
+}
+
+/** What the other kind would do to the dates — said while the chooser is open, since every deadline on the job moves with it. */
+export function propertyKindSwitchWarning(propertyKind: string | null | undefined): string {
+  const kind = (propertyKind ?? '').trim()
+  if (kind === 'residential') return 'Commercial makes each notice due the 15th of the 3rd month after the work, and the affidavit a month later. Every date on the job moves.'
+  if (kind) return 'Residential makes each notice due the 15th of the 2nd month after the work, and the affidavit a month earlier. Every date on the job moves.'
+  return 'Residential makes each notice due the 15th of the 2nd month after the work; commercial the 3rd. Every date on the job follows the pick.'
+}
+
+/** "shared with 273, 866, 1009, 858" — the jobs on the same property record, which follow a change here. */
+export function sharedWithWords(labels: ReadonlyArray<string>): string {
+  return labels.length ? `shared with ${labels.join(', ')}` : ''
 }
 
 /** Gate 4, one line per month the notice names: "Jul 2026 · 5.2 approved hours · 1 person · 2 days". */
 export function lienGateMonthLine(monthLabel: string, hours: number, crew: string): string {
   const h = hours.toLocaleString(undefined, { maximumFractionDigits: 1 })
   return [`${monthLabel} · ${h} approved ${h === '1' ? 'hour' : 'hours'}`, crew.trim()].filter(Boolean).join(' · ')
+}
+
+/**
+ * The draft footer's words while a notice cannot go (v2.4797, the owner: *explain in one
+ * sentence — don't send yet, you need to do XYZ first*). Two short sentences in plain words:
+ * the stop, then the one thing to do, named the way the gate's own button names it.
+ */
+export function lienFootBlockedSentence(gate: Pick<LienGate, 'key' | 'value' | 'label' | 'n'> | null, pickedMonths: number): string {
+  const stop = "Don't send yet."
+  if (!gate) return pickedMonths === 0 ? `${stop} Pick at least one month first.` : `${stop} Clear what the gates show first.`
+  const v = gate.value.toLowerCase()
+  if (gate.key === 'owner') {
+    if (v === 'missing') return `${stop} Enter the owner of record and a mailing address on the property record first.`
+    if (v === 'no mailing address') return `${stop} Add the owner's mailing address on the property record first.`
+    if (v === 'public property') return `${stop} This is public property, so no lien notice can go. Ask the attorney about the payment bond.`
+  }
+  if (gate.key === 'gc') return `${stop} Set the GC on the job first.`
+  if (gate.key === 'months') return `${stop} Pick at least one month first.`
+  if (gate.key === 'kind') return `${stop} Set the property kind on the property record first.`
+  return `${stop} Clear gate ${gate.n}, ${gate.label.toLowerCase()}, first.`
+}
+
+/**
+ * The stop window's red chip under the blocked stop (v2.4806): the gate in three or four words —
+ * *owner of record missing*, *no mailing address*, *no GC on the job*, *no month picked*.
+ */
+export function lienGateShortWords(gate: Pick<LienGate, 'key' | 'value' | 'label'>): string {
+  const v = gate.value.toLowerCase()
+  if (gate.key === 'owner') return v === 'missing' ? 'owner of record missing' : v === 'no mailing address' ? 'owner has no mailing address' : v === 'public property' ? 'public property' : `${gate.label.toLowerCase()} ${v}`
+  if (gate.key === 'gc') return 'no GC on the job'
+  if (gate.key === 'months') return 'no month picked'
+  if (gate.key === 'kind') return 'property kind unknown'
+  return `${gate.label.toLowerCase()} ${v}`
+}
+
+/** The affidavit's hold line (v2.4806), the notice's sentence's sibling: *Don't file yet.* then the one thing to do first. */
+export function lienAffidavitFootBlockedSentence(gate: { key: 'owner' | 'legal' | 'notice' | 'homestead'; label: string } | null): string {
+  const stop = "Don't file yet."
+  if (!gate) return `${stop} Clear what the gates show first.`
+  if (gate.key === 'owner') return `${stop} Enter the owner of record and a mailing address on the property record first.`
+  if (gate.key === 'legal') return `${stop} Add the county and the legal description on the property record first.`
+  if (gate.key === 'notice') return `${stop} Send the § 53.056 notice first. A late one counts while this window is open.`
+  return `${stop} Talk to your attorney first. A homestead lien needs a recorded pre-work contract signed by both spouses (§ 53.254).`
+}
+
+/** The affidavit's red chip words (v2.4806). */
+export function lienAffidavitGateShortWords(gate: { key: 'owner' | 'legal' | 'notice' | 'homestead' }): string {
+  return gate.key === 'owner' ? 'owner of record missing' : gate.key === 'legal' ? 'county or legal description missing' : gate.key === 'notice' ? 'no § 53.056 notice on the job' : 'homestead'
 }

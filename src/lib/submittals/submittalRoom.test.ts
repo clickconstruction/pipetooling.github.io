@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from './submittalRoom'
+import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder, roomPreviewLink } from './submittalRoom'
 
 const TZ = APP_CALENDAR_TZ
 
@@ -33,7 +33,12 @@ describe('the trail', () => {
     expect(describeHow('named')).toBe('named by you')
     expect(describeHow('identified')).toBe('identified via the room link')
     expect(describeRoomLine({ status: 'open', shared_at: '2026-09-16T15:00:00Z', closed_at: null }, 9, TZ)).toBe('Room link · shared Sep 16 · opened 9×')
-    expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 0, TZ)).toBe('Room link · not opened yet')
+    // 2026-10-03 · a room made by typing an answer in: no link went out, so nothing is "not opened yet".
+    expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 0, TZ)).toBe('Not shared from the app')
+    expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 0, TZ, 4)).toBe('Not shared from the app · answers typed in')
+    expect(describeRoomLine({ status: 'open', shared_at: '2026-09-16T15:00:00Z', closed_at: null }, 0, TZ)).toBe('Room link · shared Sep 16 · not opened yet')
+    // The link copied by hand and opened, with no Share pressed.
+    expect(describeRoomLine({ status: 'open', shared_at: null, closed_at: null }, 2, TZ)).toBe('Room link · opened 2×')
     expect(describeRoomLine({ status: 'closed', shared_at: '2026-09-16T15:00:00Z', closed_at: '2026-09-19T15:00:00Z' }, 9, TZ)).toBe('Room closed · Sep 19')
   })
 })
@@ -75,5 +80,20 @@ describe('stage 5a — the thread', () => {
     expect(summarizeThread([], tz)).toBe('No conversation yet')
     expect(summarizeThread([sys, ask].map((m) => parseRoomMessage(m)!), tz)).toBe('2 entries · last: Dana Whitfield asked Sep 16')
     expect(summarizeThread([ask, reply].map((m) => parseRoomMessage(m)!), tz)).toBe('2 entries · last: you answered Sep 17')
+    // 2026-10-03 · an answer the office typed in, or the robot read, is not the room deciding.
+    const line = (body: string) => ({ id: 'x', at: '2026-10-02T20:00:00Z', authorKind: 'system' as const, authorName: null, body, kind: 'decision' as const, revNumber: 1, tags: [] })
+    expect(summarizeThread([line("from structura's file, entered by the office · 1 row · 1 reject")], tz)).toBe('1 entry · last: the office entered their answers Oct 2')
+    expect(summarizeThread([line("from Dana Whitfield's file, read by the robot, confirmed by the office · 2 rows · 2 approve")], tz)).toBe('1 entry · last: the robot read their answers Oct 2')
+    expect(summarizeThread([line('Dana Whitfield decided 3 rows')], tz)).toBe('1 entry · last: the room decided Oct 2')
   })
 })
+
+describe('roomPreviewLink (v2.4608, #62): the office’s door carries the flag; the link it sends does not', () => {
+  it('flags the room link, on every path; the plain link stays plain', () => {
+    const token = 'a'.repeat(48)
+    expect(roomPreviewLink('https://app.example/', token)).toBe(`https://app.example/submittal?t=${token}&preview=1`)
+    expect(roomLink('https://app.example/', token)).toBe(`https://app.example/submittal?t=${token}`)
+    expect(roomPreviewLink('https://app.example', token)).toContain('preview=1')
+  })
+})
+

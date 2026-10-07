@@ -73,9 +73,10 @@ export default function MapDefaultViewSettingsBlock() {
           }}
         >
           <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            Org-wide default center and zoom for the <strong>Map</strong> page when there are no pins to fit. Saving
-            geocodes the address once and stores coordinates in <code>app_settings</code>. Clear removes the custom
-            default (map falls back to Chicago). Dev-only write; all roles can read.
+            Where the maps call home when no <strong>Office address</strong> is set: the <strong>Map</strong> page, the Bid
+            Board, Pipeline and Dashboard maps open on it and measure miles from it. Saving geocodes the address once and
+            stores coordinates in <code>app_settings</code>. Clear removes the custom default (the maps fall back to Chicago).
+            Dev-only write; all roles can read.
           </p>
           {loading ? (
             <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>

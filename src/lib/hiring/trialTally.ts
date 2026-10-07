@@ -9,7 +9,7 @@
  */
 import { supervisedJobLabel } from '../people/supervisedDays'
 import type { LedgerPrefixMap } from '../ledgerDisplayPrefixes'
-import { formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly, ymdAddDays } from '../../utils/dateUtils'
 import type { TrialVerdict } from './trialVerdicts'
 
 export type TrialTallyLeader = { user_id: string; name: string | null; role: string | null }
@@ -203,8 +203,8 @@ export function buildTrialTally(row: TrialTallyRow, opts: { todayYmd: string; pr
     const newestAnswer = verdicts.filter((v) => isAnswer(v.verdict)).map((v) => v.updated_at ?? '').sort().pop() ?? ''
     if (newestAnswer <= row.deferred_at) {
       const byName = (row.deferred_by_name ?? '').trim() || 'the office'
-      const at = new Date(row.deferred_at)
-      const when = Number.isNaN(at.getTime()) ? '' : ` ${formatWorkDateYmdMonthDayShort(at.toISOString().slice(0, 10))}`
+      const day = calendarYmdInAppTzFromIso(row.deferred_at)
+      const when = day ? ` ${formatWorkDateYmdMonthDayShort(day)}` : ''
       deferred = { at: row.deferred_at, byName, label: `Keep trying — ${firstName(byName)}${when}` }
     }
   }

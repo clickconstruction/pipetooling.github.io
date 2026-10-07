@@ -12,13 +12,13 @@ const BOTTOM_INSET = `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-i
 
 export function ScheduleSheet({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: ReactNode }) {
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1003, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1003, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        style={{ width: '100%', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: '18px 18px 0 0', padding: `0.6rem 0.8rem calc(1rem + ${BOTTOM_INSET})`, display: 'grid', gap: '0.5rem', boxShadow: '0 -8px 24px rgba(0,0,0,.2)', maxHeight: '85vh', overflowY: 'auto' }}
+        style={{ width: '100%', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: '18px 18px 0 0', padding: `0.6rem 0.8rem calc(1rem + ${BOTTOM_INSET})`, display: 'grid', gap: '0.5rem', boxShadow: '0 -8px 24px rgba(0,0,0,.2)', maxHeight: 'min(85vh, 100%)', overflowY: 'auto' }}
       >
         <div aria-hidden style={{ width: '2.4rem', height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto 0.2rem' }} />
         <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>{title}</h3>

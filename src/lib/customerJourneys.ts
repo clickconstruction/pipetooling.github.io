@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -363,6 +363,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'email', email: 'gc-statement' },
         },
         {
+          id: 'plan-question-email',
+          label: 'Question about the plans',
+          sublabel: 'GC mode · GC projects → Questions → Send to the architect',
+          when: 'While we bid a GC job',
+          customerCan: 'Read the question a company asked about the plans and answer it by replying; the answer reaches every company quoting the trade and rides in the next set.',
+          guide: 'ask-the-architect-about-the-plans',
+          reflects: ['The project manager on the GC project (the Reply-To)', 'Sender name'],
+          render: { kind: 'email', email: 'gc-plan-question' },
+        },
+        {
           id: 'owner-notice',
           label: 'Notice to the owner of record',
           sublabel: 'when it goes wrong · Lien desk → the § 53.056 notice',
@@ -483,6 +493,16 @@ export function customerJourneys(): Journey[] {
       title: 'Collections law firm',
       subtitle: 'Sample & Partner, PLLC · every attorney-ready matter, and the emails that say something moved',
       steps: [
+        {
+          id: 'firm-welcome-email',
+          label: 'Welcome email',
+          sublabel: 'Legal desk → Firm’s link → Send the firm their link',
+          when: 'Once, on setup, and after a Rotate',
+          customerCan: 'Learn who we are and what the portal is, open their link, and add the people who should hear from us.',
+          guide: 'share-your-attorney-their-portal',
+          reflects: ['Welcome email wording', 'Portal link', 'The sender’s name and phone'],
+          render: { kind: 'email', email: 'legal-welcome' },
+        },
         {
           id: 'firm-confirm-email',
           label: 'Confirm email',

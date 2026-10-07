@@ -166,7 +166,7 @@ export function HazmatFeeModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '1rem',
+        padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
         zIndex: 1003,
       }}
       role="presentation"
@@ -180,7 +180,7 @@ export function HazmatFeeModal({
           background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(94vw, 560px)',
-          maxHeight: '88vh',
+          maxHeight: 'min(88vh, 100%)',
           overflowY: 'auto',
           padding: '1rem 1.1rem',
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',

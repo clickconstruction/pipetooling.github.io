@@ -54,7 +54,7 @@ describe('parseCadPagePaste — BIS esearch page', () => {
     expect(r.propId).toBe('178402')
     expect(r.legalDescription).toBe('GRUENE CROSSING 2, BLOCK 4, LOT 17')
     expect(r.ownerName).toBe('WHITFIELD DANA & MARCUS')
-    expect(r.mailingAddress).toBe('PO BOX 2210 NEW BRAUNFELS, TX 78131')
+    expect(r.mailingAddress).toBe('PO BOX 2210, NEW BRAUNFELS, TX 78131')
     expect(r.situsAddress).toBe('412 GRUENE RD NEW BRAUNFELS, TX 78130')
   })
   it('reads the HS exemption as a homestead', () => {
@@ -101,5 +101,37 @@ Owner ID: 9`)
     expect(cadPasteHasFacts(r)).toBe(false)
     expect(r.found).toEqual([])
     expect(parseCadPagePaste('').found).toEqual([])
+  })
+  it('reads a BIS esearch page as copied from Chrome: Owner ID is not the owner, % Ownership ends the address, hidden exemptions leave the homestead unknown (v2.4724, Guadalupe 63117)', () => {
+    const page = [
+      'Property ID: 63117 For Year 2027',
+      'Property Details',
+      'Account',
+      'Property ID:\t63117\tGeographic ID: 2G0131-0000-08800-0-00',
+      'Type:\tR\tZoning:',
+      'Property Use:\t',
+      'Location',
+      'Situs Address:\t1200 ILKA RD',
+      'Map ID:\tM-12\tMapsco:',
+      'Legal Description:\tABS: 131 SUR: BENJAMIN FUQUA 1.2260 AC',
+      'Abstract/Subdivision:\tG_A0131',
+      'Neighborhood:\t(RURAL_G20) RURAL NBHD GEO REGION',
+      'Owner',
+      'Owner ID:\t257443',
+      'Name:\tHALL BRUCE & REBECCA',
+      'Agent:\t',
+      'Mailing Address:\tP O BOX 1225',
+      'MINERALWELLS, TX 76068',
+      '% Ownership:\t100.0%',
+      'Exemptions:\tFor privacy reasons not all exemptions are shown online.',
+      'Property Values',
+    ].join('\n')
+    const r = parseCadPagePaste(page)
+    expect(r.propId).toBe('63117')
+    expect(r.legalDescription).toBe('ABS: 131 SUR: BENJAMIN FUQUA 1.2260 AC')
+    expect(r.ownerName).toBe('HALL BRUCE & REBECCA')
+    expect(r.mailingAddress).toBe('P O BOX 1225, MINERALWELLS, TX 76068')
+    expect(r.situsAddress).toBe('1200 ILKA RD')
+    expect(r.homestead).toBe('unknown')
   })
 })
