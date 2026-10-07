@@ -12,7 +12,8 @@ import { classifyCourtPoint, courtAreaFromRow, type CourtArea } from '../_shared
  * is never touched. Every other record with a point is classified against the active
  * areas; the row is written only when the precinct or the on-the-line note changed,
  * stamped `map` and now. A record outside every area keeps '' (and loses a stale
- * precinct when its area was removed). No point in the cache = skipped; the lookup
+ * precinct when its area was removed). A record with no county takes the area's county
+ * (`county_source = 'map'`, v2.4778). No point in the cache = skipped; the lookup
  * that fills the cache is owner-confirm-nightly's and the Map page's.
  *
  * Auth: `X-Cron-Secret` = `CRON_SECRET`, or a signed-in office user (`is_office_staff()`
@@ -108,10 +109,12 @@ serve(async (req) => {
         else outside += 1
         if (c.onLine) onLine += 1
         const next = { jp_precinct: c.precinct, jp_precinct_note: c.note }
-        if ((r.jp_precinct ?? '') === next.jp_precinct && (r.jp_precinct_note ?? '') === next.jp_precinct_note) continue
+        // A record with no county takes the area's (v2.4778): the county's own line, or what the office named a drawn area.
+        const fillCounty = c.precinct && !(r.county ?? '').trim() ? { county: c.county, county_source: 'map' } : {}
+        if ((r.jp_precinct ?? '') === next.jp_precinct && (r.jp_precinct_note ?? '') === next.jp_precinct_note && !('county' in fillCounty)) continue
         written += 1
         if (dryRun) continue
-        const { error: upErr } = await admin.from('customer_addresses').update({ ...next, jp_precinct_source: c.precinct ? 'map' : '', jp_precinct_at: now }).eq('id', r.id)
+        const { error: upErr } = await admin.from('customer_addresses').update({ ...next, ...fillCounty, jp_precinct_source: c.precinct ? 'map' : '', jp_precinct_at: now }).eq('id', r.id)
         if (upErr) console.error('court-precinct-nightly: write failed', r.id, upErr.message)
       }
     }
