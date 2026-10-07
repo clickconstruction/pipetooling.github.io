@@ -1676,7 +1676,7 @@ export default function LienDeskModal({
         relightPages(ev.currentTarget)
         relightPane(ev.currentTarget)
       }}
-      style={{ position: 'relative', padding: '0 1.1rem 0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
+      style={{ position: 'relative', padding: '0 1.1rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
     >
       {paneScrolled ? (
         <div
@@ -2163,6 +2163,8 @@ export default function LienDeskModal({
         </div>
       ) : null}
       </div>
+      {/* The pane's foot room (v2.4747): a row, not the pane's bottom padding, so a section head stuck to the bottom sits on the edge with no gap under it. */}
+      <div aria-hidden data-lien-desk-pane-foot style={{ height: '0.3rem' }} />
     </div>
   ) : (
     <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
