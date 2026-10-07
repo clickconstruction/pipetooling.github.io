@@ -7,7 +7,7 @@ order: 73
 ---
 Bids → Bid Costs is the pursuit ledger. It shows what it costs us to bid.
 
-Every bid someone clocked time against shows its time. You clock time against a bid with Clock In → pick the bid. The office roles see that time priced at recorded wages. They also see any card charges or materials moved onto the bid from a job. See [move a job's costs onto a bid](move-a-jobs-costs-onto-a-bid).
+Every bid someone clocked time against shows its time. You clock time against a bid with Clock In → pick the bid. The office roles see that time priced at recorded wages. They also see any card charges or materials moved onto the bid from a job. See [move a job's costs onto a bid](/help/move-a-jobs-costs-onto-a-bid).
 
 Dev, master and controller read dollars. Assistants and estimators read the same ledger in hours. The columns that would show a wage are simply not there.
 
@@ -62,7 +62,7 @@ A bid nobody clocked against still won or lost, so it counts toward the hit rate
 
 ## Bid vs actual
 
-{{chip:gray|Pursuit}} {{chip:gray|Cost to win}} {{chip:blue|Bid vs actual}} is the third lens. It is for the jobs that are **linked to their bid**. You link them with [link bids to jobs](read-the-bid-board) from a won bid's row. Or you link in bulk in Settings → Data → Link jobs to their bids. There is one row per linked job:
+{{chip:gray|Pursuit}} {{chip:gray|Cost to win}} {{chip:blue|Bid vs actual}} is the third lens. It is for the jobs that are **linked to their bid**. You link them with [link bids to jobs](/help/read-the-bid-board) from a won bid's row. Or you link in bulk in Settings → Data → Link jobs to their bids. There is one row per linked job:
 
 - **Cost to bid**, or time to bid: the pursuit spend from the ledger.
 - **Bid value**: the job's price.
