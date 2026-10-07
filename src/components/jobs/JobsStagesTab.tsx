@@ -2740,9 +2740,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       showTimeOpen: false,
       sendBackBelowRemaining: true,
       showCreatePartialInvoice: false,
-      jobSendBackLabel: 'Put it back in Collections',
-      invoiceBundleActionLabel: 'Put it back in Collections',
-      invoiceStandaloneActionLabel: 'Put it back in Collections',
+      // v2.4818: two words — the long label ran past the action column.
+      jobSendBackLabel: 'Put back',
+      invoiceBundleActionLabel: 'Put back',
+      invoiceStandaloneActionLabel: 'Put back',
       rowStamp: uncollectibleFactsFor,
     } satisfies Partial<ComponentProps<typeof JobsStagesUnifiedTable>>,
   }
