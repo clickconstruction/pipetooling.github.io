@@ -234,6 +234,8 @@ const DATA: GcState = {
       stage: 'pursuing',
       owner: 'Cibolo Creek Partners',
       town: 'Boerne',
+      customerId: 'cibolo',
+      address: '1420 River Rd, Boerne',
     },
     {
       id: 'padb',
@@ -290,6 +292,8 @@ const DATA: GcState = {
       stage: 'pursuing',
       owner: 'Cibolo Creek Partners',
       town: 'Boerne',
+      customerId: 'cibolo',
+      address: '1436 River Rd, Boerne',
     },
     {
       id: 'helotes',
@@ -444,6 +448,8 @@ const DATA: GcState = {
       stage: 'buyout',
       owner: 'Dr. Priya Raman',
       town: 'Helotes',
+      customerId: 'raman',
+      address: '9811 Bandera Rd, Suite 140, Helotes',
     },
     {
       id: 'fairoaksd',
@@ -1077,6 +1083,8 @@ const DATA: GcState = {
           weatherStop: false,
         },
       ],
+      customerId: 'cibolo',
+      address: '7920 Fair Oaks Pkwy, Fair Oaks Ranch',
     },
     {
       id: 'stoneoak',
@@ -1190,6 +1198,8 @@ const DATA: GcState = {
       stage: 'building',
       owner: 'Hollis Family Pharmacy',
       town: 'San Antonio',
+      customerId: 'hollis',
+      address: '20811 Stone Oak Pkwy, Suite 104, San Antonio',
     },
   ],
   partners: [
@@ -1318,6 +1328,14 @@ const DATA: GcState = {
       contact: 'Ana Flores',
       trades: ['Electrical'],
     },
+  ],
+  customers: [
+    { id: 'cibolo', name: 'Cibolo Creek Partners' },
+    { id: 'raman', name: 'Dr. Priya Raman' },
+    { id: 'marshvale', name: 'Marsh & Vale Architects' },
+    { id: 'ocotillo', name: 'Studio Ocotillo' },
+    { id: 'hollis', name: 'Hollis Family Pharmacy' },
+    { id: 'mesquite', name: 'Mesquite Design Studio' },
   ],
 }
 

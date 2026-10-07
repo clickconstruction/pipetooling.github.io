@@ -1,13 +1,14 @@
 /**
  * Main's own tests for what if (G-81; the schedule's PR 1a): a copy made from Fair Oaks D, a move
- * tried on it, its ghosts, and Keep with its refusals, run through the kernels on the test data.
+ * tried on it, its ghosts, and Keep with its refusals, run through the kernels on the test data. The
+ * schedule's PR 1b adds the words for its kept moves the trades have not been told.
  */
 import { describe, expect, it } from 'vitest'
 import { addDays } from '../building'
 import type { GcProject, GcState } from '../types'
 import { moveRecord, planMove } from './moves'
 import { initialGcState } from './testState'
-import { keepWhatIf, whatIfBaseChanges, whatIfCopy, whatIfGhosts, whatIfProject, whatIfTried } from './whatIf'
+import { keepWhatIf, whatIfBaseChanges, whatIfCopy, whatIfGhosts, whatIfKeptWords, whatIfProject, whatIfTried } from './whatIf'
 
 const job = (s: GcState, id = 'fairoaksd') => s.projects.find((p) => p.id === id)!
 
@@ -69,5 +70,18 @@ describe('a what-if copy', () => {
     expect(keepWhatIf(unexplained, {}, 'Wendi', s.today)).toEqual({ problem: 'Give each move a reason and a sentence.' })
     const explained = keepWhatIf(unexplained, { [m.id]: { reason: 'materials', note: 'The membrane ships Friday.' } }, 'Wendi', s.today)
     expect('kept' in explained && explained.kept[0]).toMatchObject({ reason: 'materials', note: 'The membrane ships Friday.' })
+  })
+})
+
+describe('the moves kept from a what-if, before the trades are told', () => {
+  it('says how many were kept and which companies have not been told, until they are', () => {
+    const s = initialGcState()
+    const kept = keepWhatIf(tried(s), {}, 'Wendi', '2026-10-03')
+    if ('problem' in kept) throw new Error(kept.problem)
+    const p = { ...job(s), schedule: kept.schedule }
+    expect(whatIfKeptWords(s, p)).toEqual({ words: '1 move kept from the what-if. Summit Roofing and Cool Breeze Mechanical have not been told.', companies: ['Summit Roofing', 'Cool Breeze Mechanical'] })
+    const told = { ...p, schedule: { ...p.schedule, moves: p.schedule.moves!.map((m) => ({ ...m, toldOn: '2026-10-03', toldTo: ['summit', 'coolbreeze'] })) } }
+    expect(whatIfKeptWords(s, told)).toBeNull()
+    expect(whatIfKeptWords(s, job(s))).toBeNull()
   })
 })
