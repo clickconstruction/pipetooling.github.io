@@ -40,12 +40,6 @@
       "header": "/**\n * GC mode, the real build, the Board's B2: a bid we lost, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcLost.ts`).\n */"
     },
     {
-      "from": "gcStale",
-      "to": "stale.ts",
-      "moves": "all",
-      "header": "/**\n * GC mode, the real build, the Board's B2: what changed under a quote priced on older plans, moved word for word from the\n * GC mode prototype (branch spike/gc-mode, `gcStale.ts`).\n */"
-    },
-    {
       "from": "gcPromises",
       "to": "promises.ts",
       "append": true,
@@ -123,8 +117,7 @@
       "fields": {
         "ScopeItem": [
           "id",
-          "label",
-          "specs"
+          "label"
         ],
         "SubBid": [
           "amount",
@@ -191,11 +184,7 @@
         ],
         "PlanSet": [
           "rev",
-          "label",
-          "changedSheets",
-          "touches",
-          "addedLines",
-          "changedSpecs"
+          "touches"
         ],
         "GcProject": [
           "id",
@@ -256,7 +245,6 @@
   "existing": {
     "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
     "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
-    "src/lib/gcMode/gcNewProject.ts#lineReads": "lineReach.ts",
     "src/lib/gcMode/gcTypes.ts#Includes": "types.ts",
     "src/lib/gcMode/gcTypes.ts#BidAlternate": "types.ts",
     "src/lib/gcMode/gcTypes.ts#DrawSentBack": "types.ts",
@@ -269,5 +257,40 @@
     "src/lib/gcMode/gcTypes.ts#PlanSheet": "types.ts",
     "src/lib/gcMode/gcTypes.ts#SpecSection": "types.ts"
   },
-  "tests": []
+  "tests": [
+    {
+      "from": "gcDecline.test.ts",
+      "to": "decline.test.ts",
+      "header": "/**\n * The tests of `gcDecline.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcPaperSend.test.ts",
+      "to": "paperSend.test.ts",
+      "header": "/**\n * The tests of `gcPaperSend.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcPriceStanding.test.ts",
+      "to": "priceStanding.test.ts",
+      "header": "/**\n * The tests of `gcPriceStanding.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcVettingPromises.test.ts",
+      "to": "vettingPromises.test.ts",
+      "header": "/**\n * The tests of `gcVettingPromises.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Board's B2-i). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+    }
+  ],
+  "slice": {
+    "about": "What B2-i adds to the cut the schedule lifts describe: the plan sets, cut to the fields these kernels read. The promises, paper sends, team, vetting and an ask's contacts are whole shapes, kept whole.",
+    "nested": {
+      "GcProject": {
+        "planSets": "PlanSet"
+      }
+    }
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "outside": {
+    "src/lib/plainWords.ts": "src/lib/plainWords.ts"
+  }
 }
