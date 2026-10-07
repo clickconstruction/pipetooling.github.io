@@ -8,6 +8,7 @@
  * many were. `sharedOverrides` marks every entry that arrived as shared, so a
  * page still on the old default rule shows them too.
  */
+import { parseLegalPortalDocuments, type LegalPortalDocument } from './legalMatterDocuments'
 import { emptyOfficeContacts, type LegalOfficeContacts } from './legalOfficeContacts'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
@@ -41,6 +42,10 @@ export type LegalPortalMatter = {
   heldCount: number
   /** The office's settlement floor (#85 item 20); null = the firm settles freely (and from an older function). */
   settlementFloor: LegalSettlementFloor | null
+  /** Documents from the office (v2.4810), each with a 15-minute link; [] from an older function. */
+  documents: LegalPortalDocument[]
+  /** Documents the office held back; the firm sees the count. */
+  heldDocumentCount: number
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -109,6 +114,8 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       sharedOverrides: isRecord(m.sharedOverrides) ? Object.fromEntries(Object.entries(m.sharedOverrides).filter(([, v]) => typeof v === 'boolean') as Array<[string, boolean]>) : {},
       heldCount: typeof m.heldCount === 'number' && Number.isFinite(m.heldCount) && m.heldCount > 0 ? Math.floor(m.heldCount) : 0,
       settlementFloor: isRecord(m.settlementFloor) ? settlementFloorOf({ settlement_floor_amount: m.settlementFloor.amount, settlement_floor_pct: m.settlementFloor.pct }) : null,
+      documents: parseLegalPortalDocuments(m.documents),
+      heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
       jobs: m.jobs as LegalPortalMatter['jobs'],
       customer: (isRecord(m.customer) ? m.customer : null) as LegalCustomerLike,
       contacts: Array.isArray(m.contacts) ? (m.contacts as LegalContactLike[]) : [],

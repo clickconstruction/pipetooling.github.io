@@ -7,6 +7,7 @@ import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNe
 import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
+import { legalDocumentKindWords, legalDocumentSizeWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
 import { CardCell } from './LegalCardCell'
@@ -213,6 +214,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
       <div>
         <PortalTable head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes']} numCols={[3]} rows={packet.evidence.map((e) => [<b key="l">{e.jobLabel}</b>, `${e.reports} (${e.reportsWithGps} with GPS)`, legalSessionWords(e), `${e.hours}h`, e.firstWorkYmd ? `${e.firstWorkYmd} → ${e.lastWorkYmd}` : '—', String(e.threadNotes)])} empty="No jobs." />
         <p style={{ fontSize: 12, color: MUTED, marginTop: 8 }}><b style={{ color: INK }}>Only approved clock sessions count</b>: hours, days worked and the lien dates read them. Rejected and revoked sessions are left out; sessions not yet approved show as awaiting approval. The printed packet counts the reports and sessions. Ask the office for the reports themselves.</p>
+        <FirmDocuments documents={matter.documents ?? []} held={matter.heldDocumentCount ?? 0} />
       </div>
     )
   }
@@ -339,6 +341,27 @@ function WhereToFile({ account }: { account: LegalPacket['account'] }) {
         <span>{lienForeclosureLine(places.filter((p) => p.basis === 'work').map((p) => p.county))}</span>
       </div>
       <div style={{ fontSize: portalSmall(11), color: FAINT, marginTop: 6 }}>{VENUE_SOURCE_LINE}</div>
+    </div>
+  )
+}
+
+/** Documents from the office (v2.4810), under the field work on the Evidence tab: each with one line on what it shows and a 15-minute link. */
+function FirmDocuments({ documents, held }: { documents: ReadonlyArray<LegalPortalDocument>; held: number }) {
+  if (documents.length === 0 && held === 0) return null
+  return (
+    <div data-legal-firm-documents>
+      <div style={portalH}>Documents from the office · {documents.length}</div>
+      <PortalTable
+        head={['Document', 'What it shows', 'Added', '']}
+        rows={documents.map((d) => [
+          <span key="t"><b>{d.title}</b><div style={{ fontSize: 11.5, color: FAINT }}>{[legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · ')}</div></span>,
+          d.shows,
+          <span key="a" style={{ color: MUTED, whiteSpace: 'nowrap' }}>{[d.addedByName, d.addedOn].filter(Boolean).join(' · ')}</span>,
+          d.url ? <a key="o" href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: COPPER, fontWeight: 600, whiteSpace: 'nowrap' }}>Open ↗</a> : <span key="o" style={{ color: FAINT, whiteSpace: 'nowrap' }}>on the firm's link</span>,
+        ])}
+        empty="No documents shown yet."
+      />
+      <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>Links open for 15 minutes. Reload the page for fresh ones.{held > 0 ? <> The office held back <b>{held} document{held === 1 ? '' : 's'}</b>. Ask the office if you need {held === 1 ? 'it' : 'them'}.</> : null}</p>
     </div>
   )
 }

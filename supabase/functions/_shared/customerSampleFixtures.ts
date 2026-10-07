@@ -648,6 +648,12 @@ function sampleLegalMatter(todayYmd: string): Record<string, unknown> {
     ],
     clockSessions: workDays.map((n) => ({ jobId, workDate: d(n), clockedInAt: at(n, '13:00'), clockedOutAt: at(n, '21:00'), hasGps: true, approved: true, disqualified: false })),
     threadNotes: [{ jobId, body: 'Final walk done with the GC’s super; no punch items.', createdAt: at(-66, '21:30'), authorName: 'Malachi Whites' }],
+    // Documents from the office (v2.4810): the sample carries two, without links (nothing is stored for the sample), and one held.
+    documents: [
+      { id: 'sample-legal-doc-1', title: 'Billing report', shows: 'The office’s itemization of both bills: days on site, hours, fixtures and the contractor discount.', mime: 'application/pdf', sizeBytes: 64_075, addedOn: d(-7), addedByName: 'Robin Ortega', url: '' },
+      { id: 'sample-legal-doc-2', title: 'Emails with the GC’s project manager', shows: 'The first draw promised, the second bill acknowledged, then no answer after the demand.', mime: 'application/pdf', sizeBytes: 210_400, addedOn: d(-7), addedByName: 'Robin Ortega', url: '' },
+    ],
+    heldDocumentCount: 1,
     entries: [
       { id: 'sample-legal-entry-fee', matter_id: matterId, kind: 'fee', amount: 450, body: 'Demand letter on firm letterhead', occurred_on: d(-4), meta: {}, via_portal: true, created_by: null, acknowledged_at: at(-3), created_at: at(-4) },
       { id: 'sample-legal-entry-q', matter_id: matterId, kind: 'question', amount: null, body: 'Is the owner’s answer about the $12,000 in writing, or only your call notes?', occurred_on: d(-3), meta: {}, via_portal: true, created_by: null, acknowledged_at: at(-2), created_at: at(-3) },

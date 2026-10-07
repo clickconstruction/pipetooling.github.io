@@ -16,6 +16,7 @@ import { LIEN_BOOK_COUNSEL_SELECT, shapeLienBookForCounsel } from '../_shared/le
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 // Item 23 (#85): the matter's rows name their columns and are cut to them once more before they leave.
 import { MATTER_COUNSEL_SELECT, MATTER_ENTRY_PENDING_COLUMNS, shapeMatterForCounsel } from '../_shared/legalMatterShape.ts'
+import { LEGAL_MATTER_DOCUMENTS_BUCKET, legalPortalDocumentFromRow } from '../_shared/legalMatterDocuments.ts'
 // v2.4756: the key is short on purpose, so wrong keys are counted by caller and a guesser is refused.
 import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
@@ -350,6 +351,17 @@ serve(async (req) => {
     const jobAddressRows = (jobAddrRes.data ?? []) as Row[]
     const ownerRows = (ownerRes.data ?? []) as Row[]
 
+    // Documents from the office (v2.4810): the live ones. Until the migration is pushed the table is missing and
+    // the list is empty, so the portal still opens. Held ones only count; the rest get a 15-minute link.
+    const { data: docRows, error: docErr } = await admin.from('legal_matter_documents').select('id, matter_id, title, shows, storage_path, mime, size_bytes, added_by, added_at, held_reason').in('matter_id', matterIds).is('voided_at', null).order('added_at')
+    const documentRows = docErr ? [] : ((docRows ?? []) as Row[])
+    const documentHeld = (d: Row) => String(d.held_reason ?? '').trim().length > 0
+    const documentUrls = new Map<string, string>()
+    await Promise.all(documentRows.filter((d) => !documentHeld(d)).map(async (d) => {
+      const { data: signed } = await admin.storage.from(LEGAL_MATTER_DOCUMENTS_BUCKET).createSignedUrl(d.storage_path as string, SIGNED_PDF_SECONDS)
+      if (signed?.signedUrl) documentUrls.set(d.id as string, signed.signedUrl)
+    }))
+
     // Names for the office people the packet mentions (who flagged, who logged, who heard).
     const userIds = new Set<string>()
     for (const j of jobs) if (j.collections_by) userIds.add(j.collections_by as string)
@@ -357,6 +369,7 @@ serve(async (req) => {
     for (const t of touches) if (t.created_by) userIds.add(t.created_by as string)
     for (const p of promises) if (p.heard_by) userIds.add(p.heard_by as string)
     for (const r of reports) if (r.created_by_user_id) userIds.add(r.created_by_user_id as string)
+    for (const d of documentRows) if (d.added_by) userIds.add(d.added_by as string)
     const { data: userRows } = userIds.size ? await admin.from('users').select('id, name').in('id', [...userIds]) : { data: [] }
     const userName = new Map(((userRows ?? []) as Row[]).map((u) => [u.id as string, (u.name as string | null) ?? null]))
 
@@ -444,6 +457,8 @@ serve(async (req) => {
         releasedAt: m.released_at ? todayYmdInAppTz(new Date(m.released_at as string)) : null,
         feesToStatement: Boolean(m.fees_to_statement),
         heldCount,
+        documents: documentRows.filter((d) => d.matter_id === m.id && !documentHeld(d)).map((d) => legalPortalDocumentFromRow(d as { id: string; title: string; shows: string; mime: string | null; size_bytes: number | null; added_at: string | null }, (d.added_by ? userName.get(d.added_by as string) : null) ?? '', documentUrls.get(d.id as string) ?? '', (iso) => todayYmdInAppTz(new Date(iso)))),
+        heldDocumentCount: documentRows.filter((d) => d.matter_id === m.id && documentHeld(d)).length,
         // #85 item 20: the office's settlement floor (dollars or a percent of the balance); both null = none.
         settlementFloor: { amount: m.settlement_floor_amount ?? null, pct: m.settlement_floor_pct ?? null },
         sharedOverrides,

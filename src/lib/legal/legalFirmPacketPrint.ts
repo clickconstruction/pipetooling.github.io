@@ -19,12 +19,13 @@ import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } fr
 import { propertyKindCell, propertySourceNote } from './legalProperty'
 import { venuePlaces, whereToFileText } from './jpVenue'
 import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
+import { legalDocumentKindWords, legalDocumentSizeWords, type LegalPortalDocument } from './legalMatterDocuments'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
   companyName: string
   firm: { name: string; handling: string }
-  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number }
+  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number; /** Documents from the office (v2.4810), listed under Section D and lettered as one exhibit. */ documents?: ReadonlyArray<LegalPortalDocument>; heldDocumentCount?: number }
   particulars: LegalPortalParticulars
   /** Who the firm calls (v2.4755), under the letterhead; omitted, the letterhead carries no number. */
   officeContacts?: LegalOfficeContacts
@@ -83,7 +84,13 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const matterRows = opts.matter.entries.filter((e) => !(e.kind === 'fee' || e.kind === 'cost') && !e.voided_at).map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmEntryKindWords(e)), esc(e.body), e.amount != null && e.kind !== 'question' && e.kind !== 'answer' ? formatLegalMoney(Number(e.amount)) : '', e.via_portal ? esc(opts.firm.name) : esc(opts.companyName)], [false, false, false, true, false]))
   const officeStepRows = packet.feesAndSteps.steps.map((s) => row([esc(s.ymd ?? '—'), esc(s.jobLabel ?? ''), esc(firmHistoryKindWords(s.kind)), esc(s.text)]))
 
+  const docs = opts.matter.documents ?? []
+  const heldDocs = opts.matter.heldDocumentCount ?? 0
+  // Documents from the office (v2.4810): one more lettered exhibit after the packet's own, when there are any.
+  const docLetter = String.fromCharCode(65 + packet.exhibits.length)
   const exhibitItems = packet.exhibits.map((x) => `<tr><td class="letter">${x.letter}</td><td>${esc(x.title)}</td><td class="num">${x.count}</td><td class="muted">${esc(exhibitHome(x.title))}</td></tr>`).join('')
+    + (docs.length ? `<tr><td class="letter">${docLetter}</td><td>Documents from the office</td><td class="num">${docs.length}</td><td class="muted">Section D, each opens on the portal</td></tr>` : '')
+  const documentRows = docs.map((d) => row([`<b>${esc(d.title)}</b><br><span class="muted">${esc([legalDocumentKindWords(d.mime), legalDocumentSizeWords(d.sizeBytes)].filter(Boolean).join(' · '))}</span>`, esc(d.shows), esc([d.addedByName, d.addedOn].filter(Boolean).join(' · '))]))
   const p = opts.particulars
   const particularRows = [
     ['Legal entity', p.entity || opts.companyName],
@@ -146,7 +153,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
 </div>
 ${opts.matter.noteToFirm ? `<div class="note"><b>From the office:</b> ${esc(opts.matter.noteToFirm)}</div>` : ''}
 <h2>Exhibits</h2>
-${packet.exhibits.length ? `<table><thead><tr><th></th><th>Exhibit</th><th>Items</th><th>Where</th></tr></thead><tbody>${exhibitItems}</tbody></table>` : '<p class="muted">Nothing to letter yet.</p>'}
+${packet.exhibits.length || docs.length ? `<table><thead><tr><th></th><th>Exhibit</th><th>Items</th><th>Where</th></tr></thead><tbody>${exhibitItems}</tbody></table>` : '<p class="muted">Nothing to letter yet.</p>'}
 <h2><span class="sec">A</span> Account</h2>
 <h3>Who owes</h3>
 ${table(['Contact', 'Note', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.name), esc(c.note || '—'), esc(c.email ?? '—'), esc(c.phone ?? '—')])), 'No named contact on file.')}
@@ -174,6 +181,7 @@ ${opts.matter.heldCount ? `<p class="muted">${opts.matter.heldCount} entr${opts.
 ${table(['Date', 'Kind', 'Job', 'What was said', 'Recorded by'], saidRows, 'No contact on record.')}
 <h2><span class="sec">D</span> Field evidence</h2>
 ${table(['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes'], evidenceRows, 'No jobs.')}
+${docs.length || heldDocs ? `<h3>Documents from the office${docs.length ? ` (Exhibit ${docLetter})` : ''}</h3>\n${table(['Document', 'What it shows', 'Added'], documentRows, 'None shown.')}${heldDocs ? `<p class="muted">The office held back ${heldDocs} document${heldDocs === 1 ? '' : 's'}.</p>` : ''}` : ''}
 <h2><span class="sec">E</span> Fees, costs and steps</h2>
 <h3>${esc(opts.firm.name)}'s fees and costs</h3>
 ${table(['Date', 'Kind', 'Note', 'Amount'], feeRows, 'None recorded yet.', feeFoot)}

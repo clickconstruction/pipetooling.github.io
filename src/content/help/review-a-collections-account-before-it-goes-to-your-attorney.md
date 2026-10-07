@@ -31,7 +31,7 @@ The same five the firm will see:
 - **Account** shows who owes, contacts, the jobs, and every invoice and payment in date order. A running balance ends on the balance owed. Each job's property record follows. The property record is the job's own site, not the payer's address.
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays.
 - **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm sees this tab as **Record of contact**.
-- **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links.
+- **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. It also holds the **Documents for the firm**, described below.
 - **Fees & steps** shows what the office did, in order. It shows the exhibits the packet would carry, lettered A onward. Exhibits are the documents attached to the packet.
 
 Most section titles carry an ↗ door to where their data is edited.
@@ -39,6 +39,12 @@ Most section titles carry an ↗ door to where their data is edited.
 :::example A red gap that is not really red
 The Learning Experience has no signed contract on either job. With a sent Stripe invoice and 22 GPS clock sessions on the property, the desk reads {{chip:yellow|Sworn account}} and the contract gap is a note, not a stop. The day a dispute is logged in call mode, the theory drops to {{chip:red|None yet}} and the gap turns red — that is the desk telling you the dispute has to be answered before the account is worth referring.
 :::
+
+## Documents for the firm
+
+Documents can go on the matter. A billing report, a supplier invoice, a signed estimate or a saved email thread all fit. Open the **Evidence** tab. Drop the files on **Documents for the firm**, or press {{button:outline|Choose files}}. Each file needs a title and one line on what it shows. The line is what the firm reads beside the title, so say what the document proves. Press {{button:dark|Save}}. The desk takes PDFs, images, emails saved as .eml and plain text, up to 10 MB each.
+
+The firm sees each document under Evidence on its portal, with a link that opens for 15 minutes. The printed packet lists them as one more exhibit. {{button:outline|Hold}} keeps one back from the firm with a reason, such as an internal report. The firm sees only how many were held. {{button:outline|Remove}} takes a document off the matter.
 
 ## Two exits
 

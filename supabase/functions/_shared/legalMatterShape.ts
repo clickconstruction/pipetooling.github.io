@@ -20,6 +20,7 @@
  * `src/lib/legal/legalMatterShape.ts` is the client's door.
  */
 import { LIEN_BOOK_ADDRESS_COLUMNS, LIEN_BOOK_OWNER_COLUMNS } from './legalLienBookShape.ts'
+import { MATTER_DOCUMENT_PAYLOAD_KEYS } from './legalMatterDocuments.ts'
 
 type Row = Record<string, unknown>
 
@@ -151,5 +152,7 @@ export function shapeMatterForCounsel(matter: Row): Row {
   if ('lienFilings' in matter) out.lienFilings = rows(matter.lienFilings).map((f) => ({ ...pick(f, MATTER_FILING_COLUMNS), sends: shapeFilingSends(isRecord(f) ? f.sends : null) }))
   if ('threadNotes' in matter) out.threadNotes = rows(matter.threadNotes).filter(isRecord).map((n) => ({ jobId: n.jobId ?? null, createdAt: n.createdAt ?? null, body: '', authorName: null }))
   if ('entries' in matter) out.entries = rows(matter.entries).map((e) => pick(e, MATTER_ENTRY_COLUMNS))
+  // Documents from the office (v2.4810): the title, the line, the kind, the size, the day, who added it, the link. Never the storage path or a hold reason.
+  if ('documents' in matter) out.documents = rows(matter.documents).map((d) => pick(d, MATTER_DOCUMENT_PAYLOAD_KEYS))
   return out
 }
