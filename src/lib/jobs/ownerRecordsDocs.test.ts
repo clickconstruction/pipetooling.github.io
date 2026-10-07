@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildOwnerPacket } from './ownerRecords'
-import { ownerAcknowledgmentHtml, ownerAcknowledgmentLines, ownerCoverNoteLines, ownerPacketHtml, ownerPaymentWhen, type OwnerRecordsDocFacts, type OwnerRecordsDocFormat } from './ownerRecordsDocs'
+import { OWNER_RECORDS_NO_ADDRESS, ownerAcknowledgmentHtml, ownerAcknowledgmentLines, ownerCoverNoteLines, ownerPacketHtml, ownerPaymentWhen, type OwnerRecordsDocFacts, type OwnerRecordsDocFormat } from './ownerRecordsDocs'
 
 const fmt: OwnerRecordsDocFormat = { day: (ymd) => `D(${ymd})`, dateTime: (iso) => `T(${iso.slice(0, 16)})`, money: (n) => `$${n.toFixed(2)}` }
 const facts: OwnerRecordsDocFacts = { company: 'Click Plumbing and Electrical', owner: 'Khan Umar & Bangash Shazmeena', address: '9703 Lenox Hl, San Antonio', asOfYmd: '2026-10-05', requestedOnYmd: '2026-10-03' }
@@ -23,6 +23,15 @@ describe('the words', () => {
     expect(lines[1]).toBe('I asked Click Plumbing and Electrical in writing for its records on work at this property.')
     expect(lines[4]).toBe('Click Plumbing and Electrical gives up none of its rights by giving me these records, including its lien rights.')
     expect(lines[5]).toBe('I will not hold Click Plumbing and Electrical responsible for how I use these records.')
+  })
+
+  it('a job with no address reads "this property", never "the property at ." (v2.4866)', () => {
+    // The portal passes the request's blank address; the window passes its own fallback.
+    for (const address of ['', '  ', OWNER_RECORDS_NO_ADDRESS]) {
+      expect(ownerAcknowledgmentLines({ ...facts, address }, fmt)[0]).toBe('I am an owner of this property.')
+      expect(ownerCoverNoteLines({ ...facts, address }, fmt)[0]).toBe('You asked us in writing on D(2026-10-03) for our records on this property. They are enclosed.')
+    }
+    expect(ownerAcknowledgmentLines(facts, fmt)[0]).toBe('I am an owner of the property at 9703 Lenox Hl, San Antonio.')
   })
 
   it('a payment says the day it was paid, when it was recorded and how', () => {

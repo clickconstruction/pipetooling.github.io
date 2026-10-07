@@ -25,9 +25,18 @@ export type OwnerRecordsDocFormat = {
   money: (n: number) => string
 }
 
+/** What the papers call a property whose job has no address (v2.4866); the window's packet uses it too. */
+export const OWNER_RECORDS_NO_ADDRESS = 'this property'
+
+function hasAddress(address: string): boolean {
+  const a = address.trim()
+  return a !== '' && a !== OWNER_RECORDS_NO_ADDRESS
+}
+
 export function ownerCoverNoteLines(f: OwnerRecordsDocFacts, fmt: OwnerRecordsDocFormat): string[] {
+  const on = hasAddress(f.address) ? f.address : OWNER_RECORDS_NO_ADDRESS
   return [
-    f.requestedOnYmd ? `You asked us in writing on ${fmt.day(f.requestedOnYmd)} for our records on ${f.address}. They are enclosed.` : `You asked us in writing for our records on ${f.address}. They are enclosed.`,
+    f.requestedOnYmd ? `You asked us in writing on ${fmt.day(f.requestedOnYmd)} for our records on ${on}. They are enclosed.` : `You asked us in writing for our records on ${on}. They are enclosed.`,
     `This statement comes from our business records as of ${fmt.day(f.asOfYmd)}.`,
     'It lists each job at this property, each bill, and each payment we received on those bills.',
     'It is not legal advice, and it says nothing about anyone else.',
@@ -39,7 +48,7 @@ export const OWNER_ACKNOWLEDGMENT_TITLE = 'Acknowledgment of a records request'
 
 export function ownerAcknowledgmentLines(f: OwnerRecordsDocFacts, fmt: OwnerRecordsDocFormat): string[] {
   return [
-    `I am an owner of the property at ${f.address}.`,
+    hasAddress(f.address) ? `I am an owner of the property at ${f.address}.` : `I am an owner of ${OWNER_RECORDS_NO_ADDRESS}.`,
     `I asked ${f.company} in writing for its records on work at this property.`,
     `${f.company} is giving me these records because I asked. They come from its business records as of ${fmt.day(f.asOfYmd)}.`,
     'The records are not legal advice.',
