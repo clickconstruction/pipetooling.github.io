@@ -335,7 +335,8 @@ describe('LegalPortal — Start here and the tour (v2.4820)', () => {
     fireEvent.click(start.querySelector('[data-start-rail="work"]')!)
     fireEvent.click(screen.getByRole('button', { name: /Read the Texas lien rules Acme follows/ }))
     const sheet = await screen.findByRole('dialog', { name: 'The Texas lien rules Acme follows' }, { timeout: 4000 })
-    expect(sheet.textContent).toContain('Justice court')
+    // The guide names its rules by question since v2.4826 ("What a justice court can hear").
+    expect(sheet.textContent).toMatch(/what a justice court can hear/i)
     expect(sheet.querySelectorAll('a[href^="/"]').length).toBe(0)
     fireEvent.keyDown(window, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'The Texas lien rules Acme follows' })).toBeNull())

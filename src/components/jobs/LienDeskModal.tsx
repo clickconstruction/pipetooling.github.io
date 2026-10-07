@@ -6,6 +6,7 @@ import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { defaultSignoffAsk, signoffWords, type LegalSignoffState } from '../../lib/legal/legalAsks'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
+import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
 import { LIEN_GC_PICKER_URGENT_DAYS, buildLienGcPickerOptions, lienGcPickerCloseWords } from '../../lib/jobs/lienDeskGcPicker'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -1245,9 +1246,12 @@ export default function LienDeskModal({
   ) : null
   const ownerRecordsUp = !isMobile
 
+  // v2.4826: the § Rules window names the picked job and its two dates, and lights its row in the clock table.
+  const rulesJob = selected ? lienRulesJobFrom({ label: jobLabel(job, selected.jobId), propertyKind: selected.propertyKind, isSub: !!selected.gcCustomerId, months: selected.months, earliestDeadline: selected.earliestDeadline }, todayYmd) : null
+
   const rulesAndCaller = (
     <>
-      <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={headDoor} />
+      <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={headDoor} job={rulesJob} todayYmd={todayYmd} />
       {office ? <LienCallerDoor open={callScriptOpen} onOpen={() => setCallScriptOpen(true)} buttonStyle={headDoor} /> : null}
     </>
   )

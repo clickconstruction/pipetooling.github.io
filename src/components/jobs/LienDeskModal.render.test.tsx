@@ -226,7 +226,7 @@ describe('LienDeskModal', () => {
     // The affidavit stop shows the affidavit as the Affidavits pane prints it.
     fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement)
     expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
-    expect(screen.getByTestId('lien-stop-paper-rule').textContent).toBe('§ 53.052 · The affidavit ›')
+    expect(screen.getByTestId('lien-stop-paper-rule').textContent).toBe('§ 53.052 · What the affidavit needs before it can be filed ›')
     fireEvent.keyDown(window, { key: 'Escape' })
   })
 
