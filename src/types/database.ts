@@ -6237,6 +6237,56 @@ export type Database = {
           },
         ]
       }
+      court_areas: {
+        Row: {
+          active: boolean
+          county: string
+          created_at: string
+          drawn_by: string | null
+          id: string
+          label: string
+          polygon: Json
+          precinct: string
+          source: string
+          source_note: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          county: string
+          created_at?: string
+          drawn_by?: string | null
+          id?: string
+          label?: string
+          polygon: Json
+          precinct: string
+          source?: string
+          source_note?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          county?: string
+          created_at?: string
+          drawn_by?: string | null
+          id?: string
+          label?: string
+          polygon?: Json
+          precinct?: string
+          source?: string
+          source_note?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_areas_drawn_by_fkey"
+            columns: ["drawn_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crew_day_email_requests: {
         Row: {
           attempts: number
@@ -6298,6 +6348,10 @@ export type Database = {
           homestead: boolean
           id: string
           is_primary: boolean
+          jp_precinct: string
+          jp_precinct_at: string | null
+          jp_precinct_note: string
+          jp_precinct_source: string
           legal_description: string
           note: string | null
           owner_company: string
@@ -6323,6 +6377,10 @@ export type Database = {
           homestead?: boolean
           id?: string
           is_primary?: boolean
+          jp_precinct?: string
+          jp_precinct_at?: string | null
+          jp_precinct_note?: string
+          jp_precinct_source?: string
           legal_description?: string
           note?: string | null
           owner_company?: string
@@ -6348,6 +6406,10 @@ export type Database = {
           homestead?: boolean
           id?: string
           is_primary?: boolean
+          jp_precinct?: string
+          jp_precinct_at?: string | null
+          jp_precinct_note?: string
+          jp_precinct_source?: string
           legal_description?: string
           note?: string | null
           owner_company?: string
