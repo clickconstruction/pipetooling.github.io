@@ -216,3 +216,28 @@ export function lienStepCard(row: LienNextUpRow, facts: LienStepFacts = {}): Lie
   const blocked = at.step === 1 ? (at.ladder === 'affidavit' ? 'the property record' : 'the owner of record') : null
   return { ...base, items, blocked, foot: `Step ${at.step} of 4 · ${done} done · ${4 - done} to go` }
 }
+
+/** The short names of the four steps, for a phone's row of tiles (v2.4881). */
+export const LIEN_STEP_SHORT: Record<LienStepLadder, readonly [string, string, string, string]> = {
+  notice: ['Owner', 'Drafted', 'Approve', 'Mail'],
+  affidavit: ['Property', 'Drafted', 'Approve', 'File'],
+  retainage: ['Owner', 'Drafted', 'Approve', 'Mail'],
+}
+
+export type LienStepTile = { n: LienStepN; label: string; state: 'done' | 'now' | 'todo'; who: 'you' | 'office' | 'leader' | null }
+
+/**
+ * The four dots as four named tiles (v2.4881): done steps ticked, the one the row stands on lit and
+ * naming whose it is — "you" when it is the viewer's, else the other side. Step 3 is the leader's;
+ * the rest are the office's. A row past the ladder (in the mail, held, letter two) gets no tiles.
+ */
+export function lienStepTiles(at: LienStepAt | null, ladder: LienStepLadder, viewerIsLeader: boolean): LienStepTile[] | null {
+  if (!at) return null
+  const names = LIEN_STEP_SHORT[ladder]
+  return ([1, 2, 3, 4] as const).map((n) => {
+    const state: LienStepTile['state'] = n < at.step ? 'done' : n === at.step ? 'now' : 'todo'
+    const leaders = n === 3
+    const who: LienStepTile['who'] = state !== 'now' ? null : leaders === viewerIsLeader ? 'you' : leaders ? 'leader' : 'office'
+    return { n, label: names[n - 1]!, state, who }
+  })
+}

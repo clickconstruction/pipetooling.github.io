@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow } from './lienNextUpSteps'
+import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -86,5 +86,18 @@ describe('lienStepCard', () => {
     const late = lienStepCard(row({ dueOn: '2026-10-01', daysLeft: -4 }))
     expect(late.deadline).toBe('In the mail by Oct 1 · 4 days late')
     expect(late.tone).toBe('red')
+  })
+})
+
+describe('lienStepTiles (v2.4881)', () => {
+  it('names the four steps, ticks the done ones, lights the current one and says whose it is', () => {
+    const leader = lienStepTiles({ ladder: 'notice', step: 3 }, 'notice', true)!
+    expect(leader.map((t) => `${t.label}:${t.state}:${t.who ?? '-'}`)).toEqual(['Owner:done:-', 'Drafted:done:-', 'Approve:now:you', 'Mail:todo:-'])
+    const office = lienStepTiles({ ladder: 'notice', step: 3 }, 'notice', false)!
+    expect(office[2]).toEqual({ n: 3, label: 'Approve', state: 'now', who: 'leader' })
+    expect(lienStepTiles({ ladder: 'notice', step: 2 }, 'notice', true)![1]!.who).toBe('office')
+    expect(lienStepTiles({ ladder: 'notice', step: 2 }, 'notice', false)![1]!.who).toBe('you')
+    expect(lienStepTiles({ ladder: 'affidavit', step: 4 }, 'affidavit', false)!.map((t) => t.label)).toEqual(['Property', 'Drafted', 'Approve', 'File'])
+    expect(lienStepTiles(null, 'notice', true)).toBeNull()
   })
 })

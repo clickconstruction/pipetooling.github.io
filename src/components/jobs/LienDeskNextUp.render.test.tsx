@@ -53,6 +53,20 @@ describe('LienDeskNextUp', () => {
     expect((screen.getByRole('button', { name: 'Draft notice' }) as HTMLButtonElement).style.width).toBe('100%')
   })
 
+  it('a phone row names the four steps in place of the dots, with the current one saying whose it is (v2.4881)', () => {
+    render(<LienDeskNextUp rows={[row({ action: 'approve', button: 'Approve' })]} loading={false} isMobile onAct={() => {}} viewerIsLeader />)
+    const tiles = Array.from(screen.getByTestId('lien-step-row').querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)
+    expect(tiles).toEqual(['✓Owner:done', '✓Drafted:done', 'youApprove:now', '\u00a0Mail:todo'])
+    expect(screen.queryByTestId('lien-step-mark')).toBeNull()
+    cleanup()
+    render(<LienDeskNextUp rows={[row({ action: 'draft', button: 'Draft notice' })]} loading={false} isMobile onAct={() => {}} />)
+    expect(screen.getByTestId('lien-step-row').querySelector('[data-state="now"]')!.textContent).toBe('youDrafted')
+    cleanup()
+    render(<LienDeskNextUp rows={[row({ action: 'draft', button: 'Draft notice' })]} loading={false} isMobile={false} onAct={() => {}} />)
+    expect(screen.queryByTestId('lien-step-row')).toBeNull()
+    expect(screen.getByTestId('lien-step-mark')).toBeTruthy()
+  })
+
   it('the day reads late, today, or days left', () => {
     expect(lienNextUpDueWords({ dueOn: '2026-10-01', daysLeft: -4 })).toBe('Oct 1 · 4 days late')
     expect(lienNextUpDueWords({ dueOn: '2026-10-04', daysLeft: -1 })).toBe('Oct 4 · 1 day late')
@@ -146,9 +160,9 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
   })
-  it('on a phone a tap on the dots opens the card as a sheet with a Close', () => {
+  it('on a phone a tap on the named steps opens the card as a sheet with a Close', () => {
     render(<LienDeskNextUp rows={rows} loading={false} isMobile onAct={() => {}} />)
-    fireEvent.click(screen.getAllByTestId('lien-step-mark')[0]!)
+    fireEvent.click(screen.getAllByTestId('lien-step-row')[0]!)
     expect(screen.getByTestId('lien-step-card').getAttribute('data-place')).toBe('sheet')
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
