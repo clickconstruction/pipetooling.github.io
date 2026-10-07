@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
@@ -7,6 +7,7 @@ import { firmAgreementWords, firmEntryKindWords, firmEntryStatusWords, firmNotNe
 import { contingencyEntries, firmDemand, firmFeeRows, legalRunningLedger } from '../../../lib/legal/legalMoney'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry } from '../../../lib/legal/legalAsks'
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
+import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
 import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
 import { firmVoidProblem, isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
@@ -139,6 +140,7 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo }
         {a.contacts.length ? (<><div style={h}>Contacts</div><PortalTable head={['Name', 'Email', 'Phone']} rows={a.contacts.map((c) => [c.name, c.email ?? '—', c.phone ?? '—'])} empty="" /></>) : null}
         <div style={h}>Jobs</div>
         <PortalTable head={['Job', 'Name', 'Address', 'Age', 'On file', 'Balance']} numCols={[3, 5]} rows={a.jobs.map((j) => [<b key="l">{j.label}</b>, j.name, j.address, j.agingDays == null ? '—' : `${j.agingDays}d`, <JobRecordCell key="r" job={j} />, formatLegalMoney(j.balance)])} empty="No jobs." />
+        <WhereToFile account={a} />
         <div style={h}>Property record</div>
         <PortalTable head={['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind']} rows={a.properties.map((p) => [<b key="j">{p.jobLabels.join(', ')}</b>, propertySourceNote(p.source) ? <span key="a">{p.address || '—'} <span style={{ color: MUTED }}>· {propertySourceNote(p.source)}</span></span> : p.address, p.county || '—', p.owner || '—', p.legalDescription || '—', p.parcelId || '—', propertyKindCell(p.propertyKind)])} empty="No property record on file." />
       </div>
@@ -283,6 +285,30 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
           </table>
         ) : <p style={{ color: MUTED, fontSize: 13 }}>Nothing to letter yet.</p>}
       </div>
+    </div>
+  )
+}
+
+/** Which court (v2.4764): the cap, both venue bases under TRCP 502.4, the lien line, the source. */
+function WhereToFile({ account }: { account: LegalPacket['account'] }) {
+  const cap = justiceCourtCap(account.totals.balance)
+  const places = venuePlaces({ properties: account.properties, payer: { name: account.payer.name, address: account.customerAddress, county: account.customerCounty } })
+  const notYet = <span style={{ color: PAPER_RED, fontWeight: 700 }} title={PRECINCT_NOT_YET_TITLE}>?</span>
+  return (
+    <div data-legal-where-to-file>
+      <div style={portalH}>Where to file</div>
+      <div style={{ fontSize: 13 }}><b>{cap.words.replace(/ \(.*$/, '')}</b> <span style={{ color: MUTED }}>{cap.words.slice(cap.words.indexOf('(')) || ''}</span></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 12px', fontSize: 12.5, marginTop: 6 }}>
+        {places.map((p) => (
+          <Fragment key={`${p.basis}:${p.where}`}>
+            <span style={{ color: MUTED }}>{p.basisWords}</span>
+            <span><b>{courtWords(p)}</b>{p.precinct ? null : <> {notYet}</>}{p.where ? <span style={{ color: MUTED }}> · {p.where}</span> : null}{p.jobLabels.length > 1 ? <span style={{ color: MUTED }}> · {p.jobLabels.join(', ')}</span> : null}</span>
+          </Fragment>
+        ))}
+        <span style={{ color: MUTED }}>A lien foreclosure</span>
+        <span>{lienForeclosureLine(places.filter((p) => p.basis === 'work').map((p) => p.county))}</span>
+      </div>
+      <div style={{ fontSize: 11, color: FAINT, marginTop: 6 }}>{VENUE_SOURCE_LINE}</div>
     </div>
   )
 }

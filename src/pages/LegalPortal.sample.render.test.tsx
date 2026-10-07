@@ -109,6 +109,17 @@ describe('LegalPortal — the sample matter', () => {
     expect(document.body.textContent).not.toMatch(/lien is gone/)
   })
 
+  it('says where to file: the cap, both venue bases, the lien line (v2.4764)', async () => {
+    await openSample()
+    const block = document.querySelector('[data-legal-where-to-file]')!
+    expect(block.textContent).toContain('is within the justice court limit')
+    expect(block.textContent).toContain('Where the work was done')
+    expect(block.textContent).toContain('Hays County · justice precinct not yet')
+    expect(block.textContent).toContain('Where the defendant is')
+    expect(block.textContent).toContain('A lien foreclosure goes to district court in Hays County')
+    expect(block.textContent).toContain('Confirm with the clerk before filing.')
+  })
+
   it('opens the Lien grid on Upcoming, with the matter’s own job beside the other two', async () => {
     await openSample()
     fireEvent.click(screen.getByRole('button', { name: 'Lien grid' }))

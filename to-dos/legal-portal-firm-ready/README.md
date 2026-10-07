@@ -90,6 +90,8 @@ Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating
 
 **The grid reads better** (2026-10-06, the owner's second ask, v2.4749): the address under the job, the property in words, the unpaid total before its months, § 53.056 without the closed windows, and a rail of GCs with each one's count and dollars in place of the select. Mockup: `mockup-lien-grid-reads.html`, the owner's screenshot beside it.
 
+**Which court** (2026-10-06, the owner's ask; plan and mockup `mockup-justice-precinct.html`, reordered on the holistic look): step 1, v2.4764, the Court column and *Where to file* from the county, the cap, TRCP 502.4's two venues and the lien line; steps 2–5 are the office's own court-areas layer on the Map page (areas table and kernel; draw, name and save with the jobs as pins; import Bexar, Travis and Hays; nightly classification, the hand override, the desk gap, the precinct on the portal). The owner wants every county with a job drawn.
+
 
 Found by the reviews and left for later:
 
