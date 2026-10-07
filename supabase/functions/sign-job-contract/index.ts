@@ -36,6 +36,7 @@ import {
   signedRecordId,
 } from '../_shared/jobContract.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
+import { signerNamesLine } from '../_shared/jobContractSigners.ts'
 
 type Body = {
   token?: string
@@ -318,7 +319,8 @@ serve(async (req) => {
         const url = signingUrl(appOrigin(body.public_origin), token)
         const amountLine = amount != null ? ` · ${formatMoney(amount)}` : ''
 
-        const signedBy = coName ? `${(signer === 'primary' ? printedName : c.signer_printed_name ?? '').trim()} and ${(signer === 'co' ? printedName : c.co_signer_printed_name ?? '').trim()}` : printedName
+        // v2.4871: the names line every reader uses ("Sam Owner and Alex Owner"), read from the row as this signature leaves it.
+        const signedBy = signerNamesLine({ ...c, ...frameCols, signed_at: nowIso }) || printedName
         const ccList = [...(c.cc_emails ?? []), ...(coName && c.co_signer_email ? [c.co_signer_email] : [])].filter(isValidEmail).filter((e) => e !== c.recipient_email).slice(0, 10)
         if (c.recipient_email && isValidEmail(c.recipient_email)) {
           // v2.3617: the customer's signed copy comes from the shared builder, so Settings → What customers see renders the same email.
