@@ -28673,7 +28673,6 @@ export type Database = {
         }
         Returns: Json
       }
-      get_archived_user_names: { Args: never; Returns: string[] }
       get_assigned_steps_for_dashboard: {
         Args: { p_user_name: string }
         Returns: {
