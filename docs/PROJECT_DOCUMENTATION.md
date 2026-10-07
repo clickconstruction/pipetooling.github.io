@@ -1810,6 +1810,8 @@ Clickable addresses (Google Maps), `mailto:`/`tel:` links, and `#step-{id}` deep
 ### 16. Map (`/map`)
 `Map.tsx` — Leaflet map of jobs/bids/estimates with a geocode cache (`address_geocodes`, `geocode-address-batch` edge function), polygon draw, and a geocode review modal. Access: dev / master / assistant / estimator. History: grep RECENT_FEATURES.md for "Map".
 
+**Court areas** (v2.4769): the toolbar's **Court areas** toggle, for the office cohort, opens a mode in which the polygon tool draws a justice precinct instead of a filter; the shape is named (county, the county's own precinct label, a label, where it was drawn from) and saved to `court_areas`; every active area draws on the map with its name, and the panel under the map lists them by county with Rename and Remove and says how many pinned addresses sit inside a drawn area, outside every area, or on a line.
+
 ### 17. Prospects (`/prospects`)
 - **Page**: [`Prospects.tsx`](../src/pages/Prospects.tsx) with two top-level tabs:
   - **Customers** — the sales-lead pipeline, with sub-tabs **Follow Up**, **Prospect List**, **Convert**, and **Activity** (renamed from **Team** in v2.708; per-user/per-day marked+updated activity tables). Lead warmth, fit status (`prospect_fit_status`), callbacks, and copy templates feed the Calendar and the Quickfill **Prospects** section.
