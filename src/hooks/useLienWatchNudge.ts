@@ -25,7 +25,7 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
         const [{ data: jobRows, error: jobErr }, { data: filingRows, error: filErr }] = await Promise.all([
           supabase
             .from('jobs_ledger')
-            .select('id, gc_customer_id, last_work_date, revenue, payments_made, customer_address_id')
+            .select('id, gc_customer_id, last_work_date, lien_last_work_on, revenue, payments_made, customer_address_id')
             .in('status', ['billed']),
           supabase.from('job_lien_filings').select('*').is('voided_at', null),
         ])
@@ -36,6 +36,7 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
           id: string
           gc_customer_id: string | null
           last_work_date: string | null
+          lien_last_work_on?: string | null
           revenue: number | null
           payments_made: number | null
           customer_address_id: string | null
@@ -55,7 +56,8 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
         const jobs: LienWatchJob[] = rawJobs.map((j) => ({
           id: j.id,
           isSub: Boolean(j.gc_customer_id),
-          lastWorkYmd: j.last_work_date,
+          // The day set by hand counts first (v2.4830), as the runway and the desk count it.
+          lastWorkYmd: j.lien_last_work_on || j.last_work_date,
           openBalance: Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
           propertyKind: j.customer_address_id ? kindById.get(j.customer_address_id) ?? '' : '',
         }))
