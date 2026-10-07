@@ -3981,6 +3981,14 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* A Do now row's four dots (v2.4631): a hover or focus lifts them so the card beside them reads as theirs. */
 .lienStepMark:hover, .lienStepMark:focus-visible { background: var(--bg-subtle); outline: none; }
 .lienStepMark:focus-visible { box-shadow: 0 0 0 2px var(--border-blue); }
+.lienStepRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.lienStepTile { display: grid; justify-items: center; gap: 1px; padding: 5px 2px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.72rem; line-height: 1.2; color: var(--text-muted); min-width: 0; }
+.lienStepTile[data-state='done'] { background: var(--bg-green-tint); border-color: transparent; color: var(--text-green-800); }
+.lienStepTile[data-state='now'] { background: #2563eb; border-color: transparent; color: #fff; }
+.lienStepTileMark { font-size: 0.68rem; font-weight: 700; text-transform: lowercase; }
+.lienStepTileName { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+/* The leader's one-screen approve on a phone (v2.4881): with Details folded, the pane shows only what is marked to keep. */
+[data-lien-pane-simple='yes'] > :not([data-lien-pane-keep]) { display: none !important; } /* !important: the pane's bodies set display inline */
 /* A Do now row's chip as a door to the paper (v2.4632): a ring in its own color on hover and focus. */
 .lienPaperDoor:hover, .lienPaperDoor:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px currentColor; text-decoration: underline; text-underline-offset: 2px; outline: none; }
 /* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */

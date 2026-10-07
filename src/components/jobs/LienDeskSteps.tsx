@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { LIEN_STEP_LADDERS, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
+import { LIEN_STEP_LADDERS, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
 
 /**
  * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
@@ -249,4 +249,32 @@ export function useLienStepCard(isMobile: boolean) {
     return () => window.removeEventListener('keydown', onKey, true)
   }, [open])
   return { open, hostRef, show, hide, close, cancelHide }
+}
+
+/**
+ * The four steps as four named tiles (v2.4881): a phone has no hover, so the names are the card.
+ * Done steps ticked, the one the row stands on lit and saying whose it is. Nothing for a row past
+ * the ladder.
+ */
+export function LienStepRow({ at, ladder, viewerIsLeader, onPress }: { at: LienStepAt | null; ladder: LienStepLadder; viewerIsLeader: boolean; /** A tap opens the step card (the Do now rows' sheet); without it the row is words only. */ onPress?: (el: HTMLElement) => void }) {
+  const tiles = lienStepTiles(at, ladder, viewerIsLeader)
+  if (!tiles) return null
+  const inner = tiles.map((t) => (
+    <span key={t.n} className="lienStepTile" data-state={t.state} data-who={t.who ?? undefined}>
+      <span className="lienStepTileMark" aria-hidden>{t.state === 'done' ? '✓' : t.state === 'now' ? t.who : '\u00a0'}</span>
+      <span className="lienStepTileName">{t.label}</span>
+    </span>
+  ))
+  if (onPress) {
+    return (
+      <button type="button" className="lienStepRow" data-testid="lien-step-row" aria-label={`Step ${at!.step} of 4: where this stands`} onClick={(e) => { e.stopPropagation(); onPress(e.currentTarget) }} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', width: '100%' }}>
+        {inner}
+      </button>
+    )
+  }
+  return (
+    <div className="lienStepRow" data-testid="lien-step-row" aria-label={`Step ${at!.step} of 4`}>
+      {inner}
+    </div>
+  )
 }
