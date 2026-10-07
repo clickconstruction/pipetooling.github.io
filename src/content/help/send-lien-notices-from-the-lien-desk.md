@@ -144,7 +144,7 @@ A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its
 
 ## A notice sent by hand
 
-Some notices are printed here and mailed by hand. One paper may even cover several jobs at a property. Record it with **Already mailed? Record it…**, the quiet link left of {{button:outline|Save draft}}.
+Some notices are printed here and mailed by hand. One paper may even cover several jobs at a property. Record it with **Already mailed? Record it…**, the quiet link left of {{button:outline|Save draft}}. On a notice past the draft, the footer is one row. A chip at the left says the state, like {{chip:green|Approved · leader's word · Oct 7}}. Hold the mouse on it to read the whole line. The side doors are links, and the one button sits at the right end.
 
 Type when it went out, how and to whom. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
@@ -243,7 +243,7 @@ The desk shows the master only what needs a decision. He sees what is open with 
 
 The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The tick box sits in the bottom row beside the buttons when he approves a notice.
 
-- Tick **Offer a discount if a bill is paid in full by a day**. Its choices open above the bottom row.
+- Tick **Offer a discount** in the bottom row. Its choices open above the row.
 - Pick the percent. The default is 10.
 - Pick the day. The default is 14 days from today. The offer never runs later than a week before the affidavit must be filed. So the affidavit can still go out on time if they do not pay.
 
@@ -274,7 +274,7 @@ A printed notice waits on the desk in the mail pile. Open it and press {{button:
 A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same. The Dashboard's Needs you counts the mailed notices that still have no number.
 
 :::example One notice on its own
-A ready notice's footer also offers **Just this one, from the Lien window ›**. It opens the § 53.056 tab with the desk's months filled in. Use it to print or email one notice by hand. Recording it there moves the desk row too.
+A ready notice's footer also offers the link **Just this one ›**. It opens the § 53.056 tab with the desk's months filled in. Use it to print or email one notice by hand. Recording it there moves the desk row too.
 :::
 
 ## Affidavits

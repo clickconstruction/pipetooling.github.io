@@ -26,6 +26,8 @@ vi.mock('../../lib/sent/sentCopiesIo', async () => {
 })
 const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
+vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: vi.fn(async () => null) }))
+vi.mock('../../lib/stripeInvoiceFacts', () => ({ fetchStripeInvoiceFacts: vi.fn(async () => ({})) }))
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
   return {
@@ -348,5 +350,23 @@ describe('LienDeskRunModal · read a copy before it prints (v2.4621)', () => {
     expect(screen.queryByTestId('lien-run-preview')).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852)", () => {
+  it("the preview's invoice page prints Stripe's number and due day, never the app's #0", async () => {
+    const { fetchJobWithDetailsById } = await import('../../lib/fetchJobWithDetailsById')
+    const { fetchStripeInvoiceFacts } = await import('../../lib/stripeInvoiceFacts')
+    const bill = { id: 'inv-878', amount: 15200, sequence_order: 0, status: 'billed', billed_at: '2026-09-16T14:00:00Z', created_at: '2026-09-16T13:59:00Z', sent_to_customer_at: null, estimated_bill_date: null, stripe_invoice_id: 'in_878', stripe_invoice_memo: 'Paper checks can be sent to: Click Plumbing', external_send_note: '', stripe_invoice_footer: null }
+    vi.mocked(fetchJobWithDetailsById).mockResolvedValue({ id: 'j650', hcp_number: '878', job_name: 'Take 5- Seguin', job_address: '1 Example Rd', customer_name: 'Southern Post Construction', customer_email: '', customer_id: 'c1', gc_customer_id: null, bill_to_party: 'customer', fixtures: [], materials: [], payments: [], invoices: [bill] } as never)
+    vi.mocked(fetchStripeInvoiceFacts).mockResolvedValue({ 'inv-878': { invoiceNumber: '878-2609161138', dueYmd: '2026-10-16', lines: [] } })
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-07" userId="u1" onClose={() => {}} onRecorded={() => {}} stripeMode="live" />)
+    await settle()
+    expect(vi.mocked(fetchStripeInvoiceFacts)).toHaveBeenCalledWith(['inv-878'], 'live')
+    fireEvent.click(screen.getByTestId('run-preview-j650-original_contractor'))
+    const overlay = screen.getByTestId('lien-run-preview')
+    expect(overlay.textContent).toContain('#878-2609161138')
+    expect(overlay.textContent).toContain('October 16, 2026')
+    expect(overlay.textContent).not.toContain('#0')
   })
 })

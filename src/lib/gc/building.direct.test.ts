@@ -109,7 +109,7 @@ describe('what we hold, and our own crew', () => {
 
   it('opens a trade’s retainage 10 days after the customer pays our final', () => {
     expect(tradeRetainageOpensOn(job(initialGcState()))).toBeNull()
-    const paid = withJob((p) => ({ ...p, ownerBilling: { payApps: [...(p.ownerBilling?.payApps ?? []), { final: true, paidOn: '2026-10-01' }] } }))
+    const paid = withJob((p) => ({ ...p, ownerBilling: { ...(p.ownerBilling ?? { billed: 0, paid: 0, retainageHeld: 0 }), payApps: [...(p.ownerBilling?.payApps ?? []), { number: (p.ownerBilling?.payApps?.length ?? 0) + 1, periodTo: '2026-09-30', sentOn: '2026-09-30', doneToDate: {}, workToDate: 0, retainagePct: 0, retainage: 0, due: 0, final: true, paidOn: '2026-10-01' }] } }))
     expect(tradeRetainageOpensOn(job(paid))).toBe('2026-10-11')
   })
 })
@@ -156,6 +156,8 @@ describe('a change order’s trade side', () => {
     id: 'co-canopy',
     number: 1,
     description: 'Add the entry canopy steel',
+    reason: 'owner',
+    schedule: 'none',
     packageId: 'fsteel',
     status: 'signed',
     sentOn: '2026-09-20',

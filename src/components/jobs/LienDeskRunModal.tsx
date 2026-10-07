@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
-import { noticeInvoiceDocs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
+import { noticeInvoiceDocs, noticeInvoicePrintSections, unpaidBilledInvoices, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
+import { fetchStripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
+import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -36,6 +38,7 @@ export default function LienDeskRunModal({
   onRecorded,
   onPrinted,
   undo,
+  stripeMode = 'live',
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -51,6 +54,8 @@ export default function LienDeskRunModal({
    * a strip under the title offers to undo that click. The opener owns what undo does.
    */
   undo?: { words: string; busy: boolean; onUndo: () => void }
+  /** Which Stripe the enclosed bills' numbers are read from (v2.4852): a dev's test-mode pick, live for everyone else. */
+  stripeMode?: BillingStripeModePref
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
@@ -81,7 +86,10 @@ export default function LienDeskRunModal({
         jobIds.map(async (id) => {
           try {
             const job = await fetchJobWithDetailsById(id)
-            if (job) next[id] = noticeInvoiceDocs(job)
+            if (!job) return
+            // Stripe's own number and due day on each enclosed bill (v2.4852); without an answer the app's document prints.
+            const facts = await fetchStripeInvoiceFacts(unpaidBilledInvoices(job).filter((i) => (i.stripe_invoice_id ?? '').trim()).map((i) => i.id), stripeMode)
+            next[id] = noticeInvoiceDocs(job, facts)
           } catch {
             // the notice goes without its invoice; the statute only permits the enclosure
           }
@@ -101,7 +109,7 @@ export default function LienDeskRunModal({
     return () => {
       cancelled = true
     }
-  }, [initial])
+  }, [initial, stripeMode])
   // The enclosures by the notice that prints them: a combined notice carries every part's invoices and bills under the lead job's id.
   const invoiceDocsShown = useMemo(() => {
     const out: Record<string, NoticeInvoiceDoc[]> = { ...invoiceDocsByJob }

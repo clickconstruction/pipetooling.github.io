@@ -6,8 +6,11 @@ import { useNoticePayPage } from './useNoticePayPage'
 const fetchMock = vi.fn()
 vi.mock('../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: (id: string) => fetchMock(id) }))
 vi.mock('../lib/jobs/noticeInvoiceEnclosure', () => ({
+  unpaidBilledInvoices: () => [],
   noticeInvoiceDocs: (job: { id: string }) => (job.id === 'j-billed' ? [{ invoiceId: 'inv-1', title: 'Invoice #1, May 5, 2026', doc: {}, stripeInvoiceId: 'in_1', openAmount: 350, description: 'Trip charge.' }] : []),
 }))
+// Stripe's own bill number (v2.4852): no network in a test.
+vi.mock('../lib/stripeInvoiceFacts', () => ({ fetchStripeInvoiceFacts: async () => ({}) }))
 vi.mock('../lib/jobs/lienNoticePayPageAssets', () => ({ buildPayPageAssets: async () => ({ 'inv-1': { svg: '<svg data-code></svg>', png: null } }) }))
 
 describe('useNoticePayPage', () => {

@@ -26560,6 +26560,10 @@ export type Database = {
         Args: { p_incident_id: string }
         Returns: Json
       }
+      delete_marked_paid_invoice_without_payment: {
+        Args: { p_invoice_id: string }
+        Returns: Json
+      }
       delete_ready_to_bill_invoice: {
         Args: { p_invoice_id: string }
         Returns: Json

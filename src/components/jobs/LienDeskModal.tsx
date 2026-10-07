@@ -43,6 +43,7 @@ import {
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
 import { wordRecordBlock, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { awaitingChip, heldChip, printedChip, readyChip, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
@@ -53,6 +54,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { useLienJobSuppliers } from '../../hooks/useLienJobSuppliers'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { LienJobHeading } from './LienJobNumber'
+import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWord, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
@@ -236,6 +238,16 @@ const chip = (bg: string, fg: string): React.CSSProperties => ({
 })
 /** Filled buttons carry a white label, so the fill is a literal that holds in both themes — the `--text-*` tokens go pale in dark mode and the label with them. */
 const FILL = { primary: '#2563eb', green: '#166534', amber: '#92400e' } as const
+/** The footer's state chip (v2.4855): a few words, the old sentence on hover. */
+function FootChip({ chip, ...rest }: { chip: LienFootChip } & Record<`data-${string}`, string | boolean | undefined>) {
+  return (
+    <span className="lienFootChip" data-tone={chip.tone} title={chip.title} {...rest}>
+      {chip.tone === 'green' ? <span aria-hidden="true">✓</span> : null}
+      {chip.words}
+    </span>
+  )
+}
+
 const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled = false): React.CSSProperties => ({
   padding: '5px 10px',
   borderRadius: 7,
@@ -2488,7 +2500,7 @@ export default function LienDeskModal({
       <LienOfferBox part="details" offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} onSave={onSave} saving={busy} saved={saved} />
     )
     const offerSwitch = () => (
-      <LienOfferBox part="switch" offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} />
+      <LienOfferBox part="switch" compact offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} />
     )
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
@@ -2641,13 +2653,17 @@ export default function LienDeskModal({
           btn={btn}
         />
       ) : (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span>Waiting on the leader since {selected.item?.submitted_at ? demandDate(calendarYmdInAppTzFromIso(selected.item.submitted_at)) : '—'}.</span>
-          <span style={{ flex: 1 }} />
-          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
-            <span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span>
+        <div className="lienFootRow" data-lien-desk-foot="awaiting">
+          <FootChip chip={awaitingChip(selected.item)} data-lien-desk-awaiting-words />
+          <span className="lienFootSpacer" />
+          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
+            Already mailed? Record it ›
           </button>
-          <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
+          {canSendOnWord(authRole) ? (
+            <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy || !office}>Pull back to draft</button>
+          ) : (
+            <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
+          )}
           {canSendOnWord(authRole) ? (
             <button
               type="button"
@@ -2667,20 +2683,18 @@ export default function LienDeskModal({
       footer = byHandPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span data-lien-desk-ready-words>
-            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(calendarYmdInAppTzFromIso(selected.item.approved_at))}` : ''}`}{itemOffer ? ` · ${lienOfferChipWords(itemOffer)}` : ''} · in the run.
-          </span>
+        <div className="lienFootRow" data-lien-desk-foot="ready">
+          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null)} data-lien-desk-ready-words />
           {leader && selected.item?.approval_mode === 'word' ? (
-            <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
+            <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
-          <span style={{ flex: 1 }} />
+          <span className="lienFootSpacer" />
           {leader ? offerSwitch() : null}
-          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
-            <span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span>
+          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
+            Already mailed? Record it ›
           </button>
-          <button type="button" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} style={btn('plain', !office)} title="One notice on its own: print or email it and record the sends in the Lien window">
-            Just this one, from the Lien window ›
+          <button type="button" className="lienFootLink" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} title="One notice on its own: print or email it and record the sends in the Lien window">
+            Just this one ›
           </button>
           <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
             Send the run · {runCount} ▸
@@ -2692,16 +2706,14 @@ export default function LienDeskModal({
       // v2.4568: a printed notice had no footer at all. The run is where its tracking numbers are typed and the mailing recorded.
       const printedAt = (selected.item as { printed_at?: string | null } | null)?.printed_at ?? null
       footer = byHandPane ?? (
-        <div data-lien-desk-printed-footer style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span>
-            Printed{printedAt ? ` ${demandDate(calendarYmdInAppTzFromIso(printedAt))}` : ''} · in the mail. Type its tracking numbers in the run to record it.
-          </span>
-          <span style={{ flex: 1 }} />
-          <button type="button" onClick={backToReady} disabled={!office || busy} style={btn('plain', !office || busy)} title="It was not mailed: put it back in Ready to send. The approval stands">
+        <div data-lien-desk-printed-footer className="lienFootRow" data-lien-desk-foot="printed">
+          <FootChip chip={printedChip({ printed_at: printedAt })} />
+          <span className="lienFootSpacer" />
+          <button type="button" className="lienFootLink" onClick={backToReady} disabled={!office || busy} title="It was not mailed: put it back in Ready to send. The approval stands">
             Back to ready
           </button>
-          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper already went out by hand — record it instead of sending the run">
-            <span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span>
+          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper already went out by hand — record it instead of sending the run">
+            Already mailed? Record it ›
           </button>
           <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="The run, where the tracking numbers are typed and the mailing is recorded">
             Record the mailing · {runCount} ▸
@@ -2710,17 +2722,21 @@ export default function LienDeskModal({
       )
     } else if (state === 'held') {
       footer = byHandPane ?? (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <span>
-            Held{selected.item?.hold_reason === 'promised' ? ' — they promised' : selected.item?.hold_reason === 'rule' ? ` — ${gc?.name ?? 'the GC'}'s standing rule` : " — the leader will call first"} · asks again {selected.item?.hold_until ? demandDate(selected.item.hold_until) : ''}.{' '}
-            <span style={{ color: 'var(--text-red-600)' }}>{monthsList[0] ? `${workMonthLabel(monthsList[0])}'s lien right ends ${selected.earliestDeadline ? demandDate(selected.earliestDeadline) : ''}.` : ''}</span>
-          </span>
-          <span style={{ flex: 1 }} />
-          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
-            <span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span>
+        <div className="lienFootRow" data-lien-desk-foot="held">
+          <FootChip chip={heldChip(selected.item, gc?.name)} data-lien-desk-held-words />
+          {monthsList[0] ? <span className="lienFootRed">{`${workMonthLabel(monthsList[0])}'s lien right ends ${selected.earliestDeadline ? demandDate(selected.earliestDeadline) : ''}.`}</span> : null}
+          <span className="lienFootSpacer" />
+          <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
+            Already mailed? Record it ›
           </button>
-          {leader ? <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold and approve ▸</button> : null}
-          <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
+          {leader ? (
+            <>
+              <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy || !office}>Back to draft</button>
+              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold and approve ▸</button>
+            </>
+          ) : (
+            <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
+          )}
         </div>
       )
     } else if (state === 'sent') {
@@ -3197,6 +3213,7 @@ export default function LienDeskModal({
             onChanged()
           }}
           notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
+          stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

@@ -4,7 +4,7 @@
  * what is on screen, the find box marks and narrows, Enter walks the matches, Esc closes it alone.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders as render } from '../../test/renderSmokeMocks'
 import { LienRulesDoor } from './LienRulesDoor'
 import { lienRulesJobFrom } from '../../lib/jobs/lienRulesDates'
@@ -30,7 +30,13 @@ describe('LienRulesDoor', () => {
     expect(screen.getByTestId('lien-rules-modal-at').textContent).toBe('What the notice is and where it goes')
     const body = screen.getByTestId('lien-rules-body')
     expect(body.textContent).toContain('Every lien deadline and every line in a demand letter comes from a rule in Texas law.')
-    const opened = body.querySelector<HTMLElement>('[data-rule-opened="yes"]')!
+    // The rule for the surface is marked open just after the window paints: wait for it, or a busy CI box
+    // reads the body a tick early (the flake on #4775, #4838 and #4849).
+    const opened = await waitFor(() => {
+      const el = body.querySelector<HTMLElement>('[data-rule-opened="yes"]')
+      expect(el).not.toBeNull()
+      return el!
+    })
     expect(opened.id).toBe('what-the-notice-is-and-where-it-goes')
     expect(opened.getAttribute('aria-expanded')).toBe('true')
     expect(opened.querySelector('[data-rule-cite]')?.textContent).toBe('§ 53.056(a-1) to (a-3), § 53.003')
