@@ -133,4 +133,4 @@ The real build adds two: the GC entity's name (call 12) and the test rows on pro
 
 Written 2026-10-06. Paused 2026-10-07 at the owner's word, with New project built but step 7 and
 the schedule through its PR 3 (section 1). The other four lanes wait on their helpers being opened
-and their plans written. `HANDOFF.md` → *Pick up the real build* is where to start again.
+and their plans written. Resumed the evening of 2026-10-07 with seven helpers: `PLAN_2026-10-07.md` assigns every lane, adds Helper 6 (the doors) and Helper 7 (release and the spike's keeper), and is newer than section 3 where they differ.

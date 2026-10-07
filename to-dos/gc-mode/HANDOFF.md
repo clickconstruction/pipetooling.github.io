@@ -343,7 +343,7 @@ Tell the owner before changing one of these; another area reads it.
 
 ## Status
 
-Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), its last rows in rounds one to four of the helper sessions (`HELPERS.md` says how), with the Ask window, Follow up's two views and a company's address. `PUNCHLIST.md` is closed for the Gantt. The real build started on 2026-10-06 and paused on 2026-10-07 at the owner's word (*Pick up the real build*).
+Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), its last rows in rounds one to four of the helper sessions (`HELPERS.md` says how), with the Ask window, Follow up's two views and a company's address. `PUNCHLIST.md` is closed for the Gantt. The real build started on 2026-10-06 and paused on 2026-10-07 at the owner's word (*Pick up the real build*). **Resumed the evening of 2026-10-07** with seven helpers under the lead session *GC spike*: `PLAN_2026-10-07.md` is the plan (lanes, doors, the day-by-day) and is newer than *Pick up the real build* where they differ.
 
 Handed off 2026-10-05. Pick it up by reading *Start here*, then take section 1 to the owner. Each
 real-build plan keeps its own status; drop a session card when a real-build PR starts
