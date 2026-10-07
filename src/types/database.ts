@@ -9021,6 +9021,457 @@ export type Database = {
           },
         ]
       }
+      gc_schedule_activities: {
+        Row: {
+          actual_finish: string | null
+          actual_start: string | null
+          created_at: string
+          done_on: string | null
+          finish: string
+          id: string
+          kind: string
+          label: string | null
+          must_finish_by: string | null
+          not_before: string | null
+          package_id: string | null
+          passed_on: string | null
+          place: string | null
+          position: number
+          project_id: string
+          scope_item_id: string | null
+          start: string
+          who: string | null
+        }
+        Insert: {
+          actual_finish?: string | null
+          actual_start?: string | null
+          created_at?: string
+          done_on?: string | null
+          finish: string
+          id?: string
+          kind: string
+          label?: string | null
+          must_finish_by?: string | null
+          not_before?: string | null
+          package_id?: string | null
+          passed_on?: string | null
+          place?: string | null
+          position?: number
+          project_id: string
+          scope_item_id?: string | null
+          start: string
+          who?: string | null
+        }
+        Update: {
+          actual_finish?: string | null
+          actual_start?: string | null
+          created_at?: string
+          done_on?: string | null
+          finish?: string
+          id?: string
+          kind?: string
+          label?: string | null
+          must_finish_by?: string | null
+          not_before?: string | null
+          package_id?: string | null
+          passed_on?: string | null
+          place?: string | null
+          position?: number
+          project_id?: string
+          scope_item_id?: string | null
+          start?: string
+          who?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_activities_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_activities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_activities_scope_item_id_fkey"
+            columns: ["scope_item_id"]
+            isOneToOne: false
+            referencedRelation: "gc_scope_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_activity_parts: {
+        Row: {
+          activity_id: string
+          actual_finish: string | null
+          actual_start: string | null
+          created_at: string
+          days: number
+          from_day: number
+          id: string
+          name: string
+          pct: number
+          position: number
+          share: number
+        }
+        Insert: {
+          activity_id: string
+          actual_finish?: string | null
+          actual_start?: string | null
+          created_at?: string
+          days: number
+          from_day: number
+          id?: string
+          name: string
+          pct?: number
+          position?: number
+          share: number
+        }
+        Update: {
+          activity_id?: string
+          actual_finish?: string | null
+          actual_start?: string | null
+          created_at?: string
+          days?: number
+          from_day?: number
+          id?: string
+          name?: string
+          pct?: number
+          position?: number
+          share?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_activity_parts_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_baseline_dates: {
+        Row: {
+          activity_id: string
+          baseline_id: string
+          finish: string
+          start: string
+        }
+        Insert: {
+          activity_id: string
+          baseline_id: string
+          finish: string
+          start: string
+        }
+        Update: {
+          activity_id?: string
+          baseline_id?: string
+          finish?: string
+          start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_baseline_dates_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_baseline_dates_baseline_id_fkey"
+            columns: ["baseline_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_baselines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_baselines: {
+        Row: {
+          created_at: string
+          id: string
+          locked_by: string | null
+          locked_on: string
+          name: string | null
+          project_id: string
+          why: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          locked_by?: string | null
+          locked_on: string
+          name?: string | null
+          project_id: string
+          why?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          locked_by?: string | null
+          locked_on?: string
+          name?: string | null
+          project_id?: string
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_baselines_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_baselines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      gc_schedule_changes: {
+        Row: {
+          made_at: string
+          made_by: string | null
+          project_id: string
+          version: number
+          words: string
+        }
+        Insert: {
+          made_at?: string
+          made_by?: string | null
+          project_id: string
+          version: number
+          words: string
+        }
+        Update: {
+          made_at?: string
+          made_by?: string | null
+          project_id?: string
+          version?: number
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_changes_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_changes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      gc_schedule_inspection_failures: {
+        Row: {
+          activity_id: string
+          created_at: string
+          failed_on: string
+          id: string
+          note: string
+          package_ids: string[]
+          reinspect_on: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          failed_on: string
+          id?: string
+          note: string
+          package_ids?: string[]
+          reinspect_on: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          failed_on?: string
+          id?: string
+          note?: string
+          package_ids?: string[]
+          reinspect_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_inspection_failures_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_links: {
+        Row: {
+          created_at: string
+          from_activity_id: string
+          gap: number
+          id: string
+          kind: string
+          project_id: string
+          to_activity_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_activity_id: string
+          gap?: number
+          id?: string
+          kind?: string
+          project_id: string
+          to_activity_id: string
+        }
+        Update: {
+          created_at?: string
+          from_activity_id?: string
+          gap?: number
+          id?: string
+          kind?: string
+          project_id?: string
+          to_activity_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_links_from_fkey"
+            columns: ["project_id", "from_activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["project_id", "id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_links_to_fkey"
+            columns: ["project_id", "to_activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["project_id", "id"]
+          },
+        ]
+      }
+      gc_schedule_milestones: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          met_on: string | null
+          package_id: string | null
+          planned: string
+          position: number
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          met_on?: string | null
+          package_id?: string | null
+          planned: string
+          position?: number
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          met_on?: string | null
+          package_id?: string | null
+          planned?: string
+          position?: number
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_milestones_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_milestones_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      gc_schedules: {
+        Row: {
+          drafted_by: string | null
+          drafted_on: string
+          project_id: string
+          template_id: string | null
+          template_name: string | null
+          template_used_on: string | null
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          drafted_by?: string | null
+          drafted_on: string
+          project_id: string
+          template_id?: string | null
+          template_name?: string | null
+          template_used_on?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          drafted_by?: string | null
+          drafted_on?: string
+          project_id?: string
+          template_id?: string | null
+          template_name?: string | null
+          template_used_on?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedules_drafted_by_fkey"
+            columns: ["drafted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedules_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_scope_book_edits: {
         Row: {
           clear_leaves_out: boolean
