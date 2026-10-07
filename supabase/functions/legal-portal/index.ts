@@ -191,7 +191,8 @@ serve(async (req) => {
     const firmParam = (url.searchParams.get('firm') ?? '').trim()
     const officeFirmId = !rawToken && /^[0-9a-f-]{36}$/i.test(firmParam) ? await officePreviewFirm(req, firmParam) : null
     if (!rawToken && firmParam && !officeFirmId) return jsonResponse({ error: OFFICE_PREVIEW_MSG }, 401)
-    if (!officeFirmId && (!rawToken || rawToken.length < 16 || rawToken.length > 128)) return jsonResponse({ error: 'Missing token' }, 400)
+    // A key is 5 to 128 characters: since v2.4756 the short address (`snell-law-f6a`, 13) is the key; the older keys are 64 and up to 60.
+    if (!officeFirmId && (!rawToken || rawToken.length < 5 || rawToken.length > 128)) return jsonResponse({ error: 'Missing token' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
 
