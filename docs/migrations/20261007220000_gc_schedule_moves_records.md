@@ -67,3 +67,11 @@ Nothing reads these tables yet. Going back is a new migration that drops them wi
 ## Status
 
 Written 2026-10-07 for the schedule's PR 3; not applied. The lead pushes it after PR 2's, and records here what steps 1 to 5 said.
+
+Applied to prod 2026-10-07 with `supabase db push` from a clean checkout of main, after PR 2's (`npm run check:migration-drift`: 774 local, 774 remote, fully applied; types in the PR that follows #4827). What the verify steps said:
+
+- Step 1, through the management API's query endpoint, read only: all eleven tables read `rls_on` true, `dev_policy` 1, `read_only_blocks` 3, `twin_fences` 3 and `stmt_trigger` 1.
+- Step 2, from the app as the dev account: all eleven empty.
+- Step 3, through the same endpoint, in a transaction that never committed: the training-mode user's insert into `gc_schedule_sends` got `Read-only (training) mode: changes are blocked.`, and the table stayed empty.
+- Step 4, from the app as the dev account, each against a project id that matches nothing: a delete from `gc_schedule_moves` and an update of a move's `note` were refused with `permission denied for table gc_schedule_moves`; an update of `undone_on` went through on 0 rows (Undo's door); an update of a late notice's `kept_on` was refused with `permission denied for table gc_schedule_late_notices`, and one of `pushed_back_on` went through on 0 rows (the office's door); a delete from `gc_schedule_crew_counts` was refused; a delete from `gc_schedule_waits` went through on 0 rows.
+- Step 5: a signed-out call on `gc_schedule_moves` with the anon key got 401 `permission denied for table gc_schedule_moves`.

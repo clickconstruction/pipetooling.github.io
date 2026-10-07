@@ -9276,6 +9276,54 @@ export type Database = {
           },
         ]
       }
+      gc_schedule_crew_counts: {
+        Row: {
+          company_id: string
+          count: number
+          created_at: string
+          id: string
+          package_id: string
+          project_id: string
+          said_on: string
+          week_of: string
+        }
+        Insert: {
+          company_id: string
+          count: number
+          created_at?: string
+          id?: string
+          package_id: string
+          project_id: string
+          said_on: string
+          week_of: string
+        }
+        Update: {
+          company_id?: string
+          count?: number
+          created_at?: string
+          id?: string
+          package_id?: string
+          project_id?: string
+          said_on?: string
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_crew_counts_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_crew_counts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       gc_schedule_inspection_failures: {
         Row: {
           activity_id: string
@@ -9310,6 +9358,91 @@ export type Database = {
             columns: ["activity_id"]
             isOneToOne: false
             referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_late_notices: {
+        Row: {
+          activity_id: string
+          company_id: string
+          created_at: string
+          id: string
+          kept_on: string | null
+          note: string
+          project_id: string
+          pushed_back_by: string | null
+          pushed_back_note: string | null
+          pushed_back_on: string | null
+          reason: string
+          sent_by: string
+          sent_on: string
+          started: boolean
+          to_finish: string
+          to_start: string
+          was_finish: string
+          was_start: string
+        }
+        Insert: {
+          activity_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          kept_on?: string | null
+          note: string
+          project_id: string
+          pushed_back_by?: string | null
+          pushed_back_note?: string | null
+          pushed_back_on?: string | null
+          reason: string
+          sent_by: string
+          sent_on: string
+          started: boolean
+          to_finish: string
+          to_start: string
+          was_finish: string
+          was_start: string
+        }
+        Update: {
+          activity_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          kept_on?: string | null
+          note?: string
+          project_id?: string
+          pushed_back_by?: string | null
+          pushed_back_note?: string | null
+          pushed_back_on?: string | null
+          reason?: string
+          sent_by?: string
+          sent_on?: string
+          started?: boolean
+          to_finish?: string
+          to_start?: string
+          was_finish?: string
+          was_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_late_notices_bar_fkey"
+            columns: ["project_id", "activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["project_id", "id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_late_notices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_late_notices_pushed_back_by_fkey"
+            columns: ["pushed_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -9366,6 +9499,76 @@ export type Database = {
           },
         ]
       }
+      gc_schedule_lookahead_marks: {
+        Row: {
+          activity_id: string
+          created_at: string
+          done: boolean
+          id: string
+          marked_by: string | null
+          marked_by_company_id: string | null
+          marked_on: string
+          reason: string | null
+          verified_by: string | null
+          verified_done: boolean | null
+          verified_on: string | null
+          verified_reason: string | null
+          week_of: string
+        }
+        Insert: {
+          activity_id: string
+          created_at?: string
+          done: boolean
+          id?: string
+          marked_by?: string | null
+          marked_by_company_id?: string | null
+          marked_on: string
+          reason?: string | null
+          verified_by?: string | null
+          verified_done?: boolean | null
+          verified_on?: string | null
+          verified_reason?: string | null
+          week_of: string
+        }
+        Update: {
+          activity_id?: string
+          created_at?: string
+          done?: boolean
+          id?: string
+          marked_by?: string | null
+          marked_by_company_id?: string | null
+          marked_on?: string
+          reason?: string | null
+          verified_by?: string | null
+          verified_done?: boolean | null
+          verified_on?: string | null
+          verified_reason?: string | null
+          week_of?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_lookahead_marks_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_lookahead_marks_marked_by_fkey"
+            columns: ["marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_lookahead_marks_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_schedule_milestones: {
         Row: {
           created_at: string
@@ -9411,6 +9614,485 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "gc_schedules"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      gc_schedule_move_answers: {
+        Row: {
+          answered_on: string
+          company_id: string
+          created_at: string
+          day: string | null
+          id: string
+          move_id: string
+          note: string | null
+          ok: boolean
+        }
+        Insert: {
+          answered_on: string
+          company_id: string
+          created_at?: string
+          day?: string | null
+          id?: string
+          move_id: string
+          note?: string | null
+          ok: boolean
+        }
+        Update: {
+          answered_on?: string
+          company_id?: string
+          created_at?: string
+          day?: string | null
+          id?: string
+          move_id?: string
+          note?: string | null
+          ok?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_move_answers_told_fkey"
+            columns: ["move_id", "company_id"]
+            isOneToOne: true
+            referencedRelation: "gc_schedule_move_tells"
+            referencedColumns: ["move_id", "company_id"]
+          },
+        ]
+      }
+      gc_schedule_move_pushes: {
+        Row: {
+          activity_id: string | null
+          from_finish: string
+          from_start: string
+          id: string
+          move_id: string
+          to_finish: string
+          to_start: string
+        }
+        Insert: {
+          activity_id?: string | null
+          from_finish: string
+          from_start: string
+          id?: string
+          move_id: string
+          to_finish: string
+          to_start: string
+        }
+        Update: {
+          activity_id?: string | null
+          from_finish?: string
+          from_start?: string
+          id?: string
+          move_id?: string
+          to_finish?: string
+          to_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_move_pushes_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_move_pushes_move_id_fkey"
+            columns: ["move_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_moves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_move_tells: {
+        Row: {
+          company_id: string
+          created_at: string
+          email_send_log_id: string | null
+          id: string
+          move_id: string
+          shown: Json
+          told_on: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          move_id: string
+          shown?: Json
+          told_on: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          move_id?: string
+          shown?: Json
+          told_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_move_tells_email_send_log_id_fkey"
+            columns: ["email_send_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_send_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_move_tells_move_id_fkey"
+            columns: ["move_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_moves"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_moves: {
+        Row: {
+          activity_id: string | null
+          activity_name: string
+          change_order_id: string | null
+          finish_from: string
+          finish_to: string
+          from_finish: string
+          from_start: string
+          from_what_if_on: string | null
+          id: string
+          late_notice_id: string | null
+          links_changed: boolean
+          made_at: string
+          made_by: string | null
+          made_by_name: string
+          made_on: string
+          note: string
+          parts: Json | null
+          project_id: string
+          pull_finished: string[] | null
+          reason: string
+          recovery_after_activity_id: string | null
+          recovery_gap: number | null
+          recovery_gap_was: number | null
+          recovery_how: string | null
+          schedule_version: number
+          to_finish: string
+          to_start: string
+          undone_by: string | null
+          undone_on: string | null
+        }
+        Insert: {
+          activity_id?: string | null
+          activity_name: string
+          change_order_id?: string | null
+          finish_from: string
+          finish_to: string
+          from_finish: string
+          from_start: string
+          from_what_if_on?: string | null
+          id?: string
+          late_notice_id?: string | null
+          links_changed?: boolean
+          made_at?: string
+          made_by?: string | null
+          made_by_name: string
+          made_on: string
+          note: string
+          parts?: Json | null
+          project_id: string
+          pull_finished?: string[] | null
+          reason: string
+          recovery_after_activity_id?: string | null
+          recovery_gap?: number | null
+          recovery_gap_was?: number | null
+          recovery_how?: string | null
+          schedule_version: number
+          to_finish: string
+          to_start: string
+          undone_by?: string | null
+          undone_on?: string | null
+        }
+        Update: {
+          activity_id?: string | null
+          activity_name?: string
+          change_order_id?: string | null
+          finish_from?: string
+          finish_to?: string
+          from_finish?: string
+          from_start?: string
+          from_what_if_on?: string | null
+          id?: string
+          late_notice_id?: string | null
+          links_changed?: boolean
+          made_at?: string
+          made_by?: string | null
+          made_by_name?: string
+          made_on?: string
+          note?: string
+          parts?: Json | null
+          project_id?: string
+          pull_finished?: string[] | null
+          reason?: string
+          recovery_after_activity_id?: string | null
+          recovery_gap?: number | null
+          recovery_gap_was?: number | null
+          recovery_how?: string | null
+          schedule_version?: number
+          to_finish?: string
+          to_start?: string
+          undone_by?: string | null
+          undone_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_moves_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_moves_change_fkey"
+            columns: ["project_id", "schedule_version"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_changes"
+            referencedColumns: ["project_id", "version"]
+          },
+          {
+            foreignKeyName: "gc_schedule_moves_late_notice_id_fkey"
+            columns: ["late_notice_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_late_notices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_moves_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_moves_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_moves_recovery_after_activity_id_fkey"
+            columns: ["recovery_after_activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_moves_undone_by_fkey"
+            columns: ["undone_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_sends: {
+        Row: {
+          created_at: string
+          email_send_log_id: string | null
+          id: string
+          lines: string[]
+          project_id: string
+          sent_by: string | null
+          sent_on: string
+          sent_to: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          lines: string[]
+          project_id: string
+          sent_by?: string | null
+          sent_on: string
+          sent_to: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          lines?: string[]
+          project_id?: string
+          sent_by?: string | null
+          sent_on?: string
+          sent_to?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_sends_email_send_log_id_fkey"
+            columns: ["email_send_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_send_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_sends_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_sends_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_schedule_wait_holds: {
+        Row: {
+          activity_id: string
+          project_id: string
+          wait_id: string
+        }
+        Insert: {
+          activity_id: string
+          project_id: string
+          wait_id: string
+        }
+        Update: {
+          activity_id?: string
+          project_id?: string
+          wait_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_wait_holds_bar_fkey"
+            columns: ["project_id", "activity_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_activities"
+            referencedColumns: ["project_id", "id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_wait_holds_wait_fkey"
+            columns: ["project_id", "wait_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_waits"
+            referencedColumns: ["project_id", "id"]
+          },
+        ]
+      }
+      gc_schedule_waits: {
+        Row: {
+          asked_on: string | null
+          created_at: string
+          done_on: string | null
+          expected_on: string
+          id: string
+          kind: string
+          note: string | null
+          package_id: string | null
+          project_id: string
+          shipped_on: string | null
+          title: string
+          who: string
+        }
+        Insert: {
+          asked_on?: string | null
+          created_at?: string
+          done_on?: string | null
+          expected_on: string
+          id?: string
+          kind: string
+          note?: string | null
+          package_id?: string | null
+          project_id: string
+          shipped_on?: string | null
+          title: string
+          who?: string
+        }
+        Update: {
+          asked_on?: string | null
+          created_at?: string
+          done_on?: string | null
+          expected_on?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          package_id?: string | null
+          project_id?: string
+          shipped_on?: string | null
+          title?: string
+          who?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_waits_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_waits_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      gc_schedule_walks: {
+        Row: {
+          created_at: string
+          id: string
+          kept: string[]
+          kept_early: string[]
+          move_ids: string[]
+          project_id: string
+          skipped: number
+          walked_by: string | null
+          walked_on: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kept?: string[]
+          kept_early?: string[]
+          move_ids?: string[]
+          project_id: string
+          skipped?: number
+          walked_by?: string | null
+          walked_on: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kept?: string[]
+          kept_early?: string[]
+          move_ids?: string[]
+          project_id?: string
+          skipped?: number
+          walked_by?: string | null
+          walked_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_walks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_walks_walked_by_fkey"
+            columns: ["walked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
