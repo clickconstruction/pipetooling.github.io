@@ -3975,7 +3975,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienPileHeadBtn:hover, .lienPileHeadBtn:focus-visible { color: var(--text-strong); outline: none; }
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
-.lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
+.lienPaneHead { margin: 0 -1.1rem; z-index: 2; background: var(--bg-muted); }
+/* The pane's page labels (v2.4726) take the heads' grey too (v2.4787, the owner's ask): the heads read apart from the white cards. */
+[data-lien-desk-page-label] { background: var(--bg-muted); }
 .lienPaneHead .lienPaneHeadLabel { flex: none; }
 .lienPaneHead .n { font-weight: 700; font-size: 0.78rem; text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lienPaneHead .lienPaneHeadTail { font-weight: 500; color: var(--text-muted); }
