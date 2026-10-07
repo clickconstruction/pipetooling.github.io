@@ -89,7 +89,13 @@ golden snapshots (the counts) goes last, by one helper, with the owner's OK to r
 | Helper 4 | G-145 their dates to meet only, onto a running job |
 | Helper 1 | G-146 the call list's bar reasons counted on the board row and the badge (re-pins the people readings once) |
 
-## Status
+## Status, round four
+
+Round four landed 2026-10-06: G-143 (only G-45's rough pins moved; the Helotes draw did not),
+G-145 and G-146 (the second re-pin of the day, 17 snapshots, the people readings). The GC suite
+stands at 141 files and 1682 tests. Every row of `GANTT_FEATURES.md` now stands Have except the
+ones the owner has not asked for.
+
 
 Round three landed the same day, 2026-10-06, every *Later* row and every finding the helpers raised:
 G-138, G-140, G-139, G-45, G-82, G-142, G-81, G-136, G-84 (and G-144, the strip on the paper),
