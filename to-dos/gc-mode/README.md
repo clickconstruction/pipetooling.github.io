@@ -2,7 +2,7 @@
 name: "GC mode: Bids, mirrored. We are the general contractor and the trades bid to us"
 number: 81
 group: gated
-status: explored 2026-10-02 as a design spike · a playable prototype on made-up data lives on branch `spike/gc-mode` (page `/bids/gc`, dev only) · nothing is on main, nothing touches the database · the owner is still shaping it screen by screen · five lanes build it at once since 2026-10-02 (Board, Portal, Building, New Project, Owner Billing: see Working in parallel)
+status: explored 2026-10-02 as a design spike · a playable prototype on made-up data lives on branch `spike/gc-mode` (page `/bids/gc`, dev only), never to merge · the owner said "the shape is settled" on 2026-10-06, and the real build runs from `main` in small PRs: New project's is under way (NEW_PROJECT_REAL_BUILD.md → Status) and the schedule's is planned (SCHEDULE_REAL_BUILD.md) · five lanes built it at once from 2026-10-02 (Board, Portal, Building, New Project, Owner Billing: see Working in parallel), and helper sessions finished the Gantt on 2026-10-06 (HELPERS.md) · what is left: HANDOFF.md
 summary: >
   The owner's idea (2026-10-02): Bids manages our bid as a trade to a GC. Offer a second mode
   where we are the GC: a set of plans comes in once, each trade is offered to several trade
@@ -1369,7 +1369,10 @@ follow the plain-words rules; the prototype's own words were written to them as 
 ## Where it stands
 
 2026-10-02: one session, the owner steering. He said "I think this has great potential" and has
-been changing it screen by screen since. The last things built were the new-plans flow and Get
-started. The prototype is a branch, not a PR: it should not merge as it is (fixture data inside
-the client, one golden test and a few kernel tests). Since the evening of 2026-10-02 several
-sessions build it at once (*Working in parallel*).
+been changing it screen by screen since. By 2026-10-06 it plays the whole loop, the schedule as
+a full Gantt among it, its last rows built by four rounds of helper sessions (`HELPERS.md`). The
+prototype is a branch, not a PR: it never merges (fixture data inside the client). Since the
+evening of 2026-10-02 several sessions build it at once (*Working in parallel*). On 2026-10-06 the
+owner said "the shape is settled", so the real build runs from `main`: New project first
+(`NEW_PROJECT_REAL_BUILD.md`), then the schedule (`SCHEDULE_REAL_BUILD.md`). `HANDOFF.md` says what
+is left.
