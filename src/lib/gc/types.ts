@@ -301,11 +301,81 @@ export interface BidAlternate {
   amount: number
 }
 
+/**
+ * The kinds of email a company's people can get (owner, 2026-10-05): quotes and plans while we
+ * bid; the job once it is theirs (its plans, answers, start days); contracts and changes; pay,
+ * waivers, insurance and charges. Every kind goes to at least one person.
+ */
+export type PortalMailGroup = 'quotes' | 'job' | 'contracts' | 'pay'
+
+/** Someone at a company besides its main contact, and the emails they get. */
+export interface PartnerPerson {
+  id: string
+  name: string
+  email: string
+  /** What they do there, in the company's words ("Bookkeeper"). Empty: not said. */
+  role: string
+  gets: PortalMailGroup[]
+}
+
+/**
+ * A charge to a trade (owner, 2026-10-05): cleanup, damage, or work we had to finish for it. The
+ * company sees it in its portal with the reason and the photo, and agrees or disputes it by
+ * `answerBy`. One it agreed to, one we kept after its dispute, or one it never answered can come
+ * off an approved draw it has not been paid yet (`Draw.backCharges`).
+ */
+export interface BackCharge {
+  id: string
+  amount: number
+  /** What it is for, in the office's words. */
+  reason: string
+  /** The photo sent with it: its name. Null: none. */
+  photo: string | null
+  sentOn: string
+  /** The day to answer by. After it, a charge with no answer can come off a draw. */
+  answerBy: string
+  status: 'open' | 'agreed' | 'disputed' | 'kept' | 'dropped'
+  /** The company's answer: the day, and its note when it disputed. */
+  answer?: { on: string; note: string }
+  /** The office's answer to a dispute, or why it dropped the charge. */
+  settled?: { on: string; note: string }
+  /** The draw it came off, and the day. */
+  taken?: { drawId: string; on: string }
+}
+
+/**
+ * A change a trade asked us for from its portal (Portal lane, owner 2026-10-04): it hit something on
+ * site no one could see, the customer asked it for more, or the plans changed. The office makes it a
+ * change order to the customer (`changeOrderId`) or turns it down with a reason. Once the customer
+ * signs, the change goes to the trade to sign the usual way (`ChangeOrder.tradeChange`).
+ */
+export interface TradeChangeRequest {
+  id: string
+  packageId: string
+  partnerId: string
+  askedOn: string
+  /** What changed, in the trade's words. */
+  description: string
+  reason: ChangeOrderReason
+  /** What the trade asks for the work. */
+  amount: number
+  /** The working days it adds, as the trade sees it. 0: none. */
+  days: number
+  /** The file sent with it (a photo, a ticket): its name. Null: none. */
+  file: string | null
+  /** The change order the office made of it. Null: not yet. */
+  changeOrderId: string | null
+  /** The office turned it down: the day and why. Null: not turned down. */
+  turnedDown: { on: string; note: string } | null
+}
+
 export interface Invite {
   id: string
   partnerId: string
   status: InviteStatus
   invitedOn: string
+  /** The newest plan set this trade has opened in their portal. */
+  seenRev: number | null
   bid: SubBid | null
   /** The last day the office chased them on this ask. */
   nudgedOn?: string
@@ -368,6 +438,8 @@ export interface Sow {
   acceptedOn?: string | null
   /** Pay applications the office sent back, oldest first. A resend takes the same number. */
   sentBack?: DrawSentBack[]
+  /** What we charged the company for: cleanup, damage, work we finished for them. Oldest first (Portal lane). */
+  backCharges?: BackCharge[]
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
   sentOn?: string
   /**
@@ -441,6 +513,8 @@ export interface Partner {
   address?: string
   /** Their license line for the pay application. Optional. */
   license?: string
+  /** The day they first went through their portal's welcome. Unset: never, or before the portal kept it. */
+  portalOpenedOn?: string
   /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
   msaSentOn?: string
   /** Whether we have checked them (question 3). Unset: a company we know, approved. */
@@ -448,6 +522,10 @@ export interface Partner {
   /** The contact's phone and email, for Follow up's Call, Text and Email (the owner, 2026-10-04). Unset: a made-up one stands in (`partnerReach`). */
   phone?: string
   email?: string
+  /** Others at the company and the emails each gets, named in its portal (Portal lane, owner 2026-10-05). */
+  people?: PartnerPerson[]
+  /** The emails the main contact gets. Unset: every kind. */
+  contactGets?: PortalMailGroup[]
 }
 
 /** What we have billed the owner on a project we are building, and what they have paid. */
@@ -528,6 +606,8 @@ export interface GcProject {
   ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
+  /** Changes the trades asked us for, from their portals, oldest first (Portal lane). Absent: none yet. */
+  changeRequests?: TradeChangeRequest[]
   /** A customer record too: the firm that drew the plans. */
   architectId: string
   /** The firm's name, kept on the row for display. */
@@ -788,6 +868,8 @@ export interface ChangeOrder {
   schedule: string
   /** The trade the work belongs to. Null: our own work, under general conditions. */
   packageId: string | null
+  /** What the work costs us. Negative: a credit, work coming out. */
+  cost: number
   status: 'draft' | 'sent' | 'signed' | 'declined'
   sentOn: string | null
   /** The day the owner signed or declined it. */

@@ -68,7 +68,7 @@ describe('a move kept on the schedule, with Undo and Redo', () => {
 })
 
 describe('a change order’s days, and a new baseline after it (G-76, G-41)', () => {
-  const co: ChangeOrder = { id: 'co-1', number: 1, description: 'A larger roof curb for RTU-2', packageId: 'froof', status: 'signed', sentOn: '2026-09-28', answeredOn: '2026-10-02', days: 3, reason: 'owner', schedule: '+3 days' }
+  const co: ChangeOrder = { id: 'co-1', number: 1, description: 'A larger roof curb for RTU-2', packageId: 'froof', cost: 4200, status: 'signed', sentOn: '2026-09-28', answeredOn: '2026-10-02', days: 3, reason: 'owner', schedule: '+3 days' }
 
   it('finds where its work is, draws its days as a tail, and offers the move that lands them', () => {
     const s = initialGcState()
