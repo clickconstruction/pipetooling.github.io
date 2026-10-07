@@ -1,5 +1,5 @@
 {
-  "about": "Owner Billing's O2a (to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md, Kernels): everything of Billing the customer whose inputs are on main today, lifted to src/lib/gc on a spike that reads the schedule's lifts from main. ownerPayApp and what reads Building's kernels wait for O2b, after U2. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/owner-billing-o2a.lift.json <outDir>",
+  "about": "Owner Billing's O2a (to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md, Kernels): everything of Billing the customer whose inputs are on main today, lifted to src/lib/gc on a spike that reads the schedule's lifts from main; rebuilt after the Board's B2-i, which lifted proposalTotals and money first. ownerPayApp and what reads Building's kernels wait for O2b, after U2. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/owner-billing-o2a.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
   "files": [
@@ -65,30 +65,23 @@
       "to": "ownerBillingFinish.ts",
       "moves": "all",
       "header": "/**\n * GC mode, the real build, Owner Billing's O2a: finishing late against the contract with the customer, moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcOwnerBillingFinish.ts`). It reads the schedule's kernels; nothing in\n * `schedule/` reads billing.\n */"
-    },
-    {
-      "from": "gcBids",
-      "to": "bids.ts",
-      "append": true,
-      "moves": [
-        "proposalTotals"
-      ]
-    },
-    {
-      "from": "gcWords",
-      "to": "words.ts",
-      "append": true,
-      "moves": [
-        "money"
-      ]
     }
   ],
   "types": [
     {
       "to": "types.ts",
       "append": true,
-      "about": "Owner Billing's shapes, and the shapes earlier lifts trimmed, written again with O2a's fields added (each field word for word).",
+      "about": "Owner Billing's shapes, and the shapes earlier lifts trimmed, written again with O2a's fields added (each field word for word). Rebuilt 2026-10-07 by Helper 7 so schedule-test-state.ts writes main's testState.ts byte for byte: GcProject is U2's list with O2a's three fields after it, GcState is the Board's B2-i's, and Sow is in the order main's data holds.",
       "fields": {
+        "GcState": [
+          "today",
+          "customers",
+          "projects",
+          "partners",
+          "tradePromises",
+          "paperSends",
+          "scheduleTemplates"
+        ],
         "GcProject": [
           "id",
           "name",
@@ -110,11 +103,22 @@
           "rough",
           "scheduleSends",
           "address",
+          "architect",
+          "punch",
+          "submittals",
+          "rfis",
+          "weeklyReports",
+          "ownerBilling",
+          "ourBidSentOn",
+          "bidDue",
+          "planSets",
           "generalConditions",
           "contingencyPct",
           "feePct",
+          "team",
+          "lostWhy",
+          "wonBy",
           "ownerContractWorth",
-          "ownerBilling",
           "ownerLateInterest",
           "ownerLateFinish"
         ],
@@ -137,6 +141,16 @@
           "sentOn",
           "reason",
           "schedule"
+        ],
+        "Sow": [
+          "status",
+          "price",
+          "retainagePct",
+          "sov",
+          "draws",
+          "sentBack",
+          "acceptedOn",
+          "sentOn"
         ],
         "OwnerBilling": "all",
         "OwnerPayAppSent": "all",
@@ -168,7 +182,13 @@
     "src/lib/gcMode/gcTypes.ts#ScheduleWait": "schedule/types.ts",
     "src/lib/gcMode/gcTypes.ts#ScheduleSend": "schedule/types.ts",
     "src/lib/gcMode/gcTypes.ts#ScheduleWhatIf": "schedule/types.ts",
-    "src/lib/gcMode/gcTypes.ts#CrewCount": "schedule/types.ts"
+    "src/lib/gcMode/gcTypes.ts#CrewCount": "schedule/types.ts",
+    "src/lib/gcMode/gcBids.ts#proposalTotals": "bids.ts",
+    "src/lib/gcMode/gcBids.ts#ProposalTotals": "bids.ts",
+    "src/lib/gcMode/gcWords.ts#money": "words.ts",
+    "src/lib/gcMode/gcTypes.ts#PlanSet": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#ProjectContact": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcLostWhy": "types.ts"
   },
   "standIns": {
     "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"

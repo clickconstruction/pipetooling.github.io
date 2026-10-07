@@ -7,6 +7,9 @@ export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteSta
 // The Building lane's U2 (#4860): its whole shapes are main's, word for word.
 import type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, WeatherSky, WeeklyReportSent } from '../gc/types'
 export type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, SubmittalRound, WeatherSky, WeeklyReportSent } from '../gc/types'
+// Owner Billing's O2a (#4858): its whole shapes are main's, word for word.
+import type { ChangeOrderReason, OwnerBilling, OwnerInterestBill, OwnerPayAppSent, OwnerRetainageStep } from '../gc/types'
+export type { ChangeOrderReason, OwnerBilling, OwnerInterestBill, OwnerPayAppSent, OwnerRetainageStep } from '../gc/types'
 
 export type { RoughSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
 
@@ -382,25 +385,6 @@ export interface PlanQuestion {
   inSetRev?: number
   /** Asked at the pre-bid meeting, not by phone or email. */
   atPreBid?: boolean
-}
-/** What we have billed the owner on a project we are building, and what they have paid. */
-export interface OwnerBilling {
-  billed: number
-  paid: number
-  retainageHeld: number
-  /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
-  payApps?: OwnerPayAppSent[]
-  /** The day the owner accepted the work in their portal. Absent: not yet. Our final pay application waits for it. */
-  acceptedOn?: string
-  /** Interest on late bills we sent the owner, oldest first: a bill of its own, never on the pay application. */
-  interestBills?: OwnerInterestBill[]
-}
-/** A bill for the interest on the owner's late bills (owner's go-ahead, 2026-10-04). */
-export interface OwnerInterestBill {
-  number: number
-  sentOn: string
-  amount: number
-  paidOn: string | null
 }
 /**
  * One company, one record: the app's own customers. The same row can be the owner we build for,
@@ -1134,63 +1118,6 @@ export interface NewProjectDraft {
 }
 /** Who our customer is to the job: the owner, another general contractor, or an owner's rep. */
 export type CustomerRole = 'owner' | 'gc' | 'ownersRep'
-/** One pay application we sent the owner, kept as it went. The next one starts from its lines. */
-/**
- * Retainage the owner holds that drops partway (the owner, 2026-10-04: we may offer it and choose
- * it per job). The owner holds their full percent until the work is `atPct` done, then `toPct`.
- */
-export interface OwnerRetainageStep {
-  /** How far along the work is when it drops, in percent of our price: 50 is half done. */
-  atPct: number
-  /** What the owner holds after that, in percent. Below their full percent. */
-  toPct: number
-  /**
-   * 'after': the lower percent on the work past that point; what they held before stays held.
-   * 'all': the lower percent on all the work once it is that far along, so some of what they held comes back.
-   */
-  way: 'after' | 'all'
-}
-export interface OwnerPayAppSent {
-  number: number
-  /** The bill day it went for. One a month. */
-  periodTo: string
-  sentOn: string
-  /** Done so far on each of the owner's lines when it went, by line id. */
-  doneToDate: Record<string, number>
-  /** Every line's done so far, added up. */
-  workToDate: number
-  retainagePct: number
-  /** What the owner holds on the work done so far. */
-  retainage: number
-  /** What it asked the owner to pay. */
-  due: number
-  /** The day the owner paid it. Null until they do. */
-  paidOn: string | null
-  /** The final pay application: it asks for the retainage the owner held, with our waivers on final payment. */
-  final?: boolean
-  /** Each line's scheduled value when it went, by line id. Absent on the made-up ones: today's values stand in. */
-  worthByLine?: Record<string, number>
-  /**
-   * What the architect certified the owner should pay (owner's call, 2026-10-03: the architect
-   * certifies first). Null: waiting on the architect. Absent: the made-up history, certified as asked.
-   */
-  certified?: number | null
-  certifiedOn?: string | null
-  /** Why the architect certified less than we asked. */
-  certifiedNote?: string
-  /** What the owner paid, once paid: the certified amount. Absent: as asked. */
-  paidAmount?: number
-  /** Each payment the owner made on it, oldest first. A part payment leaves the rest open. Absent: none, or the made-up history. */
-  payments?: { on: string; amount: number }[]
-  /** The owner's word on when they will pay, oldest first. The newest counts; a passed one stays on the record. */
-  promises?: { by: string; madeOn: string; note: string; who: 'office' | 'owner' }[]
-  /** The retainage step it went under, if the job had one then. */
-  retainageStep?: OwnerRetainageStep
-  /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
-  storedByLine?: Record<string, number>
-  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
-  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
-}
 /** A pay application the office sent back: the draw as the trade sent it, why, and what we see. */
 export interface DrawSentBack {
   draw: Draw
@@ -1199,8 +1126,6 @@ export interface DrawSentBack {
   /** Lines where we see less done than they asked for. */
   lines: { sovId: string; weSee: number }[]
 }
-/** Why the work changed, in the words the app's change orders already use. */
-export type ChangeOrderReason = 'owner' | 'field' | 'plans'
 /**
  * A change to our contract with the owner: what changed, what it costs us, what it adds to their
  * price, and their signature. The owner side is the Owner Billing lane's; amending the trade's
