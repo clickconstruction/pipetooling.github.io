@@ -3867,6 +3867,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     rows={collectionsRows}
                     phoneRows={phoneRowsFor('collections')}
                     onToggleProgressSort={onToggleProgressSort}
+                    // B6 / J4-10's shell pill ("In Collections N days · no bill line") lives in this
+                    // renderer; until v2.4758 only the Billed site wired it, where no Collections shell sits.
+                    billedBillLine={billedBillLineRenderer}
                     {...stagesSectionActionProps.collections}
                     openNewReportForJob={openNewReportForJob}
                   />
