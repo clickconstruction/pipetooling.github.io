@@ -193,3 +193,31 @@ export function lienFootBlockedSentence(gate: Pick<LienGate, 'key' | 'value' | '
   if (gate.key === 'kind') return `${stop} Set the property kind on the property record first.`
   return `${stop} Clear gate ${gate.n}, ${gate.label.toLowerCase()}, first.`
 }
+
+/**
+ * The stop window's red chip under the blocked stop (v2.4806): the gate in three or four words —
+ * *owner of record missing*, *no mailing address*, *no GC on the job*, *no month picked*.
+ */
+export function lienGateShortWords(gate: Pick<LienGate, 'key' | 'value' | 'label'>): string {
+  const v = gate.value.toLowerCase()
+  if (gate.key === 'owner') return v === 'missing' ? 'owner of record missing' : v === 'no mailing address' ? 'owner has no mailing address' : v === 'public property' ? 'public property' : `${gate.label.toLowerCase()} ${v}`
+  if (gate.key === 'gc') return 'no GC on the job'
+  if (gate.key === 'months') return 'no month picked'
+  if (gate.key === 'kind') return 'property kind unknown'
+  return `${gate.label.toLowerCase()} ${v}`
+}
+
+/** The affidavit's hold line (v2.4806), the notice's sentence's sibling: *Don't file yet.* then the one thing to do first. */
+export function lienAffidavitFootBlockedSentence(gate: { key: 'owner' | 'legal' | 'notice' | 'homestead'; label: string } | null): string {
+  const stop = "Don't file yet."
+  if (!gate) return `${stop} Clear what the gates show first.`
+  if (gate.key === 'owner') return `${stop} Enter the owner of record and a mailing address on the property record first.`
+  if (gate.key === 'legal') return `${stop} Add the county and the legal description on the property record first.`
+  if (gate.key === 'notice') return `${stop} Send the § 53.056 notice first. A late one counts while this window is open.`
+  return `${stop} Talk to your attorney first. A homestead lien needs a recorded pre-work contract signed by both spouses (§ 53.254).`
+}
+
+/** The affidavit's red chip words (v2.4806). */
+export function lienAffidavitGateShortWords(gate: { key: 'owner' | 'legal' | 'notice' | 'homestead' }): string {
+  return gate.key === 'owner' ? 'owner of record missing' : gate.key === 'legal' ? 'county or legal description missing' : gate.key === 'notice' ? 'no § 53.056 notice on the job' : 'homestead'
+}

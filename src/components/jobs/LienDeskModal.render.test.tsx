@@ -214,6 +214,10 @@ describe('LienDeskModal', () => {
     expect(screen.getByTestId('lien-stop-paper-title').textContent).toMatch(/^The .*notice$/)
     // The gates that are not clear read under Before it can go — the owner of record is missing on this job.
     expect(screen.getAllByTestId('lien-stop-paper-before').map((n) => n.textContent).join(' ')).toMatch(/[Oo]wner/)
+    // The hold line (v2.4806): the draft footer's own sentence, with the gate's door; the folded path's dots at its right.
+    expect(screen.getByTestId('lien-stop-paper-hold').textContent).toBe("Don't send yet. Enter the owner of record and a mailing address on the property record first.")
+    expect(screen.getByTestId('lien-stop-paper-hold-act').textContent).toBe('Go to gate 1 ▴')
+    expect(screen.getByTestId('lien-stop-paper-dots').textContent).toContain('of')
     fireEvent.click(screen.getByRole('button', { name: 'Next stop' }))
     expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toBe('§ 53.056 · Jul')
     fireEvent.keyDown(window, { key: 'Escape' })

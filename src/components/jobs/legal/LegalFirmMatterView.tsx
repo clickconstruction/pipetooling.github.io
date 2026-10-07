@@ -135,6 +135,7 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
               onIndex={(i) => setStop({ jobId: t.jobId, index: i })}
               onClose={() => setStop(null)}
               jobLabel={t.jobLabel}
+              timeline={t.timeline}
               paperFor={(step) => lienStopCounselPaper({ step, steps: t.timeline.steps, packet, jobId: t.jobId, voice: 'firm', act: typeof document !== 'undefined' && document.querySelector('[data-legal-reach-strip]') ? { label: 'Reach the office ›', onPress: reach } : null, onCopy: copy, copyLabel: copied ? 'Copied' : 'Copy the record as text' })}
             />
           ) : null}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lienFootBlockedSentence, buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput } from './lienDeskGates'
+import { lienFootBlockedSentence, buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienDeskGatesInput, lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords, lienGateShortWords } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sabra Texas Holdings Lp',
@@ -107,5 +107,19 @@ describe('lienFootBlockedSentence (v2.4797)', () => {
     expect(lienFootBlockedSentence({ key: 'months', value: 'No month picked', label: 'Approved hours', n: 4 }, 0)).toBe("Don't send yet. Pick at least one month first.")
     expect(lienFootBlockedSentence(null, 0)).toBe("Don't send yet. Pick at least one month first.")
     expect(lienFootBlockedSentence(null, 1)).toBe("Don't send yet. Clear what the gates show first.")
+  })
+
+  it('the stop window’s hold chip and the affidavit’s hold sentence (v2.4806)', () => {
+    expect(lienGateShortWords({ key: 'owner', value: 'Missing', label: 'Owner of record' })).toBe('owner of record missing')
+    expect(lienGateShortWords({ key: 'owner', value: 'No mailing address', label: 'Owner of record' })).toBe('owner has no mailing address')
+    expect(lienGateShortWords({ key: 'gc', value: 'No GC on the job', label: 'Original contractor' })).toBe('no GC on the job')
+    expect(lienGateShortWords({ key: 'months', value: 'No month picked', label: 'Approved hours' })).toBe('no month picked')
+    expect(lienGateShortWords({ key: 'kind', value: 'Unknown', label: 'Property kind' })).toBe('property kind unknown')
+    expect(lienAffidavitFootBlockedSentence({ key: 'owner', label: '' })).toBe("Don't file yet. Enter the owner of record and a mailing address on the property record first.")
+    expect(lienAffidavitFootBlockedSentence({ key: 'legal', label: '' })).toBe("Don't file yet. Add the county and the legal description on the property record first.")
+    expect(lienAffidavitFootBlockedSentence({ key: 'notice', label: '' })).toBe("Don't file yet. Send the § 53.056 notice first. A late one counts while this window is open.")
+    expect(lienAffidavitFootBlockedSentence({ key: 'homestead', label: '' })).toContain('§ 53.254')
+    expect(lienAffidavitFootBlockedSentence(null)).toBe("Don't file yet. Clear what the gates show first.")
+    expect(lienAffidavitGateShortWords({ key: 'legal' })).toBe('county or legal description missing')
   })
 })

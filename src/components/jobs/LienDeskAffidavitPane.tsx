@@ -16,6 +16,7 @@ import LienTimelineStrip from './LienTimelineStrip'
 import LienStopPaperWindow, { type LienStopPaper } from './LienStopPaperWindow'
 import { filingSnapshotPage, retainageStopPages } from '../../lib/jobs/lienStopPaperPages'
 import { lienStopPaperKind } from '../../lib/jobs/lienStopPaper'
+import { lienAffidavitFootBlockedSentence, lienAffidavitGateShortWords } from '../../lib/jobs/lienDeskGates'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
@@ -368,7 +369,25 @@ export default function LienDeskAffidavitPane({
       </div>
       <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
         <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} onOpenStep={(s) => setStopOpen(Math.max(0, timeline.steps.findIndex((x) => x.key === s.key)))} />
-        {stopOpen != null ? <LienStopPaperWindow steps={timeline.steps} index={stopOpen} onIndex={setStopOpen} onClose={() => setStopOpen(null)} jobLabel={label} paperFor={stopPaperFor} /> : null}
+        {stopOpen != null ? (
+          <LienStopPaperWindow
+            steps={timeline.steps}
+            index={stopOpen}
+            onIndex={setStopOpen}
+            onClose={() => setStopOpen(null)}
+            jobLabel={label}
+            paperFor={stopPaperFor}
+            timeline={timeline}
+            holdFor={(step) => {
+              // The hold line (v2.4806): the affidavit's first gate not clear, with the property record's door where that is the fix.
+              if ((step.kind !== 'affidavit' && step.kind !== 'serve') || step.state === 'done' || step.state === 'missed') return null
+              const gate = entry.gates.find((g) => !g.ok) ?? null
+              if (!gate) return null
+              const fix = onFixProperty && (gate.key === 'owner' || gate.key === 'legal') ? { label: 'Fix the property record ›', onPress: () => { setStopOpen(null); onFixProperty(entry.jobId, gate.key === 'owner' ? 'owner' : 'legal') } } : gate.key === 'notice' ? { label: 'Open it on Notices ›', onPress: () => { setStopOpen(null); onShowNotices(entry.jobId) } } : null
+              return { words: lienAffidavitFootBlockedSentence(gate), short: lienAffidavitGateShortWords(gate), act: fix }
+            }}
+          />
+        ) : null}
       </div>
       <div style={boxStyle}>
         <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? 'the month the job was created — it has no clock hours' : 'the last month worked'})</div>

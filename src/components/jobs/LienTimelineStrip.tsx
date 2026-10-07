@@ -84,6 +84,11 @@ function verdictBg(tone: LienTimeline['next']['tone']): string {
 
 const LABEL: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }
 
+/** One stop's node, exported for the stop window's folded dots (v2.4806). */
+export function LienTimelineNode({ s, size }: { s: LienTimelineStep; size: number }) {
+  return <Node s={s} size={size} />
+}
+
 function Node({ s, size }: { s: LienTimelineStep; size: number }) {
   const t = toneFor(s)
   if (s.fold) {
@@ -233,10 +238,14 @@ export type LienTimelineStripProps = {
   onChangeLastWork?: () => void
   /** A stop's paper (v2.4793): with it, every stop's title is a door, and a press hands the step over — the host opens `LienStopPaperWindow`. */
   onOpenStep?: (step: LienTimelineStep) => void
+  /** The stop a window is open on (v2.4806): its node wears a blue ring — *this preview*. */
+  lit?: string | null
+  /** What blocks the lit stop (v2.4806): a red chip under it — *✗ owner of record missing*. */
+  blocked?: { key: string; words: string } | null
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, onOpenStep, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
@@ -256,6 +265,21 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
     ) : (
       <span style={labelStyle}>{s.label}</span>
     )
+  // The lit stop's node (v2.4806): a blue ring says *this preview is here*.
+  const node = (s: LienTimelineStep, size: number) =>
+    lit === s.key ? (
+      <span data-lien-timeline-lit style={{ display: 'inline-flex', borderRadius: '50%', boxShadow: '0 0 0 3px var(--surface), 0 0 0 5px var(--text-link)', flex: 'none' }}>
+        <Node s={s} size={size} />
+      </span>
+    ) : (
+      <Node s={s} size={size} />
+    )
+  const blockedChip = (s: LienTimelineStep) =>
+    blocked && blocked.key === s.key ? (
+      <span data-lien-timeline-blocked style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 3, padding: '1px 7px', borderRadius: 999, background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)', color: 'var(--text-red-700)', fontSize: '0.62rem', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'none', letterSpacing: 0 }}>
+        ✗ {blocked.words}
+      </span>
+    ) : null
   const foldDoor = (s: LienTimelineStep) =>
     s.fold ? (
       <button
@@ -331,7 +355,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
           {steps.map((s, i) => (
             <div key={s.key} data-lien-timeline-step={s.key} style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gap: '0 0.6rem', alignItems: 'start', padding: '0.28rem 0', borderTop: i === todayIndex && i > 0 ? '2px dashed var(--text-link)' : 'none', position: 'relative' }}>
               {i === todayIndex && i > 0 ? <span style={{ position: 'absolute', right: 0, top: -9, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', background: 'var(--surface)', padding: '0 4px' }}>today</span> : null}
-              <Node s={s} size={16} />
+              {node(s, 16)}
               <div style={{ minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.3 }}>
                 {s.move ? <MovePill move={s.move} voice={voice} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
                 {stopLabel(s, { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' })}
@@ -374,7 +398,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, position: 'relative' }}>
           {steps.map((s) => (
             <div key={s.key} data-lien-timeline-step={s.key} title={s.fold ? foldTitle(s, timeline.todayYmd) : `${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
-              <Node s={s} size={nodeSize} />
+              {node(s, nodeSize)}
               {mini ? null : stopLabel(s, { marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' })}
               {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{keepDatesWhole(s.opensWords)}</span> : null}
               <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
@@ -406,6 +430,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
                 </span>
               )}
               {!mini && s.move ? <MovePill move={s.move} voice={voice} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
+              {mini ? null : blockedChip(s)}
             </div>
           ))}
         </div>
