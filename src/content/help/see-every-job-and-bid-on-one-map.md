@@ -2,7 +2,7 @@
 title: see every job and bid on one map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, where is the job
+keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out
 ---
 The Map page plots every job, bid and estimate that has an address. It is the whole company on one map. The Bid Board and the Pipeline each have a map of their own list. This page has everything at once.
 
@@ -12,7 +12,18 @@ The map opens on the office. The dark diamond is the office. The dashed rings ar
 
 ## Reading the pins
 
-Each pin is one record. {{chip:blue|Jobs}} are blue. **Bids** are orange. {{chip:green|Estimates}} are green. The pills next to the title are the key and the switches. Tap one to hide or show that kind. With Bids on, the small chips pick the bid stages to show. Click a pin for its card. Press **Open** on the card to open the record.
+Each pin is one record. {{chip:blue|Jobs}} are blue. **Bids** are orange. {{chip:green|Estimates}} are green. The pills next to the title are the key and the switches. Tap one to hide or show that kind. With Bids on, the small chips pick the bid stages to show.
+
+## Opening a record from a pin
+
+Click a pin for its card. The card shows the record and its number, its kind and stage, and the address. Then come two buttons.
+
+- {{button:outline|Open}} opens the record. A job opens in its window. A bid or an estimate opens on its page.
+- {{button:outline|Directions}} opens the address in Google Maps, ready to navigate.
+
+On a phone, tapping a pin shows the record as a bar under the map instead of a pop-up. So the buttons stay big and the pin stays in view.
+
+On a desktop, the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
 
 :::example Where is the work this month
 Turn off Estimates and the Lost stage. What is left is every job and every live bid, on one map.

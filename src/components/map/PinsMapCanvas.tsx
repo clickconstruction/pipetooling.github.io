@@ -48,6 +48,8 @@ export type PinsMapCanvasProps = {
   pulseId?: string | null
   /** For a map inside a scrolling page: the wheel scrolls the page until the map is clicked once (desktop; + / − and dragging work from the start). */
   scrollZoomAfterClick?: boolean
+  /** Leaflet only (v2.4796): more react-leaflet layers mounted inside the map — the Map page's draw tool, court layer and fly-to. The Google canvas ignores them. */
+  children?: ReactNode
 }
 
 /**
@@ -132,7 +134,7 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   })
 }
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
   const [mapClicked, setMapClicked] = useState(false)
@@ -193,6 +195,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
           </CircleMarker>
         )
       })}
+      {children}
     </MapContainer>
   )
 }
