@@ -1,10 +1,11 @@
-import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { stepRunPreview } from '../../lib/jobs/lienDeskRun'
 import { LIEN_RULE_CITES } from '../../lib/jobs/lienRuleCites'
 import { lienStopPaperKind, lienStopRuleCite, lienStopWindowWords } from '../../lib/jobs/lienStopPaper'
 import type { LienStopPaperPage } from '../../lib/jobs/lienStopPaperPages'
 import type { LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import type { LienStopChecklistRow, LienStopRecordCard } from '../../lib/legal/lienStopEvidence'
 
 // The rules window rides in the lazy chunk it shares with the /help page (see LienRulesDoor).
 const LienRulesModal = lazy(() => import('./LienRulesModal'))
@@ -32,6 +33,22 @@ export interface LienStopPaper {
   noticeMonths?: ReadonlyArray<string> | null
   /** A line under the pages, when the host has one — why a page is missing, or where it lives. */
   note?: string | null
+  /** Counsel's side (v2.4800): the title and line in the firm's words, in place of the kernel's. */
+  words?: { title: string; line: string } | null
+  /** The record cards — the envelope as it went out — drawn in place of pages. */
+  cards?: ReadonlyArray<LienStopRecordCard> | null
+  /** The suit's filing checklist, on file and not. */
+  checklist?: { rows: ReadonlyArray<LienStopChecklistRow>; note: string | null } | null
+  /** What this paper does for the claim. */
+  does?: string | null
+  /** The rule in one sentence, inline — for a reader with no rules window (the portal). */
+  ruleWords?: string | null
+  /** More rail sections after the envelope: What follows, Venue. */
+  rail?: ReadonlyArray<{ key: string; label: string; words: string }> | null
+  /** The move pill under the date — `OURS · DONE`, `COUNSEL`. */
+  moveWords?: string | null
+  /** A second, plain act under the first. */
+  secondAct?: { label: string; onPress: () => void } | null
 }
 
 type Props = {
@@ -83,7 +100,9 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
 
   if (!step) return null
   const paper = paperFor(step)
-  const words = lienStopWindowWords({ step, noticeMonths: paper.noticeMonths ?? null })
+  const kernelWords = lienStopWindowWords({ step, noticeMonths: paper.noticeMonths ?? null })
+  const words = paper.words ? { ...kernelWords, title: paper.words.title, line: paper.words.line } : kernelWords
+  const counsel = Boolean(paper.cards?.length || paper.checklist || paper.does)
   const kind = lienStopPaperKind(step)
   const cite = lienStopRuleCite(step)
 
@@ -117,7 +136,53 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
         </div>
         <div ref={scrollRef} style={{ overflow: 'auto', minHeight: 0, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 300px', gap: '0.85rem', padding: isMobile ? '0.6rem' : '0.85rem', background: 'var(--bg-muted)', alignItems: 'start' }}>
           <div style={{ display: 'grid', gap: '0.6rem', minWidth: 0 }}>
-            {words.noPaper ? (
+            {counsel ? (
+              <>
+                {paper.cards?.length ? <div style={{ ...railHead, display: 'flex', justifyContent: 'space-between', gap: 8 }}><span>The record</span><span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>from the office's filings, nothing anyone said</span></div> : null}
+                {paper.cards?.map((c) => (
+                  <div key={c.key} data-testid="lien-stop-paper-card" style={{ ...card, display: 'grid', gap: 8, padding: '0.75rem 0.9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      {c.letter ? <span aria-hidden style={{ display: 'inline-grid', placeItems: 'center', width: 26, height: 26, borderRadius: 6, background: 'var(--text-strong)', color: 'var(--surface)', fontWeight: 800, fontSize: '0.8rem' }}>{c.letter}</span> : null}
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700 }}>{c.title}</div>
+                        {c.sub ? <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{c.sub}</div> : null}
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '110px minmax(0, 1fr)', gap: '4px 12px' }}>
+                      {c.rows.map(([k, v]) => (
+                        <Fragment key={k}>
+                          <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{k}</span>
+                          <span>{k === 'Document' && c.href ? <a href={c.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>{v} ↗</a> : v}</span>
+                        </Fragment>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {paper.checklist ? (
+                  <>
+                    <div style={{ ...railHead, display: 'flex', justifyContent: 'space-between', gap: 8 }}><span>What the filing needs · on file and not</span><span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>from the office's records, live</span></div>
+                    <div data-testid="lien-stop-paper-checklist" style={{ ...card, padding: '0.2rem 0.9rem' }}>
+                      {paper.checklist.rows.map((r) => (
+                        <div key={r.key} data-testid="lien-stop-paper-check" data-status={r.status} style={{ display: 'grid', gridTemplateColumns: '20px 26px minmax(0, 1fr) auto', gap: '6px 10px', alignItems: 'center', padding: '0.45rem 0', borderTop: '1px solid var(--border)' }}>
+                          {r.status === 'on_file' ? <span aria-hidden style={{ width: 18, height: 18, borderRadius: 999, background: '#15803d', color: '#fff', fontSize: '0.68rem', fontWeight: 800, display: 'inline-grid', placeItems: 'center' }}>✓</span> : r.status === 'not_needed' ? <span aria-hidden style={{ width: 18, height: 18, borderRadius: 999, background: 'var(--bg-200)', color: 'var(--text-700)', fontSize: '0.68rem', fontWeight: 800, display: 'inline-grid', placeItems: 'center' }}>–</span> : <span aria-hidden style={{ width: 18, height: 18, borderRadius: 999, border: '2px solid #b42318', boxSizing: 'border-box', display: 'inline-block' }} />}
+                          <span aria-hidden style={{ display: 'inline-grid', placeItems: 'center', width: 24, height: 24, borderRadius: 6, background: r.status === 'on_file' ? 'var(--text-strong)' : 'var(--surface)', color: r.status === 'on_file' ? 'var(--surface)' : 'var(--text-muted)', border: r.status === 'on_file' ? 'none' : '1px dashed var(--border-strong)', fontWeight: 800, fontSize: '0.76rem' }}>{r.letter}</span>
+                          <span><strong>{r.title}</strong> · {r.detail}</span>
+                          <span style={{ fontSize: '0.76rem', fontWeight: r.status === 'not_on_file' ? 600 : 400, color: r.status === 'not_on_file' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{r.statusWords}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {paper.checklist.note ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{paper.checklist.note}</div> : null}
+                  </>
+                ) : null}
+                {paper.does ? (
+                  <div data-testid="lien-stop-paper-does" style={{ ...card, padding: '0.75rem 0.9rem' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>What this paper does for the claim</div>
+                    <div>{paper.does}</div>
+                  </div>
+                ) : null}
+                {!paper.cards?.length && !paper.checklist && paper.note ? <div style={{ ...card, padding: '0.9rem 1rem', color: 'var(--text-700)' }}>{paper.note}</div> : null}
+              </>
+            ) : words.noPaper ? (
               <div data-testid="lien-stop-paper-none" style={{ ...card, display: 'grid', gap: '0.6rem', padding: '0.9rem 1rem' }}>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-700)' }}>Nothing of ours goes out at this stop. This is what happens instead.</div>
                 <div><strong>What happens.</strong> {words.noPaper.what}</div>
@@ -164,8 +229,15 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
                 {step.opensWords ? <div style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>{step.opensWords}</div> : null}
                 {step.words ? <div style={{ color: 'var(--text-700)' }}>{step.words}</div> : null}
                 {paper.record ? <div style={{ color: 'var(--text-700)', marginTop: 4 }}>{paper.record.words}</div> : null}
+                {paper.moveWords ? <div style={{ marginTop: 6 }}><span data-testid="lien-stop-paper-move" style={{ display: 'inline-block', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', borderRadius: 999, padding: '3px 10px', color: paper.moveWords.startsWith('COUNSEL') ? 'var(--text-700)' : 'var(--text-link)', background: paper.moveWords.startsWith('COUNSEL') ? 'var(--surface)' : 'var(--bg-blue-tint)', border: paper.moveWords.startsWith('COUNSEL') ? '1px solid var(--border-strong)' : 'none' }}>{paper.moveWords}</span></div> : null}
               </div>
             </div>
+            {paper.rail?.map((r) => (
+              <div key={r.key} style={{ display: 'grid', gap: 4 }}>
+                <div style={railHead}>{r.label}</div>
+                <div style={card} data-testid={`lien-stop-paper-rail-${r.key}`}>{r.words}</div>
+              </div>
+            ))}
             {paper.envelope ? (
               <div style={{ display: 'grid', gap: 4 }}>
                 <div style={railHead}>In the envelope</div>
@@ -180,7 +252,12 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
                 ))}
               </div>
             ) : null}
-            {cite ? (
+            {paper.ruleWords ? (
+              <div style={{ display: 'grid', gap: 4 }}>
+                <div style={railHead}>The rule</div>
+                <div style={card} data-testid="lien-stop-paper-rule-words">{paper.ruleWords}</div>
+              </div>
+            ) : cite ? (
               <div style={{ display: 'grid', gap: 4 }}>
                 <div style={railHead}>The rule</div>
                 <button type="button" data-testid="lien-stop-paper-rule" onClick={() => setRuleOpen(true)} style={linkBtn}>
@@ -193,10 +270,15 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
                 {paper.act.label}
               </button>
             ) : null}
+            {paper.secondAct ? (
+              <button type="button" data-testid="lien-stop-paper-second-act" onClick={paper.secondAct.onPress} style={{ padding: '0.45rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+                {paper.secondAct.label}
+              </button>
+            ) : null}
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.9rem', borderTop: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span>{words.noPaper ? 'No paper of ours at this stop.' : paper.pages.length ? 'Read-only: the paper as it would print today, from the job. Change it where it is drafted.' : 'The paper as it went out is the record.'}</span>
+          <span>{counsel ? 'The record as the office keeps it. Dates and dollars, nothing anyone said.' : words.noPaper ? 'No paper of ours at this stop.' : paper.pages.length ? 'Read-only: the paper as it would print today, from the job. Change it where it is drafted.' : 'The paper as it went out is the record.'}</span>
           {isMobile ? null : <span><span style={kbd}>←</span> <span style={kbd}>→</span> next stop · <span style={kbd}>Esc</span> back</span>}
         </div>
       </div>

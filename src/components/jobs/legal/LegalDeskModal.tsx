@@ -5,6 +5,8 @@ import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, newAskMeta, officeAnswerMeta, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
+import LienStopPaperWindow from '../LienStopPaperWindow'
+import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import {
   formatLegalMoney,
   groupCollectionsByPayer,
@@ -834,6 +836,12 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
+  // A stop as evidence (v2.4800): the timeline stop whose window is open on the Paper tab, per job; the copy button's label while the record is on the clipboard.
+  const [stop, setStop] = useState<{ jobId: string; index: number } | null>(null)
+  const [copied, setCopied] = useState(false)
+  const copyRecord = (text: string) => {
+    void navigator.clipboard?.writeText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000) }).catch(() => {})
+  }
   const customerDoor = (label = 'Edit customer') => <Door label={selected.customerId ? label : 'Link a customer'} onClick={openEditCustomer} title={selected.customerId ? 'Opens Edit customer; the desk refreshes when it saves' : 'The payer is a name only — link the job to a customer record'} />
 
   if (tab === 'account') {
@@ -895,7 +903,17 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
               {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
             </div>
-            <LienTimelineStrip timeline={t.timeline} />
+            <LienTimelineStrip timeline={t.timeline} onOpenStep={(st) => setStop({ jobId: t.jobId, index: Math.max(0, t.timeline.steps.findIndex((x) => x.key === st.key)) })} />
+            {stop && stop.jobId === t.jobId ? (
+              <LienStopPaperWindow
+                steps={t.timeline.steps}
+                index={stop.index}
+                onIndex={(i) => setStop({ jobId: t.jobId, index: i })}
+                onClose={() => setStop(null)}
+                jobLabel={t.jobLabel}
+                paperFor={(step) => lienStopCounselPaper({ step, steps: t.timeline.steps, packet, jobId: t.jobId, voice: 'office', act: jobOf(t.jobId) ? { label: 'Open the job’s Lien window ›', onPress: () => { const job = jobOf(t.jobId); setStop(null); if (job) props.onOpenLienInstruments(job) } } : null, onCopy: copyRecord, copyLabel: copied ? 'Copied' : 'Copy the record as text' })}
+              />
+            ) : null}
           </div>
         ))}
         <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's last approved clock day (else its last work date, else its creation month, as each job's line says), its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
