@@ -76,7 +76,7 @@ import LienPaperPreviewOverlay, { type LienPaperPreviewEntry } from './LienPaper
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import LienDeskNextUp from './LienDeskNextUp'
 import type { LienCalendarJob } from '../../lib/jobs/lienCalendar'
-import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit, type DeskJobRef } from '../../lib/jobs/lienCallerMatch'
+import { callLetterFactsFor, callerIndex, findOnDesk, practiceCallFacts, type CallerMatchInput, type CallerOwnerHit } from '../../lib/jobs/lienCallerMatch'
 import LienCallScriptModal from './LienCallScriptModal'
 import { genericCallFacts } from '../../lib/jobs/lienCallScript'
 import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
@@ -551,17 +551,10 @@ export default function LienDeskModal({
   const callerUs = ((issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME).split(/\s+/)[0] || 'us'
   const callerInput = useMemo<CallerMatchInput | null>(() => {
     if (!data) return null
-    // Every job on the three tabs, once — the tab that lists it first is where the door opens it (v2.4249).
-    const deskJobs: DeskJobRef[] = [
-      ...data.queue.entries.map((e): DeskJobRef => ({ jobId: e.jobId, tab: 'notice', pile: LIEN_DESK_PILES.find((p) => p.key === e.pile)?.label ?? e.pile, openBalance: e.openBalance, deadline: e.earliestDeadline })),
-      ...data.affidavits.entries.map((e): DeskJobRef => ({ jobId: e.jobId, tab: 'affidavit', pile: LIEN_AFFIDAVIT_PILES.find((p) => p.key === e.pile)?.label ?? e.pile, openBalance: e.openBalance, deadline: e.deadline })),
-      ...data.retainage.entries.map((e): DeskJobRef => ({ jobId: e.jobId, tab: 'retainage', pile: LIEN_RETAINAGE_PILES.find((p) => p.key === e.pile)?.label ?? e.pile, openBalance: e.openBalance, deadline: e.deadline })),
-    ]
-    return { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, deskJobs, us: callerUs }
+    return { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, us: callerUs }
   }, [data, callerUs])
-  /** The door's "Open the job ›" (v2.4249): the job's own tab, with any pile or calendar narrowing lifted so its row is in the list. */
   // The find box reaches every notice the desk ever sent (v2.4731): the ☎ index, under the piles, less the jobs the list already shows.
-  const sentIndex = useMemo(() => (callerInput ? callerIndex(callerInput, { day: formatYmdMonthDay, money: formatUsdNoCents }) : null), [callerInput])
+  const sentIndex = useMemo(() => (callerInput ? callerIndex(callerInput, { day: formatYmdMonthDay }) : null), [callerInput])
   const alsoSent = useMemo<CallerOwnerHit[]>(() => {
     if (!finding || !sentIndex) return []
     const shown = new Set(visible.map((e) => e.jobId))
