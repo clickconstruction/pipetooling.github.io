@@ -38,6 +38,8 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
   const seg = (on: boolean): React.CSSProperties => ({ font: 'inherit', fontSize: 12.5, padding: '4px 10px', border: 'none', cursor: 'pointer', background: on ? INK : CARD, color: on ? '#fff' : MUTED, fontWeight: on ? 600 : 500 })
   const unknown = (title: string) => <span style={{ color: PAPER_RED, fontWeight: 700 }} title={title}>?</span>
   const fact = (v: string) => (v ? v : unknown('A fact the office has not entered yet'))
+  // A cell that is only a `?` centres it (v2.4753); a cell with words keeps the column's left edge.
+  const factTd = (v: string, extra?: React.CSSProperties) => <td style={{ ...td, ...(v ? extra : { textAlign: 'center' }) }}>{fact(v)}</td>
   return (
     <div style={portalCard} data-legal-portal-lien-grid>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
@@ -97,22 +99,22 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
                       <b style={{ display: 'block', fontSize: 12 }}>{c.job}</b>
                       <span style={{ display: 'block', color: MUTED, whiteSpace: 'normal', marginTop: 1 }}>{c.address}</span>
                     </td>
-                    <td style={td}>{fact(c.owner)}</td>
+                    {factTd(c.owner)}
                     <td style={td}>
                       <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.kind}{c.kindUnknown ? <> {unknown('The office has not entered the property kind — commercial dates shown; a residential property is a month earlier')}</> : null}</span>
                       {c.homestead ? <span style={{ display: 'block', color: MUTED, fontSize: 10.5, whiteSpace: 'nowrap' }}>{c.homestead}</span> : null}
                     </td>
-                    <td style={{ ...td, whiteSpace: 'nowrap' }}>{fact(c.lastOnSite)}</td>
+                    {factTd(c.lastOnSite, { whiteSpace: 'nowrap' })}
                     <td style={td}>
                       <b style={{ display: 'block', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{c.total}</b>
                       {c.months ? <span style={{ display: 'block', color: MUTED, marginTop: 1 }}>{c.months}</span> : null}
                     </td>
-                    <td style={td}>{noticeCell(c)}</td>
-                    <td style={td}>{fact(c.affidavit)}</td>
-                    <td style={td}>{fact(c.bond)}</td>
-                    <td style={td}>{fact(c.paidOut)}</td>
-                    <td style={td}>{fact(c.reserved)}</td>
-                    <td style={td}>{fact(c.contractCompleted)}</td>
+                    <td style={{ ...td, ...(noticeIsUnknown(c) ? { textAlign: 'center' } : null) }}>{noticeCell(c)}</td>
+                    {factTd(c.affidavit)}
+                    {factTd(c.bond)}
+                    {factTd(c.paidOut)}
+                    {factTd(c.reserved)}
+                    {factTd(c.contractCompleted)}
                   </tr>
                 ))}
               </tbody>
@@ -123,6 +125,10 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
       <p style={{ fontSize: 11.5, color: MUTED, margin: '10px 0 0' }}>Deadlines are per job and per work month (§ 53.056, § 53.052), weekends rolled; a property of unknown kind shows commercial dates and a residential one is a month earlier. A month whose § 53.056 window has closed is left off; <span style={{ color: FAINT }}>—</span> is a job with no window still open. A <b style={{ color: PAPER_RED }}>?</b> is a fact the office has not entered — payment bond, paid out to the GC, the 10 % reserved, the owner's contract completion.</p>
     </div>
   )
+
+  function noticeIsUnknown(c: LegalLienGridCell) {
+    return !c.noticeNote && !c.allClosed && c.notices.length === 0
+  }
 
   function noticeCell(c: LegalLienGridCell) {
     if (c.noticeNote) {
