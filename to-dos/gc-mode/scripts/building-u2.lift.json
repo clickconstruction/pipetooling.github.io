@@ -1,0 +1,322 @@
+{
+ "about": "The Building lane's U2 (to-dos/gc-mode/BUILDING_REAL_BUILD.md, Kernels that move): Building's kernels lifted to src/lib/gc on a spike that reads the schedule's lifts from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/building-u2.lift.json <outDir>",
+ "spikeDir": "src/lib/gcMode",
+ "mainBase": "src/lib/gc",
+ "files": [
+  {
+   "from": "gcBuilding",
+   "to": "building.ts",
+   "moves": "all",
+   "stays": [
+    "tradePayAppParties",
+    "drawOnTheirSov"
+   ],
+   "append": true
+  },
+  {
+   "from": "gcBuildingLog",
+   "to": "buildingLog.ts",
+   "moves": "all",
+   "append": true
+  },
+  {
+   "from": "gcBuildingPunch",
+   "to": "buildingPunch.ts",
+   "moves": "all",
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: the punch list, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingPunch.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */"
+  },
+  {
+   "from": "gcBuildingSubmittals",
+   "to": "buildingSubmittals.ts",
+   "moves": "all",
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: the submittal register, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingSubmittals.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */"
+  },
+  {
+   "from": "gcBuildingRfis",
+   "to": "buildingRfis.ts",
+   "moves": "all",
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: questions during construction (RFIs), moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingRfis.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */"
+  },
+  {
+   "from": "gcBuildingPay",
+   "to": "buildingPay.ts",
+   "moves": "all",
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: a trade's draw: the day to pay it by, and the draws to pay, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingPay.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */"
+  },
+  {
+   "from": "gcBuildingActivity",
+   "to": "buildingActivity.ts",
+   "moves": "all",
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: what a trade did on the job, for its company's Activity, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingActivity.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */"
+  },
+  {
+   "from": "gcBuildingPromises",
+   "to": "buildingPromises.ts",
+   "moves": "all",
+   "stays": [
+    "buildingPromisesKeptBy"
+   ],
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: Building's kinds on the Board's promise record, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingPromises.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */\n// `buildingPromisesKeptBy` reads the prototype's reducer's actions, so it stays on the spike: its rules are SQL\n// in the real build (BUILDING_REAL_BUILD.md, decision 9)."
+  },
+  {
+   "from": "gcBuildingWeekly",
+   "to": "buildingWeekly.ts",
+   "moves": "all",
+   "stays": [
+    "weeklyReport"
+   ],
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: the weekly report to the customer, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingWeekly.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */\n// `weeklyReport` itself reads Owner Billing's late finish and waits for it (U7)."
+  },
+  {
+   "from": "gcBuildingWords",
+   "to": "buildingWords.ts",
+   "moves": "all",
+   "header": "/**\n * GC mode, the real build, the Building lane's U2: Building's words in the trade's portal, in English and Spanish, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcBuildingWords.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.\n */"
+  },
+  {
+   "from": "gcFollowUpSheet",
+   "to": "followUpSheet.ts",
+   "moves": "all",
+   "stays": [
+    "followUpPeople",
+    "followUpDraft",
+    "followUpSentActions",
+    "followUpCallActions"
+   ],
+   "append": true
+  },
+  {
+   "from": "gcWords",
+   "to": "words.ts",
+   "moves": [
+    "money"
+   ],
+   "append": true
+  },
+  {
+   "from": "gcPortal",
+   "to": "portal.ts",
+   "moves": [
+    "PAY_WITHIN_DAYS"
+   ],
+   "header": "/**\n * GC mode, the real build: the trade portal's own rules, started by the Building lane's U2 with the one it reads,\n * moved word for word from the GC mode prototype (branch spike/gc-mode, `gcPortal.ts`). The Portal lane's lift (P1) adds the rest.\n */"
+  }
+ ],
+ "types": [
+  {
+   "to": "types.ts",
+   "append": true,
+   "about": "The shapes the schedule's lifts trimmed, written again with Building's fields added (each field word for word), and Building's own.",
+   "fields": {
+    "GcState": [
+     "today",
+     "projects",
+     "partners",
+     "customers",
+     "scheduleTemplates"
+    ],
+    "GcProject": [
+     "id",
+     "name",
+     "startedOn",
+     "packages",
+     "schedule",
+     "whatIf",
+     "changeOrders",
+     "stage",
+     "owner",
+     "town",
+     "closedOn",
+     "waits",
+     "crewCounts",
+     "dailyLogs",
+     "customerId",
+     "customerRole",
+     "lostOn",
+     "rough",
+     "scheduleSends",
+     "address",
+     "architect",
+     "punch",
+     "submittals",
+     "rfis",
+     "weeklyReports",
+     "ownerBilling"
+    ],
+    "Sow": [
+     "status",
+     "price",
+     "retainagePct",
+     "sov",
+     "draws",
+     "acceptedOn",
+     "sentBack"
+    ],
+    "SovLine": "all",
+    "Draw": [
+     "id",
+     "number",
+     "requestedOn",
+     "gross",
+     "retainage",
+     "net",
+     "status",
+     "waiver",
+     "lines",
+     "payApp",
+     "final",
+     "asked",
+     "approvedOn",
+     "paidOn"
+    ],
+    "DrawSentBack": "all",
+    "ChangeOrder": [
+     "id",
+     "number",
+     "packageId",
+     "description",
+     "status",
+     "days",
+     "daysOnChart",
+     "answeredOn",
+     "sentOn",
+     "tradeChange"
+    ],
+    "Partner": [
+     "id",
+     "company",
+     "coiExpires",
+     "contact",
+     "email",
+     "phone",
+     "trades",
+     "address",
+     "license"
+    ],
+    "DailyLog": "all",
+    "OwnerBilling": [
+     "payApps"
+    ],
+    "OwnerPayAppSent": [
+     "final",
+     "paidOn"
+    ],
+    "PunchItem": "all",
+    "Submittal": "all",
+    "SubmittalRound": "all",
+    "SubmittalKind": "all",
+    "SubmittalAnswer": "all",
+    "Rfi": "all",
+    "RfiImpact": "all",
+    "WeatherSky": "all",
+    "WeeklyReportSent": "all",
+    "DrawPayApp": "all",
+    "TradePromise": "all",
+    "PromiseKind": "all"
+   },
+   "names": [
+    "GcState",
+    "GcProject",
+    "Sow",
+    "SovLine",
+    "Draw",
+    "DrawSentBack",
+    "ChangeOrder",
+    "Partner",
+    "DailyLog",
+    "OwnerBilling",
+    "OwnerPayAppSent",
+    "PunchItem",
+    "Submittal",
+    "SubmittalRound",
+    "SubmittalKind",
+    "SubmittalAnswer",
+    "Rfi",
+    "RfiImpact",
+    "WeatherSky",
+    "WeeklyReportSent",
+    "DrawPayApp",
+    "TradePromise",
+    "PromiseKind"
+   ]
+  }
+ ],
+ "existing": {
+  "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
+  "src/lib/gcMode/gcTypes.ts#GcCustomer": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#ScopeItem": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#Invite": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#CustomerRole": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts"
+ },
+ "standIns": {
+  "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+ },
+ "outside": {
+  "src/lib/plainWords.ts": "src/lib/plainWords.ts"
+ },
+ "tests": [
+  {
+   "from": "gcBuilding.test.ts",
+   "to": "building.test.ts",
+   "header": "/**\n * The tests of `gcBuilding.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingLog.test.ts",
+   "to": "buildingLog.test.ts",
+   "header": "/**\n * The tests of `gcBuildingLog.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingPunch.test.ts",
+   "to": "buildingPunch.test.ts",
+   "header": "/**\n * The tests of `gcBuildingPunch.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingSubmittals.test.ts",
+   "to": "buildingSubmittals.test.ts",
+   "header": "/**\n * The tests of `gcBuildingSubmittals.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingRfis.test.ts",
+   "to": "buildingRfis.test.ts",
+   "header": "/**\n * The tests of `gcBuildingRfis.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingPay.test.ts",
+   "to": "buildingPay.test.ts",
+   "header": "/**\n * The tests of `gcBuildingPay.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingPromises.test.ts",
+   "to": "buildingPromises.test.ts",
+   "header": "/**\n * The tests of `gcBuildingPromises.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingWeekly.test.ts",
+   "to": "buildingWeekly.test.ts",
+   "header": "/**\n * The tests of `gcBuildingWeekly.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcBuildingWords.test.ts",
+   "to": "buildingWords.test.ts",
+   "header": "/**\n * The tests of `gcBuildingWords.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  },
+  {
+   "from": "gcFollowUpSheet.test.ts",
+   "to": "followUpSheet.test.ts",
+   "header": "/**\n * The tests of `gcFollowUpSheet.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the Building lane's U2). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read another lane stay on the spike, where they run against these kernels.\n */"
+  }
+ ],
+ "slice": {
+  "about": "What U2 adds to the cut the schedule's lifts describe: the project's Building records (kept whole), the statement of work's whole shapes, and the final pay application's paid day.",
+  "nested": {
+   "GcProject": {
+    "ownerBilling": "OwnerBilling"
+   },
+   "OwnerBilling": {
+    "payApps": "OwnerPayAppSent"
+   }
+  }
+ }
+}

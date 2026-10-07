@@ -358,12 +358,14 @@ whichever of O2 and U2 lands first, and the other imports them (Helper 5). The c
 `scripts/building-u2.lift.json`, with each shape's `fields` listed as the schedule's 1b did, and
 `lift-same.cjs` shows each moved declaration equals the spike's.
 
-**The tests.** Every Building test on the spike plays the reducer and the fixture, so none moves.
-Main gets a direct test for each moved function over three lines (about 60), on test data built from
-Fair Oaks D's Building records (its logs from Sep 21 with Sep 30 missed, its six submittals, its four
-RFIs, a punch list, Pecan Valley's statement of work with its draws): `src/lib/gc/buildingTestState.ts`,
-beside the schedule's `testState.ts`. The spike's tests keep passing against main's copy after the
-follow-up, and the golden test keeps passing without `-u`.
+**The tests.** Most Building tests on the spike play the reducer, so they stay. *Amended at the
+cut (2026-10-07):* the 19 that read only the kernels and the made-up data move as they are. Main gets
+a direct test for each other moved function over three lines (38). The test data is the schedule's
+`schedule/testState.ts`, written again by `schedule-test-state.ts` with this lift's fields (one file,
+never by hand), not a Building file of its own. It carries Fair Oaks D's logs from Sep 21 with Sep 30
+missed, its six submittals, its four RFIs, its punch list and the trades' statements of work with
+their draws. The spike's tests keep passing against main's copy after the follow-up, and the golden
+test keeps passing without `-u`.
 
 **U2b** lifts the four from `gcFollowUpSheet` the day B2's and P1's kernels are on main, in the
 same way. The Board's B2b waits on U2 the other way: its `partnerWork` reads `retainageHeldNow`, its
@@ -441,7 +443,7 @@ function. One Building migration a day. *Check* is how the reviewer sees it work
    insert of a log dated after its written day is refused; a read-only user's insert is refused; a
    delete from `gc_weekly_reports` is refused.
 2. **U2, the kernels lifted** (day 2, 10-09), no database, no screen: the 125 above with
-   `buildingTestState.ts` and about 60 direct tests; then the spike's follow-up deletes what moved and
+   the 19 moved tests, 38 direct ones and `testState.ts` written again; then the spike's follow-up deletes what moved and
    re-exports it from main. *Check:* `npm test` passes on main; on the spike the golden test passes
    without `-u` and `lift-same.cjs` is green.
 3. **U3, the daily log and the punch list on real data** (day 3, 10-10, if a job is being built):
