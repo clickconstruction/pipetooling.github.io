@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { LEGAL_SAMPLE_BANNER_TEXT, sampleStateFromToken } from '../lib/customerSampleMode'
@@ -23,7 +23,13 @@ import LegalPortalReachStrip from '../components/jobs/legal/LegalPortalReachStri
 import { askKindWords, conversationRows, conversationWho, entryRecordedByWords, openAsks } from '../lib/legal/legalAsks'
 import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
 import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
-import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
+import { FIRM_TAB_LABELS, FIRM_TABS, portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
+import LegalPortalStartHere from '../components/jobs/legal/LegalPortalStartHere'
+import LegalPortalTour from '../components/jobs/legal/LegalPortalTour'
+import { companyLines, companyShortName, markStartSeen, matterLines, portalStepLines, portalTourStops, readStartSeen, rulesLinkWords, startBookRows, workLines } from '../lib/legal/legalPortalStart'
+
+/** The Texas lien rules, drawn on the portal (v2.4820): loaded only when the firm opens them. */
+const LegalPortalRulesSheet = lazy(() => import('../components/jobs/legal/LegalPortalRulesSheet'))
 import { portalSmall } from '../lib/legal/legalPortalCards'
 import { isLegalFirmStep, LEGAL_FIRM_STEP_GROUPS, LEGAL_FIRM_STEP_WORDS, type LegalFirmStep } from '../../supabase/functions/_shared/legalStages'
 
@@ -60,7 +66,14 @@ export default function LegalPortal() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Narrative first when the office wrote one (v2.4812); the view falls back to Account when it did not.
   const [tab, setTab] = useState<FirmTab>('narrative')
-  const [panel, setPanel] = useState<'matters' | 'grid' | 'notifications'>('matters')
+  // Start here (v2.4820) opens first on a browser's first visit; after that the portal opens on Matters.
+  const [panel, setPanel] = useState<'start' | 'matters' | 'grid' | 'notifications'>(() => (readStartSeen() ? 'matters' : 'start'))
+  useEffect(() => {
+    if (panel === 'start') markStartSeen()
+  }, [panel])
+  /** The tour's stop, or null when it is not running (v2.4820). */
+  const [tourAt, setTourAt] = useState<number | null>(null)
+  const [rulesOpen, setRulesOpen] = useState(false)
   const [reloadTick, setReloadTick] = useState(0)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -229,9 +242,34 @@ export default function LegalPortal() {
   }, [selectedId, firstMatterId])
   const selected: LegalPortalMatter | null = matters.find((m) => m.id === selectedId) ?? matters[0] ?? null
   const packet = selected ? (packets.get(selected.id) ?? null) : null
+  const matterBalance = useMemo(() => (payload ? payload.matters.reduce((s, m) => s + (packets.get(m.id)?.account.totals.balance ?? 0), 0) : 0), [payload, packets])
+
+  // Start here and the tour (v2.4820): every figure from the same book the Lien grid draws.
+  const short = companyShortName(payload?.company.name ?? '')
+  const bookRows = useMemo(() => (payload ? startBookRows(payload.lienBook, payload.preparedOn) : []), [payload])
+  // The tabs the open matter shows: a narrative tab only when the matter has one (#4831's rule).
+  const matterTabs = useMemo(
+    () => FIRM_TABS.filter((t) => (t as string) !== 'narrative' || Boolean((selected as unknown as { narrative?: { markdown?: string } | null } | null)?.narrative?.markdown)).map((t) => ({ key: t as string, label: FIRM_TAB_LABELS[t] })),
+    [selected],
+  )
+  const tourStops = useMemo(() => portalTourStops({ short, hasMatters: matters.length > 0, hasGrid: Boolean(payload?.lienBook), matterTabs }), [short, matters.length, payload?.lienBook, matterTabs])
+  // A stop opens its panel and tab; the strip rings the part it means.
+  const goTour = useCallback(
+    (i: number | null) => {
+      const stop = i == null ? null : tourStops[i]
+      if (!stop) {
+        setTourAt(null)
+        return
+      }
+      setTourAt(i)
+      setPanel(stop.panel)
+      if (stop.tab) setTab(stop.tab as FirmTab)
+    },
+    [tourStops],
+  )
 
   return (
-    <div data-theme="light" className="legalPortalPage" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT }}>
+    <div data-theme="light" className={`legalPortalPage${tourAt != null ? ' legalPortalPage--touring' : ''}`} style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT }}>
       <div style={{ maxWidth: 1040, margin: '0 auto' }}>
         {sample ? <SampleModeBanner text={LEGAL_SAMPLE_BANNER_TEXT} /> : null}
         {officeFirm ? <div data-legal-office-preview style={{ ...card, marginBottom: 14, fontSize: 13, color: MUTED }}><b style={{ color: INK }}>Office preview.</b> This is the firm’s portal as the firm sees it. Nothing you do here is saved, and it does not count as the firm’s visit.</div> : null}
@@ -243,7 +281,7 @@ export default function LegalPortal() {
           {payload ? (
             <div className="legalPortalHeadAside" style={{ textAlign: 'right', fontSize: 12.5, color: MUTED }}>
               For <b style={{ color: INK }}>{payload.firm.name}</b>{payload.firm.handling_name ? ` · ${payload.firm.handling_name}` : ''}<br />
-              {payload.matters.length} matter{payload.matters.length === 1 ? '' : 's'} · {formatLegalMoney(payload.matters.reduce((s, m) => s + (packets.get(m.id)?.account.totals.balance ?? 0), 0))} in balance
+              {payload.matters.length} matter{payload.matters.length === 1 ? '' : 's'} · {formatLegalMoney(matterBalance)} in balance
             </div>
           ) : null}
         </div>
@@ -252,28 +290,44 @@ export default function LegalPortal() {
 
         {payload ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
-            {(payload.lienBook ? (['matters', 'grid', 'notifications'] as const) : (['matters', 'notifications'] as const)).map((p) => (
-              <button key={p} type="button" onClick={() => setPanel(p)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
-                {p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
+            {(payload.lienBook ? (['start', 'matters', 'grid', 'notifications'] as const) : (['start', 'matters', 'notifications'] as const)).map((p) => (
+              <button key={p} type="button" onClick={() => setPanel(p)} data-legal-panel-tab={p} style={{ font: 'inherit', background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', fontSize: 13 }}>
+                {p === 'start' ? 'Start here' : p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
               </button>
             ))}
           </div>
         ) : null}
-        {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /> : null}
-        {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /> : null}
+        {payload && panel === 'start' ? (
+          <LegalPortalStartHere
+            short={short}
+            companyName={payload.company.name}
+            companyLines={companyLines({ rows: bookRows, matterCount: payload.matters.length, matterBalance })}
+            matterLines={matterLines(short)}
+            workLines={workLines({ short, contingencyPct: payload.firm.contingency_pct, filingCost: payload.firm.filing_cost })}
+            rulesWords={rulesLinkWords(short)}
+            portalLines={portalStepLines(tourStops.length)}
+            tourStopTitles={tourStops.map((t) => t.title)}
+            matterCount={payload.matters.length}
+            onOpenMatters={() => setPanel('matters')}
+            onStartTour={() => goTour(0)}
+            onOpenRules={() => setRulesOpen(true)}
+          />
+        ) : null}
+        {payload && panel === 'notifications' ? <div data-legal-tour="notifications"><NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} /></div> : null}
+        {payload && panel === 'grid' && payload.lienBook ? <div data-legal-tour="grid"><LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /></div> : null}
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
 
         {payload && panel === 'matters' && payload.matters.length === 0 ? (
-          <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>No matters yet.</b><br /><span style={{ color: MUTED }}>Accounts appear here the moment the office marks them attorney-ready.</span></div>
+          <div data-legal-tour="matters" style={{ ...card, textAlign: 'center', padding: 40 }}><b>No matters yet.</b><br /><span style={{ color: MUTED }}>Accounts appear here the moment the office marks them attorney-ready.</span></div>
         ) : null}
 
         {payload && panel === 'matters' && payload.pulledMatters.length ? <PulledMattersSection pulled={payload.pulledMatters} companyName={payload.company.name} /> : null}
 
         {payload && panel === 'matters' && selected && packet ? (
           <div className="legalPortalSplit">
-            <div className="legalPortalMain">
+            <div className="legalPortalMain" data-legal-tour="matter">
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
@@ -285,7 +339,7 @@ export default function LegalPortal() {
                 onPrint={() => { if (!openHtmlPrintWindow(buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name ?? '' }, matter: { stage: selected.stage, noteToFirm: selected.noteToFirm, releasedAt: selected.releasedAt, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }, particulars: payload.particulars, officeContacts: payload.officeContacts }))) setNotice('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
-            <div className="legalPortalList">
+            <div className="legalPortalList" data-legal-tour="matters">
               <div style={cap}>Matters{matters.length > 1 ? ' · largest balance first' : ''}</div>
               {matters.map((m) => {
                 const p = packets.get(m.id)
@@ -321,6 +375,12 @@ export default function LegalPortal() {
           </div>
         ) : null}
       </div>
+      {payload && tourAt != null ? <LegalPortalTour stops={tourStops} at={tourAt} onGo={goTour} /> : null}
+      {rulesOpen ? (
+        <Suspense fallback={null}>
+          <LegalPortalRulesSheet title={`The Texas lien rules ${short} follows`} onClose={() => setRulesOpen(false)} />
+        </Suspense>
+      ) : null}
     </div>
   )
 }

@@ -6,13 +6,14 @@
  * particulars, and the firm's own entries. The sample takes its company from `PORTAL_COMPANY`; this file
  * names it Acme Mechanical, so a line that hard-codes the brand fails here.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { render } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
 import { MemoryRouter } from 'react-router-dom'
 import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 import LegalPortal from './LegalPortal'
+import { START_SEEN_KEY } from '../lib/legal/legalPortalStart'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -23,6 +24,9 @@ vi.mock('../../supabase/functions/_shared/portalCompany', async (importOriginal)
   const orig = await importOriginal<typeof import('../../supabase/functions/_shared/portalCompany')>()
   return { ...orig, PORTAL_COMPANY: { ...orig.PORTAL_COMPANY, name: 'Acme Mechanical' } }
 })
+
+// The portal opens on Matters once Start here has been seen (v2.4820); the first-visit tests clear it.
+beforeEach(() => window.localStorage.setItem(START_SEEN_KEY, 'yes'))
 
 afterEach(() => {
   cleanup()
@@ -255,5 +259,85 @@ describe('LegalPortal — the sample matter', () => {
       expect(pdf.getAttribute('data-label')).toBe('')
       expect(pdf.hasAttribute('data-card-drop')).toBe(!pdf.querySelector('a'))
     }
+  })
+})
+
+describe('LegalPortal — Start here and the tour (v2.4820)', () => {
+  async function openFirstVisit() {
+    window.localStorage.removeItem(START_SEEN_KEY)
+    vi.stubGlobal('fetch', vi.fn(() => Promise.reject(new Error('the sample must not fetch'))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=sample']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(document.querySelector('[data-legal-start]')).not.toBeNull())
+    return document.querySelector('[data-legal-start]') as HTMLElement
+  }
+
+  it('opens on Start here on a first visit: live figures, a rail that says where you are, Matters one tap away', async () => {
+    const start = await openFirstVisit()
+    expect(screen.getByRole('button', { name: 'Start here' }).style.fontWeight).toBe('700')
+    expect(Array.from(start.querySelectorAll('[data-start-rail]')).map((b) => b.textContent?.replace(/^[0-9✓]/, ''))).toEqual(['Acme', 'Each matter', 'How we work', 'The portal'])
+    expect(start.querySelector('[data-legal-start-step-words]')!.textContent).toBe('Step 1 of 4')
+    expect(start.textContent).toContain('On the lien grid now: 3 jobs')
+    expect(start.textContent).toContain('With your firm now: 1 matter')
+    fireEvent.click(screen.getByRole('button', { name: /Next: Each matter/ }))
+    expect(start.getAttribute('data-start-step')).toBe('matter')
+    expect(start.textContent).toContain('Lien rights are kept.')
+    fireEvent.click(start.querySelector('[data-start-rail="work"]')!)
+    expect(start.querySelector('[data-legal-start-step-words]')!.textContent).toBe('Step 3 of 4')
+    expect(start.textContent).toContain('Your fee is 33% contingency. Filing cost is $350.')
+    expect(window.localStorage.getItem(START_SEEN_KEY)).toBe('yes')
+    fireEvent.click(screen.getByRole('button', { name: 'Open Matters ›' }))
+    await waitFor(() => expect(screen.getAllByText(/Brazos Ridge Contracting/).length).toBeGreaterThan(0))
+    expect(document.querySelector('[data-legal-start]')).toBeNull()
+  })
+
+  it('the tour opens each part of the portal, rings it and says which stop it is', async () => {
+    const start = await openFirstVisit()
+    fireEvent.click(start.querySelector('[data-start-rail="portal"]')!)
+    expect(start.textContent).toContain('The tour has 9 short stops.')
+    fireEvent.click(screen.getByRole('button', { name: 'Start the tour ›' }))
+    const strip = () => document.querySelector('[data-legal-tour-strip]') as HTMLElement
+    expect(strip().querySelector('[data-legal-tour-step-words]')!.textContent).toBe('Tour · stop 1 of 9')
+    await waitFor(() => expect(document.querySelector('[data-legal-tour="matters"]')!.classList.contains('legalTourRing')).toBe(true))
+    fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
+    // The Narrative tab (v2.4812) leads the matter's tabs, so it is the tour's second stop.
+    expect(strip().getAttribute('data-legal-tour-strip')).toBe('narrative')
+    fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
+    expect(strip().getAttribute('data-legal-tour-strip')).toBe('account')
+    await waitFor(() => expect(document.querySelector('[data-legal-tour="matter"]')!.classList.contains('legalTourRing')).toBe(true))
+    expect(document.querySelector('[data-legal-tour="matters"]')!.classList.contains('legalTourRing')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
+    expect(strip().textContent).toContain("Each job's lien clock is here.")
+    // Paper is open on the matter: its tab is the bold one.
+    expect(screen.getByRole('button', { name: 'Paper' }).style.fontWeight).toBe('700')
+    for (let i = 0; i < 4; i += 1) fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
+    expect(strip().getAttribute('data-legal-tour-strip')).toBe('grid')
+    await waitFor(() => expect(document.querySelector('[data-legal-portal-lien-grid]')).not.toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Next ›' }))
+    expect(strip().getAttribute('data-legal-tour-strip')).toBe('notifications')
+    expect(document.querySelector('.legalPortalPage--touring')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    expect(document.querySelector('[data-legal-tour-strip]')).toBeNull()
+    expect(document.querySelector('.legalPortalPage--touring')).toBeNull()
+    // Esc ends it too.
+    fireEvent.click(screen.getByRole('button', { name: 'Start here' }))
+    fireEvent.click(document.querySelector('[data-start-rail="portal"]')!)
+    fireEvent.click(screen.getByRole('button', { name: 'Start the tour ›' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(document.querySelector('[data-legal-tour-strip]')).toBeNull()
+  })
+
+  it('opens the Texas lien rules on the portal, with no link into the signed-in app; the brand is the payload\'s, never typed', async () => {
+    const start = await openFirstVisit()
+    fireEvent.click(start.querySelector('[data-start-rail="work"]')!)
+    fireEvent.click(screen.getByRole('button', { name: /Read the Texas lien rules Acme follows/ }))
+    const sheet = await screen.findByRole('dialog', { name: 'The Texas lien rules Acme follows' }, { timeout: 4000 })
+    expect(sheet.textContent).toContain('Justice court')
+    expect(sheet.querySelectorAll('a[href^="/"]').length).toBe(0)
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'The Texas lien rules Acme follows' })).toBeNull())
   })
 })

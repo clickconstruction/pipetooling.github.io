@@ -1,16 +1,20 @@
 // @vitest-environment jsdom
 /** Punch list #85, item 22: the quiet ten-minute reload marks itself and never swaps the page for the error card. */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { PORTAL_QUIET_RELOAD_FAILED } from '../lib/legal/legalPortalFreshness'
 import LegalPortal from './LegalPortal'
+import { START_SEEN_KEY } from '../lib/legal/legalPortalStart'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+
+// The portal opens on Matters once Start here has been seen (v2.4820); these tests read Matters.
+beforeEach(() => window.localStorage.setItem(START_SEEN_KEY, 'yes'))
 
 afterEach(() => {
   cleanup()

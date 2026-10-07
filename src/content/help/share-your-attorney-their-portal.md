@@ -18,6 +18,18 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 6. A wrong address is counted. After ten wrong tries in an hour from one connection, the portal refuses that connection for the hour. The right address always opens.
 7. **Turned off** lists every link that is gone. Each shows the day it was made, the day it ended, and who ended it. A link made before addresses were short still works. Rotate it, or change its address, when you are ready.
 
+## Start here and the tour
+
+The firm's first visit opens on **Start here**. It is a short intake in four steps. A rail across the top says which step the firm is on. Every step has a link to Matters.
+
+- **Step 1** names us and gives live figures. It counts the jobs on the lien grid, their counties, their balances and what is due in 30 days. It also counts the matters with the firm.
+- **Step 2** says what comes with each matter. Lien rights are kept, notices go out on time and the evidence is gathered.
+- **Step 3** says how we work with the firm. It states the firm's fee and filing cost, as set on Settings → Jobs & billing. It names the courts and the settlement rule.
+- Step 3 also links to the Texas lien rules the app follows. The rules open on the portal with no sign-in.
+- **Step 4** starts the tour.
+
+The tour opens each part of the portal and rings it. A strip at the bottom says the stop number and what the part is for. {{button:outline|‹ Back}} and {{button:blue|Next ›}} walk it. Esc or × ends it. After the first visit the portal opens on Matters. Start here stays as the first tab.
+
 ## What the firm sees
 
 - Every matter marked attorney-ready, largest balance first. When two balances match, the newest referral comes first. The largest opens by itself. A matter is one account in the firm's hands. Each matter shows its stage in the firm's words: referred, demand sent, suit filed or judgment entered.
