@@ -13,6 +13,11 @@
  * type the config places (`types`). Anything else stops the run and names what is missing.
  * Imports are written from what each file's declarations use. The files land in <outDir> under
  * main's paths; a file marked `append` holds only what is added to the file main already has.
+ *
+ * Once the spike reads an earlier lift from main (its follow-up is in, as the schedule's 1b-i found), a
+ * declaration in main's own files counts as placed where it is. A private helper the follow-up kept
+ * counts as placed when it is word for word main's copy in the file the entry adds to. `after` is only
+ * for a spike that still holds the earlier lift.
  */
 const fs = require('fs')
 const path = require('path')
@@ -27,6 +32,7 @@ if (!configPath || !outDir) {
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
 const spikeDir = path.join(root, config.spikeDir ?? 'src/lib/gcMode')
 const mainBase = config.mainBase ?? 'src/lib/gc'
+const mainDir = path.join(root, mainBase)
 
 const files = fs.readdirSync(spikeDir).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')).map((f) => path.join(spikeDir, f))
 const options = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, skipLibCheck: true, noEmit: true }
@@ -86,14 +92,27 @@ function uses(sf, s) {
 // Where each moving declaration lands: "spikeFile#name" -> main path.
 const placed = new Map()
 const spikePath = (b) => path.join(spikeDir, b + '.ts')
+/** Where a declaration is on main: placed by a lift, or one of main's own files the spike reads. */
+const placedAt = (k) => placed.get(k) ?? (k.startsWith(mainDir + path.sep) ? path.relative(mainDir, k.split('#')[0]) : undefined)
+// The private helpers a follow-up kept on the spike, placed at main's copy: "spikeFile#name" -> main path.
+const keptCopies = new Map()
+/** The top-level declarations of a main file, by name, as text (none when main has no such file). */
+function mainCopies(to) {
+  const file = path.join(mainDir, to)
+  const m = new Map()
+  if (!fs.existsSync(file)) return m
+  const sf = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.ES2022, true)
+  for (const s of sf.statements) for (const n of declared(s)) m.set(n, s.getText(sf))
+  return m
+}
 /** A lift's placements: its types and what main has already, then each entry's moves with the private helpers they need from the same file. */
-function place(cfg) {
+function place(cfg, prior) {
   for (const e of cfg.files) {
     const sf = program.getSourceFile(spikePath(e.from))
     if (!sf) throw new Error(`no spike file ${e.from}`)
     const exported = sf.statements.filter((s) => (ts.getCombinedModifierFlags(s.declarationList ? s.declarationList.declarations[0] : s) & ts.ModifierFlags.Export) || (s.modifiers || []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)).flatMap(declared)
     const moves = (e.moves === 'all' ? exported : e.moves).filter((n) => !(e.stays || []).includes(n))
-    for (const n of moves) if (!exported.includes(n) && !declared(sf.statements.find((s) => declared(s).includes(n)) ?? {}).length) throw new Error(`${e.from} has no ${n}`)
+    for (const n of moves) if (!exported.includes(n) && !declared(sf.statements.find((s) => declared(s).includes(n)) ?? {}).length) throw new Error(`${e.from} has no ${n}${prior ? ': the spike reads that lift from main already, so drop it from "after"' : ''}`)
     e._moves = moves
     e._sf = sf
   }
@@ -103,11 +122,18 @@ function place(cfg) {
   for (const e of cfg.files) {
     const want = new Set(e._moves.map((n) => `${e._sf.fileName}#${n}`))
     const stack = [...want]
+    const copies = mainCopies(e.to)
     while (stack.length) {
       const k = stack.pop()
       const d = decls.get(k)
       if (!d) throw new Error(`no declaration ${k}`)
       for (const u of uses(d.sf, d.s)) if (u.startsWith(e._sf.fileName + '#') && !want.has(u) && !placed.has(u)) {
+        const ud = decls.get(u)
+        if (ud && copies.get(ud.name) === ud.s.getText(ud.sf)) {
+          placed.set(u, e.to)
+          keptCopies.set(u, e.to)
+          continue
+        }
         want.add(u)
         stack.push(u)
       }
@@ -117,19 +143,21 @@ function place(cfg) {
   }
 }
 // An earlier lift (`after`) is on main already: what it placed counts as placed, and nothing of it is written again.
-for (const prior of config.after || []) place(JSON.parse(fs.readFileSync(path.join(path.dirname(configPath), prior), 'utf8')))
+for (const prior of config.after || []) place(JSON.parse(fs.readFileSync(path.join(path.dirname(configPath), prior), 'utf8')), true)
 place(config)
-// `LIFT_PLACEMENTS=<file>`: write this lift's placements for lift-reexport.cjs (the spike's follow-up).
+// `LIFT_PLACEMENTS=<file>`: write this lift's placements for lift-reexport.cjs (the spike's follow-up), with the kept copies it now takes.
 if (process.env.LIFT_PLACEMENTS) {
   const moved = {}
   for (const e of config.files) for (const k of e._want) moved[path.relative(root, k)] = { to: path.join(mainBase, e.to), type: !!(decls.get(k) && decls.get(k).type) }
+  for (const [k, to] of keptCopies) moved[path.relative(root, k)] = { to: path.join(mainBase, to), type: !!(decls.get(k) && decls.get(k).type) }
   for (const t of config.types || []) if (t.whole) for (const n of t.names) moved[path.relative(root, `${spikePath(t.from ?? 'gcTypes')}#${n}`)] = { to: path.join(mainBase, t.to), type: true }
   fs.writeFileSync(process.env.LIFT_PLACEMENTS, JSON.stringify(moved, null, 1))
 }
+if (keptCopies.size) console.log(`On main already, as the follow-up kept them: ${[...keptCopies.keys()].map((k) => path.relative(root, k)).join(', ')}`)
 
 // Everything a placed declaration uses must be placed too, or on main already.
 const missing = new Set()
-for (const e of config.files) for (const k of e._want) for (const u of uses(decls.get(k).sf, decls.get(k).s)) if (!placed.has(u)) missing.add(`${path.relative(root, k)} uses ${path.relative(root, u)}`)
+for (const e of config.files) for (const k of e._want) for (const u of uses(decls.get(k).sf, decls.get(k).s)) if (!placedAt(u)) missing.add(`${path.relative(root, k)} uses ${path.relative(root, u)}`)
 if (missing.size) {
   console.error(`Not placed (move it in an entry, add it to "existing", or place the type):\n  ${[...missing].join('\n  ')}`)
   process.exit(1)
@@ -160,7 +188,7 @@ for (const e of config.files) {
   const stmts = e._sf.statements.filter((s) => declared(s).some((n) => e._want.has(`${e._sf.fileName}#${n}`)))
   const imports = new Map() // target -> { values: Set, types: Set }
   for (const s of stmts) for (const u of uses(e._sf, s)) {
-    const to = placed.get(u)
+    const to = placedAt(u)
     if (!to || to === e.to) continue
     const d = decls.get(u)
     const name = u.split('#')[1]
@@ -190,7 +218,7 @@ for (const t of config.types || []) {
   const stmts = sf.statements.filter((s) => declared(s).some((n) => t.names.includes(n)))
   const uses_ = new Map()
   for (const s of stmts) for (const u of uses(sf, s)) {
-    const to = placed.get(u)
+    const to = placedAt(u)
     if (!to || to === t.to) continue
     if (!uses_.has(to)) uses_.set(to, new Set())
     uses_.get(to).add(u.split('#')[1])
@@ -219,7 +247,7 @@ for (const t of config.types || []) {
       // Whole, word for word: an alias, or a shape small enough to keep as it is.
       blocks.push(fullText(sf, s).replace(/^\n+/, ''))
       for (const u of uses(sf, s)) {
-        const to = placed.get(u)
+        const to = placedAt(u)
         if (!to) throw new Error(`${name} uses ${path.relative(root, u)}, which is not placed`)
         if (to === t.to) continue
         if (!usesOf.has(to)) usesOf.set(to, new Set())
@@ -235,7 +263,7 @@ for (const t of config.types || []) {
     const lead = sf.text.slice(s.getFullStart(), s.getStart()).replace(/^\s*\n/, '')
     blocks.push(`${lead}export interface ${s.name.text} {\n${members.map((m) => sf.text.slice(m.getFullStart(), m.getEnd()).replace(/^\n+/, '')).join('\n')}\n}`)
     for (const m of members) for (const u of uses(sf, m)) {
-      const to = placed.get(u)
+      const to = placedAt(u)
       if (!to) throw new Error(`${s.name.text}.${m.name.getText()} uses ${path.relative(root, u)}, which is not placed`)
       if (to === t.to) continue
       if (!usesOf.has(to)) usesOf.set(to, new Set())
@@ -310,7 +338,7 @@ for (const t of config.tests || []) {
             // A top-level declaration in another file (a field of one, like `state.projects`, is not).
             const top = topOf(d)
             const key = `${dsf.fileName}#${sym.getName()}`
-            const to = (config.standIns || {})[path.relative(root, dsf.fileName) + '#' + sym.getName()] ?? placed.get(key) ?? (config.outside || {})[path.relative(root, dsf.fileName)]
+            const to = (config.standIns || {})[path.relative(root, dsf.fileName) + '#' + sym.getName()] ?? placedAt(key) ?? (config.outside || {})[path.relative(root, dsf.fileName)]
             if (!to) {
               r.ok = false
               r.why.push(path.relative(root, key))

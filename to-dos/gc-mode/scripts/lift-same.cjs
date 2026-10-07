@@ -8,7 +8,9 @@
  *
  *   node to-dos/gc-mode/scripts/lift-same.cjs <lift.json> [spike ref, default origin/spike/gc-mode]
  *
- * It prints a table for the PR body, and exits 1 when anything differs.
+ * It prints a table for the PR body, and exits 1 when anything differs. A file a lift appends to (and
+ * `append` types) is compared on every declaration it shares with the spike's file: what an earlier
+ * lift moved, re-exported on the spike since its follow-up, is main's alone (the schedule's 1b-i).
  */
 const fs = require('fs')
 const path = require('path')
@@ -76,7 +78,8 @@ function check(mainRel, spikeRel, names) {
   const differ = []
   for (const s of main.statements) {
     for (const n of declared(s)) {
-      if (names && !names.includes(n)) continue
+      if (Array.isArray(names) && !names.includes(n)) continue
+      if (names === 'shared' && !sMap.has(n)) continue
       const o = sMap.get(n)
       if (!o) {
         differ.push(`${n} (not on the spike)`)
@@ -119,8 +122,8 @@ function checkTests(mainRel, spikeRel) {
   rows.push([mainRel, spikeRel, same, 0, differ.length, differ.join('; ')])
 }
 
-for (const e of config.files) check(path.join(mainBase, e.to), path.join(spikeDir, e.from + '.ts'), e.append ? e.moves : null)
-for (const t of config.types || []) check(path.join(mainBase, t.to), path.join(spikeDir, (t.from ?? 'gcTypes') + '.ts'), t.whole ? null : Object.keys(t.fields || {}))
+for (const e of config.files) check(path.join(mainBase, e.to), path.join(spikeDir, e.from + '.ts'), e.append ? 'shared' : null)
+for (const t of config.types || []) check(path.join(mainBase, t.to), path.join(spikeDir, (t.from ?? 'gcTypes') + '.ts'), t.whole ? (t.append ? 'shared' : null) : Object.keys(t.fields || {}))
 for (const t of config.tests || []) checkTests(path.join(mainBase, t.to), path.join(spikeDir, t.from))
 
 console.log(`Word for word against spike/gc-mode at ${spikeSha} (to-dos/gc-mode/scripts/lift-same.cjs):\n`)

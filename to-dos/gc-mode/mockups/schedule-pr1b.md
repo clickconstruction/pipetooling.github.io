@@ -2,7 +2,7 @@
 name: "The schedule's PR 1b: the rest of its kernels lifted to main"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 1b; BUILD_MAP.md, Helper 1's first row
 branch: the plan on spike/schedule-pr1b-plan (from origin/spike/gc-mode at a003a58e6); the code from origin/main once #4788 (1a) has merged and the spike reads main's copy
-status: plan 2026-10-07 by Helper 1; the lead's go the same day on the three picks (two PRs at the seam, `company.ts` with `name` and `shortName` only and a two-line comment that these are the prototype's words for our GC entity until the owner names it, the holds by way 3 in PR 9). Each PR claims its version when it is cut. 1b-i is cut from main after #4788 merges and the spike reads main's copy. The 55 that wait are recorded in SCHEDULE_REAL_BUILD.md's PR 9 and PR 11 lines and BUILD_MAP's B2, P, U2 and O2 rows.
+status: plan 2026-10-07 by Helper 1; the lead's go the same day on the three picks (two PRs at the seam, `company.ts` with `name` and `shortName` only and a two-line comment that these are the prototype's words for our GC entity until the owner names it, the holds by way 3 in PR 9). Each PR claims its version when it is cut. 1b-i was cut from main at 644c04128 once the spike read main's copy: #4792, v2.4777, 2026-10-07. The 55 that wait are recorded in SCHEDULE_REAL_BUILD.md's PR 9 and PR 11 lines and BUILD_MAP's B2, P, U2 and O2 rows.
 ---
 
 # The schedule's PR 1b: the rest of its kernels on main
@@ -12,6 +12,9 @@ status: plan 2026-10-07 by Helper 1; the lead's go the same day on the three pic
 This is the same trace as 1a, with 1a's 148 functions counted as on main. The config is
 `to-dos/gc-mode/scripts/schedule-pr1b.lift.json`. Its `after` names 1a's config, which
 `lift-extract.cjs` now reads: what an earlier lift placed counts as placed and is not written again.
+1b-i's own config, `schedule-pr1b-i.lift.json`, runs on the spike that reads 1a from main, so it has
+no `after`: what main has counts as placed where it is, and a helper the follow-up kept counts at
+main's copy.
 
 - **31 files** are traced: the rest of the schedule's kernels, and 1a's files with functions still on
   the spike. After 1a they hold **244** exported functions.
