@@ -363,8 +363,8 @@ Step 6 is cut in two. 6a, `gc_issue_plan_set` and the line-reach kernel `src/lib
 merged as v2.4757 (clickconstruction/pipetooling.github.io#4774, migration
 `20261007090000_gc_issue_plan_set`, applied; types in #4784). 6b, the new-plans window on real data
 (`GcNewPlans.tsx`, the draft kernel `planSetDraft.ts`, the Drive check before the issue, the guide
-`issue-a-new-set-of-plans`), is v2.4773 (clickconstruction/pipetooling.github.io#4789, renumbered from v2.4758 by the merge-conflict watcher), stacked behind
-the types PR. Step 9, the plans window on real data (`planSetReads.ts` folds a set's sheets and
+`issue-a-new-set-of-plans`), merged as v2.4773 (clickconstruction/pipetooling.github.io#4789, renumbered from v2.4758 by the
+merge-conflict watcher). Step 9, the plans window on real data (`planSetReads.ts` folds a set's sheets and
 specs from the set items; `GcPlansWindow.tsx` opens the Drive link, no stand-in drawings; guide
 `read-the-plans-of-a-gc-project`), is v2.4774 on the same stack. Step 8 is cut in two: 8a,
 v2.4775, is the record behind the window (migration `20261007130000_gc_plan_questions_rpcs`:
