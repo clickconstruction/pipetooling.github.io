@@ -7,6 +7,7 @@ import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
+import { GC_PROJECT_WORDS, gcProjectHref } from '../lib/gc/links'
 import {
   addInvoiceToStep as addInvoiceToStepRow,
   addPOToStep as addPOToStepRow,
@@ -71,6 +72,7 @@ export default function Workflow() {
     setError,
     lineItems,
     ensureWorkflow,
+    gcProjectId,
     loadProject,
     loadLineItemsForSteps,
     refreshSteps,
@@ -629,6 +631,25 @@ export default function Workflow() {
 
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+  // A GC project gets no plumbing workflow (v2.4846): say where it lives instead of making one.
+  if (gcProjectId) {
+    return (
+      <div className="workflow" style={{ maxWidth: 560 }}>
+        <Link to="/projects">{"\u2190"} Projects</Link>
+        <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
+          {project?.name && <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>{project.name}</div>}
+          <p style={{ margin: '0 0 0.25rem' }}>{GC_PROJECT_WORDS.workflowTitle}</p>
+          <p style={{ margin: '0 0 0.85rem', color: 'var(--text-muted)' }}>{GC_PROJECT_WORDS.workflowBody}</p>
+          <Link
+            to={gcProjectHref(gcProjectId)}
+            style={{ display: 'inline-block', padding: '0.45rem 0.9rem', borderRadius: 6, background: 'var(--text-violet-700)', color: 'white', fontWeight: 600, textDecoration: 'none' }}
+          >
+            {GC_PROJECT_WORDS.workflowButton}
+          </Link>
+        </div>
+      </div>
+    )
+  }
   if (!project || !workflow) return <p>Project or workflow not found.</p>
 
   return (
