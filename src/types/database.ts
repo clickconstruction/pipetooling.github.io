@@ -9021,6 +9021,79 @@ export type Database = {
           },
         ]
       }
+      gc_rough_schedules: {
+        Row: {
+          drawn_by: string | null
+          drawn_on: string
+          kept_at: string | null
+          kept_finish: string | null
+          kept_on: string | null
+          kept_weeks: number | null
+          project_id: string
+          stage_days: Json
+          start: string
+          template_id: string | null
+          template_lines: Json | null
+          template_name: string | null
+          template_used_on: string | null
+          updated_at: string
+        }
+        Insert: {
+          drawn_by?: string | null
+          drawn_on: string
+          kept_at?: string | null
+          kept_finish?: string | null
+          kept_on?: string | null
+          kept_weeks?: number | null
+          project_id: string
+          stage_days?: Json
+          start: string
+          template_id?: string | null
+          template_lines?: Json | null
+          template_name?: string | null
+          template_used_on?: string | null
+          updated_at?: string
+        }
+        Update: {
+          drawn_by?: string | null
+          drawn_on?: string
+          kept_at?: string | null
+          kept_finish?: string | null
+          kept_on?: string | null
+          kept_weeks?: number | null
+          project_id?: string
+          stage_days?: Json
+          start?: string
+          template_id?: string | null
+          template_lines?: Json | null
+          template_name?: string | null
+          template_used_on?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_rough_schedules_drawn_by_fkey"
+            columns: ["drawn_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_rough_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_rough_schedules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_schedule_activities: {
         Row: {
           actual_finish: string | null
@@ -9952,6 +10025,66 @@ export type Database = {
           },
         ]
       }
+      gc_schedule_templates: {
+        Row: {
+          aside_on: string | null
+          created_at: string
+          from_done_pct: number
+          from_name: string
+          from_project_id: string | null
+          id: string
+          lines: Json
+          name: string
+          saved_by: string | null
+          saved_on: string
+          stages: Json
+          weeks: number
+        }
+        Insert: {
+          aside_on?: string | null
+          created_at?: string
+          from_done_pct: number
+          from_name: string
+          from_project_id?: string | null
+          id?: string
+          lines: Json
+          name: string
+          saved_by?: string | null
+          saved_on: string
+          stages: Json
+          weeks: number
+        }
+        Update: {
+          aside_on?: string | null
+          created_at?: string
+          from_done_pct?: number
+          from_name?: string
+          from_project_id?: string | null
+          id?: string
+          lines?: Json
+          name?: string
+          saved_by?: string | null
+          saved_on?: string
+          stages?: Json
+          weeks?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_templates_from_project_id_fkey"
+            columns: ["from_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_templates_saved_by_fkey"
+            columns: ["saved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_schedule_wait_holds: {
         Row: {
           activity_id: string
@@ -10096,6 +10229,51 @@ export type Database = {
           },
         ]
       }
+      gc_schedule_what_ifs: {
+        Row: {
+          base: Json
+          base_version: number
+          copy: Json
+          made_on: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base: Json
+          base_version: number
+          copy: Json
+          made_on: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base?: Json
+          base_version?: number
+          copy?: Json
+          made_on?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_schedule_what_ifs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedules"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedule_what_ifs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_schedules: {
         Row: {
           drafted_by: string | null
@@ -10144,6 +10322,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "gc_projects"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_schedules_template_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "gc_schedule_templates"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "gc_schedules_updated_by_fkey"
@@ -15146,6 +15331,9 @@ export type Database = {
           handling_name: string
           held_overrides: Json
           id: string
+          narrative_md: string
+          narrative_updated_at: string | null
+          narrative_updated_by: string | null
           note_to_firm: string
           payer_key: string
           payer_name: string
@@ -15173,6 +15361,9 @@ export type Database = {
           handling_name?: string
           held_overrides?: Json
           id?: string
+          narrative_md?: string
+          narrative_updated_at?: string | null
+          narrative_updated_by?: string | null
           note_to_firm?: string
           payer_key: string
           payer_name?: string
@@ -15200,6 +15391,9 @@ export type Database = {
           handling_name?: string
           held_overrides?: Json
           id?: string
+          narrative_md?: string
+          narrative_updated_at?: string | null
+          narrative_updated_by?: string | null
           note_to_firm?: string
           payer_key?: string
           payer_name?: string
@@ -15236,6 +15430,13 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_narrative_updated_by_fkey"
+            columns: ["narrative_updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -27061,6 +27262,10 @@ export type Database = {
           p_old_firm_id: string
           p_phone?: string
         }
+        Returns: Json
+      }
+      legal_set_narrative: {
+        Args: { p_markdown: string; p_matter_id: string }
         Returns: Json
       }
       legal_set_settlement_floor: {
