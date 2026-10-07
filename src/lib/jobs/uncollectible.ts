@@ -37,10 +37,18 @@ export function uncollectibleDayWords(ymd: string): string {
   return `${MONTHS[Number(m[2]) - 1]} ${Number(m[3])}, ${m[1]}`
 }
 
-/** The stamp's third line: "Oct 6, 2026 · $7,502 given up on". */
+/** The stamp's last two lines (v2.4819, the owner): the day, then the dollars — "Oct 6, 2026" over "$7,502 given up on". */
+export function uncollectibleStampLines(facts: Pick<UncollectibleFacts, 'markedYmd' | 'open'>): { day: string; dollars: string } {
+  return {
+    day: facts.markedYmd ? uncollectibleDayWords(facts.markedYmd) : 'date unknown',
+    dollars: `${formatUsdNoCents(facts.open)} given up on`,
+  }
+}
+
+/** The same two lines as one, for a screen reader: "Oct 6, 2026 · $7,502 given up on". */
 export function uncollectibleStampLine(facts: Pick<UncollectibleFacts, 'markedYmd' | 'open'>): string {
-  const when = facts.markedYmd ? uncollectibleDayWords(facts.markedYmd) : 'date unknown'
-  return `${when} · ${formatUsdNoCents(facts.open)} given up on`
+  const { day, dollars } = uncollectibleStampLines(facts)
+  return `${day} · ${dollars}`
 }
 
 /** The phone card's second line: the reason in quotes, then the day. */
