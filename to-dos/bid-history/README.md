@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage built (v2.4861, migration 20261008070000) · left: PR 0b, and PRs 2–5 (the History view, Put back) after the owner's calls
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours built (v2.4864, migration 20261008071000) · left: PRs 2–5 (the History view, Put back) after the owner's calls
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -59,7 +59,10 @@ could look like?"
     (fixed in v2.4737, PR 0a: three columns on `bids`);
   - the Labor tab's load sync (`useBidPricingEngine.ts` ~685) deletes every hours row whose fixture
     name no longer matches a count row and mints book defaults in its place, so a re-import that
-    renames fixtures (the `[Group]` fix of v2.4188 changes names) wipes typed hours.
+    renames fixtures (the `[Group]` fix of v2.4188 changes names) wipes typed hours. Found while
+    building PR 0b (2026-10-07): labor rows belong to the bid but the sync reads the **active
+    version's** count rows, so switching to a version without a fixture deleted its typed hours too.
+    PR 0b (v2.4864) closes both.
 - The counts import itself only **appends** rows (`insertCountRows`, one row at a time); Clear all
   counts hard-deletes the version's rows and the cascade takes prices, assignments, takeoff lines,
   mappings, splits and submittal ticks with them. twin-mcp's `paste_counts` with `replace: true`
@@ -155,7 +158,9 @@ is the same loop over its rows and comes last.
    the org defaults still the fallback).
 2. The Labor sync keeps a typed hours row whose fixture was renamed: match on the count row's id
    when the row carries one, else by name; a row it would drop moves to an "unmatched" band with its
-   hours instead of being deleted.
+   hours instead of being deleted. (Built v2.4864: labor rows carry no count-row id, so the match is
+   by name, loosely through case, spacing and a `[Group] ` prefix; the band's rows live in their own
+   table so no total counts them.)
 3. Give `bid_count_row_custom_costs` its FK (`ON DELETE CASCADE`) and put it, the stage splits and
    the submittal ticks under the delete archive.
 
@@ -187,8 +192,8 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 | PR | What | Size |
 |---|---|---|
 | 0a | Cover Letter Inclusions / Exclusions / Terms saved per bid — **live v2.4737** (three columns on `bids`, in the ledger's list) | S |
-| 0b | Labor sync keeps typed hours through a rename; unmatched band | S |
-| 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) — **built v2.4861** (migration `20261008070000`, all three grouped under the bid) | XS (migration) |
+| 0b | Labor sync keeps typed hours through a rename; unmatched band — **built v2.4864** (migration `20261008071000`: `cost_estimate_labor_rows_unmatched`, the ledger's eighteenth table, three app tags; closes the version-switch loss too) | S |
+| 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) — **live v2.4861** (#4890, migration `20261008070000` pushed 2026-10-07, all three grouped under the bid) | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
 | 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **live v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left for PR 2's reader) | S |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
@@ -257,4 +262,6 @@ not pushed. What the build settled, beyond the decision above (the migration doc
 
 Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right loss gets fixed.
 
-**PR 0c built 2026-10-07 as v2.4861**: the archive trigger on the three tables, grouped under `bid_id`; the restore needed no change (tested on stubs: a removed count row, then the bid, then a full restore). Push `20261008070000` after it merges.
+**PR 0c built 2026-10-07 as v2.4861**: the archive trigger on the three tables, grouped under `bid_id`; the restore needed no change (tested on stubs: a removed count row, then the bid, then a full restore). Merged as #4890 and `20261008070000` pushed the same day.
+
+**PR 0b built 2026-10-07 as v2.4864**, directed by Punchlist: a pure plan (`laborSyncPlan.ts`) renames a row whose fixture changed only in case, spacing or a `[Group] ` prefix, sets aside a row no counted fixture claims in `cost_estimate_labor_rows_unmatched` (out of every total), and takes it back before the book when the fixture is counted again; a loose match never merges two fixtures. The Labor tab's *Hours not on the counts* band has Use for and Remove. Each step is tagged (`labor-rename`, `labor-park`, `labor-take-back`, `labor-use-parked`) and the table joined the ledger's list. Before the push the client deletes as before. Push `20261008071000` after it merges, then regenerate the types.

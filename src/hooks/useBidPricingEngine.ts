@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
+import { updateRefused } from '../lib/refusedWrite'
 import type { RoughLineDbRow } from '../lib/bids/takeoffOrderRounding'
 import { combinedMaterials } from '../lib/bids/bidMaterials'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
@@ -14,6 +15,7 @@ import { pickActiveVersion, deriveActivePricingId, coverLetterPricingTarget, res
 import { STAR_NOT_OWN_PRICE_MESSAGE, starWriteAllowed } from '../lib/bids/versionStar'
 import { IDLE_PRICING_RESOLVE, beginPricingResolve, settlePricingResolve, type PricingResolveState } from '../lib/bids/pricingResolve'
 import { shouldMintCostEstimateOnLoad } from '../lib/bids/laborTabLoadGate'
+import { laborHoursOf, planLaborSync } from '../lib/bids/laborSyncPlan'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
 import type { BidCountRow } from '../types/bids'
@@ -22,6 +24,7 @@ import type {
   MaterialTemplateWithAssemblyType,
   CostEstimate,
   CostEstimateLaborRow,
+  CostEstimateUnmatchedLaborRow,
   CostEstimateEquipmentRow,
   CostEstimatePermitRow,
   CostEstimateSubcontractorRow,
@@ -96,6 +99,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // --- Labor (cost estimate) ---
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null)
   const [costEstimateLaborRows, setCostEstimateLaborRows] = useState<CostEstimateLaborRow[]>([])
+  const [costEstimateUnmatchedLaborRows, setCostEstimateUnmatchedLaborRows] = useState<CostEstimateUnmatchedLaborRow[]>([])
   const [costEstimateCountRows, setCostEstimateCountRows] = useState<BidCountRow[]>([])
   const [costEstimateMaterialTotalRoughIn, setCostEstimateMaterialTotalRoughIn] = useState<number | null>(null)
   const [costEstimateMaterialTotalTopOut, setCostEstimateMaterialTotalTopOut] = useState<number | null>(null)
@@ -482,6 +486,44 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   /** What a minted labor row takes from the applied book (v2.3291): hours, how to read them, and where they came from. */
   type LaborMintDefault = FixtureLaborDefault & { unit?: LaborUnit; kind?: LaborEntryKind; source?: 'book' | 'alias'; source_note?: string | null }
 
+  /** The labor rows the sync set aside for an estimate, newest first; null when the table cannot be read (before its migration is pushed). */
+  async function loadUnmatchedLaborRows(estimateId: string): Promise<CostEstimateUnmatchedLaborRow[] | null> {
+    const { data, error } = await supabase
+      .from('cost_estimate_labor_rows_unmatched')
+      .select('*')
+      .eq('cost_estimate_id', estimateId)
+      .order('parked_at', { ascending: false })
+    if (error) return null
+    return (data as CostEstimateUnmatchedLaborRow[]) ?? []
+  }
+
+  /**
+   * Set a labor row aside: copy it to the unmatched table, then delete it. When the table cannot be
+   * read or written (the minutes between this client and its migration), the row is deleted as it
+   * was before bid history PR 0b; the ledger still keeps its old values.
+   */
+  async function parkLaborRow(row: CostEstimateLaborRow, canPark: boolean) {
+    if (canPark) {
+      const { data: parked, error: parkErr } = await withBidAction(supabase
+        .from('cost_estimate_labor_rows_unmatched')
+        .insert({ cost_estimate_id: row.cost_estimate_id, fixture: row.fixture, count: row.count, labor_row_id: row.id, ...laborHoursOf(row) })
+        .select('id')
+        .single(), BID_ACTIONS.laborPark)
+      if (!parkErr && parked) {
+        const { error: delErr } = await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', row.id), BID_ACTIONS.laborPark)
+        // The row stayed, so its copy goes: one place for the hours, never two.
+        if (delErr) await withBidAction(supabase.from('cost_estimate_labor_rows_unmatched').delete().eq('id', (parked as { id: string }).id), BID_ACTIONS.laborPark)
+        return
+      }
+    }
+    await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', row.id), BID_ACTIONS.laborSync)
+  }
+
+  /**
+   * The Labor tab's load sync (bid history PR 0b, `laborSyncPlan.ts`): a counted fixture with no row
+   * takes back its parked row, or a live row renamed only in case, spacing or a group prefix, before
+   * the book is asked; a row no counted fixture claims is set aside, not deleted.
+   */
   async function loadCostEstimateLaborRowsAndSync(estimateId: string, countRows: BidCountRow[], defaults: LaborMintDefault[]) {
     const { data: laborData, error: laborErr } = await supabase
       .from('cost_estimate_labor_rows')
@@ -491,76 +533,93 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     if (laborErr) {
       setError(`Failed to load labor rows: ${laborErr.message}`)
       setCostEstimateLaborRows([])
+      setCostEstimateUnmatchedLaborRows([])
       return
     }
-    let rows = (laborData as CostEstimateLaborRow[]) ?? []
-    // Labor rows are keyed by fixture NAME. Since v2.4188 one name may sit on two count
-    // rows (the base bid and an alternate group), so the counts SUM onto the one labor
-    // row instead of the last one winning; the alternates train splits them per row later.
-    const countByFixture = new Map<string, number>()
-    for (const r of countRows) countByFixture.set(r.fixture ?? '', (countByFixture.get(r.fixture ?? '') ?? 0) + Number(r.count))
-    const fixtureSet = new Set(countRows.map((r) => r.fixture ?? ''))
-    const maxSeq = rows.length === 0 ? 0 : Math.max(...rows.map((r) => r.sequence_order))
-    let seq = maxSeq
-    const firstByFixture = countRows.filter((cr, i) => countRows.findIndex((o) => (o.fixture ?? '') === (cr.fixture ?? '')) === i)
-    for (const cr of firstByFixture) {
-      const existing = rows.find((l) => (l.fixture ?? '') === (cr.fixture ?? ''))
-      const countVal = countByFixture.get(cr.fixture ?? '') ?? Number(cr.count)
-      if (!existing) {
-        const def = defaults.find((d) => d.fixture.toLowerCase() === (cr.fixture ?? '').toLowerCase())
-        // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
-        let hours = { rough_in_hrs: 0, top_out_hrs: 0, trim_set_hrs: 0 }
-        // How the row reads and where its hours came from (v2.3291); a zero row says nothing.
-        let reading: { unit: LaborUnit; kind: 'fixture' | 'task'; source: 'book' | 'alias' | null; source_note: string | null } = { unit: 'each', kind: 'fixture', source: null, source_note: null }
-        if (def) {
-          hours = { rough_in_hrs: def.rough_in_hrs, top_out_hrs: def.top_out_hrs, trim_set_hrs: def.trim_set_hrs }
-          reading = { unit: def.unit ?? 'each', kind: def.kind ?? 'fixture', source: def.source ?? 'book', source_note: def.source_note ?? null }
-        } else {
-          // Load from fixture_labor_defaults as fallback
-          const { data: fallbackData } = await supabase
-            .from('fixture_labor_defaults')
-            .select('*')
-            .ilike('fixture', cr.fixture ?? '')
-            .limit(1)
-            .maybeSingle()
-          if (fallbackData) {
-            hours = { 
-              rough_in_hrs: Number(fallbackData.rough_in_hrs), 
-              top_out_hrs: Number(fallbackData.top_out_hrs), 
-              trim_set_hrs: Number(fallbackData.trim_set_hrs) 
-            }
-            reading = { unit: 'each', kind: 'fixture', source: 'book', source_note: 'fixture defaults' }
-          }
-        }
-        const hasHours = hours.rough_in_hrs > 0 || hours.top_out_hrs > 0 || hours.trim_set_hrs > 0
+    const rows = (laborData as CostEstimateLaborRow[]) ?? []
+    const parked = await loadUnmatchedLaborRows(estimateId)
+    // Labor rows are keyed by fixture NAME. Since v2.4188 one name may sit on two count rows (the
+    // base bid and an alternate group), so the plan sums their counts onto the one labor row.
+    const plan = planLaborSync({ countRows, laborRows: rows, parkedRows: parked ?? [] })
 
-        // The sync's writes are the app's own, not the viewer's (bid history, PR 1b).
-        const { data: inserted, error: insErr } = await withBidAction(supabase
-          .from('cost_estimate_labor_rows')
-          .insert({
-            cost_estimate_id: estimateId,
-            fixture: cr.fixture ?? '',
-            count: countVal,
-            rough_in_hrs_per_unit: hours.rough_in_hrs,
-            top_out_hrs_per_unit: hours.top_out_hrs,
-            trim_set_hrs_per_unit: hours.trim_set_hrs,
-            sequence_order: ++seq,
-            is_fixed: reading.kind === 'task',
-            kind: reading.kind,
-            unit: reading.unit,
-            source: hasHours ? reading.source : null,
-            source_note: hasHours ? reading.source_note : null,
-          })
-          .select('*')
-          .single(), BID_ACTIONS.laborSync)
-        if (!insErr && inserted) rows = [...rows, inserted as CostEstimateLaborRow]
-      } else if (Number(existing.count) !== countVal) {
-        await withBidAction(supabase.from('cost_estimate_labor_rows').update({ count: countVal }).eq('id', existing.id), BID_ACTIONS.laborSync)
-      }
+    // The sync's writes are the app's own, not the viewer's (bid history, PR 1b), each tagged with what it did.
+    for (const r of plan.renames) {
+      await withBidAction(supabase.from('cost_estimate_labor_rows').update({ fixture: r.fixture, count: r.count }).eq('id', r.id), BID_ACTIONS.laborRename)
     }
-    const toDelete = rows.filter((r) => !fixtureSet.has(r.fixture ?? ''))
-    for (const r of toDelete) {
-      await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', r.id), BID_ACTIONS.laborSync)
+    for (const p of plan.parks) {
+      const row = rows.find((l) => l.id === p.id)
+      if (row) await parkLaborRow(row, parked != null)
+    }
+
+    // Rows to add, in count-row order: a parked row taken back, else the book's hours.
+    const countOrder = new Map<string, number>()
+    countRows.forEach((r, i) => { if (!countOrder.has(r.fixture ?? '')) countOrder.set(r.fixture ?? '', i) })
+    const adds = [
+      ...plan.takeBacks.map((t) => ({ fixture: t.fixture, count: t.count, parkedId: t.parkedId as string | null })),
+      ...plan.mints.map((m) => ({ fixture: m.fixture, count: m.count, parkedId: null as string | null })),
+    ].sort((a, b) => (countOrder.get(a.fixture) ?? 0) - (countOrder.get(b.fixture) ?? 0))
+    let seq = rows.length === 0 ? 0 : Math.max(...rows.map((r) => r.sequence_order))
+    for (const add of adds) {
+      const p = add.parkedId ? parked?.find((x) => x.id === add.parkedId) : undefined
+      if (p) {
+        const { data: back, error: backErr } = await withBidAction(supabase
+          .from('cost_estimate_labor_rows')
+          .insert({ cost_estimate_id: estimateId, fixture: add.fixture, count: add.count, sequence_order: ++seq, ...laborHoursOf(p) })
+          .select('id')
+          .single(), BID_ACTIONS.laborTakeBack)
+        if (!backErr && back) {
+          await withBidAction(supabase.from('cost_estimate_labor_rows_unmatched').delete().eq('id', p.id), BID_ACTIONS.laborTakeBack)
+          continue
+        }
+      }
+      const def = defaults.find((d) => d.fixture.toLowerCase() === add.fixture.toLowerCase())
+      // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
+      let hours = { rough_in_hrs: 0, top_out_hrs: 0, trim_set_hrs: 0 }
+      // How the row reads and where its hours came from (v2.3291); a zero row says nothing.
+      let reading: { unit: LaborUnit; kind: 'fixture' | 'task'; source: 'book' | 'alias' | null; source_note: string | null } = { unit: 'each', kind: 'fixture', source: null, source_note: null }
+      if (def) {
+        hours = { rough_in_hrs: def.rough_in_hrs, top_out_hrs: def.top_out_hrs, trim_set_hrs: def.trim_set_hrs }
+        reading = { unit: def.unit ?? 'each', kind: def.kind ?? 'fixture', source: def.source ?? 'book', source_note: def.source_note ?? null }
+      } else {
+        // Load from fixture_labor_defaults as fallback
+        const { data: fallbackData } = await supabase
+          .from('fixture_labor_defaults')
+          .select('*')
+          .ilike('fixture', add.fixture)
+          .limit(1)
+          .maybeSingle()
+        if (fallbackData) {
+          hours = {
+            rough_in_hrs: Number(fallbackData.rough_in_hrs),
+            top_out_hrs: Number(fallbackData.top_out_hrs),
+            trim_set_hrs: Number(fallbackData.trim_set_hrs)
+          }
+          reading = { unit: 'each', kind: 'fixture', source: 'book', source_note: 'fixture defaults' }
+        }
+      }
+      const hasHours = hours.rough_in_hrs > 0 || hours.top_out_hrs > 0 || hours.trim_set_hrs > 0
+
+      await withBidAction(supabase
+        .from('cost_estimate_labor_rows')
+        .insert({
+          cost_estimate_id: estimateId,
+          fixture: add.fixture,
+          count: add.count,
+          rough_in_hrs_per_unit: hours.rough_in_hrs,
+          top_out_hrs_per_unit: hours.top_out_hrs,
+          trim_set_hrs_per_unit: hours.trim_set_hrs,
+          sequence_order: ++seq,
+          is_fixed: reading.kind === 'task',
+          kind: reading.kind,
+          unit: reading.unit,
+          source: hasHours ? reading.source : null,
+          source_note: hasHours ? reading.source_note : null,
+        })
+        .select('*')
+        .single(), BID_ACTIONS.laborSync)
+    }
+    for (const u of plan.countUpdates) {
+      await withBidAction(supabase.from('cost_estimate_labor_rows').update({ count: u.count }).eq('id', u.id), BID_ACTIONS.laborSync)
     }
     const { data: refetched } = await supabase
       .from('cost_estimate_labor_rows')
@@ -568,6 +627,48 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       .eq('cost_estimate_id', estimateId)
       .order('sequence_order', { ascending: true })
     setCostEstimateLaborRows((refetched as CostEstimateLaborRow[]) ?? [])
+    // Read the set-aside rows again only when this sync moved some; otherwise the first read stands.
+    const movedAside = parked != null && (plan.parks.length > 0 || plan.takeBacks.length > 0)
+    setCostEstimateUnmatchedLaborRows((movedAside ? await loadUnmatchedLaborRows(estimateId) : parked) ?? [])
+  }
+
+  /** The Labor tab's band: Use for <fixture> puts a set-aside row's hours on a counted row, and the set-aside row goes. */
+  async function applyUnmatchedLaborRow(parkedId: string, laborRowId: string): Promise<boolean> {
+    const p = costEstimateUnmatchedLaborRows.find((r) => r.id === parkedId)
+    if (!p) return false
+    const hours = laborHoursOf(p)
+    const { data: used, error: useErr } = await withBidAction(supabase
+      .from('cost_estimate_labor_rows')
+      .update(hours)
+      .eq('id', laborRowId)
+      .select('id'), BID_ACTIONS.laborUseParked)
+    if (useErr || updateRefused(used, 'cost_estimate_labor_rows')) {
+      setError(useErr ? `Could not use those hours: ${useErr.message}` : BID_UPDATE_NOT_APPLIED_MESSAGE)
+      return false
+    }
+    setCostEstimateLaborRows((prev) => prev.map((r) => (r.id === laborRowId ? { ...r, ...hours } : r)))
+    const { data: gone, error: goneErr } = await withBidAction(supabase
+      .from('cost_estimate_labor_rows_unmatched')
+      .delete()
+      .eq('id', parkedId)
+      .select('id'), BID_ACTIONS.laborUseParked)
+    if (!goneErr && !updateRefused(gone, 'cost_estimate_labor_rows_unmatched', 'delete')) setCostEstimateUnmatchedLaborRows((prev) => prev.filter((r) => r.id !== parkedId))
+    return true
+  }
+
+  /** The Labor tab's band: Remove lets a set-aside row go (the ledger and Recently deleted keep it). */
+  async function removeUnmatchedLaborRow(parkedId: string): Promise<boolean> {
+    const { data: gone, error } = await supabase
+      .from('cost_estimate_labor_rows_unmatched')
+      .delete()
+      .eq('id', parkedId)
+      .select('id')
+    if (error || updateRefused(gone, 'cost_estimate_labor_rows_unmatched', 'delete')) {
+      setError(error ? `Could not remove those hours: ${error.message}` : BID_UPDATE_NOT_APPLIED_MESSAGE)
+      return false
+    }
+    setCostEstimateUnmatchedLaborRows((prev) => prev.filter((r) => r.id !== parkedId))
+    return true
   }
 
   async function ensureCostEstimateForBid(bidId: string): Promise<CostEstimate | null> {
@@ -616,11 +717,13 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     const countRows = await loadCostEstimateCountRows(bidId)
     if (countRows == null) {
       setCostEstimateLaborRows([])
+      setCostEstimateUnmatchedLaborRows([])
       settleCostEstimateLoad(bidId, false)
       return
     }
     if (!shouldMintCostEstimateOnLoad({ rowCount: countRows.length })) {
       setCostEstimateLaborRows([])
+      setCostEstimateUnmatchedLaborRows([])
       await loadCostEstimate(bidId)
       settleCostEstimateLoad(bidId, true)
       return
@@ -1422,6 +1525,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setCostEstimate,
     costEstimateLaborRows,
     setCostEstimateLaborRows,
+    costEstimateUnmatchedLaborRows,
+    setCostEstimateUnmatchedLaborRows,
+    applyUnmatchedLaborRow,
+    removeUnmatchedLaborRow,
     costEstimateCountRows,
     setCostEstimateCountRows,
     costEstimateFixtureMaterials,

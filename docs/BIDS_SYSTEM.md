@@ -727,12 +727,14 @@ UNIQUE (version_id, fixture_type_id)
 
 **Labor Rate**: Single editable field ($/hour), applies to all hours
 
-**Sync with Counts**:
-- When count rows are added/removed, labor table automatically updates
-- **New labor rows** get hours from:
+**Sync with Counts** (on every Labor load, against the active version's count rows; kernel [`laborSyncPlan.ts`](../src/lib/bids/laborSyncPlan.ts)):
+- A counted fixture with no labor row of its own takes, in order: its set-aside row of the same name; a live row whose name differs only in case, spacing or a `[Group] ` prefix (renamed in place, hours kept); a set-aside row matched the same loose way. A loose match never guesses: two fixtures, rows or set-aside rows on one key are left alone.
+- Otherwise a **new labor row** gets hours from:
   1. Selected labor book (if fixture matches)
   2. `fixture_labor_defaults` table (system defaults)
   3. Zero (if no match found)
+- A labor row no counted fixture claims (a version switch, a renamed or removed fixture) is **set aside** in `cost_estimate_labor_rows_unmatched`, out of every total, and listed under the grid as **Hours not on the counts** with **Use for <fixture>** and **Remove** (v2.4864, bid history PR 0b). Before v2.4864 the sync deleted it and typed hours were lost.
+- Each write carries its `x-bid-action` tag (`labor-sync`, `labor-rename`, `labor-park`, `labor-take-back`; Use for is `labor-use-parked`), so the bid's history reads what the sync did.
 
 #### Apply Labor Book Hours
 
@@ -1862,6 +1864,11 @@ cost_estimate_labor_rows:
   trim_set_hrs (numeric(10,2), default 0)
   sequence_order (integer)
   created_at (timestamptz)
+
+cost_estimate_labor_rows_unmatched:   -- v2.4864: rows the Labor sync set aside, out of every total
+  id, cost_estimate_id (FK → cost_estimates ON DELETE CASCADE), fixture, count,
+  the three hours, is_fixed, kind, unit, source, source_note (as the labor row had them),
+  labor_row_id (the row it came from, no FK), parked_at
 ```
 
 ### Takeoff Book Tables
