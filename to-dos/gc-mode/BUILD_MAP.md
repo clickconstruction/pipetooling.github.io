@@ -12,8 +12,8 @@ list of what is reused, never rebuilt.
 
 | Lane | On main | In flight |
 |---|---|---|
-| New project | Kernels (PR 1, 1b), the tables (PR 2, 3), `gc_create_project` and the window (4a, 4b), the scope book page (4b-second), `gc_issue_plan_set` (6a). | Drive (step 5, #4776 in the queue); 6b merged (v2.4773, #4789); 9, 8a, 8b on one stack behind it; step 7 waits on the company record. |
-| Schedule | PR 1a, the kernels lifted word for word (v2.4772, #4788); the spike reads them from main. | Helper 1 is building 1b-i and 1b-ii (the rest of the kernels). |
+| New project | Kernels (PR 1, 1b), the tables (PR 2, 3), `gc_create_project` and the window (4a, 4b), the scope book page (4b-second), `gc_issue_plan_set` (6a). | Drive (step 5, #4776 in the queue); 6b (v2.4773, #4789), 9 (v2.4774, #4791) and 8a (v2.4779, #4794, migration applied) merged; 8b (v2.4780) waits on the types PR #4809; step 7 waits on the company record. |
+| Schedule | PRs 1a, 1b-i and 1b-ii: every kernel lifted word for word (v2.4772 #4788, v2.4777 #4792, v2.4781 #4796); the spike reads them from main. | Helper 1 is cutting PR 2 (the tables) from its reviewed plan. |
 | Board | Nothing (the prototype only). | |
 | Portal | Nothing. | |
 | Building | Nothing. | |
