@@ -23,6 +23,11 @@ export type LegalFirmRow = {
   contingency_pct: number
   filing_cost: number
   active: boolean
+  /** The firm's answers to Start here (v2.4821, `_shared/legalFirmIntake.ts`); absent before the migration. */
+  intake?: unknown
+  intake_sent_at?: string | null
+  intake_sent_by?: string
+  intake_seen_at?: string | null
 }
 
 export type LegalMatterRow = {

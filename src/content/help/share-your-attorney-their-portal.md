@@ -20,13 +20,17 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 
 ## Start here and the tour
 
-The firm's first visit opens on **Start here**. It is a short intake in four steps. A rail across the top says which step the firm is on. Every step has a link to Matters.
+The firm's first visit opens on **Start here**. It is a short intake in five steps. A rail across the top says which step the firm is on. Every step has a link to Matters.
 
 - **Step 1** names us and gives live figures. It counts the jobs on the lien grid, their counties, their balances and what is due in 30 days. It also counts the matters with the firm.
 - **Step 2** says what comes with each matter. Lien rights are kept, notices go out on time and the evidence is gathered.
 - **Step 3** says how we work with the firm. It states the firm's fee and filing cost, as set on Settings → Jobs & billing. It names the courts and the settlement rule.
 - Step 3 also links to the Texas lien rules the app follows. The rules open on the portal with no sign-in.
-- **Step 4** starts the tour.
+- **Step 4** asks the firm five questions. What else it wants with each matter, and where it prefers to file. Whether it e-files and serves papers through the constable. Whether it signs off our lien rules.
+- The firm names who is answering and presses {{button:blue|Send to Click}}. It can change an answer and send again. Until someone answers, Matters carries one quiet line that points back to the questions.
+- **Step 5** starts the tour.
+
+When the answers come in, the firm's name on the Legal desk wears a dot. Open the firm's window to read them. Each question shows with its answer, and who sent them and when. Opening the window marks them read.
 
 The tour opens each part of the portal and rings it. A strip at the bottom says the stop number and what the part is for. {{button:outline|‹ Back}} and {{button:blue|Next ›}} walk it. Esc or × ends it. After the first visit the portal opens on Matters. Start here stays as the first tab.
 

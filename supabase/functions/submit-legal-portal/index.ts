@@ -13,6 +13,7 @@ import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
 import { matterOpenBalance, SETTLEMENT_ASK_FLAVOR, settlementBelowFloor, settlementFloorDollars, settlementFloorOf } from '../_shared/legalSettlement.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
+import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
 
 /**
  * The firm's acts on its portal (Legal portal train, PR 4): one POST endpoint,
@@ -27,6 +28,8 @@ import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOn
  *                         the office (_shared/legalStages.ts firmStepDecision).
  *   question            — free text for the office
  *   payment_received    — money the firm received; the office applies it to the job
+ *   intake              — the firm's answers to Start here's questions (v2.4821): one write to the
+ *                         firm's own row (legal_firms.intake, _sent_at, _sent_by), no matter, no entry
  *
  * Every act is one legal_matter_entries row with via_portal = true and
  * acknowledged_at NULL — the office's Needs You reads exactly those. The firm
@@ -87,7 +90,7 @@ serve(async (req) => {
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
-    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
+    if (![...RECIPIENT_KINDS, 'intake', 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     // The guess gate (v2.4756): wrong keys are counted by caller; ten in an hour and the caller is refused.
@@ -97,6 +100,14 @@ serve(async (req) => {
     if (!link) {
       await askGuessGate(admin, ip, true)
       return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    }
+
+    // --- The firm's answers to Start here (v2.4821) -------------------------
+    if (kind === 'intake') {
+      const by = str(body.by, 120)
+      if (!by) return jsonResponse({ error: 'Say who at the firm is answering.' }, 400)
+      const { error } = await admin.from('legal_firms').update({ intake: shapeLegalFirmIntake(body.answers), intake_sent_at: new Date().toISOString(), intake_sent_by: by }).eq('id', link.firm_id)
+      return error ? jsonResponse({ error: 'Could not send your answers. Please try again.' }, 500) : jsonResponse({ ok: true })
     }
 
     // --- The firm's people and their email rules (PR 5) ---------------------

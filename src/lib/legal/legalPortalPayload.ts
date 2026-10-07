@@ -8,6 +8,7 @@
  * many were. `sharedOverrides` marks every entry that arrived as shared, so a
  * page still on the old default rule shows them too.
  */
+import { shapeLegalFirmIntake, type LegalFirmIntake } from './legalFirmIntake'
 import { parseLegalPortalDocuments, type LegalPortalDocument } from './legalMatterDocuments'
 import { parseLegalNarrative, type LegalNarrative } from './legalNarrative'
 import { emptyOfficeContacts, type LegalOfficeContacts } from './legalOfficeContacts'
@@ -78,6 +79,9 @@ export type LegalPortalPulledMatter = { id: string; payerName: string; pulledAt:
 
 export type LegalPortalParticulars = { entity?: string; license?: string; agent?: string; custodian?: string; affiant?: string; phone?: string; email?: string; w9?: string }
 
+/** The firm's answers to Start here as the portal holds them (v2.4821). */
+export type LegalPortalIntake = { answers: LegalFirmIntake; sentAt: string | null; sentBy: string }
+
 export type LegalPortalPayload = {
   company: { name: string; cityLine?: string; phone?: string; email?: string }
   preparedOn: string
@@ -85,6 +89,8 @@ export type LegalPortalPayload = {
   particulars: LegalPortalParticulars
   /** Who the firm calls (v2.4755); from an older function, the letterhead's number alone. */
   officeContacts: LegalOfficeContacts
+  /** The firm's answers to Start here (v2.4821); undefined from a function that cannot take them yet. */
+  intake?: LegalPortalIntake
   recipients: LegalPortalRecipient[]
   firmPaused: boolean
   matters: LegalPortalMatter[]
@@ -147,6 +153,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
     firm: firm as unknown as LegalFirmRow,
     particulars: isRecord(raw.particulars) ? (raw.particulars as LegalPortalParticulars) : {},
     officeContacts: parseOfficeContacts(raw.officeContacts, isRecord(raw.company) && typeof raw.company.phone === 'string' ? raw.company.phone : ''),
+    ...(isRecord(raw.intake) ? { intake: { answers: shapeLegalFirmIntake(raw.intake.answers), sentAt: typeof raw.intake.sentAt === 'string' ? raw.intake.sentAt : null, sentBy: typeof raw.intake.sentBy === 'string' ? raw.intake.sentBy : '' } } : {}),
     recipients: Array.isArray(raw.recipients)
       ? (raw.recipients as unknown[]).filter(isRecord).map((r): LegalPortalRecipient => ({ id: String(r.id ?? ''), name: String(r.name ?? ''), email: String(r.email ?? ''), role: String(r.role ?? ''), mode: r.mode === 'digest' ? 'digest' : 'now', scope: r.scope === 'mine' ? 'mine' : 'all', digestWeekday: Number(r.digestWeekday) || 1, digestTime: typeof r.digestTime === 'string' ? r.digestTime : '07:00', confirmed: Boolean(r.confirmed), paused: Boolean(r.paused), addedViaPortal: Boolean(r.addedViaPortal), failingSince: typeof r.failingSince === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.failingSince) ? r.failingSince : null }))
       : [],

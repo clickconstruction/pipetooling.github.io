@@ -12,9 +12,14 @@ import { JUSTICE_COURT_LIMIT } from '../jobsDocuments/demandLetter'
  * app's plain-words rule (`plainWords.ts`), which the tests hold.
  */
 
-/** The steps of Start here, in order. */
-export const START_STOPS = ['company', 'matter', 'work', 'portal'] as const
+/** The steps of Start here, in order. `answers` (v2.4821) shows only when the portal can take the firm's answers. */
+export const START_STOPS = ['company', 'matter', 'work', 'answers', 'portal'] as const
 export type StartStop = (typeof START_STOPS)[number]
+
+/** The steps this portal shows: the answers step only when the function sends `intake`. */
+export function startStops(canAnswer: boolean): StartStop[] {
+  return START_STOPS.filter((s) => s !== 'answers' || canAnswer)
+}
 
 /** `Click Plumbing and Electrical` → `Click`; the office's own short name in every sentence. */
 export function companyShortName(name: string): string {
@@ -31,6 +36,8 @@ export function startStopLabel(stop: StartStop, short: string): string {
       return 'Each matter'
     case 'work':
       return 'How we work'
+    case 'answers':
+      return 'Your answers'
     default:
       return 'The portal'
   }
@@ -223,4 +230,9 @@ export function markStartSeen(): void {
   } catch {
     /* a private window: Start here opens first again next time */
   }
+}
+
+/** The quiet line on Matters until someone at the firm answers (v2.4821). */
+export function intakeNudgeWords(short: string): string {
+  return `${short} asked five quick questions.`
 }
