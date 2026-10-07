@@ -13,6 +13,9 @@ export const WRITE_VERBS = {
   revert_cost_batch: { rpc: 'cost_batch_revert', step: 'revert' },
   plan_hr_entry: { rpc: 'dev_hr_entry_write', step: 'plan' },
   apply_hr_entry: { rpc: 'dev_hr_entry_write', step: 'apply' },
+  // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative).
+  plan_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'plan' },
+  apply_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -24,7 +27,7 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : null
 }
 
 type Json = Record<string, unknown>
@@ -61,6 +64,15 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     const label = typeof batch.label === 'string' ? batch.label.trim() : ''
     return { ok: true, rpc, step, body: { p: batch, p_dry_run: step === 'plan' }, dryRunBody: { p: batch, p_dry_run: true }, target: label || null, planHash }
+  }
+  if (verb === 'plan_matter_narrative' || verb === 'apply_matter_narrative') {
+    const narrative = obj(input.narrative)
+    const matterId = narrative && typeof narrative.matter_id === 'string' ? narrative.matter_id.trim() : ''
+    if (!narrative || !UUID_RE.test(matterId) || typeof narrative.markdown !== 'string') {
+      return { ok: false, error: `${verb} needs narrative — { matter_id (a legal_matters.id: read_rows on legal_matters by payer_name), markdown } — the whole text, which replaces what is there. An empty markdown clears it.` }
+    }
+    const p = { matter_id: matterId, markdown: narrative.markdown }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
@@ -112,7 +124,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -128,8 +140,9 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
 export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; at: string | null }): string {
   const when = prior.at ? ` at ${prior.at}` : ''
   const cost = verb === 'apply_cost_batch'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const narrative = verb === 'apply_matter_narrative'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative ? `on this matter${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 
