@@ -141,8 +141,10 @@ Each has a default the plan is written to. The owner changes any of them by sayi
    reducer's actions, so it cannot move to main. *Default:* its five rules become SQL. Each Building
    write that keeps a promise (a log with the trade on site, the last submittal the trade owed, a
    pay application sent again, the last punch item fixed, the closeout papers in) marks it kept in
-   the same transaction, through a helper the Board ships with its promise table (B2's
-   `gc_trade_promises`). Until B2 lands, nothing is kept by itself and the office presses *It came*.
+   the same transaction, through the Board's helper in B1 (Helper 2, 2026-10-07):
+   `gc_keep_promises(p_company_id, p_kind, p_project_id, p_package_id, p_on)` marks kept the open
+   promise of that kind, company, job and trade, and does nothing when none is open. The Board's own
+   `promisesKeptBy` and `keepPromisesOn` stay on the spike for the same reason.
    The rest of `gcBuildingPromises` (the starts to ask about, the papers owed) moves in U2.
 10. **Who hears what, by email only, through Resend** (question 29). *Default:*
     - **The architect** gets a submittal and an RFI by email from one new function,
@@ -572,6 +574,7 @@ and checked against `main` at 70854eb04. The seams were agreed the same evening:
 - **Portal** (Helper 3): back-charges are P4's; each trade write is Building's
   `gc_trade_<verb>` function called by the Portal's submit function; the portal maps one company's
   slice into the kernels' shape.
+- **Board, later:** the promise helper is `gc_keep_promises` in B1, called inside Building's writes.
 - **Owner Billing** (Helper 5): `gc_change_orders`; the RFI keeps the change order's link; the
   trade's side of a change is U6's; O2 lifts `payAppFile.ts`'s pure half and O4 its writers.
 
