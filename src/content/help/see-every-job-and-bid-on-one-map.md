@@ -2,7 +2,7 @@
 title: see every job and bid on one map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out, cluster, status colors, working, waiting, billed, collections, paid, lost, rail, nearest, distance, places, one pin per address
+keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, no address, could not be found, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out, cluster, status colors, working, waiting, billed, collections, paid, lost, rail, nearest, distance, places, one pin per address
 ---
 The Map page plots every job, bid and estimate that has an address. It is the whole company on one map. The Bid Board and the Pipeline each have a map of their own list. This page has everything at once.
 
@@ -81,9 +81,15 @@ On a phone the rail sits under the map.
 
 Pick the polygon tool at the top left of the map. Click along the edge of an area. Click the first point again to close the shape. The map and the rail then show only the pins inside the shape. Press {{button:outline|Clear draw}} to remove the shape.
 
-## A pin far from the office
+## Records the map cannot place
 
-A pin more than 300 miles from the office is a far job or a wrong address. The map still draws it but never frames it. A line under the map lists each such address with its distance and its count of records. Press **Show** to fly the map to it. An address with one record also has **Open**, so you can check the address on the record.
+A line under the map counts the records with no map location. It also counts the addresses far from the office. Click it to open the sheet. The sheet has three parts.
+
+- **No address** lists each record with no address, or with a stub like a dot. Click the record to open it and type the site address.
+- **Could not be found** lists each address the geocoder has no match for, with its reason. Press **Check on Google Maps** to see the spelling. Then fix it on the record.
+- **Far from the office** lists each address more than 300 miles out, with its count and miles. It is a far job or a wrong address. The map draws these pins but never frames them. Press **Show on the map** to fly there. The office can press **Re-check with Google** to ask Google again.
+
+While the geocoder is still working, the line reads **Placing 4 addresses…** instead.
 
 ## Court areas
 

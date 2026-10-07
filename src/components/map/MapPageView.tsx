@@ -17,7 +17,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css'
 import '@geoman-io/leaflet-geoman-free'
-import { useMapPageData, type GeocodeAddressRow, type MapPageEntity } from '../../hooks/useMapPageData'
+import { useMapPageData, type MapPageEntity } from '../../hooks/useMapPageData'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { MapGeocodeReviewModal } from './MapGeocodeReviewModal'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -66,7 +66,9 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
 // The shared pins canvas (v2.4796): the Dashboard, Bid Board, Pipeline and clocked-in maps draw on it too.
 const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
-import { farFromOfficeLine, farFromOfficePlaces, farMilesWords, farPlaceCountWords, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
+import { farFromOfficePlaces, mapPageFitAllPoints, mapPageHomeFitPoints, splitFarFromOffice } from '../../lib/map/mapPageFirstView'
+import { farShortLine, mapPageNotFound, unplacedLine } from '../../lib/map/mapPageUnplaced'
+import { MapAddressSheet, type OpenableRecord } from './MapAddressSheet'
 
 const openLinkLikeStyle: CSSProperties = {
   color: 'var(--text-link)',
@@ -264,91 +266,9 @@ function filterEntitiesByPolygon(entities: MapPageEntity[], poly: Feature<Polygo
   })
 }
 
-/** Shown when geocoding runs; `open` follows progress until all rows are terminal. */
-function GeocodeProgressList({
-  rows,
-  entities,
-  onAddressOpen,
-}: {
-  rows: GeocodeAddressRow[]
-  entities: MapPageEntity[]
-  onAddressOpen: (addressNormalized: string) => void
-}) {
-  if (rows.length === 0) return null
-  const done = rows.filter((r) => r.status === 'ok' || r.status === 'error').length
-  const anyActive = rows.some((r) => r.status === 'pending' || r.status === 'in_progress')
-  return (
-    <div
-      style={{
-        display: 'inline-flex',
-        alignItems: 'flex-start',
-        margin: 0,
-        minWidth: 0,
-        maxWidth: '100%',
-      }}
-    >
-      <details
-        open={anyActive}
-        style={{
-          fontSize: '0.875rem',
-          color: 'var(--text-700)',
-          margin: 0,
-          minWidth: 'min(18rem, 100%)',
-        }}
-      >
-        <summary style={{ cursor: 'pointer', userSelect: 'none' }}>{`Geocoding (${done}/${rows.length})`}</summary>
-        <ul
-          aria-live="polite"
-          style={{
-            margin: '0.5rem 0 0 0',
-            padding: '0 0 0 1.1rem',
-            listStyle: 'none',
-            maxHeight: 'min(40vh, 240px)',
-            overflowY: 'auto',
-          }}
-        >
-        {rows.map((r) => {
-          const icon = r.status === 'ok' ? '✓' : r.status === 'error' ? '✗' : r.status === 'in_progress' ? '…' : '·'
-          const matched = entities.filter((e) => e.addressKey === r.address_normalized)
-          const hasEntity = matched.length > 0
-          // Job/bid/estimate numbers for this address; several entities can share one address.
-          const ids = [...new Set(matched.map((e) => e.sublabel.trim()).filter((s) => s.length > 0))]
-          const idPrefix = ids.slice(0, 3).join(', ') + (ids.length > 3 ? ` +${ids.length - 3} more` : '')
-          return (
-            <li
-              key={r.address_normalized}
-              style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.25rem' }}
-            >
-              <span aria-hidden="true" style={{ width: '0.9rem' }}>
-                {icon}
-              </span>
-              {idPrefix.length > 0 ? (
-                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{idPrefix}</span>
-              ) : null}
-              <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{r.addressLabel}</span>
-              {hasEntity ? (
-                <button
-                  type="button"
-                  onClick={() => onAddressOpen(r.address_normalized)}
-                  style={openLinkLikeStyle}
-                  aria-label={`Open job, bid, or estimate for this address: ${r.addressLabel}`}
-                >
-                  Open
-                </button>
-              ) : null}
-              {r.errorMessage ? <span style={{ color: 'var(--text-red-700)' }}>{r.errorMessage}</span> : null}
-            </li>
-          )
-        })}
-        </ul>
-      </details>
-    </div>
-  )
-}
-
 export function MapPageView() {
   const navigate = useNavigate()
-  const { loading, error, entities, geocodeAddressRows, geocodeInProgress, reload } = useMapPageData(true)
+  const { loading, error, entities, geocodeAddressRows, geocodeInProgress, unplaced, reload } = useMapPageData(true)
   const jobFormModal = useJobFormModal()
   const openJobOnMap = useCallback(
     (jobId: string) => {
@@ -360,14 +280,13 @@ export function MapPageView() {
   )
   const [mapFlyTo, setMapFlyTo] = useState<{ lat: number; lng: number } | null>(null)
   const clearMapFlyTo = useCallback(() => setMapFlyTo(null), [])
-  const [geocodeChooserMatches, setGeocodeChooserMatches] = useState<MapPageEntity[] | null>(null)
   // The place the office clicked (v2.4796; places v2.4804): its popup on a desktop, the card in the rail.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   const [bandsOn, setBandsOn] = useState<DistanceBucketVisibility>(DEFAULT_DISTANCE_BUCKETS)
   const toggleBand = useCallback((key: DistanceBucketKey) => setBandsOn((prev) => ({ ...prev, [key]: !prev[key] })), [])
   const openEntity = useCallback(
-    (e: MapPageEntity) => {
+    (e: OpenableRecord) => {
       if (e.kind === 'job' && jobFormModal) {
         openJobOnMap(e.id)
       } else {
@@ -375,7 +294,7 @@ export function MapPageView() {
       }
       if (e.lat != null && e.lng != null) {
         setMapFlyTo({ lat: e.lat, lng: e.lng })
-        setSelectedId(e.addressKey)
+        setSelectedId(e.addressKey ?? null)
       }
     },
     [jobFormModal, navigate, openJobOnMap]
@@ -385,19 +304,9 @@ export function MapPageView() {
     setSelectedId(place.key)
     setMapFlyTo({ lat: place.lat, lng: place.lng })
   }, [])
-  const onGeocodeAddressOpen = useCallback(
-    (addressNormalized: string) => {
-      const matches = entities.filter((en) => en.addressKey === addressNormalized)
-      if (matches.length === 0) return
-      if (matches.length === 1) {
-        openEntity(matches[0]!)
-        return
-      }
-      setGeocodeChooserMatches(matches)
-    },
-    [entities, openEntity]
-  )
   const [reviewOpen, setReviewOpen] = useState(false)
+  // The address sheet (v2.4805): the records the map cannot place and the far ones, in one window.
+  const [sheetOpen, setSheetOpen] = useState(false)
   const narrow = useNarrowViewport640()
   // The chips (v2.4802): job sections, bid stages and estimates; Paid, Lost and Estimates start off.
   const [jobSections, setJobSections] = useState<Record<JobsMapSection, boolean>>(MAP_PAGE_DEFAULT_JOB_SECTIONS)
@@ -562,8 +471,18 @@ export function MapPageView() {
     [anchorPoint],
   )
   const placed = useMemo(() => withCoords.map((e) => ({ ...e, lat: e.lat!, lng: e.lng! })), [withCoords])
-  const nearAndFar = useMemo(() => splitFarFromOffice(placed, anchorPoint), [placed, anchorPoint])
-  const farPlaces = useMemo(() => farFromOfficePlaces(nearAndFar.far), [nearAndFar.far])
+  // The misses (v2.4805): over every entity, not the chips' selection — a record the map cannot place is a miss whatever is on.
+  const notFoundInfo = useMemo(() => mapPageNotFound(entities, geocodeAddressRows), [entities, geocodeAddressRows])
+  const missLine = useMemo(
+    () => unplacedLine({ noAddress: unplaced.length, notFoundRecords: notFoundInfo.notFound.reduce((n, g) => n + g.items.length, 0), resolving: notFoundInfo.resolving }),
+    [unplaced.length, notFoundInfo],
+  )
+  // The far addresses for the sheet and its line are over every placed record, whatever the chips show.
+  const farAllPlaces = useMemo(() => {
+    const all = entities.filter((e) => e.lat != null && e.lng != null).map((e) => ({ ...e, lat: e.lat!, lng: e.lng! }))
+    return farFromOfficePlaces(splitFarFromOffice(all, anchorPoint).far)
+  }, [entities, anchorPoint])
+  const farLine = useMemo(() => farShortLine(farAllPlaces.length), [farAllPlaces.length])
   // Places (v2.4804): one pin per address; the bands from the office double as filters.
   const placesAll = useMemo(() => mapPagePlaces(placed), [placed])
   const bands = useMemo(() => mapPageBands(placesAll, anchorPoint), [placesAll, anchorPoint])
@@ -684,7 +603,6 @@ export function MapPageView() {
             <SectionChip label="Estimates" color={MAP_PAGE_ESTIMATE_COLOR} count={legendCounts.estimates} active={showEst} title={showEst ? 'Hide estimates' : 'Show estimates'} onToggle={() => setShowEst((v) => !v)} />
           </div>
         )}
-        <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
           {canDrawCourtAreas ? (
             <button
@@ -755,86 +673,26 @@ export function MapPageView() {
         </div>
       </div>
 
+      <MapAddressSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        noAddress={unplaced}
+        notFound={notFoundInfo.notFound}
+        resolving={notFoundInfo.resolving}
+        far={farAllPlaces}
+        anchor={anchorPoint}
+        canRecheck={canDrawCourtAreas}
+        onOpen={(r) => { setSheetOpen(false); openEntity(r) }}
+        onShow={(lat, lng) => { setSheetOpen(false); setMapFlyTo({ lat, lng }) }}
+        onAfterRecheck={() => void reload()}
+        onReviewAll={() => { setSheetOpen(false); setReviewOpen(true) }}
+      />
       <MapGeocodeReviewModal
         open={reviewOpen}
         onClose={() => setReviewOpen(false)}
         entitiesWithCoords={withCoords}
         onAfterRefresh={() => void reload()}
       />
-
-      {geocodeChooserMatches && geocodeChooserMatches.length > 0 ? (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 2000,
-            paddingTop: 'var(--app-top-chrome, 0px)',
-          }}
-          role="dialog"
-          aria-modal
-          aria-labelledby="geocode-chooser-title"
-        >
-          <div
-            style={{
-              background: 'var(--surface)',
-              padding: '1.25rem',
-              borderRadius: 8,
-              minWidth: 280,
-              maxWidth: 'min(96vw, 420px)',
-              maxHeight: 'min(80vh, 400px, 100%)',
-              overflow: 'auto',
-              boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
-            }}
-          >
-            <h2 id="geocode-chooser-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
-              Multiple records at this address
-            </h2>
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>Choose which to open.</p>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-              {geocodeChooserMatches.map((e) => (
-                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGeocodeChooserMatches(null)
-                      openEntity(e)
-                    }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '0.65rem 0.25rem',
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.875rem',
-                    }}
-                  >
-                    <span style={{ textTransform: 'capitalize', fontWeight: 600, marginRight: '0.35rem' }}>{e.kind}</span>
-                    <span>{e.tableLabel}</span>
-                    {e.sublabel ? <span style={{ color: 'var(--text-muted)' }}>{` ${e.sublabel}`}</span> : null}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => setGeocodeChooserMatches(null)}
-              style={{ marginTop: '0.75rem', padding: '0.5rem 0.9rem', cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {!loading && geocodeInProgress ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Resolving addresses…</p>
-      ) : null}
 
       {error ? <p style={{ color: 'var(--text-red-700)', margin: 0 }}>{error}</p> : null}
       {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
@@ -892,27 +750,23 @@ export function MapPageView() {
         />
       </div>
       <div style={{ minWidth: 0, width: '100%' }}>
-          {farPlaces.length > 0 ? (
-            <div data-far-from-office style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-              <div style={{ fontWeight: 600 }}>{farFromOfficeLine(farPlaces.length)}</div>
-              <ul style={{ margin: '0.25rem 0 0', padding: '0 0 0 1.1rem' }}>
-                {farPlaces.map((p) => (
-                  <li key={p.addressKey}>
-                    {`${p.addressLabel} · ${farPlaceCountWords(p.items)} · ${farMilesWords(p.miles)} `}
-                    <button type="button" onClick={() => setMapFlyTo({ lat: p.lat, lng: p.lng })} style={openLinkLikeStyle}>
-                      Show
-                    </button>
-                    {p.items.length === 1 ? (
-                      <>
-                        {' · '}
-                        <button type="button" onClick={() => openEntity(p.items[0]!)} style={openLinkLikeStyle}>
-                          Open
-                        </button>
-                      </>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
+          {missLine || farLine ? (
+            <div data-map-misses style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem', alignItems: 'baseline' }}>
+              {missLine ? (
+                geocodeInProgress ? (
+                  <span style={{ color: 'var(--text-muted)' }}>{missLine}</span>
+                ) : (
+                  <button type="button" onClick={() => setSheetOpen(true)} style={openLinkLikeStyle}>
+                    {`${missLine} · fix their addresses`}
+                  </button>
+                )
+              ) : null}
+              {missLine && farLine ? <span aria-hidden="true" style={{ color: 'var(--text-muted)' }}>·</span> : null}
+              {farLine ? (
+                <button type="button" onClick={() => setSheetOpen(true)} style={openLinkLikeStyle}>
+                  {`${farLine} · check them`}
+                </button>
+              ) : null}
             </div>
           ) : null}
           {courtMode ? (
@@ -922,50 +776,6 @@ export function MapPageView() {
           ) : null}
       </div>
 
-      <details
-        style={{
-          position: 'fixed',
-          zIndex: 300,
-          right: 'max(1rem, env(safe-area-inset-right, 0px))',
-          bottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
-          maxWidth: 'min(100vw - 2rem, 240px)',
-          margin: 0,
-        }}
-      >
-        <summary
-          style={{
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            padding: '0.35rem 0.6rem',
-            background: 'var(--bg-muted)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            listStyle: 'none',
-            userSelect: 'none',
-          }}
-          aria-label="Debug tools"
-        >
-          Debug
-        </summary>
-        <div
-          style={{
-            marginTop: 6,
-            padding: '0.5rem',
-            background: 'var(--surface)',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setReviewOpen(true)}
-            style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer', width: '100%' }}
-          >
-            Review geocodes
-          </button>
-        </div>
-      </details>
     </div>
   )
 }
