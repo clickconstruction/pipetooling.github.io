@@ -27,7 +27,7 @@ const raw: LienBookRaw = {
   items: [],
   filings: [],
   jobs: [
-    { id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dudley (Lennox)', job_address: '9703 Lenox Hl', gc_customer_id: 'gc-1', customer_address_id: null, revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'unknown', lien_contract_ended_on: null },
+    { id: 'job-273', hcp_number: '273', click_number: null, job_name: 'Dudley (Lennox)', job_address: '9703 Lenox Hl, Kyle, TX 78640', gc_customer_id: 'gc-1', customer_address_id: null, revenue: 20000, payments_made: 2415, last_work_date: '2026-08-27', lien_payment_bond: 'unknown', lien_contract_ended_on: null },
     { id: 'job-300', hcp_number: '300', click_number: null, job_name: 'Reliant Health', job_address: '150 E Sonterra Blvd', gc_customer_id: 'gc-2', customer_address_id: null, revenue: 4800, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: 'no', lien_contract_ended_on: null },
     { id: 'job-310', hcp_number: '310', click_number: null, job_name: 'Whitfield repipe', job_address: '7 Willow Ct', gc_customer_id: null, customer_address_id: null, revenue: 1795, payments_made: 0, last_work_date: '2026-08-20', lien_payment_bond: null, lien_contract_ended_on: null },
   ],
@@ -45,7 +45,7 @@ describe('LegalPortalLienGrid', () => {
     render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
     expect(screen.getByText('Lien grid')).toBeTruthy()
     const dudley = screen.getByText('273 · Dudley (Lennox)').closest('td')!
-    expect(dudley.textContent).toContain('9703 Lenox Hl')
+    expect(within(dudley).getByText('9703 Lenox Hl').nextElementSibling?.textContent).toBe('Kyle, TX 78640')
     const row = dudley.closest('tr')!
     expect(row.textContent).toContain('Residential')
     expect(row.textContent).toContain('No homestead')

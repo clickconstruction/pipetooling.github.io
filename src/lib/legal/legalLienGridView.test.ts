@@ -78,6 +78,8 @@ describe('legalLienGridCells', () => {
     const c = cell('j878')
     expect(c.job).toBe('878 · Job j878')
     expect(c.address).toBe('878 Main St, Kyle, TX')
+    expect(c.street).toBe('878 Main St')
+    expect(c.cityLine).toBe('Kyle, TX')
     expect(c.kind).toBe('Commercial')
     expect(c.kindUnknown).toBe(false)
     expect(c.homestead).toBe('')
@@ -90,6 +92,14 @@ describe('legalLienGridCells', () => {
     ])
     expect(c.allClosed).toBe(false)
     expect(c.noticeNote).toBe('')
+  })
+
+  it('an address with no comma is one street line; the extras after the state stay on the city line', () => {
+    const src = input()
+    src.jobs = { ...src.jobs, j843: { ...src.jobs['j843']!, address: '214 Beechwood Avenue, Universal City, TX (Lock Box Code 5068)' }, j702: { ...src.jobs['j702']!, address: '8275 Broussard' } }
+    const cells = legalLienGridCells(buildLienTimelineBook(src).rows, TODAY)
+    expect(cells.find((c) => c.jobId === 'j843')).toMatchObject({ street: '214 Beechwood Avenue', cityLine: 'Universal City, TX (Lock Box Code 5068)' })
+    expect(cells.find((c) => c.jobId === 'j702')).toMatchObject({ street: '8275 Broussard', cityLine: '' })
   })
 
   it('reads Residential with Homestead or No homestead beneath', () => {

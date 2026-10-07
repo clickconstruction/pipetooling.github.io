@@ -14,7 +14,7 @@ import { portalBtn, portalCap, portalCard, portalTd, portalTh } from './legalFir
  * memo's twelve columns, the same page the desk prints). One fold of the
  * same rows the office reads (`assembleLienBookInput` +
  * `buildLienTimelineBook`), so the grid the firm sees is the office's book,
- * live. On the screen (v2.4749) the address sits under the job, the property
+ * live. On the screen (v2.4749) the address sits under the job on two lines, the property
  * reads in words, the unpaid total leads its months, a month whose § 53.056
  * window closed is left off, and a rail of GCs with each one's count and
  * dollars stands in for the select (`legalLienGridView.ts`). A `?` is a fact
@@ -97,7 +97,8 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
                   <tr key={c.jobId}>
                     <td style={{ ...td, whiteSpace: 'nowrap' }}>
                       <b style={{ display: 'block', fontSize: 12 }}>{c.job}</b>
-                      <span style={{ display: 'block', color: MUTED, whiteSpace: 'normal', marginTop: 1 }}>{c.address}</span>
+                      <span style={{ display: 'block', color: MUTED, marginTop: 1 }}>{c.street}</span>
+                      <span style={{ display: 'block', color: MUTED }}>{c.cityLine || '\u00a0'}</span>
                     </td>
                     {factTd(c.owner)}
                     <td style={td}>
