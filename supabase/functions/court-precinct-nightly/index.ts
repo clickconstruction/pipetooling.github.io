@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { classifyCourtPoint, courtAreaFromRow, type CourtArea } from '../_shared/courtAreasClassify.ts'
+import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
+import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeocode.ts'
 
 /**
  * Which court, step 4 (v2.4770): put every property record in its justice precinct
@@ -13,8 +15,11 @@ import { classifyCourtPoint, courtAreaFromRow, type CourtArea } from '../_shared
  * areas; the row is written only when the precinct or the on-the-line note changed,
  * stamped `map` and now. A record outside every area keeps '' (and loses a stale
  * precinct when its area was removed). A record with no county takes the area's county
- * (`county_source = 'map'`, v2.4778). No point in the cache = skipped; the lookup
- * that fills the cache is owner-confirm-nightly's and the Map page's.
+ * (`county_source = 'map'`, v2.4778). A record with a point outside every area and no
+ * county takes the county the point sits in (`county_source = 'geocoder'`, v2.4790). Before
+ * it classifies, it geocodes up to GEOCODE_PER_NIGHT addresses that have no point yet —
+ * Google, else the Census — through the same cache the Map page and the job form use
+ * (v2.4790), so the backlog of unplaced records drains by itself.
  *
  * Auth: `X-Cron-Secret` = `CRON_SECRET`, or a signed-in office user (`is_office_staff()`
  * under the caller's JWT). Body: `{ dry_run?: boolean }`.
@@ -37,6 +42,8 @@ function normalizeKey(address: string): string {
 
 const MAX_ROWS = 5000
 const BATCH = 200
+/** Addresses with no point that one night geocodes; the rest wait for the next night. */
+const GEOCODE_PER_NIGHT = 300
 
 type AddressRow = { id: string; address: string | null; county: string | null; jp_precinct: string | null; jp_precinct_note: string | null; jp_precinct_source: string | null }
 
@@ -89,36 +96,77 @@ serve(async (req) => {
     let onLine = 0
     let noPoint = 0
     let written = 0
+    let geocoded = 0
+    let geocodeMisses = 0
+    let countyFilled = 0
     const now = new Date().toISOString()
-    for (let i = 0; i < rows.length; i += BATCH) {
-      const slice = rows.slice(i, i + BATCH)
-      const keys = slice.map((r) => normalizeKey(r.address ?? '')).filter(Boolean)
-      const { data: geo } = await admin.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', keys)
-      const point = new Map<string, { lat: number; lng: number }>()
+    const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
+
+    // 1 · every point the cache holds for these addresses.
+    const point = new Map<string, { lat: number; lng: number; county?: string }>()
+    const keysAll = [...new Set(rows.map((r) => normalizeKey(r.address ?? '')).filter(Boolean))]
+    for (let i = 0; i < keysAll.length; i += BATCH) {
+      const { data: geo } = await admin.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', keysAll.slice(i, i + BATCH))
       for (const g of (geo ?? []) as Array<{ address_normalized: string; lat: number | null; lng: number | null }>) {
         if (g.lat != null && g.lng != null && Number.isFinite(g.lat) && Number.isFinite(g.lng)) point.set(g.address_normalized, { lat: g.lat, lng: g.lng })
       }
-      for (const r of slice) {
-        const pt = point.get(normalizeKey(r.address ?? ''))
-        if (!pt) {
-          noPoint += 1
-          continue
-        }
-        const c = classifyCourtPoint(pt, areas, { county: (r.county ?? '').trim() || undefined })
-        if (c.precinct) placed += 1
-        else outside += 1
-        if (c.onLine) onLine += 1
-        const next = { jp_precinct: c.precinct, jp_precinct_note: c.note }
-        // A record with no county takes the area's (v2.4778): the county's own line, or what the office named a drawn area.
-        const fillCounty = c.precinct && !(r.county ?? '').trim() ? { county: c.county, county_source: 'map' } : {}
-        if ((r.jp_precinct ?? '') === next.jp_precinct && (r.jp_precinct_note ?? '') === next.jp_precinct_note && !('county' in fillCounty)) continue
-        written += 1
-        if (dryRun) continue
-        const { error: upErr } = await admin.from('customer_addresses').update({ ...next, ...fillCounty, jp_precinct_source: c.precinct ? 'map' : '', jp_precinct_at: now }).eq('id', r.id)
-        if (upErr) console.error('court-precinct-nightly: write failed', r.id, upErr.message)
-      }
     }
-    const out = { ok: true, dryRun, areas: areas.length, rows: rows.length, placed, outside, onLine, noPoint, written }
+
+    // 2 · up to GEOCODE_PER_NIGHT addresses with no point: Google, else the Census, into the cache (v2.4790).
+    const unplaced = [...new Set(rows.map((r) => (r.address ?? '').trim().replace(/\s+/g, ' ')).filter((a) => a.length >= 8 && !point.has(normalizeKey(a))))].slice(0, GEOCODE_PER_NIGHT)
+    for (const display of unplaced) {
+      const key = normalizeKey(display)
+      let hit: { lat: number; lng: number; county?: string } | null = null
+      if (googleKey) {
+        const g = await geocodeWithGoogle(display, googleKey)
+        if (g.ok) hit = { lat: g.lat, lng: g.lng, county: g.county }
+      }
+      if (!hit) {
+        const c = await geocodeWithCensus(display)
+        if (c.ok) hit = { lat: c.lat, lng: c.lng }
+      }
+      if (!hit) {
+        geocodeMisses += 1
+        continue
+      }
+      geocoded += 1
+      point.set(key, hit)
+      if (dryRun) continue
+      const { error: geoErr } = await admin.from('address_geocodes').upsert({ address_normalized: key, lat: hit.lat, lng: hit.lng, geocoded_at: now, geocode_error: null }, { onConflict: 'address_normalized' })
+      if (geoErr) console.error('court-precinct-nightly: cache write failed', key, geoErr.message)
+    }
+
+    // 3 · the classification, and the county for a record that has none.
+    for (const r of rows) {
+      const pt = point.get(normalizeKey(r.address ?? ''))
+      if (!pt) {
+        noPoint += 1
+        continue
+      }
+      const hadCounty = Boolean((r.county ?? '').trim())
+      const c = classifyCourtPoint(pt, areas, { county: (r.county ?? '').trim() || undefined })
+      if (c.precinct) placed += 1
+      else outside += 1
+      if (c.onLine) onLine += 1
+      const next = { jp_precinct: c.precinct, jp_precinct_note: c.note }
+      // A record with no county: the area's county when it fell in one (v2.4778, the county's own line), else the
+      // county the point sits in — Google's answer when it geocoded tonight, else the Census lookup (v2.4790).
+      let fillCounty: { county: string; county_source: string } | null = null
+      if (!hadCounty) {
+        if (c.precinct) fillCounty = { county: c.county, county_source: 'map' }
+        else {
+          const county = pt.county?.trim() || (await censusCountyFromPoint(pt.lat, pt.lng))
+          if (county) fillCounty = { county, county_source: 'geocoder' }
+        }
+      }
+      if (fillCounty) countyFilled += 1
+      if ((r.jp_precinct ?? '') === next.jp_precinct && (r.jp_precinct_note ?? '') === next.jp_precinct_note && !fillCounty) continue
+      written += 1
+      if (dryRun) continue
+      const { error: upErr } = await admin.from('customer_addresses').update({ ...next, ...(fillCounty ?? {}), jp_precinct_source: c.precinct ? 'map' : '', jp_precinct_at: now }).eq('id', r.id)
+      if (upErr) console.error('court-precinct-nightly: write failed', r.id, upErr.message)
+    }
+    const out = { ok: true, dryRun, areas: areas.length, rows: rows.length, placed, outside, onLine, noPoint, written, geocoded, geocodeMisses, countyFilled }
     console.log('court-precinct-nightly', JSON.stringify(out))
     return jsonResponse(out)
   } catch (e) {

@@ -2260,6 +2260,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### court-precinct-nightly
 
+> **v2.4790 — the night places the unplaced**: before classifying, up to `GEOCODE_PER_NIGHT = 300` addresses with no point are geocoded (Google, else the Census) into `address_geocodes`; a record outside every area with no county takes the county the point sits in (`county_source = 'geocoder'`). The answer adds `geocoded`, `geocodeMisses`, `countyFilled`. **Redeploy required.**
+
 > **v2.4778 — a record with no county takes the area's**: when the point falls in an area and the record's `county` is blank, the write adds `county` and `county_source = 'map'` (migration `20261007140000` admits the value). **Redeploy after the push.**
 
 **Purpose** (v2.4770, which court, step 4): put every property record (`customer_addresses`) in its justice precinct from the office's own court map (`court_areas`, migration `20261007110000`), using the point the geocode cache (`address_geocodes`) already holds for its address. One rule with the Map page: [`_shared/courtAreasClassify.ts`](../supabase/functions/_shared/courtAreasClassify.ts) over the dependency-free geometry in [`_shared/courtGeometry.ts`](../supabase/functions/_shared/courtGeometry.ts). A record typed by hand (`jp_precinct_source = 'hand'`) is never touched; every other record with a point is classified against the active areas of its own county and written only when the precinct or the on-the-line note changed (`jp_precinct`, `jp_precinct_note`, `jp_precinct_source = 'map'`, `jp_precinct_at`). Outside every area clears the precinct; no point in the cache is skipped (owner-confirm-nightly and the Map page fill the cache). Reads up to 5,000 records, 200 at a time.
