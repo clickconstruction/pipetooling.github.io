@@ -269,7 +269,11 @@ describe('LienDeskModal', () => {
     expect(document.querySelector('[data-lien-desk-kinds]')!.nextElementSibling!.hasAttribute('data-lien-desk-run')).toBe(true)
     expect(document.querySelector('[data-lien-desk-header-break]')!.nextElementSibling!.hasAttribute('data-lien-desk-paper-kinds')).toBe(true)
     const footer = document.querySelector('[data-lien-desk-printed-footer]') as HTMLElement
-    expect(footer.textContent).toContain('Printed September 14, 2026 · in the mail.')
+    // v2.4855: the state is a chip with the day; the old sentence is its hover.
+    const chip = footer.querySelector('.lienFootChip') as HTMLElement
+    expect(chip.textContent).toContain('Printed Sep 14 · in the mail')
+    expect(chip.title).toContain('Printed September 14, 2026 · in the mail.')
+    expect(footer.querySelectorAll('.lienFootLink').length).toBe(2)
     expect(within(footer).getByRole('button', { name: /Record the mailing · 1/ })).toBeTruthy()
     fireEvent.click(within(footer).getByRole('button', { name: 'Back to ready' }))
     await waitFor(() => expect(clearPrintedMock).toHaveBeenCalledWith('it1'))
@@ -454,7 +458,10 @@ describe('LienDeskModal', () => {
     } as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" data={data(J650, [awaiting], true)} />)
     await settle()
-    expect(screen.getByText(/Waiting on the leader since/)).toBeTruthy()
+    // v2.4855: the state is a chip; the old sentence is its hover.
+    const chip = document.querySelector('[data-lien-desk-awaiting-words]') as HTMLElement
+    expect(chip.textContent).toContain('Waiting on the leader · since')
+    expect(chip.title).toMatch(/^Waiting on the leader since /)
     expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /He is here — record it/ }))
     // The row opens with the presence channel picked and says what the record will read.

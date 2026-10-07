@@ -4091,6 +4091,18 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienFootSkip:disabled { cursor: default; opacity: 0.6; }
 /* v2.4745 (the owner's ask): Already mailed? over Record it…, so the footer row keeps its room. */
 .lienByHandWords { display: inline-block; line-height: 1.15; text-align: left; }
+/* v2.4855 (the owner's pick, variant A): the awaiting, ready, printed and held footers are one row — the state as a chip
+   whose hover is the old sentence, the side doors as links, and one button at the right end. */
+.lienFootChip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); font-size: 0.78rem; font-weight: 600; white-space: nowrap; max-width: 100%; }
+.lienFootChip[data-tone='green'] { background: var(--bg-green-tint); color: var(--text-green-700); }
+.lienFootChip[data-tone='blue'] { background: var(--bg-blue-tint); color: var(--text-link); }
+.lienFootChip[data-tone='amber'] { background: var(--bg-amber-tint); color: var(--text-amber-700); }
+.lienFootLink { border: none; background: none; padding: 4px 2px; font: inherit; font-size: 0.8125rem; color: var(--text-link); cursor: pointer; white-space: nowrap; }
+.lienFootLink:hover, .lienFootLink:focus-visible { text-decoration: underline; text-underline-offset: 3px; }
+.lienFootLink:focus-visible { outline: 2px solid var(--border-blue); outline-offset: 2px; border-radius: 4px; }
+.lienFootLink:disabled { cursor: default; opacity: 0.55; text-decoration: none; }
+.lienFootRed { font-size: 0.78rem; color: var(--text-red-600); min-width: 0; }
+@media (max-width: 640px) { .lienFootChip { white-space: normal; } }
 @media (max-width: 640px) {
   .lienFootState { flex: 1 1 100%; }
   .lienFootSpacer { display: none; }

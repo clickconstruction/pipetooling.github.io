@@ -39,6 +39,8 @@ type Props = {
    * details above that row only while it is on (`details`). Omitted, both parts render together.
    */
   part?: 'switch' | 'details'
+  /** The switch in a one-row footer (v2.4855): three words, the whole sentence as its hover. */
+  compact?: boolean
 }
 
 const small: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -55,7 +57,7 @@ const pill = (on: boolean, disabled: boolean): CSSProperties => ({
   opacity: disabled ? 0.6 : 1,
 })
 
-export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn, amounts, disabled = false, onSave, saving = false, saved = false, part }: Props) {
+export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn, amounts, disabled = false, onSave, saving = false, saved = false, part, compact = false }: Props) {
   const id = useId()
   const on = offer != null
   const pct = offer?.pct ?? LIEN_OFFER_DEFAULT_PCT
@@ -68,7 +70,7 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
   const dayPick: 'default' | 'latest' | 'own' = by === defaultDay ? 'default' : latest && by === latest ? 'latest' : 'own'
 
   const toggle = (
-    <label style={{ display: 'inline-flex', gap: 8, alignItems: 'center', cursor: disabled ? 'default' : 'pointer', fontSize: '0.8125rem' }}>
+    <label title={compact ? 'Offer a discount if a bill is paid in full by a day' : undefined} style={{ display: 'inline-flex', gap: 8, alignItems: 'center', cursor: disabled ? 'default' : 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
       <input
         type="checkbox"
         checked={on}
@@ -76,7 +78,7 @@ export default function LienOfferBox({ offer, onChange, todayYmd, affidavitDueOn
         data-testid="lien-offer-switch"
         onChange={(e) => onChange(e.target.checked ? { pct: LIEN_OFFER_DEFAULT_PCT, by: defaultDay } : null)}
       />
-      <strong>Offer a discount if a bill is paid in full by a day</strong>
+      <strong>{compact ? 'Offer a discount' : 'Offer a discount if a bill is paid in full by a day'}</strong>
     </label>
   )
   if (part === 'switch') return toggle
