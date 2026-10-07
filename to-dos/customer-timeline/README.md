@@ -4,7 +4,7 @@ number: 97
 group: ready
 size: 3 PRs — kernel (S), the window (M), the doors (S)
 blocker: none — the owner took the recommendations on all five calls (2026-10-07)
-status: building — PR 1 (the kernel and the reads) claude/customer-timeline-1-kernel as v2.4811; PR 2 (the window) and PR 3 (the doors) next
+status: building — PR 1 (the kernel and the reads) #4830 as v2.4811; PR 2 (the window) claude/customer-timeline-2-window as v2.4813; PR 3 (the doors) next
 summary: >
   Look up a customer and scroll one vertical timeline of everything between us: each job is an arrow
   from the day its card was made to the day the final payment landed, office events (notes, bills,
@@ -13,8 +13,8 @@ summary: >
   yet, and the hours and materials we have not been paid for; as you scroll into the past it reads
   what those numbers were then.
 next: >
-  PR 2: the Profile | Timeline switch in the Customer profile window, the timeline view on a computer
-  and a phone, the floating bar and its scrub, focus and the Show chips, the help guide.
+  PR 3: the doors. The GC's name on a Pipeline row opens the GC's timeline; a Pipeline search chip;
+  show the days › on a crew card; the ?customerTimeline= deep link; the Customers page door.
 ---
 
 # Customer timeline
