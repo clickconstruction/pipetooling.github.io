@@ -339,6 +339,19 @@ describe('the cards', () => {
     expect(day(t, '2026-09-20').office[0]).toMatchObject({ title: 'Notice of unpaid balance mailed · 2 jobs', amount: 2000 })
   })
 
+  it('folds three jobs made on one day into one card, and still opens each job’s rail there', () => {
+    const input = emptyCustomerTimelineInput(CUST)
+    input.jobs = ['a', 'b', 'c'].map((id, i) =>
+      job({ id, hcpNumber: `8${i}`, jobName: `Service visit ${id}`, revenue: 500 + i * 100, createdAt: at('2026-08-18'), customerId: 'c-owner', customerName: 'Lee Park', gcCustomerId: CUST.id }),
+    )
+    const t = build(input)
+    const aug18 = day(t, '2026-08-18')
+    expect(aug18.office).toHaveLength(1)
+    expect(aug18.office[0]).toMatchObject({ kind: 'start', title: '3 job cards made', jobId: null })
+    expect(aug18.office[0]?.items).toEqual(['80 · Service visit a · $500 job · Lee Park pays', '81 · Service visit b · $600 job · Lee Park pays', '82 · Service visit c · $700 job · Lee Park pays'])
+    expect(aug18.lanes.map((c) => c?.mark)).toEqual(['start', 'start', 'start'])
+  })
+
   it('filters by Money and by Field', () => {
     const t = build()
     const all = t.rows.flatMap((r) => (r.kind === 'day' ? cards(r) : []))

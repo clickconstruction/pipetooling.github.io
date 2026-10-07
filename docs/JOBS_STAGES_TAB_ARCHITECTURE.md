@@ -35,6 +35,7 @@ Mapped in full: **6,541 lines** (the tab + `jobsStagesRowShared`); the two table
 | [`JobsFollowupModal.tsx`](../src/components/jobs/JobsFollowupModal.tsx) | 1,011 | Follow-up deck; each card's row comes from the tab's `renderFollowupStageRow` (§4b) |
 | [`JobsMapCard.tsx`](../src/components/jobs/JobsMapCard.tsx) / `JobsMapRail.tsx` | 830 / 143 | Jobs on a map (§2b) |
 | [`PipelineOverview.tsx`](../src/components/jobs/PipelineOverview.tsx) | 253 | Money story + Today's Money Opportunities + Fix-ups (§2b) |
+| [`StagesCustomerTimelineChips.tsx`](../src/components/jobs/StagesCustomerTimelineChips.tsx) | 40 | v2.4815: a search that names one to three customers offers each one's timeline; mounted once above the paid-search hint. The rows' GC name is the other Pipeline door (`renderGcTimelineDoor` in `jobsStagesRowShared`) |
 | `JobsStagesActivityBox.tsx` · `JobActivityView.tsx` · `JobActivityFeed.tsx` | 414 · 437 · 325 | Wide-screen activity box and the one expanded activity body |
 | [`JobsStagesActivityExpandModal.tsx`](../src/components/jobs/JobsStagesActivityExpandModal.tsx) | 179 | One instance in the tail (4155). Trap: it holds a `JobWithDetails` **snapshot** — `onCommitPct` patches `pct_complete` in place (4169); team edits show stale names until reopen |
 | `JobsStagesThreadPanel.tsx` · `StagesExpandedThreadRow.tsx` | 177 · 92 | Expanded-row thread panel (mounts twice for a billed job — job row + invoice row) |

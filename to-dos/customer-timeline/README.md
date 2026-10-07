@@ -1,10 +1,10 @@
 ---
 name: "Customer timeline: one customer's whole story on one spine, with what they owe us floating above it"
 number: 97
-group: ready
+group: close
 size: 3 PRs — kernel (S), the window (M), the doors (S)
 blocker: none — the owner took the recommendations on all five calls (2026-10-07)
-status: building — PR 1 (the kernel and the reads) #4830 as v2.4811; PR 2 (the window) claude/customer-timeline-2-window as v2.4813; PR 3 (the doors) next
+status: built 2026-10-07 — PR 1 the kernel and the reads (#4830, v2.4811), PR 2 the window (v2.4813), PR 3 the doors (v2.4815)
 summary: >
   Look up a customer and scroll one vertical timeline of everything between us: each job is an arrow
   from the day its card was made to the day the final payment landed, office events (notes, bills,
@@ -13,8 +13,9 @@ summary: >
   yet, and the hours and materials we have not been paid for; as you scroll into the past it reads
   what those numbers were then.
 next: >
-  PR 3: the doors. The GC's name on a Pipeline row opens the GC's timeline; a Pipeline search chip;
-  show the days › on a crew card; the ?customerTimeline= deep link; the Customers page door.
+  Retire this card once v2.4815 is live: the release notes, the fragments, the GLOSSARY entry and the
+  guide carry the record. Doors on other surfaces (the Dashboard's AR tiles, the AR window) can link
+  with customerTimelineHref when a need comes up.
 ---
 
 # Customer timeline

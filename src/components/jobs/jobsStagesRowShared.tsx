@@ -81,8 +81,8 @@ export type StagesRowRenderContext = {
   showToast: ReturnType<typeof useToastContext>['showToast']
   customers: CustomerRow[]
   openEditJobAndCreateCustomerFlow: (job: JobWithDetails) => void
-  /** Opens the customer profile modal (v2.1322); optional — surfaces without the provider omit it. */
-  openCustomerProfile?: (customerId: string) => void
+  /** Opens the customer profile modal (v2.1322); optional — surfaces without the provider omit it. `view` names Profile or Timeline (punch list #97). */
+  openCustomerProfile?: (customerId: string, options?: { view?: 'profile' | 'timeline' }) => void
   /**
    * Opens the job work-story modal from the man-hours chip (v2.1766); optional like openCustomerProfile.
    * Since v2.4324 the chip is the row's one door to time: `onOpenSessionNotes` puts a Session notes link in the window's header.
@@ -829,6 +829,35 @@ export const stagesInvoiceRowAccentRailStyle: CSSProperties = {
   borderLeft: '4px solid #16a34a',
 }
 
+/**
+ * The GC's name on a row (punch list #97, PR 3): a door to the GC's timeline, where every job
+ * they are the GC on sits on one spine. Plain text where the window cannot open.
+ */
+function renderGcTimelineDoor(job: JobWithDetails, gcName: string, ctx: StagesRowRenderContext) {
+  const gcId = job.gcCustomer?.id
+  if (!gcId || !ctx.openCustomerProfile) {
+    return (
+      <span>
+        <StagesSearchMark text={gcName} />
+      </span>
+    )
+  }
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation()
+        ctx.openCustomerProfile?.(gcId, { view: 'timeline' })
+      }}
+      title="Open the GC's timeline"
+      aria-label={`Open the timeline for ${gcName}`}
+      style={{ display: 'inline', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', textAlign: 'left' }}
+    >
+      <StagesSearchMark text={gcName} />
+    </button>
+  )
+}
+
 export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { customers, openEditJobAndCreateCustomerFlow } = ctx
   const hasCustomerInfo = ((job.customer_name ?? '').trim() || (job.customer_email ?? '').trim() || (job.customer_phone ?? '').trim())
@@ -889,7 +918,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
           {gcName ? (
             <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-              <span><StagesSearchMark text={gcName} /></span>
+              {renderGcTimelineDoor(job, gcName, ctx)}
               {job.gcCustomer?.id ? (
                 <CustomerPortalGlobeButton customerId={job.gcCustomer.id} customerName={gcName} size={13} />
               ) : null}
@@ -1041,7 +1070,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
           {gcName ? (
             <span title="GC/Builder for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
               <GcHardHatIcon size={13} style={{ flexShrink: 0 }} />
-              <span><StagesSearchMark text={gcName} /></span>
+              {renderGcTimelineDoor(job, gcName, ctx)}
             </span>
           ) : null}
           {developmentName ? (

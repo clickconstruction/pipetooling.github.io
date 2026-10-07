@@ -1,6 +1,8 @@
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import CustomerProfileModal from '../components/customers/CustomerProfileModal'
 import type { CustomerProfileView } from '../lib/customers/customerProfileView'
+import { readCustomerTimelineParam } from '../lib/customers/customerTimelineSearch'
 
 /**
  * App-level opener for the Customer Profile modal (v2.1322) — the
@@ -29,6 +31,17 @@ export function CustomerProfileModalProvider({ children }: { children: ReactNode
   }, [])
 
   const closeCustomerProfile = useCallback(() => setOpenState(null), [])
+
+  // `?customerTimeline=<id>` on any page opens that customer's timeline once (punch list #97,
+  // PR 3), then leaves the address as it was without the link.
+  const location = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const link = readCustomerTimelineParam(location.search)
+    if (!link) return
+    navigate({ pathname: location.pathname, search: link.nextSearch, hash: location.hash }, { replace: true })
+    if (link.customerId) openCustomerProfile(link.customerId, { view: 'timeline' })
+  }, [location.search, location.pathname, location.hash, navigate, openCustomerProfile])
 
   return (
     <CustomerProfileModalContext.Provider
