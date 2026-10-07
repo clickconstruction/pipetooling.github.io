@@ -8625,6 +8625,7 @@ export type Database = {
           answer: string
           answer_sent_to: string[]
           answered_on: string | null
+          asked_by_name: string
           asked_on: string
           company_id: string | null
           created_at: string
@@ -8641,6 +8642,7 @@ export type Database = {
           answer?: string
           answer_sent_to?: string[]
           answered_on?: string | null
+          asked_by_name?: string
           asked_on: string
           company_id?: string | null
           created_at?: string
@@ -8657,6 +8659,7 @@ export type Database = {
           answer?: string
           answer_sent_to?: string[]
           answered_on?: string | null
+          asked_by_name?: string
           asked_on?: string
           company_id?: string | null
           created_at?: string
@@ -25249,8 +25252,11 @@ export type Database = {
           manual_involved: boolean
         }[]
       }
+      gc_answer_question: { Args: { q: Json }; Returns: string }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_issue_plan_set: { Args: { set_in: Json }; Returns: string }
+      gc_questions_close_on: { Args: { p_project: string }; Returns: string }
+      gc_record_question: { Args: { q: Json }; Returns: string }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
       generate_agreement_notice: {
         Args: { p_partnership_id: string }
