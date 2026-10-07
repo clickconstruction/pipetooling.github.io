@@ -96,8 +96,12 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
   })
 
   it('§ Rules names this job with its notice and lien dates from its last work day (v2.4829)', async () => {
+    // The rules window is a lazy chunk that carries every help guide (v2.4695); under a full CI run its first import
+    // outlasts a findBy wait, so it is loaded here first, as LienRulesDoor.render.test.tsx does.
+    await import('./LienRulesModal')
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ last_work_date: '2026-07-20' })} />)
     fireEvent.click(await screen.findByTestId('lien-rules-door'))
+    await screen.findByTestId('lien-rules-modal')
     const strip = await screen.findByTestId('lien-rules-job')
     expect(strip.textContent).toContain('Sub job')
     expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Oct 15')
