@@ -55,7 +55,14 @@ export type TermsWarning = {
  * terms with a promise currently broken still gets a quiet warning: the
  * record is the whole point.
  */
-export function customerTermsWarning(terms: CustomerTermsRow | null | undefined, record: CustomerPromiseRecord | null | undefined): TermsWarning | null {
+/** Bills from this customer the office gave up on (punch list #94, v2.4795): the count and the open dollars. */
+export type UncollectibleHistory = { count: number; total: number }
+
+export function customerTermsWarning(
+  terms: CustomerTermsRow | null | undefined,
+  record: CustomerPromiseRecord | null | undefined,
+  uncollectible: UncollectibleHistory | null | undefined = null,
+): TermsWarning | null {
   const t = terms?.terms ?? 'standard'
   const openBroken = record?.openBroken ?? 0
   const parts = [record ? formatKeptRecord(record) : null, record ? formatUsualSlip(record) : null, openBroken > 0 ? `${openBroken} bill${openBroken === 1 ? '' : 's'} open past promise` : null].filter((x): x is string => x != null)
@@ -68,6 +75,12 @@ export function customerTermsWarning(terms: CustomerTermsRow | null | undefined,
       : { severity: 'warn', headline: 'No new work past an unpaid promise', detail, note }
   }
   if (t === 'deposit_required') return { severity: 'warn', headline: 'Deposit required before work starts', detail, note }
+  // The owner's call (2026-10-07): a customer the office gave up on once gets a nudge on the next job.
+  if ((uncollectible?.count ?? 0) > 0) {
+    const n = uncollectible!.count
+    const money = Math.round(uncollectible!.total).toLocaleString('en-US')
+    return { severity: 'warn', headline: `The office gave up on ${n} bill${n === 1 ? '' : 's'} from this customer ($${money}) — set Deposit required?`, detail, note }
+  }
   if (openBroken > 0) return { severity: 'warn', headline: 'A payment promise is broken right now', detail, note }
   return null
 }

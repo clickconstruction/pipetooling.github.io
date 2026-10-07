@@ -27,6 +27,7 @@ The row moves into the **Uncollectible** band at the bottom of Collections. A re
 - The job is on no lien clock. It leaves the Lien desk's queues, the Deadlines calendar and any GC-on-notice run.
 - The bill's Stripe invoice is marked uncollectible too. The pay link stops asking.
 - Nothing is deleted and no bill is rewritten. The job's activity thread records who marked it, when and why.
+- The next time someone opens a new job for that customer, the job form shows a nudge. It asks whether to set the customer's payment terms to Deposit required.
 
 ## If the money turns up
 
@@ -35,6 +36,10 @@ The row moves into the **Uncollectible** band at the bottom of Collections. A re
 ## Put it back
 
 Press {{button:outline|Put it back in Collections}} under the stamped row and confirm. The stamp comes off, the job counts in Collections again and goes back on its lien clock.
+
+## The accountant's list
+
+Settings → Jobs & dispatch has a section called **Uncollectible: the accountant's list**. It lists every bill the office gave up on, by year, with the reason and the dollars. The {{button:outline|Download CSV}} button hands your accountant the bad-debt list for the books. A bill paid later leaves the list, because that debt was recovered.
 
 ## Who can do this
 
