@@ -39,6 +39,9 @@ PR like any other.
    with no `.html` beside it reads *waiting on a mock-up*** on the board (and the board has a
    toggle for just those rows); when the work changes no screen — a live test, a refactor, a
    retirement — say so with `mockup: not required — <why>` and the row reads that instead.
+   **A mock-up's data is made up** (a made-up customer such as *Ridgeway Builders*, made-up
+   streets, amounts and counts; never a live row or a screenshot of one), since the repo and the
+   `/to-dos/` pages are public.
    **Flag a row to the top** with `flagged: true` in its front matter (v2.4196): the board lifts it out
    of its group into a ⚑ Flagged section above every group. Delete the line to unflag.
 3. **Check** — `npm run check:todos` says whether every to-do parses, cites shipped versions
