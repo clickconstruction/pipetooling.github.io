@@ -138,12 +138,13 @@ Each has a default the plan is written to. The owner changes any of them by sayi
 Every migration follows `CLAUDE.md`:
 
 - It starts with `SET lock_timeout = '3s';`.
-- It is numbered from `origin/main` (its newest tonight is `20261007060000`) and claimed with
+- It is numbered after `origin/main`'s newest when its PR is cut, and claimed then with
   `npm run claim -- --migration <file>`.
 - It is written idempotent, and pushed with `supabase db push` only after it is on `main`.
 - Every table has RLS, dev only while it is built: one policy a table, `FOR ALL TO authenticated
-  USING (public.is_dev()) WITH CHECK (public.is_dev())`, as `20261006233000_gc_projects_trades_scope`
-  does.
+  USING ((SELECT public.is_dev())) WITH CHECK ((SELECT public.is_dev()))`, with `anon` revoked, as
+  the newest on main do (`20261007110000_court_areas`). The wrap asks once a statement, not once a
+  row. PR 10's team policies take the same form.
 - Every migration that creates a table ends with `SELECT public.apply_read_only_write_blocks();`,
   `SELECT public.apply_read_only_stmt_blocks();` and `SELECT public.apply_digital_twin_write_blocks();`.
 
@@ -154,16 +155,21 @@ Each column names the prototype field it carries (`src/lib/gcMode/gcTypes.ts`).
 **`gc_schedules`**, one row per GC project, keyed by `project_id` (FK `gc_projects.project_id`):
 
 - `version` (integer, from 0, bumped by every plan write; decision 5).
-- `drafted_on` (date) and `drafted_by` (FK `users.id`).
-- `template_id` (FK `gc_schedule_templates.id`, set null), `template_name` and `template_used_on`:
-  `ProjectSchedule.template`, the template's name as it read that day (G-44).
+- `drafted_on` (date, the company day the writer gives; no default, since the server's day is UTC)
+  and `drafted_by` (FK `users.id`).
+- `template_id` (FK `gc_schedule_templates.id`, set null; PR 4 adds the key, when that table
+  exists), `template_name` and `template_used_on`: `ProjectSchedule.template`, the template's name
+  as it read that day (G-44). A check keeps the name and the day together.
 - `updated_at` and `updated_by`.
+- Every table below with a `project_id` references this row's, so nothing exists without the
+  header and its version.
 
 **`gc_schedule_activities`**, one row per bar (`ScheduleActivity`):
 
 - `id`, `project_id`, `kind` (`line`, `inspection`, `added`), `position`.
 - `scope_item_id` (FK `gc_scope_items.id`, cascade; a `line` only) and `package_id` (FK
-  `gc_trade_packages.id`; a `line` only). These are the prototype's `lineId` and `packageId`.
+  `gc_trade_packages.id`, cascade; a `line` only). These are the prototype's `lineId` and
+  `packageId`.
 - `start` and `finish` (dates, both days counted).
 - `not_before` and `must_finish_by` (dates, G-36).
 - `actual_start` and `actual_finish` (dates, G-55).
@@ -171,8 +177,11 @@ Each column names the prototype field it carries (`src/lib/gcMode/gcTypes.ts`).
 - For an `inspection`: `label` (*Rough-in inspection*) and `passed_on` (date).
 - For an `added` bar (G-38): `label`, `who` (*Our crew*, *The customer*) and `done_on` (date).
 - `created_at`.
-- A check: a `line` has its scope line, and the other two kinds have a label.
+- Checks: a `line` has its scope line and trade, and the other two kinds a label and neither. An
+  `added` bar says whose it is. Only an inspection has `passed_on`. `finish` is on or after
+  `start`, and the real days are in order. A place is never blank.
 - Unique (`project_id`, `scope_item_id`): one bar per line.
+- Unique (`project_id`, `id`), so a link's two ends can be held to bars of one job.
 
 **`gc_schedule_activity_parts`**, a line split into parts (`ActivityPart`, G-39):
 
@@ -182,10 +191,13 @@ Each column names the prototype field it carries (`src/lib/gcMode/gcTypes.ts`).
 - `share` (percent, set from the days at the split and kept; the shares add up to 100) and `pct`.
 - `actual_start` and `actual_finish`.
 - Unique (`activity_id`, lower(`name`)).
+- Checks: `from_day` from 0 and `days` from 1, `share` and `pct` within 0 to 100, and the real days
+  in order.
 
 **`gc_schedule_links`**, what each bar waits on (`ScheduleActivity.after` and `.lag`):
 
-- `id`, `project_id`, `from_activity_id` and `to_activity_id` (both cascade).
+- `id`, `project_id`, `from_activity_id` and `to_activity_id` (both cascade). Each end's key is
+  (`project_id`, the bar), so both ends are bars of one job.
 - `kind` (`finish_start` only, decision 3).
 - `gap` (integer, days; below zero is side by side, G-82).
 - Unique (`from_activity_id`, `to_activity_id`), and a check that the two ends differ.
@@ -194,26 +206,28 @@ Each column names the prototype field it carries (`src/lib/gcMode/gcTypes.ts`).
 
 **`gc_schedule_milestones`**, the dates the job must meet (`ScheduleMilestone`):
 
-- `id`, `project_id`, `label`, `planned` (date), `package_id` (null: the job's own), `met_on`
-  (date), `position`.
+- `id`, `project_id`, `label`, `planned` (date), `package_id` (null: the job's own; set null if the
+  trade goes), `met_on` (date), `position`.
 - Substantial completion's day under the contract is worked out, never stored: the milestone's
   planned day plus the signed change orders' days (`substantialCompletionOn`).
 
 **`gc_schedule_inspection_failures`**, an inspection that did not pass (`InspectionFailure`):
 
-- `id`, `activity_id` (an `inspection`), `failed_on`, `note`, `package_ids` (uuid[], the trades
-  whose work failed), `reinspect_on`.
+- `id`, `activity_id` (an `inspection`; the writer sees to that), `failed_on`, `note` (never
+  blank), `package_ids` (uuid[], the trades whose work failed), `reinspect_on` (after `failed_on`),
+  as the prototype's reducer refuses.
 
 ### Baselines
 
 **`gc_schedule_baselines`** (`ScheduleBaseline`, G-41):
 
-- `id`, `project_id`, `name` (null reads *At Start*), `locked_on`, `locked_by`, `why`.
+- `id`, `project_id`, `name` (null reads *At Start*), `locked_on`, `locked_by` (FK `users.id`),
+  `why`, and `created_at`, which orders two kept on one day.
 - The newest is the plan the chart measures against. The ones it retired stay, named, oldest
   first, as `ProjectSchedule.baselines` keeps them.
 
 **`gc_schedule_baseline_dates`**: `baseline_id` (cascade), `activity_id` (cascade), `start`,
-`finish`. Primary key (`baseline_id`, `activity_id`).
+`finish` (on or after `start`). Primary key (`baseline_id`, `activity_id`).
 
 ### Moves, and the records a move carries
 
@@ -260,10 +274,12 @@ UPDATE on the undo pair only, which Undo sets and Redo clears.
 
 **`gc_schedule_changes`**, one row per plan write, the words for decision 5:
 
-- `project_id`, `version`, `made_at`, `made_by`.
+- `project_id`, `version` (from 1), `made_at`, `made_by`.
 - `words`: sent with the press, the line the prototype logs for it. For example: *Electrical ·
   Lighting now runs Mon Sep 14 to Fri Oct 30. Robert: The fixtures ship a week late.*
-- Primary key (`project_id`, `version`). Append only, like the moves.
+- Primary key (`project_id`, `version`). Append only: `authenticated` has no UPDATE, DELETE or
+  TRUNCATE on it. Privileges hold it, not a missing policy, so PR 10's swap cannot open it. The plan
+  writes are `SECURITY INVOKER`, as `gc_create_project` is, and still insert their lines.
 
 ### Keeping it true
 

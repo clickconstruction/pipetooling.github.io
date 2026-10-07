@@ -2,7 +2,7 @@
 name: "The schedule's PR 2: the schedule and its bars, as tables"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 2; The tables (The schedule and its bars, and Baselines)
 branch: the plan on spike/schedule-pr2-plan (from origin/spike/gc-mode at 1b3c30db4); the migration from origin/main when the PR is cut
-status: plan 2026-10-07 by Helper 1 at the lead's ask. Nothing is applied. The stamp and the version are claimed when the PR is cut, after main's newest at that moment (tonight 20261007140000). Helper 1 never applies it; the lead pushes it from a clean checkout after the merge and opens the types PR.
+status: plan 2026-10-07 by Helper 1 at the lead's ask; the lead's go the same day on the three calls as picked. Cut from main at 43e9d4bff as #4814 (v2.4798), with the stamp 20261007210000, past the uncollectible lane's two unmerged claims on purpose. The tables in SCHEDULE_REAL_BUILD.md are amended to match. Not applied: the lead pushes it from a clean checkout after the merge and opens the types PR.
 ---
 
 # The schedule's PR 2: the schedule and its bars, as tables
@@ -525,8 +525,11 @@ These are what the SQL above does that *The tables* does not say, or says anothe
 ## When it is cut
 
 1. Branch from `origin/main`.
-2. Take the next stamp after main's newest at that moment, as the round hours on main are taken,
-   and claim it: `npm run claim -- --migration supabase/migrations/<stamp>_gc_schedule_tables.sql`.
+2. Take the next stamp after main's newest at that moment, and after any stamp another session has
+   claimed but not merged (`.claude/sessions/claims/` in the main checkout). Otherwise one of theirs
+   pushed first lands later than this and `db push` refuses it. Claim it from the PR's branch,
+   since the claim records the branch checked out:
+   `npm run claim -- --migration supabase/migrations/<stamp>_gc_schedule_tables.sql`.
 3. Claim the version with `npm run claim -- --branch <branch>`. Put it in the ten `v2.NNNN`
    (the header's, and each table's comment) and in the doc.
 4. Add the migration, its doc, the release note and the fragment. The note's kind is infra, its
