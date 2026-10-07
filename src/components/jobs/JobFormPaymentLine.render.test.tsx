@@ -44,6 +44,7 @@ function actions(over: Partial<PaymentLineActions> = {}): PaymentLineActions {
     setBillViewInvoice: vi.fn(),
     requestUndoPartPayment: vi.fn(),
     requestCheckDidNotClear: vi.fn(),
+    requestApplyToStripe: vi.fn(),
     ...over,
   }
 }
@@ -68,6 +69,30 @@ function openMenu(amountText: string) {
   fireEvent.click(screen.getByLabelText(`More for the ${amountText} payment`))
   return screen.getByRole('menu')
 }
+
+describe('JobFormPaymentLine — Apply it to the Stripe bill (v2.4847)', () => {
+  it('a saved check the oldest-first rule counts toward an open Stripe bill offers the door, and it hands the host the row and the bill', () => {
+    const row = paymentRow({ id: 'p-check', amount: 1000, payment_type: 'Check', reference_number: '1042', invoice_id: null })
+    const { acts } = renderLine(row, { bill: stripeBill, job: job([stripeBill]) })
+    const menu = openMenu('$1,000.00')
+    fireEvent.click(within(menu).getByTestId('payment-apply-to-stripe'))
+    expect(acts.requestApplyToStripe).toHaveBeenCalledWith(row, stripeBill)
+  })
+
+  it('not once Stripe holds it, not on a plain bill, and not when the row covers the whole bill', () => {
+    renderLine(paymentRow({ id: 'p-cn', amount: 1000, invoice_id: 'inv-s', stripe_credit_note_id: 'cn_1' } as Partial<PaymentRow>), { bill: stripeBill, job: job([stripeBill]) })
+    expect(within(openMenu('$1,000.00')).queryByTestId('payment-apply-to-stripe')).toBeNull()
+    fireEvent.mouseDown(document.body)
+    renderLine(paymentRow({ id: 'p-plain', amount: 1000, invoice_id: 'inv-a' }))
+    const menus = screen.getAllByLabelText('More for the $1,000.00 payment')
+    fireEvent.click(menus[menus.length - 1]!)
+    expect(screen.queryByTestId('payment-apply-to-stripe')).toBeNull()
+    fireEvent.mouseDown(document.body)
+    renderLine(paymentRow({ id: 'p-whole', amount: 1500, invoice_id: 'inv-s' }), { bill: stripeBill, job: job([stripeBill]) })
+    fireEvent.click(screen.getByLabelText('More for the $1,500.00 payment'))
+    expect(screen.queryByTestId('payment-apply-to-stripe')).toBeNull()
+  })
+})
 
 describe('JobFormPaymentLine — a bank deposit', () => {
   it('reads amount · date · check from the payer · days after the bill, and its menu holds the bank date, the check date, Move and Unlink', () => {

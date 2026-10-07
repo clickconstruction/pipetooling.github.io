@@ -26,6 +26,7 @@ import {
   unlinkLeavesStripeBillUntouched,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { heldStripeMarkLineWords, paymentRowOnHeldStripeMark } from '../../lib/jobs/heldStripeMark'
+import { applyToStripeOffered } from '../../lib/jobs/applyPaymentToStripeBill'
 import { stripeHeldMoveOffered } from '../../lib/jobs/stripeHeldPaymentMove'
 import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersCheckDidNotClear } from '../../lib/jobs/stripeOobSendBack'
 import { paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
@@ -42,6 +43,8 @@ export type PaymentLineActions = {
   setBillViewInvoice: (inv: InvoiceWithJobForBillView) => void
   requestUndoPartPayment?: (row: PaymentRow) => void
   requestCheckDidNotClear?: (row: PaymentRow) => void
+  /** v2.4847: a payment the app counts toward a Stripe bill that Stripe never heard of — the host opens the apply window (a credit note for the row). */
+  requestApplyToStripe?: (row: PaymentRow, bill: JobsLedgerInvoiceRow) => void
 }
 
 export type JobFormPaymentLineProps = {
@@ -147,6 +150,15 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
     stripeInv && actions.requestCheckDidNotClear && paymentRowOffersCheckDidNotClear({ holdsReason: stripeHoldsPaymentReason(row, job), invoiceStatus: stripeInv.status }),
   )
   const canPinHere = Boolean(bill && words.countedHere && !jobsLedgerInvoiceIsStripeLinked(bill) && bill.status === 'billed')
+  // v2.4847: the row counts toward this Stripe bill (pinned or by the oldest-first rule) and Stripe never heard of it.
+  const applyShown = applyToStripeOffered({
+    bill,
+    billIsStripe: Boolean(bill && jobsLedgerInvoiceIsStripeLinked(bill)),
+    row,
+    persisted,
+    partial: Boolean(partial),
+    hasAction: Boolean(actions.requestApplyToStripe) && (words.pinned ? row.invoice_id === bill?.id : words.countedHere),
+  })
   const closeMenu = () => setMenuOpen(false)
   const futureReceived = Boolean(row.paid_on && row.paid_on > todayYmd)
 
@@ -238,6 +250,12 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
               {stripeInv ? (
                 <button type="button" role="menuitem" onClick={() => { closeMenu(); if (job) actions.setBillViewInvoice({ ...stripeInv, job }) }} style={menuItem()}>
                   View the Stripe bill
+                </button>
+              ) : null}
+              {applyShown ? (
+                <button type="button" role="menuitem" data-testid="payment-apply-to-stripe" onClick={() => { closeMenu(); actions.requestApplyToStripe?.(row, bill!) }} title="ClickTooling counts this payment on the bill, but the Stripe pay link still asks for the full amount. Put a credit line on the Stripe bill for it." style={menuItem()}>
+                  <span>Apply it to the Stripe bill</span>
+                  <span style={MENU_SUB}>the pay link then asks for the rest</span>
                 </button>
               ) : null}
               {undoShown ? (
