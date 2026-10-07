@@ -173,6 +173,53 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
   })
 })
 
+describe('JobFormInvoiceList marked paid · no payment on record (v2.4839, under ⋯)', () => {
+  it('a paid row with no payment behind it offers Remove bill; a paid row with a payment does not', async () => {
+    renderList(
+      makeJob({
+        customer_name: 'Dudley Mason',
+        revenue: 17800,
+        invoices: [
+          makeInvoice({ id: 'inv-paid', status: 'paid', amount: 8000, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-05-13T15:00:00Z', billed_at: '2026-05-13T15:00:00Z' }),
+          makeInvoice({ id: 'inv-stub', status: 'paid', amount: 8900, is_primary_rtb_bundle: false, sent_to_customer_at: null, billed_at: null }),
+        ],
+      }),
+      [payment('inv-paid', 8000, '2026-06-04')],
+    )
+    await settle()
+    const rows = screen.getAllByTestId('invoice-row')
+    const stub = rows.find((r) => within(r).queryByText('$8,900 marked paid'))!
+    expect(within(stub).getByText('no payment on record')).toBeTruthy()
+    let menu = openMenu(stub)
+    const btn = within(menu).getByRole('menuitem', { name: /Remove bill/ })
+    expect((btn as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(btn)
+    const dialog = screen.getByRole('dialog', { name: 'Remove bill' })
+    expect(within(dialog).getByText(/\$8,900\.00/)).toBeTruthy()
+    expect(within(dialog).getByText(/changes no payment and no balance owed/)).toBeTruthy()
+    fireEvent.click(within(dialog).getByText('Cancel'))
+    expect(screen.queryByRole('dialog', { name: 'Remove bill' })).toBeNull()
+    // the real paid bill keeps its menu as before
+    const paid = rows.find((r) => within(r).queryByText('$8,000 paid'))!
+    menu = openMenu(paid)
+    expect(within(menu).queryByText(/Remove bill/)).toBeNull()
+    expect(within(menu).queryByText(/Send back/)).toBeNull()
+  })
+
+  it('a Stripe-backed stamp keeps the item dead with the door to use instead', async () => {
+    renderList(
+      makeJob({
+        invoices: [makeInvoice({ id: 'inv-stub', status: 'paid', amount: 600, is_primary_rtb_bundle: false, stripe_invoice_id: 'in_123', sent_to_customer_at: null, billed_at: null })],
+      }),
+    )
+    await settle()
+    const menu = openMenu(screen.getByTestId('invoice-row'))
+    const btn = within(menu).getByRole('menuitem', { name: /Remove bill/ })
+    expect((btn as HTMLButtonElement).disabled).toBe(true)
+    expect(btn.title).toMatch(/Undo it under the bill first/)
+  })
+})
+
 describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
   it('offers Send back on an unpaid billed row and the confirm requires the acknowledgment', () => {
     renderList(makeJob({ invoices: [makeInvoice({ id: 'inv-billed', status: 'billed', amount: 8900, is_primary_rtb_bundle: false })] }))
