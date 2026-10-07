@@ -3,9 +3,16 @@
  * moved word for word from the GC mode prototype (branch spike/gc-mode, `gcNotReady.ts`). The rest of
  * not ready (G-77) reads Start's checklist, the papers and the promises, and waits for them.
  */
-import { INSURANCE_ASK_DAYS } from '../promises'
-import type { Partner } from '../types'
+import { INSURANCE_ASK_DAYS, openPromiseFor, tradePromiseWords } from '../promises'
+import type { GcProject, GcState, Partner, TradePackage } from '../types'
 import { daysUntil, shortDate, weekdayDate } from '../words'
+import { addDays } from '../building'
+import { partnerById, planLabel } from '../lookups'
+import { paperStep } from '../paperSend'
+import type { GanttHold } from './gantt'
+import { scheduleItems } from './schedule'
+import type { StartTradeRow } from '../start'
+import { startChecklist } from '../start'
 
 /**
  * A bar starting within this many days with its papers not in is late: the trade's last start
@@ -65,4 +72,232 @@ export function holdWordsInList(words: string): string {
 export function lapsedInsuranceWords(partner: Partner, day: string): string | null {
   if (!insuranceGap(partner, day, day)) return null
   return partner.coiExpires ? `Their insurance ran out ${weekdayDate(partner.coiExpires)}. Nothing they do for us is covered.` : 'No insurance on file. Nothing they do for us is covered.'
+}
+
+/**
+ * What a trade still needs before it starts work on `on`, in Get started's order. Empty: it is
+ * ready. A trade with no company picked needs the award first; nothing else is judged before it,
+ * as on Get started.
+ */
+function gapsOf(state: GcState, project: GcProject, row: StartTradeRow, on: string): StartGap[] {
+  const { pkg, partner } = row
+  if (pkg.selfPerform) return []
+  if (!partner) return [{ kind: 'award', label: 'Award', line: 'Award: no company picked.', barWords: 'an award, no company yet', noun: 'an award', doc: null }]
+  const done = (key: string) => row.checks.find((c) => c.key === key)?.done === true
+  const gaps: StartGap[] = []
+  if (!done('msa')) {
+    const sentOn = partner.msa === 'sent' ? (partner.msaSentOn ?? null) : null
+    gaps.push({
+      kind: 'msa',
+      label: 'Master agreement',
+      line: partner.msa === 'sent' ? `Master agreement sent${sentOn ? ` ${shortDate(sentOn)}` : ''}, not signed.` : 'Master agreement not sent.',
+      barWords: partner.msa === 'sent' ? (sentOn ? `a signed master agreement, sent ${shortDate(sentOn)}` : 'a signed master agreement, not signed yet') : 'a signed master agreement, not sent yet',
+      noun: 'a signed master agreement',
+      doc: 'msa',
+    })
+  }
+  const insurance = insuranceGap(partner, on, state.today)
+  if (insurance) gaps.push(insurance)
+  if (!done('w9')) gaps.push({ kind: 'w9', label: 'W-9', line: 'W-9 missing.', barWords: 'a W-9, none on file', noun: 'a W-9', doc: 'w9' })
+  if (!done('sow')) gaps.push(sowGap(project, pkg))
+  return gaps
+}
+
+function sowGap(project: GcProject, pkg: TradePackage): StartGap {
+  const sow = pkg.sow
+  const base = { kind: 'sow' as const, label: 'Statement of work', noun: 'a signed statement of work', doc: sow ? `sow-${pkg.id}` : null }
+  if (!sow) return { ...base, line: 'Statement of work not written.', barWords: 'a signed statement of work, not written yet' }
+  if (sow.status === 'draft') return { ...base, line: 'Statement of work drafted, not sent.', barWords: 'a signed statement of work, not sent yet' }
+  if (sow.status === 'sent') {
+    return sow.sentOn
+      ? { ...base, line: `Statement of work sent ${shortDate(sow.sentOn)}, not signed.`, barWords: `a signed statement of work, sent ${shortDate(sow.sentOn)}` }
+      : { ...base, line: 'Statement of work sent, not signed.', barWords: 'a signed statement of work, not signed yet' }
+  }
+  // Signed on plans older than the newest set, which Get started does not count as done.
+  return { ...base, noun: 'a new statement of work', line: `Statement of work signed on ${planLabel(project, sow.basedOnRev)}, older than the plans.`, barWords: 'a new statement of work, the plans changed' }
+}
+
+/** What a trade still needs before it starts work on `on`, in Get started's order. Empty: it is ready (or it is our own crew). */
+export function startGaps(state: GcState, project: GcProject, pkg: TradePackage, on: string): StartGap[] {
+  const row = startChecklist(state, project).trades.find((t) => t.pkg.id === pkg.id)
+  return row ? gapsOf(state, project, row, on) : []
+}
+
+/** A bar that has not started, on a trade not ready for it. */
+export interface NotReadyBar {
+  lineId: string
+  pkg: TradePackage
+  partner: Partner | null
+  start: string
+  gaps: StartGap[]
+  /** It starts within NOT_READY_LATE_DAYS, or its day passed with nothing reported. */
+  late: boolean
+}
+
+/**
+ * Every bar on a job being built that has not started, on a trade not ready for it. A bar counts
+ * when it is a trade's line (not an inspection, our own crew's stage or an added activity) with no
+ * real start recorded and nothing reported. A trade already on site still counts for its bars that
+ * have not started. While buying out nothing counts: the whole job is not ready, and Get started is
+ * the place for that.
+ */
+export function notReadyBars(state: GcState, project: GcProject): NotReadyBar[] {
+  if (project.stage !== 'building' || !project.schedule) return []
+  const rows = new Map(startChecklist(state, project).trades.map((t) => [t.pkg.id, t]))
+  const lateBy = addDays(state.today, NOT_READY_LATE_DAYS)
+  return scheduleItems(state, project).flatMap((item) => {
+    const a = item.activity
+    const row = item.pkg ? rows.get(item.pkg.id) : undefined
+    if (!item.pkg || !row || item.pkg.selfPerform || a.inspection || a.added) return []
+    if (item.actual > 0 || a.actualStart) return []
+    const gaps = gapsOf(state, project, row, a.start)
+    return gaps.length === 0 ? [] : [{ lineId: a.lineId, pkg: item.pkg, partner: row.partner, start: a.start, gaps, late: a.start <= lateBy }]
+  })
+}
+
+/** "a, b and c" */
+function listWords(words: string[]): string {
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+/** The bar's words after "waits on": one gap with where it stands, or several by name. */
+export function notReadyWords(gaps: StartGap[]): string {
+  const [only] = gaps
+  return gaps.length === 1 && only ? only.barWords : listWords(gaps.map((g) => g.noun))
+}
+
+/**
+ * The chart's holds with each not-ready bar added (G-77), the kind 'paperwork'. A bar already held
+ * by a submittal, a question or a wait keeps that hold too, last in one list after the papers:
+ * "current insurance and submittal 28 31 11-01", "current insurance and the transformer, …"
+ * (`holdWordsInList`). Late when either is.
+ */
+export function withNotReady(holds: Map<string, GanttHold>, state: GcState, project: GcProject): Map<string, GanttHold> {
+  const bars = notReadyBars(state, project)
+  if (bars.length === 0) return holds
+  const out = new Map(holds)
+  for (const bar of bars) {
+    const had = holds.get(bar.lineId)
+    out.set(bar.lineId, {
+      kind: 'paperwork',
+      words: had ? listWords([...bar.gaps.map((g) => g.noun), holdWordsInList(had.words)]) : notReadyWords(bar.gaps),
+      late: bar.late || Boolean(had?.late),
+    })
+  }
+  return out
+}
+
+/** One paper on the opened activity: its line, its next step's button, a day they gave, or a sentence where nothing can be sent from here. */
+export interface NotReadyLine extends StartGap {
+  /** The paper's own next step (`paperStep`): "Ask for it", "Remind them", "Send to sign". Null: no button. */
+  verb: string | null
+  /** An open promise for it, in Follow up's words: "Promised the signed statement of work by Fri Oct 9, in 7 days." */
+  promise: string | null
+  /** What to do instead, where there is no button: "Pick a company and award the trade." */
+  hint: string | null
+}
+
+export interface NotReadyBlock {
+  /** "Pecan Valley Electric is not ready to start this on Mon Oct 19." */
+  title: string
+  partner: Partner | null
+  lines: NotReadyLine[]
+  /** "The bar stays held until it is in." */
+  last: string
+  late: boolean
+}
+
+/** The block first in the opened activity (G-77). Null: the bar is not a trade's bar waiting to start, or its trade is ready. */
+export function notReadyBlock(state: GcState, project: GcProject, lineId: string): NotReadyBlock | null {
+  const bar = notReadyBars(state, project).find((b) => b.lineId === lineId)
+  if (!bar) return null
+  const { partner, pkg, start } = bar
+  const today = state.today
+  const title = partner
+    ? start > today
+      ? `${partner.company} is not ready to start this on ${weekdayDate(start)}.`
+      : start === today
+        ? `This starts today. ${partner.company} is not ready.`
+        : `This was to start ${weekdayDate(start)}. ${partner.company} is not ready.`
+    : start > today
+      ? `Nobody is awarded this work yet. It starts ${weekdayDate(start)}.`
+      : `Nobody is awarded this work yet. It was to start ${weekdayDate(start)}.`
+  // Get started sends a statement of work only once the master agreement, the W-9 and current insurance are in.
+  const sowWaits = partner !== null && (partner.msa !== 'signed' || !partner.w9 || !partner.coiExpires || daysUntil(partner.coiExpires, today) < 0)
+  const lines = bar.gaps.map((g): NotReadyLine => {
+    if (!partner) return { ...g, verb: null, promise: null, hint: 'Pick a company and award the trade.' }
+    if (g.kind === 'sow' && pkg.sow?.status === 'signed') return { ...g, verb: null, promise: null, hint: 'The plans changed after they signed. Send a new statement of work.' }
+    if (g.kind === 'sow' && pkg.sow?.status === 'draft' && sowWaits) return { ...g, verb: null, promise: null, hint: 'It goes once the papers above are in.' }
+    const step = g.doc ? paperStep(state, partner, g.doc) : null
+    const match = g.kind === 'sow' ? { partnerId: partner.id, kind: 'sow' as const, projectId: project.id, packageId: pkg.id } : g.kind === 'award' ? null : { partnerId: partner.id, kind: g.kind }
+    const promised = match ? openPromiseFor(state, match) : undefined
+    return { ...g, verb: step?.verb ?? null, promise: promised ? tradePromiseWords(promised, today) : null, hint: null }
+  })
+  const last = !partner ? 'The bar stays held until the trade is awarded.' : bar.gaps.length === 1 ? 'The bar stays held until it is in.' : 'The bar stays held until they are in.'
+  return { title, partner, lines, last, late: bar.late }
+}
+
+/** A bar under way, of a trade whose insurance ran out or was never on file (G-138): the work goes on uncovered. */
+export interface UninsuredBar {
+  lineId: string
+  pkg: TradePackage
+  partner: Partner
+  gap: StartGap
+}
+
+/**
+ * On a job being built, a hired trade's bars under way (work reported or a real start, not done)
+ * whose insurance ran out or was never on file. G-77's own insurance gap, read on the day itself:
+ * for work already going, "before it starts" no longer applies. Under way is the complement of
+ * G-77's not started, so a bar is never both: held there, a red note here.
+ */
+export function uninsuredBars(state: GcState, project: GcProject): UninsuredBar[] {
+  if (project.stage !== 'building' || !project.schedule) return []
+  const today = state.today
+  return scheduleItems(state, project).flatMap((item) => {
+    const a = item.activity
+    const pkg = item.pkg
+    if (!pkg || pkg.selfPerform || a.inspection || a.added) return []
+    if (item.actual >= 100 || (item.actual <= 0 && !a.actualStart)) return []
+    const partnerId = pkg.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
+    const partner = partnerId ? partnerById(state, partnerId) : undefined
+    const gap = partner ? insuranceGap(partner, today, today) : null
+    return partner && gap ? [{ lineId: a.lineId, pkg, partner, gap }] : []
+  })
+}
+
+/** "Pecan Valley Electric's insurance ran out Tue Sep 15." · "Pecan Valley Electric has no insurance on file." */
+function uninsuredWords(bar: UninsuredBar): string {
+  const expires = bar.partner.coiExpires
+  return expires ? `${bar.partner.company}'s insurance ran out ${weekdayDate(expires)}.` : `${bar.partner.company} has no insurance on file.`
+}
+
+/** By bar: the red note beside it ("insurance ran out Sep 15") and the hover card's line. */
+export function uninsuredNotes(state: GcState, project: GcProject): Map<string, { note: string; words: string }> {
+  return new Map(
+    uninsuredBars(state, project).map((bar) => [
+      bar.lineId,
+      { note: bar.partner.coiExpires ? `insurance ran out ${shortDate(bar.partner.coiExpires)}` : 'no insurance on file', words: `${uninsuredWords(bar)} Nothing they do for us is covered.` },
+    ]),
+  )
+}
+
+/**
+ * The opened bar's block for a bar under way with its insurance run out (G-138): G-77's shape, the
+ * paper's own next step to ask for it, and in one line the guard that already stands, Approve on
+ * Draws locked until a current certificate is in, so nobody takes the note for the only one.
+ */
+export function uninsuredBlock(state: GcState, project: GcProject, lineId: string): NotReadyBlock | null {
+  const bar = uninsuredBars(state, project).find((b) => b.lineId === lineId)
+  if (!bar) return null
+  const step = bar.gap.doc ? paperStep(state, bar.partner, bar.gap.doc) : null
+  const promised = openPromiseFor(state, { partnerId: bar.partner.id, kind: 'insurance' })
+  return {
+    title: `${bar.partner.company} is working on this without current insurance.`,
+    partner: bar.partner,
+    lines: [{ ...bar.gap, verb: step?.verb ?? null, promise: promised ? tradePromiseWords(promised, state.today) : null, hint: null }],
+    last: 'On Draws, Approve stays locked until a current certificate is in.',
+    late: true,
+  }
 }

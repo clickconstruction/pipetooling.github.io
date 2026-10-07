@@ -112,6 +112,7 @@ describe('what the schedule reads from the other lanes', () => {
       amount: 100000,
       basedOnRev: 0,
       submittedOn: '2026-09-28',
+      note: '',
       includes: { 'x-1': 'yes', 'x-2': 'no' },
       plugs: { 'x-2': 4000 },
       alternates: [
@@ -125,6 +126,7 @@ describe('what the schedule reads from the other lanes', () => {
     const pkg: TradePackage = {
       id: 'x',
       trade: 'Roofing',
+      bidTab: null,
       budget: 90000,
       carried: 'x-quote',
       scope: [

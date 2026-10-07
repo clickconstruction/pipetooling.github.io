@@ -206,8 +206,49 @@ export interface ProjectContact {
 /** Why a bid to an owner was lost: Trades mode's loss reasons, in GC words (gcLost.ts). */
 export type GcLostWhy = 'price' | 'other_builder' | 'project_died' | 'no_bid' | 'no_answer'
 
+/**
+ * The bid tab for one trade: every quote, low to high, given back to the companies that quoted.
+ * It is the thanks for bidding: a company that sees where it stood keeps answering our asks.
+ */
+export interface BidTab {
+  sharedOn: string
+  /** False: the other companies read "Another company". Each one always sees its own name. */
+  showNames: boolean
+  /** Partner ids that have opened it in their portal. */
+  seenBy: string[]
+}
+
+/** A place a company drives from, or a project sits in. The real build reads the app's geocoded addresses. */
+export interface Town {
+  name: string
+  lat: number
+  lng: number
+}
+
+/** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
+export interface PlanQuestion {
+  id: string
+  packageId: string
+  partnerId: string
+  text: string
+  askedOn: string
+  answeredOn: string | null
+  answer: string | null
+  /** The sheets the question is about. */
+  sheets?: string[]
+  /** The day we sent it to the architect. Missing: not sent yet. */
+  sentToArchitectOn?: string
+  /** Who got the answer, and when. */
+  answerSentTo?: { partnerId: string; on: string }[]
+  /** The plan set that carried the answer. */
+  inSetRev?: number
+  /** Asked at the pre-bid meeting, not by phone or email. */
+  atPreBid?: boolean
+}
+
 export interface PlanSet {
   rev: number
+  label: string
   /** Package ids whose scope this set changed. A bid priced on an older set is stale for them. */
   touches: string[]
 }
@@ -224,10 +265,13 @@ export interface SubBid {
   includes: Record<string, Includes>
   /** The office's plug for a scope item the bid leaves out, so two bids compare like with like. */
   plugs: Record<string, number>
+  note: string
   /** How many days the number holds from the day it was sent. Unset: the company did not say. */
   goodForDays?: number
   /** Another way to do the work, at a different price: what it is, and what it adds (plus) or takes off (minus). */
   alternates?: BidAlternate[]
+  /** The company's own quote, attached in its portal. Only the file's name is kept in the prototype. */
+  quoteFile?: string
   /**
    * Alternates the office took, by label (question 14, the Board lane's call, 2026-10-04): a taken
    * alternate moves the all-in number and what we carry; one not taken changes nothing.
@@ -263,6 +307,8 @@ export interface Invite {
   status: InviteStatus
   invitedOn: string
   bid: SubBid | null
+  /** The last day the office chased them on this ask. */
+  nudgedOn?: string
   /** Why they are out, when the office took the answer by phone: will not do it, or cannot. */
   declinedWhy?: 'wont' | 'cant'
   /** The reason the office wrote down with it (the owner, 2026-10-04); kept with the job and the company. */
@@ -314,7 +360,9 @@ export interface Sow {
   status: 'draft' | 'sent' | 'signed'
   price: number
   retainagePct: number
+  basedOnRev: number
   sov: SovLine[]
+  signedOn: string | null
   draws: Draw[]
   /** Closeout: the day we accepted the work, after the punch list. Null or absent: not yet. */
   acceptedOn?: string | null
@@ -322,11 +370,18 @@ export interface Sow {
   sentBack?: DrawSentBack[]
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
   sentOn?: string
+  /**
+   * What the contract says they will not do (the owner, 2026-10-04: "once we've got the job, we send
+   * them a contract specifying what they're going to do"): their exclusions, each with who does it
+   * instead when we know. Set at award from their quote.
+   */
+  excluded?: { name: string; by: string | null; unitPrice?: { amount: number; unit: string } }[]
 }
 
 export interface TradePackage {
   id: string
   trade: string
+  bidTab: BidTab | null
   scope: ScopeItem[]
   /** Our own number for the trade before anyone bids. Carried as a plug when no bid is in. */
   budget: number
@@ -364,6 +419,15 @@ export interface Partner {
   company: string
   contact: string
   trades: string[]
+  /** Coverage: the town their crews drive from. Null: not set yet. */
+  base: string | null
+  /**
+   * Coverage: the point they drive from, from the app's geocoded addresses (the real build, the
+   * Board's B2). Unset: the town in `base` stands in, read from the prototype's list of towns.
+   */
+  basePoint?: Town
+  /** Coverage: how far they are willing to drive, in miles. Null: not set yet. */
+  maxMiles: number | null
   msa: 'none' | 'sent' | 'signed'
   msaSignedOn: string | null
   coiExpires: string | null
@@ -427,10 +491,16 @@ export interface GcProject {
   address: string
   /** Where the job is, for the drive from each trade partner. */
   town: string
+  /** Where the job is, from the app's geocoded addresses (the real build, the Board's B2). Unset: `town` stands in. */
+  point?: Town
   /** The day our own bid went to the owner. Bid tabs stay shut until then. Null: not sent yet. */
   ourBidSentOn: string | null
   /** A rough schedule drawn while we bid, for our bid's weeks to build (G-45). Absent: none drawn. */
   rough?: RoughSchedule
+  /** Going into the job: our contract with the owner, the permit, the day work starts. */
+  ownerContractSignedOn: string | null
+  /** The day our contract went to the customer to sign in their portal (the owner, 2026-10-04). Unset: not sent from the app. */
+  ownerContractSentOn?: string
   /**
    * The owner's price as they signed it, by line: each trade by its package id, then 'gc',
    * 'contingency' and 'fee' (owner, 2026-10-04). Bill the owner reads it, so buying a trade out for
@@ -442,6 +512,8 @@ export interface GcProject {
   ownerLateInterest?: { pctPerMonth: number }
   /** The owner contract's fee a day for finishing past substantial completion (liquidated damages), as we entered it. Absent: none. */
   ownerLateFinish?: { perDay: number }
+  permitOn: string | null
+  startDate: string | null
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
   customerId: string
@@ -456,8 +528,11 @@ export interface GcProject {
   ownerBilling: OwnerBilling | null
   /** Changes to our contract with the owner, oldest first. Absent: none yet. */
   changeOrders?: ChangeOrder[]
+  /** A customer record too: the firm that drew the plans. */
+  architectId: string
   /** The firm's name, kept on the row for display. */
   architect: string
+  questions: PlanQuestion[]
   stage: GcStage
   bidDue: string | null
   planSets: PlanSet[]
