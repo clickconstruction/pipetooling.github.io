@@ -2,7 +2,7 @@
 name: "The schedule's PR 3: moves and the records, as tables"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 3; The tables (Moves, and the records a move carries, and Keeping it true)
 branch: the plan on spike/schedule-pr3-plan (from origin/spike/gc-mode at 0931222ba); the migration from origin/main when the PR is cut, after PR 2 (#4814) is on main
-status: plan 2026-10-07 by Helper 1 at the lead's ask. Nothing is applied. The stamp and the version are claimed when the PR is cut, after main's newest and after any claim not yet merged. Helper 1 never applies it; the lead pushes it after PR 2's, from a clean checkout, and opens the types PR.
+status: plan 2026-10-07 by Helper 1 at the lead's ask; the lead's go the same day on the four calls as picked. Cut from main at 556693e3d as #4827 (v2.4809), with the stamp 20261007220000, after main's newest (20261007213000), with no claim past it. The tables in SCHEDULE_REAL_BUILD.md are amended to match. Not applied: the lead pushes it after PR 2's, from a clean checkout, and opens the types PR.
 ---
 
 # The schedule's PR 3: moves and the records, as tables

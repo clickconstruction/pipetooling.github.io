@@ -231,8 +231,9 @@ Each column names the prototype field it carries (`src/lib/gcMode/gcTypes.ts`).
 
 ### Moves, and the records a move carries
 
-**`gc_schedule_moves`** (`ScheduleMove`), append only. `authenticated` gets no DELETE on it, and
-UPDATE on the undo pair only, which Undo sets and Redo clears.
+**`gc_schedule_moves`** (`ScheduleMove`), append only: `authenticated` has no UPDATE, DELETE or
+TRUNCATE on it, but a column grant for the undo pair, which Undo sets and Redo clears. A saved
+move changes nothing else: its tells and answers are rows of their own.
 
 - `id`, `project_id`, `activity_id` (the bar moved; set null if the bar is removed) and
   `activity_name` (its name that day, so the history still reads).
@@ -243,32 +244,34 @@ UPDATE on the undo pair only, which Undo sets and Redo clears.
   on `btrim(note) <> ''`).
 - `links_changed` (boolean).
 - `finish_from` and `finish_to`: the job's last finish before and after.
-- `undone_on` and `undone_by` (G-40).
+- `undone_on` and `undone_by` (FK `users.id`) (G-40).
 - `change_order_id`: the signed change order whose days it put on the chart (G-76). It gains its FK
   when Owner Billing's change orders are a table.
 - `late_notice_id` (FK `gc_schedule_late_notices.id`): the trade's notice it took (G-117).
-- `walk_id` (FK `gc_schedule_walks.id`): made during a walk (G-52).
 - `pull_finished` (uuid[]): the lines that finished early (G-37).
 - `recovery_how` (`side` or `crew`), `recovery_after_activity_id`, `recovery_gap_was`,
   `recovery_gap` (G-82).
 - `from_what_if_on` (date): kept from a what-if copy made that day (G-81).
 - `parts` (jsonb): a part's own move, the moved part and every part's days before and after, which
   Undo and Redo put back (G-39).
-- `schedule_version`: the version this move made, so a refusal can name it (decision 5).
+- `schedule_version`: the version this move made (decision 5), keyed (deferred) with `project_id`
+  to its line in `gc_schedule_changes`, so every move has its words and a refusal can name it.
 - `noWhy` is never on a real move. It lives only in a copy.
 
 **`gc_schedule_move_pushes`**, what came after it and moved with it (`ScheduleMove.pushed`):
-`move_id` (cascade), `activity_id`, `from_start`, `from_finish`, `to_start`, `to_finish`.
+`move_id` (cascade), `activity_id` (set null if the bar is removed), `from_start`, `from_finish`,
+`to_start`, `to_finish`. Append only.
 
 **The confirmations (G-132),** in two tables:
 
 - **`gc_schedule_move_tells`**, which companies were told, and when (`toldOn`, `toldTo`):
-  `move_id`, `partner_id` (the Board's company record), `told_on`, `shown` (jsonb: each of the
-  company's bars the move changed, with the dates the message gave) and `email_send_log_id`. One row
-  per move and company.
+  `move_id`, `company_id` (the Board's company record, as main's GC tables name it; its key comes
+  with that table), `told_on`, `shown` (jsonb: each of the company's bars the move changed, with the
+  dates the message gave) and `email_send_log_id`. One row per move and company. Append only.
 - **`gc_schedule_move_answers`**, each company's answer from its portal (`answers`): `move_id`,
-  `partner_id`, `answered_on`, `ok` (boolean), `day` (date, another day asked for, G-113), `note`.
-  Unique (`move_id`, `partner_id`): one answer per company, and only from a company told.
+  `company_id`, `answered_on`, `ok` (boolean), `day` (date, another day asked for, G-113; none when
+  the dates work), `note`. Keyed to its tell (`move_id`, `company_id`) and unique on it: one answer
+  per company, and only from a company told. Append only.
 - A first day nobody confirmed (G-114) is the Board's promise of kind `start`, in its planned
   `gc_trade_promises`, as the prototype keeps it today.
 
@@ -285,21 +288,24 @@ UPDATE on the undo pair only, which Undo sets and Redo clears.
 
 **`gc_schedule_walks`**, one per weekly walk (`ScheduleWalk`, G-52):
 
-- `id`, `project_id`, `walked_on`, `walked_by`.
+- `id`, `project_id`, `walked_on`, `walked_by` (FK `users.id`).
 - `kept` (uuid[], the bars looked at and left as drawn) and `skipped` (integer, the bars listed and
   not looked at).
 - `kept_early` (uuid[], the early finishes answered with *Keep the dates*, G-37).
-- Its moves point back at it through `gc_schedule_moves.walk_id`.
+- `move_ids` (uuid[]): the moves made during it, the prototype's `moveIds`. A walk is recorded
+  once, at its end, after its moves are saved, so it is append only. Moves are never deleted, so the
+  ids cannot go stale. A walk that looked at nothing is refused.
 
 **`gc_schedule_lookahead_marks`**, a week's done or not done (`LookAheadMark`):
 
 - `id`, `activity_id`, `week_of` (the Monday).
 - `done`, `reason` (one of the five in `LookAheadReason`), `marked_on`.
-- `marked_by_partner_id` for a trade's mark, from its portal, or `marked_by` (FK `users.id`) for our
-  own crew's. Our crew's mark counts as checked at once (`crewMarkLookAhead`).
+- `marked_by_company_id` for a trade's mark, from its portal, or `marked_by` (FK `users.id`) for our
+  own crew's, never both. Our crew's mark counts as checked at once (`crewMarkLookAhead`).
 - `verified_on`, `verified_done`, `verified_reason`, `verified_by`. A trade cannot change its mark
   once our superintendent has checked it.
-- Unique (`activity_id`, `week_of`).
+- Unique (`activity_id`, `week_of`). The week is a Monday, a done mark has no reason, and the
+  check's columns go together, a corrected reason only with not done.
 
 **`gc_schedule_waits`**, what the work waits on from outside the trades (`ScheduleWait`, G-73 to
 G-75):
@@ -307,32 +313,36 @@ G-75):
 - `id`, `project_id`, `kind` (`delivery`, `decision`, `permit`, `utility`), `title`, `package_id`
   (null: the job's own), `who`.
 - `asked_on`, `expected_on`, `shipped_on` (a delivery only), `done_on`, `note`.
-- **`gc_schedule_wait_holds`** (`wait_id`, `activity_id`, both cascade) is the bars it holds
-  (`lineIds`).
+- **`gc_schedule_wait_holds`** (`project_id`, `wait_id`, `activity_id`, both cascade) is the bars it
+  holds (`lineIds`). Each end's key carries `project_id`, so both are of one job.
+- Only a delivery ships, and an empty `who` reads as the kind's own.
 
 **`gc_schedule_late_notices`**, a trade's word that it will be late (`LateNotice`, G-117):
 
-- `id`, `project_id`, `partner_id`, `activity_id`.
+- `id`, `project_id`, `company_id` (the Board's company record), `activity_id` (a bar of the same
+  job, by its (`project_id`, `id`) key).
 - `sent_on` and `sent_by` (the company's contact, by name).
 - `started` (boolean).
 - `was_start`, `was_finish`, `to_start`, `to_finish`.
 - `reason` (one of the five in `LookAheadReason`) and `note` (never empty).
-- The office's push back: `pushed_back_on`, `pushed_back_by`, `pushed_back_note`.
+- The office's push back: `pushed_back_on`, `pushed_back_by` (FK `users.id`), `pushed_back_note`.
 - `kept_on`: after a push back, the company said it will make the day.
+- Append only, but the push back: a column grant lets the office set its three columns once.
+  `kept_on` is the company's word, from its portal's function with the service role.
 - Where a notice stands (open, taken, replaced, moved, pushed back, kept) is worked out each time
   (`lateNoticeState`), never stored.
 
 **`gc_schedule_crew_counts`**, a trade's own word on its people a day (`CrewCount`, G-142):
 
-- `id`, `project_id`, `package_id`, `partner_id`, `week_of`, `count` (integer, 0 or more),
-  `said_on`.
+- `id`, `project_id`, `package_id`, `company_id`, `week_of` (a Monday), `count` (integer, 0 to
+  50, `CREW_MAX`), `said_on`, and `created_at`, which orders two said on one day.
 - Append only. The newest for a trade and week is the one that counts (`crewCountsNow`).
 
 **`gc_schedule_sends`**, the customer's schedule as sent on its own (`ScheduleSend`, G-94):
 
-- `id`, `project_id`, `sent_on`, `sent_by`, `sent_to` (text, the customer's contact and company),
-  `subject`.
-- `lines` (text[], the letter as it went) and `email_send_log_id`.
+- `id`, `project_id`, `sent_on`, `sent_by` (FK `users.id`), `sent_to` (text, the customer's contact
+  and company), `subject`.
+- `lines` (text[], the letter as it went) and `email_send_log_id`. Append only.
 
 ### What if, and before the job
 
@@ -699,4 +709,6 @@ v2.4781 #4796), and the spike reads them from main through re-exports (the lift 
 `20261007210000_gc_schedule_tables`), was applied to prod the same day and verified from the app:
 every table empty, a dev's insert in and its `finish < start` refused, the changes table refusing a
 dev's update and delete, anon refused (the doc's status has the words). The types are in #4826.
-PR 3's plan (`mockups/schedule-pr3.md`) is approved and being cut.
+PR 3, the moves and the records, is #4827 (v2.4809, migration
+`20261007220000_gc_schedule_moves_records`), with *The tables* amended to match; it is not applied
+yet.
