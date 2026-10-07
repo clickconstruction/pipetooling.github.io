@@ -288,6 +288,11 @@ export interface Partner {
   trades: string[]
   /** Coverage: the town their crews drive from. Null: not set yet. */
   base: string | null
+  /**
+   * Coverage: the point they drive from, from the app's geocoded addresses (the real build, the
+   * Board's B2). Unset: the town in `base` stands in, read from the prototype's list of towns.
+   */
+  basePoint?: Town
   /** Coverage: how far they are willing to drive, in miles. Null: not set yet. */
   maxMiles: number | null
   msa: 'none' | 'sent' | 'signed'
@@ -453,6 +458,8 @@ export interface GcProject {
   address: string
   /** Where the job is, for the drive from each trade partner. */
   town: string
+  /** Where the job is, from the app's geocoded addresses (the real build, the Board's B2). Unset: `town` stands in. */
+  point?: Town
   /** The day our own bid went to the owner. Bid tabs stay shut until then. Null: not sent yet. */
   ourBidSentOn: string | null
   /** A rough schedule drawn while we bid, for our bid's weeks to build (G-45). Absent: none drawn. */

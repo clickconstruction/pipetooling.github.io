@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { townFromAddress } from './gcModel'
+import { TOWNS, driveMiles, milesBetween, travelFor, townFromAddress } from './gcModel'
+import { initialGcState } from './gcFixture'
 
 describe('townFromAddress (the drive read from the address)', () => {
   it('finds the town in the address, the one written last winning', () => {
@@ -12,5 +13,26 @@ describe('townFromAddress (the drive read from the address)', () => {
   it('is null when no town we know is in it', () => {
     expect(townFromAddress('100 Main St, Comfort')).toBeNull()
     expect(townFromAddress('')).toBeNull()
+  })
+})
+
+describe('the drive, from towns or from points (the Board\'s B2)', () => {
+  it('reads the same miles from two towns or from their points', () => {
+    const boerne = TOWNS.find((t) => t.name === 'Boerne')!
+    const helotes = TOWNS.find((t) => t.name === 'Helotes')!
+    expect(milesBetween(boerne, helotes)).toBe(driveMiles('Boerne', 'Helotes'))
+    expect(driveMiles('Boerne', 'Comfort')).toBeNull()
+  })
+
+  it('a company\'s and a job\'s own points win over their towns; a town stands in without them', () => {
+    const s = initialGcState()
+    const project = s.projects.find((p) => p.id === 'boerne')!
+    const partner = s.partners.find((p) => p.base === 'San Antonio')!
+    const byTown = travelFor(s, partner, project)
+    const kerrville = TOWNS.find((t) => t.name === 'Kerrville')!
+    const fromPoint = travelFor(s, { ...partner, basePoint: kerrville }, { ...project, point: TOWNS.find((t) => t.name === 'Boerne')! })
+    expect(byTown.miles).toBe(driveMiles('San Antonio', 'Boerne'))
+    expect(fromPoint.miles).toBe(driveMiles('Kerrville', 'Boerne'))
+    expect(travelFor(s, { ...partner, basePoint: kerrville }, project).miles).toBe(byTown.miles)
   })
 })

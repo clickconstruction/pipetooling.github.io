@@ -43,6 +43,15 @@ export function driveMiles(from: string, to: string): number | null {
   const a = TOWNS.find((t) => t.name === from)
   const b = TOWNS.find((t) => t.name === to)
   if (!a || !b) return null
+  return milesBetween(a, b)
+}
+
+/**
+ * The drive between two points: the straight line, plus a fifth for the roads. The real build's
+ * points come from the app's geocoded addresses (`address_geocodes`, as the Bid Board's map reads
+ * them); the prototype's come from `TOWNS`.
+ */
+export function milesBetween(a: Town, b: Town): number {
   const rad = Math.PI / 180
   const dLat = (b.lat - a.lat) * rad
   const dLng = (b.lng - a.lng) * rad
@@ -58,7 +67,8 @@ export interface Travel {
 }
 
 export function travelFor(_state: GcState, partner: Partner, project: GcProject): Travel {
-  const miles = partner.base ? driveMiles(partner.base, project.town) : null
+  // A company's and a job's own points when the real build has them; the towns stand in until then.
+  const miles = partner.basePoint && project.point ? milesBetween(partner.basePoint, project.point) : partner.base ? driveMiles(partner.base, project.town) : null
   if (miles === null) return { miles: null, inZone: true }
   return { miles, inZone: partner.maxMiles === null || miles <= partner.maxMiles }
 }
