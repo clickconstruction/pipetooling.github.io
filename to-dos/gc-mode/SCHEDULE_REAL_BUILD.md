@@ -599,13 +599,19 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
    history, a part's own move, and the version with its refusal (G-134). *Check:* two browsers move
    two bars. The second save is refused, naming the first's move, and saves on the next press.
 9. **The rest of the plan's writes on real data**: the walk, pulls, days got back, baselines,
-   splits, places, added bars, inspections, milestones and waits. *Check:* the prototype's walk on a
-   real project, with one bar kept and one moved.
+   splits, places, added bars, inspections, milestones and waits. The pulls and days got back come
+   by way 3 (`mockups/schedule-pr1b.md`): `planPull`, `pullBehind` and `recoveryOffers` take the
+   `GanttHold` list, and `chartHolds` and `pullHolds` become this PR's io, composing the holds on
+   main by then (the schedule's own waits, late notices and asks; RFIs and submittals with U2; the
+   not-ready papers with B2). *Check:* the prototype's walk on a real project, with one bar kept and
+   one moved.
 10. **Open the schedule to the team (G-133)**: the migration that swaps every dev-only policy for
     `gc_on_schedule_team`, and the tab's gate to match. *Check:* a superintendent on the job moves a
     bar, and one not on it sees nothing. A subcontractor sees nothing, and a read-only user's move
     is refused.
-11. **The what-if copy on real data** (G-81), with Keep through `gc_schedule_keep_what_if`.
+11. **The what-if copy on real data** (G-81), with Keep through `gc_schedule_keep_what_if`. Which
+    actions a copy takes is decided here; the prototype's `WHAT_IF_ACTIONS` list is its reducer's and
+    stays on the spike.
     *Check:* try two moves on a copy, keep them, and see both as real moves with their reasons.
 12. **Before the job**: the rough while we bid (G-45), templates (G-44), import (G-137) and their
     dates to meet (G-145). *Check:* save Fair Oaks D's shape as a template and draw a new job from

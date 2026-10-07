@@ -2,7 +2,7 @@
 name: "The schedule's PR 1b: the rest of its kernels lifted to main"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 1b; BUILD_MAP.md, Helper 1's first row
 branch: the plan on spike/schedule-pr1b-plan (from origin/spike/gc-mode at a003a58e6); the code from origin/main once #4788 (1a) has merged and the spike reads main's copy
-status: plan 2026-10-07 by Helper 1, for the lead's go. Nothing built.
+status: plan 2026-10-07 by Helper 1; the lead's go the same day on the three picks (two PRs at the seam, `company.ts` with `name` and `shortName` only and a two-line comment that these are the prototype's words for our GC entity until the owner names it, the holds by way 3 in PR 9). Each PR claims its version when it is cut. 1b-i is cut from main after #4788 merges and the spike reads main's copy. The 55 that wait are recorded in SCHEDULE_REAL_BUILD.md's PR 9 and PR 11 lines and BUILD_MAP's B2, P, U2 and O2 rows.
 ---
 
 # The schedule's PR 1b: the rest of its kernels on main
