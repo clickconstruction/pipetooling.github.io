@@ -451,33 +451,38 @@ The kernels read the prototype's shapes, and they keep their arguments:
   real.
 - **A kernel that reads across jobs** gets every GC project the person may see. The board row's
   counts (G-146) and a trade's bench read that way.
-- **Two ids meet in it.** A line's `lineId` is its scope line's id. An inspection's or an added
-  bar's is the activity's own id.
+- **One id.** A line's bar takes its scope line's id (the schedule's PR 5, call 6), so a line's
+  `lineId`, its scope line's id and its bar's id are one. An inspection's or an added bar's `lineId`
+  is the bar's own id.
 - **It gets its own test**, against a row set built from the fixture's Fair Oaks D. The mapped job
   must equal the fixture's.
 
 ## Writing it: the RPCs, so a press is all or nothing
 
 The kernels stay in TypeScript. A press works its answer out in the screen, as the prototype does,
-and sends the answer, not the question. Each RPC is `SECURITY INVOKER`, so RLS decides who may.
+and sends the answer, not the question. Each RPC is `SECURITY INVOKER`, so RLS decides who may. A
+record's day is the company's, `public.app_today()`, never the screen's clock. As built in the
+schedule's PR 5 (`mockups/schedule-pr5.md`, its seven calls at their picks).
 
 **A plan write** (decision 9):
 
-- **Checks the schedule's version** and bumps it (decision 5).
-- **Checks what the kernel checks before a save**: a reason and words (`moveWhyProblem`), a finish
-  on or after the start, a part inside its line.
-- **Keeps the baseline first** on a job being built that has none yet (decision 7).
+- **Checks what the person sent first**: a reason and words (`moveWhyProblem`), a finish on or after
+  the start, a part inside its line. Their words are theirs to fix, so they come before the version.
+- **Checks the schedule's version** and bumps it, in `gc_schedule_bump` (decision 5). A first draft
+  sends none and makes the schedule's row at version 1.
+- **Keeps the baseline first** on a job that started and has none yet (decision 7), on every plan
+  write but the draw and the baseline itself.
 - **Writes everything the press made** in one transaction, with one `gc_schedule_changes` row. It
   returns the new version.
+- **Is the only door to the plan.** A trigger, `gc_schedule_plan_guard`, lets the plan's ten tables
+  change only inside a plan write, even for a dev; a record (a real day, a place, a pass, a part's
+  percent) and a cascade pass. So the version counts every change.
 
 | RPC | The prototype's action | What it writes |
 |---|---|---|
-| `gc_schedule_draft` | `draftSchedule`, `importSchedule` (G-137) | The header, the bars, waits, parts and milestones, from a template's lines or a file's rows. A redraw is refused once a bar has started, been walked or moved, as G-137's *instead* is |
-| `gc_schedule_move` | `setScheduleActivity`, `moveActivityPart`; Take on a late notice (G-117); a change order's days (G-76) | The bar's dates, waits, gaps, limits or parts, and each pushed bar's dates. The move, with its pushes and its change order or late notice |
-| `gc_schedule_undo`, `gc_schedule_redo` | `undoScheduleMove`, `redoScheduleMove` (G-40) | Every bar the move touched, back where the kernel says, and the undo pair set or cleared |
-| `gc_schedule_pull` | `pullScheduleEarlier` (G-37) | The move, with its finished lines and what came in behind them |
-| `gc_schedule_recover` | `recoverScheduleDays` (G-82) | The move, with its recovery and the changed gap |
-| `gc_schedule_walk` | `recordScheduleWalk` (G-52) | The walk. Each of its moves, as `gc_schedule_move` writes one. The real days it recorded (G-55). What was kept, kept early and skipped |
+| `gc_schedule_draft` | `draftSchedule`, `importSchedule` (G-137) | The header, the bars (a line's under its scope line's id), waits, parts and milestones, from a template's lines or a file's rows. A redraw is refused once the job started, or the schedule was walked or moved, as G-137's *instead* is |
+| `gc_schedule_move` | Every kind of move: `setScheduleActivity`, `moveActivityPart`, `pullScheduleEarlier` (G-37), `recoverScheduleDays` (G-82), Take on a late notice (G-117), a change order's days (G-76) | The bars as the kernel left them (dates, waits, gaps, limits, parts' days), and the move with its pushes. The kind is in the move's own columns. The bars and the move must agree, so Undo puts back exactly this |
+| `gc_schedule_undo`, `gc_schedule_redo` | `undoScheduleMove`, `redoScheduleMove` (G-40) | Every bar the move touched, back or forward from the move's own record (the server replays it), and the undo pair set or cleared. Only the newest, and while its bars still sit where it left them |
 | `gc_schedule_keep_what_if` | `keepWhatIf` (G-81) | Each standing move tried, oldest first, as a real move with its reason (the words sent for any tried without one) and `from_what_if_on`. Then the person's copy is deleted |
 | `gc_schedule_baseline` | `setScheduleBaseline` (G-41) | A baseline and its dates. The one it retires stays, named |
 | `gc_schedule_split`, `gc_schedule_join` | `splitActivity`, `joinActivity` (G-39) | The parts, or their removal. The line keeps its dates and percent |
@@ -491,16 +496,19 @@ and sends the answer, not the question. Each RPC is `SECURITY INVOKER`, so RLS d
 - `gc_schedule_pass_inspection` (`passInspection`): the inspection passed, and a milestone of the
   same name met that day.
 - `gc_schedule_their_dates` (`takeTheirDates`, G-145): their dates to meet, set beside ours.
-- `gc_schedule_wait` (`addScheduleWait`): the wait and the bars it holds.
+- `gc_schedule_add_wait` (`addScheduleWait`): the wait and the bars it holds.
 
 **Plain writes under RLS**, one row each:
 
+- the walk (`recordScheduleWalk`, G-52), kept once at its end with its moves' ids: each move was
+  saved through `gc_schedule_move` as it was made (the schedule's PR 3, call 2)
 - the real days (`setActualDates`) and an added bar done (`setAddedActivityDone`)
 - a milestone set or removed (`setScheduleMilestone`, `removeScheduleMilestone`)
 - the superintendent's look-ahead check (`verifyLookAhead`) and our crew's mark (`crewMarkLookAhead`)
 - a wait's steps and its removal (`setScheduleWaitStep`, `removeScheduleWait`)
 - the office's push back on a late notice (`pushBackLateNotice`)
-- a template saved, renamed or set aside
+- a template saved, renamed or set aside, the screen asking `templateSaveProblem` first, so the
+  table's own checks never speak
 - the rough drawn or kept (`setRough`)
 - the person's own what-if copy made, tried in or thrown away (`startWhatIf`, `inWhatIf`,
   `throwAwayWhatIf`)
@@ -732,3 +740,12 @@ as a draft with auto-merge off.
 Paused 2026-10-07 at the owner's word. PR 5, the RPCs, is next, and its plan must word two refusals
 before the tables refuse them: a template with no lines (`templateShape` has no guard) and a
 template whose weeks come out under one. `HANDOFF.md` → *Pick up the real build* has the rest.
+
+Resumed the evening of 2026-10-07 under the lead session *GC spike*. PR 4 merged (3fea13814). PR 5,
+the writes, was planned in `mockups/schedule-pr5.md` and approved with its seven calls at their
+picks: the guard, days from `app_today()`, one `gc_schedule_move`, the walk as a plain insert, Undo
+and Redo replayed on the server, a line's bar under its scope line's id, and the template refusals in
+the kernel (`templateSaveProblem`). *Writing it* above is amended to match. It was cut as
+clickconstruction/pipetooling.github.io#4866 (v2.4848, migration `20261008040000_gc_schedule_writes`),
+its SQL byte for byte the plan's. Its SQL bed runs on the PR in the new *SQL beds* workflow, and it is
+armed once that is green. Its push is in day 2's batch.
