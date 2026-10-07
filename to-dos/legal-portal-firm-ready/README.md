@@ -2,7 +2,7 @@
 name: "Legal portal: ready for the firm"
 number: 85
 group: waiting
-status: 23 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door) and v2.4712 (replace the firm, migration 20261006234500), all live; 12–15 and 19 wait for the firm; 10 is the owner's
+status: 23 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door), v2.4712 (replace the firm, migration 20261006234500) and v2.4749 (the grid reads better), all live; 12–15 and 19 wait for the firm; 10 is the owner's
 summary: >
   The portal's data model and two-way channel are a real selling point, but the firm-facing
   surface still speaks the office's language, the print packet hands the firm the office's own
@@ -87,6 +87,8 @@ The sample portal: `/legal?t=sample` draws `sampleLegalPortalResponse` with noth
 Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating session; the rest by five lanes (A copy and phone, B money and property, C functions and the sample, D lifecycle and acts, E emails), each reviewed by an adversarial reader before an integrator fixed, rebased and merged it. Every mockup is beside this card. Every migration on main is applied, and every train function is deployed and current as of 2026-10-06 14:30Z, checked with no grace window (`EDGE_DRIFT_GRACE_HOURS=0`; the default waits 72 hours before calling a function behind). The site deployed at 13:54Z, the first deploy since v2.4655 broke the build.
 
 **The firm's door** (2026-10-06, the owner's ask after the train): the firm's name in the Legal desk's header opens the firm's window over the desk, the Settings block itself for a dev and read only for the office (v2.4711). *Replace with a new firm…* in that window retires a stand-in and adds the real firm in one call (v2.4712, `legal_replace_firm`, migration `20261006234500`). Mockup: `mockup-firm-door.html`.
+
+**The grid reads better** (2026-10-06, the owner's second ask, v2.4749): the address under the job, the property in words, the unpaid total before its months, § 53.056 without the closed windows, and a rail of GCs with each one's count and dollars in place of the select. Mockup: `mockup-lien-grid-reads.html`, the owner's screenshot beside it.
 
 
 Found by the reviews and left for later:

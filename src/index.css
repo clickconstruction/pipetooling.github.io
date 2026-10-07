@@ -5128,6 +5128,16 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalPortalPair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.85fr); gap: 16px; align-items: start; }
 .legalPortalPair > * { min-width: 0; }
 .legalJobTimeline { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 12px; align-items: start; }
+/* The firm's Lien grid (v2.4749): a rail of GCs beside the table; colors come inline from portalTheme. */
+.legalLienLay { display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 14px; margin-top: 12px; align-items: stretch; }
+.legalLienLay > * { min-width: 0; }
+.legalLienRail { border-right: 1px solid var(--border); padding-right: 10px; }
+.legalLienRailList { position: sticky; top: 10px; max-height: calc(100vh - 20px); overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.legalLienGc { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; width: 100%; padding: 6px 8px 6px 10px; border: none; border-left: 3px solid transparent; border-radius: 5px; text-align: left; font: inherit; font-size: 12.5px; line-height: 1.25; cursor: pointer; }
+.legalLienGc:hover { background-color: rgba(22, 40, 60, 0.05); }
+.legalLienGcName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.legalLienGcCount { grid-column: 1; font-size: 11.5px; }
+.legalLienGcOpen { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 @media (max-width: 720px) {
   .legalPortalPage { padding: 16px 16px 48px; }
   .legalPortalSplit { grid-template-columns: minmax(0, 1fr); grid-template-areas: "list" "main" "aside"; grid-template-rows: auto; row-gap: 14px; }
@@ -5140,6 +5150,13 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
   .legalMatterHeadSums { width: 100%; }
   .legalMatterHeadSums > * { text-align: left !important; }
   .legalJobTimeline { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .legalLienLay { grid-template-columns: minmax(0, 1fr); row-gap: 10px; }
+  .legalLienRail { border-right: none; border-bottom: 1px solid var(--border); padding: 0 0 8px; }
+  .legalLienRailList { position: static; max-height: none; overflow: visible; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .legalLienRailList > input { width: 100% !important; }
+  .legalLienGc { display: inline-flex; gap: 6px; width: auto; border: 1px solid var(--border) !important; border-radius: 999px; padding: 4px 9px; margin: 0 !important; }
+  .legalLienGc[aria-pressed="true"] { border-color: #b0662f !important; }
+  .legalLienGcCount { display: none; }
   .legalRecipientScope { margin-left: 0 !important; }
 }
 /* The Deadlines grid's last-day label as a door (v2.4735): it reads as the label until pointed at. */

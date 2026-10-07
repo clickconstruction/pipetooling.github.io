@@ -113,7 +113,9 @@ describe('LegalPortal — the sample matter', () => {
     await openSample()
     fireEvent.click(screen.getByRole('button', { name: 'Lien grid' }))
     await waitFor(() => expect(document.querySelector('[data-legal-portal-lien-grid]')).not.toBeNull())
-    expect((screen.getByRole('combobox', { name: 'Show' }) as HTMLSelectElement).value).toBe('all')
+    expect(screen.getByRole('button', { name: /^All · / }).getAttribute('aria-pressed')).toBe('true')
+    // The rail (v2.4749): both GCs with their dollars, and the repipe under No GC.
+    expect(screen.getByRole('navigation', { name: 'GCs' }).textContent).toMatch(/Brazos Ridge Contracting.*Hill Country Builders.*No GC/)
     expect(screen.getByText('1042 · Tenant finish-out — Suite 200')).toBeTruthy()
     expect(screen.getByText('1057 · Plum Creek Dental — rough-in')).toBeTruthy()
     expect(screen.getByText('1063 · Whitfield residence — repipe')).toBeTruthy()
