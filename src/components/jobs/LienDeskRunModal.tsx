@@ -6,7 +6,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { RUN_SEND_METHODS, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -181,6 +181,36 @@ export default function LienDeskRunModal({
     setPrintedAt(new Date().toISOString())
     void Promise.resolve(onPrinted?.(itemIds)).catch(() => undefined)
   }
+  // One item at a time (v2.4853, the owner's ask): a copy or an envelope prints and is filed on its own. A notice is
+  // stamped printed only once every copy of it has printed this sitting, so a half-printed notice never reads as in the mail.
+  const [printedCopies, setPrintedCopies] = useState<ReadonlySet<string>>(() => new Set())
+  const partsIds = (n: CombinedRunNotice) => partsOf(n) ?? [{ itemId: n.itemId, jobId: n.jobId }]
+  const notePrinted = (keys: string[]) => {
+    const next = new Set(printedCopies)
+    for (const k of keys) next.add(k)
+    setPrintedCopies(next)
+    const before = new Set(noticesFullyPrinted(notices, printedCopies).map((n) => n.itemId))
+    const done = noticesFullyPrinted(notices, next).filter((n) => !before.has(n.itemId)).map((n) => n.itemId)
+    if (done.length) void Promise.resolve(onPrinted?.(done)).catch(() => undefined)
+    if (noticesFullyPrinted(notices, next).length === notices.length && notices.length > 0) setPrintedAt((v) => v ?? new Date().toISOString())
+  }
+  const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
+    const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
+    if (!printAndFile(runCopyHtml(n, r, invoiceSectionsByJob, payPagesByJob), filing)) {
+      showToast('Popup blocked — allow popups to print the copy.', 'error')
+      return
+    }
+    notePrinted(partsIds(n).map((p) => runCopyKey(p.itemId, r.key)))
+  }
+  const printEnvelope = (env: RunEnvelope) => {
+    const inside = env.contents.map((c) => c.notice as CombinedRunNotice)
+    const filing = { kind: 'lien_notice', title: `Envelope ${env.n} · ${env.label} ${env.name}`.trim(), jobIds: inside.flatMap((n) => partsIds(n).map((p) => p.jobId)), recipientName: env.name || null }
+    if (!printAndFile(runEnvelopeHtml(env, invoiceSectionsByJob, payPagesByJob), filing)) {
+      showToast('Popup blocked — allow popups to print the envelope.', 'error')
+      return
+    }
+    notePrinted(env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key))))
+  }
   // The envelope faces are addresses, not a paper anyone reads: the packet is what is filed.
   const printEnvelopes = () => {
     if (!openHtmlPrintWindow(runEnvelopeFacesHtml(envelopes, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
@@ -308,6 +338,10 @@ export default function LienDeskRunModal({
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
                         {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}
                         {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
+                        {' · '}
+                        <button type="button" onClick={() => printEnvelope(env)} data-testid={`run-print-envelope-${env.n}`} title="Print every copy inside this envelope, in packet order, and file them as printed" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
+                          Print this envelope ›
+                        </button>
                       </div>
                       {(() => {
                         const offer = envelopeCourtesy(env)
@@ -368,6 +402,10 @@ export default function LienDeskRunModal({
                                 <button type="button" onClick={() => setPreview(at)} data-testid={`run-preview-${n.jobId}-${r.key}`} title="Read this copy as the packet prints it" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)' }}>
                                   Preview ›
                                 </button>
+                                {' · '}
+                                <button type="button" onClick={() => printCopy(n as CombinedRunNotice, r)} data-testid={`run-print-${n.jobId}-${r.key}`} title="Print this copy on its own and file it as printed" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600 }}>
+                                  {printedCopies.has(runCopyKey(n.itemId, r.key)) ? 'Printed ✓ · Print again ›' : 'Print ›'}
+                                </button>
                               </>
                             ) : null
                           })()}
@@ -404,7 +442,19 @@ export default function LienDeskRunModal({
           </button>
         </div>
       </div>
-      {preview != null && previewEntries.length > 0 ? <LienRunPreviewOverlay entries={previewEntries} index={preview} onIndex={setPreview} onClose={() => setPreview(null)} /> : null}
+      {preview != null && previewEntries.length > 0 ? (
+        <LienRunPreviewOverlay
+          entries={previewEntries}
+          index={preview}
+          onIndex={setPreview}
+          onClose={() => setPreview(null)}
+          onPrint={(i) => {
+            const e = previewEntries[i]
+            const hit = envelopes.flatMap((env) => env.contents).find((c) => `${c.notice.itemId}-${c.recipient.key}` === e?.key)
+            if (hit) printCopy(hit.notice as CombinedRunNotice, hit.recipient)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

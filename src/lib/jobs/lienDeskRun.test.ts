@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
+import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
 import { buildLienSupplierJobs } from './lienJobSuppliers'
@@ -533,5 +534,34 @@ describe('where the run opens and what the door says (v2.4823)', () => {
     const run = buildLienDeskRun(d.queue.piles.printed, d, null, () => 'Robert', TODAY)
     expect(run.map((n) => n.printedAt)).toEqual(['2026-09-14T16:00:00Z'])
     expect(buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert', TODAY)[0]!.printedAt).toBeNull()
+  })
+})
+
+describe('print one item out of the run (v2.4853)', () => {
+  it('one copy is its own print document with that copy’s pages and no other notice; an envelope holds every copy inside it', () => {
+    const d = data([approved, { ...approved, id: 'it2', job_id: 'j651' } as typeof approved])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    expect(run).toHaveLength(2)
+    const owner = run[0]!.recipients.find((r) => r.key === 'owner')!
+    const html = runCopyHtml(run[0]!, owner)
+    expect(html).toContain('<title>650 · ATI Schertz — copy for owner of record</title>')
+    expect(html).toContain('This page is a cover letter.')
+    expect((html.match(/<section/g) ?? []).length).toBe(runCopyPages(run[0]!, owner).length)
+    expect(html).not.toContain('651')
+    const env = runEnvelopes(run)[0]!
+    const envHtml = runEnvelopeHtml(env)
+    expect(envHtml).toContain(`<title>Envelope ${env.n} —`)
+    expect((envHtml.match(/<section/g) ?? []).length).toBe(env.contents.reduce((t, c) => t + runCopyPages(c.notice, c.recipient).length, 0))
+    expect(runPagesHtml(['<p>a</p>', '<p>b</p>'], 'T & U')).toContain('<title>T &amp; U</title>')
+    expect(runPagesHtml(['<p>a</p>', '<p>b</p>'], 'x')).toContain('page-break-after:always;"><p>a</p>')
+  })
+
+  it('a notice is fully printed only when every recipient has a copy', () => {
+    const n = { itemId: 'it1', recipients: [{ key: 'owner' }, { key: 'original_contractor' }] } as unknown as Parameters<typeof noticesFullyPrinted>[0][number]
+    const m = { itemId: 'it2', recipients: [{ key: 'owner' }] } as unknown as typeof n
+    expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it1', 'owner')])).map((x) => x.itemId)).toEqual([])
+    expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it1', 'owner'), runCopyKey('it1', 'original_contractor')])).map((x) => x.itemId)).toEqual(['it1'])
+    expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it2', 'owner')])).map((x) => x.itemId)).toEqual(['it2'])
+    expect(noticesFullyPrinted([{ itemId: 'it3', recipients: [] } as unknown as typeof n], new Set())).toEqual([])
   })
 })

@@ -19,6 +19,11 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+const printMock = vi.fn((_html: string, _filing: unknown) => true)
+vi.mock('../../lib/sent/sentCopiesIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/sent/sentCopiesIo')>('../../lib/sent/sentCopiesIo')
+  return { ...actual, printAndFile: (html: string, filing: unknown) => printMock(html, filing) }
+})
 const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
 
@@ -273,6 +278,45 @@ describe('LienDeskRunModal · a run of printed notices opens on recording (v2.48
     expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
     expect(screen.getByTestId('run-steps').textContent).toContain('1 · Print the packet')
     expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
+  })
+})
+
+describe('LienDeskRunModal · print one item (v2.4853)', () => {
+  it('Print › on a copy prints and files that copy alone; the notice is stamped printed only once both copies have printed; the envelope door prints every copy inside', async () => {
+    printMock.mockClear()
+    const printed: string[][] = []
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={(ids) => { printed.push(ids) }} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-print-j650-owner'))
+    expect(printMock).toHaveBeenCalledTimes(1)
+    const [html, filing] = printMock.mock.calls[0] as unknown as [string, { kind: string; title: string; jobIds: string[]; recipientName: string | null }]
+    expect(html).toContain('copy for owner of record</title>')
+    expect(html).not.toContain('Loberg Contracting</title>')
+    expect(filing).toMatchObject({ kind: 'lien_notice', title: '650 · ATI Schertz · copy for owner of record', jobIds: ['j650'], recipientName: 'Elbel Holdings LLC' })
+    // Half a notice is not in the mail yet.
+    expect(printed).toEqual([])
+    expect(screen.getByTestId('run-print-j650-owner').textContent).toContain('Printed ✓')
+    expect(screen.getByTestId('run-print-j650-original_contractor').textContent).toBe('Print ›')
+    fireEvent.click(screen.getByTestId('run-print-j650-original_contractor'))
+    await settle()
+    expect(printMock).toHaveBeenCalledTimes(2)
+    expect(printed).toEqual([['it1']])
+    expect(screen.getByTestId('run-steps').textContent).toContain('1 · Printed')
+    // The envelope door: one document for everything inside envelope 1.
+    fireEvent.click(screen.getByTestId('run-print-envelope-1'))
+    const [envHtml, envFiling] = printMock.mock.calls[2] as unknown as [string, { title: string }]
+    expect(envHtml).toContain('<title>Envelope 1 —')
+    expect(envFiling.title).toMatch(/^Envelope 1 · Owner of record Elbel Holdings LLC$/)
+  })
+
+  it('the preview has a Print this copy button that prints the copy on show', async () => {
+    printMock.mockClear()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-29" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-preview-j650-original_contractor'))
+    fireEvent.click(screen.getByTestId('lien-run-preview-print'))
+    expect(printMock).toHaveBeenCalledTimes(1)
+    expect((printMock.mock.calls[0] as unknown as [string])[0]).toContain('copy for original contractor</title>')
   })
 })
 
