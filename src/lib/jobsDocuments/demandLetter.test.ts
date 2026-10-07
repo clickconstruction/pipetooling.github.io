@@ -8,6 +8,7 @@ import {
   interestBasisFor,
   lienLineBlockedReason,
   buildDemandLetterEmailHtml,
+  demandPayCodeRows,
   buildDemandLetterModel,
   buildDemandLetterPrefill,
   jobHasAnyPayment,
@@ -309,7 +310,10 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     const [st] = buildDemandStatement(job, [
       { inv: inv({}), doc: doc({}), stripe: { invoiceNumber: '867-2608180928', lines: [{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', quantity: 1, amount: 171000 }] } },
     ])
-    expect(st).toEqual(STMT_867)
+    expect(st).toMatchObject(STMT_867)
+    // v2.4849: the row keeps the bill's id and whether Stripe holds a page for it, for the pay codes.
+    expect(st!.invoiceId).toBe(inv({}).id)
+    expect(st!.payable).toBe(Boolean(inv({}).stripe_invoice_id))
   })
 
   it('falls back to the app\'s own document lines, then to the memo and the amount', () => {
@@ -645,5 +649,42 @@ describe('the letter as a page (v2.4577)', () => {
     expect(exhibitInvoiceDocument(doc, { invoiceNumber: '#878-2609171138', dueYmd: '2026-09-17' })).toMatchObject({ invoiceNumberDisplay: '#878-2609171138', dueDateDisplay: 'September 17, 2026', jobName: 'kept' })
     // Nothing better known: the document keeps its own.
     expect(exhibitInvoiceDocument(doc, { invoiceNumber: '', dueYmd: '' })).toMatchObject({ invoiceNumberDisplay: '#2', dueDateDisplay: 'September 16, 2026' })
+  })
+})
+
+describe('pay codes under the amount box (v2.4849)', () => {
+  const stripeBill: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#878-2609161138', invoiceId: 'inv-a', payable: true, balance: '15200.00' }
+  const paperBill: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#878-paper', invoiceId: 'inv-b', payable: false, balance: '625.00' }
+  const paidBill: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#878-paid', invoiceId: 'inv-c', payable: true, balance: '0.00' }
+
+  it('one row per covered Stripe bill with money open, with the bill\u2019s /pay address; a paper or paid bill gets none', () => {
+    const rows = demandPayCodeRows([stripeBill, paperBill, paidBill], { 'inv-a': { svg: '<svg/>', png: 'data:png' } })
+    expect(rows).toEqual([{ invoiceId: 'inv-a', label: 'Invoice #878-2609161138', amount: '$15,200.00', address: 'clicktooling.com/pay/inv-a', svg: '<svg/>', png: 'data:png' }])
+    // Before the codes are drawn the row still stands, so the address prints and the preview draws a placeholder.
+    expect(demandPayCodeRows([stripeBill])[0]).toMatchObject({ svg: null, png: null })
+    // A statement from before the ids were kept has no rows.
+    expect(demandPayCodeRows([STMT_867])).toEqual([])
+  })
+
+  it('the block sits right under the amount box, on by default, off by the tick, and absent with no Stripe bill', () => {
+    const f = { ...FIELDS, statement: [stripeBill, paperBill] }
+    const kinds = buildDemandLetterModel(f, '2026-10-07').map((b) => b.kind)
+    expect(kinds.indexOf('payCodes')).toBe(kinds.indexOf('amountBox') + 1)
+    expect(buildDemandLetterModel({ ...f, includePayCodes: false }, '2026-10-07').some((b) => b.kind === 'payCodes')).toBe(false)
+    expect(buildDemandLetterModel({ ...FIELDS, statement: [paperBill] }, '2026-10-07').some((b) => b.kind === 'payCodes')).toBe(false)
+  })
+
+  it('the HTML and the text carry the heading, the bill, the balance and the address', () => {
+    const f = { ...FIELDS, statement: [stripeBill] }
+    const html = buildDemandLetterEmailHtml(f, '2026-10-07', { payAssets: { 'inv-a': { svg: '<svg data-code/>', png: null } } })
+    expect(html).toContain('data-demand-pay-codes')
+    expect(html).toContain('Pay online')
+    expect(html).toContain('<svg data-code/>')
+    expect(html).toContain('data-demand-pay-code="inv-a"')
+    expect(html).toContain('clicktooling.com/pay/inv-a')
+    expect(html).toContain('$15,200.00')
+    const text = buildDemandLetterText(f, '2026-10-07')
+    expect(text).toContain('Pay online')
+    expect(text).toContain('Invoice #878-2609161138 · $15,200.00 · clicktooling.com/pay/inv-a')
   })
 })

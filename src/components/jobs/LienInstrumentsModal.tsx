@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
+import type { PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
 import { ActionPhaseButton } from '../ActionPhaseButton'
 import { useActionPhase } from '../../hooks/useActionPhase'
 import type { Database } from '../../types/database'
@@ -6,6 +8,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   addBusinessDays,
   buildDemandLetterEmailHtml,
+  demandPayCodeRows,
   exhibitInvoiceDocument,
   buildDemandLetterPdfBlob,
   buildDemandLetterPrefill,
@@ -170,6 +173,28 @@ export default function LienInstrumentsModal({
   const [gcEmail, setGcEmail] = useState('')
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<ReadonlySet<string>>(() => new Set())
   const [fields, setFields] = useState<DemandLetterFields | null>(null)
+  // The pay codes (v2.4849): one per covered Stripe bill, drawn in the browser from the bill's /pay address and handed to every renderer.
+  const [payAssets, setPayAssets] = useState<PayPageAssets>({})
+  const payCodeRows = useMemo(() => demandPayCodeRows(fields?.statement ?? []), [fields?.statement])
+  const payCodeKey = payCodeRows.map((r) => r.invoiceId).join('|')
+  useEffect(() => {
+    let cancelled = false
+    if (!payCodeKey) {
+      setPayAssets({})
+      return
+    }
+    void buildPayPageAssets(payCodeRows.map((r) => ({ invoiceId: r.invoiceId, label: r.label, description: '', openAmount: 0, payable: true })))
+      .then((a) => {
+        if (!cancelled) setPayAssets(a)
+      })
+      .catch(() => {
+        if (!cancelled) setPayAssets({})
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the bill ids, not the row objects
+  }, [payCodeKey])
   const [issuerGen, setIssuerGen] = useState(0)
   const [priorNotices, setPriorNotices] = useState<DemandPriorNotice[]>([])
   const [customerAddress, setCustomerAddress] = useState('')
@@ -577,6 +602,7 @@ export default function LienInstrumentsModal({
         includeTheftOfServices: prev.includeTheftOfServices,
         includeLateFees: prev.interestBasis === next.interestBasis ? prev.includeLateFees : next.includeLateFees,
         includeNotarial: prev.includeNotarial,
+        includePayCodes: prev.includePayCodes ?? true,
       }
     })
   }, [open, effJob, selectedInvoices, sources, debtor, addressTouched, issuer, priorNotices, propertyKind, linkedAddress?.homestead, signerNameFallback, authEmail, signedAgreement, includeAgreement, includeDeliveryRecord])
@@ -615,10 +641,10 @@ export default function LienInstrumentsModal({
         blob: await buildDeliveryRecordPdfBlob({ businessName: fields.businessName, invoicesPhrase: demandInvoicesPhrase(statement), recipientName: fields.recipientName, rows: fields.priorNotices, todayYmd: today }),
       })
     }
-    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, kind: i.kind, title: i.title, pages: 0 })) }, today), inputs)
-    const letter = await buildDemandLetterPdfBlob({ ...fields, enclosures: first.exhibits }, today)
+    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, kind: i.kind, title: i.title, pages: 0 })) }, today, { payAssets }), inputs)
+    const letter = await buildDemandLetterPdfBlob({ ...fields, enclosures: first.exhibits }, today, { payAssets })
     return buildDemandLetterPacket(letter, inputs)
-  }, [fields, sources, signedAgreement, includeAgreement, includeDeliveryRecord])
+  }, [fields, sources, signedAgreement, includeAgreement, includeDeliveryRecord, payAssets])
 
   // Clamp: § 31.04 can never ride a letter for a job with payments (owner rule). Any payment on
   // the job, not the letter's claim sum — that counts only what its covered bills attribute (v2.3515).
@@ -904,7 +930,7 @@ export default function LienInstrumentsModal({
   if (!open || !job || !fields) return null
 
   const liveHistory = liveDemandLetters(historyRows)
-  const letterHtml = buildDemandLetterEmailHtml(fields, todayYmdLocal())
+  const letterHtml = buildDemandLetterEmailHtml(fields, todayYmdLocal(), { payAssets })
   // The Enclosed panel names each exhibit by the letter it will wear: in order, no gap.
   const panelLabels = exhibitLabels({ invoices: sources.filter((src) => src.doc).length, agreement: Boolean(signedAgreement && includeAgreement), delivery: includeDeliveryRecord })
   // `extraHref` (v2.3594): a basis line that names a section links to that rule's row in the guide.
@@ -1419,6 +1445,15 @@ export default function LienInstrumentsModal({
                     </label>
                   )
                   : toggle('includeLateFees', 'Late-fees / interest note')}
+            {payCodeRows.length > 0
+              ? toggle('includePayCodes', 'Pay codes', `${payCodeRows.length === 1 ? 'one code' : `${payCodeRows.length} codes`} under the amount box — each opens that bill's own payment page`)
+              : (
+                  <label data-demand-pay-codes-none style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'not-allowed', opacity: 0.6 }}>
+                    <input type="checkbox" checked={false} disabled readOnly />
+                    Pay codes
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 700 }}>not offered — no covered bill has a payment page</span>
+                  </label>
+                )}
             {toggle('includeNotarial', 'Notarial block (certified mail only)')}
           </div>
 
