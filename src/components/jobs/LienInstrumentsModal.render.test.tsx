@@ -95,6 +95,16 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('§ Rules names this job with its notice and lien dates from its last work day (v2.4829)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ last_work_date: '2026-07-20' })} />)
+    fireEvent.click(await screen.findByTestId('lien-rules-door'))
+    const strip = await screen.findByTestId('lien-rules-job')
+    expect(strip.textContent).toContain('Sub job')
+    expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Oct 15')
+    expect(screen.getByTestId('lien-rules-job-lien').textContent).toBe('Nov 16')
+    const lit = screen.getByTestId('lien-rules-body').querySelector('table[data-live-dates] tr[data-lit="yes"]')
+    expect(lit?.firstElementChild?.textContent).toBe('July')
+  })
   it('a phone folds the steps to one strip and puts the papers in one bar (v2.4398); the dropped steps carry no lientooling.com door (v2.4403)', async () => {
     const before = window.matchMedia
     window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia

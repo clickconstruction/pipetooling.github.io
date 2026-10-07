@@ -2,15 +2,14 @@
 name: "Lien desk § Rules window, redrawn for the office (2026-10-07)"
 number: 99
 group: close
-status: built 2026-10-07 as v2.4826 — the guide retitled by question with one-line answers and a dates table, the window folded with a rail, the open job's dates, counsel marks
+status: built 2026-10-07 as v2.4826 — the guide retitled by question with one-line answers and a dates table, the window folded with a rail, the open job's dates, counsel marks · v2.4829 the Lien window's door hands over its job too
 summary: >
   Grace asked whether the Lien desk's rules were easy to read and well structured. They were not: the
   window opened a third of the way down a 7,100 px page with no map, the headings were statute names,
   the dates were prose, What the app does listed screens, and seven unverified readings were only
   listed at the foot. Mocked up as Now vs Proposed, held against "is this the best we can do", built.
 next: >
-  The Lien window's § Rules door passes no job yet; give it one from its runway. Then delete this
-  folder once a week of use raises nothing.
+  Both doors pass their job. Delete this folder once a week of use raises nothing.
 blocker: None.
 size: S
 ---
@@ -38,5 +37,5 @@ v2.4826 — see the fragment. Guide, window, two kernels, the desk's door hands 
 
 ## Left after this row
 
-- The Lien window's § Rules door passes no job; `LienRulesDoor` takes one, the window would need `lienRulesJobFrom` over its runway.
+- v2.4829 gave the Lien window's door its job (the clock's month or the day set by hand, the notice date and the § 53.052 date).
 - Delete this folder after a week of use raises nothing.
