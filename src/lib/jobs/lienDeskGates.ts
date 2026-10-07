@@ -173,3 +173,23 @@ export function lienGateMonthLine(monthLabel: string, hours: number, crew: strin
   const h = hours.toLocaleString(undefined, { maximumFractionDigits: 1 })
   return [`${monthLabel} · ${h} approved ${h === '1' ? 'hour' : 'hours'}`, crew.trim()].filter(Boolean).join(' · ')
 }
+
+/**
+ * The draft footer's words while a notice cannot go (v2.4797, the owner: *explain in one
+ * sentence — don't send yet, you need to do XYZ first*). Two short sentences in plain words:
+ * the stop, then the one thing to do, named the way the gate's own button names it.
+ */
+export function lienFootBlockedSentence(gate: Pick<LienGate, 'key' | 'value' | 'label' | 'n'> | null, pickedMonths: number): string {
+  const stop = "Don't send yet."
+  if (!gate) return pickedMonths === 0 ? `${stop} Pick at least one month first.` : `${stop} Clear what the gates show first.`
+  const v = gate.value.toLowerCase()
+  if (gate.key === 'owner') {
+    if (v === 'missing') return `${stop} Enter the owner of record and a mailing address on the property record first.`
+    if (v === 'no mailing address') return `${stop} Add the owner's mailing address on the property record first.`
+    if (v === 'public property') return `${stop} This is public property, so no lien notice can go. Ask the attorney about the payment bond.`
+  }
+  if (gate.key === 'gc') return `${stop} Set the GC on the job first.`
+  if (gate.key === 'months') return `${stop} Pick at least one month first.`
+  if (gate.key === 'kind') return `${stop} Set the property kind on the property record first.`
+  return `${stop} Clear gate ${gate.n}, ${gate.label.toLowerCase()}, first.`
+}
