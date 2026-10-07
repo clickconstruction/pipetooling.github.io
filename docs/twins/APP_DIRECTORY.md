@@ -63,8 +63,9 @@ Landing page for every role: pinned pages, role-relevant cards (recent reports, 
 Wednesday GC-certification nudge, tasks). Start here to orient; do work elsewhere.
 Roles: all.
 
-### /gc — GC projects (dev only)
-GC mode's real build, step by step. Lists every GC project as the kernels read it (the plan
+### /gc — GC projects
+GC mode's real build, step by step; open to the office and estimators since door 1 (v2.4832), reached
+from the **Trades | GC** switch on Bids. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through
 `gc_create_project`. Who to ask (the companies) is not here yet. **Open the scope book** (`?book=1`)
@@ -76,7 +77,7 @@ the manual as they stood at each set, what each set changed and took out, and th
 (`gc-plan-question-email`) and records the answer; the next set carries it.
 Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=issue-a-new-set-of-plans`,
 `/help?g=read-the-plans-of-a-gc-project`, `/help?g=ask-the-architect-about-the-plans`.
-Roles: dev only.
+Roles: dev, master_technician, assistant, controller, estimator.
 
 ### /bids — Bids (the estimating hub)
 One page, many tabs via `?tab=`. Board tabs are lists; tool tabs are **bid-scoped** — pick

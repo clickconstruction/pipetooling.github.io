@@ -89,6 +89,12 @@ describe('estimator (v2.2920: /people gate matches the ACCESS_CONTROL matrix —
       expect(isPathAllowedForRole('estimator', p, false), p).toBe(true)
     }
   })
+  it('opens GC projects (door 1, v2.4832) and keeps the field roles out', () => {
+    expect(isPathAllowedForRole('estimator', '/gc', false)).toBe(true)
+    for (const role of ['subcontractor', 'helpers', 'primary', 'superintendent'] as const) {
+      expect(isPathAllowedForRole(role, '/gc', false), role).toBe(false)
+    }
+  })
   it('keeps the Prospects flag behaviour', () => {
     expect(isPathAllowedForRole('estimator', '/prospects', false)).toBe(false)
     expect(isPathAllowedForRole('estimator', '/prospects', true)).toBe(true)

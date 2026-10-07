@@ -69,6 +69,8 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     '/estimates',
     '/documents',
     '/bids',
+    // GC projects (door 1, v2.4832): the office and estimators, as `canOpenGcProjects` says.
+    '/gc',
     '/customers',
     '/job-mode',
     ...(estimatorProspectsAccess ? ['/prospects'] : []),

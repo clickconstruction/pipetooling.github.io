@@ -1,17 +1,17 @@
 ---
 title: read the plans of a GC project
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, plans, sheets, sections, sets, addendum, taken out, renamed, scope reads from, plans window
 order: 96
 ---
 A GC project's plans come in sets. The plans window opens on the newest set, lists its sheets and sections, and shows what each set changed.
 
-A set is one issue of the plans, such as the bid set or an addendum. A sheet a set took out stays in the list, crossed out. A quote priced on it can still be read. Only devs see the window while the real build goes on.
+A set is one issue of the plans, such as the bid set or an addendum. A sheet a set took out stays in the list, crossed out. A quote priced on it can still be read. The office and estimators see the window.
 
 ## Open the plans
 
-1. Open **GC projects** at `/gc` and press {{button:outline|The plans}} on the project's card.
+1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|The plans}} on the project's card.
 2. Pick a set at the top. The newest one is marked.
 3. Pick **Sheets** or **Specs** on the left when the project has a manual.
 

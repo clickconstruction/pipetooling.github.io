@@ -33,6 +33,8 @@ import { submissionFollowupBidShareUrl } from '../lib/submissionFollowupBidShare
 import type { BreakdownJumpTarget } from '../lib/bids/bidTabRowJump'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
+import { BidsModeToggle } from '../components/gc/BidsModeToggle'
+import { canOpenGcProjects } from '../lib/gc/access'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal } from '../components/bids/BidFormModal'
 import { useBidWindowState } from '../hooks/useBidWindowState'
@@ -1468,7 +1470,7 @@ export default function Bids() {
         : serviceTypes
 
   /** Trades as a compact segmented control; grayed on Builder Review (all-trade roster). */
-  const bidsTradeSegments =
+  const bidsTradeOnlySegments =
     visibleServiceTypes.length > 0 ? (
       <div
         role="group"
@@ -1512,6 +1514,20 @@ export default function Bids() {
         })}
       </div>
     ) : null
+
+  /**
+   * GC mode, door 1 (v2.4832): the Trades | GC switch sits before the trades, for the office and
+   * estimators. Below the wide header its pieces join the header's own wrapping row, so on a phone
+   * the switch takes one row and the trades keep theirs beside New Bid.
+   */
+  const bidsTradeSegments = canOpenGcProjects(myRole) ? (
+    <div style={{ display: wideBidsHeader ? 'flex' : 'contents', alignItems: 'center', gap: '0.6rem' }}>
+      <BidsModeToggle mode="trades" />
+      {bidsTradeOnlySegments && <div style={{ display: 'flex', marginRight: 'auto' }}>{bidsTradeOnlySegments}</div>}
+    </div>
+  ) : (
+    bidsTradeOnlySegments
+  )
 
   const bidsNewBidButton =
     visibleServiceTypes.length > 0 && myRole !== 'primary' ? (

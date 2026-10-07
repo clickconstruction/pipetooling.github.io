@@ -13,6 +13,9 @@ import { buildGcPlanQuestionEmail } from '../_shared/gcPlanQuestionEmail.ts'
  *
  *   POST { question_id }   staff JWT, office roles → { success, to, sent_on }
  *
+ * Never a training account or a digital twin (door 1, v2.4832): the service role sends and writes
+ * here, so the read-only blocks and the twin fence never see it.
+ *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, RESEND_API_KEY.
  */
 
@@ -48,8 +51,10 @@ serve(async (req) => {
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
     const { data: u } = await anon.auth.getUser()
     if (!u?.user) return json({ error: 'Sign in first.' }, 401)
-    const { data: who } = await admin.from('users').select('role, name, email').eq('id', u.user.id).maybeSingle()
+    const { data: who } = await admin.from('users').select('role, name, email, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
     if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
+    if (who.read_only) return json({ error: 'A training account cannot send email.' }, 403)
+    if (who.is_digital_twin) return json({ error: 'A digital twin cannot send email.' }, 403)
 
     const body = (await req.json().catch(() => ({}))) as { question_id?: string }
     const questionId = String(body.question_id ?? '').trim()
