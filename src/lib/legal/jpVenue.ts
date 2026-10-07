@@ -23,7 +23,7 @@ export type VenuePlace = {
   /** `Where the work was done` · `Where the defendant is` */
   basisWords: string
   county: string
-  /** Null until the office's court map names it. */
+  /** Null until the office's court map names it; `2 or 3 — on the line` when it sits on a line. */
   precinct: string | null
   /** The address (the work) or the name and address (the defendant). */
   where: string
@@ -44,8 +44,8 @@ export function courtWords(p: Pick<VenuePlace, 'county' | 'precinct'>): string {
  * site) or where the defendant resides. One place per distinct property, then the payer.
  */
 export function venuePlaces(input: {
-  properties: ReadonlyArray<{ address: string; county: string; jobLabels: ReadonlyArray<string> }>
-  payer: { name: string; address: string; county: string }
+  properties: ReadonlyArray<{ address: string; county: string; precinct?: string; precinctNote?: string; jobLabels: ReadonlyArray<string> }>
+  payer: { name: string; address: string; county: string; precinct?: string }
 }): VenuePlace[] {
   const out: VenuePlace[] = []
   const seen = new Set<string>()
@@ -53,9 +53,9 @@ export function venuePlaces(input: {
     const key = `${p.county}|${p.address}`.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    out.push({ basis: 'work', basisWords: 'Where the work was done', county: p.county, precinct: null, where: p.address, jobLabels: [...p.jobLabels] })
+    out.push({ basis: 'work', basisWords: 'Where the work was done', county: p.county, precinct: p.precinctNote?.trim() || p.precinct?.trim() || null, where: p.address, jobLabels: [...p.jobLabels] })
   }
-  out.push({ basis: 'defendant', basisWords: 'Where the defendant is', county: input.payer.county, precinct: null, where: [input.payer.name, input.payer.address].filter(Boolean).join(', '), jobLabels: [] })
+  out.push({ basis: 'defendant', basisWords: 'Where the defendant is', county: input.payer.county, precinct: input.payer.precinct?.trim() || null, where: [input.payer.name, input.payer.address].filter(Boolean).join(', '), jobLabels: [] })
   return out
 }
 

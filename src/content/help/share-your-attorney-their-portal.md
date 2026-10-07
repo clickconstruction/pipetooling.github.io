@@ -37,7 +37,7 @@ Pulling an account back on the desk removes it from the portal on the firm's nex
 
 ## Where to file
 
-Each matter's **Account** tab says where a suit can go. The first line says whether the balance is within the $20,000 justice court limit. Then come the two places the rules allow. One is the county where the work was done. The other is the county where the defendant is. The justice precinct reads **not yet** until the office's own court map names it. A lien foreclosure always goes to district court. The printed packet carries the same paragraph. The lien grid's **Court** column shows the county for every job, with the limit beside it.
+Each matter's **Account** tab says where a suit can go. The first line says whether the balance is within the $20,000 justice court limit. Then come the two places the rules allow. One is the county where the work was done. The other is the county where the defendant is. The justice precinct comes from the office's own court map. It reads **not yet** until the map has placed the property. A property on a line between two precincts names both. A lien foreclosure always goes to district court. The printed packet carries the same paragraph. The lien grid's **Court** column shows the county for every job, with the limit beside it.
 
 ## Who the firm calls
 

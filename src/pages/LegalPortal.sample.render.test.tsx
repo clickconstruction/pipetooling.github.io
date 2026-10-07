@@ -114,7 +114,8 @@ describe('LegalPortal — the sample matter', () => {
     const block = document.querySelector('[data-legal-where-to-file]')!
     expect(block.textContent).toContain('is within the justice court limit')
     expect(block.textContent).toContain('Where the work was done')
-    expect(block.textContent).toContain('Hays County · justice precinct not yet')
+    // The sample's property record carries precinct 2 (v2.4771); the payer's record is the same one.
+    expect(block.textContent).toContain('Hays County · Justice Court, Precinct 2')
     expect(block.textContent).toContain('Where the defendant is')
     expect(block.textContent).toContain('A lien foreclosure goes to district court in Hays County')
     expect(block.textContent).toContain('Confirm with the clerk before filing.')

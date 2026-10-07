@@ -19,8 +19,8 @@ export const LIEN_BOOK_DESK_ITEM_COLUMNS = ['id', 'job_id', 'kind', 'status', 'm
 export const LIEN_BOOK_FILING_COLUMNS = ['id', 'job_id', 'kind', 'filed_at', 'served_at', 'serve_due', 'months_covered', 'county', 'amount', 'recording_number', 'created_at', 'voided_at'] as const
 /** `job_property_owners`: the owner of record and where to serve. Never the owner's email. */
 export const LIEN_BOOK_OWNER_COLUMNS = ['job_id', 'owner_mode', 'owner_name', 'company_name', 'mailing_address'] as const
-/** `customer_addresses`: the property record. Never the office's note or the record's bookkeeping. */
-export const LIEN_BOOK_ADDRESS_COLUMNS = ['id', 'customer_id', 'address', 'county', 'legal_description', 'property_kind', 'homestead', 'owner_mode', 'owner_name', 'owner_company', 'owner_mailing_address', 'parcel_id', 'is_primary', 'sequence_order'] as const
+/** `customer_addresses`: the property record, with its justice precinct and the on-the-line note (v2.4771). Never the office's note or the record's bookkeeping. */
+export const LIEN_BOOK_ADDRESS_COLUMNS = ['id', 'customer_id', 'address', 'county', 'legal_description', 'property_kind', 'homestead', 'owner_mode', 'owner_name', 'owner_company', 'owner_mailing_address', 'parcel_id', 'is_primary', 'sequence_order', 'jp_precinct', 'jp_precinct_note'] as const
 /** `customers` (the GCs): the name and the standing rule for its notices, which decides what the book shows as held. */
 export const LIEN_BOOK_GC_COLUMNS = ['id', 'name', 'lien_notice_policy'] as const
 

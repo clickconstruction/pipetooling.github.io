@@ -107,7 +107,7 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
                       {c.homestead ? <span style={{ display: 'block', color: MUTED, fontSize: 10.5, whiteSpace: 'nowrap' }}>{c.homestead}</span> : null}
                     </td>
                     <td style={td} data-legal-grid-court>
-                      <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.county ? `${c.county} · JP Pct ` : <>{unknown('The county is not on the property record yet')} · JP Pct </>}{unknown(PRECINCT_NOT_YET_TITLE)}</span>
+                      <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.county ? `${c.county} · JP Pct ` : <>{unknown('The county is not on the property record yet')} · JP Pct </>}{c.precinct ? <b style={{ fontWeight: 600 }}>{c.precinct}</b> : unknown(PRECINCT_NOT_YET_TITLE)}</span>
                       <span style={{ display: 'inline-block', fontSize: 10, padding: '0 6px', borderRadius: 999, border: `1px solid ${c.withinJusticeLimit ? HAIR : PAPER_RED}`, color: c.withinJusticeLimit ? MUTED : PAPER_RED, marginTop: 2, whiteSpace: 'nowrap' }}>{justiceCourtCap(c.total === '' ? 0 : Number(c.total.replace(/[$,]/g, ''))).chip}</span>
                     </td>
                     {factTd(c.lastOnSite, { whiteSpace: 'nowrap' })}
