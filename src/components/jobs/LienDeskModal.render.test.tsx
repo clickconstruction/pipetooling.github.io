@@ -202,6 +202,29 @@ describe('LienDeskModal', () => {
     expect(screen.queryByTestId('lien-owner-records-door')).toBeNull()
   })
 
+  it("a stop's title on the timeline opens the window on what that stop sends; Esc closes it alone (v2.4793)", async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialJobId="j650" initialKind="notice" />)
+    await settle()
+    const door = document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="notice:2026-06"]') as HTMLButtonElement
+    expect(door?.tagName).toBe('BUTTON')
+    fireEvent.click(door)
+    expect(screen.getByTestId('lien-stop-paper')).toBeTruthy()
+    expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toBe('§ 53.056 · Jun')
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toMatch(/^The .*notice$/)
+    // The gates that are not clear read under Before it can go — the owner of record is missing on this job.
+    expect(screen.getAllByTestId('lien-stop-paper-before').map((n) => n.textContent).join(' ')).toMatch(/[Oo]wner/)
+    fireEvent.click(screen.getByRole('button', { name: 'Next stop' }))
+    expect(screen.getByTestId('lien-stop-paper-eyebrow').textContent).toBe('§ 53.056 · Jul')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
+    // The affidavit stop shows the affidavit as the Affidavits pane prints it.
+    fireEvent.click(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-stop-door="affidavit"]') as HTMLButtonElement)
+    expect(screen.getByTestId('lien-stop-paper-title').textContent).toBe('The lien affidavit')
+    expect(screen.getByTestId('lien-stop-paper-rule').textContent).toBe('§ 53.052 · The affidavit ›')
+    fireEvent.keyDown(window, { key: 'Escape' })
+  })
+
   it('a printed notice has a footer: the run to record the mailing, and Back to ready; the header counts it (v2.4568)', async () => {
     clearPrintedMock.mockReset()
     clearPrintedMock.mockResolvedValue(undefined)
