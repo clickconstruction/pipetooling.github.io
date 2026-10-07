@@ -9,6 +9,8 @@ import { conversationRows, conversationStateWords, conversationWho, entryRecorde
 import { propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
+import { CardCell } from './LegalCardCell'
+import { LEGAL_CARD_VARS, portalSmall } from '../../../lib/legal/legalPortalCards'
 import LienStopPaperWindow from '../LienStopPaperWindow'
 import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
@@ -32,15 +34,20 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import { FIRM_TABS, FIRM_TAB_LABELS, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
 
+/**
+ * Every table of the firm's matter. On a narrow box (a phone, an iPad's main column) each row folds into a card,
+ * each cell its column's name beside the value (v2.4808, `legalPortalCards.ts`): the first cell leads the card in
+ * bold, money is bold, a cell with nothing in it drops out, and a column with no name spans the card.
+ */
 export function PortalTable({ head, rows, empty, numCols = [], subRows = [] }: { head: string[]; rows: Array<Array<string | number | JSX.Element | null>>; empty: string; numCols?: number[]; /** A full-width row drawn under row i when set (the answers band under a notice, #41 PR 1b). */ subRows?: Array<ReactNode | null> }) {
   if (rows.length === 0) return <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>{empty}</p>
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead><tr>{head.map((x, i) => <th key={`${x}-${i}`} style={{ ...portalTh, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{x}</th>)}</tr></thead>
-        <tbody>{rows.flatMap((r, ri) => [
-          <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null), ...(ci === 0 && head[0] === 'Date' ? { whiteSpace: 'nowrap' } : null) }}>{c}</td>)}</tr>,
-          ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...portalTd, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
+    <div className="legalCardWrap" style={{ overflowX: 'auto', ...LEGAL_CARD_VARS }}>
+      <table role="table" className="legalCardTable" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead role="rowgroup"><tr role="row">{head.map((x, i) => <th key={`${x}-${i}`} role="columnheader" style={{ ...portalTh, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{x}</th>)}</tr></thead>
+        <tbody role="rowgroup">{rows.flatMap((r, ri) => [
+          <tr key={ri} role="row" data-card-has-sub={subRows[ri] ? '' : undefined}>{r.map((c, ci) => <CardCell key={ci} label={head[ci] ?? ''} num={numCols.includes(ci)} title={ci === 0} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null), ...(ci === 0 && head[0] === 'Date' ? { whiteSpace: 'nowrap' } : null) }}>{c}</CardCell>)}</tr>,
+          ...(subRows[ri] ? [<tr key={`${ri}-sub`} role="row" data-card-sub=""><td role="cell" colSpan={head.length} style={{ ...portalTd, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
         ])}</tbody>
       </table>
     </div>
@@ -53,7 +60,7 @@ function VoidableText({ e }: { e: Pick<LegalEntryRow, 'body' | 'voided_at' | 'vo
   return (
     <span data-legal-voided>
       <span style={{ textDecoration: 'line-through', color: FAINT }}>{e.body}</span>
-      <span style={{ display: 'block', fontSize: 11.5, color: MUTED }}>undone by {e.voided_via_portal ? 'your firm' : 'the office'} {calendarYmdInAppTzFromIso(e.voided_at)}{e.void_reason ? `: ${e.void_reason}` : ''}</span>
+      <span style={{ display: 'block', fontSize: portalSmall(11.5), color: MUTED }}>undone by {e.voided_via_portal ? 'your firm' : 'the office'} {calendarYmdInAppTzFromIso(e.voided_at)}{e.void_reason ? `: ${e.void_reason}` : ''}</span>
     </span>
   )
 }
@@ -62,12 +69,12 @@ function VoidableText({ e }: { e: Pick<LegalEntryRow, 'body' | 'voided_at' | 'vo
 function UndoEntry({ entryId, onUndo }: { entryId: string; onUndo: (entryId: string, reason: string) => Promise<boolean> }) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
-  if (!open) return <button type="button" onClick={() => setOpen(true)} style={{ ...portalBtn, padding: '2px 8px', fontSize: 11.5 }}>Undo…</button>
+  if (!open) return <button type="button" onClick={() => setOpen(true)} style={{ ...portalBtn, padding: '2px 8px', fontSize: portalSmall(11.5) }}>Undo…</button>
   return (
     <span data-legal-undo style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
       <input value={reason} onChange={(ev) => setReason(ev.target.value)} placeholder="Why (both sides see it)" aria-label="Why you are undoing it" style={{ font: 'inherit', fontSize: 12, padding: '3px 6px', border: `1px solid ${HAIR}`, borderRadius: 4, width: 170 }} />
-      <button type="button" disabled={!reason.trim()} onClick={() => void onUndo(entryId, reason.trim()).then((ok) => { if (ok) setOpen(false) })} style={{ ...portalBtn, padding: '2px 8px', fontSize: 11.5, background: COPPER, color: '#fff' }}>Undo it</button>
-      <button type="button" onClick={() => setOpen(false)} style={{ ...portalBtn, padding: '2px 8px', fontSize: 11.5 }}>Cancel</button>
+      <button type="button" disabled={!reason.trim()} onClick={() => void onUndo(entryId, reason.trim()).then((ok) => { if (ok) setOpen(false) })} style={{ ...portalBtn, padding: '2px 8px', fontSize: portalSmall(11.5), background: COPPER, color: '#fff' }}>Undo it</button>
+      <button type="button" onClick={() => setOpen(false)} style={{ ...portalBtn, padding: '2px 8px', fontSize: portalSmall(11.5) }}>Cancel</button>
     </span>
   )
 }
@@ -123,9 +130,9 @@ function JobTimelines({ packet }: { packet: LegalPacket }) {
         <div key={t.jobId} data-legal-job-timeline={t.jobId} className="legalJobTimeline" style={{ padding: '8px 0', borderBottom: `1px dotted ${HAIR}` }}>
           <div style={{ fontSize: 12.5 }}>
             <b style={{ fontSize: 13 }}>{t.jobLabel}</b>
-            <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
+            <div style={{ color: MUTED, fontSize: portalSmall(11.5) }}>{kindWordsOf(t.jobId)} · {roleWords}{legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource) ? ` · ${legalLastWorkWords(t.lastWorkYmd, t.lastWorkSource)}` : ''}</div>
             <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
-            {t.retainageWords ? <div style={{ color: MUTED, fontSize: 11.5 }}>{t.retainageWords}</div> : null}
+            {t.retainageWords ? <div style={{ color: MUTED, fontSize: portalSmall(11.5) }}>{t.retainageWords}</div> : null}
           </div>
           <LienTimelineStrip timeline={t.timeline} voice="firm" onOpenStep={(s) => setStop({ jobId: t.jobId, index: Math.max(0, t.timeline.steps.findIndex((x) => x.key === s.key)) })} />
           {stop && stop.jobId === t.jobId ? (
@@ -331,7 +338,7 @@ function WhereToFile({ account }: { account: LegalPacket['account'] }) {
         <span style={{ color: MUTED }}>A lien foreclosure</span>
         <span>{lienForeclosureLine(places.filter((p) => p.basis === 'work').map((p) => p.county))}</span>
       </div>
-      <div style={{ fontSize: 11, color: FAINT, marginTop: 6 }}>{VENUE_SOURCE_LINE}</div>
+      <div style={{ fontSize: portalSmall(11), color: FAINT, marginTop: 6 }}>{VENUE_SOURCE_LINE}</div>
     </div>
   )
 }

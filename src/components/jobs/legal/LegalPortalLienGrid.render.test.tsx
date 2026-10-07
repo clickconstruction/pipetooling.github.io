@@ -79,6 +79,25 @@ describe('LegalPortalLienGrid', () => {
     expect(String(vi.mocked(openHtmlPrintWindow).mock.calls[0]?.[0])).toContain('Lien grid — all GCs')
   })
 
+  it('folds each job into a card on a narrow box: the job leads, each cell names its column, the facts not entered read as one line (v2.4808)', () => {
+    render(<LegalPortalLienGrid raw={raw} todayYmd={TODAY} companyName="Click" initialShow="all" />)
+    const table = document.querySelector('table.legalCardTable') as HTMLTableElement
+    expect(table.closest('.legalCardWrap')).toBeTruthy()
+    const row = screen.getByText('273 · Dudley (Lennox)').closest('tr')!
+    const cells = [...row.children] as HTMLElement[]
+    expect(cells.map((c) => c.getAttribute('data-label'))).toEqual(['', 'Owner of record', 'Property', 'Court', 'Last on site', 'Amount due · for work in', '§ 53.056 per month', 'Affidavit by', 'Bond', 'Paid out to GC', '10 % reserved', 'Contract completed', ''])
+    // The facts the office has not entered drop out of the card; the last cell names them, a card's only.
+    const missing = row.querySelector('[data-legal-card-missing]') as HTMLElement
+    expect(missing.className).toBe('legalCardOnly')
+    expect(missing.textContent).toMatch(/^Not entered yet: .*payment bond.*\.$/)
+    for (const c of cells.slice(1, 12)) {
+      const unknown = Boolean(c.querySelector('[title="A fact the office has not entered yet"]')) && c.textContent === '?'
+      if (['Owner of record', 'Last on site', 'Affidavit by', 'Bond', 'Paid out to GC', '10 % reserved', 'Contract completed'].includes(c.getAttribute('data-label')!)) expect(c.hasAttribute('data-card-drop')).toBe(unknown)
+    }
+    // The court cell keeps its own mark for the tests and the print.
+    expect(row.querySelector('[data-legal-grid-court]')?.getAttribute('data-label')).toBe('Court')
+  })
+
   it('the rail lists every GC with its count and dollars, largest first, and a click narrows the grid and the print', async () => {
     const { openHtmlPrintWindow } = await import('../../../lib/jobsDocuments/printWindow')
     vi.mocked(openHtmlPrintWindow).mockClear()

@@ -1,5 +1,6 @@
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED } from '../../../lib/portal/portalTheme'
 import { legalOfficeContactLines, legalOfficeContactsHoursLine, type LegalOfficeContacts } from '../../../lib/legal/legalOfficeContacts'
+import { portalSmall } from '../../../lib/legal/legalPortalCards'
 
 /**
  * Who the firm calls (v2.4755): one strip under the portal's letterhead, on
@@ -12,7 +13,7 @@ export default function LegalPortalReachStrip({ contacts }: { contacts: LegalOff
   if (lines.length === 0) return null
   return (
     <div className="legalReachStrip" data-legal-reach-strip style={{ background: CARD, border: `1px solid ${HAIR}`, color: INK }}>
-      <span style={{ fontSize: 11, color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Reach the office</span>
+      <span style={{ fontSize: portalSmall(11), color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Reach the office</span>
       {lines.map((l, i) => (
         <span key={l.role} className="legalReachWho">
           {i > 0 ? <span className="legalReachSep" style={{ color: HAIR, marginRight: 12 }}>|</span> : null}

@@ -24,6 +24,7 @@ import { askKindWords, conversationRows, conversationWho, entryRecordedByWords, 
 import { confirmationNotice, type LegalActAnswer, type LegalActNotice } from '../lib/legal/legalPortalNotice'
 import { firmFacingErrorLine } from '../lib/legal/legalPortalErrors'
 import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
+import { portalSmall } from '../lib/legal/legalPortalCards'
 import { isLegalFirmStep, LEGAL_FIRM_STEP_GROUPS, LEGAL_FIRM_STEP_WORDS, type LegalFirmStep } from '../../supabase/functions/_shared/legalStages'
 
 /**
@@ -44,7 +45,7 @@ type PageState = { kind: 'loading' } | { kind: 'error'; message: string } | { ki
 type Act = (payload: Record<string, unknown>, said?: (answer: LegalActAnswer) => LegalActNotice) => Promise<boolean>
 
 const card: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }
-const cap: CSSProperties = { fontSize: 11, color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
+const cap: CSSProperties = { fontSize: portalSmall(11), color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
 const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, padding: '6px 12px', borderRadius: 5, border: `1px solid ${COPPER}`, color: COPPER, background: CARD, cursor: 'pointer' }
 
@@ -292,8 +293,8 @@ export default function LegalPortal() {
                   <button key={m.id} type="button" onClick={() => { setSelectedId(m.id); setTab('account') }} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 12px', alignItems: 'center', width: '100%', textAlign: 'left', padding: '10px 12px', marginTop: 8, background: CARD, border: `1px solid ${on ? COPPER : HAIR}`, borderRadius: 6, color: INK, cursor: 'pointer', font: 'inherit' }}>
                     <b style={{ fontSize: 13.5 }}>{m.payer.name}</b>
                     <span style={{ ...num, fontSize: 13.5, fontWeight: 600 }}>{p ? formatLegalMoney(p.account.totals.balance) : '—'}</span>
-                    <span style={{ fontSize: 11.5, color: MUTED }}>{m.jobs.length} job{m.jobs.length === 1 ? '' : 's'}{m.releasedAt ? ` · referred ${m.releasedAt}` : ''}{m.handling ? ` · handling ${m.handling}` : ''}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: NOTE_BAND, color: MUTED, justifySelf: 'end' }}>{legalFirmStageWords(m.stage)}</span>
+                    <span style={{ fontSize: portalSmall(11.5), color: MUTED }}>{m.jobs.length} job{m.jobs.length === 1 ? '' : 's'}{m.releasedAt ? ` · referred ${m.releasedAt}` : ''}{m.handling ? ` · handling ${m.handling}` : ''}</span>
+                    <span style={{ fontSize: portalSmall(10.5), fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: NOTE_BAND, color: MUTED, justifySelf: 'end' }}>{legalFirmStageWords(m.stage)}</span>
                   </button>
                 )
               })}
@@ -341,7 +342,7 @@ function PulledMattersSection({ pulled, companyName }: { pulled: ReadonlyArray<L
             <div style={portalH}>Your fees and costs</div>
             <PortalTable head={['Date', 'Kind', 'Note', 'By', 'Amount']} numCols={[4]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, entryRecordedByWords(e, 'firm'), formatLegalMoney(Number(e.amount ?? 0))])} empty="None recorded." />
             {talk.length ? (<><div style={portalH}>The conversation</div><PortalTable head={['Date', 'Who', 'What was said']} rows={talk.map((r) => [r.entry.occurred_on, `${r.isAnswer ? '↳ ' : ''}${conversationWho(r, 'firm')}`, r.entry.body])} empty="" /></>) : null}
-            <p style={{ fontSize: 11.5, color: FAINT, margin: '8px 0 0' }}>The account's records left the portal when {companyName} pulled it back. Ask the office if you need anything from it.</p>
+            <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: '8px 0 0' }}>The account's records left the portal when {companyName} pulled it back. Ask the office if you need anything from it.</p>
           </details>
         )
       })}
@@ -370,7 +371,7 @@ function RecordedByPicker({ recipients, value, onChange }: { recipients: Readonl
         <option value="">the firm</option>
         {live.map((r) => <option key={r.id} value={r.id}>{r.name}{r.role ? ` · ${r.role}` : ''}</option>)}
       </select>
-      <span style={{ fontSize: 11.5, color: FAINT }}>{live.length ? 'Your pick is remembered on this browser.' : 'Add your people on the Notifications page to sign each act.'}</span>
+      <span style={{ fontSize: portalSmall(11.5), color: FAINT }}>{live.length ? 'Your pick is remembered on this browser.' : 'Add your people on the Notifications page to sign each act.'}</span>
     </label>
   )
 }
@@ -440,7 +441,7 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
     setPayOn((d) => (d === was ? todayYmd : d))
   }, [todayYmd])
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
-  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: portalSmall(11.5), color: MUTED }
   const submit = (payload: Record<string, unknown>, after: () => void) => async (e: FormEvent) => {
     e.preventDefault()
     if (await act({ ...payload, matterId: matter.id })) after()
@@ -472,7 +473,7 @@ function FirmActs({ matter, act, busy, notice, todayYmd }: { matter: LegalPortal
         <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Send</button>
       </form>
-      <p style={{ fontSize: 11.5, color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
+      <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
     </div>
   )
 }
@@ -483,7 +484,7 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payloa
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('paralegal')
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK, width: '100%' }
-  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: portalSmall(11.5), color: MUTED }
   const small: CSSProperties = { ...btn, padding: '3px 9px', fontSize: 12 }
   const ghost: CSSProperties = { ...small, borderColor: HAIR, color: MUTED }
   const rule = (r: LegalPortalRecipient, patch: Record<string, unknown>) => void act({ kind: 'recipient_rules', recipientId: r.id, mode: r.mode, scope: r.scope, digestWeekday: r.digestWeekday, digestTime: r.digestTime, ...patch })
@@ -506,13 +507,13 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn }: { payloa
           <div key={r.id} style={{ ...card, marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <div><b>{r.name}</b> <span style={{ color: MUTED, fontSize: 12.5 }}>{r.email}{r.role ? ` · ${r.role}` : ''}</span></div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{firmRecipientStatusWords(r)}</span>
+              <span style={{ fontSize: portalSmall(11.5), fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{firmRecipientStatusWords(r)}</span>
             </div>
             {r.failingSince && !r.paused ? <div data-legal-not-reaching style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{legalNotReachingLine({ email: r.email, sinceYmd: r.failingSince, confirmed: r.confirmed, mode: r.mode }, 'firm')}</div> : null}
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
               <span style={{ color: MUTED }}>Emails</span>
-              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: 11.5, fontWeight: 700 }}>
-                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: 700 }}>{FIRM_EMAIL_MODE_WORDS[m]}</button>)}
+              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: portalSmall(11.5), fontWeight: 700 }}>
+                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: portalSmall(11.5), fontWeight: 700 }}>{FIRM_EMAIL_MODE_WORDS[m]}</button>)}
               </span>
               {r.mode === 'digest' ? (
                 <>

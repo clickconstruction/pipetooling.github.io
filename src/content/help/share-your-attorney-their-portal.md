@@ -6,7 +6,7 @@ keywords: legal, attorney, law firm, portal, link, collections, packet, particul
 ---
 The collections law firm gets private links that need no sign-in. A link opens every account a dev has marked attorney-ready, and nothing else. The firm has its own link, and can have one link per person at the firm.
 
-Each account opens as the same five-section packet the Legal desk shows. The portal works on a phone too. On a narrow screen it is one column, with the matters list first.
+Each account opens as the same five-section packet the Legal desk shows. The portal works on a phone too. On a narrow screen it is one column, with the matters list first. Each table row turns into a card that names its columns, so nothing hides off to the side.
 
 ## Create and send the links
 
@@ -51,6 +51,8 @@ The lien grid is a third panel beside **Matters** and **Notifications**. The gri
 - paid out to the GC
 - the 10 % reserved
 - the owner's contract completion
+
+On a phone, each job is a card with its address on top. The facts the office has not entered show as one red line at the foot of the card.
 
 ## What the firm does on the portal
 
