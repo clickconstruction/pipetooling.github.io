@@ -2609,7 +2609,7 @@ export default function LienDeskModal({
           onChannel={setWordChannel}
           radioName="word-channel"
           recorderName={authName}
-          leadIn="He is here — who, when, and how:"
+          leadIn="Leader here — who, when, and how:"
           actionLabel="Record it and send ▸"
           onAction={sendOnWord}
           actionDisabled={busy || !wordNote.trim()}
@@ -2630,11 +2630,11 @@ export default function LienDeskModal({
               type="button"
               onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordChannel('standing_over'); setWordOpen(true) }}
               disabled={busy}
-              style={btn('amber', busy)}
+              style={btn('primary', busy)}
               data-lien-desk-leader-here
-              title="The leader is beside you — write down that he is standing here or typing it in, and it goes to Ready to send on his word"
+              title="The leader is beside you — write down that he is standing here or typing it in, and it goes to Ready to send on his word. This is the approval step."
             >
-              He is here — record it ▸
+              Leader here, Approve ▸
             </button>
           ) : null}
         </div>

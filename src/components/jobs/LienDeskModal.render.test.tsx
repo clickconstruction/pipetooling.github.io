@@ -456,9 +456,12 @@ describe('LienDeskModal', () => {
     await settle()
     expect(screen.getByText(/Waiting on the leader since/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /He is here — record it/ }))
+    // Blue, the desk's primary: it is the approval step, not a side act (v2.4850, the owner's ask).
+    const leaderHere = screen.getByRole('button', { name: /Leader here, Approve/ })
+    expect(leaderHere.style.background).toBe('rgb(37, 99, 235)')
+    fireEvent.click(leaderHere)
     // The row opens with the presence channel picked and says what the record will read.
-    expect(screen.getByText('He is here — who, when, and how:')).toBeTruthy()
+    expect(screen.getByText('Leader here — who, when, and how:')).toBeTruthy()
     expect((screen.getByLabelText('Who said it and when') as HTMLInputElement).value).toMatch(/^the leader, /)
     expect((screen.getByLabelText('he is standing over me') as HTMLInputElement).checked).toBe(true)
     expect(screen.getByText(/Recorded by Wendi: the leader was standing here and said to send it/)).toBeTruthy()
@@ -476,7 +479,7 @@ describe('LienDeskModal', () => {
     } as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} />)
     await settle()
-    expect(screen.queryByRole('button', { name: /He is here/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Leader here/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Approve & next/ })).toBeTruthy()
   })
 })

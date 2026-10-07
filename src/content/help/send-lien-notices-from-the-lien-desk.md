@@ -66,7 +66,7 @@ The **Notices** tab lists each job with a GC and an unpaid month whose window cl
 - **A public owner is never drafted.** A city, a county, a school district or the State cannot carry a lien. The remedy is a claim on the GC's payment bond, so the pane says to talk to the attorney. Its send buttons stay off. Saving that owner is still right, because it is how the desk knows.
 - **An owner from the roll may be unconfirmed.** Settings, Jobs & billing has a switch to save owners from the appraisal roll automatically. When it is on, the app fills empty owners overnight. The pane marks each one unconfirmed, with a link to the county and {{button:blue|Confirm}}. You can draft and send for approval on it. Recording the run refuses while any notice in it has an unconfirmed owner. Open the county link, check the name and press Confirm.
 - {{chip:gray|To draft}} is ready for the office.
-- {{chip:blue|Awaiting approval}} is with the master. When he is beside you, {{button:amber|He is here — record it ▸}} on the footer ends the wait.
+- {{chip:blue|Awaiting approval}} is with the master. When he is beside you, {{button:blue|Leader here, Approve ▸}} on the footer ends the wait.
 - {{chip:green|Ready to send}} is approved. It goes out with the run, or one at a time from the Lien window.
 - {{chip:gray|Held}} means the master is waiting on a promise or a call. The desk asks him again three days before the deadline.
 - {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} keep the record in sight.
@@ -136,11 +136,11 @@ The bar at the bottom shows the notice's state on the left. Most often it says t
 - **A send rule starts with the second notice.** Even with a rule to send notices without asking, our first notice to a GC goes to the master. That first notice proves the owner, the addresses and the GC's copy on real mail. From the next month, the button reads {{button:blue|Put it in the run ▸}}, and nobody is asked.
 - {{button:outline|The leader said to send it…}} is for when he already told you in the truck. Type who said it and when, then pick phone, in person or text. It goes straight to Ready to send. He sees its job named under **Sent on your word** in the desk's title bar. On that notice's footer, **Not what I said** pulls it back while it has not gone out.
 
-### He is here
+### Leader here
 
 The same row has two answers for when the master stands beside you. One is *he is standing over me*, and the other is *he is typing it in*. Pick one, and the line under the row shows what the record will read. Nobody signs in. The record names you as the one who wrote it down. It names him as the one who decided. Then it goes to Ready to send on his word.
 
-A notice already sent to him has {{button:amber|He is here — record it ▸}} on its footer. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in.
+A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in.
 
 ## A notice sent by hand
 
