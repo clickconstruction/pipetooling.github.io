@@ -292,7 +292,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
 /** Which court (v2.4764): the cap, both venue bases under TRCP 502.4, the lien line, the source. */
 function WhereToFile({ account }: { account: LegalPacket['account'] }) {
   const cap = justiceCourtCap(account.totals.balance)
-  const places = venuePlaces({ properties: account.properties, payer: { name: account.payer.name, address: account.customerAddress, county: account.customerCounty } })
+  const places = venuePlaces({ properties: account.properties, payer: { name: account.payer.name, address: account.customerAddress, county: account.customerCounty, precinct: account.customerPrecinct } })
   const notYet = <span style={{ color: PAPER_RED, fontWeight: 700 }} title={PRECINCT_NOT_YET_TITLE}>?</span>
   return (
     <div data-legal-where-to-file>

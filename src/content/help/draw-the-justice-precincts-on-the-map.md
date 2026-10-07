@@ -24,7 +24,7 @@ Every night the app puts each property record in its precinct from these areas. 
 
 ## What the layer is for
 
-Counties come from the geocoder already. This map is for precincts only. A precinct in two pieces is one area drawn as one shape. The law firm's portal will show each job's precinct from this map once the next step ships. An address within about a hundred metres of a line between two precincts names both, for a person to settle.
+Counties come from the geocoder already. This map is for precincts only. A precinct in two pieces is one area drawn as one shape. The law firm's portal shows each job's precinct from this map. A property record shows it too, under **Justice precinct**, with where it came from. Type over it there to settle a precinct by hand. An address within about a hundred metres of a line between two precincts names both, for a person to settle.
 
 :::example Where to start
 The counties with the most jobs first. A county that publishes its precinct file will be imported, so draw by hand only where the county publishes a map to read by eye.

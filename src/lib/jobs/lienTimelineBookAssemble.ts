@@ -87,6 +87,8 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
       propertyKind: kindByJob[j.id] ?? property.propertyKind ?? '',
       homestead: Boolean(address?.homestead),
       county: property.county ?? '',
+      precinct: ((address as { jp_precinct?: string | null } | null)?.jp_precinct ?? '').trim(),
+      precinctNote: ((address as { jp_precinct_note?: string | null } | null)?.jp_precinct_note ?? '').trim(),
       ownerName: lienPropertyOwnerDisplayName(property.owner),
       openBalance: Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
       lastWorkDate: j.last_work_date,

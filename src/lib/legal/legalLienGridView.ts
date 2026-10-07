@@ -38,6 +38,8 @@ export interface LegalLienGridCell {
   lastOnSite: string
   /** The job's county from its property record, '' when none (v2.4764, the Court column). */
   county: string
+  /** The justice precinct from the court map (v2.4771), '' until it names one; `2 or 3 — on the line` when it sits on a line. */
+  precinct: string
   /** Within the $20,000 justice court limit. */
   withinJusticeLimit: boolean
   /** `$38,625` */
@@ -83,6 +85,7 @@ export function legalLienGridCells(rows: ReadonlyArray<LienTimelineBookRow>, tod
       homestead: residential ? (r.job.homestead ? 'Homestead' : 'No homestead') : r.job.homestead ? 'Homestead' : '',
       lastOnSite: g.lastOnSite,
       county: r.job.county,
+      precinct: r.job.precinctNote || r.job.precinct || '',
       withinJusticeLimit: justiceCourtCap(r.job.openBalance).within,
       total: formatUsdNoCents(r.job.openBalance),
       months: openMonths.join(', '),

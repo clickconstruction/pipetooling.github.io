@@ -533,7 +533,7 @@ const SAMPLE_LEGAL = {
 const LEGAL_GC = { company: 'Brazos Ridge Contracting', contact: 'Pat Holloway', email: 'pat.holloway@brazosridge.example.com', phone: '(512) 555-0142', office: '1150 Hunter Rd, Suite 300, San Marcos, TX 78666' } as const
 
 /** The building's record, the job's own property (#85 item 6 reads it from `jobAddresses`). */
-const LEGAL_PROPERTY_ROW = { id: 'sample-legal-property', customer_id: 'sample-legal-owner', address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Creekside Commerce Park, Section 2, Hays County, Texas', property_kind: 'commercial', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Reyes', owner_company: 'Alvarado Holdings LLC', owner_mailing_address: 'PO Box 4100, San Marcos, TX 78667', parcel_id: 'R104417', is_primary: true, sequence_order: 0 } as const
+const LEGAL_PROPERTY_ROW = { id: 'sample-legal-property', customer_id: 'sample-legal-owner', address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Creekside Commerce Park, Section 2, Hays County, Texas', property_kind: 'commercial', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Reyes', owner_company: 'Alvarado Holdings LLC', owner_mailing_address: 'PO Box 4100, San Marcos, TX 78667', parcel_id: 'R104417', is_primary: true, sequence_order: 0, jp_precinct: '2', jp_precinct_note: '' } as const
 
 /**
  * The one sample matter (v2.3639; one coherent story since v2.4638): the shape `parseLegalPortalPayload`
