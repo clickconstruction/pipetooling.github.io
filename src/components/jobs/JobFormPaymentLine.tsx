@@ -26,6 +26,7 @@ import {
   unlinkLeavesStripeBillUntouched,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { heldStripeMarkLineWords, paymentRowOnHeldStripeMark } from '../../lib/jobs/heldStripeMark'
+import { stripeHeldMoveOffered } from '../../lib/jobs/stripeHeldPaymentMove'
 import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersCheckDidNotClear } from '../../lib/jobs/stripeOobSendBack'
 import { paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { autoApplyInvoiceId } from '../../lib/jobs/paymentInvoiceLinking'
@@ -132,7 +133,9 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
   const amountText = `$${formatCurrency(amount)}`
   const linkable = (job?.invoices ?? []).filter((i) => i.status === 'billed' && !jobsLedgerInvoiceIsStripeLinked(i))
   const moveBlock = paymentMoveBlock(row, job, persisted)
-  const moveShown = moveBlock !== 'unsaved' && moveBlock !== 'stripe'
+  // v2.4803: a check Stripe holds by our mark moves too — through the credit note and a fresh bill.
+  const stripeHeldMove = moveBlock === 'stripe' && stripeHeldMoveOffered(row, job)
+  const moveShown = (moveBlock !== 'unsaved' && moveBlock !== 'stripe') || stripeHeldMove
   const moveDisabled = moveBlock === 'sent-bill'
   const moveBill = moveDisabled && row.invoice_id ? (job?.invoices ?? []).find((i) => i.id === row.invoice_id) ?? null : null
   // v2.4801: a saved row on a bill comes off through the remove RPC unless Stripe holds it.
@@ -255,11 +258,11 @@ export function JobFormPaymentLine({ row, bill, sliceAmount, partial, job, bankF
                   disabled={moveDisabled}
                   aria-disabled={moveDisabled}
                   onClick={() => { if (moveDisabled) return; closeMenu(); actions.requestMovePaymentRow(row) }}
-                  title={moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : 'Move this payment to the job it belongs on — it keeps its date, amount and bank link'}
+                  title={moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : stripeHeldMove ? 'Stripe holds this check as paid. Moving it reverses that mark with a credit note, sends this bill back for a fresh one, and lands the check on the job you pick.' : 'Move this payment to the job it belongs on — it keeps its date, amount and bank link'}
                   style={menuItem({ disabled: moveDisabled })}
                 >
                   <span>Move to job…</span>
-                  <span style={MENU_SUB}>{moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : 'it keeps its date, amount and bank link'}</span>
+                  <span style={MENU_SUB}>{moveDisabled ? paymentMoveBlockText('sent-bill', moveBill ? Number(moveBill.amount ?? 0) : null) : stripeHeldMove ? 'reverses the Stripe mark; this bill goes out again' : 'it keeps its date, amount and bank link'}</span>
                 </button>
               ) : null}
               {unlinkShown ? (
