@@ -2746,7 +2746,7 @@ export default function LienDeskModal({
           >
             ⏱ Lien desk
           </h2>
-          {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem', border: 'none' }} /> : null}
+          {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} style={{ position: 'absolute', right: '3.1rem', top: '0.55rem', border: 'none', color: 'var(--text-muted)' }} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           {/* v2.4311: the tab row is 375 px of labels — on a phone it scrolls sideways inside the card instead of pushing the title bar (and ×, and Share) off the screen. v2.4441: a cut end fades, so Timeline past the edge is not a secret, and the picked tab is brought into view. */}
           {/* Three views (punch list #82, PR 5): Do now, Deadlines, All filings (named Next up, Calendar, All paper until v2.4630; only Do now carries a count). All filings holds the four lists that were tabs of their own, as a second row. */}
