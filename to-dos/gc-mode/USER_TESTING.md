@@ -13,6 +13,37 @@ summary: >
 **How a note gets here:** a tester tells Grace or the lead, and one of them relays it to Helper 7,
 who adds the row. The tester never writes this file.
 
+## What the app records: New here?
+
+*New here?* on GC projects (v2.4838, PR #4863) writes a row to `ui_nav_clicks` when the walk opens
+and when it closes. `control` is `gc_new_here`. `target` is `opened?by=first-visit&of=10` or
+`opened?by=button&of=10` when it opens, and `closed?stop=<the last stop reached>&of=10` when it
+closes. The morning triage reads the night's walks with this, read only, against prod:
+
+```sql
+-- Each tester's walks since yesterday morning, devs left out.
+select u.name, n.role, n.target, n.occurred_at at time zone 'America/Chicago' as at
+from public.ui_nav_clicks n
+join public.users u on u.id = n.user_id
+where n.control = 'gc_new_here'
+  and n.role <> 'dev'
+  and n.occurred_at > now() - interval '1 day'
+order by u.name, n.occurred_at;
+
+-- Where walks stop, all time: a pile-up on one stop is the stop to rewrite.
+select split_part(split_part(n.target, 'stop=', 2), '&', 1)::int as stop, count(*)
+from public.ui_nav_clicks n
+where n.control = 'gc_new_here' and n.target like 'closed?%' and n.role <> 'dev'
+group by 1
+order by 1;
+```
+
+A walk that opened and has no close means the tester left the page or closed the tab mid-walk. The
+ten stops, in order: the switch, New project, a project's card, its Drive line, The plans, A new
+set of plans came in, Questions about the plans, the gaps, the scope book, New here?
+(`src/lib/gc/tour.ts`). A row lands in *The notes* only when a stop count says something a helper
+can act on, for example "4 of 6 left at stop 4".
+
 ## How a row reads
 
 - **Date**: the day the tester said it, as `2026-10-08`.
