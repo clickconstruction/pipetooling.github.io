@@ -99,3 +99,11 @@ Nothing reads these tables yet. Going back is a new migration that drops them wi
 ## Status
 
 Written 2026-10-07 for the schedule's PR 2; not applied. The stamp skips past the uncollectible lane's two claims, 20261007190000 and 20261007200000, on purpose, so it lands after them whichever is pushed first. The lead pushes it after the merge and records here what steps 1 to 5 of *Verify after the push* said.
+
+Applied to prod 2026-10-07 with `supabase db push` from a clean checkout of main (the ledger holds it; `npm run check:migration-drift` is fully applied; types in #4826). What the verify steps said, run from the app as the dev account against prod:
+
+- Step 2: all nine tables read back empty, with the dev policy letting the dev read them.
+- Step 3's dev half: a dev's insert into `gc_schedules` went in (version 0), a change line went in at version 1, and `finish < start` on a bar was refused by `gc_schedule_activities_dates_in_order`.
+- Step 4: the dev's update and delete on `gc_schedule_changes` were both refused with `permission denied for table gc_schedule_changes`; deleting the schedule took its change line by cascade (0 left).
+- Step 5: a signed-out call on `gc_schedules` with the anon key got 401 `permission denied for table gc_schedules`.
+- Not run: step 1 (the policy and trigger catalog) and the read-only user's insert in step 3, since no read seat and no read-only session were at hand; the sweeps that make them are the same three calls every GC table before this one ran. Run them from a dev seat when one is set up.
