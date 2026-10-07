@@ -14027,7 +14027,11 @@ export type Database = {
           created_by: string | null
           firm_id: string
           id: string
+          label: string | null
+          purpose: string
+          revoke_reason: string | null
           revoked_at: string | null
+          revoked_by: string | null
           token: string | null
           token_hash: string | null
           token_secret_id: string | null
@@ -14037,7 +14041,11 @@ export type Database = {
           created_by?: string | null
           firm_id: string
           id?: string
+          label?: string | null
+          purpose?: string
+          revoke_reason?: string | null
           revoked_at?: string | null
+          revoked_by?: string | null
           token?: string | null
           token_hash?: string | null
           token_secret_id?: string | null
@@ -14047,7 +14055,11 @@ export type Database = {
           created_by?: string | null
           firm_id?: string
           id?: string
+          label?: string | null
+          purpose?: string
+          revoke_reason?: string | null
           revoked_at?: string | null
+          revoked_by?: string | null
           token?: string | null
           token_hash?: string | null
           token_secret_id?: string | null
@@ -14065,6 +14077,13 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_portal_links_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -24942,6 +24961,10 @@ export type Database = {
             }
             Returns: string
           }
+      create_legal_portal_link: {
+        Args: { p_firm_id: string; p_label?: string }
+        Returns: Json
+      }
       create_pending_contract_versions_after_book_save: {
         Args: { p_contract_template_document_id: string }
         Returns: undefined
@@ -25684,11 +25707,27 @@ export type Database = {
         Returns: Json
       }
       legal_office_can_read: { Args: never; Returns: boolean }
+      legal_portal_link_forget_secret: {
+        Args: { p_link_id: string }
+        Returns: undefined
+      }
       legal_portal_link_forget_secrets: {
         Args: { p_firm_id: string }
         Returns: undefined
       }
+      legal_portal_link_insert: {
+        Args: { p_firm_id: string; p_label: string; p_purpose: string }
+        Returns: Json
+      }
+      legal_portal_link_new_key: {
+        Args: { p_firm_name: string }
+        Returns: string
+      }
       legal_portal_link_token: { Args: { p_firm_id: string }; Returns: string }
+      legal_portal_link_token_by_id: {
+        Args: { p_link_id: string }
+        Returns: string
+      }
       legal_pull_back: {
         Args: { p_matter_id: string; p_note?: string }
         Returns: Json
@@ -26166,6 +26205,7 @@ export type Database = {
           reported_at: string
         }[]
       }
+      list_legal_portal_links: { Args: { p_firm_id: string }; Returns: Json }
       list_lien_affidavit_windows: {
         Args: { p_within_days?: number }
         Returns: {
@@ -27356,7 +27396,12 @@ export type Database = {
       }
       revoke_gc_word_ask: { Args: { p_ask_id: string }; Returns: Json }
       revoke_legal_portal_link: { Args: { p_firm_id: string }; Returns: Json }
+      revoke_legal_portal_link_by_id: {
+        Args: { p_link_id: string }
+        Returns: Json
+      }
       revoke_sub_portal_link: { Args: { p_person_id: string }; Returns: Json }
+      rotate_legal_portal_link: { Args: { p_link_id: string }; Returns: Json }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
         Returns: boolean
