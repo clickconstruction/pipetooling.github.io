@@ -132,6 +132,10 @@ describe('the rail', () => {
     const due = legalLienGridGcs(book, 'due', 'gc2')
     expect(due[0]!.count).toBe(book.counts.due)
     expect(due.find((e) => e.id === 'gc2')).toBeTruthy()
+    // An entry with nothing in view is left off unless it is the chosen one (v2.4751).
+    const later = buildLienTimelineBook({ ...input(), rows: input().rows.map((r) => (r.job_id === 'j1101' ? { ...r, deadline: '2027-01-15' } : r)) })
+    expect(legalLienGridGcs(later, 'due', null).some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(false)
+    expect(legalLienGridGcs(later, 'due', LEGAL_LIEN_NO_GC).find((e) => e.id === LEGAL_LIEN_NO_GC)?.count).toBe(0)
     expect(filterLegalLienGrid(book, { gcId: 'gc1', show: 'all' }).map((r) => r.jobId).sort()).toEqual(['j702', 'j878'])
     expect(filterLegalLienGrid(book, { gcId: LEGAL_LIEN_NO_GC, show: 'all' }).map((r) => r.jobId)).toEqual(['j1101'])
     expect(filterLegalLienGrid(book, { gcId: null, show: 'all' })).toHaveLength(4)
