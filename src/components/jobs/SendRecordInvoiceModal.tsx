@@ -938,7 +938,9 @@ export default function SendRecordInvoiceModal({
       setBillAmountStr('')
     }
     setStripeFixtureMultiLineAvailable(null)
-  }, [open, job?.id, job?.customer_email, invoice?.id])
+    // Not keyed on the email: the banner's inline fix (v2.936) overlays it on `job`, and re-running this
+    // reset would drop that overlay along with the amount, the memo and the tab (v2.4880).
+  }, [open, job?.id, invoice?.id])
 
   // Hazmat detection for the invoice being billed. Two shapes (v2.1028):
   // - PRIMARY bill with linked incidents → folded fees: the amounts are already
