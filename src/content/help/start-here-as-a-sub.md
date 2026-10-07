@@ -24,7 +24,7 @@ Need a job's address and nothing else? Tap the {{icon:search}} **search icon** i
    - **Missing reports from today** shows red buttons, one per scheduled job with no report yet. Tap one to file it now, or finish clocking out and file it later.
    Then tap {{button:red|Complete clock out}}. Your hours go to the office for approval automatically.
 
-Every so often, not every day, a short **team feedback** card follows your clock out. It asks how your teammates did. Tap {{button:blue|Start}} to answer or {{button:outline|Not now · remind me in 7 days}} to put it off. Left alone, it closes itself in 30 seconds.
+Every so often, not every day, a short **team feedback** card follows your clock out. The card asks how your teammates did. Tap {{button:blue|Start}} to answer or {{button:outline|Not now · remind me in 7 days}} to put it off. Left alone, it closes itself in 30 seconds.
 
 :::example What "steps" are
 The office breaks a project into steps — Rough In, Top Out, Trim Out. When one is assigned to you, it appears on your full Dashboard with the address, plans link, and any notes for you.
@@ -40,7 +40,7 @@ The office may offer you a job for a set amount. A **New offer** card then arriv
 
 ## Say how far along you are
 
-On your portal, each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75. If you like, type a note. Nothing is sent until you press the send button under them. It reads like {{button:blue|Send to office · 50% along, still working}}. Anything under 100% just keeps the office posted. The office keeps waiting on you. Tap **100% ✓** and the button turns green. The button reads {{button:green|✓ Send to office · work is done}}. Pressing it asks you to confirm with {{button:green|✓ Yes, ready for inspection}}. The button asks because 100% is what tells the office to call it in for inspection.
+On your portal, each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75. If you like, type a note. Nothing is sent until you press the send button under them. The button reads like {{button:blue|Send to office · 50% along, still working}}. Anything under 100% just keeps the office posted. The office keeps waiting on you. Tap **100% ✓** and the button turns green. The button reads {{button:green|✓ Send to office · work is done}}. Pressing it asks you to confirm with {{button:green|✓ Yes, ready for inspection}}. The button asks because 100% is what tells the office to call it in for inspection.
 
 ## Pick your days
 
@@ -57,7 +57,7 @@ On your portal, below your jobs, **Your days** shows the coming weeks. Each week
 ## Tabs and pages
 
 - **Dashboard / Schedule / Inbox / Customers** is the Job Mode tab bar. The tab bar holds your schedule and customer contacts for the jobs you're on. **Inbox** also lists **My requests**: everything you've sent to Dispatch. The list is split into *Waiting on Dispatch* and *Answered*. You get a push alert, **Dispatch answered**, the moment they close one.
-- **Job Parts Tally** is where you log the parts you used on a job. Open it from Settings. It is the first door under the search box.
+- **Job Parts Tally** is where you log the parts you used on a job. Open it from the first door under the search box in Settings.
 - **Checklist** holds recurring tasks, if the office assigns you any.
 - **Calendar** shows what's coming up for you.
 

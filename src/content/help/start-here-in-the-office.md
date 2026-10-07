@@ -26,7 +26,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
    - With Dispatch Mode on, **Needs you** is a one-line door to the Inbox tab. There the list walks one card at a time.
 2. **Jobs → Pipeline** is the busiest board in the app. The board shows every job by billing state, with search, GC and development filters, and print. A development is a neighborhood a builder is putting up. Set progress, bill, and collect from here.
 3. **Schedule** shows who is where, day by day. See [dispatch mode](/help/dispatch-mode) and [scheduling people onto jobs](/help/schedule-dispatch).
-4. **Quickfill** is the office's daily round. It is one page of review sections, each with a button that says you've looked. See [run the office day with Quickfill](/help/quickfill).
+4. **Quickfill** is the office's daily round. The page holds review sections, each with a button that says you've looked. See [run the office day with Quickfill](/help/quickfill).
 5. **People** holds accounts, hours, contracts, and [your subs](/help/review-your-subs).
 
 ## Money
@@ -38,7 +38,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 ## What the field sees
 
 - **Subs and helpers** open the app in **Job Mode**. Job Mode is one card with Clock In, today's stops and Leave Report. A Dashboard / Schedule / Inbox / Customers tab bar runs along the bottom. Subs and helpers see only their own assigned steps, their own schedule, and their own pay balance. Nothing company-wide shows for them. When a sub says "I don't see the job," it's usually because the step isn't assigned to them yet. A helper may say there's nothing to clock into. The helper's Clock In sheet is already telling them to call dispatch. That call is coming to you. Add the block, their time on the schedule, and the job appears as a pick.
-- **What the field sends you.** The purple **estimating** button in their header drops a question into the estimators' inbox. Its hint reads *Ask estimating*. The blue dispatch button and the red phone or photo taps on a job land in your **Dispatch inbox**. Closing a request there sends the tech a push alert, **Dispatch answered**. Your note also shows under *My requests* in their Job Mode Inbox. So write the answer, not just "done".
+- **What the field sends you.** The purple **estimating** button in their header drops a question into the estimators' inbox. The button's hint reads *Ask estimating*. The blue dispatch button and the red phone or photo taps on a job land in your **Dispatch inbox**. Closing a request there sends the tech a push alert, **Dispatch answered**. Your note also shows under *My requests* in their Job Mode Inbox. So write the answer, not just "done".
 - **Superintendents** see projects, jobs, and dispatch, but not payroll or company totals.
 - **Primaries** see their own jobs, estimates, and bids only.
 
@@ -56,4 +56,4 @@ A link may open a page your role can't use, like the owner's Crew P&L or the con
 
 ## Controller-only
 
-Payroll, wage detail, **Banking**, and the money visibility that assistants don't have. Banking holds User Sort, Drag Sort, Accounting, Card Review, Category Review, Reconciliation and Visuals. Everything else on this page is shared. That includes the tabbed **Job window**. A controller opens the same {{chip:blue|Job · Edit · Bill · Costs · History · Documents}} window an assistant does.
+Payroll, wage detail, **Banking**, and the money visibility that assistants don't have. Banking holds User Sort, Drag Sort, Accounting, Card Review, Category Review, Reconciliation and Visuals. Everything else on this page is shared. The tabbed **Job window** is shared too. A controller opens the same {{chip:blue|Job · Edit · Bill · Costs · History · Documents}} window an assistant does.
