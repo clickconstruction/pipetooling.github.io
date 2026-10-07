@@ -2,7 +2,7 @@
 name: "Legal portal: ready for the firm"
 number: 85
 group: waiting
-status: 24 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits) and the firm's door (#4708, then #4710 with migration 20261006230500); 12–15 and 19 wait for the firm; 10 is the owner's
+status: 24 of 29 built, merged and live 2026-10-06 (v2.4615–v2.4681, v2.4649 with its migration); follow-ups v2.4701 (the exhibits), v2.4711 (the firm's door) and v2.4712 (replace the firm, migration 20261006234500), all live; 12–15 and 19 wait for the firm; 10 is the owner's
 summary: >
   The portal's data model and two-way channel are a real selling point, but the firm-facing
   surface still speaks the office's language, the print packet hands the firm the office's own
@@ -10,7 +10,7 @@ summary: >
   (four readers over the code, one over the sample portal in a browser) agreed on 29 items.
   Items 1–11 would show in a demo; 12–21 are what a firm will ask for in month one; 22–29 are
   structure. Each item gets a mockup, a hard look ("is this the best we can do?"), then the build.
-next: Land the firm's door, #4708 then #4710, and push #4710's migration. The owner puts the real firm in place of ZZ Test Firm and fills the particulars (item 10, 0 of 8 on 2026-10-06). At the meeting, ask the firm what it needs at intake, and ask it to review and sign off the guide *read the Texas lien rules the app follows*. After it, shape items 12–15 and 19 from the firm's answers.
+next: The owner swaps ZZ Test Firm for the real firm with *Replace with a new firm…* in the Legal desk's firm window, and fills the particulars (item 10, 0 of 8 on 2026-10-06). At the meeting, ask the firm what it needs at intake, and ask it to review and sign off the guide *read the Texas lien rules the app follows*. After it, shape items 12–15 and 19 from the firm's answers.
 size: XL (29 items; 1–11 are S each, 12–21 M, 22–29 S–M)
 blocker: The firm's answers for 12–15 and 19. Decisions taken 2026-10-05 — share everything with counsel by default (29); one firm (27); settlement by threshold (20); the Lien grid keeps the whole book, stripped (2).
 opinion: build in the order below; ship each as its own PR so the firm's demo copy improves tonight and the month-one items can be shaped by what the firm says.
@@ -86,7 +86,7 @@ The sample portal: `/legal?t=sample` draws `sampleLegalPortalResponse` with noth
 
 Built 2026-10-05 evening to 2026-10-06 morning: item 1 and 2 by the coordinating session; the rest by five lanes (A copy and phone, B money and property, C functions and the sample, D lifecycle and acts, E emails), each reviewed by an adversarial reader before an integrator fixed, rebased and merged it. Every mockup is beside this card. Every migration on main is applied, and every train function is deployed and current as of 2026-10-06 14:30Z, checked with no grace window (`EDGE_DRIFT_GRACE_HOURS=0`; the default waits 72 hours before calling a function behind). The site deployed at 13:54Z, the first deploy since v2.4655 broke the build.
 
-**The firm's door** (2026-10-06, the owner's ask after the train): the firm's name in the Legal desk's header opens the firm's window over the desk, the Settings block itself for a dev and read only for the office (#4708). *Replace with a new firm…* in that window retires a stand-in and adds the real firm in one call (#4710, `legal_replace_firm`, migration `20261006230500`). Mockup: `mockup-firm-door.html`.
+**The firm's door** (2026-10-06, the owner's ask after the train): the firm's name in the Legal desk's header opens the firm's window over the desk, the Settings block itself for a dev and read only for the office (v2.4711). *Replace with a new firm…* in that window retires a stand-in and adds the real firm in one call (v2.4712, `legal_replace_firm`, migration `20261006234500`). Mockup: `mockup-firm-door.html`.
 
 
 Found by the reviews and left for later:
