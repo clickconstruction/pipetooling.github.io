@@ -407,8 +407,8 @@ public route and the dev-only RPCs (P1b), and the door later. `PROJECT_DOCUMENTA
 request) get edits at P1b and P4b. Help guides, in plain words: "share a trade partner its portal"
 (P1b), "see what a trade partner sends from its portal" (P2b), "email a trade partner from GC mode"
 (P3), "charge a trade partner for cleanup or damage" and "answer a trade partner's change request"
-(P4b). `SCHEDULE_REAL_BUILD.md`, `NEW_PROJECT_REAL_BUILD.md` (step 7 through `gc-trade-email`) and
-`BUILD_MAP.md` (`gc_companies`, not `gc_partners`) get amended by the lead.
+(P4b). `NEW_PROJECT_REAL_BUILD.md` (step 7 through `gc-trade-email`; `gc_companies`, not `gc_partners`)
+and `BUILD_MAP.md` (`gc_companies`) were amended on 2026-10-07 at the lead's ask.
 
 ## The owner's calls this plan raises
 
