@@ -494,9 +494,9 @@ and redo in `gcScheduleMoves.ts`, each tested.
 
 What the second look changed:
 
-- **A trade's report does not set the actual dates on the prototype.** It should, and the real build
-  will; here it would move the golden walk's snapshots (Helotes reports work after its schedule is
-  drawn), so it waits for the owner's word, in `PUNCHLIST.md`.
+- **A trade's report sets the actual dates**, where the walk recorded none (`withReportedActuals`).
+  It moved the golden walk's snapshots (Helotes reports work after its schedule is drawn), so it
+  waited for the owner's word, given 2026-10-06 in `PUNCHLIST.md`.
 - **A baseline set the same day a change order's days landed covers them.** Otherwise the card
   would say a new one is due the moment one was set.
 

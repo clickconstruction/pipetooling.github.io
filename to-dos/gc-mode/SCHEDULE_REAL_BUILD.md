@@ -95,8 +95,10 @@ Each has a default the plan is written to. The owner changes any of them by sayi
      and words kept.
    - Records never conflict, so they carry no version: a mark, a notice, a count, an answer, a
      wait, a place, a milestone, the real days, an inspection passed, a send.
-   - The refusal raises `PT409`, which PostgREST answers as *409 Conflict*. Main's refusals raise
-     `P0001` with a message today, so the code is new to the repo.
+   - The refusal keeps main's convention: `P0001`, with a plain-words message that starts with one
+     fixed phrase, *The schedule changed while you were working.* Its DETAIL carries what changed,
+     as JSON. The client reads it through `checkSupabaseError` and `formatErrorMessage`
+     (`src/utils/errorHandling.ts`), like every other write.
 6. **The what-if copy (G-81).** *Default:*
    - One copy per person per job, stored, so it lives across a reload and on a second device.
      Nobody else sees it. The prototype keeps one per job, shared. A shared copy is a later choice.
@@ -536,13 +538,16 @@ The rule: **the second to save sees what the first changed, and nothing of their
   = now(), updated_by = auth.uid() WHERE project_id = p_project_id AND version = p_version
   RETURNING version`. The row stays locked until the transaction ends, so two writes never
   interleave.
-- **The refusal.** No row back means someone saved first. The RPC raises `PT409` with a JSON
-  detail. It lists every `gc_schedule_changes` row after the version the press read, oldest first,
-  each with who, when and its words.
+- **The refusal.** No row back means someone saved first. The RPC raises `P0001`, as main's
+  refusals do. Its message starts with the one phrase the client recognises, *The schedule changed
+  while you were working.* Its DETAIL is JSON: every `gc_schedule_changes` row after the version the
+  press read, oldest first, each with who, when and its words.
+- **How the client reads it.** Through `checkSupabaseError` and `formatErrorMessage`, like every
+  other write. The phrase says it is this refusal, and the window shows the rows from DETAIL.
 - **What the person sees.** The window that was saving stays open and says it plainly:
 
   ```
-  Robert changed the schedule while you were working:
+  The schedule changed while you were working.
   · 2:14 pm  Electrical · Lighting now runs Mon Sep 14 to Fri Oct 30. Robert: The fixtures ship a week late.
   Your move was not saved. The chart shows the new dates now. Try it again on them.
   ```
