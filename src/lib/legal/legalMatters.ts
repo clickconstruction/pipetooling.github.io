@@ -48,6 +48,10 @@ export type LegalMatterRow = {
   /** Settlement authority (#85 item 20): one of the two, or neither (no floor). Absent before the migration. */
   settlement_floor_amount?: number | null
   settlement_floor_pct?: number | null
+  /** The narrative for the firm (v2.4812); absent before the migration. */
+  narrative_md?: string | null
+  narrative_updated_at?: string | null
+  narrative_updated_by?: string | null
   /** The office's pull-back (#85 item 16): when and why. Absent before the migration. */
   pulled_at?: string | null
   pulled_reason?: string

@@ -8,6 +8,8 @@
  * to itself. Light-themed HTML for `openHtmlPrintWindow`; every color is
  * literal on purpose (print surfaces pin light).
  */
+import { legalNarrativeBandWords, type LegalNarrative } from './legalNarrative'
+import { legalNarrativeHtml } from './legalNarrativeHtml'
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords } from './legalLienPaper'
@@ -25,7 +27,7 @@ export type FirmPacketPrintOptions = {
   preparedOn: string
   companyName: string
   firm: { name: string; handling: string }
-  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number; /** Documents from the office (v2.4810), listed under Section D and lettered as one exhibit. */ documents?: ReadonlyArray<LegalPortalDocument>; heldDocumentCount?: number }
+  matter: { stage: string; noteToFirm: string; releasedAt: string | null; entries: ReadonlyArray<LegalEntryRow>; /** Entries the office held back (#85 item 29); 0 or absent says nothing. */ heldCount?: number; /** Documents from the office (v2.4810), listed under Section D and lettered as one exhibit. */ documents?: ReadonlyArray<LegalPortalDocument>; heldDocumentCount?: number; /** The office's account (v2.4812), the first section after the matter block. */ narrative?: LegalNarrative | null }
   particulars: LegalPortalParticulars
   /** Who the firm calls (v2.4755), under the letterhead; omitted, the letterhead carries no number. */
   officeContacts?: LegalOfficeContacts
@@ -133,6 +135,9 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   .foot span b { color: #16283c; font-weight: 600; }
   .foot .all { grid-column: 1 / -1; margin-top: 6px; color: #8a97a6; }
   a { color: #b0662f; }
+  .narrative h1, .narrative h2, .narrative h3, .narrative h4 { font-size: 12.5px; margin: 10px 0 4px; }
+  .narrative p { margin: 4px 0; }
+  .narrative table { margin: 6px 0; }
 </style></head><body>
 <div class="head">
   <div><div class="co">${esc(opts.companyName)}</div><div class="muted">Referral packet · prepared ${esc(opts.preparedOn)} for ${esc(opts.firm.name)}${opts.firm.handling ? ` · ${esc(opts.firm.handling)}` : ''}</div>${reach ? `<div class="muted reach">${reach}</div>` : ''}</div>
@@ -152,7 +157,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   </div>
 </div>
 ${opts.matter.noteToFirm ? `<div class="note"><b>From the office:</b> ${esc(opts.matter.noteToFirm)}</div>` : ''}
-<h2>Exhibits</h2>
+${opts.matter.narrative?.markdown ? `<h2>Narrative</h2>\n<p class="muted">${esc(legalNarrativeBandWords(opts.matter.narrative))}</p>\n<div class="narrative">${legalNarrativeHtml(opts.matter.narrative.markdown)}</div>\n` : ''}<h2>Exhibits</h2>
 ${packet.exhibits.length || docs.length ? `<table><thead><tr><th></th><th>Exhibit</th><th>Items</th><th>Where</th></tr></thead><tbody>${exhibitItems}</tbody></table>` : '<p class="muted">Nothing to letter yet.</p>'}
 <h2><span class="sec">A</span> Account</h2>
 <h3>Who owes</h3>

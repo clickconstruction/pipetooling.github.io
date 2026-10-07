@@ -24,10 +24,11 @@ The rail on the left lists accounts by **what Click would keep** if every dollar
 
 Then comes **Before this goes to an attorney**. {{chip:red|fix}} items are what an attorney asks for first. Those are no agreement and no sworn-account basis, no way to reach the payer, or no address. {{chip:yellow|note}} items are worth knowing. Those are no demand letter, a lien window still open, or an incomplete property record. They also include no field evidence, or never asked when they'd pay. A demand letter is the formal ask for payment. Most lines have a button that opens the surface that owns the record. That may be Contract desk, the job's Lien window, Edit customer, Edit job or Call mode. The desk refreshes when you come back.
 
-## The five tabs
+## The tabs
 
-The same five the firm will see:
+The same tabs the firm will see:
 
+- **Narrative** is your account of the matter, in your own words. The firm reads it first. It is described below.
 - **Account** shows who owes, contacts, the jobs, and every invoice and payment in date order. A running balance ends on the balance owed. Each job's property record follows. The property record is the job's own site, not the payer's address.
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays.
 - **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm sees this tab as **Record of contact**.
@@ -45,6 +46,11 @@ The Learning Experience has no signed contract on either job. With a sent Stripe
 Documents can go on the matter. A billing report, a supplier invoice, a signed estimate or a saved email thread all fit. Open the **Evidence** tab. Drop the files on **Documents for the firm**, or press {{button:outline|Choose files}}. Each file needs a title and one line on what it shows. The line is what the firm reads beside the title, so say what the document proves. Press {{button:dark|Save}}. The desk takes PDFs, images, emails saved as .eml and plain text, up to 10 MB each.
 
 The firm sees each document under Evidence on its portal, with a link that opens for 15 minutes. The printed packet lists them as one more exhibit. {{button:outline|Hold}} keeps one back from the firm with a reason, such as an internal report. The firm sees only how many were held. {{button:outline|Remove}} takes a document off the matter.
+## Write the narrative for the firm
+
+The **Narrative** tab is where you tell the firm the story. Write who did the work, for whom, and where. Then say what happened in date order, what they say against what the record shows, and what is still missing. Press {{button:outline|Start from the outline}} to begin from those four headings. The text is markdown, so ## starts a heading and a table is drawn with pipes. Press {{button:dark|Preview as the firm sees it}} to check it. Then press {{button:dark|Save narrative}}.
+
+The firm reads it as the first tab of its portal, and the printed packet opens with it. A line above it says it is the office's account, with who saved it and when. Name each document by its title under Evidence, so the firm can open it. Keep claims to what the record shows.
 
 ## Two exits
 

@@ -9,6 +9,7 @@
  * page still on the old default rule shows them too.
  */
 import { parseLegalPortalDocuments, type LegalPortalDocument } from './legalMatterDocuments'
+import { parseLegalNarrative, type LegalNarrative } from './legalNarrative'
 import { emptyOfficeContacts, type LegalOfficeContacts } from './legalOfficeContacts'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { CustomerAddressRow } from '../jobs/lienProperty'
@@ -46,6 +47,8 @@ export type LegalPortalMatter = {
   documents: LegalPortalDocument[]
   /** Documents the office held back; the firm sees the count. */
   heldDocumentCount: number
+  /** The office's account of the matter (v2.4812); null when none, and from an older function. */
+  narrative: LegalNarrative | null
   jobs: Array<JobWithDetails & { collections_by_name?: string | null }>
   customer: LegalCustomerLike
   contacts: LegalContactLike[]
@@ -116,6 +119,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       settlementFloor: isRecord(m.settlementFloor) ? settlementFloorOf({ settlement_floor_amount: m.settlementFloor.amount, settlement_floor_pct: m.settlementFloor.pct }) : null,
       documents: parseLegalPortalDocuments(m.documents),
       heldDocumentCount: typeof m.heldDocumentCount === 'number' && Number.isFinite(m.heldDocumentCount) && m.heldDocumentCount > 0 ? Math.floor(m.heldDocumentCount) : 0,
+      narrative: parseLegalNarrative(m.narrative),
       jobs: m.jobs as LegalPortalMatter['jobs'],
       customer: (isRecord(m.customer) ? m.customer : null) as LegalCustomerLike,
       contacts: Array.isArray(m.contacts) ? (m.contacts as LegalContactLike[]) : [],
