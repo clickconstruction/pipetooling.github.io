@@ -125,7 +125,12 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
   )
 
   function noticeCell(c: LegalLienGridCell) {
-    if (c.noticeNote) return c.noticeNote
+    if (c.noticeNote) {
+      // `none needed (with the owner)` on two lines (v2.4753): the words, then the reason under them.
+      const cut = c.noticeNote.indexOf(' (')
+      if (cut < 0) return c.noticeNote
+      return <><span style={{ display: 'block' }}>{c.noticeNote.slice(0, cut)}</span><span style={{ display: 'block', color: MUTED }}>{c.noticeNote.slice(cut + 1)}</span></>
+    }
     if (c.allClosed) return <span style={{ color: FAINT }} title="Every month's § 53.056 window has closed">—</span>
     if (c.notices.length === 0) return unknown('A fact the office has not entered yet')
     return c.notices.map((n) => (
@@ -143,7 +148,7 @@ const COLUMNS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'owner', label: 'Owner of record' },
   { key: 'kind', label: 'Property' },
   { key: 'lastOnSite', label: 'Last on site' },
-  /** Drawn as two lines, one over each line of the cell (v2.4752): *Amount due* / *For work in*. */
+  /** Drawn as two lines, one over each line of the cell (v2.4753): *Amount due* / *For work in*. */
   { key: 'unpaid', label: 'Amount due · for work in' },
   { key: 'notices', label: '§ 53.056 per month' },
   { key: 'affidavit', label: 'Affidavit by' },
