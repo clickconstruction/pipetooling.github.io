@@ -4,6 +4,7 @@ import {
   stagesSectionElementId,
   STAGES_SECTION_ELEMENT_ID,
   scopesForOpenStagesSections,
+  scopesForStagesSection,
   STAGES_SECTION_DEFAULT_OPEN,
   writeStagesSectionOpenPrefs,
 } from './stagesSectionPrefs'
@@ -38,14 +39,26 @@ describe('stages section prefs', () => {
     )
   })
 
-  it('maps open sections to deduped scopes (billed + collections share billed_all)', () => {
-    expect(scopesForOpenStagesSections(STAGES_SECTION_DEFAULT_OPEN)).toEqual(['ready_to_bill'])
+  it('maps open sections to deduped scopes (billed + collections share billed_all; both and Ready to Bill bring every non-paid scope along, v2.4761)', () => {
+    expect(scopesForOpenStagesSections(STAGES_SECTION_DEFAULT_OPEN)).toEqual(['ready_to_bill', 'waiting', 'working', 'billed_all'])
     expect(
       scopesForOpenStagesSections({ waiting: false, working: true, readyToBill: false, billed: true, collections: true, paid: false }),
-    ).toEqual(['working', 'billed_all'])
+    ).toEqual(['working', 'billed_all', 'waiting', 'ready_to_bill'])
+    expect(
+      scopesForOpenStagesSections({ waiting: false, working: false, readyToBill: false, billed: false, collections: true, paid: false }),
+    ).toEqual(['billed_all', 'waiting', 'working', 'ready_to_bill'])
     expect(
       scopesForOpenStagesSections({ waiting: false, working: false, readyToBill: false, billed: false, collections: false, paid: false }),
     ).toEqual([])
+  })
+
+  it('a section\'s scopes: Billed, Collections and Ready to Bill carry every non-paid scope, since a bill rides its job\'s scope; the rest stand alone', () => {
+    expect(scopesForStagesSection('billed')).toEqual(['billed_all', 'waiting', 'working', 'ready_to_bill'])
+    expect(scopesForStagesSection('collections')).toEqual(['billed_all', 'waiting', 'working', 'ready_to_bill'])
+    expect(scopesForStagesSection('readyToBill')).toEqual(['ready_to_bill', 'waiting', 'working', 'billed_all'])
+    expect(scopesForStagesSection('working')).toEqual(['working'])
+    expect(scopesForStagesSection('waiting')).toEqual(['waiting'])
+    expect(scopesForStagesSection('paid')).toEqual(['paid'])
   })
 })
 
