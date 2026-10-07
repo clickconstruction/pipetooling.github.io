@@ -43,7 +43,22 @@ import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { BID_BOARD_MAP_RING_MILES } from '../../lib/bids/bidBoardMap'
 import type { MapCanvasAnchor } from '../../lib/map/mapCanvasTypes'
-import { MAP_PAGE_KIND_COLOR, MAP_PAGE_KIND_LABEL, mapPageDirectionsUrl, mapPageEntitiesByPinId, mapPagePinId, mapPagePins } from '../../lib/map/mapPagePins'
+import { mapPageDirectionsUrl, mapPageEntitiesByPinId, mapPagePinId, mapPagePins } from '../../lib/map/mapPagePins'
+import {
+  BID_BOARD_MAP_DUE_RING_COLOR,
+  JOBS_MAP_COLLECTIONS_RING_COLOR,
+  JOBS_MAP_SECTIONS,
+  JOBS_MAP_SECTION_COLOR,
+  JOBS_MAP_SECTION_LABEL,
+  MAP_PAGE_CLUSTER_RING_PRIORITY,
+  MAP_PAGE_DEFAULT_JOB_SECTIONS,
+  MAP_PAGE_ESTIMATE_COLOR,
+  mapPageLegendCounts,
+  readMapPageClustered,
+  writeMapPageClustered,
+  type JobsMapSection,
+} from '../../lib/map/mapPageSections'
+import { BID_STAGE_MARKER_COLOR } from '../../lib/map/builderBidMapFocus'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
 // The shared pins canvas (v2.4796): the Dashboard, Bid Board, Pipeline and clocked-in maps draw on it too.
@@ -60,112 +75,8 @@ const openLinkLikeStyle: CSSProperties = {
   font: 'inherit',
 }
 
-const KIND_COLOR = MAP_PAGE_KIND_COLOR
-const KIND_LABEL = MAP_PAGE_KIND_LABEL
 
-/** Color key overlaid on the map corner; layers toggled off in the header show dimmed. */
-function MapLegend({ show }: { show: Record<MapPageEntity['kind'], boolean> }) {
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 10,
-        right: 10,
-        zIndex: 1000,
-        pointerEvents: 'none',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '0.3rem',
-        padding: '0.45rem 0.7rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 8,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-        fontSize: '0.75rem',
-        fontWeight: 500,
-        lineHeight: 1.2,
-        color: 'var(--text-700)',
-      }}
-    >
-      {(Object.keys(KIND_LABEL) as MapPageEntity['kind'][]).map((kind) => (
-        <div
-          key={kind}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', opacity: show[kind] ? 1 : 0.35 }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              width: 10,
-              height: 10,
-              borderRadius: '50%',
-              boxSizing: 'border-box',
-              background: KIND_COLOR[kind],
-              opacity: 0.85,
-            }}
-          />
-          {KIND_LABEL[kind]}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-const KIND_PILL_ACTIVE: Record<MapPageEntity['kind'], { bg: string; text: string }> = {
-  job: { bg: 'var(--bg-blue-tint)', text: 'var(--text-blue-700)' },
-  bid: { bg: 'var(--bg-orange-tint)', text: 'var(--text-orange-700)' },
-  estimate: { bg: 'var(--bg-green-tint)', text: 'var(--text-green-600)' },
-}
-
-/** Header toggle for one map layer; the dot matches that kind's marker color. */
-function LayerPill({
-  kind,
-  label,
-  active,
-  onToggle,
-}: {
-  kind: MapPageEntity['kind']
-  label: string
-  active: boolean
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-pressed={active}
-      title={active ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.4rem',
-        padding: '0.3rem 0.8rem',
-        borderRadius: 999,
-        border: `1px solid ${active ? KIND_COLOR[kind] : 'var(--border)'}`,
-        background: active ? KIND_PILL_ACTIVE[kind].bg : 'transparent',
-        color: active ? KIND_PILL_ACTIVE[kind].text : 'var(--text-muted)',
-        fontSize: '0.8125rem',
-        fontWeight: 600,
-        lineHeight: 1.2,
-        cursor: 'pointer',
-        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
-      }}
-    >
-      <span
-        aria-hidden="true"
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: '50%',
-          background: active ? KIND_COLOR[kind] : 'var(--text-faint-300)',
-          transition: 'background 120ms ease',
-        }}
-      />
-      {label}
-    </button>
-  )
-}
-
-/** Bid stage sub-filters; keys and meanings match the Bid Board sections (submissionSections kernel). */
+/** Bid stage chips; keys and meanings match the Bid Board sections (submissionSections kernel). */
 const BID_STAGE_META: { key: SubmissionSectionKey; label: string; title: string }[] = [
   { key: 'unsent', label: 'Unsent', title: 'Unsent / Working Bids' },
   { key: 'pending', label: 'Pending', title: 'Not yet won or lost' },
@@ -178,16 +89,26 @@ const BID_STAGE_TITLE: Record<SubmissionSectionKey, string> = Object.fromEntries
   BID_STAGE_META.map((m) => [m.key, m.title])
 ) as Record<SubmissionSectionKey, string>
 
-/** Compact toggle for one bid stage; shown only while the Bids layer is on. */
-function BidStageChip({
+/**
+ * One chip over the map (v2.4802): the key and the switch for a job section, a bid stage or the
+ * estimates. The dot is the pin's color; `ring` draws the ring the section's pins can wear
+ * (Collections red on Billed, the due ring on Unsent). The count is the placed records it stands for.
+ */
+function SectionChip({
   label,
-  title,
+  color,
+  count,
   active,
+  title,
+  ring,
   onToggle,
 }: {
   label: string
-  title: string
+  color: string
+  count: number
   active: boolean
+  title: string
+  ring?: string | null
   onToggle: () => void
 }) {
   return (
@@ -199,22 +120,39 @@ function BidStageChip({
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        padding: '0.2rem 0.6rem',
+        gap: '0.4rem',
+        padding: '0.25rem 0.7rem',
         borderRadius: 999,
-        border: `1px solid ${active ? KIND_COLOR.bid : 'var(--border)'}`,
-        background: active ? KIND_PILL_ACTIVE.bid.bg : 'transparent',
-        color: active ? KIND_PILL_ACTIVE.bid.text : 'var(--text-muted)',
-        fontSize: '0.75rem',
-        fontWeight: 500,
+        border: `1px solid ${active ? color : 'var(--border)'}`,
+        background: active ? 'var(--surface)' : 'transparent',
+        color: active ? 'var(--text-700)' : 'var(--text-muted)',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
         lineHeight: 1.2,
         cursor: 'pointer',
-        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+        whiteSpace: 'nowrap',
+        transition: 'border-color 120ms ease, color 120ms ease',
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: active ? color : 'var(--text-faint-300)',
+          boxShadow: active && ring ? `0 0 0 2px ${ring}` : undefined,
+          transition: 'background 120ms ease',
+        }}
+      />
       {label}
+      <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{count}</span>
     </button>
   )
 }
+
+const chipRowStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }
+const chipSepStyle: CSSProperties = { width: 1, height: 18, background: 'var(--border-strong)', margin: '0 0.15rem' }
 
 const headerToolbarButtonStyle: CSSProperties = {
   display: 'inline-flex',
@@ -605,10 +543,18 @@ export function MapPageView() {
   )
   const [reviewOpen, setReviewOpen] = useState(false)
   const narrow = useNarrowViewport640()
-  const [showJobs, setShowJobs] = useState(true)
-  const [showBids, setShowBids] = useState(true)
-  const [showEst, setShowEst] = useState(true)
+  // The chips (v2.4802): job sections, bid stages and estimates; Paid, Lost and Estimates start off.
+  const [jobSections, setJobSections] = useState<Record<JobsMapSection, boolean>>(MAP_PAGE_DEFAULT_JOB_SECTIONS)
+  const [showEst, setShowEst] = useState(false)
   const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(DEFAULT_MAP_BID_STAGES)
+  const [clustered, setClustered] = useState(() => readMapPageClustered())
+  const toggleClustered = useCallback(() => {
+    setClustered((c) => {
+      writeMapPageClustered(!c)
+      return !c
+    })
+  }, [])
+  const legendCounts = useMemo(() => mapPageLegendCounts(entities.filter((e) => e.lat != null && e.lng != null)), [entities])
   // Builder-focus mode (v2.1162): /map?builder=<customerId> shows ONLY that
   // GC's bids, markers colored by outcome, with a scoreboard banner.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -731,12 +677,12 @@ export function MapPageView() {
 
   const visible = useMemo(() => {
     if (builderFocusId) {
-      const f = { showJobs: false, showBids: true, showEst: false, bidStages }
+      const f = { jobSections: { waiting: false, working: false, readyToBill: false, billed: false, paid: false }, showEst: false, bidStages }
       return builderFocusEntities.filter((e) => mapEntityPassesLayerFilter(e, f))
     }
-    const f = { showJobs, showBids, showEst, bidStages }
+    const f = { jobSections, showEst, bidStages }
     return entities.filter((e) => mapEntityPassesLayerFilter(e, f))
-  }, [entities, showJobs, showBids, showEst, bidStages, builderFocusId, builderFocusEntities])
+  }, [entities, jobSections, showEst, bidStages, builderFocusId, builderFocusEntities])
 
   const mapSearchTrim = useMemo(() => mapSearchQuery.trim(), [mapSearchQuery])
 
@@ -851,26 +797,41 @@ export function MapPageView() {
             </button>
           </span>
         ) : (
-          <>
-            <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
-            <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
-          </>
-        )}
-        {builderFocusId || showBids ? (
-          <div role="group" aria-label="Bid stages" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-            {BID_STAGE_META.map((m) => (
-              <BidStageChip
-                key={m.key}
-                label={m.label}
-                title={m.title}
-                active={bidStages[m.key]}
-                onToggle={() => setBidStages((prev) => ({ ...prev, [m.key]: !prev[m.key] }))}
+          <div role="group" aria-label="Job sections" style={chipRowStyle}>
+            {JOBS_MAP_SECTIONS.map((key) => (
+              <SectionChip
+                key={key}
+                label={JOBS_MAP_SECTION_LABEL[key]}
+                color={JOBS_MAP_SECTION_COLOR[key]}
+                count={legendCounts.jobs[key]}
+                active={jobSections[key]}
+                title={key === 'billed' && legendCounts.collections > 0 ? `Billed — ${legendCounts.collections} in Collections wear the red ring` : `${jobSections[key] ? 'Hide' : 'Show'} ${JOBS_MAP_SECTION_LABEL[key].toLowerCase()} jobs`}
+                ring={key === 'billed' && legendCounts.collections > 0 ? JOBS_MAP_COLLECTIONS_RING_COLOR : null}
+                onToggle={() => setJobSections((prev) => ({ ...prev, [key]: !prev[key] }))}
               />
             ))}
+            <span aria-hidden="true" style={chipSepStyle} />
           </div>
-        ) : null}
+        )}
+        <div role="group" aria-label="Bid stages" style={chipRowStyle}>
+          {BID_STAGE_META.map((m) => (
+            <SectionChip
+              key={m.key}
+              label={m.label}
+              color={BID_STAGE_MARKER_COLOR[m.key]}
+              count={legendCounts.bids[m.key]}
+              active={bidStages[m.key]}
+              title={m.key === 'unsent' ? 'Unsent — a due ring is amber when due soon, red when overdue' : m.title}
+              ring={m.key === 'unsent' ? BID_BOARD_MAP_DUE_RING_COLOR.soon : null}
+              onToggle={() => setBidStages((prev) => ({ ...prev, [m.key]: !prev[m.key] }))}
+            />
+          ))}
+        </div>
         {!builderFocusId && (
-          <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
+          <div role="group" aria-label="Estimates" style={chipRowStyle}>
+            <span aria-hidden="true" style={chipSepStyle} />
+            <SectionChip label="Estimates" color={MAP_PAGE_ESTIMATE_COLOR} count={legendCounts.estimates} active={showEst} title={showEst ? 'Hide estimates' : 'Show estimates'} onToggle={() => setShowEst((v) => !v)} />
+          </div>
         )}
         <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
@@ -886,6 +847,15 @@ export function MapPageView() {
               Court areas{courtAreas.length ? ` · ${courtAreas.length}` : ''}
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={toggleClustered}
+            aria-pressed={clustered}
+            title={clustered ? 'Draw every pin on its own' : 'Group pins that overlap at this zoom into count discs'}
+            style={{ ...headerToolbarButtonStyle, fontWeight: clustered ? 700 : 500 }}
+          >
+            {clustered ? 'Clustered ✓' : 'Cluster'}
+          </button>
           <button
             type="button"
             onClick={() => { setFitAll(true); setFitSignal((c) => c + 1) }}
@@ -1041,6 +1011,9 @@ export function MapPageView() {
               isMobile={narrow}
               anchor={canvasAnchor}
               fitPoints={fitPoints}
+              cluster={clustered}
+              clusterRingPriority={MAP_PAGE_CLUSTER_RING_PRIORITY}
+              clusterNoun="records"
               // The map sits above the table: the wheel scrolls the page until the map is clicked once
               scrollZoomAfterClick
               // Leaflet ignores a height change after mount — remount when the form flips
@@ -1051,7 +1024,6 @@ export function MapPageView() {
               {courtMode || courtAreas.length ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
             </PinsMapCanvas>
           </Suspense>
-          <MapLegend show={{ job: showJobs, bid: showBids, estimate: showEst }} />
         </div>
         {narrow && selected ? (
           <div data-map-phone-bar style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 10, padding: '0.625rem 0.75rem' }}>
