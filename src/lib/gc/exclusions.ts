@@ -6,7 +6,8 @@
  * reads these. The cover costs' total came with the schedule's PR 1a, which reads it for a line's
  * worth; the quote's own cells and habits stay with the prototype until their step.
  */
-import type { SubBid, TradePackage } from './types'
+import type { QuoteExclusion, SubBid, TradePackage } from './types'
+import { money } from './words'
 
 /** Exclusions any trade's quote may list, and each trade's own. The portal's form offers these as ticks. */
 export const COMMON_EXCLUSIONS: { all: string[]; byTrade: Record<string, string[]> } = {
@@ -79,4 +80,26 @@ export function exclusionName(said: string): string {
 export function exclusionCoversTotal(pkg: TradePackage, bid: SubBid): number {
   const known = new Set((pkg.excludes ?? []).map((k) => fold(k.label)))
   return (bid.exclusions ?? []).filter((e) => !known.has(fold(e.name))).reduce((t, e) => t + (bid.exclusionCovers?.[e.name] ?? 0), 0)
+}
+
+/**
+ * What a quote leaves out that has no cover yet (and is not a Known exclusion): its all-in is not
+ * known while any is left. One with a unit price ("rock at $38 per cy if found") is a price for if it
+ * comes up, not a hole, so it does not count here.
+ */
+export function uncoveredExclusions(pkg: TradePackage, bid: SubBid): QuoteExclusion[] {
+  const known = new Set((pkg.excludes ?? []).map((k) => fold(k.label)))
+  return (bid.exclusions ?? []).filter((e) => !known.has(fold(e.name)) && !e.unitPrice && !((bid.exclusionCovers?.[e.name] ?? 0) > 0))
+}
+
+/** "permits and fees and rock excavation ($38 per cy if it comes up)" for a sentence. */
+export function exclusionListWords(list: QuoteExclusion[]): string {
+  const words = list.map((e) => `${e.name.toLowerCase()}${e.unitPrice ? ` (${unitPriceWords(e.unitPrice)} if it comes up)` : ''}`)
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`
+}
+
+/** "$38 per cy" */
+export function unitPriceWords(u: { amount: number; unit: string }): string {
+  return `${money(u.amount)} per ${u.unit}`
 }

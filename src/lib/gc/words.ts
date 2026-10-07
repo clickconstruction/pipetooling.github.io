@@ -31,3 +31,7 @@ function utcDay(iso: string): number {
 export function daysUntil(iso: string, today: string): number {
   return Math.round(utcDay(iso) - utcDay(today))
 }
+
+export function money(n: number): string {
+  return `$${Math.round(n).toLocaleString('en-US')}`
+}
