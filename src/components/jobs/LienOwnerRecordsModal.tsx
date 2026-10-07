@@ -28,7 +28,7 @@ import {
   type OwnerRecordsSentHow,
   type OwnerRecordsStep,
 } from '../../lib/jobs/ownerRecords'
-import { ownerAcknowledgmentHtml, ownerPacketHtml, ownerPaymentWhen, type OwnerRecordsDocFacts, type OwnerRecordsDocFormat } from '../../lib/jobs/ownerRecordsDocs'
+import { OWNER_RECORDS_NO_ADDRESS, ownerAcknowledgmentHtml, ownerPacketHtml, ownerPaymentWhen, type OwnerRecordsDocFacts, type OwnerRecordsDocFormat } from '../../lib/jobs/ownerRecordsDocs'
 import { loadOwnerPacketJobs, loadOwnerRecords, saveOwnerRecords } from '../../lib/jobs/ownerRecordsIo'
 
 /**
@@ -189,7 +189,7 @@ export default function LienOwnerRecordsModal({
 
   if (!open) return null
 
-  const facts: OwnerRecordsDocFacts | null = picked ? { company: company.trim() || 'Our company', owner: picked.owner, address: picked.address || 'this property', asOfYmd: todayYmd, requestedOnYmd: file.request?.on ?? null } : null
+  const facts: OwnerRecordsDocFacts | null = picked ? { company: company.trim() || 'Our company', owner: picked.owner, address: picked.address || OWNER_RECORDS_NO_ADDRESS, asOfYmd: todayYmd, requestedOnYmd: file.request?.on ?? null } : null
   const missing = ownerRecordsMissing(file)
 
   /** Save the request's file. Resolves to the request's row id, or null when it was not saved. */
@@ -357,6 +357,8 @@ export default function LienOwnerRecordsModal({
           </div>
         )
       }
+      // Signed on the portal: their signing is the request, as with check 4; nothing to change by hand.
+      if (file.request?.how === 'portal') return null
       return available && !file.sent ? (
         <div style={{ display: 'flex', gap: '0.4rem 1rem', flexWrap: 'wrap', marginTop: 4 }}>
           <button type="button" onClick={startRequest} style={linkBtn}>
