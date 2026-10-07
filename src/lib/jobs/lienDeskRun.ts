@@ -426,13 +426,45 @@ export function runPacketHtml(
       for (const pg of runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob)) pages.push(pg.html)
     }
   }
+  return runPagesHtml(pages, `Lien notice run — ${demandDate(todayYmd)}`)
+}
+
+/** One print document from pages in order, each on its own sheet: the packet's shell, shared with a single copy or envelope (v2.4853). */
+export function runPagesHtml(pages: ReadonlyArray<string>, title: string): string {
   const body = pages.map((p, i) => `<section style="${i < pages.length - 1 ? 'page-break-after:always;' : ''}">${p}</section>`).join('')
-  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>Lien notice run — ${demandDate(todayYmd)}</title>
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(title)}</title>
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   section + section { margin-top: 3rem; }
   @media print { body { margin: 0.5in auto; } section + section { margin-top: 0; } }
 </style></head><body>${body}</body></html>`
+}
+
+/**
+ * Print one item out of the run (v2.4853, the owner's ask): one recipient's copy, its pages as
+ * the packet stacks them, or one envelope — every copy inside it, in packet order.
+ */
+export function runCopyHtml(n: RunNotice, r: RunRecipient, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>, payPagesByJob?: RunPayPages): string {
+  return runPagesHtml(runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((p) => p.html), `${n.label} — copy for ${r.label.toLowerCase()}`)
+}
+
+export function runEnvelopeHtml(env: Pick<RunEnvelope, 'n' | 'label' | 'name' | 'contents'>, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>, payPagesByJob?: RunPayPages): string {
+  const pages = env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((p) => p.html))
+  return runPagesHtml(pages, `Envelope ${env.n} — ${env.label} ${env.name}`.trim())
+}
+
+/** The copy's key in the set of what printed this sitting: an item and a recipient. */
+export function runCopyKey(itemId: string, recipientKey: string): string {
+  return `${itemId}:${recipientKey}`
+}
+
+/**
+ * Which notices have every copy printed (v2.4853): printing one copy at a time stamps an item
+ * printed — into In the mail · tracking owed — only once each of its recipients has a copy, so a
+ * notice whose GC copy is still unprinted does not read as in the mail.
+ */
+export function noticesFullyPrinted<T extends Pick<RunNotice, 'itemId' | 'recipients'>>(notices: ReadonlyArray<T>, printed: ReadonlySet<string>): T[] {
+  return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key))))
 }
 
 export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
