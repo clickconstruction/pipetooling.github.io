@@ -883,3 +883,7 @@ verify_jwt = false
 
 [functions.gc-drive-access]
 verify_jwt = false
+
+# Validates the JWT in-body (getUser) like the other Stripe functions; deployed with --no-verify-jwt (scripts/deploy-functions.sh), so the file says what prod does.
+[functions.mark-stripe-invoice-uncollectible]
+verify_jwt = false
