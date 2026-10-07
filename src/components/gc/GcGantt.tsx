@@ -37,6 +37,7 @@ import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDa
 import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { movedParts, partSpans, partStanding, type PartSpan } from '../../lib/gcMode/gcSplitBars'
 import { Chip } from './gcUi'
+import { twoLines } from './gcBuildingCss'
 import { GcGanttList } from './GcGanttList'
 import { GcPeopleStrip } from './GcPeopleStrip'
 import { GcCrowdedLane } from './GcPlaces'
@@ -250,6 +251,11 @@ export function GcGantt({
   // A phone gives the names less room so a few weeks of bars still show beside them.
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   const labelW = phone ? 168 : 360
+  // On a phone the name column is 168px, too narrow for a name and its pill side by side: the cell stacks them,
+  // the name on its own line and a smaller pill under it, so each has the whole column. A row is 32px and a
+  // part's 26px, and both lines fit either; a split bar's caret spans the two (the phone pass, round five).
+  const phoneStack = (caret: boolean, part?: boolean): CSSProperties => ({ display: 'grid', gridTemplateColumns: caret ? '0.8rem minmax(0, 1fr)' : 'minmax(0, 1fr)', alignContent: 'center', justifyItems: 'start', gap: part ? '0 0.4rem' : '2px 0.4rem' })
+  const phoneName = (fontSize: string, lineHeight: number): CSSProperties => ({ fontSize, lineHeight, justifySelf: 'stretch' })
 
   const all = useMemo(() => ganttBars(items, float, holds, today, building, tails), [items, float, holds, today, building, tails])
   const counts = useMemo(() => ganttCounts(all), [all])
@@ -406,7 +412,8 @@ export function GcGantt({
   // Open all whenever anything is folded (finished trades open folded); Fold all only when nothing is.
   const anyFolded = groups.some((g) => folded.has(g.key))
   const hovered = hover ? byId.get(hover.id) : undefined
-  const label: CSSProperties = { position: 'sticky', left: 0, zIndex: 3, width: labelW, minWidth: labelW, boxSizing: 'border-box', borderRight: '1px solid var(--border)', padding: '0 0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }
+  // Above the bars' ports (3), the links and the today line (2), so nothing on a bar paints over a name; under the header (5).
+  const label: CSSProperties = { position: 'sticky', left: 0, zIndex: 4, width: labelW, minWidth: labelW, boxSizing: 'border-box', borderRight: '1px solid var(--border)', padding: '0 0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }
 
   const groupRow = (g: GanttGroup) => {
     const isFolded = folded.has(g.key)
@@ -430,7 +437,7 @@ export function GcGantt({
             style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: '0.35rem', minWidth: 0, flex: 1, textAlign: 'left', color: 'var(--text-base)' }}
           >
             <span aria-hidden style={{ width: '0.8rem', color: 'var(--text-muted)' }}>{isFolded ? '▸' : '▾'}</span>
-            <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.title}</strong>
+            <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(phone ? twoLines('0.8rem') : {}) }}>{g.title}</strong>
             {!phone && g.sub && <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.sub}</span>}
           </button>
           {building && <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)' }}>{Math.round(g.pct)}%</span>}
@@ -495,7 +502,7 @@ export function GcGantt({
         data-tour={b.id === tourBars.held ? 'gc-held-bar' : b.id === tourBars.bare ? 'gc-uninsured-bar' : undefined}
         style={{ display: 'flex', height: ROW_H, borderTop: '1px solid var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}
       >
-        <div style={{ ...label, background: rowBg, paddingLeft: split ? '0.35rem' : '1.55rem' }}>
+        <div style={{ ...label, background: rowBg, paddingLeft: split ? '0.35rem' : '1.55rem', ...(phone ? phoneStack(split) : {}) }}>
           {split && (
             <button
               type="button"
@@ -510,7 +517,7 @@ export function GcGantt({
                   return next
                 })
               }
-              style={{ background: 'none', border: 'none', padding: 0, width: '0.8rem', flex: 'none', font: 'inherit', cursor: 'pointer', color: 'var(--text-muted)' }}
+              style={{ background: 'none', border: 'none', padding: 0, width: '0.8rem', flex: 'none', font: 'inherit', cursor: 'pointer', color: 'var(--text-muted)', ...(phone ? { gridRow: '1 / span 2' } : {}) }}
             >
               {partsShut ? '▸' : '▾'}
             </button>
@@ -519,7 +526,7 @@ export function GcGantt({
             type="button"
             onClick={() => onPick(b.id)}
             title="Change its dates and what it waits on"
-            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(phone ? phoneName('0.78rem', 1.2) : {}) }}
           >
             {b.item.label}
           </button>
@@ -532,7 +539,7 @@ export function GcGantt({
                 : `${shortDate(a.start)} – ${shortDate(a.finish)}`}
             </span>
           )}
-          <Chip tone={b.tone}>{b.statusWords}</Chip>
+          <Chip tone={b.tone} small={phone}>{b.statusWords}</Chip>
         </div>
         <div style={{ position: 'relative', width }}>
           {/* The days it really ran (G-55): a thin green line over the bar, open-ended until it finished. */}
@@ -714,17 +721,17 @@ export function GcGantt({
     const edge = standing.tone === 'green' ? C.green : standing.tone === 'red' ? C.red : standing.tone === 'amber' ? C.amber : C.blue
     return (
       <div key={key} data-gantt-part-row={key} style={{ display: 'flex', height: PART_H, borderTop: '1px dashed var(--border)', background: isPicked ? 'var(--bg-blue-tint)' : undefined }}>
-        <div style={{ ...label, background: rowBg, paddingLeft: '2.6rem', fontSize: '0.76rem' }}>
+        <div style={{ ...label, background: rowBg, paddingLeft: '2.6rem', fontSize: '0.76rem', ...(phone && building ? phoneStack(false, true) : {}) }}>
           <button
             type="button"
             onClick={() => onPick(b.id)}
             title={`A part of ${b.item.label}. Press to open the line.`}
-            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-base)', cursor: 'pointer', textAlign: 'left', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-base)', cursor: 'pointer', textAlign: 'left', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(phone && building ? phoneName('0.7rem', 1.1) : {}) }}
           >
             {pt.part.name}
           </button>
           {!phone && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{words}</span>}
-          {building && <Chip tone={standing.tone}>{standing.words}</Chip>}
+          {building && <Chip tone={standing.tone} small={phone}>{standing.words}</Chip>}
         </div>
         <div style={{ position: 'relative', width }}>
           {dragging && (
@@ -1055,12 +1062,12 @@ export function GcGantt({
                 )
                 return (
                   <div key={wt.id} style={{ display: 'flex', height: ROW_H, borderTop: '1px solid var(--border)' }}>
-                    <div style={{ ...label, background: 'var(--surface)', paddingLeft: '1.55rem' }}>
-                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${k.label}: ${r.words}`}>
+                    <div style={{ ...label, background: 'var(--surface)', paddingLeft: '1.55rem', ...(phone ? phoneStack(false) : {}) }}>
+                      <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(phone ? phoneName('0.78rem', 1.2) : {}) }} title={`${k.label}: ${r.words}`}>
                         {wt.title}
                         {!phone && <span style={{ color: 'var(--text-muted)' }}> · {wt.who}</span>}
                       </span>
-                      <Chip tone={r.tone}>{r.stateWords}</Chip>
+                      <Chip tone={r.tone} small={phone}>{r.stateWords}</Chip>
                     </div>
                     <div style={{ position: 'relative', width }}>
                       <span data-gantt-wait={wt.id} title={r.words} style={{ position: 'absolute', left: wl, width: ww, top: (ROW_H - 10) / 2, height: 10, borderRadius: 5, boxSizing: 'border-box', border: `1.5px ${wt.askedOn ? 'solid' : 'dashed'} ${color}`, background: r.state === 'done' ? 'var(--bg-green-200)' : 'var(--bg-violet-100)' }} />

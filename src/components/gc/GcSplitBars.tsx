@@ -48,6 +48,8 @@ export function GcPartsCard({
   const picked = dates ? spans.find((p) => p.part.id === dates.partId) : undefined
   const pending = dates ? partMoveOf(activity, dates.partId, dates.start, dates.finish) : null
   const datesProblem = dates && (!dates.start || !dates.finish || dates.finish < dates.start) ? 'A part has to finish on or after it starts.' : null
+  // On a phone a part's four cells take two rows, so the card never widens the page (the phone pass, round five).
+  const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
   return (
     <Card dataTour="gc-parts-card">
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }}>
@@ -67,7 +69,7 @@ export function GcPartsCard({
           <>
             <div role="table" aria-label={`The parts of ${name}`} style={{ display: 'grid', gap: '0.25rem' }}>
               {spans.map((p) => (
-                <div key={p.part.id} role="row" style={{ display: 'grid', gridTemplateColumns: 'minmax(8rem, 1.4fr) minmax(8rem, 1.2fr) minmax(6rem, 1fr) minmax(5rem, auto)', gap: '0.5rem', alignItems: 'baseline' }}>
+                <div key={p.part.id} role="row" style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1fr' : 'minmax(8rem, 1.4fr) minmax(8rem, 1.2fr) minmax(6rem, 1fr) minmax(5rem, auto)', gap: '0.5rem', alignItems: 'baseline' }}>
                   <strong role="cell">{p.part.name}</strong>
                   <span role="cell" style={{ color: 'var(--text-600)' }}>
                     {shortDate(p.start)} to {shortDate(p.finish)}

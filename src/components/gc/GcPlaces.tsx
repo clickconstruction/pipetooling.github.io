@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom'
 import { daysBetween, type GcAction, type GcProject, type GcState } from '../../lib/gcMode/gcModel'
 import { PLACE_RULE, cleanPlace, crowdedPlaces, crowdedSpells, keptPlaces, placeGuess, placeProblem, placeRows, placesSummary, takesPlace, type CrowdedWeek } from '../../lib/gcMode/gcPlaces'
 import { Btn, Card, input } from './gcUi'
+import { twoLines } from './gcBuildingCss'
 
 /** Saturated on purpose, as the chart's own amber: the same in both themes. */
 const AMBER = '#d97706'
@@ -165,7 +166,7 @@ export function GcCrowdedLane({ weeks, first, px, labelW, width, phone, rowH }: 
         <div key={place} data-crowded-place={place} style={{ display: 'flex', height: rowH, borderTop: '1px solid var(--border)' }}>
           <div style={label} title={PLACE_RULE}>
             <strong style={{ whiteSpace: 'nowrap' }}>{phone ? 'Crowded' : 'Too many in one place'}</strong>
-            <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>· {place}</span>
+            <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(phone ? twoLines('0.8rem') : {}) }}>· {place}</span>
           </div>
           <div style={{ position: 'relative', width }}>
             {weeks

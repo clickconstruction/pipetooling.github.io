@@ -65,19 +65,34 @@ export function GcCustomerSchedule({ state, project }: { state: GcState; project
             )
           })}
           <div style={{ color: 'var(--text-muted)' }}>Dates to meet</div>
-          <div style={{ position: 'relative', height: 30 }}>
-            {milestones.map((m, i) => {
+          {/* A diamond on each day to meet. Their words go in the list under it, where each reads whole however narrow the
+              portal is: beside the diamonds they ran off its edge (the phone pass, round five). */}
+          <div style={{ position: 'relative', height: 14 }}>
+            {milestones.map((m) => {
               const late = m.state === 'late' || m.state === 'missed'
               return (
-                <span key={m.milestone.id} style={{ position: 'absolute', left: x(m.due), top: i % 2 === 0 ? 0 : 15, transform: 'translateX(-6px)', display: 'flex', gap: 4, alignItems: 'center', whiteSpace: 'nowrap', fontSize: '0.72rem', color: late ? 'var(--text-red-700)' : m.state === 'hit' ? 'var(--text-green-800)' : 'var(--text-600)' }}>
+                <span
+                  key={m.milestone.id}
+                  aria-hidden
+                  title={`${m.milestone.label} · ${shortDate(m.due)}`}
+                  style={{ position: 'absolute', left: x(m.due), top: 2, width: 9, height: 9, transform: 'translateX(-4px) rotate(45deg)', background: late ? C.red : m.state === 'hit' ? C.green : 'var(--text-muted)' }}
+                />
+              )
+            })}
+            {/* Today, on the same line. */}
+            <span aria-hidden style={{ position: 'absolute', left: x(state.today), top: -2, bottom: 0, width: 2, background: C.blue, opacity: 0.6 }} />
+          </div>
+          <div data-gc-dates-to-meet style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.8rem', fontSize: '0.72rem' }}>
+            {milestones.map((m) => {
+              const late = m.state === 'late' || m.state === 'missed'
+              return (
+                <span key={m.milestone.id} style={{ display: 'flex', gap: 4, alignItems: 'center', minWidth: 0, color: late ? 'var(--text-red-700)' : m.state === 'hit' ? 'var(--text-green-800)' : 'var(--text-600)' }}>
                   <span aria-hidden style={{ width: 9, height: 9, transform: 'rotate(45deg)', background: late ? C.red : m.state === 'hit' ? C.green : 'var(--text-muted)', flex: 'none' }} />
                   {m.milestone.label} · {shortDate(m.due)}
                   {m.state === 'hit' ? ', met' : late ? `, ${m.daysLate} days late` : ''}
                 </span>
               )
             })}
-            {/* Today, on the same line. */}
-            <span aria-hidden style={{ position: 'absolute', left: x(state.today), top: -2, bottom: 0, width: 2, background: C.blue, opacity: 0.6 }} />
           </div>
         </div>
         {customerMaySeeEveryBar(project) && (

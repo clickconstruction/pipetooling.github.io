@@ -13,7 +13,8 @@ const TONES: Record<Tone, { bg: string; fg: string }> = {
   violet: { bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-800)' },
 }
 
-export function Chip({ tone, children, title }: { tone: Tone; children: ReactNode; title?: string }) {
+/** A small one sits under a name in the chart's 168px name column on a phone (the phone pass, round five). */
+export function Chip({ tone, children, title, small }: { tone: Tone; children: ReactNode; title?: string; small?: boolean }) {
   const t = TONES[tone]
   return (
     <span
@@ -27,6 +28,7 @@ export function Chip({ tone, children, title }: { tone: Tone; children: ReactNod
         fontSize: '0.75rem',
         fontWeight: 600,
         whiteSpace: 'nowrap',
+        ...(small ? { fontSize: '0.65rem', padding: '0 0.4rem', lineHeight: 1.15 } : {}),
       }}
     >
       {children}

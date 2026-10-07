@@ -2,6 +2,7 @@
  * GC mode design spike: the Building lane's layout for a phone (REMAINING, Building 2). Inline
  * styles cannot hold a media query, so the rows that change shape on a phone carry these classes.
  */
+import type { CSSProperties } from 'react'
 
 /** The schedule chart's name column: wide on a desk, narrow on a phone so the bars have room. */
 export const SCHEDULE_LABEL_W = 260
@@ -19,3 +20,11 @@ export const BUILDING_CSS = `
   .gcSched-label { width: 9.5rem; min-width: 9.5rem; }
 }
 `
+
+/**
+ * A name that shares its line in the chart's 168px column on a phone (a trade's title, a crowded place): two
+ * short lines, then "…". Two lines of 0.8rem are 28px, inside a trade's 30px row (the phone pass, round five).
+ */
+export function twoLines(fontSize: string): CSSProperties {
+  return { whiteSpace: 'normal', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'break-word', lineHeight: 1.1, fontSize }
+}
