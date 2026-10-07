@@ -40,3 +40,13 @@ On a local Postgres 15, with stand-ins for `users`, `projects`, `email_send_log`
 3. Signed in as a non-dev, `mint_gc_trade_portal_link` answers *Only a dev can make a trade portal link for now.*
 4. Signed in as a dev, against a company id that matches nothing, it answers *That company is not on record.*
 5. On "Test trade, delete me" (P1b's check), a dev's mint returns a 64-character token and the same token again, until `rotate`. `revoke` then turns it off.
+
+## Status
+
+Merged as v2.4857 (#4880) and pushed to prod on 2026-10-08 (drift 785 of 785). The checks ran through the management API's query endpoint, and every write rolled back.
+
+1. **Passed.** Each table has one SELECT policy, `gc_trade_portal_links_dev` and `gc_trade_messages_dev`, for `authenticated`. `anon` has no SELECT, and `authenticated` has no INSERT.
+2. **Passed.** A training-mode user's insert into each table was refused with *permission denied for table …*. The privilege refuses it before the read-only block is reached, since `authenticated` holds no INSERT at all.
+3. **Passed.** An estimator's `mint_gc_trade_portal_link` answered `{"error": "Only a dev can make a trade portal link for now."}`.
+4. **Passed.** A dev's mint on an id that matches nothing answered `{"error": "That company is not on record."}`. `anon` got *permission denied for table gc_trade_portal_links*.
+5. **Waits** on call 13, the test rows on prod: it needs "Test trade, delete me".
