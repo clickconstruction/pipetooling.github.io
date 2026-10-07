@@ -6,6 +6,30 @@ import LienOfferBox from './LienOfferBox'
 afterEach(cleanup)
 
 describe('LienOfferBox — the leader’s pay offer (v2.4713)', () => {
+  it('the switch and the details draw apart for the footer row; the pay-page line waits until it is on (v2.4745)', () => {
+    const onChange = vi.fn()
+    const props = { onChange, todayYmd: '2026-11-01', affidavitDueOn: '2026-12-15', amounts: [6240] }
+    const sw = render(<LienOfferBox {...props} offer={null} part="switch" />)
+    expect(sw.container.textContent).toBe('Offer a discount if a bill is paid in full by a day')
+    expect(screen.queryByTestId('lien-offer-box')).toBeNull()
+    sw.unmount()
+    const off = render(<LienOfferBox {...props} offer={null} part="details" onSave={() => undefined} />)
+    expect(off.container.innerHTML).toBe('')
+    off.unmount()
+    // An approved notice that carried an offer: switched off, the details are only the Save that takes it away.
+    const removing = render(<LienOfferBox {...props} offer={null} part="details" onSave={() => undefined} saved />)
+    expect(screen.getByTestId('lien-offer-save').textContent).toBe('Save')
+    removing.unmount()
+    render(<LienOfferBox {...props} offer={{ pct: 10, by: '2026-11-15' }} part="details" />)
+    expect(screen.queryByTestId('lien-offer-switch')).toBeNull()
+    expect(screen.getByTestId('lien-offer-box').textContent).toContain("Printed on the owner's pay page, never on the notice form. The claim stays the full amount.")
+  })
+
+  it('off, the box is the switch alone, without the pay-page line', () => {
+    render(<LienOfferBox offer={null} onChange={vi.fn()} todayYmd="2026-11-01" affidavitDueOn="2026-12-15" amounts={[6240]} />)
+    expect(screen.getByTestId('lien-offer-box').textContent).toBe('Offer a discount if a bill is paid in full by a day')
+  })
+
   it('is off until switched on; on, it offers 10% by 14 days from today and prints the sentence', () => {
     const onChange = vi.fn()
     const { rerender } = render(<LienOfferBox offer={null} onChange={onChange} todayYmd="2026-11-01" affidavitDueOn="2026-12-15" amounts={[6240, 6165, 5180]} />)

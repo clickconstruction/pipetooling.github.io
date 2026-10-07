@@ -239,9 +239,9 @@ The desk shows the master only what needs a decision. He sees what is open with 
 
 ## A discount if they pay before the lien
 
-The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The box sits above the footer when he approves a notice.
+The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The tick box sits in the bottom row beside the buttons when he approves a notice.
 
-- Tick **Offer a discount if a bill is paid in full by a day**.
+- Tick **Offer a discount if a bill is paid in full by a day**. Its choices open above the bottom row.
 - Pick the percent. The default is 10.
 - Pick the day. The default is 14 days from today. The offer never runs later than a week before the affidavit must be filed. So the affidavit can still go out on time if they do not pay.
 
