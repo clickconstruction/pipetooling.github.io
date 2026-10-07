@@ -1760,8 +1760,12 @@ One paragraph per surface: what it is, its main tables, and where the depth live
 ### 2. Project Management
 `Projects.tsx` — three tabs: **Overview** (project list with color-coded stage summary and card-rail pills linking jobs/bids/estimates), **Job History** (`?tab=job-history` — Gantt of working jobs from approved clock sessions, Expanded/Compact lane packing, per-day crew-count cells with a day-detail modal), and **Forecast** (`?tab=forecast` — forward-looking stage Gantt from `project_workflow_steps` scheduled + actual dates, Specific and All Steps sub-tabs, drag editing, `%` complete). Tables: `projects`, `project_workflows`, `project_workflow_steps`. Depth: [PROJECTS_FORECAST_TABS_ARCHITECTURE.md](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) (Forecast → Specific map); history: RECENT_FEATURES.md v2.548–v2.562.
 
+A **GC project** (GC mode, `/gc`) is a `projects` row too, so it shows here for the office: tagged **GC** (the `gc_projects(project_id)` embed), and its row opens it on GC projects through `gcProjectHref` (`src/lib/gc/links.ts`), never on a workflow (v2.4846). Edit project's delete says it also takes the GC project's trades, scope lines, sets and questions.
+
 ### 3. Workflow Management
 `Workflow.tsx` (~4.4k lines) at `/workflows/:projectId` — the stage-by-stage project interface: step cards with status actions (Set Start / Complete / Approve / Send Back / Re-open), roster-autocomplete assignment, expected dates + `%` complete (feeds Projects → Forecast), tech/office notes, line items with PO and supply-house-invoice links, projections-vs-ledger financials, per-step action ledger, and notification subscriptions. Tables: `project_workflow_steps`, `workflow_step_line_items`, `workflow_projections`, `project_workflow_step_actions`, `step_subscriptions`. Depth: [WORKFLOW_PAGE_ARCHITECTURE.md](./WORKFLOW_PAGE_ARCHITECTURE.md), [WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md); per-role behavior: ACCESS_CONTROL.md.
+
+A GC project gets no plumbing workflow: `ensureWorkflow` (`useWorkflowStepsEngine.ts`) reads `gc_projects` with the workflows and, for a GC project, makes none and the page says where it lives (v2.4846). Before, any door into `/workflows/<id>` filed a GC project as a draft plumbing workflow on load.
 
 ### 4. Template System
 `Templates.tsx` (dev-only) — CRUD for workflow templates and their ordered steps; templates seed workflows at project creation. Tables: `workflow_templates`, `workflow_template_steps`.

@@ -89,6 +89,9 @@ function world(opts: Opts = {}) {
         ])
       case 'workflow_step_line_items':
         return opts.lineItems ?? ok([{ id: 'li1', step_id: 's1', amount: 10 }, { id: 'li2', step_id: 's2', amount: 20 }])
+      case 'gc_projects':
+        // Not a GC project (v2.4846): maybeSingle() answers null when no row matches.
+        return ok(has(steps, 'maybeSingle') ? null : [])
       case 'users':
         return ok({ name: 'Pat Office', email: 'pat@example.test' })
       default:

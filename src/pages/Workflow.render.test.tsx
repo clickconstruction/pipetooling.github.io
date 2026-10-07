@@ -27,6 +27,10 @@ const world = vi.hoisted(() => ({
   templateSteps: [] as Array<Record<string, unknown>>,
   writes: [] as Array<{ table: string; method: string; payload: unknown; id: unknown }>,
   stepReads: [] as Array<Array<{ method: string; args: unknown[] }>>,
+  /** The project has no workflow yet, so the page's load would make one. */
+  noWorkflow: false,
+  /** The project is a GC project (a gc_projects row, v2.4846). */
+  gcProject: false,
 }))
 
 vi.mock('../lib/supabase', () => {
@@ -49,6 +53,9 @@ vi.mock('../lib/supabase', () => {
           world.steps = [...world.steps, { id: `new-${world.steps.length + 1}`, assigned_to_name: null, started_at: null, ended_at: null, ...row }]
           return { data: [{ id: `new-${world.steps.length}` }], error: null }
         }
+        if (table === 'project_workflows' && m === 'insert') {
+          return { data: { id: 'w-new', project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }, error: null }
+        }
         if (table === 'project_workflow_step_actions' && m === 'insert') {
           return { data: { id: `act-${world.writes.length}`, ...(arg(steps, m) as Row) }, error: null }
         }
@@ -62,7 +69,9 @@ vi.mock('../lib/supabase', () => {
       case 'projects':
         return list([{ id: 'p1', name: 'Elm Street', project_number: null }])
       case 'project_workflows':
-        return list([{ id: 'w1', project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }])
+        return list(world.noWorkflow ? [] : [{ id: 'w1', project_id: 'p1', name: 'Elm Street workflow', status: 'draft' }])
+      case 'gc_projects':
+        return list(world.gcProject ? [{ project_id: 'p1' }] : [])
       case 'project_workflow_steps': {
         world.stepReads.push(steps)
         const who = eqValue(steps, 'assigned_to_name')
@@ -209,10 +218,29 @@ afterEach(() => {
   world.projections = []
   world.templates = []
   world.templateSteps = []
+  world.noWorkflow = false
+  world.gcProject = false
   vi.restoreAllMocks()
 })
 
 describe('Workflow page', () => {
+  it('a GC project gets no plumbing workflow: the page says where it lives (v2.4846)', async () => {
+    world.noWorkflow = true
+    world.gcProject = true
+    renderWorkflow('dev', [])
+    expect(await screen.findByText('This is a GC project.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Open it on GC projects' }).getAttribute('href')).toBe('/gc?focus=p1')
+    await settle()
+    expect(world.writes.filter((w) => w.table === 'project_workflows')).toEqual([])
+  })
+
+  it('a plumbing project with no workflow still gets its draft one on open', async () => {
+    world.noWorkflow = true
+    renderWorkflow('dev', [])
+    await waitFor(() => expect(world.writes.some((w) => w.table === 'project_workflows' && w.method === 'insert')).toBe(true))
+    expect(screen.queryByText('This is a GC project.')).toBeNull()
+  })
+
   it('draws the project and every stage, each at its #step- anchor, open or folded by status', async () => {
     renderWorkflow('dev', fourSteps())
     expect(await screen.findByRole('heading', { name: 'Elm Street – Workflow' })).toBeTruthy()

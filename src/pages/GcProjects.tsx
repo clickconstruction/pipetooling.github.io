@@ -45,6 +45,7 @@ import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBoo
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { ScopeBookStore } from '../lib/gc/types'
+import { gcFocusFromSearch } from '../lib/gc/links'
 
 interface Loaded {
   customers: GcPickerCustomer[]
@@ -104,6 +105,23 @@ export default function GcProjects() {
     [loaded, today],
   )
   const book = useMemo(() => (bookInput ? scopeBook(bookInput) : []), [bookInput])
+
+  // `?focus=<id>` (v2.4846, `gcProjectHref`): a GC project opened from elsewhere, such as the
+  // Projects page, scrolls to its card and is outlined for two seconds.
+  const focusId = gcFocusFromSearch(params)
+  useEffect(() => {
+    if (!loaded || !focusId) return
+    const card = document.querySelector<HTMLElement>(`[data-gc-project="${CSS.escape(focusId)}"]`)
+    if (!card) return
+    // A card can be taller than the screen: its top comes into view, below the app's top bar.
+    card.style.scrollMarginTop = '5rem'
+    card.scrollIntoView({ block: 'start' })
+    card.style.outline = '2px solid var(--text-violet-700)'
+    const t = window.setTimeout(() => {
+      card.style.outline = ''
+    }, 2000)
+    return () => window.clearTimeout(t)
+  }, [loaded, focusId])
 
   if (authLoading) return null
   if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />

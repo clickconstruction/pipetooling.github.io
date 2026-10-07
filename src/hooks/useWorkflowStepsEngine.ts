@@ -45,6 +45,8 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
   const [lineItems, setLineItems] = useState<Record<string, LineItem[]>>({})
+  /** Set when the project is a GC project (v2.4846): it gets no plumbing workflow, and the page says where it lives. */
+  const [gcProjectId, setGcProjectId] = useState<string | null>(null)
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
 
@@ -65,8 +67,13 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     // Create new promise and store it
     const promise = (async (): Promise<string | null> => {
       try {
-        // First, try to find existing workflow
-        const { data: wfs, error: queryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
+        // First, try to find existing workflow. A GC project is read alongside (v2.4846): opening one
+        // here must not file it as a plumbing job with an empty workflow. RLS shows the gc_projects
+        // row to the GC team only, and no other role reaches a GC project's projects row.
+        const [{ data: wfs, error: queryError }, { data: gcRow }] = await Promise.all([
+          supabase.from('project_workflows').select('*').eq('project_id', pid),
+          supabase.from('gc_projects').select('project_id').eq('project_id', pid).maybeSingle(),
+        ])
         if (queryError) {
           console.error('Error querying workflows:', queryError)
           setError(`Failed to load workflow: ${queryError.message}`)
@@ -78,6 +85,10 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
           setWorkflow(existingWorkflow)
           console.log(`Found existing workflow ${existingWorkflow.id} for project ${pid}`)
           return existingWorkflow.id
+        }
+        if (gcRow) {
+          setGcProjectId(pid)
+          return null
         }
         // No workflow exists, create one
         const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
@@ -489,6 +500,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     commitmentsByStep,
     commitmentPaymentsByLaborJobId,
     ensureWorkflow,
+    gcProjectId,
     loadProject,
     loadLineItemsForSteps,
     loadCommitmentsForSteps,
