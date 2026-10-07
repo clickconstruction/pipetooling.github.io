@@ -82,7 +82,8 @@ serve(async (req) => {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
     if (!body || typeof body !== 'object') return jsonResponse({ error: 'Bad request' }, 400)
     const token = str(body.token, 128)
-    if (token.length < 16) return jsonResponse({ error: 'Missing token' }, 400)
+    // 5 and up: since v2.4756 the short address (`snell-law-f6a`, 13) is the key.
+    if (token.length < 5) return jsonResponse({ error: 'Missing token' }, 400)
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
