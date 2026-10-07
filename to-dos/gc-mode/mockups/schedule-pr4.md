@@ -2,7 +2,7 @@
 name: "The schedule's PR 4: what if and before the job, as tables"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 4; The tables (What if, and before the job)
 branch: the plan on spike/schedule-pr4-plan (from origin/spike/gc-mode at 897021a58); the migration from origin/main when the PR is cut, after PR 3 (#4827) is on main
-status: plan 2026-10-07 by Helper 1 at the lead's ask. Nothing is applied. The stamp and the version are claimed when the PR is cut, after main's newest and after any claim not yet merged. Helper 1 never applies it; the lead pushes it after PR 3's, from a clean checkout, and opens the types PR.
+status: plan 2026-10-07 by Helper 1 at the lead's ask; the lead's go the same day on the three answers and the three calls as picked. Cut from main at d21075a00 as #4835 (v2.4816), with the stamp 20261007235500, past three claims not yet merged (20261007230000, 20261007234000, 20261007235000) on purpose. The tables in SCHEDULE_REAL_BUILD.md are amended to match. Not applied: the lead pushes it after PR 3's, from a clean checkout, and opens the types PR.
 ---
 
 # The schedule's PR 4: what if and before the job, as tables
