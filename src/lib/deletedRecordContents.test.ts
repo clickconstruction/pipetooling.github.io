@@ -36,6 +36,9 @@ describe('humanizeArchiveTable', () => {
     expect(humanizeArchiveTable('jobs_ledger_fixtures')).toBe('fixtures')
     expect(humanizeArchiveTable('job_schedule_blocks')).toBe('schedule blocks')
     expect(humanizeArchiveTable('clock_sessions')).toBe('clock sessions')
+    expect(humanizeArchiveTable('bid_count_row_custom_costs')).toBe('quoted costs')
+    expect(humanizeArchiveTable('bid_takeoff_stage_splits')).toBe('takeoff stage splits')
+    expect(humanizeArchiveTable('bid_submittal_takeoff_choices')).toBe('submittal picks')
   })
 
   it('falls back to underscores → spaces for unmapped tables', () => {
@@ -218,6 +221,13 @@ describe('summarizeDeletedRowForTable (v2.1566 type-aware summaries)', () => {
     expect(
       summarizeDeletedRowForTable('invoices', { sequence_order: 2, amount: 4520, stripe_invoice_status: 'paid' }),
     ).toBe('invoice #2 · $4,520.00 · paid')
+  })
+
+  it('words a removed quoted cost in dollars, with its supply house (bid history PR 0c)', () => {
+    expect(
+      summarizeDeletedRowForTable('bid_count_row_custom_costs', { unit_materials_cents: 370000, house_name: 'Ferguson' }),
+    ).toBe('quoted cost $3,700.00 · Ferguson')
+    expect(summarizeDeletedRowForTable('bid_count_row_custom_costs', {})).toBe('quoted cost')
   })
 
   it('falls back to the generic summary for unknown tables', () => {
