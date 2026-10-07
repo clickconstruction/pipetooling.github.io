@@ -1,7 +1,7 @@
 ---
 name: "GC mode: pick it up here"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · **2026-10-06: the open items are now kept in PUNCHLIST.md** (the Gantt landed 2026-10-05 and 2026-10-06, every phase by the second sitting of 2026-10-06; GANTT_PLAN.md and GANTT_FEATURES.md hold it) · the prototype is done enough to judge · every open question in README.md is answered · **the owner said "the shape is settled" on 2026-10-06**, which starts the real build (section 4, from `main`, PR 1b first) · on main only the plan kernels (`src/lib/gc/`, #4448)
+status: handed off 2026-10-05 by the Board lane at the owner's ask, with each lane's open items · **2026-10-06: the Gantt is done on the prototype**, its last rows in four rounds of helper sessions (HELPERS.md; GANTT_FEATURES.md's status says what stands Have), and PUNCHLIST.md is closed for it · the schedule's real build is SCHEDULE_REAL_BUILD.md, waiting on the owner (call 11) · the prototype is done enough to judge · every open question in README.md is answered · **the owner said "the shape is settled" on 2026-10-06**, which starts the real build (section 4, from `main`) · on main: New project's real build so far (NEW_PROJECT_REAL_BUILD.md → Status)
 summary: >
   What is left in GC mode and where to start, for someone new. The prototype plays the whole loop
   on made-up data (branch spike/gc-mode, page /bids/gc). Left: a short list of the owner's calls,
@@ -20,23 +20,27 @@ what is left, gathered from every lane on 2026-10-05.
 - **The prototype plays the whole loop** on one fixture through one reducer: a new project and its
   plans, asking trades, their quotes through a portal, comparing, our bid, winning, award, papers,
   Get started, the schedule, the daily log, submittals, draws, billing the customer, closeout.
-  `README.md` → *What the prototype has* walks every screen.
+  `README.md` → *What the prototype has* walks every screen. The schedule is a whole Gantt: four
+  rounds of helper sessions landed its last rows on 2026-10-06 (`HELPERS.md` says how they worked).
 - **Every open question is answered** (`README.md` → *Open questions*, all 29).
-- **Nothing real is built** except the plan kernels on main (`src/lib/gc/plans.ts`,
-  clickconstruction/pipetooling.github.io#4448). No table, no email, no file storage.
-- **The branch must never merge.** It holds the fixture in the client, and it touches seven files of
+- **The real build has started with New project** on main: its kernels, its tables and
+  `gc_create_project` (`NEW_PROJECT_REAL_BUILD.md` → *Status*). The next phase's plan is the
+  schedule's, `SCHEDULE_REAL_BUILD.md`, waiting on the owner (call 11). No email, no file storage.
+- **The branch must never merge.** It holds the fixture in the client, and it touches nine files of
   the app outside GC mode: `src/App.tsx` (the route), `src/pages/Bids.tsx` (the switch, dev only),
-  `src/components/SpotlightTour.tsx` (walkthrough features), and the dashboard's Needs you
-  (`src/lib/dashboardNeedsYou.ts` and its test, `src/hooks/useGcFollowUpNeeds.ts`,
-  `src/components/dashboard/DashboardPinnedQuickRow.tsx`). The real build is new PRs from `main`.
-- The branch is about 137 commits behind `main`; merge `origin/main` in before reading the
+  `src/components/SpotlightTour.tsx` (walkthrough features, and `onStep` for the walk's tabs) with
+  its test and snapshot, and the dashboard's Needs you (`src/lib/dashboardNeedsYou.ts` and its
+  test, `src/hooks/useGcFollowUpNeeds.ts`, `src/components/dashboard/DashboardPinnedQuickRow.tsx`).
+  The real build is new PRs from `main`.
+- The branch is about 385 commits behind `main`; merge `origin/main` in before reading the
   dashboard files side by side.
 
 ## Start here
 
 1. **Read**, in this order: this file; `README.md` (*The ask*, *The model, in one paragraph*,
-   *What the prototype has*, *Decided by the owner*); `NEW_PROJECT_REAL_BUILD.md` (the only real
-   build plan written out). `REMAINING.md` is the history of what each lane built, round by round.
+   *What the prototype has*, *Decided by the owner*); `NEW_PROJECT_REAL_BUILD.md` and
+   `SCHEDULE_REAL_BUILD.md` (the real build's plans written out). `REMAINING.md` is the history of
+   what each lane built, round by round.
 2. **Run it**: check out `spike/gc-mode`, `npm install`, `npm run dev`, open
    `http://localhost:<port>/dev-login?as=1&to=/bids/gc`. **Start over** (top right) resets the
    made-up data. A page reload resets it too: the state lives in one session store (`gcStore.ts`).
@@ -59,7 +63,7 @@ Nothing in the real build starts before the first one.
 |---|---|---|---|
 | 1 | **"The shape is settled."** The gate for the real build (section 4). | The plan | Said 2026-10-06. The real build is open, in section 4's order. |
 | 2 | ~~**Questions during construction (RFIs).** Its own tab? Trades ask from the portal? Needed 3 days before the work? A cost answer starts a change order in one click?~~ | Building | Answered 2026-10-05: **yes to all four.** Being built (section 2). |
-| 3 | **New Project's PR 1b**: lift the kernels added since PR 1 (the sheet table, the title block, budgets per square foot, the Drive link, the scope book) into `src/lib/gc/` with their tests. Pure code, no tables. | New Project | His word came 2026-10-06 with "the shape is settled": the first PR of the real build. |
+| 3 | ~~**New Project's PR 1b**: lift the kernels added since PR 1 (the sheet table, the title block, budgets per square foot, the Drive link, the scope book) into `src/lib/gc/` with their tests. Pure code, no tables.~~ | New Project | Landed 2026-10-06 (clickconstruction/pipetooling.github.io#4687). |
 | 4 | **Quo**: whether to build the calls-and-texts link at all (exploration so far); billed yearly or monthly ($23 or $33 a seat); Claude reading texts from the first day or later. Before building, ask Quo whether texts sent from its own phone app come back to us as events, and whether calls forwarded to a cell are still recorded and summarized. | New Project | Everything else decided. See section 5. |
 | 5 | **The defaults he never confirmed**: `README.md` → *My defaults the owner has not confirmed* (about 30 rules), plus the lanes' timings below. | Every lane | Each is a constant in `src/lib/gcMode/`; change freely. |
 | 6 | **Owner Billing's defaults**: bill day the 25th (monthly was confirmed, the day was not); retainage step from 50% at 5%; late interest 1.5% a month and the day it starts (check against Texas prompt pay); a payment reminder's pay-by 5 days out; stored materials billed at the trade's cost, our fee once installed; the notification timings (bill day minus 2 days; the architect reminded at 3 days, the project manager at 5; the customer 3 days before a bill is due; a Monday forecast email). The customer emails' wording has not been read by him. | Owner Billing | Defaults in the code. |
@@ -67,6 +71,7 @@ Nothing in the real build starts before the first one.
 | 8 | **The Board's and the Portal's defaults**: a change request or a back-charge reads late after 7 days; a paper's day picks 3 days, a week or two weeks; a bench is deep at 3 companies that answer; a company should open the plans within 3 days. A trade has 5 days to answer a back-charge (`BACK_CHARGE_ANSWER_DAYS`), and one comes off an approved draw not paid yet. | Board, Portal | Defaults in the code. |
 | 9 | **The portal's Spanish** read by a native speaker before it ships. | Portal | Someone he names, at production. The list is at the end of `PORTAL_SPANISH.md`. |
 | 10 | **Two portal ideas offered and not picked**: "Your record with Click" and "Get paid early". | Portal | Open if he wants them. |
+| 11 | **The schedule's real build**: the ten decisions in `SCHEDULE_REAL_BUILD.md`, each with a default, for the Gantt's three real-build rows (G-132 the tables, G-133 who may move a bar, G-134 two people on one schedule). | The Gantt | Waiting on the owner's word. Nothing else on the Gantt waits on the owner. |
 
 ### 2. Prototype work still open
 
@@ -92,6 +97,8 @@ Finished on 2026-10-05 at the owner's ask ("help me finish the Prototype work st
   the start, since the walk's late bill gets a promise first); ~~Their messages shows only the
   latest weekly report~~ done 28d2ca53d (every send is kept; the portal shows the newest).
 - **Board**: nothing open.
+- **The Gantt**: nothing open. Four rounds of helper sessions built its last rows on 2026-10-06
+  (`HELPERS.md`), and `PUNCHLIST.md` is closed for it; what is left is its real build (call 11).
 
 ### 3. What the prototype only pretends to do
 
@@ -105,8 +112,9 @@ The real build has to make each of these real, or decide not to.
   are names only; the daily log has no photos. The owner's call: files live in Google Drive.
 - **Made-up contact details.** A company's phone and email are made up until its record has them
   (`partnerReach`).
-- **The schedule counts calendar days**: no workdays or holidays. Moving a date pushes what follows
-  and never pulls it earlier. The projected finish has no weather or crew-size allowance.
+- **The schedule lives in the session store**: no tables, anyone may move a bar, and only one
+  person is ever on it. `SCHEDULE_REAL_BUILD.md` makes each real (G-132 to G-134).
+  Every day is a working day by the owner's call (2026-10-05), not as a stand-in.
 - **Typed by hand where the app already knows**: our own crew's percent (the real build reads its
   Pipeline job), its head count on the daily log (clock-ins), the weather, a delivery arriving.
 - **Past jobs** a new project's budget reads are the prototype's own; the real build reads closed
@@ -155,11 +163,9 @@ docs fragment and help guide (`CLAUDE.md`).
    answer, people), becomes an RPC or edge function checked against the company's link. The
    emails are ready for Resend: `portalMessages` gives subject, lines, kind, recipients and
    language; `mailRecipients` gives who gets each kind. Printing goes through `printPortalHtml`.
-5. **Plans: sets, the email, who opened them**: `NEW_PROJECT_REAL_BUILD.md`. PR 1 is merged
-   (#4448). Next PR 1b (call 3), then PRs 2 and 3 (the migrations), 4 (New project steps 1 to 4 on
-   real data, dev only), 5 (Drive: the folders and the link check), 6 (a new set), 7 (the set email, after the
-   company record and invitations), 8 (questions), 9 (the plans window). Who to ask waits on the
-   company record and invitations too.
+5. **Plans: sets, the email, who opened them**: `NEW_PROJECT_REAL_BUILD.md` holds its PRs in
+   order, and its *Status* says which are in. Who to ask waits on the company record and
+   invitations too.
 6. **Compare, carry, our number.**
 7. **Award, master agreement, statement of work, Get started.**
 8. **Draws and waivers**, then **billing the customer**: the app's AIA template
@@ -170,9 +176,10 @@ docs fragment and help guide (`CLAUDE.md`).
    recording; promises and reminders map onto the Pipeline's payment promises (v2.3280 to 3286)
    and its chase loop; our waivers use the lien waiver train's four forms (`LienReleaseStepRow`);
    Money and margin stay the owner's and the controller's.
-9. **Building**: the schedule, daily log, submittals, punch list and inspections (and questions
-   during construction, yes to all four on 2026-10-05); our crew's count and percent from clock sessions and its
-   Pipeline job; files and photos in Drive.
+9. **Building**: the schedule by `SCHEDULE_REAL_BUILD.md` (its tables, functions and PRs in
+   order; our crew's count and percent from clock sessions and its Pipeline job, G-51, is its
+   PR 16); the daily log, submittals, punch list and inspections (and questions during
+   construction, yes to all four on 2026-10-05); files and photos in Drive.
 
 Access (question 9): an assistant follows up the same way an estimator does; awarding stays with an
 estimator; money stays with the owner and the controller.
@@ -263,7 +270,8 @@ Tell the owner before changing one of these; another area reads it.
 
 ## Status
 
-Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), with the Ask window, Follow up's two views and a company's address; what is left is kept in `PUNCHLIST.md`, which is where to start now.
+Handed off 2026-10-05. **Since then** (2026-10-05 and 2026-10-06, the owner's sittings): the schedule as a Gantt landed (`GANTT_PLAN.md`), its last rows in rounds one to four of the helper sessions (`HELPERS.md` says how), with the Ask window, Follow up's two views and a company's address. `PUNCHLIST.md` is closed for the Gantt. The next phase is the schedule's real build, `SCHEDULE_REAL_BUILD.md`, once the owner says yes to its decisions (call 11).
 
-Handed off 2026-10-05. Pick it up by reading *Start here*, then take section 1 to the owner. When
-the real build starts, put its branch here and drop a session card (`docs/SESSIONS.md`).
+Handed off 2026-10-05. Pick it up by reading *Start here*, then take section 1 to the owner. Each
+real-build plan keeps its own status; drop a session card when a real-build PR starts
+(`docs/SESSIONS.md`).

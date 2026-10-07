@@ -1,7 +1,7 @@
 ---
 name: "GC mode spike: the punch list, for whoever picks it up next"
 parent: to-dos/gc-mode/README.md (punch list #81) · HANDOFF.md (the lanes' handoff, 2026-10-05)
-status: written 2026-10-06 at the owner's ask ("save what is left to a spike punchlist so that another user tomorrow can pick up where we left off") · **the second sitting of 2026-10-06 built every box under Prototype work left** (Phases 2 to 5 of the Gantt, the Ask window's two doors, the tour's stops, the two browser checks); what stays open is the owner's calls · everything below is on origin/spike/gc-mode · the branch still never merges
+status: written 2026-10-06 at the owner's ask ("save what is left to a spike punchlist so that another user tomorrow can pick up where we left off") · **the second sitting of 2026-10-06 built every box under Prototype work left** (Phases 2 to 5 of the Gantt, the Ask window's two doors, the tour's stops, the two browser checks); what stays open is the owner's calls · **closed for the Gantt 2026-10-06**: four rounds of helper sessions built the rest of GANTT_FEATURES.md (HELPERS.md), and the Gantt's real build is SCHEDULE_REAL_BUILD.md · everything below is on origin/spike/gc-mode · the branch still never merges
 summary: >
   Where the GC mode prototype stands after the owner's 2026-10-05 and 2026-10-06 sittings (the
   Gantt, the Ask window, Follow up's two views, the address editor), how to run and check it, and
@@ -18,11 +18,11 @@ summary: >
 2. Open `http://localhost:5261/dev-login?as=1&to=/bids/gc`. **Start over** (top right) resets the
    made-up data; so does a reload. The fixture's today is Fri Oct 2, 2026.
 3. Check it as the branch is checked (all green on 2026-10-06):
-   - `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc src/lib/dashboardNeedsYou.test.ts` (61 files, 896 tests; the golden test unmoved)
+   - `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc src/lib/dashboardNeedsYou.test.ts` (127 files, 1626 tests; the golden test unmoved)
    - `npm run typecheck` (about 10 minutes; read the exit code, not the wrapper's)
    - `node scripts/theme-tokenize.mjs --check src/components/gc`
 4. Read `GANTT_PLAN.md` (the schedule as a Gantt: what is built, phase by phase, and the owner's
-   calls) and `GANTT_FEATURES.md` (every feature numbered G-01 to G-137 with where it stands; cite
+   calls) and `GANTT_FEATURES.md` (every feature numbered G-01 to G-146 with where it stands; cite
    the number in commits). `HANDOFF.md` is the five lanes' handoff from 2026-10-05 and still holds
    the rules of the branch; `README.md` → *What the prototype has* walks every screen.
 5. Keep the branch's rules: the golden test (`src/lib/gcMode/gcModel.test.ts`) passes without `-u`
@@ -88,7 +88,7 @@ same day, each named in its commit; the golden walk was re-pinned once for the f
 
 - [ ] The earlier calls in `HANDOFF.md` → section 1 that the real build meets as it goes: Quo (its
   own build), the defaults in `README.md` (each a constant), the portal's Spanish reader at
-  production, the two portal ideas not picked.
+  production, the two portal ideas not picked, and the schedule's real build (call 11).
 
 ## Prototype work left, in the order I would take it
 
@@ -158,5 +158,7 @@ Each is one sitting or less. The feature numbers are `GANTT_FEATURES.md`'s.
 
 ## Status
 
-Written 2026-10-06, on `origin/spike/gc-mode`. Pick a box, cite its G-number in the commit, tick
-it here in the same commit.
+Written 2026-10-06, on `origin/spike/gc-mode`, and closed for the Gantt the same day: every box
+above is ticked, and four rounds of helper sessions built the rest of `GANTT_FEATURES.md`
+(`HELPERS.md` says how). The Gantt's real build is `SCHEDULE_REAL_BUILD.md` (G-132 to G-134),
+waiting on the owner's word; the calls still open are listed above.

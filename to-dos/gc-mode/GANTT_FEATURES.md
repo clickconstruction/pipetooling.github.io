@@ -1,7 +1,7 @@
 ---
 name: "GC mode, the Gantt: every feature, numbered"
 parent: to-dos/gc-mode/GANTT_PLAN.md (punch list #81)
-status: listed 2026-10-05 at the owner's ask ("save that as a list as well so as we develop this we can reference that list") · Phases 1 and 2 and the first slice of Phase 3 built the same day (the rows that say built 2026-10-05) · nothing else is built unless its row says Have
+status: listed 2026-10-05 at the owner's ask ("save that as a list as well so as we develop this we can reference that list") · built 2026-10-05 and 2026-10-06, the last rows in four rounds of helper sessions (HELPERS.md) · **90 of the 97 rows stand Have** · G-13 stands Part on purpose (By company does a one-company filter's job) and G-131 needs nothing · the real build's five wait on SCHEDULE_REAL_BUILD.md: G-51 and G-130 in its PRs, and G-132, G-133 and G-134 on the owner's word on its decisions · nothing else is built unless its row says Have
 summary: >
   The reference list for the schedule as a Gantt chart. Each feature has a number to cite in
   commits and notes (G-12), where it stands on the prototype today, and the phase of
