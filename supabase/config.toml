@@ -835,6 +835,8 @@ verify_jwt = false
 
 # Dial B (v2.3316): pg_cron every 10 minutes → sends hydrostatic PASS drafts whose job has a Stripe bill and a GC email; X-Cron-Secret in the function.
 [functions.auto-send-test-reports]
+verify_jwt = false
+
 # The collections law firm's no-login portal (Legal portal train, PR 3) — token-authenticated
 # like customer-portal / sub-portal; the handler resolves legal_portal_links itself.
 [functions.legal-portal]
@@ -889,4 +891,18 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.gc-plan-question-email]
+verify_jwt = false
+
+# pg_cron callers: the call carries X-Cron-Secret and no JWT, and each function checks the secret itself.
+# Without these blocks a plain `supabase functions deploy` turns the gateway check on and every cron call is refused (v2.4817).
+[functions.crew-day-email-dispatch]
+verify_jwt = false
+
+[functions.money-waiting-email-dispatch]
+verify_jwt = false
+
+[functions.schedule-share-dispatch]
+verify_jwt = false
+
+[functions.statement-round-email-dispatch]
 verify_jwt = false
