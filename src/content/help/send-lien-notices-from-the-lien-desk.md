@@ -138,7 +138,7 @@ The bar at the bottom shows the notice's state on the left. Most often it says t
 
 ### Leader here
 
-The same row has two answers for when the master stands beside you. One is *he is standing over me*, and the other is *he is typing it in*. Pick one, and the line under the row shows what the record will read. Nobody signs in. The record names you as the one who wrote it down. It names him as the one who decided. Then it goes to Ready to send on his word.
+The same row has two answers for when the master stands beside you. One is *standing over me*, and the other is *typing it in*. The box already holds his name and today's date. Press {{button:blue|Approve on his word ▸}} to approve it. Nobody signs in. The record names you as the one who wrote it down. It names him as the one who decided. Then it goes to Ready to send on his word. Press **Preview the record ›** at the end of the row to see the record first. The card shows the words in every place they will show. The notice itself does not change.
 
 A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in.
 

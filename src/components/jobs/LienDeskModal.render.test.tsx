@@ -404,7 +404,7 @@ describe('LienDeskModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /The leader said to send it/ }))
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
     expect(screen.getByText('by phone')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Record it and send/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
   })
 
   it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', async () => {
@@ -456,7 +456,7 @@ describe('LienDeskModal', () => {
     const awaiting = {
       id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
     } as LienDeskItemRow
-    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" data={data(J650, [awaiting], true)} />)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" leaderNameFor={() => 'Malachi Whites'} data={data(J650, [awaiting], true)} />)
     await settle()
     // v2.4855: the state is a chip; the old sentence is its hover.
     const chip = document.querySelector('[data-lien-desk-awaiting-words]') as HTMLElement
@@ -467,17 +467,31 @@ describe('LienDeskModal', () => {
     const leaderHere = screen.getByRole('button', { name: /Leader here, Approve/ })
     expect(leaderHere.style.background).toBe('rgb(37, 99, 235)')
     fireEvent.click(leaderHere)
-    // The row opens with the presence channel picked and says what the record will read.
-    expect(screen.getByText('Leader here — who, when, and how:')).toBeTruthy()
-    expect((screen.getByLabelText('Who said it and when') as HTMLInputElement).value).toMatch(/^the leader, /)
-    expect((screen.getByLabelText('he is standing over me') as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByText(/Recorded by Wendi: the leader was standing here and said to send it/)).toBeTruthy()
-    fireEvent.click(screen.getByLabelText('he is typing it in'))
-    expect(screen.getByText(/Recorded by Wendi: the leader typed this in himself, at this desk/)).toBeTruthy()
-    expect((screen.getByRole('button', { name: /Record it and send/ }) as HTMLButtonElement).disabled).toBe(false)
-    // The remembered three are still there; a remembered word shows no presence line.
+    // One line (v2.4856): the lead-in, the master's name in the box, the presence channel picked, the short note, and the preview door.
+    expect(screen.getByText('Leader here')).toBeTruthy()
+    expect((screen.getByLabelText('Who said it and when') as HTMLInputElement).value).toMatch(/^Malachi Whites, /)
+    expect((screen.getByLabelText('standing over me') as HTMLInputElement).checked).toBe(true)
+    expect(document.querySelector('[data-lien-word-presence]')!.textContent).toContain('Recorded by Wendi. Malachi can pull it back with “Not what I said”.')
+    expect(document.querySelector('[data-lien-word-row]')!.querySelectorAll(':scope > div').length).toBe(1)
+    const approve = screen.getByRole('button', { name: /Approve on his word/ }) as HTMLButtonElement
+    expect(approve.disabled).toBe(false)
+    expect(approve.style.background).toBe('rgb(37, 99, 235)')
+    // The preview: every place the record lands, in the words the desk will draw.
+    expect(document.querySelector('[data-lien-word-preview]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the record ›' }))
+    const card = document.querySelector('[data-lien-word-preview]') as HTMLElement
+    expect(card.textContent).toContain('What the record will say')
+    expect(card.textContent).toMatch(/On Malachi’s word · Malachi Whites, .* · standing over the desk/)
+    expect(card.textContent).toContain('Sent on your word: 650 · ATI Schertz')
+    expect(card.textContent).toContain('The notice itself does not change.')
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(document.querySelector('[data-lien-word-preview]')).toBeNull()
+    fireEvent.click(screen.getByLabelText('typing it in'))
+    expect(document.querySelector('[data-lien-word-presence]')!.textContent).toContain('Recorded by Wendi.')
+    // The remembered three are still there; a remembered word shows no presence line, only the preview door.
     fireEvent.click(screen.getByLabelText('by phone'))
     expect(screen.queryByText(/Recorded by Wendi/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Preview the record ›' })).toBeTruthy()
   })
 
   it('the leader’s own awaiting footer has no “he is here” — he approves', async () => {
