@@ -2,7 +2,7 @@
 name: "Pipeline → Collections: a look at the section (2026-10-06)"
 number: 93
 group: ready
-status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · A shipped v2.4758
+status: found 2026-10-06 by the docs catch-up pass — read against main's code and looked at live on the dev account (seven jobs on the desk that day) · A shipped v2.4758, D v2.4759
 summary: >
   The Collections section does what the guides say — a flag on a billed job, the typed confirm, the note
   under the money, the self-clearing flag, ⚖ Legal and Lien desk on the header. Three things do not match
@@ -10,7 +10,7 @@ summary: >
   "billed" for a resend, and a Billed count that reads one number on the phone strip and another on the
   desktop header. The docs side (the term, the three columns, the archived migrations) landed with this card.
 next: >
-  A shipped. B and C: a read first, then the owner's word on the wording. D is a question.
+  A and D shipped. B and C: a read first, then the owner's word on the wording.
 size: XS (A) · S (B, C) · a question (D)
 blocker: None for A. B, C and D want the owner's call on the words once the reads are in.
 mockup: not required — A changes no screen a Billed row does not already show; B, C and D are words and a count
@@ -66,7 +66,7 @@ reads: bills vs. rows per job, or the lean fetch vs. the merged scope. Collectio
 `liveBilledStats(...).billed.count` side by side and name the unit each counts; then make the strip and
 the header say the same thing, or say what each is (*64 jobs* / *71 bills*).
 
-## D. The phone board ignores `?stagesSection=collections` — a question
+## D. The phone board ignores `?stagesSection=collections` — shipped v2.4759
 
 `/jobs?tab=stages&stagesSection=collections` opens the Collections section on a computer. On a phone the
 board landed on its last stage (Ready to Bill that day) and Collections had to be chosen on the strip.

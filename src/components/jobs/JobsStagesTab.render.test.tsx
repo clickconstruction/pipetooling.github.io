@@ -507,6 +507,40 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('No bill line')).toBeTruthy()
   })
 
+  it('on the phone board, focusSection picks the stage — ?stagesSection=collections lands on Collections, not the first open stage (punch list #93 D, v2.4759)', async () => {
+    const realMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(max-width: 640px)' || query === '(max-width: 559px)',
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia
+    try {
+      localStorage.setItem('jobs-stages-mobile-cards', 'true')
+      localStorage.setItem(
+        'pipetooling_stages_sections_v2',
+        JSON.stringify({ waiting: false, working: false, readyToBill: true, billed: false, collections: false, paid: false }),
+      )
+      const ref = createRef<JobsStagesTabHandle>()
+      const jobs = [...boardJobs(), makeJob({ job_name: 'Parked', status: 'billed', revenue: 500, payments_made: 0, collections_at: '2026-09-01T00:00:00Z', invoices: [] })]
+      renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs })} />)
+      await settle()
+      expect(screen.getByRole('tab', { name: /^Ready/ }).getAttribute('aria-selected')).toBe('true')
+      await act(async () => {
+        ref.current!.focusSection('collections')
+      })
+      expect(screen.getByRole('tab', { name: /^Coll\./ }).getAttribute('aria-selected')).toBe('true')
+      expect(screen.getByRole('tab', { name: /^Ready/ }).getAttribute('aria-selected')).toBe('false')
+    } finally {
+      window.matchMedia = realMatchMedia
+      localStorage.removeItem('jobs-stages-mobile-cards')
+    }
+  })
+
   describe('section moves (the shared stagesSectionActionProps, map step 6)', () => {
     function moveJobs() {
       return [
