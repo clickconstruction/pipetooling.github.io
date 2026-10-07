@@ -29,6 +29,7 @@ import { buildStripeBillEmail } from '../../supabase/functions/_shared/stripeBil
 import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
 import { SAMPLE_JOB } from './journeys/paperSamples'
+import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 
 export type { AppSettingRow }
 
@@ -317,6 +318,20 @@ export function sampleEmailFrom(id: SampleEmailId): string {
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
+/** GC mode (v2.4799): the office's question about the plans to the project's architect, as `gc-plan-question-email` sends it. */
+export function buildSampleGcPlanQuestionEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildGcPlanQuestionEmail({
+    architectName: 'Avery Lin',
+    projectName: 'Fair Oaks Clinic',
+    projectAddress: '1 Sample Rd, Boerne',
+    askedByName: SAMPLE_GC.company,
+    about: 'S-101, S-102, Concrete',
+    text: 'The foundation plan shows 18 in. piers at grid C; the detail on S-102 shows 24 in. Which one do we price?',
+    signer: ctx.sender?.name || 'The project manager',
+    companyName: 'Click Construction',
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string; from: string } {
   return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
 }
@@ -335,5 +350,6 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'job-account') return buildSampleJobAccountEmail(ctx)
   if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
+  if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

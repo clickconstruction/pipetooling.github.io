@@ -93,6 +93,7 @@ when_to_read:
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
+   - [gc-plan-question-email](#gc-plan-question-email)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -989,6 +990,18 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts`.
 
 **Doors**: the dev-only GC projects page (`/gc`) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
+
+---
+
+### gc-plan-question-email
+
+**Purpose**: GC mode's question to the architect (v2.4799, real build step 8 of `to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md`). A company asks about the plans by phone or email and the office records it (`gc_record_question`); this sends the question to the project's architect, a customer row, at the email in its `contact_info`, with the project manager (else the sender) as Reply-To, and records the send on the question (`sent_to_architect_on`, the office's day). The answer is typed back into the app (`gc_answer_question`) and rides in the next set's note. Refuses, in words, a question already answered, a project with no architect on record and an architect with no email.
+
+**Endpoint**: `POST /functions/v1/gc-plan-question-email` · **Auth**: staff JWT validated in-body, office roles only (dev / master_technician / assistant / controller / estimator); `verify_jwt = false`. **Body**: `{ question_id }` → `{ success, to, sent_on }`. The words are built in `_shared/gcPlanQuestionEmail.ts` (shared with the sample on What customers see); the send is filed as a sent copy (kind `gc_plan_question`, the architect's customer id, source `gc_plan_questions`).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_plan_question`.
+
+**Doors**: the dev-only GC projects page (`/gc`), the questions window's **Email it to the architect** (`src/lib/gc/gcIo.ts`, `sendQuestionToArchitect`).
 
 ---
 

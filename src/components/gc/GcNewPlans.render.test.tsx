@@ -27,6 +27,7 @@ const rows: GcProjectRows = {
     { id: 'i3', set_id: 'set0', position: 2, kind: 'sheet', number: 'E-201', title: 'Lighting plan', change: 'issued', was_title: null, discipline: 'Electrical', page: null },
     { id: 'i4', set_id: 'set0', position: 3, kind: 'sheet', number: 'M-101', title: 'HVAC plan', change: 'issued', was_title: null, discipline: 'Mechanical', page: null },
   ],
+  questions: [],
 }
 const clinic = gcProjectFromRows(rows)
 

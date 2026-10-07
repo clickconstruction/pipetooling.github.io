@@ -472,6 +472,8 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     steps['owner-notice'] = lastNotice
       ? { state: 'sent', headline: `Sent ${dayWord(lastNotice.served_at ?? lastNotice.filed_at, now)}`, detail: plural(notices.length, 'notice'), at: lastNotice.served_at ?? lastNotice.filed_at, link: null, action: lienWindowAction(lastNotice.job_id, 'notice') }
       : na('None')
+    // GC mode (v2.4799): the question email goes to a GC project's architect; the GC projects' own record lands with the company record.
+    steps['plan-question-email'] = na('GC mode: read on the GC project')
   }
 
   const liveJobs = rows.jobs.filter((j) => jobIdsOfCustomer.has(j.id) && j.status && j.status !== 'paid' && j.status !== 'archived').length

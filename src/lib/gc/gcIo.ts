@@ -130,10 +130,21 @@ export async function loadGcProjects(): Promise<GcProjectView[]> {
       exclusions: exclusionRows.filter((x) => mineIds.has(x.package_id)),
       sets: mySets,
       setItems: setItemRows.filter((i) => mySetIds.has(i.set_id)),
-      // asked_by_name lands with this step's migration; the generated row type learns it on the next regen.
       questions: questionRows
         .filter((q) => q.project_id === gc.project_id)
-        .map((q) => ({ ...q, asked_by_name: (q as { asked_by_name?: string | null }).asked_by_name ?? '' })),
+        .map((q) => ({
+          id: q.id,
+          package_id: q.package_id,
+          // The column lands with 20261007150000; a types file from before it reads it as absent.
+          asked_by_name: (q as { asked_by_name?: string | null }).asked_by_name ?? '',
+          text: q.text,
+          sheets: q.sheets ?? [],
+          asked_on: q.asked_on,
+          sent_to_architect_on: q.sent_to_architect_on,
+          answered_on: q.answered_on,
+          answer: q.answer ?? '',
+          in_set_id: q.in_set_id,
+        })),
     }
     out.push(gcProjectFromRows(rows))
   }
@@ -164,6 +175,32 @@ export async function loadGcTeam(): Promise<GcTeamMember[]> {
 export async function issuePlanSet(draft: IssuePlanSetDraft): Promise<string> {
   const id = taken(await supabase.rpc('gc_issue_plan_set', { set_in: issueDraftForRpc(draft) as Json }), 'put the set on the project')
   return id
+}
+
+// --- Questions about the plans (step 8) ---
+
+/** The office records a question a company asked by phone or email. The new question's id comes back. */
+export async function recordQuestion(q: { projectId: string; packageId: string | null; askedByName: string; text: string; sheets: string[] }): Promise<string> {
+  const id = taken(await supabase.rpc('gc_record_question', { q: q as unknown as Json }), 'record the question')
+  return id
+}
+
+/** The architect's answer on a question not answered yet. */
+export async function answerQuestion(questionId: string, answer: string): Promise<void> {
+  taken(await supabase.rpc('gc_answer_question', { q: { questionId, answer } as Json }), 'record the answer')
+}
+
+/** The question goes to the architect by email through gc-plan-question-email; the send is recorded on it. */
+export async function sendQuestionToArchitect(questionId: string): Promise<{ to: string }> {
+  const r = (await supabase.functions.invoke('gc-plan-question-email', { body: { question_id: questionId } })) as FnResult
+  const problem = await fnProblem(r, 'The question was not sent.')
+  if (problem) throw new Error(problem)
+  return { to: (r.data as { to: string }).to }
+}
+
+/** The question went to the architect some other way (by phone, in a meeting): the office marks it sent. */
+export async function markQuestionSent(questionId: string, on: string): Promise<void> {
+  taken(await supabase.from('gc_plan_questions').update({ sent_to_architect_on: on }).eq('id', questionId).select('id').single(), 'mark the question sent')
 }
 
 /** A line the office saves to the scope book by hand, with its section and what it leaves out. */
