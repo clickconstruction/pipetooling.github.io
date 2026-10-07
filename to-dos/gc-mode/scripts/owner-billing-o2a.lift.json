@@ -1,0 +1,183 @@
+{
+  "about": "Owner Billing's O2a (to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md, Kernels): everything of Billing the customer whose inputs are on main today, lifted to src/lib/gc on a spike that reads the schedule's lifts from main. ownerPayApp and what reads Building's kernels wait for O2b, after U2. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/owner-billing-o2a.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcOwnerBilling",
+      "to": "ownerBilling.ts",
+      "append": true,
+      "moves": [
+        "OWNER_BILL_DAY",
+        "OWNER_RETAINAGE_DEFAULT_PCT",
+        "OwnerLineKind",
+        "OwnerLine",
+        "OwnerPayApp",
+        "nextOwnerBillDay",
+        "ownerContractWorthNow",
+        "ownerContractWorthOf",
+        "ownerContractPrice",
+        "ownerPayAppsSent",
+        "appCertified",
+        "appClaimed",
+        "appPaid",
+        "appOpen",
+        "ownerRetainageOn",
+        "ownerRetainageWords",
+        "ownerCarriedForward",
+        "ownerPayAppHasWork",
+        "ownerPayAppToSend",
+        "OwnerAccount",
+        "ownerAccount",
+        "ownerExpectPaidOn",
+        "OurOwnerWaiver",
+        "ourOwnerWaivers",
+        "ownerReleasedRetainage",
+        "OwnerPayDue",
+        "ownerPayDue",
+        "ownerLateBills",
+        "OUR_COST_LINE_IDS",
+        "SpreadLine",
+        "spreadMarkup",
+        "markupOnTop",
+        "CHANGE_ORDER_REASON_WORDS",
+        "isChangeOrderLineId",
+        "daysWords",
+        "changeOrderScheduleWords",
+        "changeOrderPrice",
+        "changeOrderWho"
+      ]
+    },
+    {
+      "from": "gcOwnerBillingInterest",
+      "to": "ownerBillingInterest.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2a: interest on the customer's late bills, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcOwnerBillingInterest.ts`).\n */"
+    },
+    {
+      "from": "gcOwnerBillingRemind",
+      "to": "ownerBillingRemind.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2a: reminding a customer to pay a late bill, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcOwnerBillingRemind.ts`).\n */"
+    },
+    {
+      "from": "gcOwnerBillingFinish",
+      "to": "ownerBillingFinish.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2a: finishing late against the contract with the customer, moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcOwnerBillingFinish.ts`). It reads the schedule's kernels; nothing in\n * `schedule/` reads billing.\n */"
+    },
+    {
+      "from": "gcBids",
+      "to": "bids.ts",
+      "append": true,
+      "moves": [
+        "proposalTotals"
+      ]
+    },
+    {
+      "from": "gcWords",
+      "to": "words.ts",
+      "append": true,
+      "moves": [
+        "money"
+      ]
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "Owner Billing's shapes, and the shapes earlier lifts trimmed, written again with O2a's fields added (each field word for word).",
+      "fields": {
+        "GcProject": [
+          "id",
+          "name",
+          "startedOn",
+          "packages",
+          "schedule",
+          "whatIf",
+          "changeOrders",
+          "stage",
+          "owner",
+          "town",
+          "closedOn",
+          "waits",
+          "crewCounts",
+          "dailyLogs",
+          "customerId",
+          "customerRole",
+          "lostOn",
+          "rough",
+          "scheduleSends",
+          "address",
+          "generalConditions",
+          "contingencyPct",
+          "feePct",
+          "ownerContractWorth",
+          "ownerBilling",
+          "ownerLateInterest",
+          "ownerLateFinish"
+        ],
+        "GcCustomer": [
+          "id",
+          "name",
+          "contact",
+          "portalOn",
+          "payDays"
+        ],
+        "ChangeOrder": [
+          "id",
+          "number",
+          "packageId",
+          "description",
+          "status",
+          "days",
+          "daysOnChart",
+          "answeredOn",
+          "sentOn",
+          "reason",
+          "schedule"
+        ],
+        "OwnerBilling": "all",
+        "OwnerPayAppSent": "all",
+        "OwnerRetainageStep": "all",
+        "OwnerInterestBill": "all",
+        "ChangeOrderReason": "all"
+      },
+      "names": [
+        "GcProject",
+        "GcCustomer",
+        "ChangeOrder",
+        "OwnerBilling",
+        "OwnerPayAppSent",
+        "OwnerRetainageStep",
+        "OwnerInterestBill",
+        "ChangeOrderReason"
+      ]
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#CustomerRole": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DailyLog": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Partner": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#RoughSchedule": "schedule/types.ts",
+    "src/lib/gcMode/gcTypes.ts#ProjectSchedule": "schedule/types.ts",
+    "src/lib/gcMode/gcTypes.ts#ScheduleWait": "schedule/types.ts",
+    "src/lib/gcMode/gcTypes.ts#ScheduleSend": "schedule/types.ts",
+    "src/lib/gcMode/gcTypes.ts#ScheduleWhatIf": "schedule/types.ts",
+    "src/lib/gcMode/gcTypes.ts#CrewCount": "schedule/types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "tests": [
+    {
+      "from": "gcOwnerBilling.test.ts",
+      "to": "ownerBilling.test.ts",
+      "header": "/**\n * The tests of `gcOwnerBilling.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (Owner Billing's O2a). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer or read a kernel O2b moves stay on the spike, where they run against these kernels.\n */"
+    }
+  ]
+}
