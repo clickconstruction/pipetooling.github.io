@@ -421,7 +421,7 @@ export function GcNewProjectWindow({ customers: customerList, book, setsFor, tod
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }}>
       <div
         role="dialog"
         aria-modal="true"
@@ -431,7 +431,7 @@ export function GcNewProjectWindow({ customers: customerList, book, setsFor, tod
           color: 'var(--text-base)',
           borderRadius: 10,
           width: 'min(1040px, 100%)',
-          height: 'min(760px, 94vh)',
+          height: 'min(760px, 94vh, 100%)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
