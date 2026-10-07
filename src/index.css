@@ -3969,15 +3969,14 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 /* A statutory blank on the previewed paper (v2.4632): a red underline and its number, small enough that the form still reads as a form. */
 .lienPaperGap { display: inline-flex; align-items: center; gap: 0.35em; border-bottom: 2px solid #dc2626; color: #991b1b; font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 700; font-size: 0.82em; padding-bottom: 1px; white-space: nowrap; }
 /* The Notices list's pile titles (v2.4672): sticky siblings of the rows, each with its own top and bottom offset, so passed titles stack at the top and coming ones wait at the bottom; the pile the reader is in wears a blue bar. */
-.lienPileHead { position: sticky; z-index: 3; height: 30px; display: flex; align-items: center; gap: 0.5rem; padding: 0 0.9rem; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+/* The list's pile heads, the pane's section heads and its page labels: grey since v2.4787 (the owner's ask), so they read apart from the white rows and cards. */
+.lienPileHead { position: sticky; z-index: 3; height: 30px; display: flex; align-items: center; gap: 0.5rem; padding: 0 0.9rem; background: var(--bg-muted); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .lienPileHead[data-on="yes"] { color: var(--text-blue-700); box-shadow: inset 3px 0 0 var(--border-blue); }
 .lienPileHeadBtn { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; gap: 0.5rem; background: none; border: none; padding: 0; font: inherit; font-size: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; text-align: left; }
 .lienPileHeadBtn:hover, .lienPileHeadBtn:focus-visible { color: var(--text-strong); outline: none; }
 .lienPileHeadBtn .n { margin-left: auto; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: 0; }
 /* The notice pane's stacked heads (v2.4733): the list's pile head, full width of the pane, the fact in words at the right, its tail cut first. */
-.lienPaneHead { margin: 0 -1.1rem; z-index: 2; background: var(--bg-muted); }
-/* The pane's page labels (v2.4726) take the heads' grey too (v2.4787, the owner's ask): the heads read apart from the white cards. */
-[data-lien-desk-page-label] { background: var(--bg-muted); }
+.lienPaneHead { margin: 0 -1.1rem; z-index: 2; }
 .lienPaneHead .lienPaneHeadLabel { flex: none; }
 .lienPaneHead .n { font-weight: 700; font-size: 0.78rem; text-transform: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lienPaneHead .lienPaneHeadTail { font-weight: 500; color: var(--text-muted); }
