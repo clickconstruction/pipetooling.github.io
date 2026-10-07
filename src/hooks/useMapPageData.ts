@@ -8,14 +8,15 @@ import { gcOutcomeRowsForBid } from '../lib/bids/gcOutcomeRows'
 import { groupVersionsByGc } from '../lib/bids/gcPackets'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
 import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
+import { mapPageBidDueTone, mapPageJobSection, type BidBoardMapDueTone, type JobsMapSection } from '../lib/map/mapPageSections'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
-  'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status'
+  'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status' | 'collections_at'
 >
 type BidRow = Pick<
   Database['public']['Tables']['bids']['Row'],
-  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent' | 'customer_id'
+  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent' | 'bid_due_date' | 'customer_id'
 >
 
 type EstimateRow = Pick<
@@ -37,8 +38,14 @@ export type MapPageEntity = {
   sublabel: string
   linkTo: string
   meta: string
+  /** The Pipeline section (jobs only, v2.4802); null for a status off the pipeline. */
+  jobSection?: JobsMapSection | null
+  /** Billed and flagged for Collections (jobs only, v2.4802) — the pin wears the red ring. */
+  inCollections?: boolean
   /** Bid Board section this bid falls in (bids only); same kernel as the board's buckets. */
   bidSection?: SubmissionSectionKey
+  /** The Bid Board's due ring for an unsent bid (bids only, v2.4802). */
+  bidDueTone?: BidBoardMapDueTone | null
   /** The bid's GC/Builder customer id (bids only) — drives /map?builder= focus (v2.1162). */
   bidCustomerId?: string
   /**
@@ -90,11 +97,11 @@ export function useMapPageData(enabled: boolean) {
     try {
       const [jobRows, bidRows, estRows] = await Promise.all([
         withSupabaseRetry<JobRow[]>(
-          async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, status').order('job_name'),
+          async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, status, collections_at').order('job_name'),
           'map jobs_ledger'
         ),
         withSupabaseRetry<BidRow[]>(
-          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent, customer_id').order('project_name'),
+          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent, bid_due_date, customer_id').order('project_name'),
           'map bids'
         ),
         withSupabaseRetry<EstimateRow[]>(
@@ -152,6 +159,8 @@ export function useMapPageData(enabled: boolean) {
           sublabel: j.hcp_number,
           linkTo: `/jobs?edit=${encodeURIComponent(j.id)}`,
           meta: j.status,
+          jobSection: mapPageJobSection(j.status),
+          inCollections: j.collections_at != null && mapPageJobSection(j.status) === 'billed',
         })
       }
       for (const b of bidRows) {
@@ -172,6 +181,7 @@ export function useMapPageData(enabled: boolean) {
           linkTo: `/bids?bidId=${encodeURIComponent(b.id)}`,
           meta: b.outcome ?? '',
           bidSection: getSubmissionSectionKey(b) ?? undefined,
+          bidDueTone: mapPageBidDueTone(b.bid_due_date, b.outcome, b.bid_date_sent),
           bidCustomerId: b.customer_id ?? undefined,
           bidGcSections: gcSectionsByBid.get(b.id),
         })

@@ -50,6 +50,8 @@ export type PinsMapCanvasProps = {
   scrollZoomAfterClick?: boolean
   /** Leaflet only (v2.4796): more react-leaflet layers mounted inside the map — the Map page's draw tool, court layer and fly-to. The Google canvas ignores them. */
   children?: ReactNode
+  /** What a cluster disc counts, for its hover title (v2.4802): "bids" unless the caller says. */
+  clusterNoun?: string
 }
 
 /**
@@ -91,14 +93,14 @@ function clusterIcon(c: PinCluster<MapCanvasPin>): L.DivIcon {
   })
 }
 
-function ClusterMarker({ cluster }: { cluster: PinCluster<MapCanvasPin> }) {
+function ClusterMarker({ cluster, noun }: { cluster: PinCluster<MapCanvasPin>; noun: string }) {
   const map = useMap()
   const icon = useMemo(() => clusterIcon(cluster), [cluster])
   return (
     <Marker
       position={[cluster.lat, cluster.lng]}
       icon={icon}
-      title={`${cluster.count} bids here — click to zoom in`}
+      title={`${cluster.count} ${noun} here — click to zoom in`}
       eventHandlers={{
         click: () => {
           const b = clusterBounds(cluster)
@@ -134,7 +136,7 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   })
 }
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId, scrollZoomAfterClick = false, children, clusterNoun = 'bids' }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
   const [mapClicked, setMapClicked] = useState(false)
@@ -166,7 +168,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
         />
       ) : null}
       {clusters.map((c) => (
-        <ClusterMarker key={c.id} cluster={c} />
+        <ClusterMarker key={c.id} cluster={c} noun={clusterNoun} />
       ))}
       {singlePins.map((p) => {
         const selected = p.id === selectedId

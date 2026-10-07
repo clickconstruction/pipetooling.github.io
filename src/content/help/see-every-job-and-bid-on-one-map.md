@@ -2,7 +2,7 @@
 title: see every job and bid on one map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out
+keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out, cluster, status colors, working, waiting, billed, collections, paid, lost
 ---
 The Map page plots every job, bid and estimate that has an address. It is the whole company on one map. The Bid Board and the Pipeline each have a map of their own list. This page has everything at once.
 
@@ -12,7 +12,25 @@ The map opens on the office. The dark diamond is the office. The dashed rings ar
 
 ## Reading the pins
 
-Each pin is one record. {{chip:blue|Jobs}} are blue. **Bids** are orange. {{chip:green|Estimates}} are green. The pills next to the title are the key and the switches. Tap one to hide or show that kind. With Bids on, the small chips pick the bid stages to show.
+Each pin is one record. Its color says where the record stands, the same color its row's dot has elsewhere in the app.
+
+- A job takes its Pipeline section. {{chip:yellow|Waiting}} is amber and {{chip:blue|Working}} is blue. **Ready to bill** is teal, **Billed** is orange and {{chip:green|Paid}} is green. A job in Collections keeps Billed's color and wears a **red ring**.
+- A bid takes its Bid Board section. {{chip:gray|Unsent}} is grey and {{chip:yellow|Pending}} is yellow. {{chip:green|Won}} is green, **Started** is dark green and {{chip:red|Lost}} is red. An unsent bid that is due soon wears an **amber ring**. Once it is past due the ring turns **red**.
+- An estimate is {{chip:purple|violet}}.
+
+The chips over the map are the key and the switches. Each one carries its count of placed records. Tap a chip to hide or show its pins. **Paid, Lost and Estimates start off**, so the live work is what you see first. A chip that is off still says how many pins it hides.
+
+:::example Where is the work this month
+Leave the chips as they open. What is left is every live job and every live bid, on one map.
+:::
+
+## Cluster the piles
+
+Around San Antonio the pins sit on top of each other. {{button:outline|Cluster}} sits beside {{button:outline|Fit all}}. Cluster groups pins that overlap at the current zoom into one disc with a count on it.
+
+- The disc takes the color most of its pins have. The disc wears a **red** or **amber** ring when any pin inside is in Collections, overdue or due soon. So nothing urgent hides in a pile.
+- **Click a disc** to zoom the map onto its pins. If you zoom in on your own, the discs break back into pins as soon as they have room.
+- Clustering is **off unless you turn it on**. The choice is remembered on that device. The button reads **Clustered ✓** while it is on.
 
 ## Opening a record from a pin
 
