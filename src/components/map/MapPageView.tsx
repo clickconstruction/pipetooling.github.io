@@ -39,6 +39,16 @@ import {
   builderBidOutcomeCounts,
 } from '../../lib/map/builderBidMapFocus'
 import { supabase } from '../../lib/supabase'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { CourtAreasLayer } from './CourtAreasLayer'
+import { CourtAreasPanel, type CourtAreaListed } from './CourtAreasPanel'
+import { courtCoverage, type CourtAreaDraft } from '../../lib/legal/courtAreasDraft'
+import type { CourtAreaPolygon } from '../../lib/legal/courtAreas'
+import { insertCourtArea, listCourtAreas, retireCourtArea, updateCourtArea } from '../../lib/legal/courtAreasIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 
 const openLinkLikeStyle: CSSProperties = {
@@ -272,12 +282,17 @@ function MapFlyTo({
 function GeomanDraw({
   onFilterPolygon,
   clearSignal,
+  paused = false,
 }: {
   onFilterPolygon: (poly: Feature<Polygon> | null) => void
   clearSignal: number
+  /** While the Court areas mode is on (v2.4769), a drawn shape is an area, not a filter. */
+  paused?: boolean
 }) {
   const map = useMap()
   const layerRef = useRef<L.Layer | null>(null)
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
 
   useEffect(() => {
     const m = map as L.Map & {
@@ -289,6 +304,7 @@ function GeomanDraw({
     })
 
     const onCreate = (ev: { layer: L.Layer }) => {
+      if (pausedRef.current) return
       if (layerRef.current) {
         map.removeLayer(layerRef.current)
         layerRef.current = null
@@ -607,6 +623,68 @@ export function MapPageView() {
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)
+  // Court areas mode (v2.4769): the office draws its justice precincts on this map.
+  const { role: authRole, user: authUser } = useAuth()
+  const canDrawCourtAreas = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const [courtMode, setCourtMode] = useState(false)
+  const [courtAreas, setCourtAreas] = useState<CourtAreaListed[]>([])
+  const [courtPending, setCourtPending] = useState<CourtAreaPolygon | null>(null)
+  const [courtClear, setCourtClear] = useState(0)
+  const [courtBusy, setCourtBusy] = useState(false)
+  const [courtError, setCourtError] = useState<string | null>(null)
+  const courtDb = supabase as unknown as SupabaseClient
+  const reloadCourtAreas = useCallback(async () => {
+    try {
+      setCourtAreas(await listCourtAreas(courtDb))
+      setCourtError(null)
+    } catch (e) {
+      setCourtError(formatErrorMessage(e, 'Could not load the court areas.'))
+    }
+  }, [courtDb])
+  useEffect(() => {
+    if (courtMode) void reloadCourtAreas()
+  }, [courtMode, reloadCourtAreas])
+  const onCourtDrawn = useCallback((polygon: CourtAreaPolygon) => setCourtPending(polygon), [])
+  const courtAct = useCallback(async (fallback: string, act: () => Promise<void>) => {
+    setCourtBusy(true)
+    try {
+      await act()
+      await reloadCourtAreas()
+      setCourtError(null)
+    } catch (e) {
+      setCourtError(formatErrorMessage(e, fallback))
+    } finally {
+      setCourtBusy(false)
+    }
+  }, [reloadCourtAreas])
+  const saveCourtArea = useCallback((draft: CourtAreaDraft) => {
+    const polygon = courtPending
+    if (!polygon) return
+    void courtAct('Could not save the area.', async () => {
+      await insertCourtArea(courtDb, draft, polygon, authUser?.id ?? null)
+      setCourtPending(null)
+      setCourtClear((c) => c + 1)
+    })
+  }, [courtAct, courtDb, courtPending, authUser?.id])
+  const discardCourtShape = useCallback(() => {
+    setCourtPending(null)
+    setCourtClear((c) => c + 1)
+  }, [])
+  const renameCourtArea = useCallback((id: string, draft: CourtAreaDraft) => void courtAct('Could not change the area.', () => updateCourtArea(courtDb, id, draft)), [courtAct, courtDb])
+  const confirmDialog = useConfirmDialog()
+  const removeCourtArea = useCallback((a: CourtAreaListed) => {
+    void (async () => {
+      if (!(await confirmDialog({ title: 'Remove this area?', message: `${a.county} precinct ${a.precinct} comes off the map. Addresses inside it lose their precinct on the next classification.`, confirmLabel: 'Remove', danger: true }))) return
+      await courtAct('Could not remove the area.', () => retireCourtArea(courtDb, a.id))
+    })()
+  }, [confirmDialog, courtAct, courtDb])
+  const focusCourtArea = useCallback((a: CourtAreaListed) => {
+    const ring = (a.polygon.type === 'Polygon' ? a.polygon.coordinates[0] : a.polygon.coordinates[0]?.[0]) ?? []
+    if (ring.length === 0) return
+    const lat = ring.reduce((sum, c) => sum + (c[1] ?? 0), 0) / ring.length
+    const lng = ring.reduce((sum, c) => sum + (c[0] ?? 0), 0) / ring.length
+    setMapFlyTo({ lat, lng })
+  }, [])
   const [mapView, setMapView] = useState<{
     lat: number
     lng: number
@@ -665,6 +743,7 @@ export function MapPageView() {
     [searchFiltered]
   )
   const points = useMemo((): [number, number][] => withCoords.map((e) => [e.lat!, e.lng!]), [withCoords])
+  const courtCover = useMemo(() => courtCoverage(withCoords.map((e) => ({ label: e.tableLabel, lat: e.lat, lng: e.lng })), courtAreas), [withCoords, courtAreas])
   const tableRows = useMemo(
     () => filterEntitiesByPolygon(searchFiltered, filterPoly),
     [searchFiltered, filterPoly]
@@ -756,6 +835,18 @@ export function MapPageView() {
         )}
         <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
+          {canDrawCourtAreas ? (
+            <button
+              type="button"
+              data-court-areas-toggle
+              aria-pressed={courtMode}
+              onClick={() => { setCourtMode((m) => !m); setCourtPending(null); setCourtClear((c) => c + 1) }}
+              title={courtMode ? 'Back to the map' : 'Draw the justice precincts the office files in'}
+              style={{ ...headerToolbarButtonStyle, ...(courtMode ? { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)' } : null) }}
+            >
+              Court areas{courtAreas.length ? ` · ${courtAreas.length}` : ''}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setClearDraw((c) => c + 1)}
@@ -903,7 +994,8 @@ export function MapPageView() {
             />
             <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
             {points.length > 0 ? <FitBoundsToEntities points={points} /> : null}
-            <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} />
+            <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
+            {courtMode || courtAreas.length ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
             {withCoords.map((e) => (
               <CircleMarker
                 key={`${e.kind}-${e.id}`}
@@ -944,6 +1036,11 @@ export function MapPageView() {
           <MapLegend show={{ job: showJobs, bid: showBids, estimate: showEst }} />
         </div>
         <div style={{ flex: '1 1 auto', minWidth: 0, width: '100%' }}>
+          {courtMode ? (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <CourtAreasPanel areas={courtAreas} coverage={courtCover} pending={courtPending !== null} busy={courtBusy} error={courtError} onSave={saveCourtArea} onCancelPending={discardCourtShape} onRename={renameCourtArea} onRemove={removeCourtArea} onFocus={focusCourtArea} />
+            </div>
+          ) : null}
           <MapEntityTable
             rows={tableRows}
             title={tableTitle}
