@@ -70,8 +70,10 @@ the four-step window (project → plans → trades → each scope) that writes t
 `gc_create_project`. Who to ask (the companies) is not here yet. **Open the scope book** (`?book=1`)
 is every scope line we keep by trade: edit, add, fold duplicates, save a project's scope as a set.
 **A new set of plans came in** (`?set=<project id>`) puts an addendum, a bulletin or a whole new set on the
-project through `gc_issue_plan_set`. Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`,
-`/help?g=issue-a-new-set-of-plans`.
+project through `gc_issue_plan_set`. **The plans** (`?plans=<project id>`) is the plans window: the sheets and
+the manual as they stood at each set, what each set changed and took out, and the scope that reads from a sheet.
+Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=issue-a-new-set-of-plans`,
+`/help?g=read-the-plans-of-a-gc-project`.
 Roles: dev only.
 
 ### /bids — Bids (the estimating hub)
