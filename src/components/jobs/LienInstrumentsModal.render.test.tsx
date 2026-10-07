@@ -6,7 +6,7 @@
  * only — the statement math lives in src/lib/jobsDocuments/demandLetter.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
 
@@ -19,6 +19,8 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: async () => null }))
+// The pay codes (v2.4849) are drawn by a canvas the test runner has not got; the rows stand without them.
+vi.mock('../../lib/jobs/lienNoticePayPageAssets', () => ({ buildPayPageAssets: async () => ({}) }))
 vi.mock('../../lib/supabaseAccessTokenForEdge', () => ({ getAccessTokenForEdgeFunctions: async () => null }))
 
 const INV = makeInvoice({
@@ -241,6 +243,31 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(document.querySelector('[data-demand-exhibit="C"]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Print packet' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Download PDF · 3 documents' })).toBeTruthy()
+  })
+
+  it('carries a pay code per covered Stripe bill under the amount box, by a tick that starts on; a paper bill offers none (v2.4849)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ invoices: [{ ...INV, stripe_invoice_id: 'in_878a' }] })} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-demand-amount-box]')).toBeTruthy())
+    const tick = screen.getByRole('checkbox', { name: /^Pay codes/ }) as HTMLInputElement
+    expect(tick.checked).toBe(true)
+    expect(tick.closest('label')!.textContent).toContain('one code under the amount box')
+    const codes = document.querySelector('[data-demand-pay-codes]') as HTMLElement
+    expect(codes).toBeTruthy()
+    expect(codes.previousElementSibling!.hasAttribute('data-demand-amount-box')).toBe(true)
+    expect(codes.textContent).toContain('Pay online')
+    expect(codes.textContent).toContain('Invoice #1')
+    expect(codes.textContent).toContain('$1,710.00')
+    expect(codes.textContent).toContain('clicktooling.com/pay/inv-867')
+    fireEvent.click(tick)
+    expect(document.querySelector('[data-demand-pay-codes]')).toBeNull()
+    cleanup()
+    // A paper bill has no payment page: the tick is greyed and the letter carries no codes.
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await settle()
+    await waitFor(() => expect(document.querySelector('[data-demand-amount-box]')).toBeTruthy())
+    expect(document.querySelector('[data-demand-pay-codes-none]')!.textContent).toContain('not offered')
+    expect(document.querySelector('[data-demand-pay-codes]')).toBeNull()
   })
 
   it('names its basis on every line (v2.3433): the fee clock, the court, the interest, and a greyed lien line with the reason', async () => {
