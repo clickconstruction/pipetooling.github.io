@@ -370,10 +370,13 @@ sets with 7 sheets, S-101 gone, S-102 new, the Foundations line retied to S-102 
 *Lines left with nothing to read* list, and the Drive check run on the set (the job folder reads
 *only some people can open it*, as it should). Step 9, the plans window on real data (`planSetReads.ts` folds a set's sheets and
 specs from the set items; `GcPlansWindow.tsx` opens the Drive link, no stand-in drawings; guide
-`read-the-plans-of-a-gc-project`), is v2.4774 on the same stack. Step 8 is cut in two: 8a,
-v2.4775, is the record behind the window (migration `20261007130000_gc_plan_questions_rpcs`:
+`read-the-plans-of-a-gc-project`), merged as v2.4774 (clickconstruction/pipetooling.github.io#4791). Its
+check passed on prod 2026-10-07: the permit set reads back with S-101 under *Taken out*, S-102 new,
+and S-102 listing the Concrete lines that read from it. Step 8 is cut in two: 8a,
+v2.4779 (#4794, renumbered twice as main moved), is the record behind the window (migration
+`20261007150000_gc_plan_questions_rpcs`:
 `asked_by_name`, `gc_record_question`, `gc_answer_question`, the closing day, and
-`gc_issue_plan_set` carrying the answers in a set; the kernel `questions.ts`); 8b, v2.4776, is the
+`gc_issue_plan_set` carrying the answers in a set; the kernel `questions.ts`); 8b, v2.4780, is the
 questions window (`GcQuestions.tsx`), the edge function `gc-plan-question-email` (Reply-To the PM)
 and the guide `ask-the-architect-about-the-plans`. The stack merges in the order 6b, 9, 8a (then its
 migration and types), 8b. Step 7, the set email, waits on the company record (no lane has built it).
