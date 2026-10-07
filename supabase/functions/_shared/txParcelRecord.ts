@@ -382,6 +382,8 @@ export function countySourceLabel(source: string): string {
       return 'from the map pin'
     case 'city':
       return 'guessed from the city — confirm it'
+    case 'map':
+      return "from the office's court map"
     case 'manual':
       return 'typed'
     default:
