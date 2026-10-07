@@ -47,3 +47,20 @@ export async function geocodeWithCensus(address: string): Promise<CensusGeocodeR
   }
   return { ok: false, error: 'not_found' }
 }
+
+/**
+ * The county a point sits in, from the Census geographies lookup (free, no key, US only) —
+ * v2.4783, so a pin can say its county whatever geocoder placed it. '' when unknown.
+ */
+export async function censusCountyFromPoint(lat: number, lng: number): Promise<string> {
+  const url = `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lng}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) })
+    if (!r.ok) return ''
+    const j = (await r.json()) as { result?: { geographies?: Record<string, Array<{ NAME?: string }>> } }
+    const name = (j.result?.geographies?.['Counties']?.[0]?.NAME ?? '').trim()
+    return name.replace(/\s+County$/i, '')
+  } catch {
+    return ''
+  }
+}

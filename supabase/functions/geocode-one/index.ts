@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle, type GoogleGeocodeErrorCode } from '../_shared/googleGeocode.ts'
-import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
+import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeocode.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +24,8 @@ function jsonResponse(status: number, body: Record<string, unknown>) {
 
 type NominatimHit = { lat: string; lon: string }
 
-type OkCache = { ok: true; address_normalized: string; lat: number; lng: number; fromCache: true; source: 'cache' }
+/** `county` (v2.4783): Google's answer, else the county the point sits in by the Census lookup; '' when neither knows. */
+type OkCache = { ok: true; address_normalized: string; lat: number; lng: number; fromCache: true; source: 'cache'; county?: string }
 type OkGeocode = {
   ok: true
   address_normalized: string
@@ -32,10 +33,17 @@ type OkGeocode = {
   lng: number
   fromCache: false
   source: 'nominatim' | 'google' | 'census'
+  county?: string
   /** Present when `refresh_google_only` was used. */
   refreshed?: true
 }
 type Fail = { ok: false; address_normalized: string; error: string; detail?: string }
+
+/** The 200 answer; an ok one without a county asks the Census lookup for the point's (v2.4783). */
+async function answer(out: OkCache | OkGeocode | Fail): Promise<Response> {
+  if (out.ok && !out.county) out.county = await censusCountyFromPoint(out.lat, out.lng)
+  return await answer(out)
+}
 
 function googleErrorToClientCode(e: GoogleGeocodeErrorCode): string {
   if (e === 'not_found') return 'not_found'
@@ -133,7 +141,7 @@ serve(async (req) => {
         error: 'google_unconfigured',
         detail: 'GOOGLE_MAPS_API_KEY is not set for Edge Functions',
       }
-      return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return await answer(out)
     }
     const g = await geocodeWithGoogle(display, googleKey)
     if (g.ok) {
@@ -148,9 +156,10 @@ serve(async (req) => {
         lng: g.lng,
         fromCache: false,
         source: 'google',
+        county: g.county,
         refreshed: true,
       }
-      return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return await answer(out)
     }
     const out: Fail = {
       ok: false,
@@ -158,7 +167,7 @@ serve(async (req) => {
       error: googleErrorToClientCode(g.error),
       ...(g.detail ? { detail: g.detail } : {}),
     }
-    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return await answer(out)
   }
 
   const { data: existing, error: exErr } = await supabase
@@ -178,7 +187,7 @@ serve(async (req) => {
       fromCache: true,
       source: 'cache',
     }
-    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return await answer(out)
   }
 
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
@@ -205,7 +214,7 @@ serve(async (req) => {
           fromCache: false,
           source: 'nominatim',
         }
-        return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        return await answer(out)
       }
     }
   }
@@ -225,8 +234,9 @@ serve(async (req) => {
         lng: g.lng,
         fromCache: false,
         source: 'google',
+        county: g.county,
       }
-      return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      return await answer(out)
     }
     googleFail = {
       ok: false,
@@ -251,7 +261,7 @@ serve(async (req) => {
       fromCache: false,
       source: 'census',
     }
-    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return await answer(out)
   }
   const censusNote = c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : 'no match from US Census'
 
@@ -261,12 +271,12 @@ serve(async (req) => {
       ...googleFail,
       detail: googleFail.detail ? `${googleFail.detail}; ${censusNote}` : censusNote,
     }
-    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return await answer(out)
   }
   if (!r.ok) {
     const out: Fail = { ok: false, address_normalized: key, error: 'upstream', detail: censusNote }
-    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return await answer(out)
   }
   const out: Fail = { ok: false, address_normalized: key, error: 'not_found', detail: censusNote }
-  return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  return await answer(out)
 })

@@ -148,11 +148,12 @@ export function makeUseAuthValue(overrides: Record<string, unknown> = {}) {
   }
 }
 
-/** Factory for `vi.mock('../../hooks/useAuth', …)`: useAuth() + passthrough AuthProvider. */
+/** Factory for `vi.mock('../../hooks/useAuth', …)`: useAuth() and useOptionalAuth() + passthrough AuthProvider. */
 export function useAuthModuleMock(overrides: Record<string, unknown> = {}) {
   const value = makeUseAuthValue(overrides)
   return {
     useAuth: () => value,
+    useOptionalAuth: () => value,
     AuthProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
   }
 }

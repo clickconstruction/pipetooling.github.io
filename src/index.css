@@ -5133,6 +5133,8 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalPortalPair > * { min-width: 0; }
 .legalJobTimeline { display: grid; grid-template-columns: minmax(150px, 190px) minmax(0, 1fr); gap: 12px; align-items: start; }
 /* The firm's Lien grid (v2.4749): a rail of GCs beside the table; colors come inline from portalTheme. */
+/* The job address pins itself (v2.4783): the placing… word breathes while the lookup runs. */
+@keyframes jobAddressPinPulse { 50% { opacity: 0.4; } }
 /* Reach the office (v2.4755): one line under the letterhead; a column on a phone. Colors inline from portalTheme. */
 .legalReachStrip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 8px 12px; margin: 12px 0 0; border-radius: 6px; font-size: 12.5px; }
 .legalReachWho { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }

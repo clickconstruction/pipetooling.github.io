@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job form: the address pins itself — plan and mockup</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F3F4F6; color: #111827; font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid #111827; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p, .lede { margin: 8px 0 0; color: #374151; max-width: 100ch; }
+  h2 { font-size: 18px; margin: 30px 0 6px; }
+  h3 { font-size: 15px; margin: 18px 0 4px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.new { background: #111827; color: #fff; } .cap.alt { background: #E5E7EB; color: #374151; }
+  .pane { background: #fff; border: 1px solid #D1D5DB; border-top: none; border-radius: 0 0 8px 8px; padding: 14px 16px; }
+  ul.notes { margin: 10px 0 0; padding-left: 20px; color: #374151; max-width: 110ch; }
+  ul.notes li { margin: 5px 0; }
+  table.plan { border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  table.plan th, table.plan td { border: 1px solid #D1D5DB; padding: 5px 8px; text-align: left; vertical-align: top; }
+  table.plan th { background: #F3F4F6; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #374151; }
+  /* the app's form */
+  .form { max-width: 560px; }
+  .form label { display: block; font-size: 12.5px; font-weight: 600; margin: 14px 0 4px; color: #1f2937; }
+  .form .in { border: 1px solid #aab2bd; border-radius: 6px; padding: 7px 10px; font-size: 14px; background: #fff; }
+  .line { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 12px; margin-top: 5px; }
+  .tag { font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #9ca3af; }
+  .ok { color: #16a34a; } .amber { color: #d97706; } .muted { color: #6b7280; } .faint { color: #9ca3af; }
+  .chip { display: inline-block; font-size: 11.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid #aab2bd; color: #1f2937; background: #fff; }
+  .pulse { color: #6b7280; animation: p 1.2s ease-in-out infinite; } @keyframes p { 50% { opacity: .4 } }
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><p class="eyebrow">Job form · plan and mockup</p><h1>The address pins itself</h1>
+<p>The owner, 2026-10-07: <i>right now geocoding occurs when I open the /map page, but I would like it to occur when someone puts in an address in new job and edit job modals. How can I offer this tastefully?</i> Behind it: 149 property records have no point, so no court map can place them, and the Map page only pins what it is opened for.</p></header>
+
+<h2>What is already there</h2>
+<ul class="notes">
+  <li>Under the Job address input sits a quiet line, <b>ON STATEMENTS</b>, that shows how the address will read on paper and offers a one-tap comma fix. Advice, never law: nothing there blocks a save.</li>
+  <li><code>geocode-one</code> already answers one address for the office roles and estimators: the cache first, then Nominatim, then Google, then Census, and writes the pin to <code>address_geocodes</code>. The Map page and the property record's parcel lookup use the same cache. Nothing in the job's own row changes.</li>
+</ul>
+
+<h2>The mockup — one more quiet line, four states</h2>
+<div class="cap new">New job · the office types or pastes an address</div>
+<div class="pane"><div class="form">
+  <label>Job address</label>
+  <div class="in">380 TX-123, Seguin, TX 78155</div>
+  <div class="line"><span class="tag">On statements</span><b>380 TX-123</b><span class="muted">Seguin, TX 78155</span><span class="ok">✓</span></div>
+  <div class="line"><span class="tag">On the map</span><span class="pulse">placing…</span></div>
+</div></div>
+
+<div class="cap new" style="margin-top:14px">A second later</div>
+<div class="pane"><div class="form">
+  <label>Job address</label>
+  <div class="in">380 TX-123, Seguin, TX 78155</div>
+  <div class="line"><span class="tag">On statements</span><b>380 TX-123</b><span class="muted">Seguin, TX 78155</span><span class="ok">✓</span></div>
+  <div class="line"><span class="tag">On the map</span><span>Seguin · Guadalupe County</span><span class="ok">✓</span><span class="faint">· pinned from the street map</span><span class="chip">Not right? Pin from Google</span></div>
+</div></div>
+
+<div class="cap new" style="margin-top:14px">Edit job · an older job the map never placed</div>
+<div class="pane"><div class="form">
+  <label>Job address</label>
+  <div class="in">595 Cardinal Rd, Rosanky, TX 78953</div>
+  <div class="line"><span class="tag">On statements</span><b>595 Cardinal Rd</b><span class="muted">Rosanky, TX 78953</span><span class="ok">✓</span></div>
+  <div class="line"><span class="tag">On the map</span><span class="muted">not placed yet</span><span class="chip">Place it</span></div>
+</div></div>
+
+<div class="cap alt" style="margin-top:14px">When no map can find it</div>
+<div class="pane"><div class="form">
+  <label>Job address</label>
+  <div class="in">Zack's House</div>
+  <div class="line"><span class="tag">On statements</span><b>Zack's House</b><span class="amber">no city — add one so it reads right</span></div>
+  <div class="line"><span class="tag">On the map</span><span class="amber">could not place it</span><span class="muted">· it needs a street, a city or a ZIP; the night will try once more</span></div>
+</div></div>
+
+<h2>The rules behind the line</h2>
+<ul class="notes">
+  <li><b>When it runs.</b> On blur, or 1.2 s after the last keystroke once the address looks whole (the statements line has found a city, or there is a ZIP). Never on every keystroke, so a half-typed street costs no lookup. Edit job reads the cache the moment it opens, with no lookup; an unplaced address shows <i>Place it</i> and does nothing until tapped or blurred after an edit.</li>
+  <li><b>What it says.</b> The city and county the geocoder answered, so a wrong pin is visible — a Kyle address that reads <i>San Marcos · Hays County</i> is caught at the desk, not on the firm's page. <i>Pinned from the street map</i> (Nominatim) or <i>from Google</i>; <b>Not right? Pin from Google</b> is the existing refresh. </li>
+  <li><b>What it never does.</b> Block the save, change the job's address text, or write anything on the job. The pin lives in the cache under the address; edit the address and the line resets and runs again.</li>
+  <li><b>What it writes.</b> The cache row, and — new — the geocoder's county onto a linked property record that has none (<code>county_source = 'geocoder'</code>, the rung the record already knows), so the firm's page reads <i>Guadalupe · JP Pct ?</i> before the precinct is drawn.</li>
+  <li><b>The backlog.</b> The 149 old records are not waiting on someone to open each job: the precinct nightly geocodes up to 300 unplaced property addresses a night through the same cache, then classifies them. The job form keeps new addresses from joining the backlog.</li>
+</ul>
+
+<h2>The plan</h2>
+<table class="plan"><thead><tr><th>PR</th><th>What ships</th><th>Where</th><th>Size</th></tr></thead><tbody>
+<tr><td>1</td><td><b>The line.</b> <code>JobFormAddressPin</code> under the statements line in <code>JobFormIdentityFields</code>: the cache read on open, the run on blur / whole-address pause, the four states, the Google chip. Kernel <code>addressPinWords.ts</code> (when to run, the words) with tests; a render smoke. <code>geocode-one</code> returns the county it saw (additive) so the line can say it.</td><td>job form, <code>geocode-one</code></td><td>M</td></tr>
+<tr><td>2</td><td><b>The county onto the record.</b> When the pin lands and the job's linked property record has no county, write the geocoder's county as <code>geocoder</code>. Same for the precinct nightly: a record with a point and no county takes the county from the point.</td><td><code>court-precinct-nightly</code>, the pin line</td><td>S</td></tr>
+<tr><td>3</td><td><b>The backlog.</b> The precinct nightly geocodes up to 300 property addresses with no point before it classifies, through <code>geocode-one</code>'s ladder; the Map page's own geocoding is unchanged.</td><td><code>court-precinct-nightly</code></td><td>S</td></tr>
+</tbody></table>
+
+<h2>Is this the best we can do?</h2>
+<ul class="notes">
+  <li><b>First draft had a button.</b> <i>Pin on the map</i> beside the address. Dropped: a button is a chore someone skips. The line runs by itself and the only chip is for an answer that looks wrong, or an old job that was never placed.</li>
+  <li><b>First draft ran on every pause.</b> That geocodes <i>380 TX</i>, <i>380 TX-123, Se</i>… and spends Google calls on fragments. Now it waits for a whole-looking address or a blur.</li>
+  <li><b>First draft said only ✓.</b> A tick hides a wrong pin. The city and county make the answer checkable in a glance, and they are the same words the court map needs.</li>
+  <li><b>First draft left the 149 to the job form.</b> Nobody reopens every old job. The nightly carries the backlog; the form stops it growing.</li>
+  <li><b>Not done.</b> The bid form's address (bids show on the Map page too) can take the same line later; the tech's sub-labor form keeps its plain address, since techs cannot call the geocoder today and should not be made to wait on it.</li>
+</ul>
+</div></body></html>

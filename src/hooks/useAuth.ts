@@ -306,6 +306,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return createElement(AuthContext.Provider, { value }, children)
 }
 
+/** The auth, or null outside an AuthProvider (v2.4783) — for a line that should stay silent in a render smoke rather than throw. */
+export function useOptionalAuth(): UseAuthReturn | null {
+  return useContext(AuthContext)
+}
+
 export function useAuth(): UseAuthReturn {
   const ctx = useContext(AuthContext)
   if (ctx == null) {

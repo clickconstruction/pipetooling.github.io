@@ -30,6 +30,7 @@ vi.mock('../hooks/useAuth', async () => {
   const { makeUseAuthValue } = await import('../test/renderSmokeMocks')
   return {
     useAuth: () => makeUseAuthValue({ role: mockRole }),
+    useOptionalAuth: () => makeUseAuthValue({ role: mockRole }),
     AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   }
 })

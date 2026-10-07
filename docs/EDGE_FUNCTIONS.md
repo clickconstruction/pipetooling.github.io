@@ -2185,6 +2185,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-one
 
+> **v2.4783 — the county on every ok answer**: `county` is Google's `administrative_area_level_2` on a Google answer, else the county the point sits in from the Census geographies lookup ([`_shared/censusGeocode.ts`](../supabase/functions/_shared/censusGeocode.ts) `censusCountyFromPoint`, free, no key), for cache hits too; '' when neither knows. The job form's *On the map* line reads it. **Redeploy required** (the old answer has no county; the line then reads *placed*).
+
 **Purpose**: Single-address geocoding for **`address_geocodes`** (**`dev`**, **`master_technician`**, **`assistant`**, **`estimator`** only): same cache and upsert as batch. **Map** bulk resolution uses **`geocode-address-batch`** from [`useMapPageData.ts`](../src/hooks/useMapPageData.ts). **`geocode-one`** covers **Review geocodes** **`refresh_google_only`**, **Settings** default map label lookup ([`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts)), and any caller that wants one row per request. For a normal (non **`refresh_google_only`**) miss: **Nominatim** first, then **Google** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates.
 
 **Endpoint**: `POST /functions/v1/geocode-one`
