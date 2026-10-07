@@ -874,3 +874,6 @@ verify_jwt = false
 # The pay offer (v2.4704): apply = the office's JWT checked in the function; expire = pg_cron with X-Cron-Secret, so the gateway cannot demand a JWT.
 [functions.lien-pay-offer]
 verify_jwt = false
+
+[functions.gc-drive-access]
+verify_jwt = false

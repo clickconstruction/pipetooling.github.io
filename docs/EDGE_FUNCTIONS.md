@@ -92,6 +92,7 @@ when_to_read:
    - [twin-mcp](#twin-mcp)
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
+   - [gc-drive-access](#gc-drive-access)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -973,6 +974,18 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` (bid number accepts `b`/`bp` prefixes) → `{ success, folder_id, folder_link, folder_created, plans_link, plans_reused, upload_note, stamped }`. Drive secrets unset → **503** with a setup pointer.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the Jobs folder inside the Shared Drive). Optional `DRIVE_IMPERSONATE_USER` (domain-wide delegation) — leave unset unless the delegation grant actually exists; set-but-ungranted breaks every upload at token exchange.
+
+---
+
+### gc-drive-access
+
+**Purpose**: GC mode's Drive door (v2.4754, real build step 5 of `to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md`). The owner's rule (2026-10-04): every set of plans lives in Google Drive and its link says whether *anyone with the link* can open it, "versus this link is only accessible by some, please correct". Two presses: **make_folders** makes the project's folder in the jobs Shared Drive with **Plans** and **Team only** inside, shares Plans with anyone with the link (reader), records the folder on `gc_projects.drive_folder_url` and the Plans link on set 0 when it has none (idempotent: an existing folder is reused, a recorded folder returned as it is); **check** reads who can open a Drive file or folder as the service account sees its permissions (`anyone` when a permission of type anyone is on it, `restricted` otherwise, `null` with a note when the service account cannot see it at all) and, given a project and rev, records it on that set (`drive_access`, `drive_checked_on`). A Shared Drive may refuse the anyone-with-the-link share; the reason comes back in words and the page says it.
+
+**Endpoint**: `POST /functions/v1/gc-drive-access` · **Auth**: staff JWT validated in-body, office roles only (dev / master_technician / assistant / controller / estimator); `verify_jwt = false`. **Body**: `{ make_folders: { project_id } }` → `{ success, folder_url, folder_created, plans_url, team_url, plans_shared, reason, set_plans_link }`, or `{ check: { url, project_id?, rev? } }` → `{ success, access, seen, note, checked_on, recorded }`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts`.
+
+**Doors**: the dev-only GC projects page (`/gc`) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
 
 ---
 
