@@ -34,7 +34,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { CourtAreasLayer } from './CourtAreasLayer'
 import { CourtAreasPanel, type CourtAreaListed } from './CourtAreasPanel'
 import { courtCoverage, type CourtAreaDraft } from '../../lib/legal/courtAreasDraft'
-import type { CourtAreaPolygon } from '../../lib/legal/courtAreas'
+import { classifyCourtPoint, courtClassificationWords, type CourtAreaPolygon } from '../../lib/legal/courtAreas'
 import { insertCourtArea, listCourtAreas, retireCourtArea, updateCourtArea } from '../../lib/legal/courtAreasIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -97,7 +97,8 @@ function SectionChip({
 }: {
   label: string
   color: string
-  count: number
+  /** The placed records the chip stands for; omitted while unknown. */
+  count?: number
   active: boolean
   title: string
   ring?: string | null
@@ -138,10 +139,13 @@ function SectionChip({
         }}
       />
       {label}
-      <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{count}</span>
+      {count != null ? <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{count}</span> : null}
     </button>
   )
 }
+
+/** The precincts layer's chip — the tint the layer uses for its first county. */
+const MAP_PAGE_PRECINCT_COLOR = '#0ea5e9'
 
 const chipRowStyle: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }
 const chipSepStyle: CSSProperties = { width: 1, height: 18, background: 'var(--border-strong)', margin: '0 0.15rem' }
@@ -367,7 +371,10 @@ export function MapPageView() {
   const { role: authRole, user: authUser } = useAuth()
   const canDrawCourtAreas = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
   const [courtMode, setCourtMode] = useState(false)
+  // Precincts as a layer (v2.4807): the court areas drawn for anyone on the page, without the mode.
+  const [precinctsOn, setPrecinctsOn] = useState(false)
   const [courtAreas, setCourtAreas] = useState<CourtAreaListed[]>([])
+  const [courtAreasLoaded, setCourtAreasLoaded] = useState(false)
   const [courtPending, setCourtPending] = useState<CourtAreaPolygon | null>(null)
   const [courtClear, setCourtClear] = useState(0)
   const [courtBusy, setCourtBusy] = useState(false)
@@ -376,14 +383,21 @@ export function MapPageView() {
   const reloadCourtAreas = useCallback(async () => {
     try {
       setCourtAreas(await listCourtAreas(courtDb))
+      setCourtAreasLoaded(true)
       setCourtError(null)
     } catch (e) {
       setCourtError(formatErrorMessage(e, 'Could not load the court areas.'))
     }
   }, [courtDb])
   useEffect(() => {
-    if (courtMode) void reloadCourtAreas()
-  }, [courtMode, reloadCourtAreas])
+    if (courtMode || precinctsOn) void reloadCourtAreas()
+  }, [courtMode, precinctsOn, reloadCourtAreas])
+  const precinctsShown = courtMode || precinctsOn
+  // The place card's county and precinct, from the layer when it is on screen (v2.4807).
+  const precinctWords = useCallback(
+    (place: { lat: number; lng: number }) => (precinctsShown && courtAreasLoaded ? courtClassificationWords(classifyCourtPoint(place, courtAreas)) : null),
+    [precinctsShown, courtAreasLoaded, courtAreas],
+  )
   const onCourtDrawn = useCallback((polygon: CourtAreaPolygon) => setCourtPending(polygon), [])
   const courtAct = useCallback(async (fallback: string, act: () => Promise<void>) => {
     setCourtBusy(true)
@@ -506,9 +520,9 @@ export function MapPageView() {
   const renderPopup = useCallback(
     (id: string) => {
       const place = byKey.get(id)
-      return place ? <PlaceCard place={place} anchor={anchorPoint} compact isMobile={false} focusSection={focusSectionOf} onOpen={openEntity} onDirections={directionsTo} /> : null
+      return place ? <PlaceCard place={place} anchor={anchorPoint} compact isMobile={false} focusSection={focusSectionOf} onOpen={openEntity} onDirections={directionsTo} precinctWords={precinctWords} /> : null
     },
-    [byKey, anchorPoint, focusSectionOf, openEntity, directionsTo],
+    [byKey, anchorPoint, focusSectionOf, openEntity, directionsTo, precinctWords],
   )
   const nearest = useMemo(() => mapPageNearest(places, anchorPoint), [places, anchorPoint])
   const totalsLine = useMemo(() => mapPageTotalsLine(places), [places])
@@ -601,6 +615,14 @@ export function MapPageView() {
           <div role="group" aria-label="Estimates" style={chipRowStyle}>
             <span aria-hidden="true" style={chipSepStyle} />
             <SectionChip label="Estimates" color={MAP_PAGE_ESTIMATE_COLOR} count={legendCounts.estimates} active={showEst} title={showEst ? 'Hide estimates' : 'Show estimates'} onToggle={() => setShowEst((v) => !v)} />
+            <SectionChip
+              label="Precincts"
+              color={MAP_PAGE_PRECINCT_COLOR}
+              count={courtAreasLoaded ? courtAreas.length : undefined}
+              active={precinctsShown}
+              title={precinctsShown ? 'Hide the justice precincts' : 'Draw the justice precincts the office filed — a place card then names its county and precinct'}
+              onToggle={() => setPrecinctsOn((v) => !v)}
+            />
           </div>
         )}
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
@@ -726,7 +748,7 @@ export function MapPageView() {
             >
               <MapFlyTo target={mapFlyTo} onConsumed={clearMapFlyTo} />
               <GeomanDraw onFilterPolygon={onFilterPolygon} clearSignal={clearDraw} paused={courtMode} />
-              {courtMode || courtAreas.length ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
+              {precinctsShown ? <CourtAreasLayer areas={courtAreas} drawing={courtMode} onDrawn={onCourtDrawn} clearSignal={courtClear} /> : null}
             </PinsMapCanvas>
           </Suspense>
         </div>
@@ -742,6 +764,7 @@ export function MapPageView() {
           focusSection={focusSectionOf}
           onOpen={openEntity}
           onDirections={directionsTo}
+          precinctWords={precinctWords}
           search={mapSearchQuery}
           onSearch={setMapSearchQuery}
           totalsLine={totalsLine}

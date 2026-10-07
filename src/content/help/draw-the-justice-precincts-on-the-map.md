@@ -8,7 +8,7 @@ The Map page can hold our own map of justice precincts. A small claim is filed i
 
 ## Open the mode
 
-Open **Map**. Click {{button:outline|Court areas}} on the toolbar. The button is there for the office. A panel opens under the map. The panel counts the pinned addresses inside a drawn area. It also counts the ones outside every area, and the ones on a line.
+Open **Map**. Click {{button:outline|Court areas}} on the toolbar. The button is there for the office. A panel opens under the map. Anyone on the page can see the precincts without the mode. They tap the {{chip:blue|Precincts}} chip over the map, and a place's card then names its justice court. The panel counts the pinned addresses inside a drawn area. It also counts the ones outside every area, and the ones on a line.
 
 ## Draw a precinct
 

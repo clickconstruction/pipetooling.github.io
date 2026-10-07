@@ -26,7 +26,7 @@ function Dot({ color, ring, size = 9 }: { color: string; ring?: string | null; s
 const CARD_ROWS = 6
 
 /** The selected place: its address, its miles, its records with Open on each, Directions. `compact` is the popup (fewer rows, no expand). */
-export function PlaceCard({ place, anchor, compact, isMobile, focusSection, onOpen, onDirections }: {
+export function PlaceCard({ place, anchor, compact, isMobile, focusSection, onOpen, onDirections, precinctWords }: {
   place: MapPagePlaceOfEntity
   anchor: MapAnchor
   compact: boolean
@@ -34,9 +34,12 @@ export function PlaceCard({ place, anchor, compact, isMobile, focusSection, onOp
   focusSection: (e: MapPageEntity) => SubmissionSectionKey | undefined
   onOpen: (e: MapPageEntity) => void
   onDirections: (place: MapPagePlaceOfEntity) => void
+  /** The county and precinct from the court areas layer (v2.4807); null while the layer is off. */
+  precinctWords?: (place: { lat: number; lng: number }) => string | null
 }) {
   const [all, setAll] = useState(false)
   const miles = placeMilesWords(placeMiles(place, anchor))
+  const precinct = precinctWords ? precinctWords(place) : null
   const rows = all || (!compact && place.items.length <= CARD_ROWS + 1) ? place.items : place.items.slice(0, compact ? 4 : CARD_ROWS)
   const hidden = place.items.length - rows.length
   const single = place.items.length === 1
@@ -53,6 +56,7 @@ export function PlaceCard({ place, anchor, compact, isMobile, focusSection, onOp
         {miles ? ` · ${miles} from the office` : ''}
       </div>
       {single ? <div style={{ color: 'var(--text-muted)' }}>{place.addressLabel}</div> : null}
+      {precinct ? <div data-map-precinct style={{ color: 'var(--text-muted)' }}>{`Justice court: ${precinct}`}</div> : null}
       {!single ? (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
           {rows.map((e) => {
@@ -107,6 +111,7 @@ export type MapPageRailProps = {
   focusSection: (e: MapPageEntity) => SubmissionSectionKey | undefined
   onOpen: (e: MapPageEntity) => void
   onDirections: (place: MapPagePlaceOfEntity) => void
+  precinctWords?: (place: { lat: number; lng: number }) => string | null
   search: string
   onSearch: (value: string) => void
   totalsLine: string
@@ -115,7 +120,7 @@ export type MapPageRailProps = {
   isMobile: boolean
 }
 
-export function MapPageRail({ selected, anchor, bands, bandsOn, onToggleBand, nearest, onPickPlace, onHoverPlace, focusSection, onOpen, onDirections, search, onSearch, totalsLine, emptyHint, isMobile }: MapPageRailProps) {
+export function MapPageRail({ selected, anchor, bands, bandsOn, onToggleBand, nearest, onPickPlace, onHoverPlace, focusSection, onOpen, onDirections, precinctWords, search, onSearch, totalsLine, emptyHint, isMobile }: MapPageRailProps) {
   return (
     <div data-map-rail style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -139,7 +144,7 @@ export function MapPageRail({ selected, anchor, bands, bandsOn, onToggleBand, ne
 
       {selected ? (
         <div data-map-selected style={{ ...CARD, borderColor: 'var(--border-blue)', background: 'var(--bg-blue-tint)' }}>
-          <PlaceCard place={selected} anchor={anchor} compact={false} isMobile={isMobile} focusSection={focusSection} onOpen={onOpen} onDirections={onDirections} />
+          <PlaceCard place={selected} anchor={anchor} compact={false} isMobile={isMobile} focusSection={focusSection} onOpen={onOpen} onDirections={onDirections} precinctWords={precinctWords} />
         </div>
       ) : (
         <div style={{ ...CARD, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{emptyHint ?? 'Click a pin for its records. A pin with a number is an address with several.'}</div>

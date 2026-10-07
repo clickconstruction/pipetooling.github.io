@@ -2,7 +2,7 @@
 title: see every job and bid on one map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, no address, could not be found, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out, cluster, status colors, working, waiting, billed, collections, paid, lost, rail, nearest, distance, places, one pin per address
+keywords: map, jobs, bids, estimates, pins, office, miles, rings, fit all, draw an area, filter, far from the office, wrong address, geocode, no address, could not be found, where is the job, directions, zoom, scroll wheel, mouse wheel, zooms out, cluster, status colors, working, waiting, billed, collections, paid, lost, rail, nearest, distance, places, one pin per address, precincts, justice court
 ---
 The Map page plots every job, bid and estimate that has an address. It is the whole company on one map. The Bid Board and the Pipeline each have a map of their own list. This page has everything at once.
 
@@ -91,6 +91,6 @@ A line under the map counts the records with no map location. It also counts the
 
 While the geocoder is still working, the line reads **Placing 4 addresses…** instead.
 
-## Court areas
+## Precincts
 
-The office can draw the justice precincts on this map. See [draw the justice precincts on the map](/help/draw-the-justice-precincts-on-the-map).
+The office keeps a map of the justice precincts, the courts a small claim is filed in. Tap {{chip:blue|Precincts}} at the end of the chips to draw them. Each precinct shows as a tinted shape with its county and number on hover. With the layer on, a place's card names its justice court, such as **Bexar JP Pct 2**. An address within about a hundred metres of a line names both precincts. The office draws and fixes the precincts in the Court areas mode. See [draw the justice precincts on the map](/help/draw-the-justice-precincts-on-the-map).
