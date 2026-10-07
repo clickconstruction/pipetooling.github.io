@@ -108,22 +108,49 @@ describe('LegalPortalLinkButton — the firm’s links', () => {
     await waitFor(() => expect(document.body.textContent).toContain('No link yet.'))
     fireEvent.click(screen.getByRole('button', { name: 'Create the firm’s link' }))
     await waitFor(() => expect(rpcCalls.some(([n]) => n === 'create_legal_portal_link')).toBe(true))
-    expect(rpcCalls.find(([n]) => n === 'create_legal_portal_link')![1]).toEqual({ p_firm_id: 'firm-1', p_label: null })
+    expect(rpcCalls.find(([n]) => n === 'create_legal_portal_link')![1]).toMatchObject({ p_firm_id: 'firm-1', p_label: null })
+    expect(String(rpcCalls.find(([n]) => n === 'create_legal_portal_link')![1].p_address)).toMatch(/^sample-partner-[a-z0-9]{3}$/)
 
     rpcs.list_legal_portal_links = { links: [firmLink] }
     fireEvent.change(screen.getByLabelText('Who it is for'), { target: { value: 'Jane Doe, paralegal' } })
     fireEvent.click(screen.getByRole('button', { name: 'Add a link' }))
     await waitFor(() => expect(rpcCalls.filter(([n]) => n === 'create_legal_portal_link')).toHaveLength(2))
-    expect(rpcCalls.filter(([n]) => n === 'create_legal_portal_link')[1]?.[1]).toEqual({ p_firm_id: 'firm-1', p_label: 'Jane Doe, paralegal' })
+    expect(rpcCalls.filter(([n]) => n === 'create_legal_portal_link')[1]?.[1]).toMatchObject({ p_firm_id: 'firm-1', p_label: 'Jane Doe, paralegal' })
 
     await waitFor(() => expect(document.querySelector('[data-legal-link-row="firm"]')).not.toBeNull())
     const firmRow = document.querySelector('[data-legal-link-row="firm"]') as HTMLElement
     fireEvent.click(within(firmRow).getByRole('button', { name: 'Rotate' }))
     await waitFor(() => expect(rpcCalls.some(([n]) => n === 'rotate_legal_portal_link')).toBe(true))
-    expect(rpcCalls.find(([n]) => n === 'rotate_legal_portal_link')![1]).toEqual({ p_link_id: 'f1' })
+    expect(rpcCalls.find(([n]) => n === 'rotate_legal_portal_link')![1]).toMatchObject({ p_link_id: 'f1' })
+    // A plain Rotate keeps the name part and rolls three new characters; the 12-character key of v2.4750 gets a default address.
+    expect(rpcCalls.find(([n]) => n === 'rotate_legal_portal_link')![1].p_address).toBeNull()
     fireEvent.click(within(document.querySelector('[data-legal-link-row="firm"]') as HTMLElement).getByRole('button', { name: 'Turn off' }))
     await waitFor(() => expect(rpcCalls.some(([n]) => n === 'revoke_legal_portal_link_by_id')).toBe(true))
     expect(rpcCalls.find(([n]) => n === 'revoke_legal_portal_link_by_id')![1]).toEqual({ p_link_id: 'f1' })
+  })
+
+  it('Change address… types a name part, rolls the tail and saves it as a rotate to that address', async () => {
+    rpcs.list_legal_portal_links = { links: [{ ...firmLink, token: 'sample-partner-f6a' }] }
+    rpcs.rotate_legal_portal_link = { id: 'f2', token: 'snell-law-k2m', exists: true }
+    tables.legal_firms = [{ email: '' }]
+    openDialog()
+    await waitFor(() => expect(document.querySelector('[data-legal-link-row="firm"]')).not.toBeNull())
+    expect(document.body.textContent).toContain('my.clickplumbing.com/sample-partner-f6a')
+    fireEvent.click(screen.getByRole('button', { name: 'Change address…' }))
+    const base = screen.getByLabelText('New address') as HTMLInputElement
+    expect(base.value).toBe('sample-partner')
+    fireEvent.change(base, { target: { value: 'Snell Law' } })
+    expect(base.value).toBe('snell-law')
+    fireEvent.click(screen.getByRole('button', { name: 'Save the new address' }))
+    await waitFor(() => expect(rpcCalls.some(([n]) => n === 'rotate_legal_portal_link')).toBe(true))
+    const args = rpcCalls.find(([n]) => n === 'rotate_legal_portal_link')![1]
+    expect(args.p_link_id).toBe('f1')
+    expect(String(args.p_address)).toMatch(/^snell-law-[a-z0-9]{3}$/)
+    // A plain Rotate on a short key keeps the name part.
+    rpcCalls.length = 0
+    fireEvent.click(screen.getByRole('button', { name: 'Rotate' }))
+    await waitFor(() => expect(rpcCalls.some(([n]) => n === 'rotate_legal_portal_link')).toBe(true))
+    expect(String(rpcCalls.find(([n]) => n === 'rotate_legal_portal_link')![1].p_address)).toMatch(/^sample-partner-[a-z0-9]{3}$/)
   })
 
   it('before the list RPC is live, says so instead of going quiet', async () => {

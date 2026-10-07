@@ -363,7 +363,7 @@ export interface ListLegalPortalLinksResult {
   error?: string
 }
 
-/** v2.4750: `create_legal_portal_link` / `rotate_legal_portal_link` / `mint_legal_portal_link` — the new link with its key, the one time it is shown by the server. */
+/** v2.4750: `create_legal_portal_link` / `rotate_legal_portal_link` / `mint_legal_portal_link` — the new link with its key, the one time it is shown by the server. Since v2.4756 both take `p_address` (null: a default one) and answer `error` with the server's words when the address is refused. */
 export interface LegalPortalLinkMintResult {
   id?: string
   token?: string | null

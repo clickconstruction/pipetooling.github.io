@@ -6,6 +6,8 @@ import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 // Item 7 (#85): a thrown error is logged; the firm reads one plain sentence.
 import { unexpectedErrorBody } from '../_shared/legalPortalErrors.ts'
+import { askGuessGate, GUESS_LOCKED_MSG } from '../_shared/legalPortalGuessGate.ts'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
@@ -87,8 +89,14 @@ serve(async (req) => {
     if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
+    // The guess gate (v2.4756): wrong keys are counted by caller; ten in an hour and the caller is refused.
+    const ip = clientIpFromEdgeRequest(req)
+    if ((await askGuessGate(admin, ip, false)).locked) return jsonResponse({ error: GUESS_LOCKED_MSG }, 429)
     const link = await resolveLink(admin, token)
-    if (!link) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    if (!link) {
+      await askGuessGate(admin, ip, true)
+      return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
+    }
 
     // --- The firm's people and their email rules (PR 5) ---------------------
     if (RECIPIENT_KINDS.includes(kind)) {
