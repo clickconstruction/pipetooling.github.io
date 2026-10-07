@@ -58,6 +58,12 @@ describe('LegalPortalLienGrid', () => {
     expect(screen.getByText('Owner of record')).toBeTruthy()
     expect(screen.queryByText('Address')).toBeNull()
     expect(screen.getByText('Amount due').textContent).toBe('Amount dueFor work in')
+    // The Court column (v2.4764): the county, the precinct not yet, the cap chip.
+    const court = within(row).getByText(/JP Pct/).closest('td')!
+    expect(court.textContent).toContain('JP Pct')
+    expect(court.textContent).toContain('within $20,000')
+    expect(within(court).getByTitle(/drawing its justice precincts/)).toBeTruthy()
+    expect(screen.getByText('Court')).toBeTruthy()
     expect(screen.queryByText(/Unpaid/)).toBeNull()
     expect(screen.getByRole('button', { name: /^Upcoming · 3$/ }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByRole('button', { name: /^Due in 30 days · \d+$/ })).toBeTruthy()

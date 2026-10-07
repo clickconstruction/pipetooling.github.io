@@ -5,6 +5,7 @@ import { assembleLienBookInput, type LienBookRaw } from '../../../lib/jobs/lienT
 import { filterLegalLienGrid, findLegalLienGcs, legalLienGcCountWords, legalLienGridCells, legalLienGridGcs, LEGAL_LIEN_RAIL_FIND_AT, type LegalLienGridCell } from '../../../lib/legal/legalLienGridView'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
 import { formatUsdNoCents } from '../../../lib/jobs/jobFormatting'
+import { justiceCourtCap, PRECINCT_NOT_YET, PRECINCT_NOT_YET_TITLE } from '../../../lib/legal/jpVenue'
 import { portalBtn, portalCap, portalCard, portalTd, portalTh } from './legalFirmMatterViewShared'
 
 /**
@@ -105,6 +106,10 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
                       <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.kind}{c.kindUnknown ? <> {unknown('The office has not entered the property kind — commercial dates shown; a residential property is a month earlier')}</> : null}</span>
                       {c.homestead ? <span style={{ display: 'block', color: MUTED, fontSize: 10.5, whiteSpace: 'nowrap' }}>{c.homestead}</span> : null}
                     </td>
+                    <td style={td} data-legal-grid-court>
+                      <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.county ? `${c.county} · JP Pct ` : <>{unknown('The county is not on the property record yet')} · JP Pct </>}{unknown(PRECINCT_NOT_YET_TITLE)}</span>
+                      <span style={{ display: 'inline-block', fontSize: 10, padding: '0 6px', borderRadius: 999, border: `1px solid ${c.withinJusticeLimit ? HAIR : PAPER_RED}`, color: c.withinJusticeLimit ? MUTED : PAPER_RED, marginTop: 2, whiteSpace: 'nowrap' }}>{justiceCourtCap(c.total === '' ? 0 : Number(c.total.replace(/[$,]/g, ''))).chip}</span>
+                    </td>
                     {factTd(c.lastOnSite, { whiteSpace: 'nowrap' })}
                     <td style={td}>
                       <b style={{ display: 'block', fontSize: 12, fontVariantNumeric: 'tabular-nums' }}>{c.total}</b>
@@ -123,7 +128,7 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
           </div>
         )}
       </div>
-      <p style={{ fontSize: 11.5, color: MUTED, margin: '10px 0 0' }}>Deadlines are per job and per work month (§ 53.056, § 53.052), weekends rolled; a property of unknown kind shows commercial dates and a residential one is a month earlier. A month whose § 53.056 window has closed is left off; <span style={{ color: FAINT }}>—</span> is a job with no window still open. A <b style={{ color: PAPER_RED }}>?</b> is a fact the office has not entered — payment bond, paid out to the GC, the 10 % reserved, the owner's contract completion.</p>
+      <p style={{ fontSize: 11.5, color: MUTED, margin: '10px 0 0' }}>Deadlines are per job and per work month (§ 53.056, § 53.052), weekends rolled; a property of unknown kind shows commercial dates and a residential one is a month earlier. Court is the county the work was done in, where the contract was performed (TRCP 502.4); the payer's own county is on the matter, and a lien foreclosure goes to district court whatever the amount. The justice precinct reads <i>{PRECINCT_NOT_YET}</i> until the office's court map names it. A month whose § 53.056 window has closed is left off; <span style={{ color: FAINT }}>—</span> is a job with no window still open. A <b style={{ color: PAPER_RED }}>?</b> is a fact the office has not entered — payment bond, paid out to the GC, the 10 % reserved, the owner's contract completion.</p>
     </div>
   )
 
@@ -154,6 +159,7 @@ const COLUMNS: ReadonlyArray<{ key: string; label: string }> = [
   { key: 'job', label: 'Job' },
   { key: 'owner', label: 'Owner of record' },
   { key: 'kind', label: 'Property' },
+  { key: 'court', label: 'Court' },
   { key: 'lastOnSite', label: 'Last on site' },
   /** Drawn as two lines, one over each line of the cell (v2.4753): *Amount due* / *For work in*. */
   { key: 'unpaid', label: 'Amount due · for work in' },

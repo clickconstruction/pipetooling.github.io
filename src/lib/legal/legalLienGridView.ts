@@ -2,6 +2,7 @@ import { filterLienTimelineBook, lienGridRows, type LienBookShow, type LienTimel
 import { workMonthShort } from '../jobs/forecastWorkMonths'
 import { formatUsdNoCents } from '../jobs/jobFormatting'
 import { addressLines } from '../bidDocuments/htmlDoc'
+import { justiceCourtCap } from './jpVenue'
 
 /**
  * How the firm's Lien grid reads on the portal (v2.4749, the owner's ask of
@@ -35,6 +36,10 @@ export interface LegalLienGridCell {
   /** `Homestead` | `No homestead` on a residential property; '' on a commercial one. */
   homestead: string
   lastOnSite: string
+  /** The job's county from its property record, '' when none (v2.4764, the Court column). */
+  county: string
+  /** Within the $20,000 justice court limit. */
+  withinJusticeLimit: boolean
   /** `$38,625` */
   total: string
   /** `Jun, Jul, Aug, Sep` — the unpaid months; '' when none. */
@@ -77,6 +82,8 @@ export function legalLienGridCells(rows: ReadonlyArray<LienTimelineBookRow>, tod
       kindUnknown: !kindKnown,
       homestead: residential ? (r.job.homestead ? 'Homestead' : 'No homestead') : r.job.homestead ? 'Homestead' : '',
       lastOnSite: g.lastOnSite,
+      county: r.job.county,
+      withinJusticeLimit: justiceCourtCap(r.job.openBalance).within,
       total: formatUsdNoCents(r.job.openBalance),
       months: openMonths.join(', '),
       notices: r.job.isSub ? notices : [],

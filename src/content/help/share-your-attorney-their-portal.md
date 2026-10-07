@@ -35,6 +35,10 @@ Each account opens as the same five-section packet the Legal desk shows. The por
 Pulling an account back on the desk removes it from the portal on the firm's next open. Turning the link off hides everything at once; the matters and their record stay exactly as they were.
 :::
 
+## Where to file
+
+Each matter's **Account** tab says where a suit can go. The first line says whether the balance is within the $20,000 justice court limit. Then come the two places the rules allow. One is the county where the work was done. The other is the county where the defendant is. The justice precinct reads **not yet** until the office's own court map names it. A lien foreclosure always goes to district court. The printed packet carries the same paragraph. The lien grid's **Court** column shows the county for every job, with the limit beside it.
+
 ## The lien grid
 
 The lien grid is a third panel beside **Matters** and **Notifications**. The grid shows every billed job with money open and a lien month. Each job is one row. The address sits under the job name. The property reads Commercial or Residential, with Homestead or No homestead beneath. The **Amount due** column shows the open balance, with the work months it covers under it. The § 53.056 column lists each month whose window is still open, with its date. A month whose window has closed is left off. The rows are the same ones the office's Lien desk Timeline tab holds, read live. A rail beside the grid lists every GC with its job count and open dollars, largest first. Click a GC to narrow the grid to its jobs. The last entry is the jobs with no GC. **Due in 30 days** shows the jobs with a step inside the next 30 days. Switch to **Upcoming** for the whole book, every row. The rail's numbers follow that switch. {{button:blue|⎙ Print the grid}} hands over the same letter-landscape page the desk prints, in counsel's twelve columns. A red **?** marks a fact the office has not entered yet:

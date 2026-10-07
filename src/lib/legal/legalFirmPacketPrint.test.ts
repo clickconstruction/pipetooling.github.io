@@ -33,6 +33,16 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
   const { payload, m, packet } = sample()
   const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
 
+  it('says where to file, in one paragraph after the money (v2.4764)', () => {
+    const { payload, m, packet } = sample()
+    const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
+    expect(html).toContain('<h3>Where to file</h3>')
+    expect(html).toContain('is within the justice court limit')
+    expect(html).toContain('Where the work was done: Hays County · justice precinct not yet')
+    expect(html).toContain('district court in Hays County')
+    expect(html.indexOf('<h3>Where to file</h3>')).toBeLessThan(html.indexOf('<h3>Property record</h3>'))
+  })
+
   it('is addressed to the firm and says the matter, the stage and the demand', () => {
     expect(html).toContain('Referral packet')
     expect(html).toContain(`prepared 2026-10-05 for ${payload.firm.name.replace("&", "&amp;")}`)

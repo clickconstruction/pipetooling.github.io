@@ -17,6 +17,7 @@ import type { LegalEntryRow } from './legalMatters'
 import type { LegalPortalParticulars } from './legalPortalPayload'
 import { contingencyEntries, firmDemand, firmFeeEntries, legalRunningLedger } from './legalMoney'
 import { propertyKindCell, propertySourceNote } from './legalProperty'
+import { venuePlaces, whereToFileText } from './jpVenue'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
@@ -149,6 +150,8 @@ ${table(['Contact', 'Note', 'Email', 'Phone'], a.contacts.map((c) => row([esc(c.
 ${table(['Job', 'Name', 'Address', 'Age', 'On file', 'Balance'], jobsRows, 'No jobs.')}
 <h3>Statement of account</h3>
 ${table(['Date', 'Job', 'Entry', 'Amount', 'Balance'], ledgerRows, 'No billed lines or payments recorded.', ledgerFoot)}
+<h3>Where to file</h3>
+<p>${esc(whereToFileText({ balance: a.totals.balance, places: venuePlaces({ properties: a.properties, payer: { name: a.payer.name, address: a.customerAddress, county: a.customerCounty } }) }))}</p>
 <h3>Property record</h3>
 ${table(['Job', 'Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 'Kind'], propertyRows, 'No property record on file.')}
 <h2><span class="sec">B</span> Paper</h2>

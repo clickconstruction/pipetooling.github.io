@@ -469,6 +469,8 @@ export type LegalPacket = {
   account: {
     payer: LegalPayer
     customerAddress: string
+    /** The payer's county from its primary property record, '' when none (v2.4764, the defendant's venue). */
+    customerCounty: string
     customerType: string
     paymentTerms: string
     paymentTermsNote: string | null
@@ -1018,6 +1020,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     account: {
       payer: { key: account.key, customerId: account.customerId, name: account.name, viaGc: account.viaGc },
       customerAddress: (input.customer?.address ?? '').trim(),
+      customerCounty: payerCounty(input.addresses),
       customerType: (input.customer?.customer_type ?? '').trim(),
       paymentTerms: paymentTermsLabel(input.customer?.payment_terms),
       paymentTermsNote: (input.customer?.payment_terms_note ?? '').trim() || null,
@@ -1062,4 +1065,10 @@ export function legalSessionWords(e: Pick<LegalEvidenceJob, 'sessions' | 'sessio
 export function formatLegalMoney(n: number): string {
   const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   return n < 0 && abs !== '0.00' ? `−$${abs}` : `$${abs}`
+}
+
+/** The payer's county: its primary property record's, else the first record's; '' when none says. */
+function payerCounty(rows: ReadonlyArray<CustomerAddressRow>): string {
+  const primary = rows.find((r) => (r as { is_primary?: boolean | null }).is_primary) ?? rows[0]
+  return (primary?.county ?? '').trim()
 }
