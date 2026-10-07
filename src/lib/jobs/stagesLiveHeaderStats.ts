@@ -21,6 +21,8 @@ import type { StagesHeaderStats, StagesSectionStat } from './stagesHeaderStats'
 export type LiveBilledStats = {
   billed: StagesSectionStat
   collections: StagesSectionStat
+  /** v2.4792: the Collections rows the office gave up on — the tile's grey line follows the board too. */
+  uncollectible: StagesSectionStat
   billedAging: BilledAgingBuckets
   billedNoDate: number
 }
@@ -30,6 +32,7 @@ export function liveBilledStats(jobs: JobWithDetails[], now = new Date()): LiveB
   return {
     billed: { count: l.billedActiveRows.length, total: billedRowsRemainingTotal(l.billedActiveRows) },
     collections: { count: l.collectionsRows.length, total: billedRowsRemainingTotal(l.collectionsRows) },
+    uncollectible: { count: l.uncollectibleRows.length, total: billedRowsRemainingTotal(l.uncollectibleRows) },
     billedAging: buildBilledAgingBuckets(l.filtered, now),
     billedNoDate: countBilledRowsMissingDates(l.filtered),
   }

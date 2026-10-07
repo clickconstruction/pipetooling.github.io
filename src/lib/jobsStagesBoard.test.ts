@@ -1095,6 +1095,19 @@ describe('collections partition in buildJobsStagesBoardLists', () => {
     expect(lists.billedActiveRows).toHaveLength(0)
   })
 
+  it('a Collections job marked Uncollectible leaves collectionsRows for uncollectibleRows; billedRows still hold ALL billed (punch list #94, v2.4792)', () => {
+    const chased = jobStub({ id: 'job-1', status: 'billed', collections_at: '2026-07-01T00:00:00Z', invoices: [billedInvoiceStub('inv-1', 'job-1', 350)] })
+    const gone = { ...jobStub({ id: 'job-2', status: 'billed', collections_at: '2026-04-13T00:00:00Z', invoices: [billedInvoiceStub('inv-2', 'job-2', 7502)] }), uncollectible_at: '2026-10-07T00:00:00Z' }
+    const lists = buildJobsStagesBoardLists([chased, gone], '')
+    expect(lists.collectionsJobs.map((j) => j.id)).toEqual(['job-1'])
+    expect(lists.uncollectibleJobs.map((j) => j.id)).toEqual(['job-2'])
+    expect(lists.collectionsRows.map((r) => r.job.id)).toEqual(['job-1'])
+    expect(lists.uncollectibleRows.map((r) => r.job.id)).toEqual(['job-2'])
+    expect(lists.billedActiveRows).toHaveLength(0)
+    expect(lists.billedJobs.map((j) => j.id).sort()).toEqual(['job-1', 'job-2'])
+    expect(lists.billedRows).toHaveLength(2)
+  })
+
   it('flagged non-billed job appears in no collections list', () => {
     const working = jobStub({ id: 'job-1', status: 'working', collections_at: '2026-07-01T00:00:00Z', invoices: [] })
     const paid = jobStub({ id: 'job-2', status: 'paid', collections_at: '2026-07-01T00:00:00Z', invoices: [] })

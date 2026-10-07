@@ -5173,3 +5173,9 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 }
 /* The Deadlines grid's last-day label as a door (v2.4735): it reads as the label until pointed at. */
 .lienCalWorkDoor:hover, .lienCalWorkDoor:focus-visible { color: var(--text-link) !important; text-decoration: underline; outline: none; }
+
+/* Uncollectible (punch list #94, v2.4792): a Collections row the office gave up on wears faint
+   stripes under its cells; the red stamp in the money cell says why. */
+tr[data-stages-row-stamped] > td {
+  background-image: repeating-linear-gradient(135deg, transparent 0 14px, rgba(127, 127, 127, 0.07) 14px 28px);
+}

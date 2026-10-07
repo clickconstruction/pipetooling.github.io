@@ -194,6 +194,7 @@ when_to_read:
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
    - [get-stripe-invoice-details](#get-stripe-invoice-details)
+   - [mark-stripe-invoice-uncollectible](#mark-stripe-invoice-uncollectible)
    - [record-stripe-invoice-out-of-band-payment](#record-stripe-invoice-out-of-band-payment)
    - [reverse-stripe-invoice-out-of-band-payment](#reverse-stripe-invoice-out-of-band-payment)
    - [stripe-invoice-agreed-write-down](#stripe-invoice-agreed-write-down)
@@ -3870,6 +3871,29 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 **Gateway JWT**: Deploy with **`supabase functions deploy get-stripe-invoice-details --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
 ---
+
+### mark-stripe-invoice-uncollectible
+
+**Purpose**: The office gave up on a Collections job (v2.4792, punch list #94 — the owner's call): its Stripe invoice is marked **uncollectible** too, so the pay link stops asking. Stripe still accepts a late payment on an uncollectible invoice; the webhook then pays the job and the paid trigger clears the Uncollectible stamp. Called by `JobsStagesTab` after `set_job_uncollectible` succeeds, once per billed line with a Stripe invoice; a failure here never undoes the mark in the ledger (the toast says Stripe was not marked).
+
+**Endpoint**: `POST /functions/v1/mark-stripe-invoice-uncollectible`
+
+**Authentication**: Bearer JWT, validated in-function (`auth.getUser`) + RLS **`SELECT`** on **`jobs_ledger_invoices`** through the caller's own client.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, the Stripe secret for the row's mode (`STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE` or the legacy key).
+
+#### Request body
+
+```typescript
+interface MarkStripeInvoiceUncollectibleBody {
+  jobs_ledger_invoice_id: string
+  stripe_mode?: 'test' | 'live' // the row's own mode wins; a mismatch is 409 (v2.1116's rule)
+}
+```
+
+#### Response
+
+`{ success: true, stripe_status }` after `stripe.invoices.markUncollectible`; `{ success: true, idempotent: true, stripe_status }` when the invoice is already uncollectible, paid or void, or is a draft; `{ success: true, idempotent: true, stripe_status: null }` for a row with no Stripe invoice. 400 when the row is not `billed`; 403 when the caller cannot read it; 502 with Stripe's words when Stripe refuses. **Deploy required** (new function).
 
 ### record-stripe-invoice-out-of-band-payment
 

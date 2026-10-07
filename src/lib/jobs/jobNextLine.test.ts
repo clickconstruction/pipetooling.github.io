@@ -178,3 +178,12 @@ describe('phoneRowPasses / abbreviateTimeSince / advanceConsequence', () => {
     expect(advanceConsequence('waiting', { money: bar({ hasBar: false }), contract: null, upcoming: null })).toBe('Waiting → Working')
   })
 })
+
+describe('jobNextLine — Uncollectible (punch list #94, v2.4792)', () => {
+  it('the line is the reason, the chip is the red UNCOLLECTIBLE stamp, and nothing needs anyone', () => {
+    const next = jobNextLine(base({ stage: 'collections', uncollectible: { line: '\u201cNo response in 7 months.\u201d \u2014 Oct 6, 2026' }, quietDays: 40, billDisplay: 'billed 6 months ago' }))
+    expect(next.line).toBe('\u201cNo response in 7 months.\u201d \u2014 Oct 6, 2026')
+    expect(next.chip).toMatchObject({ label: 'UNCOLLECTIBLE', tone: 'red', action: 'bill-row' })
+    expect(next.needsMe).toBe(false)
+  })
+})
