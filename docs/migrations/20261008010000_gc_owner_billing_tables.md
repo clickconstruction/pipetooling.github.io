@@ -151,4 +151,27 @@ then drops the eight `gc_projects` columns with their constraints.
 
 ## Status
 
-Written 2026-10-07 for Owner Billing's O1; not applied. The lead pushes it once its PR is on `main`, and records here what steps 1 to 7 said.
+Written 2026-10-07 for Owner Billing's O1 (v2.4831, clickconstruction/pipetooling.github.io#4851).
+
+Applied to prod 2026-10-07 by the lead, with `supabase db push` from a clean checkout of main
+(`npm run check:migration-drift`: 782 local, 782 remote; types in #4876). The verify steps ran the
+same evening through the management API's query endpoint. Every write ran in a transaction that
+rolled back. What they said:
+
+- **Step 1.** All seven tables read: RLS on, one `_dev` policy, 3 read-only blocks, 3 twin fences,
+  1 statement trigger. `anon` has no SELECT on them, which also answers step 7.
+- **Step 2.** All seven are empty. The one `gc_projects` row reads its defaults: retainage 10, no
+  signed day, no billing job, no step.
+- **Step 3.** The training-mode user's insert into `gc_change_orders` got `Read-only (training)
+  mode: changes are blocked.`
+- **Step 4**, as a dev:
+  - on `gc_owner_pay_apps`, `UPDATE due` and `DELETE` were refused with `permission denied`, and
+    `UPDATE certified_note` went through on 0 rows;
+  - on `gc_owner_pay_app_lines`, `DELETE` was refused;
+  - on `gc_owner_pay_reminders`, `UPDATE note` was refused and `UPDATE email_send_log_id` went
+    through on 0 rows;
+  - on `gc_owner_interest_bills`, `DELETE` was refused;
+  - on `gc_change_orders`, `DELETE` went through on 0 rows.
+- **Step 5.** `gc_sign_owner_contract` on the test project wrote 8 lines summing 5220, and the
+  null call left 0.
+- **Step 6.** `gc_schedule_moves_change_order_fkey` is there, with `confdeltype` `n` (set null).
