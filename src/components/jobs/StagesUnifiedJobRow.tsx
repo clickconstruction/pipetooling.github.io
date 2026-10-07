@@ -418,7 +418,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                     type="button"
                     onClick={() => onJobMarkUncollectible(j)}
                     title="Give up on collecting this job: it stays in Collections, stamped with your reason, and leaves every total and the Lien desk"
-                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: '#b91c1c', border: '1px solid #b91c1c', fontWeight: 600 }}
+                    style={{ ...stagesCellButtonStyle, flex: '0 0 auto', width: 'auto', padding: '0.25rem 0.7rem', color: 'var(--text-red-700)', border: '1px solid #b91c1c', fontWeight: 600 }}
                   >
                     Uncollectible…
                   </button>

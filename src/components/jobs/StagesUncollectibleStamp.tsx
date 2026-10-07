@@ -21,7 +21,7 @@ export function StagesUncollectibleStamp({ facts }: { facts: UncollectibleFacts 
         transformOrigin: 'left center',
         border: '3px solid #b91c1c',
         borderRadius: 4,
-        color: '#b91c1c',
+        color: 'var(--text-red-700)',
         background: 'rgba(254, 226, 226, 0.6)',
         boxShadow: '0 0 0 2px rgba(185, 28, 28, 0.08)',
         maxWidth: '100%',
@@ -45,14 +45,14 @@ export function StagesUncollectibleStamp({ facts }: { facts: UncollectibleFacts 
           fontFamily: "'Marker Felt', 'Bradley Hand', 'Segoe Print', 'Comic Sans MS', cursive",
           fontSize: '0.9rem',
           lineHeight: 1.25,
-          color: '#7f1d1d',
+          color: 'var(--text-red-900)',
           whiteSpace: 'normal',
           wordBreak: 'break-word',
         }}
       >
         {facts.reason}
       </div>
-      <div style={{ marginTop: '0.15rem', fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.04em', color: '#991b1b', textTransform: 'uppercase' }}>
+      <div style={{ marginTop: '0.15rem', fontSize: '0.66rem', fontWeight: 600, letterSpacing: '0.04em', color: 'var(--text-red-800)', textTransform: 'uppercase' }}>
         {uncollectibleStampLine(facts)}
       </div>
     </div>
