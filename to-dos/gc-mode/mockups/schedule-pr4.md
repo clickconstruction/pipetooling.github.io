@@ -413,7 +413,8 @@ Stopped 2026-10-07 at the owner's pause, for the handoff.
   `scripts/check-migrations.sh`, the release notes test, and eslint and tsc on the note all passed. The amendment to *The tables* in `SCHEDULE_REAL_BUILD.md` is c17b0e1d9, under this commit.
 - **Left, in order:**
   1. Check the stamp is still after main's newest migration and after every claim not yet merged. If a later stamp has landed, renumber PR 4 from a clean commit: the file, its doc's first line and the fragment's two paths, claimed again with `npm run claim -- --migration`.
-  2. Re-arm with `gh pr merge 4835 --auto`.
+  2. Mark it ready with `gh pr ready 4835` (it was made a draft at the pause, since the merge-conflict
+     watcher re-arms auto-merge on an open PR), then re-arm with `gh pr merge 4835 --auto`.
   3. After it merges, push it with `supabase db push` from a clean checkout. It goes after PR 3's `20261007220000`, which the lead was pushing when PR 4 was cut.
   4. Run the doc's five verify steps, record them in its status, and open the types PR.
 - **Not started:** the schedule's PR 5 plan, the RPCs. It owes the two refusals the lead named on 2026-10-07. The template save refuses a schedule with nothing that can be drawn on another job, before the table's non-empty check would. It also words a weeks under one, from a substantial completion planned before the first start.
