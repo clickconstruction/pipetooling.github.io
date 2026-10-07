@@ -56,3 +56,5 @@ A gap is work every trade leaves out. The footer counts them. Close a gap by giv
 ## What happens after
 
 The project, its trades with their scope and the first set of plans are made together. The page lists the project with its sheets, its trades and its gaps. Nobody is asked to quote yet. Who to ask comes with the company record.
+
+The app also makes the project's folder in Drive, with **Plans** and **Team only** inside. Plans is shared with anyone with the link. The page shows who can open each set's link. Press {{button:outline|Check again}} after you change the sharing in Drive.

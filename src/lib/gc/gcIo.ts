@@ -188,3 +188,56 @@ export async function mergeScopeBookLines(trade: string, from: string, into: str
 export async function saveScopeSet(trade: string, name: string, lines: string[], fromProjectId?: string): Promise<void> {
   taken(await supabase.from('gc_scope_sets').insert({ trade, name, lines, from_project_id: fromProjectId ?? null }).select('id').single(), 'save the set')
 }
+
+// --- Google Drive, through the gc-drive-access edge function (step 5) ---
+
+interface FnResult {
+  data: unknown
+  error: { message?: string; context?: { json?: () => Promise<unknown> } } | null
+}
+
+/** The function's own words for what went wrong, or the transport's. */
+async function fnProblem(r: FnResult, fallback: string): Promise<string | null> {
+  const data = r.data as { error?: string } | null
+  if (data?.error) return data.error
+  if (!r.error) return null
+  const fromBody = await r.error.context?.json?.().catch(() => null)
+  const words = (fromBody as { error?: string } | null)?.error
+  return words || r.error.message || fallback
+}
+
+export interface DriveFolders {
+  folderUrl: string
+  plansUrl: string
+  teamUrl: string
+  /** Anyone with the link can open Plans. False with the reason Drive gave. */
+  plansShared: boolean
+  reason: string | null
+}
+
+/** The project's folder in the jobs Shared Drive, with Plans and Team only inside; Plans shared with anyone with the link. */
+export async function makeDriveFolders(projectId: string): Promise<DriveFolders> {
+  const r = (await supabase.functions.invoke('gc-drive-access', { body: { make_folders: { project_id: projectId } } })) as FnResult
+  const problem = await fnProblem(r, 'The folders were not made.')
+  if (problem) throw new Error(problem)
+  const d = r.data as { folder_url: string; plans_url: string; team_url: string; plans_shared: boolean; reason: string | null }
+  return { folderUrl: d.folder_url, plansUrl: d.plans_url, teamUrl: d.team_url, plansShared: d.plans_shared, reason: d.reason }
+}
+
+export interface DriveAccessVerdict {
+  access: 'anyone' | 'restricted' | null
+  seen: boolean
+  note: string | null
+  checkedOn: string
+}
+
+/** Who can open a set's Drive link, recorded on the set when its project and rev are given. */
+export async function checkDriveAccess(url: string, at?: { projectId: string; rev: number }): Promise<DriveAccessVerdict> {
+  const r = (await supabase.functions.invoke('gc-drive-access', {
+    body: { check: { url, ...(at ? { project_id: at.projectId, rev: at.rev } : {}) } },
+  })) as FnResult
+  const problem = await fnProblem(r, 'The link was not checked.')
+  if (problem) throw new Error(problem)
+  const d = r.data as { access: 'anyone' | 'restricted' | null; seen: boolean; note: string | null; checked_on: string }
+  return { access: d.access, seen: d.seen, note: d.note, checkedOn: d.checked_on }
+}

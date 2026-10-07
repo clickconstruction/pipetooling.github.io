@@ -13,7 +13,20 @@ import { todayYmdInAppTz } from '../utils/dateUtils'
 import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { Btn, Chip } from '../components/gc/gcUi'
-import { createGcProject, editScopeBookLine, loadGcPickerCustomers, loadGcProjects, loadScopeBookStore, mergeScopeBookLines, saveScopeBookLine, saveScopeSet, type GcPickerCustomer } from '../lib/gc/gcIo'
+import {
+  checkDriveAccess,
+  createGcProject,
+  editScopeBookLine,
+  loadGcPickerCustomers,
+  loadGcProjects,
+  loadScopeBookStore,
+  makeDriveFolders,
+  mergeScopeBookLines,
+  saveScopeBookLine,
+  saveScopeSet,
+  type GcPickerCustomer,
+} from '../lib/gc/gcIo'
+import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
@@ -38,6 +51,8 @@ export default function GcProjects() {
   const [creating, setCreating] = useState(false)
   const [createProblem, setCreateProblem] = useState<string | null>(null)
   const [justMade, setJustMade] = useState<string | null>(null)
+  /** A set whose Drive link is being checked, as `<projectId>:<rev>`. */
+  const [checking, setChecking] = useState<string | null>(null)
   const today = todayYmdInAppTz()
   const windowOpen = params.get('new') === '1'
   /** The scope book's window: `book=1`, and `trade=<trade>&project=<id>` to save that scope as a set. */
@@ -132,8 +147,65 @@ export default function GcProjects() {
               {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
               {newest ? `, newest ${newest.label} of ${newest.issuedOn}` : ''}. {p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}
               {p.specs.length > 0 ? `, ${p.specs.length} ${p.specs.length === 1 ? 'section' : 'sections'}` : ''}.
-              {newest?.drive.url ? ` Drive link ${newest.drive.access ?? 'not checked yet'}.` : ''}
             </div>
+            {(
+              <div style={{ fontSize: '0.85rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                {p.driveFolderUrl ? (
+                  <a href={p.driveFolderUrl} target="_blank" rel="noreferrer">
+                    The job folder in Drive
+                  </a>
+                ) : (
+                  <Btn
+                    kind="quiet"
+                    disabled={checking === `${p.id}:folders`}
+                    onClick={() => {
+                      setChecking(`${p.id}:folders`)
+                      void makeDriveFolders(p.id)
+                        .then(async (folders) => {
+                          await load()
+                          if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
+                        })
+                        .catch((e) => showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error'))
+                        .finally(() => setChecking(null))
+                    }}
+                  >
+                    {checking === `${p.id}:folders` ? 'Making the folder…' : 'Make the Drive folder'}
+                  </Btn>
+                )}
+                {newest?.drive.url && (
+                  <>
+                    <a href={newest.drive.url} target="_blank" rel="noreferrer">
+                      {newest.label}'s plans
+                    </a>
+                    <span style={{ color: newest.drive.access === 'anyone' ? 'var(--text-green-700)' : newest.drive.access === 'restricted' || newest.drive.checkedOn ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                      {newest.drive.access === 'anyone'
+                        ? `Anyone with the link can open it, checked ${newest.drive.checkedOn ?? ''}.`
+                        : newest.drive.access === 'restricted'
+                          ? `Only some people can open it, checked ${newest.drive.checkedOn ?? ''}. Please correct. ${DRIVE_RESTRICTED_WORDS}`
+                          : newest.drive.checkedOn
+                            ? `Our helper could not see this link on ${newest.drive.checkedOn}. Share it with the intake service account, or move the plans into the job folder.`
+                            : 'Who can open it is not checked yet.'}
+                    </span>
+                    <Btn
+                      kind="quiet"
+                      disabled={checking === `${p.id}:${newest.rev}`}
+                      onClick={() => {
+                        setChecking(`${p.id}:${newest.rev}`)
+                        void checkDriveAccess(newest.drive.url, { projectId: p.id, rev: newest.rev })
+                          .then(async (v) => {
+                            await load()
+                            if (!v.seen && v.note) showToast(v.note, 'error')
+                          })
+                          .catch((e) => showToast(formatErrorMessage(e, 'The link was not checked.'), 'error'))
+                          .finally(() => setChecking(null))
+                      }}
+                    >
+                      {checking === `${p.id}:${newest.rev}` ? 'Checking…' : newest.drive.access === null ? 'Check the link' : 'Check again'}
+                    </Btn>
+                  </>
+                )}
+              </div>
+            )}
             <div style={{ display: 'grid', gap: '0.4rem' }}>
               {p.trades.map((t) => (
                 <div key={t.id} style={{ display: 'grid', gap: '0.15rem', fontSize: '0.85rem' }}>
@@ -210,6 +282,14 @@ export default function GcProjects() {
                 setJustMade(id)
                 setWindow(false)
                 showToast(`${draft.name} is made.`, 'success')
+                // Its folder in Drive, with Plans and Team only inside (step 5). A failure is said, never a stop.
+                try {
+                  const folders = await makeDriveFolders(id)
+                  await load()
+                  if (!folders.plansShared) showToast(`The folders are made, but Plans could not be shared with anyone with the link: ${folders.reason ?? 'Drive said no'}.`, 'error')
+                } catch (e) {
+                  showToast(formatErrorMessage(e, 'The Drive folders were not made.'), 'error')
+                }
               })
               .catch((e) => setCreateProblem(formatErrorMessage(e, 'The project was not made.')))
               .finally(() => setCreating(false))
