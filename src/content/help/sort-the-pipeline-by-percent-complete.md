@@ -1,7 +1,7 @@
 ---
 title: sort the pipeline by percent complete
 category: Jobs & Scheduling
-roles: dev, master_technician, assistant, controller, primary
+roles: dev, master_technician, assistant, controller
 keywords: pipeline, sort, percent complete, % done, progress, least done, stages board, column header
 order: 47
 ---
