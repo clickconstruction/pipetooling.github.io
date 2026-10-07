@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { jobContractSignatureAuditLine, jobContractSignatureBlocks, jobContractSignersAuditLine } from './jobContractLifecycle'
+import { formatContractSignedStamp, isSignedOnDayMarker, jobContractSignatureAuditLine, jobContractSignatureBlocks, jobContractSignersAuditLine } from './jobContractLifecycle'
 
 /** A second signer in the agreement's audit line and printed blocks (v2.4590). */
 const STATUTES = ' · 15 U.S.C. § 7001 · Tex. Bus. & Com. Code ch. 322'
@@ -127,5 +127,39 @@ describe('jobContractSignatureBlocks — what every print draws', () => {
       imageUrl: 'https://x.test/b.png',
       paper: false,
     })
+  })
+})
+
+describe('a paper filed with its Signed on date reads as a day, not a moment (v2.4876)', () => {
+  // fileSignedJobContract keeps a typed Signed on date as that day at noon UTC.
+  const onDay = { ...paperTwo, signed_at: '2026-09-30T12:00:00+00:00', co_signed_at: '2026-09-30T12:00:00+00:00', paper_signed_on: '2026-09-30' }
+
+  it('knows the marker by its shape, in the forms the database and the client write it', () => {
+    for (const iso of ['2026-09-30T12:00:00Z', '2026-09-30T12:00:00+00:00', '2026-09-30T12:00:00.000Z', '2026-09-30T12:00:00+00']) expect(isSignedOnDayMarker(iso)).toBe(true)
+    for (const iso of ['2026-09-30T12:00:01Z', '2026-09-30T12:00:00.123Z', '2026-09-30T17:00:00Z', '2026-09-30', '', null, undefined]) expect(isSignedOnDayMarker(iso)).toBe(false)
+  })
+
+  it('the line says the day they signed, with no time: v2.4657’s Palmers read "on Sep 30, 2026"', () => {
+    const palmers = { ...onDay, signer_printed_name: 'Michael Palmer', co_signer_name: 'Grace Palmer', co_signer_printed_name: 'Grace Palmer' }
+    expect(jobContractSignersAuditLine(palmers)).toBe('Signed on paper by Michael Palmer and Grace Palmer on Sep 30, 2026')
+    expect(jobContractSignatureAuditLine({ ...onDay, signer_printed_name: 'Sam Owner' })).toBe('Signed on paper by Sam Owner on Sep 30, 2026')
+    expect(jobContractSignatureAuditLine({ ...onDay, signer_printed_name: '' })).toBe('Signed on paper on Sep 30, 2026')
+  })
+
+  it('a paper with paper_signed_on beside a real signed_at keeps its time: the shape decides, not the column', () => {
+    const older = { ...paperTwo, paper_signed_on: '2026-09-28' }
+    expect(jobContractSignersAuditLine(older)).toBe('Signed on paper by Sam Owner and Alex Owner · recorded Sep 29, 2026, 2:05 PM CT')
+  })
+
+  it('the print’s block and the banner carry the day alone; a real stamp keeps its time', () => {
+    const b = jobContractSignatureBlocks(onDay, { record: { jobNumber: '1064' } })
+    expect(b.signature).toMatchObject({ auditLine: 'Signed on paper by Sam Owner and Alex Owner on Sep 30, 2026', whenLabel: 'Sep 30, 2026', paper: true })
+    expect(formatContractSignedStamp(onDay.signed_at)).toBe('Sep 30, 2026')
+    expect(formatContractSignedStamp(one.signed_at)).toBe('Sep 29, 2026, 2:05 PM')
+    expect(formatContractSignedStamp(null)).toBeNull()
+  })
+
+  it('an electronic signature is never a Signed on day, whatever its stamp', () => {
+    expect(jobContractSignersAuditLine({ ...two, signed_at: '2026-09-30T12:00:00Z' })).toContain('· Sep 30, 2026, 7:00 AM CT')
   })
 })
