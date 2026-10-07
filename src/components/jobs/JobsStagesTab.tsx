@@ -211,6 +211,7 @@ import {
   stagesJobsWithoutCustomerFromFiltered,
   stagesSectionKeyForJobStatus,
   jobInCollections,
+  jobUncollectible,
   stagesReadyToBillJobsWithoutEmail,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
@@ -940,7 +941,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
   const billedLienClockJobs = useMemo(
-    () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
+    // v2.4788: a job marked Uncollectible is off the Lien desk — no clock, no calendar row (punch list #94).
+    () => jobs.filter((j) => j.status === 'billed' && !jobUncollectible(j)).map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, gc_customer_id: j.gc_customer_id ?? null })),
     [jobs],
   )
   // v2.4153: the Lien calendar's pen bumps this after it writes a property kind, so the clocks re-read the kind.
@@ -1074,6 +1076,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     const out: LienCalendarJob[] = []
     for (const job of jobs) {
       if (job.status !== 'billed') continue
+      if (jobUncollectible(job)) continue // v2.4788: given up on — off the calendar and the Deadlines list
       const billed = (job.invoices ?? []).filter((i) => i.status === 'billed')
       const runway = lienRunwayFor(job, billed.length === 1 ? billed[0]! : null)
       if (!runway || runway.state === 'none') continue

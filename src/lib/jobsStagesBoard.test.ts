@@ -23,6 +23,7 @@ import {
   jobBillingUnallocatedDollars,
   jobPartialInvoiceRemainingDollars,
   jobInCollections,
+  jobUncollectible,
   readyToBillRowsExposureTotal,
   stagesMergedBillingInvoiceId,
   sortStagesJobsByEffectiveNumberDesc,
@@ -1556,5 +1557,15 @@ describe('v2.3775 — a partly paid billed line counts for what is still unpaid 
 
   it('the same job without its payment rows still reads the face amount (the bug this replaces)', () => {
     expect(jobBillingUnallocatedDollars({ ...job978, payments: [] })).toBe(0)
+  })
+})
+
+describe('jobUncollectible (punch list #94, v2.4788)', () => {
+  it('is in Collections AND marked; a mark outside Collections or off a billed job counts for nothing', () => {
+    expect(jobUncollectible({ status: 'billed', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })).toBe(true)
+    expect(jobUncollectible({ status: 'billed', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: null })).toBe(false)
+    expect(jobUncollectible({ status: 'billed', collections_at: '2026-08-01T00:00:00Z' })).toBe(false)
+    expect(jobUncollectible({ status: 'billed', collections_at: null, uncollectible_at: '2026-10-07T00:00:00Z' })).toBe(false)
+    expect(jobUncollectible({ status: 'paid', collections_at: '2026-08-01T00:00:00Z', uncollectible_at: '2026-10-07T00:00:00Z' })).toBe(false)
   })
 })
