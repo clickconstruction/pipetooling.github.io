@@ -35,7 +35,7 @@ Pulling an account back on the desk removes it from the portal on the firm's nex
 
 ## The lien grid
 
-The lien grid is a third panel beside **Matters** and **Notifications**. The grid shows every billed job with money open and a lien month. Each job is one row, in counsel's twelve columns. The rows are the same ones the office's Lien desk Timeline tab holds, read live. Pick a GC. Switch **Something due** to **All** for the whole book, every row. {{button:blue|⎙ Print the grid}} hands over the same letter-landscape page the desk prints. A red **?** marks a fact the office has not entered yet:
+The lien grid is a third panel beside **Matters** and **Notifications**. The grid shows every billed job with money open and a lien month. Each job is one row. The address sits under the job name. The property reads Commercial or Residential, with Homestead or No homestead beneath. The unpaid total leads its column, with the unpaid months under it. The § 53.056 column lists each month whose window is still open, with its date. A month whose window has closed is left off. The rows are the same ones the office's Lien desk Timeline tab holds, read live. A rail beside the grid lists every GC with its job count and open dollars, largest first. Click a GC to narrow the grid to its jobs. The last entry is the jobs with no GC. Switch **Something due** to **All** for the whole book, every row. The rail's numbers follow that switch. {{button:blue|⎙ Print the grid}} hands over the same letter-landscape page the desk prints, in counsel's twelve columns. A red **?** marks a fact the office has not entered yet:
 
 - the payment bond
 - paid out to the GC
