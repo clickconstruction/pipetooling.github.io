@@ -43,7 +43,7 @@ import {
   sortPayApplications,
   withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
-import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadDeletedPayApplications, loadPayApplications, savePayApplication } from '../../lib/aiaPayApplicationsIo'
+import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadDeletedPayApplications, loadPayApplications, restorePayApplication, savePayApplication } from '../../lib/aiaPayApplicationsIo'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { BID_STAGE_NAMES, type BidSchedule, crewOfferForLine, crewPercentByStage, scaleLinesToAmount, scheduleGap } from '../../lib/aiaBidSchedule'
 import { type AiaLineSourceKey, aiaLineSources } from '../../lib/aiaLineSources'
@@ -56,7 +56,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { fileSentCopy, loadSentCopiesForJob } from '../../lib/sent/sentCopiesIo'
 import type { SentCopy } from '../../lib/sent/sentCopies'
-import { payApplicationDay, payApplicationHistory, payApplicationSavedWords, payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
+import { payApplicationDay, payApplicationHistory, payApplicationRestoreTakenWords, payApplicationSavedWords, payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 import AiaG702G703History from './AiaG702G703History'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -226,6 +226,8 @@ export default function AiaG702G703Modal({
   const [sent, setSent] = useState<SentCopy[]>([])
   // The applications taken off the job (v2.4715): the history lists them after the live ones.
   const [deleted, setDeleted] = useState<SavedPayApplication[]>([])
+  // The deleted application being put back (#92), while the write is in flight.
+  const [restoringId, setRestoringId] = useState<string | null>(null)
   // The history first on a job with saved applications; the form once one is opened or started.
   const [view, setView] = useState<'history' | 'form'>('form')
   const history = useMemo(() => payApplicationHistory(saved, sent, deleted), [saved, sent, deleted])
@@ -348,7 +350,8 @@ export default function AiaG702G703Modal({
       if (first) loadForm({ values: first.fields, lines: first.lines, splitLaborMaterial: first.splitLaborMaterial }, first.link, first.carryReason, first.name)
       else startNew(list, loadedFacts, schedule)
       // A job with earlier applications is read before it is typed on: the history first, unless one was asked for.
-      setView(!first && startOn === 'history' && list.length > 0 ? 'history' : 'form')
+      // Deleted ones count (#92): their lines carry Put it back.
+      setView(!first && startOn === 'history' && (list.length > 0 || gone.length > 0) ? 'history' : 'form')
       setLoadedJobId(job.id)
     })()
     return () => {
@@ -498,15 +501,40 @@ export default function AiaG702G703Modal({
       await deletePayApplication(openApp.id)
       const rest = saved.filter((a) => a.id !== openApp.id)
       setSaved(rest)
-      // The row is marked, not gone: the history lists it after the live ones.
-      setDeleted(await loadDeletedPayApplications(openApp.jobId).catch(() => [] as SavedPayApplication[]))
+      // The row is marked, not gone: the history lists it after the live ones, with Put it back (#92).
+      const gone = await loadDeletedPayApplications(openApp.jobId).catch(() => [] as SavedPayApplication[])
+      setDeleted(gone)
       setOpenId(null)
       startNew(rest, facts, rest.length === 0 ? bidSchedule : null)
-      setView(rest.length > 0 ? 'history' : 'form')
+      setView(rest.length > 0 || gone.length > 0 ? 'history' : 'form')
       showToast(`Application ${openApp.applicationNumber} deleted.`, 'success')
     } catch (e) {
       console.error(e)
       showToast('The application could not be deleted.', 'error')
+    }
+  }
+
+  /** Put a deleted application back on the job (#92): it rejoins the live list and the history stays open. */
+  const onRestore = async (app: SavedPayApplication) => {
+    if (restoringId) return
+    setRestoringId(app.id)
+    try {
+      await restorePayApplication(app)
+      const [list, gone] = await Promise.all([
+        loadPayApplications(app.jobId).catch(() => [...saved, app]),
+        loadDeletedPayApplications(app.jobId).catch(() => deleted.filter((a) => a.id !== app.id)),
+      ])
+      setSaved(list)
+      setDeleted(gone)
+      showToast(`Application ${app.applicationNumber} is back on the job.`, 'success')
+    } catch (e) {
+      if (e instanceof PayApplicationNumberTaken) showToast(payApplicationRestoreTakenWords(e.applicationNumber), 'error')
+      else {
+        console.error(e)
+        showToast('The application could not be put back.', 'error')
+      }
+    } finally {
+      setRestoringId(null)
     }
   }
 
@@ -667,7 +695,14 @@ export default function AiaG702G703Modal({
         <div style={wide ? { display: 'flex', flex: 1, minHeight: 0 } : undefined}>
         {view === 'history' ? (
           <div data-testid="aia-history-pane" style={{ padding: '1rem 1.25rem', ...(wide ? { flex: 1, minHeight: 0, overflow: 'auto' } : {}) }}>
-            <AiaG702G703History history={history} nextNumber={nextApplicationNumber(saved)} onOpen={openFromHistory} onNew={newFromHistory} />
+            <AiaG702G703History
+              history={history}
+              nextNumber={nextApplicationNumber(saved)}
+              onOpen={openFromHistory}
+              onNew={newFromHistory}
+              onRestore={(app) => void onRestore(app)}
+              restoringId={restoringId}
+            />
           </div>
         ) : null}
         {view === 'form' && showPaper ? (
@@ -730,7 +765,7 @@ export default function AiaG702G703Modal({
         >
           <div data-testid="aia-applications" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.9rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-              {saved.length > 0 ? (
+              {saved.length > 0 || deleted.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => void backToHistory()}

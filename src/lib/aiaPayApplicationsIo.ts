@@ -122,3 +122,15 @@ export async function deletePayApplication(id: string): Promise<void> {
   const { error } = await supabase.from('job_pay_applications').delete().eq('id', id)
   if (error) throw error
 }
+
+/**
+ * Put a deleted application back on the job (#92): clear the mark; the stamp trigger clears who
+ * made it and leaves the saved stamps alone. Throws `PayApplicationNumberTaken` when a live
+ * application now holds its number (the live-number index refuses the restore).
+ */
+export async function restorePayApplication(app: Pick<SavedPayApplication, 'id' | 'applicationNumber'>): Promise<void> {
+  const { error } = await supabase.from('job_pay_applications').update({ deleted_at: null } as never).eq('id', app.id)
+  if (!error) return
+  if (error.code === '23505') throw new PayApplicationNumberTaken(app.applicationNumber)
+  throw error
+}
