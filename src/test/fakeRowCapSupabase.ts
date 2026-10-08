@@ -55,6 +55,7 @@ export function makeFakeRowCapSupabase(
     }
     return b
   }
-  const client = { from: (table: string) => builder(table) } as unknown as SupabaseClient<Database>
+  // An RPC reads as the table `rpc:<name>` (its arguments are not applied): enough to test paging.
+  const client = { from: (table: string) => builder(table), rpc: (fn: string) => builder(`rpc:${fn}`) } as unknown as SupabaseClient<Database>
   return { client, calls }
 }

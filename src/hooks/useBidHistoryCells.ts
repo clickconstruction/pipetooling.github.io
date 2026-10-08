@@ -1,5 +1,9 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { fetchAllRows } from '../lib/supabasePaging'
+import type { Database } from '../types/database'
+import type { SupabaseClientResult } from '../utils/errorHandling'
 import { buildBidCellHistoryIndex, type BidCellHistoryIndex, type BidCellHistoryRpcRow } from '../lib/bids/bidCellHistory'
 import { BID_HISTORY_PUT_BACK_EVENT } from '../lib/bids/bidHistoryPutBack'
 
@@ -97,8 +101,10 @@ export function BidCellHistoryProvider({
   return createElement(BidCellHistoryContext.Provider, { value }, children)
 }
 
-export async function loadBidCellHistory(bidId: string): Promise<BidCellHistoryRpcRow[]> {
-  const { data, error } = await supabase.rpc('latest_bid_cell_history', { p_bid_id: bidId })
-  if (error) throw new Error(error.message)
-  return (data ?? []) as BidCellHistoryRpcRow[]
+/** Every row of the cells' read, a page at a time (PostgREST answers at most 1,000 rows a read). */
+export async function loadBidCellHistory(bidId: string, client: SupabaseClient<Database> = supabase): Promise<BidCellHistoryRpcRow[]> {
+  return fetchAllRows<BidCellHistoryRpcRow>(
+    (from, to) => client.rpc('latest_bid_cell_history', { p_bid_id: bidId }).range(from, to) as unknown as PromiseLike<SupabaseClientResult<BidCellHistoryRpcRow[]>>,
+    'latest_bid_cell_history',
+  )
 }

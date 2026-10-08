@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import {
+  BID_HISTORY_PAGE,
   BID_HISTORY_TABS,
   bidHistoryAuthors,
   bidHistoryByDay,
@@ -39,6 +40,17 @@ const chip = (on: boolean): CSSProperties => ({
 
 const currentTime = () => new Date()
 
+/** One row once, though a page read after a new change may repeat the row at its edge. */
+const dedupeRows = (rows: ReadonlyArray<BidHistoryRow>): BidHistoryRow[] => {
+  const seen = new Set<string>()
+  return rows.filter((r) => {
+    const k = `${r.source}-${r.id ?? r.archiveId}`
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
 /**
  * Bid history, the window (punch list #73, PR 2): everything that happened on the bid, newest
  * first, one line per action (an import of 23 rows is one line), each opening to its rows.
@@ -59,8 +71,8 @@ export function BidHistoryWindow({
   onClose: () => void
   /** Opens searched on a row's name ("+N more" under a cell). */
   initialSearch?: string
-  /** The read; a test stands one in. */
-  load?: (bidId: string) => Promise<BidHistoryRow[]>
+  /** One page of the read, from row `from`; a test stands one in. */
+  load?: (bidId: string, from: number) => Promise<BidHistoryRow[]>
   /** The put back; a test stands one in. */
   putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>
   now?: () => Date
@@ -76,6 +88,13 @@ export function BidHistoryWindow({
   const [note, setNote] = useState<{ lineKey: string; text: string; ok: boolean } | null>(null)
   // Read again after a put back, keeping the list on screen (and where it was scrolled) meanwhile.
   const [readNo, setReadNo] = useState(0)
+  // The read comes a page at a time (PostgREST's 1,000-row cap): how many rows were read, and
+  // whether a full last page says there are older ones.
+  const [readCount, setReadCount] = useState(0)
+  const [more, setMore] = useState(false)
+  const [olderBusy, setOlderBusy] = useState(false)
+  const readCountRef = useRef(0)
+  readCountRef.current = readCount
 
   useEffect(() => {
     let cancelled = false
@@ -83,12 +102,45 @@ export function BidHistoryWindow({
       setRows(null)
       setError(null)
     }
-    load(bid.id).then(
-      (r) => { if (!cancelled) setRows(r) },
-      (e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)) },
-    )
+    const apply = (got: BidHistoryRow[], full: boolean) => {
+      if (cancelled) return
+      setRows(dedupeRows(got))
+      setReadCount(got.length)
+      setMore(full)
+    }
+    const fail = (e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)) }
+    if (readNo === 0) {
+      // The first page.
+      load(bid.id, 0).then((page) => apply(page, page.length >= BID_HISTORY_PAGE), fail)
+    } else {
+      // After a put back: as many pages as were already shown.
+      const want = Math.max(1, readCountRef.current)
+      void (async () => {
+        const got: BidHistoryRow[] = []
+        for (let from = 0; ; from += BID_HISTORY_PAGE) {
+          const page = await load(bid.id, from)
+          got.push(...page)
+          if (page.length < BID_HISTORY_PAGE) return apply(got, false)
+          if (got.length >= want) return apply(got, true)
+        }
+      })().catch(fail)
+    }
     return () => { cancelled = true }
   }, [bid.id, load, readNo])
+
+  async function showOlder() {
+    setOlderBusy(true)
+    try {
+      const page = await load(bid.id, readCount)
+      setRows((cur) => dedupeRows([...(cur ?? []), ...page]))
+      setReadCount((n) => n + page.length)
+      setMore(page.length >= BID_HISTORY_PAGE)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setOlderBusy(false)
+    }
+  }
 
   async function pressPutBack(lineKey: string, target: BidPutBackTarget) {
     setBusy(lineKey)
@@ -189,7 +241,7 @@ export function BidHistoryWindow({
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {actions.length === 0
               ? 'Nothing has changed on this bid since its history began.'
-              : `${actions.length} ${actions.length === 1 ? 'change' : 'changes'} by ${authors.length} ${authors.length === 1 ? 'author' : 'authors'}.`}
+              : `${actions.length.toLocaleString('en-US')} ${actions.length === 1 ? 'change' : 'changes'}${more ? ' so far' : ''} by ${authors.length} ${authors.length === 1 ? 'author' : 'authors'}.`}
             {otherBids.size > 0 ? ` Includes ${[...otherBids].join(', ')}, adopted into this bid.` : ''}
           </p>
           {actions.length > 0 ? (
@@ -228,9 +280,19 @@ export function BidHistoryWindow({
               )}
             </>
           ) : null}
+          {more ? (
+            <button
+              type="button"
+              onClick={() => void showOlder()}
+              disabled={olderBusy}
+              style={{ justifySelf: 'start', padding: '0.35rem 0.8rem', minHeight: 40, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', cursor: olderBusy ? 'default' : 'pointer' }}
+            >
+              {olderBusy ? 'Reading older changes…' : 'Show older changes'}
+            </button>
+          ) : null}
           <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-            {firstLedger ? `History starts ${new Date(firstLedger).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} for this bid. ` : 'History starts the day the ledger was switched on. '}
-            {hasArchive ? 'Rows marked from the delete archive were removed before that and are kept for 90 days.' : ''}
+            {more ? 'Older changes are not shown yet. ' : firstLedger ? `History starts ${new Date(firstLedger).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} for this bid. ` : 'History starts the day the ledger was switched on. '}
+            {hasArchive && !more ? 'Rows marked from the delete archive were removed before that and are kept for 90 days.' : ''}
           </p>
         </div>
       )}
