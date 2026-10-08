@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O4a: our bill to the customer"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 5, O4a)
-status: built locally 2026-10-08 by Helper 5 at the lead's ask, on claude/gc-owner-billing-o4a (no claim, no push) · cut the day the owner answers decision 1 and the billing-only job · the billing-only PR (mockups/billing-only-job.md) lands first
+status: built locally 2026-10-08 by Helper 5 at the lead's ask, on claude/gc-owner-billing-o4a (no claim, no push) · the billing-only job is live (BO-1, 20261009130000; BO-2 is #5030) · O4a-1's SQL amended 2026-10-08 by Helper 15, the Owner Billing lane, on the lead's calls (*O4a-1 as amended* below) · O4a-1 is cut once #5030 merges
 ---
 
 # O4a: our bill to the customer
@@ -11,14 +11,16 @@ build. It ships in four PRs, the way O3 and O3-ui split, each from `origin/main`
 
 | PR | What | Needs |
 |---|---|---|
-| **O4a-1** | The migration below: `gc_send_owner_pay_app`, `gc_record_certificate`, the billing job, the two links, the service type | The billing-only PR pushed |
+| **O4a-1** | The migration below: `gc_send_owner_pay_app`, `gc_record_certificate`, the billing job, the two links, the service type, and its SQL bed | BO-1 pushed (done); BO-2 (#5030) merged and deployed before its push |
 | **O4a-2** | The pay application as a file: the app's AIA filler gains the GC form's options, `payAppWorkbook` and `payAppPdf` on main | Nothing (no database) |
 | **O4a-3** | **Bill the customer** on `/gc`: the draft, retainage, the form, Send, the certificate, so far with the customer | O4a-1's types; O3-ui (#4963) and O5a (#4966) merged |
 | **O4a-4** | Our conditional waiver with each send: `LienReleaseModal` on the billing job, with one optional prop (built) | O4a-3 |
 
 ## O4a-1, the migration (byte for byte)
 
-The stamp is a placeholder. The real one is claimed at the cut, the day after the billing-only PR's.
+The stamp is a placeholder. The real one is claimed at the cut, past main's newest (20261009180000 on 10-08).
+The SQL below is as it will be built, with the lead's three changes of 2026-10-08 (*O4a-1 as amended*, after
+the local run).
 
 ```sql
 -- GC mode, Owner Billing's O4a: our bill to the customer (to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md → The RPCs,
@@ -29,17 +31,20 @@ The stamp is a placeholder. The real one is claimed at the cut, the day after th
 -- time (decision 1): one jobs_ledger row, billing-only, for the project's customer, its revenue kept at the
 -- contract. Recording the architect's certificate makes the bill on that job for what they certified (decision
 -- 3), which the customer then pays through the Pipeline's own statement, Stripe, payments and promises.
--- Both functions are SECURITY INVOKER: the GC tables are dev only (decision 2), and the job and its bill go in
--- under the Pipeline's own insert policies.
+-- Both functions are SECURITY INVOKER: the GC tables are the money team's (gc_money_team(), the Owner Billing
+-- door, 20261009050000), and the job and its bill go in under the Pipeline's own insert policies, which the money
+-- team passes (is_office_staff()).
 SET lock_timeout = '3s';
 
 -- The billing job's service type (decision 10). jobs_ledger.service_type_id is required, and none of the
--- Pipeline's types fits a job that only carries bills. Last in the order.
-INSERT INTO public.service_types (name, description, sequence_order)
+-- Pipeline's types fits a job that only carries bills. Last in the order, and billing-only (the owner's call (b),
+-- service_types.billing_only from 20261009130000), so the pickers leave it out.
+INSERT INTO public.service_types (name, description, sequence_order, billing_only)
 VALUES (
   'General contracting',
   'GC mode: the billing job of a GC project we build. It only carries our bills to the customer.',
-  (SELECT COALESCE(MAX(sequence_order), 0) + 1 FROM public.service_types)
+  (SELECT COALESCE(MAX(sequence_order), 0) + 1 FROM public.service_types),
+  true
 )
 ON CONFLICT (name) DO NOTHING;
 
@@ -151,6 +156,7 @@ DECLARE
   v_due numeric;
   v_id uuid;
   v_job uuid;
+  v_type uuid;
   v_position integer := 0;
 BEGIN
   IF auth.uid() IS NULL THEN
@@ -260,6 +266,11 @@ BEGIN
   -- The billing job: opened by the first send, its revenue kept at the contract by every one.
   v_job := v_gc.billing_job_id;
   IF v_job IS NULL THEN
+    -- Its service type is found by its flag, not its name, so a rename in Settings' catalog never loses it.
+    SELECT id INTO v_type FROM public.service_types WHERE billing_only ORDER BY sequence_order, name LIMIT 1;
+    IF v_type IS NULL THEN
+      RAISE EXCEPTION 'The billing job''s service type is missing. Ask a dev to add General contracting back.';
+    END IF;
     SELECT * INTO v_project FROM public.projects WHERE id = p_project_id;
     SELECT * INTO v_customer FROM public.customers WHERE id = v_project.customer_id;
     INSERT INTO public.jobs_ledger (
@@ -267,7 +278,7 @@ BEGIN
       customer_id, customer_name, customer_email, customer_phone, revenue
     ) VALUES (
       COALESCE(public.company_owner_user_id(), auth.uid()),
-      (SELECT id FROM public.service_types WHERE name = 'General contracting'),
+      v_type,
       public.next_job_number_suggestion(),
       v_project.name || ' (GC)',
       COALESCE(v_project.address, ''),
@@ -390,6 +401,7 @@ GRANT EXECUTE ON FUNCTION public.gc_record_certificate(uuid, numeric, date, text
   - named "<project> (GC)", at the project's address, for `projects.customer_id`, with the customer's name, email and phone copied the way `create_job_from_estimate` copies them;
   - `project_id` null (decision 10: a superintendent's project would list it);
   - master `company_owner_user_id()`, the owner of every job since one company (`20260907010000`);
+  - the "General contracting" service type, inserted billing-only so the pickers leave it out, and found by that flag rather than its name, so a rename in Settings' catalog never loses it (missing, the send refuses in words);
   - the next job number from `next_job_number_suggestion()`, the number every new job gets;
   - **revenue kept at the contract today** (`gc_owner_contract_now`: the signed lines and every signed change order) by every send and every certificate. `mark_invoice_paid` marks a job paid once payments reach its revenue, so a short revenue would close the job early. A change order signed between a send and the next certificate leaves revenue short only until that certificate. No payment comes before one, since the certificate makes the bill.
 - **The bill** (decision 3) is made by the certificate, for what the architect certified:
@@ -427,6 +439,39 @@ The run was on 2026-10-08, with O1's and O3's migrations as on main, and stand-i
 - the bill deleted set its link to null;
 - the project deleted took its pay applications and lines, and the billing job stayed with its history;
 - the migration run twice: no error, one service type.
+
+### O4a-1 as amended (2026-10-08, the lead's calls)
+
+Helper 15 took the Owner Billing lane from Helper 5 and read the build back against main and prod (read only).
+The lead approved three changes to the SQL above; nothing else in it moved:
+
+1. **The service type is inserted billing-only.** `service_types.billing_only` came with the billing-only
+   migration (20261009130000, the owner's call (b)), and #5030's pickers leave out only flagged types. Prod
+   has Plumbing, Electrical and HVAC and no "General contracting", so `ON CONFLICT (name)` never fires there.
+2. **`gc_send_owner_pay_app` finds the type by its flag**, not its name, and refuses in words when there is
+   none. Settings' catalog keeps every type editable, and a rename would otherwise fail the first send on a
+   bare NOT NULL.
+3. **The header comment names the money team.** The Owner Billing door (20261009050000) swapped the GC tables'
+   dev-only policies for `gc_money_team()`: dev, the leaders and the controller. Read on main, that team passes
+   every policy this SQL meets: the Pipeline's job and bill inserts open with `is_office_staff()`, and
+   `gc_projects`, `gc_trade_packages` and the GC projects' rows are `gc_office_team()`'s. An estimator is
+   refused by RLS, as O3's functions are.
+
+Also read on main, with no change needed: no trigger on a new job adds a crew, a schedule block or a session,
+so the billing-only guards never fire on the send. `jobs_ledger_invoices_billed_at_fn` keeps the noon-Central
+`billed_at` it is given. `next_job_number_suggestion()` is the highest number plus one, so a rolled-back verify
+burns no job number.
+
+**Tested in O4a-1 itself by a whole-schema SQL bed**, `scripts/pgtest-gc-owner-billing.sh` with
+`supabase/tests/gc_owner_billing/`, modelled on the schedule's and run by `.github/workflows/sql-beds.yml` on
+the PR. Every migration applies in order, this one applies a second time with no change, and the scenario runs
+the local run's cases on the real schema, as a dev and as a controller through RLS, in one transaction that
+rolls back.
+
+**The lock note, corrected:** the two new foreign keys take a short SHARE ROW EXCLUSIVE lock on
+`jobs_ledger_invoices` and `job_lien_releases` while the migration applies, so the push goes in the evening
+batch, after 23:00 UTC. BO-2 (#5030) merges and deploys first: the push creates the flagged type, and only
+BO-2's client leaves flagged types out of the pickers.
 
 ## O4a-2, the files
 
@@ -527,6 +572,10 @@ That is the plan's own check for O4a: "a signed change order at 50% drafts a bil
    - **(c)** put the billing job on an existing type, Plumbing.
 
    I recommend (b), folded into the billing-only PR, which already touches the crew lists.
+
+   *Answered: (b)*, with the owner's yes to the billing-only flag (`HANDOFF_2026-10-08.md`). The flag came with
+   the billing-only migration, the pickers' filters with BO-2 (#5030), and O4a-1 inserts the type with it set
+   (*O4a-1 as amended*).
 2. **A certificate is once.** A wrong one is fixed on its bill with the Pipeline's write-down, not by typing it again.
 3. **The types PR after O4a-1.** `database.ts` gains the two links as Row fields, so O5a's test rows gain `invoice_id: null` and `conditional_waiver_id: null` in that same PR. It is done in the local stand-in commit.
 4. **The 703's 34 rows.** A GC job with more trades, our three lines and change orders than 34 cannot print. Grouping lines on our bill is a later question, and the window says so in the filler's words.
