@@ -43,7 +43,7 @@ import {
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
-import { awaitingChip, heldChip, printedChip, readyChip, type LienFootChip } from '../../lib/jobs/lienFootChip'
+import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
@@ -71,6 +71,7 @@ import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPa
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
 import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
+import { LienStepRow } from './LienDeskSteps'
 import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
 import LienPaperPropertyWindow from './LienPaperPropertyWindow'
 import LienPaperGcWindow from './LienPaperGcWindow'
@@ -351,6 +352,9 @@ export default function LienDeskModal({
   const [signoffText, setSignoffText] = useState('')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
+  // The leader's one-screen approve on a phone (v2.4881): the facts fold under Details; Not yet opens the hold reasons.
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [notYetOpen, setNotYetOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [mobileListShown, setMobileListShown] = useState(true)
   // The pile titles stack as the Notices list scrolls (v2.4672): the list's scroller, and the pile the reader is in.
@@ -804,6 +808,8 @@ export default function LienDeskModal({
     setWordOpen(false)
     setByHandOpen(false)
     setHoldOpen(null)
+    setDetailsOpen(false)
+    setNotYetOpen(false)
     setRulePick(null)
     setWordNote('')
     // v2.4568: these stayed open, or kept their words, on the next job.
@@ -1778,10 +1784,13 @@ export default function LienDeskModal({
 
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
+  // The leader on a phone, on a notice waiting on him (v2.4881): three lines and two buttons; everything else under Details.
+  const simpleApprove = Boolean(isMobile && leader && selected && selected.pile === 'awaiting')
   const pane = selected ? (
     <div
       ref={paneRef}
       data-lien-desk-pane
+      data-lien-pane-simple={simpleApprove && !detailsOpen ? 'yes' : undefined}
       onScroll={(ev) => {
         const next = ev.currentTarget.scrollTop > STRIP_COLLAPSE_PX
         setPaneScrolled((prev) => (prev === next ? prev : next))
@@ -1820,11 +1829,11 @@ export default function LienDeskModal({
         </div>
       ) : null}
       {isMobile ? (
-        <button type="button" onClick={() => setMobileListShown(true)} style={{ ...btn('plain'), justifySelf: 'start', marginTop: '0.9rem' }}>
+        <button type="button" data-lien-pane-keep onClick={() => setMobileListShown(true)} style={{ ...btn('plain'), justifySelf: 'start', marginTop: '0.9rem' }}>
           ← Back to the list
         </button>
       ) : null}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
+      <div data-lien-pane-keep style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
         <LienJobHeading label={jobLabel(job, selected.jobId)} onOpenJob={onOpenJob ? () => onOpenJob(selected.jobId) : undefined} />
         {storedDraft?.letterTwo && item ? (
           <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two-heading title="The second owner letter, on the same form to the same two recipients; the first packet stays on the record">
@@ -1835,6 +1844,34 @@ export default function LienDeskModal({
           {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
         </span>
       </div>
+      {simpleApprove ? (
+        <div data-lien-pane-keep data-lien-approve-card style={{ display: 'grid', gap: '0.45rem', padding: '0.9rem 0.9rem 0.8rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-blue-tint)' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+            Lien notice · {counts?.awaiting ?? 1} waiting on you
+          </div>
+          <div style={{ fontSize: '1.15rem', lineHeight: 1.25 }}>
+            <strong>{formatUsdNoCents(claimed.claim)}</strong> owed by {gc?.name ?? 'the GC'}
+          </div>
+          <div style={{ fontSize: '1.15rem', lineHeight: 1.25 }} data-lien-approve-mail-by>
+            {selected.earliestDeadline ? (
+              <>
+                Mail by <strong>{footShortDay(selected.earliestDeadline)}</strong>
+                {selected.daysLeft != null && selected.daysLeft >= 0 ? ` · ${selected.daysLeft} ${selected.daysLeft === 1 ? 'day' : 'days'}` : selected.daysLeft != null ? ' · window closed' : ''}
+              </>
+            ) : (
+              'No mail-by day yet'
+            )}
+          </div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            {item?.submitted_at ? `Sent to you ${footShortDay(item.submitted_at)}. ` : ''}
+            {gateVerdict.ready ? 'All four gates clear.' : `${gateVerdict.headline}.`}
+          </div>
+          <LienStepRow at={{ ladder: 'notice', step: 3 }} ladder="notice" viewerIsLeader />
+          <button type="button" data-lien-approve-details aria-expanded={detailsOpen} onClick={() => setDetailsOpen((v) => !v)} style={{ ...linkBtn, justifySelf: 'start', fontSize: '0.875rem', fontWeight: 600, padding: '4px 0' }}>
+            {detailsOpen ? 'Hide details ▴' : 'Details ▾'}
+          </button>
+        </div>
+      ) : null}
       {paneHead('path')}
       <div data-lien-pane-body="path" style={{ display: 'grid', gap: '0.6rem' }}>
       {timeline ? (
@@ -2370,6 +2407,7 @@ export default function LienDeskModal({
         authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
+        leaderNameFor={leaderNameFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
         onFixProperty={office ? (jobId, focus) => setPaneFix({ jobId, focus }) : undefined}
@@ -2450,6 +2488,7 @@ export default function LienDeskModal({
         authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
+        leaderNameFor={leaderNameFor}
         signerPhoneFor={signerPhoneFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
@@ -2627,6 +2666,21 @@ export default function LienDeskModal({
               <button type="button" onClick={() => hold(holdOpen)} disabled={busy} style={btn('amber', busy)}>Hold</button>
               <button type="button" onClick={() => setHoldOpen(null)} style={btn('plain')}>Cancel</button>
             </div>
+          ) : simpleApprove ? (
+            notYetOpen ? (
+              <div className="lienFootRow" data-lien-desk-not-yet>
+                <button type="button" onClick={() => setHoldOpen('promised')} disabled={busy} style={btn('plain', busy)}>Hold — they promised…</button>
+                <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
+                <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
+                <button type="button" onClick={() => setNotYetOpen(false)} style={btn('plain')}>Cancel</button>
+              </div>
+            ) : (
+              <div data-lien-desk-phone-approve style={{ display: 'grid', gap: '0.5rem' }}>
+                {detailsOpen ? offerSwitch() : null}
+                <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={{ ...btn('green', busy || Boolean(offerProblem)), width: '100%', padding: '12px 14px', fontSize: '1rem' }}>Approve ▸</button>
+                <button type="button" onClick={() => setNotYetOpen(true)} disabled={busy} style={{ ...btn('plain', busy), width: '100%', padding: '10px 14px' }}>Not yet</button>
+              </div>
+            )
           ) : (
             <>
             {offerBox()}

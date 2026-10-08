@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
-import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { StageRow } from '../lib/jobsStagesBoard'
@@ -27,8 +27,9 @@ import { buildGcReviewRollup } from '../lib/gcReviewRollup'
 import { gcReviewWeekStartYmd, latestCertByGc, type GcReviewCertRow } from '../lib/jobs/gcReviewCertification'
 import { listGcReviewCertifications } from '../lib/gcReviewCertifications'
 import { deriveGcAccountMen, type RoundMarkRow } from '../lib/jobs/gcStatementRounds'
-import { buildGcWorklist, worklistCards } from '../lib/jobs/gcWorklist'
-import { listGcStatementRoundMarks, listGcStatementSenders } from '../lib/gcStatementRoundIo'
+import { pipelineRoundCards } from '../lib/jobs/gcWorklist'
+import { trailingWeekStarts } from '../lib/jobs/temperatureBoard'
+import { listGcStatementRoundMarksSince, listGcStatementSenders } from '../lib/gcStatementRoundIo'
 import { useArBankUnallocatedCount } from './useArBankUnallocatedCount'
 import type { PipelineGcRoundCards } from '../components/jobs/PipelineMoneyOpportunities'
 
@@ -64,7 +65,8 @@ export function usePipelineMoneyOpportunities(opts: {
   const [promises, setPromises] = useState<Record<string, PromisedPayDate> | null>(null)
   const [touches, setTouches] = useState<ChaseTouch[] | null>(null)
   const [certRows, setCertRows] = useState<GcReviewCertRow[]>([])
-  const [marks, setMarks] = useState<RoundMarkRow[]>([])
+  /** The last six weeks of round marks: this week's say what is out, the older ones carry pay dates (v2.4887). */
+  const [recentMarks, setRecentMarks] = useState<RoundMarkRow[]>([])
   const [senders, setSenders] = useState<Map<string, string>>(new Map())
 
   const { count: arUnallocatedCount } = useArBankUnallocatedCount({
@@ -99,7 +101,7 @@ export function usePipelineMoneyOpportunities(opts: {
         .rpc('list_payment_chase_touches' as never)
         .then(({ data }) => setTouches(parseChaseTouchesRpc(data as unknown)), () => {}),
       listGcReviewCertifications(weekStart).then(setCertRows, () => {}),
-      listGcStatementRoundMarks(weekStart).then(setMarks, () => {}),
+      listGcStatementRoundMarksSince(trailingWeekStarts(weekStart, 6)[0] ?? weekStart).then(setRecentMarks, () => {}),
     ])
   }, [enabled, authUserId, isOffice])
 
@@ -141,18 +143,19 @@ export function usePipelineMoneyOpportunities(opts: {
   const gcRound = useMemo<PipelineGcRoundCards>(() => {
     if (!rollup || !leanBilledRows) return null
     // Office-wide (punch list #49): every GC over the line, whoever its account man is. An app send marks the GC sent, so the marks alone say what is out.
-    return worklistCards(
-      buildGcWorklist({
-        groups: rollup.groups,
-        certsByGc: latestCertByGc(certRows),
-        marks,
-        senders,
-        accountMen: deriveGcAccountMen(leanBilledRows),
-        lastSentByGcId: {},
-        weekStartYmd: gcReviewWeekStartYmd(),
-      }),
-    )
-  }, [rollup, leanBilledRows, certRows, marks, senders])
+    const weekStart = gcReviewWeekStartYmd()
+    return pipelineRoundCards({
+      groups: rollup.groups,
+      certsByGc: latestCertByGc(certRows),
+      marks: recentMarks.filter((m) => m.week_start === weekStart),
+      recentMarks,
+      todayYmd: todayYmdInAppTz(),
+      senders,
+      accountMen: deriveGcAccountMen(leanBilledRows),
+      lastSentByGcId: {},
+      weekStartYmd: weekStart,
+    })
+  }, [rollup, leanBilledRows, certRows, recentMarks, senders])
 
   const cardCount =
     moves.length +

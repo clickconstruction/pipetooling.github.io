@@ -5,6 +5,7 @@
  */
 import { buildJobContractCoverage, daysSinceIso, isContractGap, type JobContractCoverage, type JobContractRowLike, type SignedEstimateLike } from './jobContractCoverage'
 import { isUnderContractFloor } from './jobContractFloor'
+import { jobUncollectible } from '../jobsStagesBoard'
 
 /** Owner decision 2 (proposed): every non-paid stage is in scope. */
 export const CONTRACT_NUDGE_STATUSES = ['waiting', 'working', 'ready_to_bill', 'billed'] as const
@@ -16,6 +17,8 @@ export type ContractNudgeJob = {
   status: string | null
   revenue: number | null
   collections_at?: string | null
+  /** A job the office gave up on (Uncollectible, punch list #94) is chased for nothing, a contract included. */
+  uncollectible_at?: string | null
   /** Contract sweep PR 0: the office's "no agreement of ours needed" answer. */
   contract_not_needed_at?: string | null
   contract_not_needed_reason?: string | null
@@ -68,7 +71,7 @@ export function summarizeContractNudge(
   options: ContractNudgeOptions = {},
 ): ContractNudgeSummary {
   const floorCents = options.floorCents ?? 0
-  const live = jobs.filter((j) => (CONTRACT_NUDGE_STATUSES as ReadonlyArray<string>).includes(j.status ?? ''))
+  const live = jobs.filter((j) => (CONTRACT_NUDGE_STATUSES as ReadonlyArray<string>).includes(j.status ?? '') && !jobUncollectible(j))
   const coverage = buildJobContractCoverage(live, contracts, estimates)
   const missingIds: string[] = []
   let revenueTotal = 0

@@ -2,7 +2,7 @@
 name: "Help guides: the freshness pass, surface by surface"
 number: 91
 group: ready
-status: open · the list was made by the plain-words sweep (#75, closed 2026-10-06) · the lien guides are done (v2.4614 to v2.4623) · nothing else started
+status: open · the list was made by the plain-words sweep (#75, closed 2026-10-06) · the lien guides are done (v2.4614 to v2.4623) · the start-here guides are done (v2.4860) · the rest not started
 summary: >
   The plain-words sweep rewrote every guide sentence by sentence and kept every fact. Reading
   them, it found about twenty guides that describe screens that have since moved: a tab renamed,
@@ -11,8 +11,8 @@ summary: >
   sweep (guessed plain words, phrases kept word for word, two counts that disagree with their
   lists) so one pass per surface can take them all.
 next: >
-  One PR per surface below, read against main's code: Start-here guides first (a first-timer's
-  door), then Track a GC, Bills, Emails and settings, Submittals, the others. Each PR fixes the
+  One PR per surface below, read against main's code: Track a GC, then Bills, Emails and
+  settings, Submittals, the others. The start-here guides went first (v2.4860). Each PR fixes the
   stale facts, settles that surface's guessed words and kept phrases, and strikes its line here.
   Delete this card when the list is empty.
 size: M (about twenty guides over seven surfaces; S per surface)
@@ -40,9 +40,6 @@ rows below).
 - **Lien desk**: *understand how liens work and which lien tool to use* says the retainage notice
   is "not modeled in the app yet"; names "Lien instruments, the orange lien icon" (now the Lien
   window and the gavel); "Bill Customer → Lien releases"; the desk's three views (v2.4588).
-- **Start-here guides**: the master's says to add an account in Settings (People → + Hire since
-  v2.4348); the office one says Banking is shared with assistants (controller-and-above since
-  v2.3305); the superintendent's says "Assigned Superintendents" (the strip reads "Superintendents:").
 - **Track a GC**: the Share menu lacks *Find a check…* (v2.4046); the billing section predates
   *Bills go to* (v2.3345); rows now group by account man; it overlaps *run your GC statement round*.
 - **Submittals**: *turn a won bid into a job*'s submittals section predates this week's parts
@@ -109,8 +106,7 @@ caught. The owner-facing residue:
 - **Phrases kept word for word** because no rewriter could tell what they mean: "the same quiet
   electronic-signature line" (share a sub their portal); "the pile counsel named", "by the run or
   by hand" (the attorney guide); "whose exposure an unpaid balance is" (the supply-house quote
-  link); "the previous step reopens for rework automatically" (start here as a superintendent);
-  "raises lowering C" (overhead numbers); "statemented" (track a GC); "the fold candidates" (usage
+  link); "raises lowering C" (overhead numbers); "statemented" (track a GC); "the fold candidates" (usage
   dashboard); "Since v2.2967" in user prose (write a change order).
 - **Left without a plain word**: robot delta, gross (Balances computes net minus paid), exhibits,
   Sworn account, § 53.056 notice, day ledger, true margin, bond, warranty-shaped, alternate.

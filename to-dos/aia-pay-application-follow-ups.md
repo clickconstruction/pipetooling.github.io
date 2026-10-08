@@ -2,7 +2,7 @@
 name: "AIA G702-G703: what the history train left"
 number: 92
 group: residual
-status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · left: Restore, a paid line, Put the amounts back, Taunya's look on a phone
+status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · Restore shipped 2026-10-07 (v2.4883) · left: Put the amounts back, a paid line, Taunya's look on a phone
 summary: >
   The pay application window now opens on the job's history: where the job stands, one line per
   application with who saved it and each workbook that went out, a warning naming what changed
@@ -10,9 +10,9 @@ summary: >
   or raised and left: putting a deleted application back, showing what the GC actually paid on
   each application, a one-press "put the amounts back" on the changed-after warning, and whether
   a phone should land on the history or the form.
-next: Taunya's look on her phone first (it decides item 4); then build 3 and 1, which need no new data. Item 2 needs the owner's yes on how an application is tied to a bill.
-size: S each (1, 3) · M (2) · a look (4)
-blocker: None for 1 and 3. Item 2 waits on the owner's call on the bill tie; item 4 on Taunya.
+next: build 3, which needs no new data. Taunya's look on her phone decides item 4. Item 2 needs the owner's yes on how an application is tied to a bill.
+size: S (3) · M (2) · a look (4)
+blocker: None for 3. Item 2 waits on the owner's call on the bill tie; item 4 on Taunya.
 ver: v2.4710 · v2.4714 · v2.4715
 opinion: later — the history answers the owner's question today; build 3 the first time someone hits the warning, 2 when the office asks what was paid on an application.
 mockup: the train's mock-up and its critique — https://claude.ai/artifact/7x1hxdFQbgdoh9RRhhLHeB (section C)
@@ -41,12 +41,9 @@ as three PRs. This file holds what C drew or the critique raised but the train d
 
 ## What is left
 
-1. **Restore a deleted application** (S). The database already allows it: clear `deleted_at` and
-   the stamp trigger clears `deleted_by`; the partial unique index refuses a restore onto a number a
-   live application now holds (the SQL bed's case 10 covers both). Missing: a *Put it back* button
-   on the deleted line in the history and on the Documents tab row, an IO call in
-   `aiaPayApplicationsIo.ts`, and the words when the number is taken (*Application 1 is live again
-   on this job. Delete it or give this one another number first.*).
+1. **Restore a deleted application** — shipped v2.4883 (*Put it back* on the deleted line, in the
+   window's history and on the Documents tab; the history also opens when only deleted
+   applications remain).
 2. **A paid line** (M, the owner's call first). C drew *Paid $13,588.20 · Aug 22* under each
    application with a dotted edge, *bill not yet tied*. No application is tied to a bill today.
    The call: does the office pick the bill an application became (a nullable

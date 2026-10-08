@@ -120,6 +120,11 @@ export function payApplicationDeletedWords(app: Pick<SavedPayApplication, 'delet
   return `Deleted${at ? ` ${at}` : ''}${app.deletedByName ? ` by ${app.deletedByName}` : ''}`
 }
 
+/** Put it back refused (#92): another application now holds the number on the job. */
+export function payApplicationRestoreTakenWords(applicationNumber: number): string {
+  return `Another application ${applicationNumber} is live on this job. Delete it, or open it and give it another number, then put this one back.`
+}
+
 /** The file a kept workbook is stored under, from its path in the bucket; '' when the copy was not kept. */
 export function payApplicationFileName(copy: Pick<SentCopy, 'copyPath'>): string {
   return (copy.copyPath ?? '').split('/').filter(Boolean).pop() ?? ''

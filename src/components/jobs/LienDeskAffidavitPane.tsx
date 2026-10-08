@@ -25,7 +25,7 @@ import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome, monthFromCreation } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
-import type { LienWordChannel } from '../../lib/jobs/lienWord'
+import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -76,6 +76,7 @@ export default function LienDeskAffidavitPane({
   authName = '',
   issuer,
   signerNameFor,
+  leaderNameFor,
   onChanged,
   onOpenEditJob,
   onFixProperty,
@@ -99,6 +100,8 @@ export default function LienDeskAffidavitPane({
   authName?: string
   issuer: PhysicalInvoiceIssuer | null
   signerNameFor: (masterUserId: string | null) => string
+  /** The job's master by his plain name (v2.4856): the word row and the record say *on Malachi's word*; absent, *the leader*. */
+  leaderNameFor?: (masterUserId: string | null) => string
   onChanged: () => void
   onOpenEditJob: (jobId: string) => void
   /** Fill in the property record in a window over the desk (v2.4724); without it the gate's door opens Edit Job. */
@@ -154,6 +157,8 @@ export default function LienDeskAffidavitPane({
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
   const promise = data.promisesByJob[entry.jobId] ?? null
   const label = job ? `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}${(job.job_name ?? '').trim() ? ` · ${(job.job_name ?? '').trim()}` : ''}` : entry.jobId.slice(0, 8)
+  // The job's master by name (v2.4856): the word row and the record say *on Malachi's word*.
+  const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
   const item = entry.item && entry.item.status !== 'sent' && entry.item.status !== 'missed' ? entry.item : null
   // The claim set by hand (v2.3682) carries to the affidavit: it swears to the app's balance less the correction.
   const correction = data.claimCorrectionsByJob[entry.jobId] ?? null
@@ -281,7 +286,9 @@ export default function LienDeskAffidavitPane({
         onChannel={setWordChannel}
         radioName="aff-word-channel"
         recorderName={authName}
-        actionLabel="Record it ▸"
+        leaderName={leaderName}
+        preview={wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: label, gcName: gc?.name ?? null, amountWords: formatUsdNoCents(claimed.claim) })}
+        actionLabel="Approve on his word ▸"
         onAction={sendOnWord}
         actionDisabled={busy || !wordNote.trim()}
         onCancel={() => setWordOpen(false)}
@@ -294,7 +301,7 @@ export default function LienDeskAffidavitPane({
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <span style={{ flex: 1 }} />
-          {canWord ? <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)}>The leader said to file it ▸</button> : null}
+          {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)}>The leader said to file it ▸</button> : null}
           {leader ? (
             <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)}>Approve ▸</button>
           ) : (
@@ -331,7 +338,7 @@ export default function LienDeskAffidavitPane({
     footer = (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         <span>
-          {item?.approval_mode === 'word' ? `On the leader's word — ${item.word_note}.` : item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule.` : 'Approved.'} Print it for notarization, sign before a notary, file it with the County Clerk in {property.county || 'the property’s county'}, then record the filing — the Lien window does all three. {forfeit}
+          {item?.approval_mode === 'word' ? `On ${wordRecordWords(item, leaderName).slice(3)}.` : item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule.` : 'Approved.'} Print it for notarization, sign before a notary, file it with the County Clerk in {property.county || 'the property’s county'}, then record the filing — the Lien window does all three. {forfeit}
         </span>
         {leader && item?.approval_mode === 'word' ? <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Not what I said</button> : null}
         <span style={{ flex: 1 }} />

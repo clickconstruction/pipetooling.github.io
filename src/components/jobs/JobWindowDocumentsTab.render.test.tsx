@@ -20,7 +20,18 @@ import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplic
 let onJob: SavedPayApplication[] = []
 const loadSpy = vi.fn((_jobId: string) => Promise.resolve(onJob))
 let deletedOnJob: SavedPayApplication[] = []
-vi.mock('../../lib/aiaPayApplicationsIo', () => ({ loadPayApplications: (jobId: string) => loadSpy(jobId), loadDeletedPayApplications: () => Promise.resolve(deletedOnJob) }))
+// Put it back (#92): the row moves from the deleted list to the live one.
+const restoreSpy = vi.fn((app: SavedPayApplication) => {
+  deletedOnJob = deletedOnJob.filter((a) => a.id !== app.id)
+  onJob = [...onJob, { ...app, deletedAt: null, deletedByName: '' }]
+  return Promise.resolve()
+})
+vi.mock('../../lib/aiaPayApplicationsIo', () => ({
+  PayApplicationNumberTaken: class extends Error {},
+  loadPayApplications: (jobId: string) => loadSpy(jobId),
+  loadDeletedPayApplications: () => Promise.resolve(deletedOnJob),
+  restorePayApplication: (app: SavedPayApplication) => restoreSpy(app),
+}))
 
 // Test reports: the rows the tab is given, the PDF link, and the Test report window's opener.
 let reports: TestReportDocumentRow[] = []
@@ -229,8 +240,21 @@ describe('JobWindowDocumentsTab', () => {
     const rows = await screen.findAllByTestId('job-documents-pay-app')
     expect(rows).toHaveLength(1)
     const gone = screen.getByTestId('job-documents-pay-app-deleted')
-    expect(gone.textContent).toBe('1 · deleted09/30/2026$17,460.00—Deleted Oct 3 by Robert')
+    expect(gone.textContent).toBe('1 · deleted09/30/2026$17,460.00—Deleted Oct 3 by RobertPut it back')
     expect(screen.queryByRole('button', { name: 'Open application 1' })).toBeNull()
+  })
+
+  it('Put it back on a deleted row returns the application to the job and the table reads again (#92)', async () => {
+    onJob = [app(2, 9700, 19400, 17460)]
+    deletedOnJob = [{ ...app(1, 19400, 0, 0), id: 'app-1-old', deletedAt: '2026-10-03T15:00:00Z', deletedByName: 'Robert' }]
+    renderWithProviders(<JobWindowDocumentsTab job={job} />)
+    await screen.findAllByTestId('job-documents-pay-app')
+    fireEvent.click(screen.getByRole('button', { name: 'Put application 1 back' }))
+    expect(await screen.findByText('Application 1 is back on the job.')).toBeTruthy()
+    expect(restoreSpy).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'app-1-old', applicationNumber: 1 }))
+    await waitFor(() => expect(screen.getAllByTestId('job-documents-pay-app')).toHaveLength(2))
+    expect(screen.queryByTestId('job-documents-pay-app-deleted')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Open application 1' })).toBeTruthy()
   })
 
   it('marks an application that no longer matches the one before it, with its reason', async () => {

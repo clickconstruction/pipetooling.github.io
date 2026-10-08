@@ -4,8 +4,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { formatAiaDate } from '../../lib/aiaG702G703Template'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
-import { loadDeletedPayApplications, loadPayApplications } from '../../lib/aiaPayApplicationsIo'
-import { changedAfterWentOut, changedAfterWords, isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationDeletedWords, payApplicationFileName, payApplicationHistory, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
+import { PayApplicationNumberTaken, loadDeletedPayApplications, loadPayApplications, restorePayApplication } from '../../lib/aiaPayApplicationsIo'
+import { changedAfterWentOut, changedAfterWords, isPayApplicationCopy, payApplicationDay, payApplicationDayTime, payApplicationDeletedWords, payApplicationFileName, payApplicationHistory, payApplicationRestoreTakenWords, payApplicationSavedWords } from '../../lib/aiaPayApplicationHistory'
 import { jobDocumentFolderLinks } from '../../lib/jobs/jobDocumentsTab'
 import { type SentCopy, canReadSentCopies } from '../../lib/sent/sentCopies'
 import { loadSentCopiesForJob, openSentFile } from '../../lib/sent/sentCopiesIo'
@@ -46,6 +46,8 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
   const [deleted, setDeleted] = useState<SavedPayApplication[]>([])
   // null = closed; 'new' = a new application; a number = that saved application.
   const [aia, setAia] = useState<number | 'new' | null>(null)
+  // The deleted application being put back (#92), while the write is in flight.
+  const [restoringId, setRestoringId] = useState<string | null>(null)
 
   const reload = useCallback(() => {
     let cancelled = false
@@ -78,6 +80,25 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
   const fileButton: CSSProperties = { border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem', color: 'var(--text-blue-700)', textDecoration: 'underline' }
 
   useEffect(() => reload(), [reload])
+
+  /** Put a deleted application back on the job (#92); the table reads again. */
+  const restore = async (app: SavedPayApplication) => {
+    if (restoringId) return
+    setRestoringId(app.id)
+    try {
+      await restorePayApplication(app)
+      reload()
+      showToast(`Application ${app.applicationNumber} is back on the job.`, 'success')
+    } catch (e) {
+      if (e instanceof PayApplicationNumberTaken) showToast(payApplicationRestoreTakenWords(e.applicationNumber), 'error')
+      else {
+        console.error(e)
+        showToast('The application could not be put back.', 'error')
+      }
+    } finally {
+      setRestoringId(null)
+    }
+  }
 
   const openAia = (which: number | 'new') => {
     setAia(which)
@@ -154,7 +175,17 @@ export function JobWindowDocumentsTab({ job, onOverlayOpenChange }: { job: JobWi
                             </div>
                           </td>
                           <td style={{ ...td, fontSize: '0.8125rem' }}>{payApplicationDeletedWords(app, payApplicationDay) || 'Deleted'}</td>
-                          <td style={td} />
+                          <td style={{ ...td, textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              onClick={() => void restore(app)}
+                              disabled={restoringId != null}
+                              style={{ ...quietButton, whiteSpace: 'nowrap', cursor: restoringId != null ? 'wait' : 'pointer' }}
+                              aria-label={`Put application ${app.applicationNumber} back`}
+                            >
+                              {restoringId === app.id ? 'Putting back…' : 'Put it back'}
+                            </button>
+                          </td>
                         </tr>
                       )
                     }

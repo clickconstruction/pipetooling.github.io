@@ -85,7 +85,7 @@ export function PersonDeskAccessSection({
   if (!user) {
     return (
       <DeskSection id="access" title="Access & account">
-        <DeskEmpty>No login account. The header's "Invite as user" note says where to invite them.</DeskEmpty>
+        <DeskEmpty>No login account. The header's "No login" note says how they get one.</DeskEmpty>
       </DeskSection>
     )
   }

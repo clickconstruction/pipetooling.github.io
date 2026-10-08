@@ -8,7 +8,7 @@
  * preview shows lives in src/lib/billing/proposedPrimaryRtbAmount.test.ts.
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import SendRecordInvoiceModal from './SendRecordInvoiceModal'
 
@@ -170,5 +170,38 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
       expect(screen.getByText('Send to')).toBeTruthy()
     })
     expect(screen.getByTestId('owner-line-marker').getAttribute('data-job')).toBe('job-978')
+  })
+
+  it('saving the missing email in the banner keeps the bill amount: Create Stripe invoice gets past both checks (v2.4880)', async () => {
+    calls.writes = []
+    renderWithProviders(
+      <SendRecordInvoiceModal
+        payload={{
+          kind: 'job',
+          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Pondhill demo', customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: null },
+        }}
+        onClose={() => {}}
+        onSuccess={async () => {}}
+        jobUpdating={false}
+        invoiceUpdating={false}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText(/RTB \$2,630\.00/)).toBeTruthy()
+    })
+    const banner = screen.getByRole('group', { name: 'Customer email missing' })
+    fireEvent.change(within(banner).getByRole('textbox', { name: 'Customer email' }), { target: { value: 'ap@knight.test' } })
+    fireEvent.click(within(banner).getByRole('button', { name: 'Save' }))
+    // The saved email overlays the job and stays: the banner goes and does not come back.
+    await waitFor(() => {
+      expect(screen.queryByRole('group', { name: 'Customer email missing' })).toBeNull()
+    })
+    expect(calls.writes).toContain('jobs_ledger.update')
+    fireEvent.click(screen.getByRole('button', { name: 'Create Stripe invoice' }))
+    // Past the amount and email checks, the stub's missing session is the first thing to stop it.
+    await waitFor(() => {
+      expect(screen.getByText('Not signed in')).toBeTruthy()
+    })
+    expect(screen.queryByText('Enter a valid bill amount greater than 0')).toBeNull()
   })
 })

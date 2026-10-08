@@ -221,3 +221,9 @@ Open the saved application and press **Delete**. The window asks first. A later 
 The deleted application stays in the history as a quiet line. The line says who deleted it and when. Its workbooks stay with it. Its number is free for a new application.
 
 A deleted application shows after the live ones, in grey. It has no **Open** button.
+
+## Put one back
+
+Press {{button:outline|Put it back}} on the deleted line. It is in the window's history and on the job's **Documents** tab. The application is live again, with its amounts and its workbooks. It still says who saved it and when.
+
+The window says so when another application now has its number. Delete that one first. Or open it, give it another number and save it. Then press {{button:outline|Put it back}} again.

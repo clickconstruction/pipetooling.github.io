@@ -18,8 +18,16 @@ export const BID_ACTIONS = {
   countsImport: 'counts-import',
   /** The Counts tab's Clear all counts. */
   countsClearAll: 'counts-clear-all',
-  /** The Labor tab's load sync: rows minted from the book, counts refreshed, rows dropped. The app's own. */
+  /** The Labor tab's load sync: rows minted from the book, counts refreshed. The app's own. */
   laborSync: 'labor-sync',
+  /** The load sync renames a row whose fixture changed only in case, spacing or a group prefix (PR 0b). The app's own. */
+  laborRename: 'labor-rename',
+  /** The load sync moves a row no counted fixture claims to the unmatched table (PR 0b). The app's own. */
+  laborPark: 'labor-park',
+  /** The load sync takes a parked row back when its fixture is counted again (PR 0b). The app's own. */
+  laborTakeBack: 'labor-take-back',
+  /** The Labor tab's band: Use for <fixture> puts a parked row's hours on a counted row (PR 0b). */
+  laborUseParked: 'labor-use-parked',
   /** The Pricing tab's "fill from the book": assignments minted for every matched row in one press. */
   bookFill: 'book-fill',
   /** twin-mcp's paste_counts: a robot's rows and their book assignments. */
@@ -29,7 +37,7 @@ export const BID_ACTIONS = {
 export type BidAction = (typeof BID_ACTIONS)[keyof typeof BID_ACTIONS]
 
 /** The actions that are the app's own doing, not a person's press. Mirrors `bid_changes_app_actions()`. */
-export const BID_APP_ACTIONS: ReadonlyArray<BidAction> = [BID_ACTIONS.laborSync]
+export const BID_APP_ACTIONS: ReadonlyArray<BidAction> = [BID_ACTIONS.laborSync, BID_ACTIONS.laborRename, BID_ACTIONS.laborPark, BID_ACTIONS.laborTakeBack]
 
 /** A tag is a plain slug, as the trigger accepts it; anything else is dropped there. */
 export const BID_ACTION_SHAPE = /^[a-z][a-z0-9-]{1,40}$/

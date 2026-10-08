@@ -23,6 +23,7 @@ function hjob(p: Partial<JobsMapHistoryJob> & { id: string }): JobsMapHistoryJob
     status: 'working',
     created_ymd: '2026-03-01',
     collections_ymd: null,
+    uncollectible_ymd: null,
     customer_id: 'c1',
     customer_name: 'Ana Customer',
     gc_customer_id: null,
@@ -98,6 +99,13 @@ describe('jobsMapJobsAsOf', () => {
     expect(byId.get('j1001')).toMatchObject({ section: 'billed', owedDollars: 20000, billedAgeDays: 1 })
     expect(byId.get('jcoll')).toMatchObject({ section: 'billed', inCollections: true, owedDollars: 5000, billedAgeDays: 48 })
     expect(byId.has('j1019')).toBe(false)
+  })
+
+  it('a bill the office gave up on owes nothing from the day it was marked, and the day before still counts', () => {
+    const given: JobsMapHistory = { ...history, jobs: history.jobs.map((j) => (j.id === 'jcoll' ? { ...j, uncollectible_ymd: '2026-09-01' } : j)) }
+    const gIdx = indexJobsMapHistory(given)
+    expect(jobsMapJobsAsOf(given, gIdx, '2026-08-31').jobs.find((j) => j.id === 'jcoll')).toMatchObject({ inCollections: true, uncollectible: false, owedDollars: 5000 })
+    expect(jobsMapJobsAsOf(given, gIdx, '2026-09-01').jobs.find((j) => j.id === 'jcoll')).toMatchObject({ inCollections: true, uncollectible: true, owedDollars: 0 })
   })
 
   it('today: J1019 exists, is working, and names its GC as the payer', () => {

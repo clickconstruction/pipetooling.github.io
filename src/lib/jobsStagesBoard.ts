@@ -529,16 +529,16 @@ export type JobsStagesBoardLists = {
 }
 
 /** In Collections = billed AND flagged; a DB trigger clears the flag when the job transitions to paid (v2.1642). */
-export function jobInCollections(j: Pick<JobWithDetails, 'status' | 'collections_at'>): boolean {
-  return ((j.status ?? 'working') as string) === 'billed' && j.collections_at != null
+export function jobInCollections(j: { status?: string | null; collections_at?: string | null }): boolean {
+  return (j.status ?? 'working') === 'billed' && j.collections_at != null
 }
 
 /**
  * Uncollectible (punch list #94, v2.4788) = in Collections AND marked by the office (`uncollectible_at`,
- * `set_job_uncollectible`). Mirrors `jobIsUncollectible` in the bill-truth kernel. The field is optional
- * here so a caller typed ahead of the generated columns still compiles; a job without it is never marked.
+ * `set_job_uncollectible`). Mirrors `jobIsUncollectible` in the bill-truth kernel. The fields are optional
+ * so a lean row (the contract nudge's) can ask too; a row that never selected the column is never marked.
  */
-export function jobUncollectible(j: Pick<JobWithDetails, 'status' | 'collections_at'> & { uncollectible_at?: string | null }): boolean {
+export function jobUncollectible(j: { status?: string | null; collections_at?: string | null; uncollectible_at?: string | null }): boolean {
   return jobInCollections(j) && j.uncollectible_at != null
 }
 

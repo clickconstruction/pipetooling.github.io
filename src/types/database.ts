@@ -5905,6 +5905,65 @@ export type Database = {
           },
         ]
       }
+      cost_estimate_labor_rows_unmatched: {
+        Row: {
+          cost_estimate_id: string
+          count: number
+          fixture: string
+          id: string
+          is_fixed: boolean
+          kind: string
+          labor_row_id: string | null
+          parked_at: string
+          rough_in_hrs_per_unit: number
+          source: string | null
+          source_note: string | null
+          top_out_hrs_per_unit: number
+          trim_set_hrs_per_unit: number
+          unit: string
+        }
+        Insert: {
+          cost_estimate_id: string
+          count?: number
+          fixture: string
+          id?: string
+          is_fixed?: boolean
+          kind?: string
+          labor_row_id?: string | null
+          parked_at?: string
+          rough_in_hrs_per_unit?: number
+          source?: string | null
+          source_note?: string | null
+          top_out_hrs_per_unit?: number
+          trim_set_hrs_per_unit?: number
+          unit?: string
+        }
+        Update: {
+          cost_estimate_id?: string
+          count?: number
+          fixture?: string
+          id?: string
+          is_fixed?: boolean
+          kind?: string
+          labor_row_id?: string | null
+          parked_at?: string
+          rough_in_hrs_per_unit?: number
+          source?: string | null
+          source_note?: string | null
+          top_out_hrs_per_unit?: number
+          trim_set_hrs_per_unit?: number
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_labor_rows_unmatched_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_other_rows: {
         Row: {
           cost_estimate_id: string
@@ -28673,7 +28732,6 @@ export type Database = {
         }
         Returns: Json
       }
-      get_archived_user_names: { Args: never; Returns: string[] }
       get_assigned_steps_for_dashboard: {
         Args: { p_user_name: string }
         Returns: {

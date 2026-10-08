@@ -4,6 +4,8 @@ export type MaterialTemplate = Database['public']['Tables']['material_templates'
 export type MaterialTemplateWithAssemblyType = MaterialTemplate & { assembly_types?: { name: string } | null }
 export type CostEstimate = Database['public']['Tables']['cost_estimates']['Row']
 export type CostEstimateLaborRow = Database['public']['Tables']['cost_estimate_labor_rows']['Row']
+/** A labor row the load sync set aside because no counted fixture claims it (bid history PR 0b). */
+export type CostEstimateUnmatchedLaborRow = Database['public']['Tables']['cost_estimate_labor_rows_unmatched']['Row']
 export type CostEstimateEquipmentRow = Database['public']['Tables']['cost_estimate_equipment_rows']['Row']
 export type CostEstimatePermitRow = Database['public']['Tables']['cost_estimate_permit_rows']['Row']
 export type CostEstimateSubcontractorRow = Database['public']['Tables']['cost_estimate_subcontractor_rows']['Row']

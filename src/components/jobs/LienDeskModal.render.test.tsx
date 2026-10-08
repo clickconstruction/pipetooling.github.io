@@ -407,6 +407,42 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: /Approve on his word/ })).toBeTruthy()
   })
 
+  it('the leader on a phone gets one screen: the money, the mail-by day, the named steps, Approve and Not yet; Details unfolds the rest (v2.4881)', async () => {
+    const before = window.matchMedia
+    window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 640px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    try {
+      const awaiting = {
+        id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
+      } as LienDeskItemRow
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} initialJobId="j650" initialKind="notice" />)
+      await settle()
+      const pane = document.querySelector('[data-lien-desk-pane]') as HTMLElement
+      expect(pane.getAttribute('data-lien-pane-simple')).toBe('yes')
+      const card = document.querySelector('[data-lien-approve-card]') as HTMLElement
+      expect(card.textContent).toContain('1 waiting on you')
+      expect(card.textContent).toContain('$33,500 owed by Loberg Contracting')
+      expect((card.querySelector('[data-lien-approve-mail-by]') as HTMLElement).textContent).toBe('Mail by Sep 15 · 1 day')
+      expect(card.textContent).toContain('Sent to you Sep 14. All four gates clear.')
+      const tiles = Array.from(card.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)
+      expect(tiles).toEqual(['✓Owner:done', '✓Drafted:done', 'youApprove:now', '\u00a0Mail:todo'])
+      // The footer: two buttons, and nothing of the computer's row.
+      expect(screen.getByRole('button', { name: 'Approve ▸' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Not yet' }))
+      expect(screen.getByRole('button', { name: /Hold — they promised/ })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Back to the office' })).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.getByRole('button', { name: 'Not yet' })).toBeTruthy()
+      // Details unfolds the pane the computer shows.
+      fireEvent.click(screen.getByRole('button', { name: 'Details ▾' }))
+      expect(pane.hasAttribute('data-lien-pane-simple')).toBe(false)
+      expect(screen.getByText("What you're deciding")).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Hide details ▴' })).toBeTruthy()
+    } finally {
+      window.matchMedia = before
+    }
+  })
+
   it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', async () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     const loberg = { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'send' as const, policyNote: '' }

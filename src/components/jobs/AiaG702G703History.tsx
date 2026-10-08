@@ -24,7 +24,7 @@ import { useToastContext } from '../../contexts/ToastContext'
  * where the job stands against the contract, then one line per application with its stops
  * — who saved it and when, each workbook that went out — and the door to the next
  * application. Open on a line puts that application in the form; New application starts the
- * next one from the last saved.
+ * next one from the last saved; Put it back on a deleted line returns it to the job (#92).
  */
 
 const eyebrow: CSSProperties = { fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }
@@ -78,11 +78,16 @@ export default function AiaG702G703History({
   nextNumber,
   onOpen,
   onNew,
+  onRestore,
+  restoringId = null,
 }: {
   history: PayApplicationHistory
   nextNumber: number
   onOpen: (app: SavedPayApplication) => void
   onNew: () => void
+  onRestore: (app: SavedPayApplication) => void
+  /** The deleted application being put back, while the write is in flight. */
+  restoringId?: string | null
 }) {
   const { showToast } = useToastContext()
   const apps = history.lines.filter((l) => !l.deleted).map((l) => l.app)
@@ -134,6 +139,15 @@ export default function AiaG702G703History({
                     <span> · {app.periodTo ? `period to ${formatAiaDate(app.periodTo)}` : 'no period typed'} · deleted</span>
                   </span>
                   <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatAiaMoney(app.currentPaymentDue)} due</span>
+                  <button
+                    type="button"
+                    onClick={() => onRestore(app)}
+                    disabled={restoringId != null}
+                    style={{ ...quietButton, cursor: restoringId != null ? 'wait' : 'pointer' }}
+                    aria-label={`Put application ${app.applicationNumber} back`}
+                  >
+                    {restoringId === app.id ? 'Putting back…' : 'Put it back'}
+                  </button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', paddingLeft: '0.6rem', borderLeft: '2px solid var(--border)' }}>
                   <span style={{ fontSize: '0.8125rem' }}>{payApplicationDeletedWords(app, payApplicationDay) || 'Deleted'}</span>
@@ -191,7 +205,7 @@ export default function AiaG702G703History({
         >
           New application · {nextNumber}
         </button>
-        <span style={muted}>{last ? `Starts from application ${last.applicationNumber} as it is saved now.` : 'Nothing is saved on this job yet.'}</span>
+        {last ? <span style={muted}>Starts from application {last.applicationNumber} as it is saved now.</span> : null}
       </div>
     </div>
   )

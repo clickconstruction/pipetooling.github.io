@@ -3,7 +3,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { groupLienNextUp, type LienNextUpKind, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, type LienStepAt, type LienStepFacts, type LienStepLadder } from '../../lib/jobs/lienNextUpSteps'
 import { LIEN_JOB_DOOR_TITLE } from './LienJobNumber'
-import { LienStepCardView, LienStepMark, LienStepRail, useLienStepCard } from './LienDeskSteps'
+import { LienStepCardView, LienStepMark, LienStepRail, LienStepRow, useLienStepCard } from './LienDeskSteps'
 
 /**
  * The Lien desk's Do now tab (Next up until v2.4630; punch list #82, PR 2): every lien paper that asks for an act,
@@ -188,10 +188,11 @@ export default function LienDeskNextUp({
                 <div key={r.key} data-lien-next-up-row={r.key} data-dim={dim ? 'yes' : undefined} style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.7rem', display: 'grid', gap: 6, background: 'var(--surface)', opacity: dim ? 0.3 : 1 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                     {chip(r)}
-                    {mark(r)}
                     {due ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: dueColor(r) }}>{due}</span> : null}
                   </div>
                   <div>{title(r, { fontWeight: 700, fontSize: '0.92rem', overflowWrap: 'anywhere', whiteSpace: 'normal' })}</div>
+                  {/* The four dots are four named tiles on a phone (v2.4881): no hover there, so the names are the card. */}
+                  <LienStepRow at={lienStepOfRow(r)} ladder={r.kind} viewerIsLeader={Boolean(viewerIsLeader)} onPress={(el) => { setOpenRow(r); card.show(el, lienStepCard(r, factsFor?.(r))) }} />
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.sub}</div>
                   {button(r)}
                 </div>

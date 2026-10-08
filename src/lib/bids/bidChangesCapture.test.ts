@@ -68,6 +68,7 @@ const READS: Record<string, string[]> = {
   bid_takeoff_stage_splits: ['id', 'bid_id', 'count_row_id'],
   cost_estimates: ['id', 'bid_id'],
   cost_estimate_labor_rows: ['id', 'cost_estimate_id', 'fixture'],
+  cost_estimate_labor_rows_unmatched: ['id', 'cost_estimate_id', 'fixture'],
   cost_estimate_equipment_rows: DIRECT_COST,
   cost_estimate_other_rows: DIRECT_COST,
   cost_estimate_permit_rows: DIRECT_COST,
@@ -95,9 +96,10 @@ describe('the generated types still read as this test expects', () => {
 })
 
 describe('bid history: what the trigger is attached to', () => {
-  it('names seventeen tables, each one a table in the generated types', () => {
-    expect(triggerTables).toHaveLength(17)
-    expect(new Set(triggerTables).size).toBe(17)
+  it('names eighteen tables, each one a table in the generated types', () => {
+    // Seventeen in PR 1; the unmatched labor rows joined in PR 0b (20261008071000).
+    expect(triggerTables).toHaveLength(18)
+    expect(new Set(triggerTables).size).toBe(18)
     for (const t of triggerTables) expect(tableColumns.has(t), `${t} is a table`).toBe(true)
   })
 
@@ -134,7 +136,7 @@ describe('bid history: the bids columns it records', () => {
 })
 
 describe('bid history: the columns the trigger reads by name', () => {
-  it('names a row of reads for exactly the seventeen tables', () => {
+  it('names a row of reads for exactly the eighteen tables', () => {
     expect(Object.keys(READS).sort()).toEqual([...triggerTables].sort())
   })
 
@@ -159,12 +161,12 @@ describe('bid history: the columns the trigger reads by name', () => {
     for (const k of read) expect(pinned.has(k), `the key ${k} is pinned above`).toBe(true)
   })
 
-  it('branches only on the seventeen tables', () => {
+  it('branches only on the eighteen tables', () => {
     const named = [
       ...[...triggerBody.matchAll(/TG_TABLE_NAME\s*(?:=|<>)\s*'([a-z_]+)'/g)].map((m) => m[1]!),
       ...[...triggerBody.matchAll(/TG_TABLE_NAME\s+IN\s*\(([^)]*)\)/g)].flatMap((m) => [...m[1]!.matchAll(/'([a-z_]+)'/g)].map((n) => n[1]!)),
     ]
     expect(named.length, 'the function branches by table').toBeGreaterThan(5)
-    for (const t of named) expect(triggerTables, `${t} is one of the seventeen`).toContain(t)
+    for (const t of named) expect(triggerTables, `${t} is one of the eighteen`).toContain(t)
   })
 })

@@ -134,7 +134,7 @@ describe('what the schedule reads from the other lanes', () => {
         { id: 'x-2', label: 'Roof curbs' },
       ],
       excludes: [{ label: 'Permits and fees', by: 'the owner' }],
-      invites: [{ id: 'x-quote', partnerId: 'summit', status: 'bid', invitedOn: '2026-09-20', bid }],
+      invites: [{ id: 'x-quote', partnerId: 'summit', status: 'bid', invitedOn: '2026-09-20', seenRev: 0, bid }],
       awardedInviteId: null,
       selfPerform: null,
       sow: null,

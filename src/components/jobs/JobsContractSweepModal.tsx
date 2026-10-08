@@ -28,6 +28,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { quickSendJobContract, type QuickSendTemplate } from '../../lib/jobs/jobContractQuickSend'
 import { isContractGap, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
+import { jobUncollectible } from '../../lib/jobsStagesBoard'
 import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
 import { buildJobContractDocumentHtml, buildJobContractPrefill, formatContractMoney, jobContractHeading, parseJobContractFields, PAYMENT_TERMS_PRESETS, type EstimateLineForPrefill, type JobContractFields, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
 import { contractAmountDoorLabel, contractAmountDrift, contractAmountSource, contractAmountSourceLabel } from '../../lib/jobs/contractAmountSource'
@@ -189,7 +190,7 @@ export default function JobsContractSweepModal({
 }: {
   open: boolean
   onClose: () => void
-  /** Every loaded job; the modal keeps the ones without an agreement. */
+  /** Every loaded job; the modal keeps the ones without an agreement (never one the office gave up on). */
   jobs: JobWithDetails[]
   coverage: ReadonlyMap<string, JobContractCoverage>
   /** The contract floor in cents (PR 0); jobs with an amount under it are not in the sweep. 0 = no floor. */
@@ -251,7 +252,7 @@ export default function JobsContractSweepModal({
     return jobs
       .filter((j) => {
         const status = (j.status ?? '') as string
-        return status !== 'paid' && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id) && !filedIds.has(j.id)
+        return status !== 'paid' && !jobUncollectible(j) && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id) && !filedIds.has(j.id)
       })
       .sort((a, b) => (order[a.status ?? ''] ?? 9) - (order[b.status ?? ''] ?? 9) || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')))
   }, [jobs, coverage, sentIds, filedIds, floorCents])

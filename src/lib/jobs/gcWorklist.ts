@@ -9,6 +9,7 @@ import type { GcReviewGroup } from '../gcReviewRollup'
 import { gcGroupCertStatus, gcReviewSentThisWeek, type GcReviewCertRow } from './gcReviewCertification'
 import { payPromiseStatus, type PayPromise } from './payPromise'
 import { GC_ROUND_THRESHOLD, isTemperature, type RoundMarkAction, type RoundMarkRow, type StatementSendChannel, type Temperature } from './gcStatementRounds'
+import { latestExpectedPayByGc } from './temperatureBoard'
 
 export type GcWorklistStep = 'check' | 'send' | 'word'
 
@@ -317,4 +318,22 @@ export function mergeRoundMarkWrite(
     }
   }
   return plain
+}
+
+/**
+ * The Pipeline's two round cards (v2.4887). This week's marks say what is checked and sent; the newest
+ * pay date in the recent weeks says who broke a promise, as GC Review reads it. Before, neither card
+ * passed a pay date or today, so "· N broke a promise" on Statements to send could never show. Both
+ * inputs are required here, so a caller cannot leave them out again.
+ */
+export function pipelineRoundCards(
+  input: Omit<Parameters<typeof buildGcWorklist>[0], 'expectedPayByByGc' | 'todayYmd'> & {
+    /** The last six weeks of marks (`listGcStatementRoundMarksSince`): a pay date given weeks ago still counts. */
+    recentMarks: readonly RoundMarkRow[]
+    /** Today in the company calendar (`todayYmdInAppTz`). */
+    todayYmd: string
+  },
+): ReturnType<typeof worklistCards> {
+  const { recentMarks, ...rest } = input
+  return worklistCards(buildGcWorklist({ ...rest, expectedPayByByGc: latestExpectedPayByGc(recentMarks) }))
 }

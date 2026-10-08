@@ -503,6 +503,7 @@ export default function Bids() {
     takeoffBookEntriesVersionId, setTakeoffBookEntriesVersionId,
     costEstimate, setCostEstimate,
     costEstimateLaborRows, setCostEstimateLaborRows,
+    costEstimateUnmatchedLaborRows, setCostEstimateUnmatchedLaborRows, applyUnmatchedLaborRow, removeUnmatchedLaborRow,
     costEstimateCountRows, setCostEstimateCountRows,
     costEstimateFixtureMaterials,
     costEstimateMaterialTotalRoughIn,
@@ -975,6 +976,7 @@ export default function Bids() {
         costEstimateBidIdRef.current = null
         setCostEstimate(null)
         setCostEstimateLaborRows([])
+        setCostEstimateUnmatchedLaborRows([])
         setCostEstimateCountRows([])
         setSelectedLaborBookVersionId(null)
         setCostEstimateDistanceInput('')
@@ -2149,6 +2151,9 @@ export default function Bids() {
           costEstimate={costEstimate}
           costEstimateLaborRows={costEstimateLaborRows}
           setCostEstimateLaborRows={setCostEstimateLaborRows}
+          costEstimateUnmatchedLaborRows={costEstimateUnmatchedLaborRows}
+          onUseUnmatchedLaborRow={applyUnmatchedLaborRow}
+          onRemoveUnmatchedLaborRow={removeUnmatchedLaborRow}
           costEstimateCountRows={costEstimateCountRows}
           costEstimateFixtureMaterials={costEstimateFixtureMaterials}
           panel={laborPanel}

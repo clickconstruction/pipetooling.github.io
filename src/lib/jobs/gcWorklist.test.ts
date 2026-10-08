@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GcReviewGroup } from '../gcReviewRollup'
 import type { GcReviewCertRow } from './gcReviewCertification'
 import type { RoundMarkRow } from './gcStatementRounds'
-import { APP_SEND_NOTE, buildGcWorklist, markCarriesWord, mergeRoundMarkWrite, worklistCards, worklistGroupTitle, worklistNextStep, leaderUserIdFrom, underLineCount } from './gcWorklist'
+import { APP_SEND_NOTE, buildGcWorklist, markCarriesWord, mergeRoundMarkWrite, pipelineRoundCards, worklistCards, worklistGroupTitle, worklistNextStep, leaderUserIdFrom, underLineCount } from './gcWorklist'
 
 const WEEK = '2026-09-21'
 
@@ -348,5 +348,37 @@ describe('mergeRoundMarkWrite', () => {
     const word = mark('a', 'contacted', { note: 'Warm.', temperature: 'warm' })
     expect(mergeRoundMarkWrite(word, { action: 'skipped' })).toEqual({ action: 'skipped', channel: null, note: null, temperature: null, expected_pay_by: null, acted_at: null, ...NO_WORD })
     expect(mergeRoundMarkWrite(mark('a', 'skipped'), { action: 'sent', channel: 'email' }).action).toBe('sent')
+  })
+})
+
+describe('pipelineRoundCards — the Pipeline cards count broken promises (v2.4887)', () => {
+  // Both GCs are checked and not yet sent. GC a gave a pay date two weeks ago and still owes; GC b gave none.
+  const input = {
+    groups: [group('a', 20_000), group('b', 15_000)],
+    certsByGc: new Map([
+      ['a', cert('a', 20_000)],
+      ['b', cert('b', 15_000)],
+    ]),
+    marks: [] as RoundMarkRow[],
+    senders: new Map<string, string>(),
+    accountMen: new Map<string, string>(),
+    lastSentByGcId: {},
+    weekStartYmd: WEEK,
+  }
+  const oldWord = mark('a', 'contacted', { week_start: '2026-09-07', acted_at: '2026-09-08T15:00:00Z', temperature: 'warm', note: 'Check run is the 10th', expected_pay_by: '2026-09-10' })
+
+  it('a pay date from an earlier week that has passed counts on Statements to send', () => {
+    const cards = pipelineRoundCards({ ...input, recentMarks: [oldWord], todayYmd: '2026-09-23' })
+    expect(cards.ready.count).toBe(2)
+    expect(cards.ready.late).toBe(1)
+  })
+
+  it('the old call, with no pay dates and no today, could never count one', () => {
+    expect(worklistCards(build(input)).ready.count).toBe(2)
+    expect(worklistCards(build(input)).ready.late).toBe(0)
+  })
+
+  it('a pay date still ahead is not a broken promise', () => {
+    expect(pipelineRoundCards({ ...input, recentMarks: [oldWord], todayYmd: '2026-09-09' }).ready.late).toBe(0)
   })
 })

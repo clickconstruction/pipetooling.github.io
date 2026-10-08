@@ -105,7 +105,7 @@ export type PeopleContractsTabProps = {
   /** Archived roster people (page-level state) — grouped into the collapsed Archived section at the bottom (v2.1408). */
   archivedPeople?: Person[]
   /** The names archived roster rows answer to (`archivedRosterNames`, from `roster_people`) — same Archived section. */
-  archivedUserNames?: Set<string>
+  archivedUserNames?: ReadonlySet<string>
   canDeletePeopleContracts: boolean
   /** The signed-in staff member — the send email's Reply-To and "reach" line (v2.2773). */
   currentUserId?: string | null
