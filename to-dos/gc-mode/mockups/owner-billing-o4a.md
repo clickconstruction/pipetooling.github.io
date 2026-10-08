@@ -14,7 +14,7 @@ build. It ships in four PRs, the way O3 and O3-ui split, each from `origin/main`
 | **O4a-1** | The migration below: `gc_send_owner_pay_app`, `gc_record_certificate`, the billing job, the two links, the service type | The billing-only PR pushed |
 | **O4a-2** | The pay application as a file: the app's AIA filler gains the GC form's options, `payAppWorkbook` and `payAppPdf` on main | Nothing (no database) |
 | **O4a-3** | **Bill the customer** on `/gc`: the draft, retainage, the form, Send, the certificate, so far with the customer | O4a-1's types; O3-ui (#4963) and O5a (#4966) merged |
-| **O4a-4** | Our conditional waiver with each send: `LienReleaseModal` on the billing job, with one optional prop | O4a-3 |
+| **O4a-4** | Our conditional waiver with each send: `LienReleaseModal` on the billing job, with one optional prop (built) | O4a-3 |
 
 ## O4a-1, the migration (byte for byte)
 
@@ -483,12 +483,27 @@ Guide: `bill-the-customer-on-a-gc-job.md`. Docs:
 
 ## O4a-4, our conditional waiver
 
-Our conditional waiver on progress payment is made with each send, through `LienReleaseModal` on the billing job, prefilled with the amount asked and the bill day. The modal takes neither today. Its amount comes from the bills picked, and at a send there is no bill yet (decision 3). So O4a-4:
-- gives the modal one optional prop, `prefill?: { amount: number; throughDate: string }`, which only this window passes;
-- loads the billing job as the modal's `JobWithDetails`;
-- writes `conditional_waiver_id` once the modal mints the waiver.
+Built locally with O4a-3. It is its own PR at the cut because it touches a Pipeline window.
 
-It is its own PR because it touches a Pipeline window.
+Our conditional waiver on progress payment goes with each sent pay application. **Make our conditional waiver** is on each sent one that has none yet; one that has it reads "our waiver went with it".
+
+The press:
+1. loads the billing job (`fetchJobWithDetailsById`);
+2. opens the Pipeline's own `LienReleaseModal` on it, on `conditional_progress`;
+3. once the modal mints the waiver, writes `conditional_waiver_id` (`linkPayAppWaiver`). The database keeps that link once written.
+
+**The modal gains one optional prop, `ask: { amount, throughDate }`,** which only this window passes. No bill exists until the certificate (decision 3), so the prop:
+- selects no bill;
+- fills the amount with what the pay application asked, and the through date with its bill day (`buildLienWaiverPrefill`'s context gains `ask`).
+
+`onIssued` passes the minted row's id. The Pipeline's openers ignore the argument.
+
+**The modal sits at z-index 1100, under our 1200.** So Bill the customer steps aside while it is open and comes back when it closes. Nothing in the Pipeline window moves.
+
+**Tests:**
+- `lienWaiverRelease.test.ts`: the ask wins over the bills;
+- `GcBillCustomer.render.test.tsx`: the button and the waived chip;
+- the modal's own six render suites and the Bill Customer strip's, unchanged and passing.
 
 ## Where the trades' work comes from
 
