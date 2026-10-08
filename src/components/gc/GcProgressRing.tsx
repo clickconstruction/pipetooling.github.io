@@ -5,7 +5,8 @@ import type { ProgressGroup, StageProgress } from '../../lib/gcMode/gcModel'
  * GC mode — design spike: the progress ring at the head of a Project Board row, drawn the way a
  * watch draws an activity ring. A dim track of the stage's color, a thick round-capped arc from
  * twelve o'clock, the count in the middle. It fills from empty when it first shows and slides
- * when the number changes. A closed ring gets a check under the count.
+ * when the number changes. A closed ring draws a large hollow check over the count, which dims
+ * behind it (Grace, 2026-10-08).
  *
  * Hover it (or tap it on a phone, or tab to it) and a card opens under it: what the ring counts,
  * by type, with what is left in each type spelled out and what is done folded into one line.
@@ -72,6 +73,8 @@ export function GcProgressRing({
   const r = (size - stroke) / 2
   const around = 2 * Math.PI * r
   const closed = target >= 1
+  // The check spans most of the ring's inside: the inner diameter less a little air.
+  const checkSize = Math.round((size - 2 * stroke) * 0.9)
   const reduced = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
   return (
@@ -124,8 +127,8 @@ export function GcProgressRing({
             style={{ transition: reduced ? undefined : 'stroke-dashoffset 0.9s cubic-bezier(0.22, 1, 0.36, 1)' }}
           />
         </svg>
-        <span style={{ position: 'relative', display: 'grid', justifyItems: 'center', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums' }}>
-          <span style={{ fontSize: progress.center.length > 4 ? '0.72rem' : '0.82rem', fontWeight: 700, color: 'var(--text-base)' }}>
+        <span style={{ position: 'relative', display: 'grid', placeItems: 'center', lineHeight: 1.05, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ gridArea: '1 / 1', fontSize: progress.center.length > 4 ? '0.72rem' : '0.82rem', fontWeight: 700, color: closed ? 'var(--text-muted)' : 'var(--text-base)' }}>
             {/* Three digits (100%): a smaller percent sign keeps the number easy to read (the owner, 2026-10-04). */}
             {/^\d{3}%$/.test(progress.center) ? (
               <>
@@ -136,7 +139,12 @@ export function GcProgressRing({
               progress.center
             )}
           </span>
-          {closed && <span style={{ fontSize: '0.7rem', fontWeight: 700, color }}>✓</span>}
+          {closed && (
+            // The check is an outline, open in the middle, so the count still shows through it.
+            <svg aria-hidden style={{ gridArea: '1 / 1' }} width={checkSize} height={checkSize} viewBox="0 0 100 100">
+              <path d="M14 56 L26 44 L42 60 L74 26 L86 38 L42 84 Z" fill="none" stroke={color} strokeWidth={7} strokeLinejoin="round" />
+            </svg>
+          )}
         </span>
       </span>
       {open && <ProgressCard progress={progress} color={color} stageLabel={stageLabel} />}

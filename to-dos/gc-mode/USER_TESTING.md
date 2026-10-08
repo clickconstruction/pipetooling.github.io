@@ -68,7 +68,7 @@ can act on, for example "4 of 6 left at stop 4".
 
 | Date | Tester | Lane | Note | State | Helper |
 |---|---|---|---|---|---|
-| 2026-10-08 | Grace | Board | The Project Board's progress ring on `/bids/gc` (the spike): at 100% the check should sit above the number, not under it. Mock-up shown (now vs the check on top); waiting on Grace's pick, then a one-line change in `GcProgressRing.tsx` on the spike, and the Board lane carries it when the ring lifts to main. | New | lead |
+| 2026-10-08 | Grace | Board | The Project Board's progress ring on `/bids/gc` (the spike): at 100% the check should sit above the number, not under it. Three mock-ups; Grace picked a large hollow outlined check drawn over the count, which dims behind it. Built in `GcProgressRing.tsx` on the spike, walked at desk and 375; the Board lane carries it when the ring lifts to main. | Live (on the spike) | lead |
 
 ## Notes sent
 
