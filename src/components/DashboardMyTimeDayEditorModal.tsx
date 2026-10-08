@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   leaderReplaceClockSessionClusterMixed,
   leaderSplitClockSessionCluster,
@@ -991,8 +991,16 @@ export function DashboardMyTimeDayEditorModal({
     void requestDiscard()
   }
 
-  useEffect(() => {
-    const onWindowKeyDown = (e: KeyboardEvent) => {
+  /**
+   * Escape on the window, through a ref the layout effect writes after every render (v2.4980). The
+   * listener used to be re-bound in a `useEffect`; after a render no key or click caused (the day's
+   * load), React runs those effects later, and until then the window still held the render before,
+   * so a quick Escape on a clean day asked *Discard unsaved changes?*. A layout effect runs in the
+   * same task as the commit, before any key can arrive, so Escape acts on what is on screen.
+   */
+  const escapeKeyRef = useRef<(e: KeyboardEvent) => void>(() => {})
+  useLayoutEffect(() => {
+    escapeKeyRef.current = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (saving) return
       e.preventDefault()
@@ -1003,9 +1011,12 @@ export function DashboardMyTimeDayEditorModal({
       if (closeTopmostSubFlow()) return
       void requestDiscard()
     }
+  })
+  useLayoutEffect(() => {
+    const onWindowKeyDown = (e: KeyboardEvent) => escapeKeyRef.current(e)
     window.addEventListener('keydown', onWindowKeyDown, true)
     return () => window.removeEventListener('keydown', onWindowKeyDown, true)
-  }, [closeTopmostSubFlow, discardConfirmOpen, requestDiscard, saving])
+  }, [])
 
   return (
     <>

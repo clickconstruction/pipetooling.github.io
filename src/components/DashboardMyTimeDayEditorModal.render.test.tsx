@@ -263,13 +263,28 @@ describe('the ways out — Cancel, the backdrop and Escape', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(screen.getAllByRole('presentation')[0]!)
     expect(m.onClose).toHaveBeenCalledTimes(2)
-    // Escape is read by a key listener the window adds in an effect; a press before it binds is lost,
-    // so on a busy CI box press again until the listener answers (the first press it hears makes 3).
-    await waitFor(() => {
-      escape()
-      expect(m.onClose).toHaveBeenCalledTimes(3)
-    })
+    // One press, read at once: the listener calls the handler of the render on screen (v2.4980).
+    escape()
+    expect(m.onClose).toHaveBeenCalledTimes(3)
     expect(saves()).toHaveLength(0)
+  })
+
+  it('Escape has one window listener, bound once, so a press acts on the day on screen (v2.4980)', async () => {
+    // Re-bound in an effect after each render, the listener lagged a render the day's load caused
+    // and held the one before: a clean day asked "Discard unsaved changes?" on a busy CI box.
+    const keyListeners = () => add.mock.calls.filter(([type]) => String(type) === 'keydown').length
+    const add = vi.spyOn(window, 'addEventListener')
+    const m = mount()
+    await loaded()
+    const bound = keyListeners()
+    await splitTheMorning()
+    escape()
+    expect(screen.getByRole('alertdialog').textContent).toMatch(/Discard unsaved changes/)
+    escape()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(keyListeners()).toBe(bound)
+    expect(m.onClose).not.toHaveBeenCalled()
+    add.mockRestore()
   })
 
   it('with an edit, Cancel asks: Keep editing keeps it, Discard changes closes without saving', async () => {
