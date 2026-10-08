@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from '../lib/gc/access'
+import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
@@ -27,7 +28,7 @@ import { GcMoney } from '../components/gc/GcMoney'
 import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
 import { openQuestions, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
-import { emailTheAnswer } from '../lib/gc/tradeEmailIo'
+import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
@@ -785,9 +786,18 @@ export default function GcProjects() {
           packageId={asking.packageId}
           {...(asking.tick ? { tick: asking.tick } : {})}
           langs={langs}
-          onAsk={async (companyIds) => {
-            await askGcCompanies(asking.packageId, companyIds, profileName ?? '', today)
+          emails={canSendGcTradeEmail(role)}
+          onAsk={async (companyIds, email) => {
+            // A dev's press with the window's tick on emails each new ask its invitation (P3's sender); otherwise the asks are saved.
+            const send = email && canSendGcTradeEmail(role)
+              ? async (ask: NewAsk) => {
+                  const req = inviteEmailRequest(board, asking.projectId, asking.packageId, ask, tradeMailLang(langs[ask.companyId]))
+                  return req ? sendGcTradeEmail(req) : { ok: false as const, key: 'notFound' as const, detail: null }
+                }
+              : null
+            const outcomes = await askGcCompanies(asking.packageId, companyIds, profileName ?? '', today, send)
             await refreshBoard()
+            return outcomes
           }}
           onClose={() => setAsking(null)}
         />

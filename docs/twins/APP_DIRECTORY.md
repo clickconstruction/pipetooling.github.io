@@ -73,7 +73,7 @@ architect, and its price so far with the card behind it. Its switch opens **Trad
 every company we wait on for a quote, the ones to call first at the top, with Log a contact and **Will not do it** /
 **Cannot do it**, and **Trade portals** (guide `share-a-trade-partner-its-portal`): each company's portal link, made,
 copied, remade or turned off, and whether they opened it (a dev's only, until the trade wave). Each project's trades list their asks too, with **Ask for quotes**: the Ask window
-(guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, and saves the asks; no email goes out yet.
+(guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, saves the asks and, for a dev, emails each company its invitation.
 A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language and its portal link.
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
 **Our number** on a project's card (guide `set-our-number-and-send-our-bid`) adds our costs and fee to the trades for the money team; **We sent our bid**, **We won this** and **We lost this** sit on the project's head.
