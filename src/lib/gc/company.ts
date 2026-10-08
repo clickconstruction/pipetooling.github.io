@@ -14,4 +14,9 @@
 export const GC_COMPANY = {
   name: 'Click Construction',
   shortName: 'Click',
+  /**
+   * The address on our pay application's "from the contractor" (Owner Billing's O2b). Empty until the
+   * owner names our GC entity and its address (call 12); the prototype's made-up one stays there.
+   */
+  address: '',
 }

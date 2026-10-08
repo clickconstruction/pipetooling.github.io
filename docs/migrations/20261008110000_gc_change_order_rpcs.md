@@ -19,8 +19,11 @@ customer keeps what it said.
 **The RPCs**, all `SECURITY INVOKER` (RLS decides who may: O1's dev-only policies) and for
 `authenticated` only:
 - **`gc_draft_change_order(p_project_id uuid, p_draft jsonb)`** (the prototype's
-  `draftChangeOrder`): the next number under a lock on the project's row. It refuses, in words, a
-  job still bidding or lost, a blank description, an unknown reason, a cost, price or days that is
+  `draftChangeOrder`): the next number under a lock on the project's row. The reason is stored as
+  `owner`, `field` or `plans`. The words for them, in the refusal and on screen, are "the customer
+  asked", "a field condition" and "a plan revision" (`CHANGE_ORDER_REASON_WORDS`: Customer directive,
+  Field condition, Plan revision). It refuses, in words, a job still bidding or lost, a blank
+  description, an unknown reason, a cost, price or days that is
   not a number, a zero cost (a credit is below zero), days below zero, and a trade or a set of
   another project. Cost and price are rounded to dollars. Empty schedule words read `+N days` or
   `none`.
@@ -85,5 +88,27 @@ the four RPCs, with `DROP … IF EXISTS`.
 
 ## Status
 
-Written 2026-10-08 for Owner Billing's O3; not applied. The lead pushes it once its PR is on
-`main`, and records here what steps 1 to 5 said.
+Written 2026-10-08 for Owner Billing's O3 (v2.4915, clickconstruction/pipetooling.github.io#4948).
+
+Applied to prod 2026-10-08 by the lead, with `supabase db push` from a clean checkout of main
+(`npm run check:migration-drift`: 793 local, 793 remote; types in #4953). The verify steps ran
+through the management API's query endpoint. Every write ran in a transaction that rolled back. What
+they said:
+
+- **Step 1.** The four functions and `gc_change_orders_keep_what_went` are there, and `anon` cannot
+  execute `gc_draft_change_order`.
+- **Step 2.** The training-mode user's draft, on an id that matches nothing, got "That GC project is
+  not there." The row lock reads first, and nothing was written.
+- **Step 3**, as a dev, on the test project set to `building` inside the transaction:
+  - the draft on its first trade (reason `owner`, cost 100, price 150, 2 days) took number 1;
+  - sending it and a signed answer on the app's today went through;
+  - `pct_done = 40` was written;
+  - `UPDATE price` was refused with "Change order 1 went to the customer, so it keeps what it said.
+    Draft a new one.";
+  - `DELETE` was refused with "Change order 1 went to the customer, so it stays on the record."
+- **Step 4.** The key `gc_schedule_moves_change_order_fkey` is there (O1's step 6). A plain `UPDATE`
+  of `gc_schedule_moves` is refused by that table's privileges, so the positive half of this step
+  waits for a move made through the schedule's RPCs.
+- **Step 5.** `anon` got `permission denied for function gc_send_change_order`.
+
+Afterwards the test project read `bidding` again, and `gc_change_orders` held no rows.

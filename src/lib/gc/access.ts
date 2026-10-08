@@ -12,3 +12,15 @@ const GC_OFFICE_TEAM: readonly UserRole[] = ['dev', 'master_technician', 'assist
 export function canOpenGcProjects(role: UserRole | null | undefined): boolean {
   return role != null && GC_OFFICE_TEAM.includes(role)
 }
+
+/**
+ * GC mode, B5 (v2.4923): who sees our number, the general conditions, contingency and fee we add on
+ * top of the trades. The client's copy of the database's `gc_money_team()`
+ * (`20261008130000_gc_our_number.sql`): dev, the leaders and the controller. `access.test.ts` reads
+ * the newest migration that defines the function and fails when the two lists differ.
+ */
+export const GC_MONEY_TEAM: readonly UserRole[] = ['dev', 'master_technician', 'controller']
+
+export function canSeeGcMoney(role: UserRole | null | undefined): boolean {
+  return role != null && GC_MONEY_TEAM.includes(role)
+}

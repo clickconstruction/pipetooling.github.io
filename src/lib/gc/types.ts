@@ -584,8 +584,10 @@ export interface GcCustomer {
   id: string
   name: string
   contact: string
+  address: string
   /** Average days from our bill to their payment. Null: they have not paid us yet. */
   payDays: number | null
+  retainagePct: number | null
   portalOn: boolean
 }
 
@@ -612,6 +614,8 @@ export interface GcProject {
    * signed before it was kept, and the price follows what we carry (`ownerContractWorthNow`).
    */
   ownerContractWorth?: Record<string, number>
+  /** Retainage that drops once the work is far enough along, if we chose it for this job. Absent: held to the end. */
+  ownerRetainageStep?: OwnerRetainageStep
   /** Interest on the owner's late bills, if we chose to charge it on this job: a percent a month. Absent: none. */
   ownerLateInterest?: { pctPerMonth: number }
   /** The owner contract's fee a day for finishing past substantial completion (liquidated damages), as we entered it. Absent: none. */
@@ -623,6 +627,7 @@ export interface GcProject {
   customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string
+  propertyOwner?: string
   /**
    * Who our customer is to the job (the owner, 2026-10-04: "Sometimes we are working for the owner,
    * sometimes we are working for another GC or an owner's rep who then works and bills the owner"):
