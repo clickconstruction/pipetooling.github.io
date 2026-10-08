@@ -29604,6 +29604,21 @@ export type Database = {
         Returns: boolean
       }
       keep_job_baseline_now: { Args: { p_job_id: string }; Returns: boolean }
+      latest_bid_cell_history: {
+        Args: { p_bid_id: string }
+        Returns: {
+          cell_key: string
+          changed_at: string
+          changed_by_name: string
+          column_name: string
+          kind: string
+          label: string
+          name_key: string
+          rank: number
+          total: number
+          value: Json
+        }[]
+      }
       leader_replace_clock_session_cluster_mixed: {
         Args: { p_segments: Json; p_session_ids: string[] }
         Returns: {

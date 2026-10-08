@@ -38,11 +38,14 @@ const currentTime = () => new Date()
 export function BidHistoryWindow({
   bid,
   onClose,
+  initialSearch = '',
   load = loadBidHistory,
   now = currentTime,
 }: {
   bid: { id: string; label: string; bidNumber: string | null }
   onClose: () => void
+  /** Opens searched on a row's name ("+N more" under a cell). */
+  initialSearch?: string
   /** The read; a test stands one in. */
   load?: (bidId: string) => Promise<BidHistoryRow[]>
   now?: () => Date
@@ -51,7 +54,7 @@ export function BidHistoryWindow({
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<BidHistoryTab | null>(null)
   const [whoId, setWhoId] = useState<string | null | 'app'>(null)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(initialSearch)
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
 
   useEffect(() => {

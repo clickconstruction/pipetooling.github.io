@@ -452,5 +452,43 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1
 RESET ROLE;
 UPDATE mark SET id = bct.last();
 
+-- 18 · The cells' read (PR 3, 20261009090000): latest_bid_cell_history, under the caller's own
+--      policies. A cell's two newest earlier values and its count of changes, keyed as the tabs
+--      find their cells; both price sources are one price history (an override typed on a book
+--      pick joins the custom price's past); each removed row's value under its name key, so a
+--      re-imported row of the same name can show it. Someone who cannot read the bid reads nothing.
+SET LOCAL ROLE authenticated;
+INSERT INTO public.bid_pricing_assignments (bid_id, count_row_id, price_book_entry_id, price_book_version_id, unit_price_override) VALUES
+  ('00000000-0000-0000-0000-00000000c7d1', '00000000-0000-0000-0000-00000000c701', '00000000-0000-0000-0000-00000000c7c0', '00000000-0000-0000-0000-00000000c7b0', 500);
+UPDATE public.bid_pricing_assignments SET unit_price_override = 650 WHERE count_row_id = '00000000-0000-0000-0000-00000000c701';
+SELECT bct.same('the cells: a price''s two newest earlier values from either source, of three changes, with who',
+  (SELECT string_agg(kind || ' ' || rank || ' ' || column_name || ' ' || trim_scale((value #>> '{}')::numeric) || ' ' || total || ' ' || changed_by_name, E'\n' ORDER BY rank)
+     FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells WHERE cell_key = 'price:00000000-0000-0000-0000-00000000c701:00000000-0000-0000-0000-00000000c7b0'),
+  E'changed 1 unit_price 500 3 History Estimator\nchanged 2 unit_price 10300 3 History Estimator');
+SELECT bct.same('the cells: a count, a takeoff quantity, and Lav-1''s rough-in hours (typed, then Use for)',
+  (SELECT string_agg(kind || ' ' || rank || ' ' || trim_scale((value #>> '{}')::numeric) || ' ' || total, ', ' ORDER BY rank) FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells
+     WHERE cell_key = 'count:' || (SELECT id FROM public.bids_count_rows WHERE fixture = 'Tagged WC')) || ' | ' ||
+  (SELECT string_agg(kind || ' ' || rank || ' ' || trim_scale((value #>> '{}')::numeric) || ' ' || total, ', ' ORDER BY rank) FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells
+     WHERE cell_key = 'takeoff:00000000-0000-0000-0000-00000000c721:quantity') || ' | ' ||
+  (SELECT string_agg(kind || ' ' || rank || ' ' || trim_scale((value #>> '{}')::numeric) || ' ' || total, ', ' ORDER BY rank) FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells
+     WHERE kind = 'changed' AND cell_key LIKE 'labor:%:rough_in_hrs_per_unit'),
+  'changed 1 3 3, changed 2 2 3 | changed 1 2 1 | changed 1 2 2, changed 2 1.5 2');
+SELECT bct.same('the cells: SUMP''s price and count when it went, under their names',
+  (SELECT string_agg(name_key || ' ' || kind || ' ' || trim_scale((value #>> '{}')::numeric), E'\n' ORDER BY name_key) FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells
+     WHERE name_key IN ('price:00000000-0000-0000-0000-00000000c7b0:sump', 'count:00000000-0000-0000-0000-00000000c7a5:sump')),
+  E'count:00000000-0000-0000-0000-00000000c7a5:sump removed 2\nprice:00000000-0000-0000-0000-00000000c7b0:sump removed 3700');
+SELECT bct.same('the cells: at most two earlier values a cell, one removed value a name',
+  (SELECT count(*)::text FROM (SELECT cell_key FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells WHERE kind = 'changed' GROUP BY cell_key HAVING count(*) > 2) t) || ' ' ||
+  (SELECT count(*)::text FROM (SELECT name_key FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1') cells WHERE kind = 'removed' GROUP BY name_key HAVING count(*) > 1) t),
+  '0 0');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e4","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e4', true);
+SELECT bct.same('the cells: someone who cannot read the bid reads nothing',
+  (SELECT count(*)::text FROM public.latest_bid_cell_history('00000000-0000-0000-0000-00000000c7d1')), '0');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
+RESET ROLE;
+UPDATE mark SET id = bct.last();
+
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;

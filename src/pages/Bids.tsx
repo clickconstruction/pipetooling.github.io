@@ -70,6 +70,7 @@ import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLensCaption, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
+import { BidCellHistoryProvider } from '../hooks/useBidHistoryCells'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -2042,6 +2043,8 @@ export default function Bids() {
         />
       )}
 
+      {/* Bid history (punch list #73, PR 3): one read of the open bid's cell history, shared by the four tabs' cells while Past values is on. */}
+      <BidCellHistoryProvider bidId={activeTab === 'counts' ? selectedBidForCounts?.id : activeTab === 'takeoffs' ? selectedBidForTakeoff?.id : activeTab === 'labor' ? selectedBidForCostEstimate?.id : activeTab === 'pricing' ? selectedBidForPricing?.id : null}>
       {/* Counts Tab */}
       {activeTab === 'counts' && (
         <>
@@ -2296,6 +2299,7 @@ export default function Bids() {
         <BidsPricingCalculator />
         </>
       )}
+      </BidCellHistoryProvider>
 
       {/* Cover Letter Tab */}
       {activeTab === 'cover-letter' && (
