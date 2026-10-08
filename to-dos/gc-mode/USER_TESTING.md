@@ -103,8 +103,12 @@ and add it to the next evening's note.
 
 Drafted by Helper 6 on 2026-10-08, to send the evening door 2 is live (`mockups/door-2-board.md`).
 129 words without the links; every line passes `plainWordsFailures`. The Ask window line holds until
-the Portal's emails (P3) are live. On that evening it reads *The Ask window emails each company it
-asks.* instead.
+the office may send the emails. The Portal's sender (P3) is live, but only a dev sends through it
+(`GC_TRADE_EMAIL_TEAM` in `src/lib/gc/access.ts`). The send widens to the office team at the
+portal's door (`PORTAL_REAL_BUILD.md`, item 12), on the owner's yes for a real trade. Turning the
+Ask window's tick on by default (Helper 16's PR after the three test emails) does not change this
+line, since only a dev sees the tick. The evening the send widens, that evening's note says *The Ask
+window emails each company it asks.*
 
 > GC projects now shows the Project Board above the list of projects. It puts every GC project in its stage, with the days left before our bid is due.
 >
