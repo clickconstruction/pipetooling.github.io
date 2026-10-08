@@ -200,3 +200,38 @@ describe('LienDeskNextUp · the chip as a door to the paper (v2.4632)', () => {
     expect(screen.getByText('Notice').tagName).toBe('SPAN')
   })
 })
+
+describe('LienDeskNextUp · the printed run (punch list #101)', () => {
+  const run = row({
+    key: 'run:printed', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null },
+    secondary: { words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } },
+    jobs: [{ jobId: 'j2', title: '712 · Cedar Park', dueOn: '2026-10-15' }, { jobId: 'j3', title: '715 · Leander', dueOn: '2026-11-15' }],
+  })
+  it('one row tagged Run, two buttons, its jobs folded until pressed, each a door to its job', () => {
+    const onAct = vi.fn()
+    const onOpenJob = vi.fn()
+    render(<LienDeskNextUp rows={[run]} loading={false} isMobile={false} onAct={onAct} onOpenJob={onOpenJob} ready={{ notice: 19 }} printed={{ notice: 19 }} onOpenRun={() => {}} />)
+    const el = document.querySelector('[data-lien-next-up-row="run:printed"]') as HTMLElement
+    expect(el.textContent).toContain('Run')
+    expect(el.textContent).toContain('19 notices printed Oct 7')
+    fireEvent.click(within(el).getByRole('button', { name: 'Take back…' }))
+    expect(onAct.mock.calls[0]![0].target).toEqual({ open: 'run', gcId: null, takeBack: true })
+    fireEvent.click(within(el).getByRole('button', { name: 'Record the mailing' }))
+    expect(onAct.mock.calls[1]![0].target).toEqual({ open: 'run', gcId: null })
+    expect(document.querySelector('[data-lien-next-up-fold-body]')).toBeNull()
+    fireEvent.click(within(el).getByRole('button', { name: '▸ The 2 jobs' }))
+    expect(onAct).toHaveBeenCalledTimes(2)
+    const body = document.querySelector('[data-lien-next-up-fold-body="run:printed"]') as HTMLElement
+    expect(body.textContent).toContain('712 · Cedar Park')
+    expect(body.textContent).toContain('Oct 15')
+    fireEvent.click(screen.getByTestId('lien-next-up-job-j3'))
+    expect(onOpenJob).toHaveBeenCalledWith('j3')
+    expect(onAct).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('lien-step-count-notice-4').textContent).toBe('19 printed')
+  })
+  it('the find opens the fold; a phone stacks both buttons full width', () => {
+    render(<LienDeskNextUp rows={[run]} loading={false} isMobile onAct={() => {}} foldsOpen />)
+    expect(document.querySelector('[data-lien-next-up-fold-body="run:printed"]')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Take back…' }) as HTMLButtonElement).style.width).toBe('100%')
+  })
+})

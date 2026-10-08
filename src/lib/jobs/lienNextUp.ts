@@ -13,6 +13,8 @@ import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
+import { formatYmdMonthDay } from './billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type LienNextUpKind = 'notice' | 'affidavit' | 'retainage'
 
@@ -23,6 +25,7 @@ export type LienNextUpAction =
   | 'send'
   | 'send_run'
   | 'add_tracking'
+  | 'record_mailing'
   | 'review_hold'
   | 'letter_two'
   | 'note_missed'
@@ -37,7 +40,8 @@ export type LienNextUpTarget =
   | { open: 'notices'; jobId: string; pile: LienDeskPile }
   | { open: 'affidavits'; jobId: string }
   | { open: 'retainage'; jobId: string }
-  | { open: 'run'; gcId: string }
+  /** The run window: a GC's ready notices, or (punch list #101) every printed notice, `takeBack` opening on its confirm. */
+  | { open: 'run'; gcId: string | null; takeBack?: boolean }
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' }
 
 export type LienNextUpGroup = 'now' | 'coming'
@@ -61,6 +65,10 @@ export type LienNextUpRow = {
   /** The button's words; null when this viewer has no move on the row (it still opens on a press of the row). */
   button: string | null
   target: LienNextUpTarget
+  /** A second, quieter button (punch list #101: the run row's *Take back…*); null or absent for most rows. */
+  secondary?: { words: string; target: LienNextUpTarget } | null
+  /** The jobs a run row stands for, in deadline order (punch list #101), for its fold and the find. */
+  jobs?: ReadonlyArray<{ jobId: string; title: string; dueOn: string | null }>
 }
 
 /** A row inside this many days, or past its day, is *Needs you now*. */
@@ -73,6 +81,7 @@ const BUTTON: Record<LienNextUpAction, string> = {
   send: 'Send',
   send_run: 'Send the run',
   add_tracking: 'Add tracking',
+  record_mailing: 'Record the mailing',
   review_hold: 'Review the hold',
   letter_two: 'Send letter two',
   note_missed: 'Note it',
@@ -137,6 +146,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       else readyByGc.set(e.gcCustomerId, [e])
     }
   }
+  const printed = input.notices.filter((e) => e.pile === 'printed')
+  const printedCount = printed.length
   for (const e of input.notices) {
     const base = { kind: 'notice' as const, jobId: e.jobId, gcId: e.gcCustomerId, title: input.jobTitle(e.jobId), dueOn: e.earliestDeadline, daysLeft: e.daysLeft, severity: e.severity }
     const pane = (pile: LienDeskPile): LienNextUpTarget => ({ open: 'notices', jobId: e.jobId, pile })
@@ -160,6 +171,8 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
       }
       case 'printed':
+        // Two or more printed are one run row below (punch list #101); one keeps its own row.
+        if (printedCount > 1) break
         push({ ...base, key: `notice:${e.jobId}`, sub: 'In the mail · tracking owed', action: 'add_tracking', button: office ? BUTTON.add_tracking : null, target: pane('printed') })
         break
       case 'held':
@@ -201,6 +214,28 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       action: 'send_run',
       button: office ? BUTTON.send_run : null,
       target: { open: 'run', gcId },
+    })
+  }
+
+  // The printed notices as one row (punch list #101): one run, one window, one question — mailed, or taken back?
+  if (printedCount > 1) {
+    const byDay = [...printed].sort((a, b) => ((a.earliestDeadline ?? '9999') < (b.earliestDeadline ?? '9999') ? -1 : (a.earliestDeadline ?? '9999') > (b.earliestDeadline ?? '9999') ? 1 : 0))
+    const first = byDay.find((e) => e.earliestDeadline) ?? null
+    push({
+      kind: 'notice',
+      key: 'run:printed',
+      jobId: null,
+      gcId: null,
+      title: `${printedCount} notices ${lienPrintedDaysWords(printed.map((e) => (e.item as { printed_at?: string | null } | null)?.printed_at ?? null))}`.trim(),
+      sub: 'Mailed? Type each envelope’s number. Not mailing them? Take the run back.',
+      dueOn: first?.earliestDeadline ?? null,
+      daysLeft: first?.daysLeft ?? null,
+      severity: printed.some((e) => e.severity === 'red') ? 'red' : printed.some((e) => e.severity === 'amber') ? 'amber' : 'quiet',
+      action: 'record_mailing',
+      button: office ? BUTTON.record_mailing : null,
+      target: { open: 'run', gcId: null },
+      secondary: office ? { words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } } : null,
+      jobs: byDay.map((e) => ({ jobId: e.jobId, title: input.jobTitle(e.jobId), dueOn: e.earliestDeadline })),
     })
   }
 
@@ -270,6 +305,15 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
   }
 
   return rows.sort(compareRows)
+}
+
+/** "printed Oct 7", "printed Oct 7 to Oct 8", or "" with no day: the run row's title (punch list #101). */
+export function lienPrintedDaysWords(stamps: ReadonlyArray<string | null>): string {
+  const days = Array.from(new Set(stamps.filter((s): s is string => Boolean(s)).map((s) => calendarYmdInAppTzFromIso(s)).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))).sort()
+  if (days.length === 0) return 'printed'
+  const a = formatYmdMonthDay(days[0]!)
+  const b = formatYmdMonthDay(days[days.length - 1]!)
+  return a === b ? `printed ${a}` : `printed ${a} to ${b}`
 }
 
 /** The two groups, in order, each with its rows — what the view draws. */

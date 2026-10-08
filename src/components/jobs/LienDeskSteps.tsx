@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { LIEN_STEP_LADDERS, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
+import { LIEN_STEP_LADDERS, lienRunRungWords, lienStepTiles, type LienStepAt, type LienStepCard, type LienStepCounts, type LienStepLadder, type LienStepN } from '../../lib/jobs/lienNextUpSteps'
 
 /**
  * The Do now list's steps, drawn (v2.4631): the rail of four rungs per kind of paper above the
@@ -24,6 +24,7 @@ export function LienStepRail({
   onPick,
   onOpenRun,
   viewerIsLeader,
+  printed,
 }: {
   counts: LienStepCounts
   ladders: ReadonlyArray<LienStepLadder>
@@ -35,6 +36,8 @@ export function LienStepRail({
   onOpenRun?: () => void
   /** The leader's rung wears *you*. */
   viewerIsLeader?: boolean
+  /** Of the run rung's count, how many printed and wait on their tracking numbers (punch list #101). */
+  printed?: Partial<Record<LienStepLadder, number>>
 }) {
   return (
     <div data-testid="lien-step-rails" style={{ display: 'grid', gap: 8, marginBottom: '0.9rem' }}>
@@ -89,7 +92,7 @@ export function LienStepRail({
                     {key !== 'affidavit' && step === 3 && viewerIsLeader ? <span style={{ fontSize: '0.62rem', padding: '0 6px', borderRadius: 999, background: '#fbbf24', color: '#1a1200', fontWeight: 700, flex: 'none' }}>you</span> : null}
                     <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums', color: empty ? 'var(--text-muted)' : 'var(--text-strong)', opacity: empty ? 0.6 : 1, flex: 'none' }} data-testid={`lien-step-count-${key}-${step}`}>
                       {n}
-                      {isRun && n > 0 ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> ready</span> : null}
+                      {isRun && n > 0 ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{lienRunRungWords(n, printed?.[key] ?? 0)}</span> : null}
                     </span>
                   </button>
                 )

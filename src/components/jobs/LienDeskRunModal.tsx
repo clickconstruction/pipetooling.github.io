@@ -41,6 +41,7 @@ export default function LienDeskRunModal({
   onRecorded,
   onPrinted,
   onTakeBack,
+  openOnTakeBack = false,
   undo,
   stripeMode = 'live',
 }: {
@@ -58,6 +59,8 @@ export default function LienDeskRunModal({
    * to send with their approvals. The host writes it and re-reads; it returns how many it took back.
    */
   onTakeBack?: (itemIds: string[]) => Promise<number>
+  /** Open on the take-back confirm: Do now's run row pressed *Take back…* (punch list #101 PR 2). */
+  openOnTakeBack?: boolean
   /**
    * The run was started a moment ago by one click (Put a GC on notice's Approve all, v2.4541):
    * a strip under the title offers to undo that click. The opener owns what undo does.
@@ -77,7 +80,7 @@ export default function LienDeskRunModal({
   const opening = useMemo(() => runOpening(initial), [initial])
   // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
   const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null } | null>(null)
-  const [takeBackOpen, setTakeBackOpen] = useState(false)
+  const [takeBackOpen, setTakeBackOpen] = useState(openOnTakeBack)
   const recording = opening.step === 'record' && takenBack == null
   const [printedAt, setPrintedAt] = useState<string | null>(opening.printedAt)
   // The items whose every copy printed in this sitting: with the ones printed before it, what a take-back clears.

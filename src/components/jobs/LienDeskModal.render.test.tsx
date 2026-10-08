@@ -296,6 +296,21 @@ describe('LienDeskModal', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
+  it('two printed notices are one Do now row; its Take back… opens the run on the confirm, and the rail counts them (punch list #101)', async () => {
+    const item = (id: string, job: string) =>
+      ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', printed_at: '2026-09-14T16:00:00Z' }) as unknown as LienDeskItemRow
+    const rows = [...J650, row('j651', '2026-07', '2026-10-15')]
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(rows, [item('it1', 'j650'), item('it2', 'j651')], true)} initialKind="next" />)
+    await settle()
+    const run = document.querySelector('[data-lien-next-up-row="run:printed"]') as HTMLElement
+    expect(run.textContent).toContain('2 notices printed Sep 14')
+    expect(document.querySelectorAll('[data-lien-next-up-act="add_tracking"]').length).toBe(0)
+    expect(screen.getByTestId('lien-step-count-notice-4').textContent).toBe('2 printed')
+    fireEvent.click(within(run).getByRole('button', { name: 'Take back…' }))
+    await settle()
+    expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the run?')
+  })
+
   it('Do now is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
