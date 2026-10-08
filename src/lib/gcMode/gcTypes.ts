@@ -6,6 +6,9 @@ import type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteSta
 import type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, WeatherSky, WeeklyReportSent } from '../gc/types'
 import type { ChangeOrderReason, OwnerBilling, OwnerRetainageStep } from '../gc/types'
 import type { BidTab, PlanQuestion, Town } from '../gc/types'
+import type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
+export type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
+
 export type { BidTab, PlanQuestion, Town } from '../gc/types'
 
 export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
@@ -316,21 +319,6 @@ export interface Partner {
   people?: PartnerPerson[]
   /** The emails the main contact gets. Unset: every kind. */
   contactGets?: PortalMailGroup[]
-}
-/**
- * The kinds of email a company's people can get (owner, 2026-10-05): quotes and plans while we
- * bid; the job once it is theirs (its plans, answers, start days); contracts and changes; pay,
- * waivers, insurance and charges. Every kind goes to at least one person.
- */
-export type PortalMailGroup = 'quotes' | 'job' | 'contracts' | 'pay'
-/** Someone at a company besides its main contact, and the emails they get. */
-export interface PartnerPerson {
-  id: string
-  name: string
-  email: string
-  /** What they do there, in the company's words ("Bookkeeper"). Empty: not said. */
-  role: string
-  gets: PortalMailGroup[]
 }
 /**
  * A paper sent to a customer from its window (the owner, 2026-10-04): our contract to sign in their
@@ -1131,53 +1119,4 @@ export interface ChangeOrder {
    * is signed G-98 stops counting those moves as the customer's. Unset: an ordinary change order.
    */
   daysOnChart?: string[]
-}
-/**
- * A charge to a trade (owner, 2026-10-05): cleanup, damage, or work we had to finish for it. The
- * company sees it in its portal with the reason and the photo, and agrees or disputes it by
- * `answerBy`. One it agreed to, one we kept after its dispute, or one it never answered can come
- * off an approved draw it has not been paid yet (`Draw.backCharges`).
- */
-export interface BackCharge {
-  id: string
-  amount: number
-  /** What it is for, in the office's words. */
-  reason: string
-  /** The photo sent with it: its name. Null: none. */
-  photo: string | null
-  sentOn: string
-  /** The day to answer by. After it, a charge with no answer can come off a draw. */
-  answerBy: string
-  status: 'open' | 'agreed' | 'disputed' | 'kept' | 'dropped'
-  /** The company's answer: the day, and its note when it disputed. */
-  answer?: { on: string; note: string }
-  /** The office's answer to a dispute, or why it dropped the charge. */
-  settled?: { on: string; note: string }
-  /** The draw it came off, and the day. */
-  taken?: { drawId: string; on: string }
-}
-/**
- * A change a trade asked us for from its portal (Portal lane, owner 2026-10-04): it hit something on
- * site no one could see, the customer asked it for more, or the plans changed. The office makes it a
- * change order to the customer (`changeOrderId`) or turns it down with a reason. Once the customer
- * signs, the change goes to the trade to sign the usual way (`ChangeOrder.tradeChange`).
- */
-export interface TradeChangeRequest {
-  id: string
-  packageId: string
-  partnerId: string
-  askedOn: string
-  /** What changed, in the trade's words. */
-  description: string
-  reason: ChangeOrderReason
-  /** What the trade asks for the work. */
-  amount: number
-  /** The working days it adds, as the trade sees it. 0: none. */
-  days: number
-  /** The file sent with it (a photo, a ticket): its name. Null: none. */
-  file: string | null
-  /** The change order the office made of it. Null: not yet. */
-  changeOrderId: string | null
-  /** The office turned it down: the day and why. Null: not turned down. */
-  turnedDown: { on: string; note: string } | null
 }

@@ -76,14 +76,6 @@
         "portalWeeks"
       ],
       "append": true
-    },
-    {
-      "from": "gcLookups",
-      "to": "lookups.ts",
-      "moves": [
-        "currentRev"
-      ],
-      "append": true
     }
   ],
   "types": [
@@ -263,7 +255,8 @@
     "src/lib/gcMode/gcTypes.ts#QuoteExclusion": "types.ts",
     "src/lib/gcMode/gcTypes.ts#Town": "types.ts",
     "src/lib/gcMode/gcTypes.ts#BidTab": "types.ts",
-    "src/lib/gcMode/gcTypes.ts#PlanQuestion": "types.ts"
+    "src/lib/gcMode/gcTypes.ts#PlanQuestion": "types.ts",
+    "src/lib/gcMode/gcLookups.ts#currentRev": "lookups.ts"
   },
   "standIns": {
     "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
@@ -287,6 +280,15 @@
       "GcProject": {
         "planSets": "PlanSet"
       }
+    }
+  },
+  "pin": {
+    "main": "e65c8b53724e597b56cfdc1041f6abd536c30be7",
+    "spike": "a619ed04915af229538280dc4acb98724b758407",
+    "about": "#4857 merged; the spike before its follow-up",
+    "known": {
+      "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
+      "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same"
     }
   }
 }
