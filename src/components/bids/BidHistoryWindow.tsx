@@ -13,7 +13,17 @@ import {
   type BidHistoryRow,
   type BidHistoryTab,
 } from '../../lib/bids/bidHistory'
-import { loadBidHistory } from '../../lib/bids/loadBidHistory'
+import { loadBidHistory, putBackBidChange } from '../../lib/bids/loadBidHistory'
+import {
+  BID_HISTORY_PUT_BACK_EVENT,
+  bidPutBackDoneWords,
+  bidPutBackFailWords,
+  bidPutBackLabel,
+  bidPutBackTarget,
+  type BidHistoryPutBackDetail,
+  type BidPutBackResult,
+  type BidPutBackTarget,
+} from '../../lib/bids/bidHistoryPutBack'
 
 const chip = (on: boolean): CSSProperties => ({
   padding: '0.25rem 0.6rem',
@@ -32,14 +42,17 @@ const currentTime = () => new Date()
 /**
  * Bid history, the window (punch list #73, PR 2): everything that happened on the bid, newest
  * first, one line per action (an import of 23 rows is one line), each opening to its rows.
- * Filters by tab and by person, and a search over names and values. Read only: Put back is PR 4.
- * A bid adopted into this one shows its history too, each action marked with its bid number.
+ * Filters by tab and by person, and a search over names and values. A bid adopted into this one
+ * shows its history too, each action marked with its bid number. Every changed value on this bid
+ * has **Put back** (PR 4): the value goes back, the history reads again, and the open bid's tabs
+ * hear `BID_HISTORY_PUT_BACK_EVENT` and read the bid again.
  */
 export function BidHistoryWindow({
   bid,
   onClose,
   initialSearch = '',
   load = loadBidHistory,
+  putBack = putBackBidChange,
   now = currentTime,
 }: {
   bid: { id: string; label: string; bidNumber: string | null }
@@ -48,6 +61,8 @@ export function BidHistoryWindow({
   initialSearch?: string
   /** The read; a test stands one in. */
   load?: (bidId: string) => Promise<BidHistoryRow[]>
+  /** The put back; a test stands one in. */
+  putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>
   now?: () => Date
 }) {
   const [rows, setRows] = useState<BidHistoryRow[] | null>(null)
@@ -56,17 +71,39 @@ export function BidHistoryWindow({
   const [whoId, setWhoId] = useState<string | null | 'app'>(null)
   const [search, setSearch] = useState(initialSearch)
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
+  // Put back: the line being written, and the word under the line last pressed.
+  const [busy, setBusy] = useState<string | null>(null)
+  const [note, setNote] = useState<{ lineKey: string; text: string; ok: boolean } | null>(null)
+  // Read again after a put back, keeping the list on screen (and where it was scrolled) meanwhile.
+  const [readNo, setReadNo] = useState(0)
 
   useEffect(() => {
     let cancelled = false
-    setRows(null)
-    setError(null)
+    if (readNo === 0) {
+      setRows(null)
+      setError(null)
+    }
     load(bid.id).then(
       (r) => { if (!cancelled) setRows(r) },
       (e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)) },
     )
     return () => { cancelled = true }
-  }, [bid.id, load])
+  }, [bid.id, load, readNo])
+
+  async function pressPutBack(lineKey: string, target: BidPutBackTarget) {
+    setBusy(lineKey)
+    setNote(null)
+    try {
+      const result = await putBack(target.changeId, target.column)
+      setNote({ lineKey, text: bidPutBackDoneWords(target, result), ok: true })
+      window.dispatchEvent(new CustomEvent<BidHistoryPutBackDetail>(BID_HISTORY_PUT_BACK_EVENT, { detail: { bidId: bid.id, table: result.table } }))
+      setReadNo((n) => n + 1)
+    } catch (e) {
+      setNote({ lineKey, text: bidPutBackFailWords(e instanceof Error ? e.message : String(e)), ok: false })
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const actions = useMemo(() => groupBidHistory(rows ?? []), [rows])
   const shown = useMemo(() => filterBidHistory(actions, { tab, whoId, search }), [actions, tab, whoId, search])
@@ -87,7 +124,7 @@ export function BidHistoryWindow({
   const tabLabel = (key: BidHistoryTab) => BID_HISTORY_TABS.find((t) => t.key === key)?.label ?? key
 
   const actionView = (a: BidHistoryAction) => {
-    const lines = a.rows.flatMap(bidHistoryLines)
+    const lines = a.rows.flatMap((r) => bidHistoryLines(r).map((l) => ({ ...l, target: bidPutBackTarget(r, l.column, bid.id) })))
     const isOpen = open.has(a.key) || lines.length === 1
     return (
       <li key={a.key} style={{ padding: '0.55rem 0', borderTop: '1px solid var(--border)' }}>
@@ -115,6 +152,24 @@ export function BidHistoryWindow({
             {lines.map((l) => (
               <li key={l.key} style={{ fontSize: '0.8125rem', overflowWrap: 'anywhere' }}>
                 <span style={{ fontWeight: 600 }}>{l.subject}</span> · {l.detail}
+                {l.target ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={() => void pressPutBack(l.key, l.target!)}
+                      disabled={busy !== null}
+                      aria-label={bidPutBackLabel(l.target)}
+                      title={bidPutBackLabel(l.target)}
+                      style={{ padding: '0 0.45rem', minHeight: 28, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.75rem', cursor: busy !== null ? 'default' : 'pointer', verticalAlign: 'middle' }}
+                    >
+                      {busy === l.key ? 'Putting back…' : 'Put back'}
+                    </button>
+                  </>
+                ) : null}
+                {note?.lineKey === l.key ? (
+                  <div role={note.ok ? 'status' : 'alert'} style={{ fontSize: '0.75rem', color: note.ok ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{note.text}</div>
+                ) : null}
               </li>
             ))}
           </ul>

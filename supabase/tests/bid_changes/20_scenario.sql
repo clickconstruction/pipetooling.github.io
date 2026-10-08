@@ -490,5 +490,43 @@ SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1
 RESET ROLE;
 UPDATE mark SET id = bct.last();
 
+-- 19 · Put back (PR 4, 20261009110000): put_back_bid_change writes a change's old value back under
+--      the caller's own policies. The estimator puts Lav-1's price back to $10,300; the ledger
+--      records it as hers, tagged put-back, a press not the app's. A trainee (read only) and
+--      someone who cannot read the bid are refused, and the price stays.
+-- The change that took Lav-1's price from $10,300 to $10,450 (case 3), read as the caller.
+CREATE FUNCTION pg_temp.price_change() RETURNS bigint LANGUAGE sql STABLE AS $$
+  SELECT id FROM public.bid_changes WHERE table_name = 'bid_count_row_custom_prices' AND record_id = '00000000-0000-0000-0000-00000000c711'
+    AND op = 'update' AND (new_values ->> 'unit_price')::numeric = 10450 ORDER BY id DESC LIMIT 1 $$;
+SET LOCAL ROLE authenticated;
+SELECT bct.same('put back: the price, before and after',
+  (SELECT trim_scale((r -> 'before' ->> 'unit_price')::numeric) || ' -> ' || trim_scale((r -> 'after' ->> 'unit_price')::numeric)
+     FROM public.put_back_bid_change(pg_temp.price_change()) AS r),
+  '10450 -> 10300');
+SELECT bct.same('put back: the price is $10,300 again',
+  (SELECT trim_scale(unit_price)::text FROM public.bid_count_row_custom_prices WHERE id = '00000000-0000-0000-0000-00000000c711'), '10300');
+SELECT bct.same('put back: recorded as her change, tagged put-back, a press',
+  (SELECT string_agg(op || ' ' || array_to_string(changed, ',') || ' ' || COALESCE(action, '-') || ' ' || COALESCE(by_app::text, '-') || ' ' ||
+                     (changed_by = '00000000-0000-0000-0000-00000000c7e1')::text, E'\n' ORDER BY id) FROM bct.rows_after((SELECT id FROM mark))),
+  'update unit_price put-back false true');
+SELECT bct.same('put back: the tag ends with the call', COALESCE(public.bid_change_action(), 'none'), 'none');
+SELECT bct.refused('put back: a removal is not a changed value',
+  $$SELECT public.put_back_bid_change((SELECT max(id) FROM public.bid_changes WHERE op = 'delete' AND bid_id = '00000000-0000-0000-0000-00000000c7d1'))$$,
+  'Only a changed value');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e6","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e6', true);
+SELECT bct.refused('put back: a trainee (read only) is refused', $$SELECT public.put_back_bid_change(pg_temp.price_change())$$, '');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e4","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e4', true);
+SELECT bct.refused('put back: someone who cannot read the bid is refused',
+  format('SELECT public.put_back_bid_change(%s)', (SELECT max(id) FROM bct.rows_after(0) WHERE table_name = 'bid_count_row_custom_prices' AND op = 'update')),
+  'not in this bid''s history');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
+SELECT bct.same('put back: the trainee and the stranger changed nothing',
+  (SELECT trim_scale(unit_price)::text FROM public.bid_count_row_custom_prices WHERE id = '00000000-0000-0000-0000-00000000c711'), '10300');
+RESET ROLE;
+UPDATE mark SET id = bct.last();
+
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;

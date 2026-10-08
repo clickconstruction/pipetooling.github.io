@@ -10,6 +10,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { BidHistoryWindow } from './BidHistoryWindow'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { BidHistoryRow } from '../../lib/bids/bidHistory'
+import { BID_HISTORY_PUT_BACK_EVENT, type BidPutBackResult } from '../../lib/bids/bidHistoryPutBack'
 
 afterEach(cleanup)
 
@@ -33,8 +34,8 @@ const rows: BidHistoryRow[] = [
   row({ changedAt: '2026-10-06T15:00:00.000Z', source: 'archive', id: null, archiveId: 'a1', op: 'delete', action: null, byApp: null, label: 'SUMP', oldValues: { fixture: 'SUMP', count: 2 }, newValues: null }),
 ]
 
-async function open(load: (id: string) => Promise<BidHistoryRow[]> = async () => rows) {
-  renderWithProviders(<BidHistoryWindow bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }} onClose={vi.fn()} load={load} now={NOW} />)
+async function open(load: (id: string) => Promise<BidHistoryRow[]> = async () => rows, putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>) {
+  renderWithProviders(<BidHistoryWindow bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }} onClose={vi.fn()} load={load} putBack={putBack} now={NOW} />)
   await settle()
   return screen.getByRole('dialog')
 }
@@ -88,6 +89,49 @@ describe('BidHistoryWindow', () => {
   it('a failed read says so', async () => {
     const d = await open(async () => { throw new Error('function list_bid_history does not exist') })
     expect(within(d).getByRole('alert').textContent).toMatch(/could not be read: function list_bid_history does not exist/)
+  })
+
+  it('only a changed value on this bid offers Put back', async () => {
+    const d = await open()
+    expect(within(d).getAllByRole('button', { name: /^Put back/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Put back Lav-1 price to $9,800'])
+  })
+
+  it('Put back writes the old value, reads the history again, and tells the open bid’s tabs', async () => {
+    const priceChange = rows.find((r) => r.table === 'bid_count_row_custom_prices')!
+    const load = vi.fn(async () => rows)
+    const putBack = vi.fn(async (): Promise<BidPutBackResult> => ({
+      table: 'bid_count_row_custom_prices', record_id: priceChange.recordId, label: 'Lav-1', columns: ['unit_price'], before: { unit_price: 10300 }, after: { unit_price: 9800 },
+    }))
+    const heard = vi.fn()
+    const hear = (e: Event) => heard((e as CustomEvent).detail)
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    try {
+      const d = await open(load, putBack)
+      fireEvent.click(within(d).getByRole('button', { name: 'Put back Lav-1 price to $9,800' }))
+      await settle()
+      expect(putBack).toHaveBeenCalledWith(priceChange.id, 'unit_price')
+      expect(within(d).getByRole('status').textContent).toBe('Lav-1 price is $9,800 again.')
+      expect(load).toHaveBeenCalledTimes(2)
+      expect(heard).toHaveBeenCalledWith({ bidId: 'bid-1', table: 'bid_count_row_custom_prices' })
+    } finally {
+      window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    }
+  })
+
+  it('a refused put back says why under its line, and changes nothing', async () => {
+    const load = vi.fn(async () => rows)
+    const heard = vi.fn()
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, heard)
+    try {
+      const d = await open(load, async () => { throw new Error('That row was removed since. Put the row back first.') })
+      fireEvent.click(within(d).getByRole('button', { name: 'Put back Lav-1 price to $9,800' }))
+      await settle()
+      expect(within(d).getByRole('alert').textContent).toBe('That row was removed since. Put the row back first.')
+      expect(load).toHaveBeenCalledTimes(1)
+      expect(heard).not.toHaveBeenCalled()
+    } finally {
+      window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, heard)
+    }
   })
 
   it('a bid with nothing yet says so', async () => {

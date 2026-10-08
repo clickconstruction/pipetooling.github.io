@@ -1,6 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { buildBidCellHistoryIndex, type BidCellHistoryIndex, type BidCellHistoryRpcRow } from '../lib/bids/bidCellHistory'
+import { BID_HISTORY_PUT_BACK_EVENT } from '../lib/bids/bidHistoryPutBack'
 
 /**
  * Bid history under the cells (punch list #73, PR 3): the switch, and the read behind it.
@@ -63,13 +64,18 @@ export function BidCellHistoryProvider({
   const [on] = useBidHistoryCellsSwitch()
   const [index, setIndex] = useState<BidCellHistoryIndex | null>(null)
   const [now, setNow] = useState(() => new Date())
-  // Read again when the window comes back to the front: another device or person may have typed.
+  // Read again when the window comes back to the front (another device or person may have typed)
+  // and after a value is put back from the History window.
   const [readNo, setReadNo] = useState(0)
   useEffect(() => {
     if (!on) return
     const again = () => setReadNo((n) => n + 1)
     window.addEventListener('focus', again)
-    return () => window.removeEventListener('focus', again)
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, again)
+    return () => {
+      window.removeEventListener('focus', again)
+      window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, again)
+    }
   }, [on])
   useEffect(() => {
     if (!on || !bidId) {
