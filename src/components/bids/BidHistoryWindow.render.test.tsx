@@ -1,0 +1,97 @@
+// @vitest-environment jsdom
+/**
+ * Bid history, the window (punch list #73, PR 2): actions not rows, newest first under their day;
+ * an action opens to its rows; filters by tab and person; the search; an adopted bid's actions
+ * carry its number; a removed row from the archive says so; a failed read says so. The read is a
+ * stand-in; made-up people and bids.
+ */
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
+import { BidHistoryWindow } from './BidHistoryWindow'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import type { BidHistoryRow } from '../../lib/bids/bidHistory'
+
+afterEach(cleanup)
+
+let n = 0
+function row(over: Partial<BidHistoryRow>): BidHistoryRow {
+  n += 1
+  return {
+    source: 'ledger', id: n, archiveId: null, bidId: 'bid-1', bidNumber: 'B494', table: 'bids_count_rows', recordId: `r-${n}`,
+    countRowId: null, op: 'insert', changed: ['fixture', 'count'], oldValues: null, newValues: { fixture: 'Lav-1', count: 4 },
+    label: 'Lav-1', changedBy: 'u-ann', changedByName: 'Ann', changedAt: '2026-10-08T15:00:00.000Z', action: 'counts-import', byApp: false,
+    ...over,
+  }
+}
+const at = (s: number) => new Date(Date.parse('2026-10-08T15:00:00.000Z') + s * 1000).toISOString()
+const NOW = () => new Date('2026-10-08T20:00:00Z')
+
+const rows: BidHistoryRow[] = [
+  ...Array.from({ length: 3 }, (_, i) => row({ changedAt: at(i), label: `Fixture ${i + 1}`, newValues: { fixture: `Fixture ${i + 1}`, count: i + 1 } })),
+  row({ changedAt: at(120), table: 'bid_count_row_custom_prices', op: 'update', changed: ['unit_price'], oldValues: { unit_price: 9800 }, newValues: { unit_price: 10300 }, action: null, byApp: null, changedBy: 'u-ben', changedByName: 'Ben' }),
+  row({ changedAt: '2026-10-07T15:00:00.000Z', bidId: 'bid-0', bidNumber: 'B377', action: null, byApp: null, label: 'WC-1', newValues: { fixture: 'WC-1', count: 40 } }),
+  row({ changedAt: '2026-10-06T15:00:00.000Z', source: 'archive', id: null, archiveId: 'a1', op: 'delete', action: null, byApp: null, label: 'SUMP', oldValues: { fixture: 'SUMP', count: 2 }, newValues: null }),
+]
+
+async function open(load: (id: string) => Promise<BidHistoryRow[]> = async () => rows) {
+  renderWithProviders(<BidHistoryWindow bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }} onClose={vi.fn()} load={load} now={NOW} />)
+  await settle()
+  return screen.getByRole('dialog')
+}
+
+describe('BidHistoryWindow', () => {
+  it('one line per action, newest first, under its day', async () => {
+    const d = await open()
+    expect(within(d).getByText('Changed Lav-1 price')).toBeTruthy()
+    expect(within(d).getByText('Imported 3 rows from CountTooling')).toBeTruthy()
+    const days = within(d).getAllByRole('heading', { level: 4 }).map((h) => h.textContent)
+    expect(days).toEqual(['Today', 'Yesterday', 'Tuesday'])
+    const today = within(d).getByRole('region', { name: 'Today' })
+    expect(within(today).getAllByRole('listitem').filter((li) => li.querySelector('strong')).map((li) => li.querySelector('strong')!.textContent)).toEqual(['Changed Lav-1 price', 'Imported 3 rows from CountTooling'])
+  })
+
+  it('a single-row action shows its line; a burst opens to its rows', async () => {
+    const d = await open()
+    expect(within(d).getByText(/price · \$9,800 → \$10,300/)).toBeTruthy()
+    expect(within(d).queryByText(/Fixture 2/)).toBeNull()
+    fireEvent.click(within(d).getByRole('button', { name: 'Show the 3 rows' }))
+    expect(within(d).getByText('Fixture 2')).toBeTruthy()
+  })
+
+  it('an adopted bid’s actions carry its number, and the window says it is included', async () => {
+    const d = await open()
+    expect(within(d).getByText(/Includes B377, adopted into this bid/)).toBeTruthy()
+    expect(within(d).getByText(/Ann · Counts · B377/)).toBeTruthy()
+  })
+
+  it('a row from the archive says where it comes from', async () => {
+    const d = await open()
+    expect(within(d).getByText(/Counts · B494 · from the delete archive/)).toBeTruthy()
+    expect(within(d).getByText(/Rows marked from the delete archive were removed before that/)).toBeTruthy()
+    expect(within(d).getByText(/removed · kept 90 days · count 2/)).toBeTruthy()
+  })
+
+  it('filters by tab and by person, and searches values', async () => {
+    const d = await open()
+    fireEvent.click(within(within(d).getByRole('group', { name: 'Show changes on' })).getByRole('button', { name: 'Pricing' }))
+    expect(within(d).queryByText('Imported 3 rows from CountTooling')).toBeNull()
+    fireEvent.click(within(within(d).getByRole('group', { name: 'Show changes on' })).getByRole('button', { name: 'All' }))
+    fireEvent.click(within(within(d).getByRole('group', { name: 'Show changes by' })).getByRole('button', { name: 'Ben' }))
+    expect(within(d).getByText('Changed Lav-1 price')).toBeTruthy()
+    expect(within(d).queryByText('Removed SUMP')).toBeNull()
+    fireEvent.click(within(within(d).getByRole('group', { name: 'Show changes by' })).getByRole('button', { name: 'Everyone' }))
+    fireEvent.change(within(d).getByRole('searchbox', { name: 'Find a fixture or a value' }), { target: { value: 'sump' } })
+    expect(within(d).getByText('Removed SUMP')).toBeTruthy()
+    expect(within(d).queryByText('Changed Lav-1 price')).toBeNull()
+  })
+
+  it('a failed read says so', async () => {
+    const d = await open(async () => { throw new Error('function list_bid_history does not exist') })
+    expect(within(d).getByRole('alert').textContent).toMatch(/could not be read: function list_bid_history does not exist/)
+  })
+
+  it('a bid with nothing yet says so', async () => {
+    const d = await open(async () => [])
+    expect(within(d).getByText('Nothing has changed on this bid since its history began.')).toBeTruthy()
+  })
+})

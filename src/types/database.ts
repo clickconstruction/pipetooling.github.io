@@ -29802,6 +29802,29 @@ export type Database = {
           work_date: string
         }[]
       }
+      list_bid_history: {
+        Args: { p_bid_id: string; p_limit?: number }
+        Returns: {
+          action: string
+          archive_id: string
+          bid_id: string
+          bid_number: string
+          by_app: boolean
+          changed: string[]
+          changed_at: string
+          changed_by: string
+          changed_by_name: string
+          count_row_id: string
+          id: number
+          label: string
+          new_values: Json
+          old_values: Json
+          op: string
+          record_id: string
+          source: string
+          table_name: string
+        }[]
+      }
       list_bid_job_account_strip: {
         Args: { p_bid_ids: string[] }
         Returns: {

@@ -94,6 +94,7 @@ when_to_read:
 13. [RFI Tab](#rfi-tab)
 14. [Change Order Tab](#change-order-tab)
 15. [Lien Release Tab](#lien-release-tab)
+15½. [Bid history](#bid-history)
 16. [Database Schema](#database-schema)
 17. [Integration with Materials](#integration-with-materials)
 
@@ -1770,6 +1771,14 @@ Generate conditional waiver and lien release documents for progress payments. Ba
 - **Open in Google Docs**: Copies content, opens template copy URL, title format `ClickLienRelease_YYMMDD_ProjectName`
 
 ---
+
+## Bid history
+
+Punch list #73 ([`to-dos/bid-history`](../to-dos/bid-history/README.md)). **The ledger** `bid_changes` (v2.4598): one row per insert, real change or delete on the tables that hold what people type on a bid (`bid_changes_tables()`, eighteen since v2.4864), written by one trigger, `record_bid_change()`, so no save path can miss it. Each row holds the row's name at write time, its bid, version and count row, the changed columns' old and new values, the author, and the request's `x-bid-action` tag with whether the write was the app's own (v2.4736, `bidActionHeader.ts`). Kept three years, then purged (`purge-bid-changes`).
+
+**The reader** (v2.4948): `list_bid_history(p_bid_id)` (SECURITY INVOKER) returns the ledger for the bid and every bid adopted into it, each row with its bid number, plus the delete archive's removed rows the ledger lacks. Under the archive's own rule those reach a dev only. The kernel `bidHistory.ts` groups rows into actions (same bid, author, tag and source, five seconds apart at most) and words them. A **History** button after the mark controls on every bid tab's title (`BidHistoryDoor`) opens a read-only window (`BidHistoryWindow`): actions newest first under each day, each opening to its rows, with tab and person chips and a search. Edit Bid changes show `BID_HISTORY_DEFAULT_BID_COLUMNS` and count the rest.
+
+**The owner's calls** (2026-10-08): every estimator sees every change; three years, then purge; anyone who can edit the bid may Put back (PR 4); the builder picks the default columns; the history follows an adopt. Still to come: the under-cell lines and the switch (PR 3), Put back (PR 4), undo a whole action (PR 5).
 
 ## Database Schema
 
