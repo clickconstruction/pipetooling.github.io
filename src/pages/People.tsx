@@ -362,9 +362,8 @@ export default function People() {
     }
   }, [activeTab])
   const [reviewHoursModalOpen, setReviewHoursModalOpen] = useState(false)
-  /** Who is archived (#29): by id for the Hours grid, Teams (v2.4862), Offsets (v2.4865) and Contracts (v2.4867), by name for Review. */
+  /** Who is archived (#29), by the row's id first, then its name: the Hours grid, Teams (v2.4862), Offsets (v2.4865), Contracts (v2.4867) and Review (v2.4910). */
   const [archivedRoster, setArchivedRoster] = useState<ArchivedRoster>(NO_ARCHIVED_ROSTER)
-  const archivedUserNames = archivedRoster.names
   /** People spine (v2.3698): the roster view's verdict per pay row — who is a person. Null until loaded (no verdict). */
   const [payRoster, setPayRoster] = useState<PayRosterIndex | null>(null)
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
@@ -2778,7 +2777,7 @@ export default function People() {
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}
-          archivedUserNames={archivedUserNames}
+          archived={archivedRoster}
           payRoster={payRoster}
           authUser={authUser}
           isDev={isDev}
