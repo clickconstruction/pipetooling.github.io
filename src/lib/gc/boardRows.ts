@@ -377,7 +377,7 @@ export function boardStateFromRows(rows: BoardRows): GcState {
     list.push(inviteFromRows(i, rows.quotes, rows.contacts))
     invitesByPackage.set(i.package_id, list)
   }
-  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', payDays: null, portalOn: false }))
+  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', payDays: null, portalOn: false, retainagePct: null, address: '' }))
   return {
     today: rows.today,
     customers,
