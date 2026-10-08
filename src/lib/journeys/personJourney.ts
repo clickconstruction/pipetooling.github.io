@@ -494,6 +494,8 @@ export function subJourney(subject: Extract<PersonSubject, { kind: 'sub' }>, row
     : rows.visits && rows.visits.outsideCount > 0
       ? { state: 'opened', headline: `Visited ${plural(rows.visits.outsideCount, 'time')} · last ${dayWord(rows.visits.lastOutsideAt, now)}`, at: rows.visits.lastOutsideAt, link: url, action: null }
       : { state: 'sent', headline: 'Never visited', at: link?.created_at ?? null, link: url, action: peopleAction }
+  // GC mode: a trade partner's portal belongs to a GC trade company, which is not a sub of ours.
+  steps['gc-trade-portal'] = na('GC mode: read on the trade partner company')
   const c = latestBy(rows.contracts, (x) => x.sent_at ?? x.signed_at) ?? rows.contracts[0] ?? null
   if (!c) {
     steps['sub-contract-email'] = never('No contract sent', { label: 'Open People → Contracts', to: '/people?tab=contracts' })

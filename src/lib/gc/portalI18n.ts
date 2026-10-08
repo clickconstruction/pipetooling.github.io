@@ -7,6 +7,18 @@ import { shortDate, weekdayDate } from './words'
 
 export type PortalLang = 'en' | 'es'
 
+/**
+ * The portal's Spanish is built whole and held until a native speaker reads it (PORTAL_REAL_BUILD.md, decision 8, the
+ * owner's call 9). Until then a company kept as Spanish reads English, and its language stays on its record for the day
+ * this turns on. Turning it on is this one line, with the reader's name in the PR's fragment.
+ */
+export const PORTAL_SPANISH_ON = false
+
+/** The language the portal shows a company: its own once Spanish is on, English until then. */
+export function portalShownLang(lang: PortalLang): PortalLang {
+  return PORTAL_SPANISH_ON ? lang : 'en'
+}
+
 const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 const WEEKDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
@@ -919,6 +931,21 @@ const S = {
   crewSaidNone: { en: 'You said nobody.', es: 'Dijo que nadie.' },
   crewChange: { en: 'Change it', es: 'Cambiarlo' },
   crewWhole: { en: 'A whole number, 0 to 50.', es: 'Un número entero, de 0 a 50.' },
+
+  // The real page at /t/<link> (P1b): opening it, a link that no longer works, and reading before the presses come
+  portalOpening: { en: 'Opening your portal…', es: 'Abriendo su portal…' },
+  linkOff: { en: 'This link is no longer active. Ask {gc} for your new link.', es: 'Este enlace ya no está activo. Pídale a {gc} su nuevo enlace.' },
+  linkBad: { en: 'This link is not complete. Open the exact link {gc} sent you.', es: 'Este enlace está incompleto. Abra el enlace exacto que {gc} le envió.' },
+  linkFailed: { en: 'Your portal did not open. Try again in a minute.', es: 'Su portal no se abrió. Inténtelo de nuevo en un minuto.' },
+  tryAgain: { en: 'Try again', es: 'Intentar de nuevo' },
+  samplePortal: { en: 'A sample portal. The company and its jobs are made up.', es: 'Un portal de muestra. La empresa y sus trabajos son inventados.' },
+  officePreview: { en: 'The office preview. This visit is not counted.', es: 'Vista previa de la oficina. Esta visita no se cuenta.' },
+  navPortal: { en: 'Your portal', es: 'Su portal' },
+  navMessages: { en: 'Messages from {gc}', es: 'Mensajes de {gc}' },
+  plansNotShared: { en: 'The link to these plans is not ready yet. Ask {gc} for it.', es: 'El enlace a estos planos todavía no está listo. Pídaselo a {gc}.' },
+  replyByEmail: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {name}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {name}.' },
+  replyByEmailGc: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {gc}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {gc}.' },
+  sentTo: { en: 'To {names}', es: 'Para {names}' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S
