@@ -17,9 +17,9 @@ Each of the three lens cards is a button. {{button:outline|See the math ›}} op
 
 Below that, **How it moved** charts the rate week by week across the 90 days. The chart has a rolling 4-week line and a dashed line for the 90-day headline. So you can see whether this week is unusual or the whole quarter is drifting.
 
-**What moves it** lists the levers, each sized at today's numbers. Examples are *"+100 hr → −$0.51/hr"* on Method A, or *"+$10,000 invoiced → −0.34 pts"* on Method B. Green arrows lower the rate, and amber arrows raise it. When field time is awaiting approval, Method A also shows what the rate would read once it's approved.
+**What moves it** lists the levers, each sized at today's numbers. Examples are *"+100 hr → −$0.51/hr"* on Method A, or *"+$10,000 invoiced → −0.34 pts"* on Method B. Green arrows lower the rate, and amber arrows raise it. Some field time may still await approval. Then Method A also shows what the rate would read if all of it were rejected.
 
-**Watch-outs** names the ways each lens can mislead. The ways are salaried hourly pricing on A, billing rhythm on B, and raises lowering C. Watch-outs also states plainly whether any session is being counted on both sides of the math.
+**Watch-outs** names the ways each lens can mislead. The ways are salaried hourly pricing on A and billing rhythm on B. On C, a raise makes the number drop even when overhead stays the same. C divides overhead by wage dollars, so a drop on C is not a saving. Compare crews on A as well. Watch-outs also states plainly whether any session is being counted on both sides of the math.
 
 ## Is the pool going up or down?
 

@@ -29,7 +29,7 @@ One command, and you never see the key. The same setup serves the Code tab and c
 The key is what lets a machine act as the robot. Handing it to a person to paste means it sits in a clipboard, a chat, or a shell history somewhere. The code is worth one key for ten minutes; the command redeems it and the key goes from the server straight into the config file. Nobody ever reads it.
 :::
 
-The long way is for another harness, or a Mac where the short way failed. A harness is the program that runs Claude. The long way is a key you can see. You open **Settings → System → Digital twins → Fleet → Twin Estimator 1** and press {{button:blue|Issue key}}. Then you press {{button:gray|Copy Desktop setup command}} on the card that shows it. On the Console it is {{button:gray|Key-based command}}. You paste into Terminal. You paste the key when the silent prompt asks. You quit and reopen Claude yourself. Either way, a session with no twin-mcp tools at all means the connector did not load. You look under Claude's Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked. You run the setup again.
+The long way is for another harness, or a Mac where the short way failed. A harness is any AI program that can run the robot. The long way is a key you can see. You open **Settings → System → Digital twins → Fleet → Twin Estimator 1** and press {{button:blue|Issue key}}. Then you press {{button:gray|Copy Desktop setup command}} on the card that shows it. On the Console it is {{button:gray|Key-based command}}. You paste into Terminal. You paste the key when the silent prompt asks. You quit and reopen Claude yourself. Either way, a session with no twin-mcp tools at all means the connector did not load. You look under Claude's Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked. You run the setup again.
 
 ## Run a batch
 
@@ -48,7 +48,7 @@ A Code session often sits in a checkout of the app with other connectors attache
 
 ## What you see on the board
 
-A shell is the robot's own copy of a bid. Each shell the robot locks shows up on the Bid Board's robot icon. It shows as a lock badge on the human bid it shadows. It also shows as a sealed row on the Robot Board. Nobody sees the sealed number until the estimator sends. The score lands then. The robot's sign-ins, heartbeats and reports scroll past under *Recent runs* on the Console. Anything the machine blocked it on lands under *Operator questions* there.
+A shell is the robot's own separate bid for the same job, never a copy of ours. Each shell the robot locks shows up on the Bid Board's robot icon. It shows as a lock badge on the human bid it shadows. It also shows as a sealed row on the Robot Board. Nobody sees the sealed number until the estimator sends. The score lands then. The robot's sign-ins, heartbeats and reports scroll past under *Recent runs* on the Console. Anything the machine blocked it on lands under *Operator questions* there.
 
 ## From a chat — claude.ai, the phone, or a Mac without Code
 
@@ -69,7 +69,7 @@ The connector holds one key, and a key is one robot's seat. A second robot — t
 
 ## Know when there is work
 
-You do not have to check the Console to know. Bids may want a shadow, or price matrices may be queued. A price matrix is the robot's price table for a bid. Then your Dashboard's **Needs you** card carries one line: {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)*. The line names the first of each. It turns {{chip:yellow|amber}} only when something is stuck. That is a matrix the robot went quiet on for over an hour. Or it is a bid request older than a week. {{button:blue|Open the Console}} lands here. You snooze it for a day or dismiss it until the count rises. It disappears on its own when the robots are caught up.
+You do not have to check the Console to know. Bids may want a shadow, or price matrices may be queued. A price matrix is a request for the robot to compare the supply houses' quotes on a bid. Then your Dashboard's **Needs you** card carries one line: {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)*. The line names the first of each. It turns {{chip:yellow|amber}} only when something is stuck. That is a matrix the robot went quiet on for over an hour. Or it is a bid request older than a week. {{button:blue|Open the Console}} lands here. You snooze it for a day or dismiss it until the count rises. It disappears on its own when the robots are caught up.
 
 ## What it will not do
 

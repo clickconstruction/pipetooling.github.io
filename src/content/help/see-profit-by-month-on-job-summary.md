@@ -8,7 +8,7 @@ order: 39
 
 The Months view on Job Summary is the monthly profit and loss. One bar per month shows what each month earned and what it cost.
 
-**Job Summary → Months** is the monthly P&L, the profit and loss. It reads off the same jobs and the same day ledger as the rest of the tab. One bar per month shows revenue split into what it cost and what was left.
+**Job Summary → Months** is the monthly P&L, the profit and loss. It reads the tab's same jobs and its day ledger, the daily record of field hours and office costs. One bar per month shows revenue split into what it cost and what was left.
 
 ## Where it is
 
@@ -22,7 +22,7 @@ Each bar is a month's revenue, stacked from the bottom:
 - {{chip:yellow|subs}} is sub labor sheets
 - {{chip:blue|parts}} is tally, supply invoices, billed materials, card charges
 - {{chip:purple|overhead}} is the month's **whole** overhead pool: office labor, bid labor, office parts
-- {{chip:green|true profit}} is what is left, with the true margin written above the bar
+- {{chip:green|true profit}} is what is left, with the true margin, its share of revenue, written above the bar
 
 A month that lost money stacks its loss in red above the revenue line. You hover a month for the full split and the field hours.
 

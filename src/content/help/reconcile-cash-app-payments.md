@@ -39,7 +39,7 @@ The third step files every send to staff into a lane:
 
 ## Decide each send
 
-Every send in **To review** has four buttons:
+Every send in **To review** has five buttons:
 
 - {{button:green|Record}}: it was pay. The editor opens on the report the send most likely pays, the week that just ended. The amount is prefilled up to what that report can still take. You change either and press Save. The payment is written with the Cash App ID in its memo. So the next import matches it exactly. Paid to date and Balance update behind the modal. Sometimes the person has more than one open report. Then **Split oldest first** swaps the picker for a list of their open weeks. The send is filled in from the oldest. You edit any box, then Save writes one payment per week it reaches. The memo reads like *Cash App #D-… · 2 of 4 from $5,000.00*. The footer says what is left over when the send is bigger than the open weeks. You file that part as an advance.
 - {{button:outline|Advance}}: pay sent ahead of a report. It becomes a pending offset for that person. The next time you generate their report, the Less step offers it as a line.
@@ -51,7 +51,7 @@ Every send in **To review** has four buttons:
 2026-08-22 · Darren · $500.00 · "Week" · #D-1RM77EV8J → Record → 8/16–22 · $500.00 left → Save
 :::
 
-A row whose Cash App name is not tied to a person yet has fewer choices. It can only be skipped or marked not pay. You tie the name first.
+A row whose Cash App name is not tied to a person yet reads amber *?* and the name. Record and Advance are greyed out until you tie the name. **Already recorded**, **Not pay** and **Skip** still work.
 
 ## Recording a Cash App payment by hand
 

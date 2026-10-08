@@ -32,14 +32,14 @@ Each contract is a card under its line. The chips say where it is used, who it i
 - {{chip:gray|Typed each time}} means it is written on each estimate or bid. So there is no one wording to show.
 - {{chip:gray|Hosted elsewhere}} means a page another company hosts for us. The card holds a copy made on the day it says, and opens the live page.
 
-Under the wording, four lines answer the questions that matter when a contract needs an update:
+Under the wording, these lines answer the questions that matter when a contract needs an update:
 
 - **The customer** says how they take it on: a signature, a checkbox, or by accepting the document it rides on.
 - **Kept in** says where the wording lives.
 - **Last changed** says the day it last changed and who changed it. Wording fixed in the app changes only with an app update.
-- **Reviewed** says when someone last read it, and when the next read is due. It turns amber when it is due or has never been read.
 - **Their copy** says where the wording a customer agreed to is kept, or *None is kept*.
-- **Last sent** shows on the six cards that keep a copy. It says whether what last went out is the wording on the card. It turns amber when it is not.
+- **Reviewed** says when someone last read it, and when the next read is due. It turns amber when it is due or has never been read.
+- **Last sent** shows on the six cards that keep a copy. It says whether what last went out is the wording on the card. It turns amber when it is not, or when unsent drafts still carry older wording.
 
 {{button:outline|Show all}} opens the whole text on the card.
 

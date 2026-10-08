@@ -17,7 +17,7 @@ You go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Ahead}}. *
 - **Remaining on open jobs** is the contract minus what's been earned so far, over every open job. The tile uses the same earned-revenue rule the Jobs view uses.
 - **Won, not marked started** is the bids whose outcome is still *won*. The tile says how many have no start date, and how many are past the one they had. You set a bid's outcome to *started or complete* when its job begins. Then the bid leaves this tile.
 - **Booked backlog** is the two together. The tile says how many weeks that covers at this window's revenue per week.
-- **Expected true profit** is the backlog at this window's true margin. The tile also shows the backlog at your **Target**, if one is set.
+- **Expected true profit** is the backlog at this window's true margin, the share of revenue left after every cost. The tile also shows the backlog at your **Target**, if one is set.
 - **Field days booked** is the person-days on the schedule for the next four weeks. The tile shows those days as a share of the crew's days. Under 60% reads amber.
 
 ## The chart

@@ -13,7 +13,7 @@ It opens on the **Ranked** view. The classic column table is one click away with
 
 The first card is **profit after overhead** for the period. A pill compares it to the period just before it. That prior period is the same length, ending the day before this one starts. {{chip:green|↑ +8% vs the prior period}} means the team earned more this time. {{chip:yellow|↓ −12% vs the prior period}} means less. Anything inside ±5% reads as **flat**. Under it the card says how many people are field crew and what they earned per field hour. It says how many are office & bids and what their time cost. It says how many logged no time at all.
 
-The second card shows **how gross became profit**. It is one bar split into parts. The parts are subs & labor, overhead labor, parts burden, and profit. Each shows the dollars and its share of gross.
+The second card shows **how gross became profit**. Gross is what the jobs earned, before any cost comes off. It is one bar split into parts. The parts are subs & labor, overhead labor, parts burden, and profit. Each shows the dollars and its share of gross.
 
 ## What is skewing the numbers
 

@@ -68,7 +68,7 @@ Your role may see overhead on Job Summary. Then the chart stacks the job's overh
 
 ## The cash position line: money out vs money in
 
-The main line is the job's **cash position: payments received minus what it has cost**. That is money in hand on the job so far, not a margin. Job Summary carries gross and true profit. It steps **down in red** every day money went into the job. It steps **up in green** every day a payment came in. A dashed line marks **$0**. Above it, the job has collected more than it cost. The bold label at the end of the line is the job's current cash position, for example **+$166.21**. If your role can't see wages, the legend reads *cash position before team labor*. The same job reads higher for you than for the owner, because crew wages are not charged on your chart.
+The main line is the job's **cash position: payments received minus what it has cost**. That is money in hand on the job so far, not a margin. Job Summary carries gross profit, what is left before overhead, and true profit, what is left after. It steps **down in red** every day money went into the job. It steps **up in green** every day a payment came in. A dashed line marks **$0**. Above it, the job has collected more than it cost. The bold label at the end of the line is the job's current cash position, for example **+$166.21**. If your role can't see wages, the legend reads *cash position before team labor*. The same job reads higher for you than for the owner, because crew wages are not charged on your chart.
 
 Each red step is tagged with an icon for where the cost came from:
 

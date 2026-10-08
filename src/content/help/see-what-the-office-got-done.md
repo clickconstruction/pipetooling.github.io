@@ -83,7 +83,7 @@ You pick one person and an **Estimating** strip appears under the totals. The st
 - lost with no reason
 - no follow-up in 7 days
 - prices asked → in
-- robot delta
+- robot delta, the usual gap between the robot's price and theirs
 - hours per $100k sent
 
 Each measure is set against that person's own earlier window, as in *was 34%*. Nothing compares two estimators. A hit rate on fewer than five decided bids shows its count and reads grey. The reason is that two decisions are not a rate. *Bid vs actual →* opens the Bid Costs view for the margin a job later realised.

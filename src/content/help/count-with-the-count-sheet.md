@@ -21,7 +21,7 @@ Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types �
 :::
 - Flip to **By plan page** and the sheet regroups under each page. A heading reads like *Plan page 26 — 13 items, 12 ea · 148.5 ft*. A red **No plan page** bucket sits at the bottom to clean up before submitting.
 
-- Flip to **By group** and the sheet regroups under each group. Groups are the ones CountTooling sent, or the ones you type in a row's Group cell. **No group** sits between the base groups and the alternates.
+- Flip to **By group** and the sheet regroups under each group. Groups are the ones CountTooling sent, or the ones you type in a row's Group cell. **No group** sits between the base groups and the alternates, the sections the customer wants priced with and without.
 
 ## Alternates — priced with and without
 
