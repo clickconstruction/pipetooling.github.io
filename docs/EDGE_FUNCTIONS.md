@@ -1022,7 +1022,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
 
-**Doors**: links are made only through `mint_gc_trade_portal_link` (dev only until the portal's door, migration `20261008050000_gc_trade_portal_links`), so no real trade can open one before then. The page at `/t/:token` (`src/pages/GcTradePortal.tsx`, v2.4920) reads it, and a dev makes, copies, remakes or turns off a company's link on **Trade portals** on `/gc`.
+**Doors**: links are made only through `mint_gc_trade_portal_link` (dev only until the portal's door, migration `20261008050000_gc_trade_portal_links`), so no real trade can open one before then. The page at `/t/:token` (`src/pages/GcTradePortal.tsx`, v2.4920) reads it, and a dev makes, copies, remakes or turns off a company's link in its company window's **Their portal** on `/gc` (the **Trade portals** pill is gone since v2.4942), or `gc-trade-email` makes it on the company's first email.
 
 **Status**: deployed 2026-10-08 after #4946 merged. Probed on prod: `?t=sample` answers 200 with today and Sample Electric Co.'s slice; an unknown 64-character token answers `{"error":"linkOff"}`.
 

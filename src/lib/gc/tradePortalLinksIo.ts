@@ -1,6 +1,6 @@
 /**
- * GC mode, the office's Trade portals card (P1b-ii-b): its reads and writes. The links come from
- * `gc_trade_portal_links` and the visits from `public_page_views`, both readable by a dev only, as the card is.
+ * GC mode, a company's portal link in its window, *Their portal* (P1b-ii-b): its reads and writes. The links come from
+ * `gc_trade_portal_links` and the visits from `public_page_views`, both readable by a dev only, as the block is.
  * Making, remaking and turning off a link go through P1a's two dev-only functions, which answer `{ error }` in
  * plain words when they refuse.
  */

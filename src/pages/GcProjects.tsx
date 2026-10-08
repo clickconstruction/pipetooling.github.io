@@ -33,7 +33,6 @@ import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
-import { GcTradePortals } from '../components/gc/GcTradePortals'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
@@ -226,7 +225,7 @@ export default function GcProjects() {
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
-  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals' | 'money'>(() => gcViewFromSearch(params))
+  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'money'>(() => gcViewFromSearch(params))
   const refreshBoard = async () => {
     if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) }))
   }
@@ -324,7 +323,7 @@ export default function GcProjects() {
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
   const toCall = board ? followUpsToCall(board) : 0
-  const devPill = (view: 'board' | 'partners' | 'followUp' | 'portals' | 'money', label: string) => {
+  const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
     const on = devView === view
     return (
       <button
@@ -571,17 +570,16 @@ export default function GcProjects() {
       </div>
 
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
-      {/* Door 2: the Board for the GC office. Trade portals stays a dev's until the trade wave. */}
+      {/* Door 2: the Board for the GC office. Each company's portal link is in its window (Their portal), a dev's until the trade wave. */}
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'portals' && role === 'dev' ? 'Trade portals' : devView === 'money' && role === 'dev' ? 'Money' : 'Follow up'}</h2>
-            <div role="group" aria-label={role === 'dev' ? 'Project Board, Trade partners, Follow up, Trade portals or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'money' && role === 'dev' ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={role === 'dev' ? 'Project Board, Trade partners, Follow up or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
-              {/* Door 2: Trade portals waits for the trade wave, and Money for Owner Billing's door. */}
-              {role === 'dev' && devPill('portals', 'Trade portals')}
+              {/* Door 2: Money waits for Owner Billing's door. */}
               {role === 'dev' && devPill('money', 'Money')}
             </div>
           </div>
@@ -597,8 +595,6 @@ export default function GcProjects() {
               />
             ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
-            ) : devView === 'portals' && role === 'dev' ? (
-              <GcTradePortals state={board} />
             ) : devView === 'money' && role === 'dev' ? (
               moneyState ? (
                 <GcMoney state={moneyState} />
