@@ -1,13 +1,13 @@
 ---
 title: add a trade partner
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, trade partners, add a company, subcontractor, sub, address, miles, drive, new to us, worked with them
 order: 95
 ---
 A trade partner is a company we hire to do one trade on a GC project. Add each one on Trade partners, so we can ask it for a quote.
 
-Only a dev sees Trade partners while it is built.
+The office and estimators see Trade partners.
 
 ## Find the trade
 
@@ -36,7 +36,7 @@ The company shows on the card at once.
 
 Tick **We have worked with them** only when we have. Leave the box empty for a company new to us.
 
-A company new to us can still send a quote. Nothing is awarded to them until a dev approves them. A company new to us waits at the top of Trade partners under **New to us**. [Approve a company that is new to us](/help/approve-a-company-new-to-us) says what to do next.
+A company new to us can still send a quote. Nothing is awarded to them until someone in the office approves them. A company new to us waits at the top of Trade partners under **New to us**. [Approve a company that is new to us](/help/approve-a-company-new-to-us) says what to do next.
 
 ## The address and the drive
 

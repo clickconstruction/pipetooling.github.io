@@ -1,13 +1,13 @@
 ---
 title: look up a trade partner
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, trade partner, company, window, about, language, Spanish, Español, who gets our emails, bookkeeper, vetting, insurance, passed
 order: 97
 ---
 Each trade partner has its own window. The window shows how the company answers, who there gets our emails, and the work it does with us. The company's portal link is there too.
 
-Only a dev sees the window while it is built.
+The office and estimators see the window.
 
 ## Open a company's window
 
@@ -20,7 +20,7 @@ Press Escape or {{button:outline|×}} to close the window.
 The top line names the company with its chips.
 
 - A chip such as {{chip:green|answers}} says how often they send a quote when we ask.
-- A company new to us says {{chip:yellow|not vetted yet}} until a dev decides.
+- A company new to us says {{chip:yellow|not vetted yet}} until someone in the office decides.
 
 Under the name are its trades, the person to call, the phone and the email. A company with no email says {{chip:red|no email on file}}.
 
@@ -53,7 +53,7 @@ Press a job's name to go to its card.
 
 ## Share their portal
 
-The **Their portal** section at the bottom shows the company's portal link and whether they opened it.
+The **Their portal** section at the bottom shows the company's portal link and whether they opened it. Only a dev sees it until the portal opens to the trades.
 
 1. Press {{button:blue|Make the link}} if they have none yet.
 2. Copy the link and send it with the ask to quote.

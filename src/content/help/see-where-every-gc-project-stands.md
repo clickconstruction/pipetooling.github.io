@@ -1,13 +1,13 @@
 ---
 title: see where every GC project stands
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card
 order: 94
 ---
 The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
 
-Only a dev sees the board while it is built. Everyone else sees the list of projects on [GC projects](/gc). For a dev, the board sits above that list.
+The office and estimators see the board on [GC projects](/gc), above the list of projects.
 
 ## Jump to a stage
 

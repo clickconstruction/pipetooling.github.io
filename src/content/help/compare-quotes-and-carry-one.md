@@ -1,13 +1,13 @@
 ---
 title: compare quotes and carry one
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, compare quotes, level, leveling, plug, cost to cover, exclusions, alternates, carry, all in, lowest, budget, trade partner
 order: 98
 ---
 Compare quotes puts each trade partner's quote side by side, line by line. You put a cost on work a quote leaves out, so the totals compare fairly. Then you carry one quote as the trade's number in our price.
 
-Only a dev sees Compare quotes while it is built.
+The office and estimators see Compare quotes. Our general conditions, contingency and fee show only to the owner, the leaders and the controller.
 
 ## Open Compare quotes
 
