@@ -18,6 +18,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { clockSessionMatchesSearch } from '../../lib/clockSessionSearch'
 import {
   HOURS_TAB_SECTION_CHEVRON,
   HOURS_TAB_SECTION_SHELL,
@@ -31,17 +32,12 @@ export interface PeopleHoursSessionsProps {
   canAccessPay: boolean
   authUserId: string | undefined
   activeClockSessions: ClockSessionRow[]
-  activeClockSessionsFiltered: ClockSessionRow[]
   pendingApprovalClockSessions: ClockSessionRow[]
-  pendingApprovalClockSessionsFiltered: ClockSessionRow[]
   approvedClockSessions: ClockSessionRow[]
-  approvedClockSessionsFiltered: ClockSessionRow[]
   rejectedClockSessions: ClockSessionRow[]
-  rejectedClockSessionsFiltered: ClockSessionRow[]
+  /** The search text, owned by the page (`usePeopleHoursData`) so it survives the tab's loading swap. */
   hoursClockSessionsSearch: string
   setHoursClockSessionsSearch: (value: string) => void
-  hoursClockSessionsSearching: boolean
-  noClockSessionsMatchSearch: boolean
   showSalariedWorkdaysHoursButton: boolean
   onOpenSalariedWorkdays: () => void
   prefixMap: LedgerPrefixMap
@@ -60,17 +56,11 @@ export function PeopleHoursSessions({
   canAccessPay,
   authUserId,
   activeClockSessions,
-  activeClockSessionsFiltered,
   pendingApprovalClockSessions,
-  pendingApprovalClockSessionsFiltered,
   approvedClockSessions,
-  approvedClockSessionsFiltered,
   rejectedClockSessions,
-  rejectedClockSessionsFiltered,
   hoursClockSessionsSearch,
   setHoursClockSessionsSearch,
-  hoursClockSessionsSearching,
-  noClockSessionsMatchSearch,
   showSalariedWorkdaysHoursButton,
   onOpenSalariedWorkdays,
   prefixMap,
@@ -82,6 +72,30 @@ export function PeopleHoursSessions({
   rejectedSectionOpen,
   onToggleRejected,
 }: PeopleHoursSessionsProps) {
+  const activeClockSessionsFiltered = useMemo(
+    () => activeClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [activeClockSessions, hoursClockSessionsSearch, prefixMap],
+  )
+  const pendingApprovalClockSessionsFiltered = useMemo(
+    () =>
+      pendingApprovalClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [pendingApprovalClockSessions, hoursClockSessionsSearch, prefixMap],
+  )
+  const approvedClockSessionsFiltered = useMemo(
+    () => approvedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [approvedClockSessions, hoursClockSessionsSearch, prefixMap],
+  )
+  const rejectedClockSessionsFiltered = useMemo(
+    () => rejectedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
+    [rejectedClockSessions, hoursClockSessionsSearch, prefixMap],
+  )
+  const hoursClockSessionsSearching = hoursClockSessionsSearch.trim().length > 0
+  const noClockSessionsMatchSearch =
+    hoursClockSessionsSearching &&
+    activeClockSessionsFiltered.length === 0 &&
+    pendingApprovalClockSessionsFiltered.length === 0 &&
+    approvedClockSessionsFiltered.length === 0 &&
+    rejectedClockSessionsFiltered.length === 0
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const { role: viewerRole } = useAuth()
