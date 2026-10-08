@@ -402,8 +402,8 @@ export default function GcProjects() {
   const [changeBusy, setChangeBusy] = useState<string | null>(null)
   const [changeProblem, setChangeProblem] = useState<string | null>(null)
   const loadChangeOrders = useCallback(async () => {
-    // Change orders stay a dev's until Owner Billing's door (door 2 opened the board, not them).
-    if (!board || role !== 'dev') return
+    // Change orders are the money team's (the Owner Billing door): nobody else reads them.
+    if (!board || !canSeeGcMoney(role)) return
     setChangeOrderRows(await loadGcChangeOrders(board.projects.map((p) => p.id)))
   }, [board, role])
   useEffect(() => {
@@ -434,7 +434,7 @@ export default function GcProjects() {
   const [moneyProblem, setMoneyProblem] = useState<string | null>(null)
   const ourIds = useMemo(() => (board ? board.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building').map((p) => p.id) : []), [board])
   useEffect(() => {
-    if (devView !== 'money' || !board || role !== 'dev') return
+    if (devView !== 'money' || !board || !canSeeGcMoney(role)) return
     let live = true
     setMoneyProblem(null)
     loadGcBillingRows(ourIds)
@@ -574,13 +574,13 @@ export default function GcProjects() {
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'money' && role === 'dev' ? 'Money' : 'Follow up'}</h2>
-            <div role="group" aria-label={role === 'dev' ? 'Project Board, Trade partners, Follow up or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
-              {/* Door 2: Money waits for Owner Billing's door. */}
-              {role === 'dev' && devPill('money', 'Money')}
+              {/* Money is the money team's (the Owner Billing door). */}
+              {canSeeGcMoney(role) && devPill('money', 'Money')}
             </div>
           </div>
           {board ? (
@@ -595,7 +595,7 @@ export default function GcProjects() {
               />
             ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
-            ) : devView === 'money' && role === 'dev' ? (
+            ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <GcMoney state={moneyState} />
               ) : moneyProblem ? (
@@ -645,7 +645,7 @@ export default function GcProjects() {
                   A new set of plans came in
                 </Btn>
               )}
-              {role === 'dev' && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
                   {(() => {
                     const count = changeOrderRows.filter((r) => r.project_id === p.id).length
@@ -833,7 +833,7 @@ export default function GcProjects() {
         />
       )}
 
-      {role === 'dev' && changesProject && boardWithChanges && (
+      {canSeeGcMoney(role) && changesProject && boardWithChanges && (
         <GcChangeOrdersWindow
           state={boardWithChanges}
           project={changesProject}

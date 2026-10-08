@@ -7,7 +7,7 @@
  *
  * - `office`: `gc_office_team()`, the GC office: dev, the leaders, the assistants, the controller and
  *   estimators (doors 1 and 2).
- * - `money`: `gc_money_team()`, our number: dev, the leaders and the controller (B5-a).
+ * - `money`: `gc_money_team()`, our number (B5-a) and Owner Billing (its door): dev, the leaders and the controller.
  * - `dev`: `is_dev()` while its lane builds it. `opens` names the door that will open it.
  */
 export type GcDoor = 'office' | 'money' | 'dev'
@@ -21,7 +21,6 @@ export interface GcTableDoor {
 
 const SCHEDULE_OPENS = 'the schedule’s PR 10, its team door (SCHEDULE_REAL_BUILD.md)'
 const BUILDING_OPENS = 'Building’s door, when a job is being built (BUILDING_REAL_BUILD.md)'
-const OWNER_BILLING_OPENS = 'Owner Billing’s door, once the trade side is real (OWNER_BILLING_REAL_BUILD.md)'
 const PORTAL_OPENS = 'the trade wave, when the Portal lane says the portal is ready (PORTAL_REAL_BUILD.md)'
 
 const office = (lane: GcTableDoor['lane']): GcTableDoor => ({ lane, door: 'office' })
@@ -97,13 +96,13 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_weekly_reports: dev('Building', BUILDING_OPENS),
 
   // Owner Billing.
-  gc_owner_contract_lines: dev('Owner Billing', OWNER_BILLING_OPENS),
-  gc_change_orders: dev('Owner Billing', OWNER_BILLING_OPENS),
-  gc_owner_pay_apps: dev('Owner Billing', OWNER_BILLING_OPENS),
-  gc_owner_pay_app_lines: dev('Owner Billing', OWNER_BILLING_OPENS),
-  gc_owner_pay_reminders: dev('Owner Billing', OWNER_BILLING_OPENS),
-  gc_owner_interest_bills: dev('Owner Billing', OWNER_BILLING_OPENS),
-  gc_owner_acceptances: dev('Owner Billing', OWNER_BILLING_OPENS),
+  gc_owner_contract_lines: { lane: 'Owner Billing', door: 'money' },
+  gc_change_orders: { lane: 'Owner Billing', door: 'money' },
+  gc_owner_pay_apps: { lane: 'Owner Billing', door: 'money' },
+  gc_owner_pay_app_lines: { lane: 'Owner Billing', door: 'money' },
+  gc_owner_pay_reminders: { lane: 'Owner Billing', door: 'money' },
+  gc_owner_interest_bills: { lane: 'Owner Billing', door: 'money' },
+  gc_owner_acceptances: { lane: 'Owner Billing', door: 'money' },
 }
 
 /**
