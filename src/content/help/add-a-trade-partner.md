@@ -36,7 +36,7 @@ The company shows on the card at once.
 
 Tick **We have worked with them** only when we have. Leave the box empty for a company new to us.
 
-A company new to us can still send a quote. Nothing is awarded to them until a dev approves them. They wait at the top of Trade partners under **New to us**. [Approve a company that is new to us](/help/approve-a-company-new-to-us) says what to do next.
+A company new to us can still send a quote. Nothing is awarded to them until a dev approves them. A company new to us waits at the top of Trade partners under **New to us**. [Approve a company that is new to us](/help/approve-a-company-new-to-us) says what to do next.
 
 ## The address and the drive
 

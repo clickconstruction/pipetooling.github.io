@@ -25,11 +25,14 @@ import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
+import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
+import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import {
   addGcCompany,
   checkDriveAccess,
   createGcProject,
+  declineGcAsk,
   editScopeBookLine,
   issuePlanSet,
   loadGcTeam,
@@ -41,6 +44,7 @@ import {
   loadGcBoardRows,
   loadGcProjects,
   loadScopeBookStore,
+  logGcAskContact,
   makeDriveFolders,
   mergeScopeBookLines,
   saveScopeBookLine,
@@ -69,7 +73,7 @@ function money(n: number): string {
 }
 
 export default function GcProjects() {
-  const { user, role, loading: authLoading } = useAuth()
+  const { user, role, profileName, loading: authLoading } = useAuth()
   // New here? opens itself on a first visit, once per browser; a blocked storage means no auto open.
   const [tourOpen, setTourOpen] = useState<null | 'first-visit' | 'button'>(() => {
     try {
@@ -141,8 +145,8 @@ export default function GcProjects() {
     }
   }, [role, loaded, today])
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // Trade partners (the Board's B3-b) sits beside the board for a dev: each write reads the rows again.
-  const [devView, setDevView] = useState<'board' | 'partners'>('board')
+  // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
+  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp'>('board')
   const refreshBoard = async () => {
     if (loaded) setBoard(boardStateFromRows(await loadGcBoardRows(loaded.projects, today)))
   }
@@ -160,7 +164,23 @@ export default function GcProjects() {
       await refreshBoard()
     },
   }
-  const devPill = (view: 'board' | 'partners', label: string) => {
+  const askWrites: AskWrites = {
+    logContact: async (ask, how, note, promisedBy) => {
+      await logGcAskContact({ ...ask, on: today, byName: profileName ?? '', how, note, promisedBy })
+      await refreshBoard()
+    },
+    decline: async (inviteId, why, reason, note) => {
+      await declineGcAsk(inviteId, why, reason, note)
+      await refreshBoard()
+    },
+  }
+  // Who else? on a Follow up card: Trade partners, at that trade's card.
+  const showTrade = (trade: string) => {
+    setDevView('partners')
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
+  }
+  const toCall = board ? followUpsToCall(board) : 0
+  const devPill = (view: 'board' | 'partners' | 'followUp', label: string) => {
     const on = devView === view
     return (
       <button
@@ -320,13 +340,14 @@ export default function GcProjects() {
       {role === 'dev' && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : 'Trade partners'}</h2>
-            <Chip tone="grey" title="Only a dev sees the board and Trade partners while they are built. Everyone else sees the projects below.">
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : 'Follow up'}</h2>
+            <Chip tone="grey" title="Only a dev sees the board, Trade partners and Follow up while they are built. Everyone else sees the projects below.">
               Devs only
             </Chip>
-            <div role="group" aria-label="Project Board or Trade partners" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto' }}>
+            <div role="group" aria-label="Project Board, Trade partners or Follow up" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
+              {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
             </div>
           </div>
           {board ? (
@@ -337,8 +358,10 @@ export default function GcProjects() {
                 onPlans={(id) => setPlansWindow(id)}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
               />
-            ) : (
+            ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
+            ) : (
+              <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} />
             )
           ) : boardProblem ? (
             <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{boardProblem}</div>
@@ -467,6 +490,8 @@ export default function GcProjects() {
                       </li>
                     ))}
                   </ul>
+                  {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
+                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} />}
                 </div>
               ))}
             </div>

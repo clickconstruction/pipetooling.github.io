@@ -45,6 +45,8 @@ vi.mock('../lib/gc/gcIo', async () => {
     addGcCompany: vi.fn(),
     vetGcCompany: vi.fn(),
     setGcCompanyCoverage: vi.fn(),
+    logGcAskContact: vi.fn(),
+    declineGcAsk: vi.fn(),
   }
 })
 
@@ -110,6 +112,17 @@ describe('GcProjects: the Project Board', () => {
     expect(document.querySelector('[data-gc-vet="hillside"]')).toBeTruthy()
     expect(document.querySelector('[data-gc-board-row="p1"]')).toBeNull()
     expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
+  })
+
+  it('a dev sees the asks under each trade of a project, and Follow up with its count', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(document.querySelector('[data-gc-project="p1"] [data-gc-trade-asks="k1"]')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    expect(screen.getByRole('heading', { name: 'Follow up' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
   })
 })
 
