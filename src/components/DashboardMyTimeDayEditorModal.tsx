@@ -35,9 +35,7 @@ import type { DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import {
   buildDayTimeline,
   daySpanMs,
-  expandClustersSplitPairwiseOverlaps,
   getNextSessionClusterInTimeline,
-  groupTimeContiguousSessionClusters,
   CLOCK_OVERLAP_WARNING_EPS_MS,
   hasPairwiseClockIntervalOverlap,
   sessionClusterId,
@@ -58,7 +56,6 @@ import {
 } from './my-time-day-editor/MyTimeMergeSegmentsModal'
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import { CLOCK_SESSION_DAY_EDITOR_SELECT } from '../lib/clockSessionSelect'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -89,6 +86,7 @@ import { useMyTimeNcnsFlow } from './my-time-day-editor/useMyTimeNcnsFlow'
 import { useMyTimeSalaryPrefetch } from './my-time-day-editor/useMyTimeSalaryPrefetch'
 import { useMyTimeSplitEditor } from './my-time-day-editor/useMyTimeSplitEditor'
 import { useMyTimeBoundaryGestures } from './my-time-day-editor/useMyTimeBoundaryGestures'
+import { useMyTimeDaySessions } from './my-time-day-editor/useMyTimeDaySessions'
 import {
   MyTimeNotComingInButton,
   MyTimeNotComingInConfirm,
@@ -237,13 +235,25 @@ export function DashboardMyTimeDayEditorModal({
     }
   }, [onMarkNotComingIn])
 
-  const [authUserId, setAuthUserId] = useState<string | null>(null)
-  const [authReady, setAuthReady] = useState(false)
-  const [fetchedSessions, setFetchedSessions] = useState<DayEditorSession[] | null>(null)
-  const [sessionsLoading, setSessionsLoading] = useState(false)
-  const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
-  const [resolvedSubjectLabel, setResolvedSubjectLabel] = useState<string | null>(null)
-  const [sessionsFetchNonce, setSessionsFetchNonce] = useState(0)
+  const {
+    authUserId,
+    effectiveSubjectUserId,
+    editingSelf,
+    modalTitlePerson,
+    fetchedSessions,
+    setFetchedSessions,
+    sessionsLoading,
+    sessionsFetchError,
+    setSessionsFetchNonce,
+    bumpSessionsFetchNonce,
+    fetchDaySessionsForEditor,
+    resolvedSessions,
+    pendingAuthForFetch,
+    sortedSessions,
+    sessionsKey,
+    nowTick,
+    sessionClusters,
+  } = useMyTimeDaySessions({ dateStr, sessionsProp, subjectUserIdProp, subjectDisplayName, inSaveableRange })
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
   const [addDisjointOpen, setAddDisjointOpen] = useState<{
@@ -277,14 +287,14 @@ export function DashboardMyTimeDayEditorModal({
         onSaved()
       }
     },
-    [sessionsProp.length, onSaved, onLinkedSessionsUpdated],
+    [sessionsProp.length, onSaved, onLinkedSessionsUpdated, setSessionsFetchNonce],
   )
 
   const onForceClockOutSaved = useCallback(() => {
     setSessionsFetchNonce((n) => n + 1)
     onLinkedSessionsUpdated?.()
     setForceClockOutSession(null)
-  }, [onLinkedSessionsUpdated])
+  }, [onLinkedSessionsUpdated, setSessionsFetchNonce])
 
   const openForceClockOut = useCallback((s: DayEditorSession) => {
     setForceClockOutSession(s)
@@ -294,7 +304,7 @@ export function DashboardMyTimeDayEditorModal({
     setSessionsFetchNonce((n) => n + 1)
     onLinkedSessionsUpdated?.()
     setAdjustTimesSession(null)
-  }, [onLinkedSessionsUpdated])
+  }, [onLinkedSessionsUpdated, setSessionsFetchNonce])
 
   const openAdjustTimes = useCallback((s: DayEditorSession) => {
     setAdjustTimesSession(s)
@@ -317,7 +327,7 @@ export function DashboardMyTimeDayEditorModal({
         )
       }
     },
-    [adjustTimesSession, sessionsProp.length, onPatchSeededSessionsTimes],
+    [adjustTimesSession, sessionsProp.length, onPatchSeededSessionsTimes, setFetchedSessions],
   )
 
   /**
@@ -386,150 +396,9 @@ export function DashboardMyTimeDayEditorModal({
         setRejectSessionBusyId(null)
       }
     },
-    [authUserId, onLinkedSessionsUpdated, onSaved, sessionsProp.length],
+    [authUserId, onLinkedSessionsUpdated, onSaved, sessionsProp.length, setSessionsFetchNonce],
   )
 
-  useEffect(() => {
-    let cancelled = false
-    void supabase.auth.getUser().then(({ data }) => {
-      if (!cancelled) {
-        setAuthUserId(data.user?.id ?? null)
-        setAuthReady(true)
-      }
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const effectiveSubjectUserId = subjectUserIdProp ?? authUserId
-  const editingSelf = !!(authUserId && effectiveSubjectUserId === authUserId)
-
-  useEffect(() => {
-    if (subjectDisplayName?.trim()) {
-      setResolvedSubjectLabel(subjectDisplayName.trim())
-      return
-    }
-    if (!authUserId) {
-      setResolvedSubjectLabel(null)
-      return
-    }
-    const isSelf = !subjectUserIdProp || subjectUserIdProp === authUserId
-    const userIdToLoad = isSelf ? authUserId : subjectUserIdProp
-    if (!userIdToLoad) {
-      setResolvedSubjectLabel(null)
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const row = (await withSupabaseRetry(
-          async () => supabase.from('users').select('name').eq('id', userIdToLoad).maybeSingle(),
-          'users name for my time editor'
-        )) as { name: string | null } | null
-        if (cancelled) return
-        const n = row?.name?.trim()
-        if (isSelf) {
-          setResolvedSubjectLabel(n && n.length > 0 ? n : 'You')
-        } else {
-          setResolvedSubjectLabel(n && n.length > 0 ? n : 'Team member')
-        }
-      } catch {
-        if (!cancelled) setResolvedSubjectLabel(isSelf ? 'You' : 'Team member')
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [subjectUserIdProp, authUserId, subjectDisplayName])
-
-  const modalTitlePerson = useMemo(() => {
-    const t = resolvedSubjectLabel?.trim()
-    if (t) return t
-    const selfish = !subjectUserIdProp || (authUserId != null && subjectUserIdProp === authUserId)
-    return selfish ? 'You' : 'Team member'
-  }, [resolvedSubjectLabel, subjectUserIdProp, authUserId])
-
-  useEffect(() => {
-    let cancelled = false
-    if (sessionsProp.length > 0) {
-      setFetchedSessions(null)
-      setSessionsFetchError(null)
-      setSessionsLoading(false)
-      return () => {
-        cancelled = true
-      }
-    }
-    if (!inSaveableRange) {
-      setFetchedSessions([])
-      setSessionsFetchError(null)
-      setSessionsLoading(false)
-      return () => {
-        cancelled = true
-      }
-    }
-    if (!effectiveSubjectUserId || !dateStr) {
-      setFetchedSessions([])
-      setSessionsFetchError(null)
-      setSessionsLoading(false)
-      return () => {
-        cancelled = true
-      }
-    }
-    setSessionsLoading(true)
-    setSessionsFetchError(null)
-    void (async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .select(CLOCK_SESSION_DAY_EDITOR_SELECT)
-              .eq('user_id', effectiveSubjectUserId)
-              .eq('work_date', dateStr)
-              .is('rejected_at', null)
-              .is('revoked_at', null),
-          'clock_sessions day for my time editor'
-        )
-        if (cancelled) return
-        setFetchedSessions((data ?? []).map((row) => normalizeDayEditorSession(row as DayEditorSession)))
-      } catch (e: unknown) {
-        if (!cancelled) {
-          setSessionsFetchError(formatErrorMessage(e, 'Could not load clock sessions'))
-          setFetchedSessions([])
-        }
-      } finally {
-        if (!cancelled) setSessionsLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [sessionsProp.length, inSaveableRange, effectiveSubjectUserId, dateStr, sessionsFetchNonce])
-
-  const fetchDaySessionsForEditor = useCallback(async (): Promise<DayEditorSession[]> => {
-    if (!effectiveSubjectUserId || !dateStr) return []
-    const data = await withSupabaseRetry(
-      async () =>
-        supabase
-          .from('clock_sessions')
-          .select(CLOCK_SESSION_DAY_EDITOR_SELECT)
-          .eq('user_id', effectiveSubjectUserId)
-          .eq('work_date', dateStr)
-          .is('rejected_at', null)
-          .is('revoked_at', null),
-      'clock_sessions day for my time editor refetch',
-    )
-    return (data ?? []).map((row) => normalizeDayEditorSession(row as DayEditorSession))
-  }, [effectiveSubjectUserId, dateStr])
-
-  const resolvedSessions = useMemo(() => {
-    const raw = sessionsProp.length > 0 ? sessionsProp : (fetchedSessions ?? [])
-    return raw.map((s) => normalizeDayEditorSession(s))
-  }, [sessionsProp, fetchedSessions])
-  const pendingAuthForFetch = sessionsProp.length === 0 && !subjectUserIdProp && !authReady
-
-  const bumpSessionsFetchNonce = useCallback(() => setSessionsFetchNonce((n) => n + 1), [])
   const {
     busy: salarySchedulePrefetchBusy,
     emptyDayHint: stripEmptyDayHint,
@@ -545,12 +414,6 @@ export function DashboardMyTimeDayEditorModal({
     dateStr,
     onSessionsInvalidated: bumpSessionsFetchNonce,
   })
-
-  const sortedSessions = useMemo(
-    () =>
-      [...resolvedSessions].sort((a, b) => new Date(a.clocked_in_at).getTime() - new Date(b.clocked_in_at).getTime()),
-    [resolvedSessions]
-  )
 
   const ncns = useMyTimeNcnsFlow({
     allowNcnsFromMyTime,
@@ -576,30 +439,6 @@ export function DashboardMyTimeDayEditorModal({
     effectiveSubjectUserId,
     dateStr,
   })
-
-  const sessionsKey = useMemo(
-    () =>
-      sortedSessions
-        .map(
-          (s) =>
-            `${s.id}:${s.clocked_in_at}:${s.clocked_out_at ?? ''}:${s.approved_at ?? ''}:${s.work_date}`
-        )
-        .join('|'),
-    [sortedSessions]
-  )
-
-  const [nowTick, setNowTick] = useState(() => Date.now())
-  useEffect(() => {
-    const hasOpen = sortedSessions.some((s) => !s.clocked_out_at)
-    if (!hasOpen) return
-    const t = setInterval(() => setNowTick(Date.now()), 15_000)
-    return () => clearInterval(t)
-  }, [sortedSessions])
-
-  const sessionClusters = useMemo(
-    () => expandClustersSplitPairwiseOverlaps(groupTimeContiguousSessionClusters(sortedSessions), nowTick),
-    [sortedSessions, nowTick],
-  )
 
   const addDisjointExistingIntervals = useMemo(
     () =>
@@ -665,7 +504,7 @@ export function DashboardMyTimeDayEditorModal({
       setFetchedSessions((prev) => [...(prev ?? []), draft])
       setAddDisjointOpen(null)
     },
-    [],
+    [setFetchedSessions],
   )
 
   const dayTotalClockedMs = useMemo(() => {
@@ -893,7 +732,7 @@ export function DashboardMyTimeDayEditorModal({
         setSaving(false)
       }
     },
-    [allowTimelineEdits, editingSelf, fenceOverridden, onLinkedSessionsUpdated, showToast, nowTickRef, sessionClustersRef, splitByClusterRef]
+    [allowTimelineEdits, editingSelf, fenceOverridden, onLinkedSessionsUpdated, showToast, nowTickRef, sessionClustersRef, splitByClusterRef, setSessionsFetchNonce]
   )
 
   /** True when no session this day is linked to a job/bid — gate for the "Apply Schedule %" action. */
@@ -941,7 +780,7 @@ export function DashboardMyTimeDayEditorModal({
         setSaving(false)
       }
     },
-    [allowTimelineEdits, editingSelf, fenceOverridden, onLinkedSessionsUpdated, onSaved, sessionsProp.length, showToast, nowTickRef, sessionClustersRef],
+    [allowTimelineEdits, editingSelf, fenceOverridden, onLinkedSessionsUpdated, onSaved, sessionsProp.length, showToast, nowTickRef, sessionClustersRef, setSessionsFetchNonce],
   )
 
   /** Show timeline once effect has seeded split state (do not gate on notes/duration — that blocks empty notes). */
