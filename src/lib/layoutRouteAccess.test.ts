@@ -19,6 +19,15 @@ describe('isPathAllowedForRole', () => {
     }
   })
 
+  it('/map (v2.4897): dev, leader, assistant, controller and estimator open it; superintendent, primary and sub-like are bounced', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const) {
+      expect(isPathAllowedForRole(role, '/map', false), `role ${role}`).toBe(true)
+    }
+    for (const role of ['superintendent', 'primary', 'subcontractor', 'helpers'] as const) {
+      expect(isPathAllowedForRole(role, '/map', false), `role ${role}`).toBe(false)
+    }
+  })
+
   it('/roadmap (Tier-2 #41): primary and the staff roles pass; sub-like, estimator, superintendent are bounced', () => {
     expect(isPathAllowedForRole('primary', '/roadmap', false)).toBe(true)
     expect(isPathAllowedForRole('dev', '/roadmap', false)).toBe(true)

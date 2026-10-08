@@ -118,10 +118,10 @@ const isiah = s({ id: 'i', user_id: 'Isiah', notes: 'Working with micheal' })
 const onClose = vi.fn()
 const onOpenJob = vi.fn()
 
-function mount(sessions: ClockSessionRow[]) {
+function mount(sessions: ClockSessionRow[], canOpenFullMap = true) {
   return render(
     <MemoryRouter>
-      <ClockedInMapModal sessions={sessions} prefixMap={{}} nowMs={NOW} onClose={onClose} onOpenJob={onOpenJob} workDateYmd="2026-09-22" />
+      <ClockedInMapModal sessions={sessions} prefixMap={{}} nowMs={NOW} onClose={onClose} onOpenJob={onOpenJob} workDateYmd="2026-09-22" canOpenFullMap={canOpenFullMap} />
     </MemoryRouter>,
   )
 }
@@ -255,5 +255,15 @@ describe('ClockedInMapModal', () => {
     mount([isiah])
     expect(screen.getAllByText('Nobody is clocked on a job right now.').length).toBeGreaterThan(0)
     expect(screen.getByTestId('canvas').getAttribute('data-anchor')).toBe('Office:25')
+  })
+})
+
+describe('ClockedInMapModal — Open the full map follows the Map route (v2.4897)', () => {
+  it('shows the link for a role the map opens for, and hides it for one the route bounces', () => {
+    const { unmount } = mount([vecchio('v1', 'Abraham')], true)
+    expect(screen.getByText('Open the full map ›')).toBeTruthy()
+    unmount()
+    mount([vecchio('v1', 'Abraham')], false)
+    expect(screen.queryByText('Open the full map ›')).toBeNull()
   })
 })

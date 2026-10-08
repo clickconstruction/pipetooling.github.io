@@ -56,6 +56,11 @@ type BidsBuilderReviewTabProps = {
   onNewBidWithCustomer: (c: Customer) => void
   /** The door into Followup → By status. The page passes it only to roles the tab stands for (a superintendent keeps By builder alone). */
   onViewSubmissions?: (bid: BidWithBuilder) => void
+  /**
+   * Whether the viewer may open /map (v2.4897): the page passes `isPathAllowedForRole(role, '/map')`, so
+   * **Bid map** shows only where the Map opens. A superintendent keeps By builder but the route bounces them.
+   */
+  canOpenMap: boolean
   onSetCustomers: React.Dispatch<React.SetStateAction<Customer[]>>
   newCustomerModal: ReturnType<typeof useNewCustomerModal> | null
   editCustomerModal: ReturnType<typeof useEditCustomerModal> | null
@@ -80,6 +85,7 @@ export function BidsBuilderReviewTab({
   onEditBid,
   onNewBidWithCustomer,
   onViewSubmissions,
+  canOpenMap,
   onSetCustomers,
   newCustomerModal,
   editCustomerModal,
@@ -955,7 +961,7 @@ export function BidsBuilderReviewTab({
                         )
                         return (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                            {stats.hasAddress && (
+                            {stats.hasAddress && canOpenMap && (
                               <button
                                 type="button"
                                 data-builder-map-customer-id={customer.id}
