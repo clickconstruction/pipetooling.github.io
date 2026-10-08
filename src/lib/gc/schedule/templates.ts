@@ -16,6 +16,9 @@ export const DRAFT_INSPECTIONS = ['Rough-in inspection', 'Final inspection']
 /** The longest a template's name may be. */
 export const TEMPLATE_NAME_MAX = 60
 
+/** Another template has the name already: the kernel says it before a save, the io when the table refuses one (the schedule's PR 6b). */
+export const TEMPLATE_NAME_TAKEN = 'Another template has that name.'
+
 function weeksWords(n: number): string {
   return `${n} ${n === 1 ? 'week' : 'weeks'}`
 }
@@ -30,7 +33,7 @@ export function templateNameProblem(state: GcState, name: string, exceptId?: str
   const n = cleanTemplateName(name)
   if (!n) return 'Give it a name.'
   if (n.length > TEMPLATE_NAME_MAX) return `Keep the name to ${TEMPLATE_NAME_MAX} letters.`
-  if ((state.scheduleTemplates ?? []).some((t) => t.id !== exceptId && t.name.toLowerCase() === n.toLowerCase())) return 'Another template has that name.'
+  if ((state.scheduleTemplates ?? []).some((t) => t.id !== exceptId && t.name.toLowerCase() === n.toLowerCase())) return TEMPLATE_NAME_TAKEN
   return null
 }
 
