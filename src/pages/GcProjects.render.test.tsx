@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import GcProjects from './GcProjects'
 import { renderSettled, settle } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
-import { loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 
 vi.mock('../lib/supabase', async () => {
@@ -46,6 +46,7 @@ vi.mock('../lib/gc/gcIo', async () => {
     vetGcCompany: vi.fn(),
     setGcCompanyCoverage: vi.fn(),
     logGcAskContact: vi.fn(),
+    askGcCompanies: vi.fn(() => Promise.resolve()),
     declineGcAsk: vi.fn(),
   }
 })
@@ -124,5 +125,19 @@ describe('GcProjects: the Project Board', () => {
     expect(screen.getByRole('heading', { name: 'Follow up' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
   })
-})
 
+  it('a dev asks for quotes from a project’s trade, and the window records the asks', async () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({ companies: [...base.companies, { ...base.companies[0]!, id: 'alamo', name: 'Alamo Concrete', trades: ['Concrete'], address: '9 Main St, Boerne' }] })
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const concrete = document.querySelector('[data-gc-project="p1"] [data-gc-trade-asks="k2"]') as HTMLElement
+    fireEvent.click(within(concrete).getByRole('button', { name: 'Ask for quotes' }))
+    const dialog = screen.getByRole('dialog', { name: 'Ask for Concrete quotes' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' }))
+    await waitFor(() => expect(askGcCompanies).toHaveBeenCalledWith('k2', ['alamo'], expect.any(String), expect.any(String)))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ask for Concrete quotes' })).toBeNull())
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+})

@@ -86,6 +86,17 @@ describe('GcTradeAsks', () => {
     expect(document.querySelector('[data-gc-ask="i1"]')).toBeNull()
   })
 
+  it('offers Ask for quotes while a company in the trade is not asked, and not on a trade with nobody left to ask', () => {
+    const onAsk = vi.fn()
+    const base = clinicBoardRows()
+    const withConcrete = clinicBoardRows({ companies: [...base.companies, { ...base.companies[0]!, id: 'alamo', name: 'Alamo Concrete', trades: ['Concrete'] }] })
+    const { rerender } = render(<GcTradeAsks state={boardStateFromRows(withConcrete)} projectId="p1" packageId="k2" writes={writes()} onAsk={onAsk} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Ask for quotes' }))
+    expect(onAsk).toHaveBeenCalled()
+    rerender(<GcTradeAsks state={boardStateFromRows(withConcrete)} projectId="p1" packageId="k1" writes={writes()} onAsk={onAsk} />)
+    expect(screen.queryByRole('button', { name: 'Ask for quotes' })).toBeNull()
+  })
+
   it('says no company is asked yet, and draws nothing for our own trade', () => {
     const { container, rerender } = render(<GcTradeAsks state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k2" writes={writes()} />)
     expect(screen.getByText('No company asked yet.')).toBeTruthy()

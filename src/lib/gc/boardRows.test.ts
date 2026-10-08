@@ -69,6 +69,14 @@ describe('the board read from its rows', () => {
     expect(boardStateFromRows(decided).partners[1]!.vetting).toEqual({ status: 'approved', limit: 150000, decidedOn: '2026-10-07', decidedBy: 'Rosa', note: 'Ana vouched.' })
   })
 
+  it('the office’s note on an ask, such as its email waiting, is not a line of its story and not a chase', () => {
+    const base = rows()
+    const noted = rows({ contacts: [...base.contacts, { id: 'n3', company_id: 'hillside', invite_id: 'i2', contacted_on: '2026-10-07', by_user_id: 'u1', by_name: 'Rosa', how: 'note', note: 'Asked to quote. The invitation email goes out once the portal can send it.', promised_by: null, created_at: '2026-10-07T15:00:00Z' }] })
+    const story = (r: typeof base) => boardStateFromRows(r).projects[0]!.packages[0]!.invites[1]!
+    expect(story(noted).contacts).toEqual(story(base).contacts)
+    expect(story(noted).nudgedOn).toBe(story(base).nudgedOn)
+  })
+
   it('a promise with the day it moved from', () => {
     expect(boardStateFromRows(rows()).tradePromises).toEqual([
       { id: 'tp1', partnerId: 'lonestar', kind: 'insurance', what: 'the renewed insurance certificate', by: '2026-10-12', madeOn: '2026-10-06', from: 'office', moved: [{ by: '2026-10-09', on: '2026-10-07' }] },

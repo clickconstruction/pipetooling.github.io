@@ -176,14 +176,30 @@ function DeclineButtons({ project, pkg, invite, partner, writes }: { project: Gc
   )
 }
 
-/** A trade's asks on a project: each company asked, where it stands, and its story. */
-export function GcTradeAsks({ state, projectId, packageId, writes }: { state: GcState; projectId: string; packageId: string; writes: AskWrites }) {
+/** A trade's asks on a project: each company asked, where it stands, and its story, with Ask for quotes while a company in the trade is not asked. */
+export function GcTradeAsks({ state, projectId, packageId, writes, onAsk }: { state: GcState; projectId: string; packageId: string; writes: AskWrites; onAsk?: () => void }) {
   const project = state.projects.find((p) => p.id === projectId)
   const pkg = project?.packages.find((k) => k.id === packageId)
   if (!project || !pkg || pkg.selfPerform) return null
-  if (pkg.invites.length === 0) return <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No company asked yet.</div>
+  const asked = new Set(pkg.invites.map((i) => i.partnerId))
+  const canAsk = Boolean(onAsk) && !project.lostOn && state.partners.some((p) => p.trades.includes(pkg.trade) && !asked.has(p.id))
+  const ask = canAsk && onAsk && (
+    <div>
+      <Btn kind="quiet" onClick={onAsk}>
+        Ask for quotes
+      </Btn>
+    </div>
+  )
+  if (pkg.invites.length === 0)
+    return (
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', color: 'var(--text-muted)', fontSize: '0.85rem' }} data-gc-trade-asks={pkg.id}>
+        No company asked yet.
+        {ask}
+      </div>
+    )
   return (
     <div style={{ display: 'grid', gap: '0.45rem' }} data-gc-trade-asks={pkg.id}>
+      {ask}
       {pkg.invites.map((invite) => {
         const partner = state.partners.find((p) => p.id === invite.partnerId)
         if (!partner) return null
