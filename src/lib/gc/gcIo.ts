@@ -15,10 +15,10 @@ import type { BoardRows } from './boardRows'
 import type { TradeEmailAnswer } from './tradeEmail'
 import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
 import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { DeclineReason, GcLostWhy, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
+import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
-import type { BillingRows, ContractLineRow, OwnerTermsRow } from './billCustomer'
+import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
 import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
 import { sendGcTradeEmail } from './tradeEmailIo'
@@ -505,6 +505,39 @@ export async function loadGcBillingRows(projectIds: string[]): Promise<BillingRo
   for (const [id, stat] of Object.entries(parsePaySpeedsRpc(taken(speeds, 'load how fast customers pay'))?.customers ?? {})) payDays[id] = Math.round(stat.medianDays)
   const contractRows: ContractLineRow[] = taken(contract, 'load the prices as signed')
   return { terms: termRows, contract: contractRows, billing, names, payDays }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O4a: Bill the customer (migration gc_owner_pay_app_send). Sending and the certificate are
+// the database's own functions; the retainage is a plain update of the project's columns.
+// ---------------------------------------------------------------------------------------------
+
+/** Send the pay application: its record and lines go, and the first one opens the billing job. Its id comes back. */
+export async function sendOwnerPayApp(projectId: string, app: PayAppSend): Promise<string> {
+  return taken(await supabase.rpc('gc_send_owner_pay_app', { p_project_id: projectId, p_app: app as unknown as Json }), 'send the pay application')
+}
+
+/** The architect's certificate: the bill on the billing job is made for what they certified. */
+export async function recordCertificate(payAppId: string, amount: number, on: string, note: string): Promise<void> {
+  taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
+}
+
+/** The job's retainage and its step (null: held at one percent to the end). */
+export async function setOwnerRetainage(projectId: string, pct: number, step: OwnerRetainageStep | null): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_projects')
+      .update({
+        owner_retainage_pct: pct,
+        owner_retainage_step_at_pct: step?.atPct ?? null,
+        owner_retainage_step_to_pct: step?.toPct ?? null,
+        owner_retainage_step_way: step?.way ?? null,
+      })
+      .eq('project_id', projectId)
+      .select('project_id')
+      .single(),
+    'save the retainage',
+  )
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */

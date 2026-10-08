@@ -9,6 +9,7 @@
  * The kernels read retainage and the days to pay off the customer, so each job laid here reads its own
  * copy of its customer with the job's numbers. Pure: the reads are `gcIo.ts`'s.
  */
+import { type OwnerLineKind, type OwnerPayApp, ownerPayAppToSend } from './ownerBilling'
 import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
 import type { GcCustomer, GcState, OwnerRetainageStep } from './types'
 
@@ -96,4 +97,59 @@ export function billingStateForAll(state: GcState, rows: BillingRows, projectIds
 /** The same for one job: what Bill the customer reads. */
 export function billingStateFor(state: GcState, projectId: string, rows: BillingRows): GcState {
   return billingStateForAll(state, rows, [projectId])
+}
+
+/** A line's kind as `gc_owner_pay_app_lines.line` keeps it. */
+export const PAY_APP_LINE_OF: Record<OwnerLineKind, 'trade' | 'self' | 'gc' | 'contingency' | 'fee' | 'change_order'> = {
+  trade: 'trade',
+  self: 'self',
+  generalConditions: 'gc',
+  contingency: 'contingency',
+  fee: 'fee',
+  changeOrder: 'change_order',
+}
+
+/** What Send hands `gc_send_owner_pay_app`. */
+export interface PayAppSend {
+  number: number
+  final: boolean
+  periodTo: string
+  sentOn: string
+  retainagePct: number
+  retainageStep: OwnerRetainageStep | null
+  retainage: number
+  workToDate: number
+  due: number
+  lines: { line: (typeof PAY_APP_LINE_OF)[OwnerLineKind]; packageId: string | null; changeOrderId: string | null; label: string; worth: number; doneToDate: number; stored: number }[]
+}
+
+/**
+ * The draft as it goes today: `ownerPayAppToSend`'s record, with each line's kind, key and name as the window
+ * drew it. The server checks the work so far against the lines, so both come from the one draft.
+ */
+export function payAppSendPayload(app: OwnerPayApp, today: string): PayAppSend {
+  const record = ownerPayAppToSend(app, today)
+  return {
+    number: record.number,
+    final: false,
+    periodTo: record.periodTo,
+    sentOn: record.sentOn,
+    retainagePct: record.retainagePct,
+    retainageStep: record.retainageStep ?? null,
+    retainage: record.retainage,
+    workToDate: record.workToDate,
+    due: record.due,
+    lines: app.lines.map((l) => {
+      const line = PAY_APP_LINE_OF[l.kind]
+      return {
+        line,
+        packageId: line === 'trade' || line === 'self' ? l.id : null,
+        changeOrderId: line === 'change_order' ? (l.changeOrderId ?? l.id) : null,
+        label: l.label,
+        worth: l.worth,
+        doneToDate: l.doneToDate,
+        stored: l.stored ?? 0,
+      }
+    }),
+  }
 }

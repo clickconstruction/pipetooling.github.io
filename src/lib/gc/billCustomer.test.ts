@@ -1,11 +1,12 @@
 /**
  * The state our money screens read (./billCustomer.ts): billing laid over the board's projects, each job with
- * its own copy of its customer carrying the job's retainage and the customer's usual days to pay.
+ * its own copy of its customer carrying the job's retainage and the customer's usual days to pay. And what
+ * Bill the customer's Send hands the database, read back as the record it went as.
  */
 import { describe, expect, it } from 'vitest'
-import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, jobCustomerId } from './billCustomer'
-import { allJobsMoney, ownerPayApp, ownerRetainageWords } from './ownerBilling'
-import type { OwnerBillingRows } from './ownerBillingRows'
+import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, jobCustomerId, payAppSendPayload } from './billCustomer'
+import { allJobsMoney, ownerPayApp, ownerPayAppToSend, ownerRetainageWords } from './ownerBilling'
+import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
 import { initialGcState } from './schedule/testState'
 
 const terms = (projectId: string, over: Partial<OwnerTermsRow> = {}): OwnerTermsRow => ({
@@ -67,5 +68,72 @@ describe('the state our money screens read', () => {
     // No bill went on either in the app: nothing owed, nothing paid.
     expect(money.owed).toEqual([])
     expect(money.totals.paidIn).toBe(0)
+  })
+})
+
+describe('the pay application Send hands the database', () => {
+  const PROJECT = 'fairoaksd'
+  const TODAY = '2026-10-25'
+
+  /** The payload as `gc_send_owner_pay_app` inserts it: one pay application and its lines in order. */
+  function rowsFromSend(projectId: string, send: ReturnType<typeof payAppSendPayload>): OwnerBillingRows {
+    const id = `app-${send.number}`
+    return {
+      payApps: [
+        {
+          id,
+          project_id: projectId,
+          number: send.number,
+          final: send.final,
+          period_to: send.periodTo,
+          sent_on: send.sentOn,
+          sent_by: null,
+          retainage_pct: send.retainagePct,
+          retainage_step_at_pct: send.retainageStep?.atPct ?? null,
+          retainage_step_to_pct: send.retainageStep?.toPct ?? null,
+          retainage_step_way: send.retainageStep?.way ?? null,
+          retainage: send.retainage,
+          work_to_date: send.workToDate,
+          due: send.due,
+          certified: null,
+          certified_on: null,
+          certified_note: '',
+          certified_by: null,
+          invoice_id: null,
+          conditional_waiver_id: null,
+          created_at: `${send.sentOn}T15:00:00Z`,
+        },
+      ],
+      lines: send.lines.map((l, i) => ({
+        id: `${id}-${i}`,
+        pay_app_id: id,
+        position: i + 1,
+        line: l.line,
+        package_id: l.packageId,
+        change_order_id: l.changeOrderId,
+        label: l.label,
+        worth: l.worth,
+        done_to_date: l.doneToDate,
+        stored: l.stored,
+      })),
+      reminders: [],
+      interestBills: [],
+      acceptance: null,
+    }
+  }
+
+  it('sends the draft as it will read back: the record ownerPayAppToSend makes, line for line', () => {
+    const s = initialGcState()
+    const project = s.projects.find((p) => p.id === PROJECT)!
+    const draft = ownerPayApp(s, project)
+    const send = payAppSendPayload(draft, TODAY)
+    // The server checks this sum against the lines.
+    expect(Math.abs(send.workToDate - send.lines.reduce((t, l) => t + l.doneToDate + l.stored, 0))).toBeLessThan(0.01)
+    expect(send.lines.map((l) => l.line)).toEqual(draft.lines.map((l) => ({ trade: 'trade', self: 'self', generalConditions: 'gc', contingency: 'contingency', fee: 'fee', changeOrder: 'change_order' })[l.kind]))
+    expect(send.lines.filter((l) => l.line === 'gc' || l.line === 'fee').every((l) => l.packageId === null && l.changeOrderId === null)).toBe(true)
+
+    const back = ownerBillingFromRows(rowsFromSend(PROJECT, send))!.payApps![0]!
+    const record = ownerPayAppToSend(draft, TODAY)
+    expect(back).toEqual({ ...record, certified: null, certifiedOn: null })
   })
 })

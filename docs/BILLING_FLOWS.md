@@ -294,7 +294,7 @@ Its service type carries `service_types.billing_only`, which keeps it out of the
 
 ## GC mode: a project's billing job (v2.4984)
 
-A GC project we build bills its customer through one Pipeline job, its **billing job** (`gc_projects.billing_job_id`), a billing-only job (above). Every bill on it uses this page's machinery as it is: the statement and **Pay**, Stripe, payments, promises, the chase list and the waiver train.
+A GC project we build bills its customer through one Pipeline job, its **billing job** (`gc_projects.billing_job_id`), a billing-only job (above). Every bill on it uses this page's machinery as it is: the statement and **Pay**, Stripe, payments, promises, the chase list and the waiver train. **Bill the customer** on a won job's card at `/gc` (v2.4995, the money team's) sends the pay applications and records the certificates.
 
 - **Opened by the first pay application** (`gc_send_owner_pay_app`), never before:
   - billing-only, `working`, named "<project> (GC)";
