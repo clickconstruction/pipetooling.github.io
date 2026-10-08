@@ -458,5 +458,23 @@ Three ways it could be better:
 
 Planned 2026-10-07 by Helper 3 on `spike/portal-plan` (from `origin/spike/gc-mode` at e8f61a36f).
 The seams were agreed the same evening with Helpers 1, 2, 4, 5 and 6 (*Agreed with the other
-lanes*). Nothing is built. P0 is ready to cut on the lead's go, and P1a is ready to cut the hour B1
-merges.
+lanes*).
+
+Built as of 2026-10-08, each behind the dev door:
+
+| PR | What | State | Spike follow-up |
+|---|---|---|---|
+| P0 #4857 (v2.4840) | The words and 70 kernels | merged | `spike/portal-p0-follow`, pinned |
+| Words #4935 (v2.4904) | The set email's two lines and the voice scan | merged | `spike/portal-voice-follow`, pinned |
+| P1a #4880 (v2.4857) | `gc_trade_portal_links`, `gc_trade_messages`, the slice builder | merged, migration `20261008050000` pushed | none (no lift) |
+| P1b-i #4938 (v2.4905) | The portal's reads and the slice to state mapper | merged | `spike/portal-p1b-i-follow`, pinned, with `tsconfig.gc-main.json` |
+| P1b-ii-a #4946 (v2.4916) | `gc-trade-portal` and its sample | merged, deployed 2026-10-08 | none (no lift) |
+| Fix #4950 (v2.4919) | `inviteMessage` with no size note | armed | none (the spike re-exports it) |
+| P1b-ii-b (v2.4920) | The page at `/t/<link>` and **Trade portals** on `/gc` | PR next | none expected |
+
+The deploy was probed on prod the same day. `?t=sample` answers 200 with Sample Electric Co.'s slice. An
+unknown 64-character token answers `{"error":"linkOff"}`.
+
+**Their portal** sits on its own dev pill, **Trade portals**, beside Trade partners and Follow up, because the
+company window was not on main yet (decision on P1b above). It moves into the company window once the Board's
+B3-c lands there. Next on the lane: P2a, the first trade writes' SQL.
