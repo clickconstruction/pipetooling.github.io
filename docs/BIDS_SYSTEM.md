@@ -735,6 +735,7 @@ UNIQUE (version_id, fixture_type_id)
   3. Zero (if no match found)
 - A labor row no counted fixture claims (a version switch, a renamed or removed fixture) is **set aside** in `cost_estimate_labor_rows_unmatched`, out of every total, and listed under the grid as **Hours not on the counts** with **Use for <fixture>** and **Remove** (v2.4864, bid history PR 0b). Before v2.4864 the sync deleted it and typed hours were lost.
 - Each write carries its `x-bid-action` tag (`labor-sync`, `labor-rename`, `labor-park`, `labor-take-back`; Use for is `labor-use-parked`), so the bid's history reads what the sync did.
+- One sync runs at a time per estimate (`laborSyncQueue.ts`), and setting aside or taking back claims the row by deleting it first, so a version switch that starts several loads moves each row once; the set-aside table is `UNIQUE (cost_estimate_id, fixture)` like the live one (v2.4903).
 
 #### Apply Labor Book Hours
 
