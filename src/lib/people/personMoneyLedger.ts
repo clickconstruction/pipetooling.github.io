@@ -7,6 +7,8 @@
  *   and applied offsets — hours and jobs only, no company revenue numbers)
  */
 
+import { stubNetPay } from '../payStubDeductions'
+
 export type PersonOffsetLike = {
   id: string
   person_name: string
@@ -38,6 +40,31 @@ export type StubPaymentLike = {
 }
 
 const FULLY_PAID_TOLERANCE = 0.01
+
+/**
+ * Each report's net pay (v2.4900): gross − its Less lines + its Additional lines, never below 0. That is
+ * the formula `pay_report_net()` enforces (payments can't pass it), and the one Payroll → Balances and
+ * Record payment read. Settle up and the person's weekly history owe `net − paid` through this map; a
+ * report with no lines nets its gross.
+ */
+export function payStubNetById(
+  payStubs: ReadonlyArray<Pick<PayStubLike, 'id' | 'gross_pay'>>,
+  deductionsByStubId: Readonly<Record<string, ReadonlyArray<{ amount: number }>>>,
+  additionalByStubId: Readonly<Record<string, ReadonlyArray<{ line_total: number }>>>,
+): Map<string, number> {
+  const out = new Map<string, number>()
+  for (const s of payStubs) {
+    const less = Math.round((deductionsByStubId[s.id] ?? []).reduce((t, d) => t + Number(d.amount), 0) * 100) / 100
+    const add = Math.round((additionalByStubId[s.id] ?? []).reduce((t, a) => t + Number(a.line_total), 0) * 100) / 100
+    out.set(s.id, stubNetPay(s.gross_pay, less, add))
+  }
+  return out
+}
+
+/** What a report pays in all: its net from the map, or its gross when it has no lines on file. */
+function stubNet(s: PayStubLike, netByStubId: ReadonlyMap<string, number>): number {
+  return netByStubId.get(s.id) ?? s.gross_pay
+}
 
 export const OFFSET_TYPE_LABELS: Record<string, string> = {
   backcharge: 'Backcharge',
@@ -248,7 +275,7 @@ export function priceUncoveredWeeks(weeks: UncoveredWeek[], hourlyWage: number |
 }
 
 export type PersonSettleUp = {
-  /** Sum of what's still owed on existing reports (gross − recorded payments; legacy paid_at = fully paid). */
+  /** Sum of what's still owed on existing reports (net − recorded payments since v2.4900, net = gross − Less + Additional; legacy paid_at = fully paid). */
   unpaidRemaining: number
   unpaidCount: number
   unreportedHours: number
@@ -270,6 +297,8 @@ export function personSettleUp(args: {
   stubPayments: StubPaymentLike[]
   offsets: PersonOffsetLike[]
   pricedWeeks: PricedWeek[]
+  /** Each report's net (`payStubNetById`): a report owes its net, not its gross (v2.4900). */
+  netByStubId: ReadonlyMap<string, number>
 }): PersonSettleUp {
   const paymentsByStub = new Map<string, number>()
   for (const p of args.stubPayments) {
@@ -280,7 +309,7 @@ export function personSettleUp(args: {
   for (const s of args.payStubs) {
     const paid = paymentsByStub.get(s.id)
     if (paid == null && s.paid_at != null) continue
-    const remaining = Math.round((s.gross_pay - (paid ?? 0)) * 100) / 100
+    const remaining = Math.round((stubNet(s, args.netByStubId) - (paid ?? 0)) * 100) / 100
     if (remaining > FULLY_PAID_TOLERANCE) {
       unpaidRemaining += remaining
       unpaidCount++
@@ -333,6 +362,8 @@ export function buildSettleUpBoard(args: {
   stubPayments: StubPaymentLike[]
   dayHours: Array<{ personName: string; workDate: string; hours: number }>
   wageForPerson: (name: string) => number | null
+  /** Each report's net (`payStubNetById`), passed through to personSettleUp (v2.4900). */
+  netByStubId: ReadonlyMap<string, number>
 }): SettleUpRow[] {
   const names = new Set<string>()
   for (const o of args.offsets) if (o.person_name.trim()) names.add(o.person_name.trim())
@@ -357,7 +388,7 @@ export function buildSettleUpBoard(args: {
       .map((d) => ({ workDate: d.workDate, hours: d.hours }))
     const weeks = uncoveredApprovedWeeks({ dayHours: personDays, payStubs: personStubs })
     const priced = priceUncoveredWeeks(weeks, args.wageForPerson(name))
-    rows.push({ personName: name, ...personSettleUp({ payStubs: personStubs, stubPayments: personPayments, offsets: personOffsets, pricedWeeks: priced }) })
+    rows.push({ personName: name, ...personSettleUp({ payStubs: personStubs, stubPayments: personPayments, offsets: personOffsets, pricedWeeks: priced, netByStubId: args.netByStubId }) })
   }
   const settled = (r: SettleUpRow) => r.net === 0 && r.unpaidCount === 0 && r.unreportedWeeks === 0 && r.credits === 0 && r.charges === 0
   rows.sort((a, b) => {
@@ -393,6 +424,8 @@ export function buildWeeklyHistoryGroups(args: {
   payStubs: PayStubLike[]
   stubPayments: StubPaymentLike[]
   offsets: PersonOffsetLike[]
+  /** Each report's net (`payStubNetById`): the week's remaining is net − paid, as Settle up reads it (v2.4900). */
+  netByStubId: ReadonlyMap<string, number>
 }): WeeklyHistoryGroup[] {
   const groups = new Map<string, WeeklyHistoryGroup>()
   const groupFor = (weekStart: string): WeeklyHistoryGroup => {
@@ -429,9 +462,9 @@ export function buildWeeklyHistoryGroups(args: {
     }
     if (payments.length === 0 && s.paid_at != null) {
       g.legacyPaid = true
-      paidSum = s.gross_pay
+      paidSum = stubNet(s, args.netByStubId)
     }
-    const remaining = Math.max(0, Math.round((s.gross_pay - paidSum) * 100) / 100)
+    const remaining = Math.max(0, Math.round((stubNet(s, args.netByStubId) - paidSum) * 100) / 100)
     g.remaining = Math.round(((g.remaining ?? 0) + remaining) * 100) / 100
   }
   for (const o of args.offsets) {
