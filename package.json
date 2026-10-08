@@ -47,6 +47,7 @@
     "test:pg:bid-changes": "bash scripts/pgtest-bid-changes.sh",
     "test:pg:gc-schedule": "bash scripts/pgtest-gc-schedule.sh",
     "test:pg:gc-building": "bash scripts/pgtest-gc-building.sh",
+    "test:pg:gc-owner-billing": "bash scripts/pgtest-gc-owner-billing.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
