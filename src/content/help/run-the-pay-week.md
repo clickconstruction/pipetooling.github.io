@@ -42,7 +42,7 @@ You open **Job Parts Tally → Transactions**. The payroll run shows up as a ban
 **7/26–8/1** `w31` · 5 reports · **181.20 h** · **$4,295.83** gross · 4 open
 :::
 
-- The band names the period and its week number. Then it shows the run's report count, hours and gross pay. Last it shows how many of those reports are still open, meaning unpaid or partial.
+- The band names the period and its week number. Then it shows the run's report count, hours and gross pay, the pay before anything comes off. Last it shows how many of those reports are still open, meaning unpaid or partial.
 - Bands follow the rows as they sit. {{chip:gray|Open}}, {{chip:gray|Paid}} and {{chip:gray|All}} each band their own rows. A name search leaves one band per week that person was paid in.
 - A report generated late for an earlier week sits where it was created. It opens its own band for that week. The table never re-sorts your history.
 

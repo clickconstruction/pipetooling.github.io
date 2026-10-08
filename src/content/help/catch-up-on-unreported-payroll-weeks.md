@@ -39,7 +39,7 @@ The header on **Payroll → Pay run** carries an amber {{chip:yellow|29 upcoming
 Malachi $6,699.89 3w · Abraham $2,521.67 2w · Michael A $2,298.83 3w · … · William $7.46 2w
 :::
 
-- **The chips at the top** are one per person. Each shows their estimated gross and how many weeks are waiting. Tap a chip to leave that person out of the estimate. The chip goes dashed and their rows are struck through. The header reads "1 excluded, −$6,699.89". Tap again to put them back, or use **Include everyone**. This is a what-if for sizing the week. It changes nothing on the ledger and resets when you close.
+- **The chips at the top** are one per person. Each shows their estimated gross, the pay before anything comes off, and how many weeks are waiting. Tap a chip to leave that person out of the estimate. The chip goes dashed and their rows are struck through. The header reads "1 excluded, −$6,699.89". Tap again to put them back, or use **Include everyone**. This is a what-if for sizing the week. It changes nothing on the ledger and resets when you close.
 - **The ▾ on a chip** jumps to that person's weeks in the table.
 - **Sort** by {{button:blue|Amount}}, {{button:outline|Name}} or {{button:outline|Hours}}. Use the chooser or click a column header. Click the same choice again to reverse it. People move together. A person's weeks always stay under their name.
 - **The table groups by person.** Each person has a subtotal row. Click it to fold their weeks away. **Collapse all** leaves one line per person. The checkbox on the row is the same switch as the chip. The period link on any week still opens that week's days, where you can approve sessions.
