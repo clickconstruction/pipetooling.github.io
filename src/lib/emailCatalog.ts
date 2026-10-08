@@ -186,6 +186,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Your collections portal from Click Plumbing and Electrical',
   },
   {
+    id: 'gc_trade_email',
+    name: 'GC mode — an email to a trade partner (every kind, one sender)',
+    group: 'bids',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'gc-trade-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Click Construction asks you to quote Electrical on Sample Retail Shell',
+  },
+  {
     id: 'legal_recipient_confirm',
     name: 'Legal portal — confirm your email',
     group: 'lien',

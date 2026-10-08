@@ -96,6 +96,7 @@ when_to_read:
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-trade-portal](#gc-trade-portal)
    - [submit-gc-trade-portal](#submit-gc-trade-portal)
+   - [gc-trade-email](#gc-trade-email)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -1069,6 +1070,40 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 - the sample's `submit_quote` answered the same;
 - an unknown 64-character token's `got_it` answered `404 {error: "linkOff"}`;
 - an unknown kind answered `400 {error: "badRequest"}`.
+
+---
+
+### gc-trade-email
+
+**Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. Nothing calls it until a lane switches to it (P3-b, New project's step 7, the Ask window).
+
+**Endpoint**: `POST /functions/v1/gc-trade-email` with `{ companyId, kind, key, projectId | null, lang, subject, lines, group? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { companyId, messageId, emailSendLogId, to }`, the same with `already: true` for a key sent before, or `{ error: key, detail? }`.
+
+- `kind` is one of the portal's 19 message kinds (`PortalMessage`) or `paper`. `paper` names its `group` (`contracts` or `pay`). Every other kind takes its group from the kind.
+- `key` is unique per company and sent once. An invitation's is `<invite id>:invite`.
+- `lines` is `Array<string | { title?, items[] }>`, without the greeting: a paragraph, or a list under its title. At most 40 lines of 2,000 characters, and 100 items a list. The function trims each and drops the empty ones.
+- `lang` comes from the company's record through `tradeMailLang` (`src/lib/gc/tradeEmail.ts`).
+
+**In order**:
+1. Anything but `POST` answers `405 badRequest`.
+2. The caller: no session is `401 signIn`. Anyone but a dev is `403 officeOnly` until the portal's door (`GC_TRADE_EMAIL_ROLES`, held to the client's `canSendGcTradeEmail` by `access.test.ts`). A training account or a digital twin is `403 readOnly`.
+3. The shape (`parseTradeEmail` in `_shared/gcTradeEmail.ts`) is `400 badRequest` when off.
+4. `es` while Spanish is held is `400 spanishHeld`.
+5. No company with that id is `404 notFound`.
+6. With a project, a company with no ask on it (`gc_invites` on one of its trades) is `409 notOnProject`. The office fixes that by asking first; it is not a retry.
+7. A key already in `gc_trade_messages` for the company answers that row's ids with `already: true` and sends nothing.
+8. Who gets it: the kind's group (`tradeEmailGroup`), where plans and answers on a project past bidding go to `job`. Then the main contact when it gets the group, and each person ticked for it (`tradeEmailRecipients`). These are copies of `portalMailGroup` and `mailRecipients` in `src/lib/gc/portal.ts`, and `gcTradeEmail.test.ts` holds them equal. Anyone with no email is skipped, and an address gets it once. Nobody left is `422 noEmail`, with no row.
+9. The link: the company's link that is on, else a new one by `mint_gc_trade_portal_link`'s rules (64 hex characters, its SHA-256, one on per company, `created_by` the caller).
+10. The email (`buildGcTradeEmail`, shared with What customers see's sample): the greeting by first names, the lines, **Open your portal** to `APP_ORIGIN/t/<token>` with the address under it, the link line, and the signer. The words are copies of `portalI18n.ts`'s, held equal by the test.
+11. The send: `to` the first recipient, `cc` the rest, from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project's project manager else the sender, who also signs. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`, and no row.
+12. The row: `gc_trade_messages` with the kind, group, key, language, subject, `lines` as sent, `to_names`, `sent_on` (the office's day), `sent_by` and `email_send_log_id` (looked up by the Resend id; null when the log row is not there). Two presses at once with one key: the second row is refused by `gc_trade_messages_once` and the answer is the first row's, with `already: true`.
+13. The sent copy, after the row (kind `gc_trade_email`, the company's name, source `gc_trade_messages`). `sentCopyKeptHtml` keeps the link as `/t/…`, never the token ([SENT_COPIES.md](./SENT_COPIES.md)).
+
+The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, and calls the function with `sendGcTradeEmail` (`src/lib/gc/tradeEmailIo.ts`), which never throws for a refusal.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_trade_email`.
+
+**Doors**: a dev only until the portal's door. The first callers come with P3-b (the questions window's answer), New project's step 7 (a set's plans) and the Ask window (`invite`, `nudge`).
 
 ---
 

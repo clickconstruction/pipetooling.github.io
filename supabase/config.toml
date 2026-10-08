@@ -905,6 +905,10 @@ verify_jwt = false
 [functions.submit-gc-trade-portal]
 verify_jwt = false
 
+# Every email to a trade partner (GC mode P3-a): reads the staff JWT itself, like gc-plan-question-email.
+[functions.gc-trade-email]
+verify_jwt = false
+
 # pg_cron callers: the call carries X-Cron-Secret and no JWT, and each function checks the secret itself.
 # Without these blocks a plain `supabase functions deploy` turns the gateway check on and every cron call is refused (v2.4817).
 [functions.crew-day-email-dispatch]

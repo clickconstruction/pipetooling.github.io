@@ -2,7 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney } from './access'
+import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
+import { GC_MONEY_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from './access'
 
 describe('canOpenGcProjects', () => {
   it('opens for the office and estimators, as gc_office_team() does', () => {
@@ -53,5 +54,23 @@ describe('canSeeGcMoney', () => {
 
   it('names the same roles as the database, so the two copies cannot drift', () => {
     expect([...GC_MONEY_TEAM].sort()).toEqual(moneyTeamInSql().sort())
+  })
+})
+
+describe('canSendGcTradeEmail', () => {
+  it('lets a dev send while the portal is built', () => {
+    expect(canSendGcTradeEmail('dev')).toBe(true)
+  })
+
+  it('keeps everyone else and a session with no role yet from sending', () => {
+    for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canSendGcTradeEmail(role)).toBe(false)
+    }
+    expect(canSendGcTradeEmail(null)).toBe(false)
+    expect(canSendGcTradeEmail(undefined)).toBe(false)
+  })
+
+  it('names the same roles as gc-trade-email, so the two copies cannot drift', () => {
+    expect([...GC_TRADE_EMAIL_TEAM].sort()).toEqual([...GC_TRADE_EMAIL_ROLES].sort())
   })
 })

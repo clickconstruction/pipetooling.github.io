@@ -89,9 +89,11 @@ export function sentAttachmentType(filename: string): string {
 /**
  * The message as it is kept, by kind. The law firm's portal link (`legal_firm_link`) is a key to
  * the firm's portal: the filed copy shows the button with `?t=…`, never the token, because four
- * office roles read the filed copies (punch list #85, item 21).
+ * office roles read the filed copies (punch list #85, item 21). A trade partner's email (`gc_trade_email`) carries its
+ * company's portal link, `/t/<token>`, which is kept as `/t/…` (GC mode's P3-a).
  */
 export function sentCopyKeptHtml(kind: string, html: string): string {
+  if (kind === 'gc_trade_email') return html.replace(/(\/t\/)[^"'&<\s/?#]+/g, '$1…')
   if (kind !== 'legal_firm_link') return html
   // The direct form (`/legal?t=<key>`) and, since v2.4750, the short address (`my.clickplumbing.com/<firm>-<tail>`).
   return html.replace(/([?&](?:amp;)?t=)[^"'&<\s]+/g, '$1…').replace(/(my\.clickplumbing\.com\/)[a-z0-9-]+/g, '$1…')
