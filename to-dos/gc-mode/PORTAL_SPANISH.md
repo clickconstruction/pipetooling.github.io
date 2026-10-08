@@ -116,7 +116,7 @@ column headers are in one block at the end of `gcBuildingWords.ts`, for the nati
 
 ## For a native speaker to read
 
-Every Spanish string the trade's portal shows, 985 in all, drawn from the code on 2026-10-06.
+Every Spanish string the trade's portal shows, 987 in all, drawn from the code on 2026-10-06.
 They're grouped by screen, English on the left. Please mark anything that reads wrong, stiff or
 unclear, and write the better words beside it. The Portal lane makes the changes and passes the
 other lanes theirs. After any change to the words, redraw the tables below from the code with
@@ -145,7 +145,7 @@ other lanes theirs. After any change to the words, redraw the tables below from 
 plan set, a question and its answer, and our superintendent's punch list notes stay in the words
 they were written in. The portal does not translate them.
 
-### The portal (the Portal lane's words, `gcPortalI18n.ts`)
+### The portal (the Portal lane's words, `src/lib/gc/portalI18n.ts`)
 
 #### The letterhead and the project page
 
@@ -660,6 +660,13 @@ they were written in. The portal does not translate them.
 | {label} for {project} is out. {note} | Ya salió {label} de {project}. {note} |
 | It changes {trades}. Open it, then confirm your quote or change it. | Cambia {trades}. Ábralo y luego confirme su cotización o cámbiela. |
 | It does not change {trades}. Open it so you price on the newest set. | No cambia {trades}. Ábralo para cotizar con el juego más reciente. |
+
+#### A new set's email, beside the lines above: the lines of the quote it touches and the lines it adds (New project's step 7).
+
+| English | Español |
+|---|---|
+| It touches these lines of your quote: {list}. | Toca estas partidas de su cotización: {list}. |
+| It adds these lines to {trade}: {list}. | Agrega estas partidas a {trade}: {list}. |
 | Your master agreement with {gc} | Su contrato maestro con {gc} |
 | Here is our master agreement. You sign it once, and it covers every job you do for us. | Aquí está nuestro contrato maestro. Se firma una sola vez y cubre todos los trabajos que haga para nosotros. |
 | After that, each job is a short statement of work. | Después, cada trabajo es una orden de trabajo corta. |
@@ -1360,6 +1367,8 @@ they were written in. The portal does not translate them.
 
 | English | Español |
 |---|---|
+| Please sign it by {date}. | Por favor fírmelo a más tardar el {date}. |
+| Please sign it by {date}. | Por favor fírmela a más tardar el {date}. |
 | Reminder:  | Recordatorio:  |
 | Our master agreement is still waiting for your signature. Please sign it by {date}. | Nuestro contrato maestro todavía espera su firma. Por favor fírmelo a más tardar el {date}. |
 | Your statement of work for {trade} on {project} is still waiting for your signature. Please sign it by {date}. | Su orden de trabajo de {trade} para {project} todavía espera su firma. Por favor fírmela a más tardar el {date}. |
@@ -1372,8 +1381,6 @@ they were written in. The portal does not translate them.
 | Your lien waiver for draw {draws} on {project} | Su renuncia de gravamen del pago {draws} de {project} |
 | We paid draw {draws} on {project}. Please sign the unconditional lien waiver for it by {date}. | Pagamos el pago {draws} de {project}. Por favor firme la renuncia de gravamen incondicional a más tardar el {date}. |
 | Open your portal to sign it. | Abra su portal para firmarla. |
-| Please sign it by {date}. | Por favor fírmelo a más tardar el {date}. |
-| Please sign it by {date}. | Por favor fírmela a más tardar el {date}. |
 
 ### Follow up drafts to a company (the Building lane's, `gcFollowUpSheet.ts`, drawn for the made-up companies)
 

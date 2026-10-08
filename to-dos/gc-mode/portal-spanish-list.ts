@@ -46,7 +46,7 @@ const terms = [
 ].join('\n')
 
 const body = [
-  `### The portal (the Portal lane's words, \`gcPortalI18n.ts\`)`,
+  `### The portal (the Portal lane's words, \`src/lib/gc/portalI18n.ts\`)`,
   bySection(p.portal),
   `#### The usual exclusions, by name`,
   table(p.exclusions),

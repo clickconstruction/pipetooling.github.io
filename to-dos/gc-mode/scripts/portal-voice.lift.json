@@ -25,5 +25,10 @@
       "to": "spanishVoice.test.ts",
       "header": "/**\n * The tests of `gcSpanishVoice.test.ts` on branch spike/gc-mode that read only these kernels, moved word for word. The ones that read\n * the prototype's corpus stay there; `spanishVoice.direct.test.ts` scans main's portal words.\n */"
     }
-  ]
+  ],
+  "pin": {
+    "main": "c945fd22df48d4cf0af495f62809ea5b15e75dd1",
+    "spike": "864c74e7d4225a83be6361216a46097ebc63b498",
+    "about": "#4935 merged; the spike before its follow-up"
+  }
 }
