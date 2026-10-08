@@ -81,6 +81,89 @@ export type Database = {
         }
         Relationships: []
       }
+      ar_stripe_cases: {
+        Row: {
+          amount: number
+          closed_at: string | null
+          closed_by: string | null
+          closed_note: string | null
+          closed_reason: string | null
+          due_by: string | null
+          id: string
+          invoice_id: string | null
+          job_id: string | null
+          kind: string
+          lost_at: string | null
+          lost_notified_at: string | null
+          notified_at: string | null
+          occurred_at: string | null
+          opened_at: string
+          payment_id: string | null
+          reason: string | null
+          stripe_charge_id: string | null
+          stripe_invoice_id: string | null
+          stripe_mode: string | null
+          stripe_object_id: string
+          stripe_status: string | null
+        }
+        Insert: {
+          amount: number
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_note?: string | null
+          closed_reason?: string | null
+          due_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          kind: string
+          lost_at?: string | null
+          lost_notified_at?: string | null
+          notified_at?: string | null
+          occurred_at?: string | null
+          opened_at?: string
+          payment_id?: string | null
+          reason?: string | null
+          stripe_charge_id?: string | null
+          stripe_invoice_id?: string | null
+          stripe_mode?: string | null
+          stripe_object_id: string
+          stripe_status?: string | null
+        }
+        Update: {
+          amount?: number
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_note?: string | null
+          closed_reason?: string | null
+          due_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          kind?: string
+          lost_at?: string | null
+          lost_notified_at?: string | null
+          notified_at?: string | null
+          occurred_at?: string | null
+          opened_at?: string
+          payment_id?: string | null
+          reason?: string | null
+          stripe_charge_id?: string | null
+          stripe_invoice_id?: string | null
+          stripe_mode?: string | null
+          stripe_object_id?: string
+          stripe_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_stripe_cases_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ar_unbanked_check_cases: {
         Row: {
           amount: number
@@ -28356,6 +28439,10 @@ export type Database = {
         }
         Returns: Json
       }
+      close_ar_stripe_case: {
+        Args: { p_case_id: string; p_note?: string; p_reason: string }
+        Returns: Json
+      }
       close_ar_unbanked_check_case: {
         Args: { p_case_id: string; p_note?: string; p_reason: string }
         Returns: Json
@@ -29742,6 +29829,7 @@ export type Database = {
           recorded_payment: Json
           replaced_by_mercury_transaction_id: string
           source: string
+          stripe_case: Json
         }[]
       }
       list_ar_returned_check_payers: {
@@ -31089,6 +31177,7 @@ export type Database = {
         Args: { p_estimate_id: string; p_room_id: string }
         Returns: undefined
       }
+      put_back_lost_dispute_bill: { Args: { p_case_id: string }; Returns: Json }
       recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }
       recompute_jobs_ledger_thread_note_stats: {
         Args: { p_job_id: string }
@@ -31097,6 +31186,21 @@ export type Database = {
       recompute_people_hours_after_session_edit: {
         Args: { p_old_work_date?: string; p_session_id: string }
         Returns: undefined
+      }
+      record_ar_stripe_case: {
+        Args: {
+          p_amount: number
+          p_charge_id: string
+          p_due_by: string
+          p_kind: string
+          p_mode: string
+          p_object_id: string
+          p_occurred_at: string
+          p_reason: string
+          p_status: string
+          p_stripe_invoice_id: string
+        }
+        Returns: Json
       }
       record_day_book_queue: {
         Args: { p_counts: Json; p_day: string }
@@ -31173,6 +31277,7 @@ export type Database = {
         Args: { p_mercury_transaction_id: string }
         Returns: Json
       }
+      reopen_ar_stripe_case: { Args: { p_case_id: string }; Returns: Json }
       reopen_ar_unbanked_check_case: {
         Args: { p_case_id: string }
         Returns: Json
