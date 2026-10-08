@@ -2,6 +2,8 @@
  * Google Geocoding API (server-side only). Use GOOGLE_MAPS_API_KEY from Edge secrets.
  * https://developers.google.com/maps/documentation/geocoding/requests-geocoding
  */
+import { inUsPointBox, refusePointOutsideUs } from './usPointBox.ts'
+
 export type GoogleGeocodeErrorCode =
   | 'not_found'
   | 'google_denied'
@@ -80,6 +82,8 @@ export async function geocodeWithGoogle(address: string, apiKey: string): Promis
     const lat = loc?.lat
     const lng = loc?.lng
     if (typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)) {
+      // A point outside the lower 48 is a wrong answer, a miss (v2.4975).
+      if (!inUsPointBox(lat, lng)) return { ok: false, error: 'not_found', detail: refusePointOutsideUs('google', trimmed, lat, lng, j.results[0]) }
       return { ok: true, lat, lng, county: countyFromComponents(j.results[0]?.address_components) }
     }
     return withDetail(j, 'google_no_results')

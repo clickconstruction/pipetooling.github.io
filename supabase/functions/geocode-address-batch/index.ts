@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
+import { inUsPointBox, refusePointOutsideUs } from '../_shared/usPointBox.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -126,7 +127,8 @@ serve(async (req) => {
     if (exErr) {
       return jsonResponse(500, { error: exErr.message })
     }
-    if (existing) {
+    // A cached point outside the lower 48 reads as none, so it is asked again and a good answer replaces it (v2.4975).
+    if (existing && inUsPointBox(existing.lat, existing.lng)) {
       results.push({ address_normalized: key, lat: existing.lat, lng: existing.lng })
       continue
     }
@@ -148,7 +150,9 @@ serve(async (req) => {
         if (Array.isArray(arr) && arr.length > 0) {
           const la = parseFloat(arr[0]!.lat)
           const lo = parseFloat(arr[0]!.lon)
-          if (Number.isFinite(la) && Number.isFinite(lo)) {
+          if (Number.isFinite(la) && Number.isFinite(lo) && !inUsPointBox(la, lo)) {
+            failure = { error_code: 'not_found', detail: refusePointOutsideUs('nominatim', display, la, lo, arr[0]) }
+          } else if (Number.isFinite(la) && Number.isFinite(lo)) {
             lat = la
             lng = lo
           } else {
@@ -247,14 +251,14 @@ serve(async (req) => {
         ...failure,
         detail: appendDetail(
           failure.detail,
-          c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : 'no match from US Census'
+          c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : (c.detail ?? 'no match from US Census')
         ),
       }
     } else {
       failure =
         c.error === 'census_upstream'
           ? { error_code: 'census_upstream', detail: c.detail }
-          : { error_code: 'not_found', detail: 'No match from US Census' }
+          : { error_code: 'not_found', detail: c.detail ?? 'No match from US Census' }
     }
 
     failures.push({ address_normalized: key, ...failure })

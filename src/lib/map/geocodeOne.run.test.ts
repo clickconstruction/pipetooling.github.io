@@ -94,3 +94,27 @@ describe('geocode-one answers with a 200 the browser can read (v2.4878)', () => 
     expect(await res.json()).toMatchObject({ ok: false, error: 'not_found' })
   })
 })
+
+describe('geocode-one keeps only points in the lower 48 (v2.4975)', () => {
+  it("the street map's point in Assam is a miss: not stored, and the answer says why", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    net.nominatim = [{ lat: '26.7813', lon: '91.9274' }]
+    const res = await post('1 Main Street')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toMatchObject({ ok: false, error: 'not_found' })
+    expect(body.detail).toContain('OpenStreetMap placed it outside the lower 48 (26.7813, 91.9274)')
+    expect(db.upserts).toEqual([])
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('a cached point in Assam is asked again, and the good answer replaces it', async () => {
+    db.cached = { lat: 26.7813, lng: 91.9274 }
+    net.nominatim = [{ lat: '29.5688', lon: '-97.9647' }]
+    net.county = 'Guadalupe County'
+    const res = await post('123 Main St, Seguin, TX 78155')
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'nominatim', lat: 29.5688, lng: -97.9647, county: 'Guadalupe' })
+    expect(db.upserts).toEqual(['123 main st, seguin, tx 78155'])
+  })
+})
