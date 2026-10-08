@@ -99,7 +99,7 @@ import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBoo
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { GcState, ScopeBookStore } from '../lib/gc/types'
-import { gcFocusFromSearch } from '../lib/gc/links'
+import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
   customers: GcPickerCustomer[]
@@ -225,7 +225,8 @@ export default function GcProjects() {
   }, [role, loaded, today])
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
-  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals' | 'money'>('board')
+  // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
+  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals' | 'money'>(() => gcViewFromSearch(params))
   const refreshBoard = async () => {
     if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) }))
   }
