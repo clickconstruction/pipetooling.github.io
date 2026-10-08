@@ -1064,6 +1064,12 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 
 **Doors**: a write needs a link. Links are made only by a dev until the portal's door (`mint_gc_trade_portal_link`), so no real trade writes before then. The office's preview (`?preview=1`) posts nothing; the page holds it (P2b-ii).
 
+**Status**: deployed 2026-10-08 after #4960 merged, with `gc-trade-portal` redeployed on the shared link rule (edge drift 141 of 141). Probed on prod with the request shape above, writing nothing:
+- `{token: "sample", kind: "set_lang", lang: "en"}` answered `200 {ok: true, sample: true}`;
+- the sample's `submit_quote` answered the same;
+- an unknown 64-character token's `got_it` answered `404 {error: "linkOff"}`;
+- an unknown kind answered `400 {error: "badRequest"}`.
+
 ---
 
 ### drive-contract-scan
