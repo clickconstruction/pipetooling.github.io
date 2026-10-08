@@ -10,15 +10,15 @@ Outside Stripe means HouseCall Pro or a paper invoice. Stripe is the service tha
 
 ## Converting
 
-1. Open the job at **Edit Job → Bill**. Find the line under **Invoices**.
-2. Click {{button:blue|⚡ Make Stripe bill}}. The button appears on billed lines that aren't Stripe yet.
-3. The confirm window shows the amount, the customer and a **live preview of the exact Stripe invoice**. The window also shows the promise that matters: *billed date stays put*. Click {{button:blue|Create Stripe bill}}.
+1. Open the job and go to its **Bill** tab. Find the bill under **② Bills and payments**.
+2. Open the bill row's **⋯** menu and press **⚡ Make Stripe bill**. The item shows on an open billed bill that isn't a Stripe bill yet. On a GC bill, the ⋯ sits at the end of the waiver row.
+3. The **Make this a Stripe bill** window opens. The window shows the line, the customer and a **live preview of the exact Stripe invoice**. The **Billed date** row says the date stays as it was. Click {{button:purple|⚡ Create Stripe bill}}.
 
-You're done. The line now has a hosted pay page and card payment. A hosted pay page is a Stripe web page where the customer pays. The customer's portal statement swaps its check-reference box for {{button:blue|Pay online}} on its own. The portal is the customer's own web page of bills and payments. **Nothing is emailed** by converting. You can send it afterward if you want, like any Stripe bill.
+You're done. The line now has a hosted pay page and card payment. A hosted pay page is a Stripe web page where the customer pays. The customer's portal statement swaps its check-reference box for {{button:dark|PAY ONLINE}} on its own. The portal is the customer's own web page of bills and payments. **Nothing is emailed** by converting. You can send it afterward if you want, like any Stripe bill.
 
 ## What the customer gets when you send it
 
-{{button:purple|stripe}}{{button:amber|Send Email invoice}} sends the bill email from Click Plumbing and Electrical. The purple tag means it is a Stripe bill, so the customer pays on Stripe's page.
+Press **View** on the bill's row. {{button:purple|stripe}}{{button:amber|Send Email invoice}} there sends the bill email from Click Plumbing and Electrical. The purple tag means it is a Stripe bill, so the customer pays on Stripe's page. On a Pipeline row the same button reads **stripe Resend**. The row's own **Email** is different. That button opens a draft for you to send yourself.
 
 :::example The bill email
 **Invoice #1042-2610120930** for 100 Sample St — **$1,850.00**, due Oct 12, 2026
@@ -36,8 +36,8 @@ Settings → **What customers see** shows the email as the customer reads it.
 
 ## The paperwork dates
 
-Stripe won't accept a past due date. So the converted invoice shows **due now**, which is the truth for an outstanding bill. The original billed date still travels with the paperwork twice. The Stripe invoice **number** carries it. The **memo** says "Originally billed …" right on the customer's invoice.
+Stripe won't accept a past due date. So the converted bill is due **on receipt**, which is the truth for an outstanding bill. The original billed date still travels with the paperwork twice. The Stripe invoice **number** carries it. The **memo** says "Originally billed …" right on the customer's invoice.
 
 :::example When the button is greyed out
-Hover it and it tells you why: **payments are already applied** to that line (unlink them under Payments received first), or the job has **no customer email** yet (add one on the Edit tab — Stripe needs somewhere to bill).
+Hover it and it tells you why. **Payments may already be counted** on that bill. Unlink them first, from each payment line's ⋯ under the bill. The job may have **no linked customer** or **no customer email** yet. Add one on the Edit tab, since Stripe needs somewhere to bill. Or the line may have no amount.
 :::
