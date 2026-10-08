@@ -996,6 +996,9 @@ export function inviteMessage(project: GcProject, pkg: TradePackage, invite: Inv
   const wanted = portalQuoteDue(project)
   const dueOn = wanted && invite.invitedOn <= wanted ? wanted : project.bidDue && invite.invitedOn <= project.bidDue ? project.bidDue : null
   const due = dueOn ? pWeekday(lang, dueOn) : null
+  // Where and how big, each only when the project has it: a project with neither leaves the line out.
+  const size = project.sizeNote.trim()
+  const where = [project.address.trim(), `${size.charAt(0).toUpperCase()}${size.slice(1)}`].filter((s) => s !== '')
   return {
     key: `${invite.id}:invite`,
     on: invite.invitedOn,
@@ -1005,7 +1008,7 @@ export function inviteMessage(project: GcProject, pkg: TradePackage, invite: Inv
     lines: [
       t('mHello', { first: firstName(partner.contact) }),
       t('mInviteWant', { trade: pkg.trade, project: name }),
-      `${project.address}. ${project.sizeNote.charAt(0).toUpperCase()}${project.sizeNote.slice(1)}.`,
+      ...(where.length > 0 ? [`${where.join('. ')}.`] : []),
       ...(due ? [t('mInviteDue', { date: due })] : []),
       ...(set ? [t('mInvitePlans', { label: set.label, date: pDate(lang, set.issuedOn) })] : []),
       t('mInviteCover'),
