@@ -3,24 +3,52 @@
  "spikeDir": "src/lib/gc/schedule",
  "mainBase": "src/lib/gc/schedule",
  "pin": {
+  "main": "8f593bce3eeca809fa80176cf33260eb05502833",
+  "spike": "db01c25128ba7033dd602a6d0fb0c71281cf16db",
+  "about": "#5008 merged as one squash; the other side is main just before it",
   "known": {
    "dayNumber": "exported now: schedule.ts reads it",
    "isoOf": "exported now: schedule.ts reads it",
    "waitOrder": "exported now: schedule.ts reads it, and a later caller does not write a second one",
    "lineOf": "exported now: schedule.ts reads it in four more places",
-   "weekdayOf": "exported now: the chart's axis reads it"
+   "weekdayOf": "exported now: the chart's axis reads it",
+   "scheduleFloat": "commit 2, on purpose: the spare days measure a bar with workingDays(start, finish) (G-130)"
   }
  },
  "files": [
   {
    "from": "schedule",
    "to": "network.ts",
-   "moves": ["dayNumber", "daysBetween", "isoOf", "lagOf", "wouldLoop", "waitOrder", "scheduleFloat", "lineOf", "activityLabel", "activityDone", "PushedAfter", "pushAfter", "pushedAfterWords"]
+   "moves": [
+    "dayNumber",
+    "daysBetween",
+    "isoOf",
+    "lagOf",
+    "wouldLoop",
+    "waitOrder",
+    "scheduleFloat",
+    "lineOf",
+    "activityLabel",
+    "activityDone",
+    "PushedAfter",
+    "pushAfter",
+    "pushedAfterWords"
+   ]
   },
   {
    "from": "gantt",
    "to": "network.ts",
-   "moves": ["iso", "weekdayOf", "nthWeekday", "holidaysOf", "holidayOn", "isWeekend", "isWorkingDay", "workingDays", "holidaysIn"]
+   "moves": [
+    "iso",
+    "weekdayOf",
+    "nthWeekday",
+    "holidaysOf",
+    "holidayOn",
+    "isWeekend",
+    "isWorkingDay",
+    "workingDays",
+    "holidaysIn"
+   ]
   }
  ]
 }
