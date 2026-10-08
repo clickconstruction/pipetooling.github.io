@@ -214,6 +214,8 @@ function LogForm({
   const label = { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' } as const
   const trades = logTrades(project)
   const ready = Number.isFinite(d.high) && Number.isFinite(d.low) && !busy
+  // The job's first log has no day before it to start from.
+  const startsFromBefore = (project.dailyLogs ?? []).some((l) => l.date < start.date)
   return (
     <Card style={{ border: '2px solid #2563eb' }}>
       <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.875rem' }}>
@@ -262,7 +264,7 @@ function LogForm({
           {trades.length === 0 ? (
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No trade can be logged yet. A trade we hire shows here once its statement of work is signed.</span>
           ) : (
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>It starts from the day before. 0 means they were not there.</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{startsFromBefore ? 'It starts from the day before. 0 means they were not there.' : '0 means they were not there.'}</span>
           )}
         </div>
 

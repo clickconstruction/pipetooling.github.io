@@ -33,6 +33,7 @@ describe('GcDailyLogWindow', () => {
     expect((screen.getByRole('spinbutton', { name: 'Low, degrees' }) as HTMLInputElement).value).toBe('70')
     expect(workersOn('Structural steel').value).toBe('3')
     expect(workersOn('Roofing').value).toBe('4')
+    expect(screen.getByText('It starts from the day before. 0 means they were not there.')).toBeTruthy()
     expect(screen.getByText('This week')).toBeTruthy()
     expect(screen.getByText('Earlier days')).toBeTruthy()
   })
@@ -91,6 +92,12 @@ describe('GcDailyLogWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save the log' }))
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
     expect((screen.getByPlaceholderText('Membrane down on the east half. Ductwork in bay 4.') as HTMLTextAreaElement).value).toBe('Kept as typed')
+  })
+
+  it('does not say the job’s first log starts from the day before, since there is none', () => {
+    setup({ project: (p) => ({ ...p, dailyLogs: [] }) })
+    expect(screen.getByText('0 means they were not there.')).toBeTruthy()
+    expect(screen.queryByText(/It starts from the day before/)).toBeNull()
   })
 
   it('says the log starts once work starts, on a job not started', () => {
