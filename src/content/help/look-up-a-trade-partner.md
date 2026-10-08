@@ -5,7 +5,7 @@ roles: dev
 keywords: gc mode, trade partner, company, window, about, language, Spanish, Español, who gets our emails, bookkeeper, vetting, insurance, passed
 order: 97
 ---
-Each trade partner has its own window. It shows how the company answers, who there gets our emails, and the work it does with us.
+Each trade partner has its own window. The window shows how the company answers, who there gets our emails, and the work it does with us. The company's portal link is there too.
 
 Only a dev sees the window while it is built.
 
@@ -47,6 +47,15 @@ The company names other people in its own portal, like a bookkeeper for pay. You
 
 ## See their work and the times they passed
 
-**Their work with us** lists each job we awarded them. **Times they passed** lists each job they said no to, with the reason we wrote down.
+The **Their work with us** list shows each job we awarded the company. **Times they passed** lists each job they said no to, with the reason we wrote down.
 
 Press a job's name to go to its card.
+
+## Share their portal
+
+The **Their portal** section at the bottom shows the company's portal link and whether they opened it.
+
+1. Press {{button:blue|Make the link}} if they have none yet.
+2. Copy the link and send it with the ask to quote.
+
+A new link stops the old one from working. Turning the link off asks once more first. See [share a trade partner its portal](/help/share-a-trade-partner-its-portal).
