@@ -246,9 +246,35 @@ export interface PlanQuestion {
   atPreBid?: boolean
 }
 
+/**
+ * A pre-bid meeting or site walk before our bid is due (the owner, 2026-10-04: "Let's build the
+ * pre bid meeting into the prototype"). The companies quoting are invited; what they ask there
+ * goes the way of any question, and the minutes ride in the next set.
+ */
+export interface PreBidMeeting {
+  /** The day, YYYY-MM-DD, and the time, like "10:00". */
+  on: string
+  at: string
+  place: string
+  /** Who runs it: the architect's meeting, or our own walk with the trades. */
+  host: 'architect' | 'us'
+  /** A company has to come to quote. */
+  mandatory: boolean
+  /** The companies that came, by partner id. Null: not held yet. */
+  attended: string[] | null
+  /** The set that carried the minutes. Missing: not sent yet. */
+  minutesInSetRev?: number
+  /**
+   * The day it was set, or last moved: the day of the invitation every company got. A move sends a
+   * new one. Missing: set before the prototype kept it.
+   */
+  setOn?: string
+}
+
 export interface PlanSet {
   rev: number
   label: string
+  issuedOn: string
   /** Package ids whose scope this set changed. A bid priced on an older set is stale for them. */
   touches: string[]
 }
@@ -615,6 +641,7 @@ export interface GcProject {
   questions: PlanQuestion[]
   stage: GcStage
   bidDue: string | null
+  sizeNote: string
   planSets: PlanSet[]
   packages: TradePackage[]
   generalConditions: number
@@ -635,6 +662,8 @@ export interface GcProject {
   lostWhy?: GcLostWhy | null
   /** Who the owner picked, when we know. */
   wonBy?: string | null
+  /** The pre-bid meeting, once one is set. Missing: none. */
+  preBid?: PreBidMeeting
   /** The punch list (Building lane, 2026-10-03): what is left to fix on each trade's work. Unset: none yet. */
   punch?: PunchItem[]
   /** The superintendent's daily log (Building lane, 2026-10-04): one per working day. Unset: none yet. */

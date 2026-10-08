@@ -9,13 +9,20 @@ import { GC_COMPANY } from './company'
 import { currentRev, partnerById } from './lookups'
 import { inSentence } from './plans'
 import type { PortalKey, PortalLang } from './portalI18n'
-import { pDate, pExclusion, pWeekday, pt } from './portalI18n'
-import { INSURANCE_ASK_DAYS } from './promises'
+import { pDate, pExclusion, pTime, pWeekday, pt } from './portalI18n'
+import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromiseState, tradePromisesOf } from './promises'
 import type { LookAheadState, ScheduleRow } from './schedule/schedule'
 import { activityName, inspectionItems, lookAheadWeeks, markState, mondayOf, scheduleRows } from './schedule/schedule'
 import type { LookAheadMark } from './schedule/types'
-import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, Partner, PartnerPerson, PlanSet, PortalMailGroup, ProjectContact, QuoteExclusion, ScopeItem, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
+import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
 import { daysUntil, money } from './words'
+import { bidIsStale, quoteRanOut } from './bids'
+import type { AskPromise } from './followUp'
+import { OPEN_WITHIN_DAYS, askPromise } from './followUp'
+import { questionState, questionsFor, quotesWantedOn } from './planQuestions'
+import { preBidInvited } from './preBid'
+import type { QuestionState } from './questions'
+import { vettingOf } from './vetting'
 
 // ---------------------------------------------------------------------------------------------
 // Your pay: every pay application on the company's jobs, when it was asked, approved and paid
@@ -804,5 +811,249 @@ export function portalWeeks(state: GcState, partnerId: string, lang: PortalLang 
     const when: PortalWeek['when'] = i === 0 ? 'this' : i === 1 ? 'next' : 'later'
     const title = pt(lang, when === 'this' ? 'wkThis' : when === 'next' ? 'wkNext' : 'wkOf', { date })
     return { weekOf, when, title, items, inspections, overlaps }
+  })
+}
+
+/** The day a company said its number will come, in its own portal's words. Late: the day passed with no number. */
+export function portalPromiseLine(invite: Invite, today: string, gc: string, lang: PortalLang = 'en'): { text: string; late: boolean } | null {
+  const p = askPromise(invite, today)
+  if (!p || invite.bid) return null
+  const date = pWeekday(lang, p.by)
+  if (p.state === 'pending') return { text: pt(lang, 'promisePending', { gc, date }), late: false }
+  if (p.state === 'today') return { text: pt(lang, 'promiseToday', { gc }), late: false }
+  const ago = p.days === 1 ? pt(lang, 'agoYesterday') : pt(lang, 'agoN', { n: p.days })
+  return { text: pt(lang, 'promiseLate', { gc, date, ago }), late: true }
+}
+
+export interface PortalAsk {
+  project: GcProject
+  pkg: TradePackage
+  invite: Invite
+  kind: PortalAskKind
+  /** A newer set changed their trade after they priced it. */
+  stale: boolean
+  /** Lines of their number the office could not read. */
+  unclear: ScopeItem[]
+  /** The day they said their number will come. Null once a number is in. */
+  promise: AskPromise | null
+  /** Their number passed the days they said it is good for. */
+  ranOut: boolean
+}
+
+/** Every ask one company has with us, newest project first as the fixture lists them. */
+export function portalAsks(state: GcState, partnerId: string): PortalAsk[] {
+  const out: PortalAsk[] = []
+  for (const project of state.projects) {
+    for (const pkg of project.packages) {
+      for (const invite of pkg.invites) {
+        if (invite.partnerId !== partnerId) continue
+        const kind: PortalAskKind =
+          project.lostOn && invite.status !== 'declined'
+            ? 'closed'
+            : pkg.awardedInviteId === invite.id
+              ? 'job'
+              : pkg.awardedInviteId !== null
+                ? 'lost'
+                : invite.status === 'declined'
+                  ? 'passed'
+                  : 'bidding'
+        out.push({
+          project,
+          pkg,
+          invite,
+          kind,
+          stale: bidIsStale(project, pkg, invite),
+          unclear: unclearLines(pkg, invite),
+          promise: invite.bid ? null : askPromise(invite, state.today),
+          ranOut: invite.bid ? bidRanOut(invite.bid, state.today) : false,
+        })
+      }
+    }
+  }
+  return out
+}
+
+export function portalVetting(partner: Partner, lang: PortalLang = 'en'): { state: PortalVettingState; words: string | null } {
+  if (!partner.vetting) return { state: 'known', words: null }
+  const v = vettingOf(partner)
+  const gc = GC_COMPANY.shortName
+  if (v.status === 'new') {
+    return v.form ? { state: 'checking', words: pt(lang, 'vetChecking', { gc, date: pDate(lang, v.form.sentOn) }) } : { state: 'send', words: pt(lang, 'vetNotSent') }
+  }
+  if (v.status === 'declined') return { state: 'declined', words: pt(lang, 'vetDeclined', { gc }) }
+  return { state: 'approved', words: v.limit !== undefined ? pt(lang, 'vetApprovedUpTo', { amount: money(v.limit) }) : pt(lang, 'vetApproved') }
+}
+
+const PROMISE_WORDS: Record<PromiseKind, { key: PortalKey; plural: boolean }> = {
+  insurance: { key: 'pwInsurance', plural: false },
+  w9: { key: 'pwW9', plural: false },
+  sow: { key: 'pwSow', plural: false },
+  start: { key: 'pwStart', plural: false },
+  submittals: { key: 'pwSubmittals', plural: true },
+  delivery: { key: 'pwDelivery', plural: false },
+  payApp: { key: 'pwPayApp', plural: false },
+  punch: { key: 'pwPunch', plural: true },
+  closeout: { key: 'pwCloseout', plural: true },
+  msa: { key: 'pwMsa', plural: false },
+}
+
+const PAPER_KIND: Record<string, PromiseKind> = { msa: 'msa', sow: 'sow', insurance: 'insurance', w9: 'w9', waiver: 'closeout' }
+
+/**
+ * A company's open dates, soonest first (owner, 2026-10-04: "Your dates with Click"): the ones it
+ * gave and the due days the office asked for when it sent a paper (a send with that same day).
+ */
+export function portalPromises(state: GcState, partnerId: string, lang: PortalLang = 'en'): PortalPromiseRow[] {
+  return tradePromisesOf(state)
+    .filter((p) => p.partnerId === partnerId && !p.keptOn)
+    .sort((a, b) => a.by.localeCompare(b.by))
+    .map((p) => {
+      const k = PROMISE_WORDS[p.kind]
+      const what = p.what === PROMISE_WHAT[p.kind] ? pt(lang, k.key) : p.what.charAt(0).toUpperCase() + p.what.slice(1)
+      const project = p.projectId ? state.projects.find((x) => x.id === p.projectId) : undefined
+      const trade = project && p.packageId ? project.packages.find((x) => x.id === p.packageId)?.trade : undefined
+      const where = project ? (trade ? `${project.name} · ${trade}` : project.name) : null
+      const { state: st, days } = tradePromiseState(p, state.today)
+      const date = pWeekday(lang, p.by)
+      const words =
+        st === 'today'
+          ? pt(lang, 'pDueToday')
+          : st === 'passed'
+            ? pt(lang, 'pPassed', { date, ago: days === 1 ? pt(lang, 'agoYesterday') : pt(lang, 'agoN', { n: days }) })
+            : pt(lang, days === 1 ? 'pIn1' : 'pInN', { date, n: days })
+      const asked = (state.paperSends ?? []).some(
+        (s) =>
+          s.partnerId === p.partnerId &&
+          PAPER_KIND[s.paper] === p.kind &&
+          (s.projectId ?? null) === (p.projectId ?? null) &&
+          (s.packageId ?? null) === (p.packageId ?? null) &&
+          s.by === p.by,
+      )
+      return {
+        p,
+        what,
+        where,
+        words,
+        tone: st === 'passed' ? 'red' : st === 'today' ? 'amber' : 'plain',
+        plural: k.plural,
+        source: asked ? 'asked' : 'said',
+        sourceWords: pt(lang, asked ? 'pAsked' : 'pSaid', { gc: GC_COMPANY.shortName }),
+      }
+    })
+}
+
+/** The meeting for a company asked to it: every company still quoting a trade there. Null: none, not asked, or a bid we lost. */
+export function portalPreBid(state: GcState, project: GcProject, partnerId: string, lang: PortalLang = 'en'): PortalPreBid | null {
+  const m = project.preBid
+  if (!m || project.lostOn || !preBidInvited(state, project).some((r) => r.partner.id === partnerId)) return null
+  const who = m.host === 'architect' ? project.architect.trim() || pt(lang, 'pbArchitect') : GC_COMPANY.shortName
+  const held = m.attended !== null
+  const came = held && (m.attended ?? []).includes(partnerId)
+  const missed = held && !came && m.mandatory
+  return {
+    on: m.on,
+    at: m.at,
+    mandatory: m.mandatory,
+    held,
+    came,
+    missed,
+    host: pt(lang, 'pbRunBy', { who }),
+    when: pt(lang, 'pbWhen', { date: pWeekday(lang, m.on), time: pTime(lang, m.at), place: m.place }),
+    rule: pt(lang, m.mandatory ? 'pbRequired' : 'pbOptional'),
+    after: !held ? pt(lang, 'pbBring') : came ? pt(lang, 'pbCame') : missed ? pt(lang, 'pbMissed') : pt(lang, 'pbMinutes'),
+  }
+}
+
+/**
+ * The day a company's quote is due (owner, 2026-10-04): the day we want quotes by, three days
+ * before our own bid is due, so we have days to level them (the New Project lane's
+ * `quotesWantedOn`). Null with no bid date, or once we are not bidding.
+ */
+export function portalQuoteDue(project: GcProject): string | null {
+  return quotesWantedOn(project)
+}
+
+function firstName(contact: string): string {
+  return contact.split(' ')[0] ?? contact
+}
+
+/** The plan set that was newest on a day: what an invitation sent that day pointed to. */
+function setOn(project: GcProject, day: string): PlanSet | undefined {
+  return [...project.planSets].filter((s) => s.issuedOn <= day).sort((a, b) => b.rev - a.rev)[0]
+}
+
+/**
+ * The invitation to quote one trade (Board lane's Ask window and the portal's messages): what we want
+ * priced, where, by when, on which set, and the lines the number should cover. Pure, so the Ask
+ * window previews it on an invite it has not written yet.
+ */
+export function inviteMessage(project: GcProject, pkg: TradePackage, invite: Invite, partner: Partner, lang: PortalLang): PortalMessage {
+  const gc = GC_COMPANY.name
+  const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
+  const name = project.name
+  const set = setOn(project, invite.invitedOn)
+  // The day quotes are wanted by; a company asked after that day is given our bid day.
+  const wanted = portalQuoteDue(project)
+  const dueOn = wanted && invite.invitedOn <= wanted ? wanted : project.bidDue && invite.invitedOn <= project.bidDue ? project.bidDue : null
+  const due = dueOn ? pWeekday(lang, dueOn) : null
+  return {
+    key: `${invite.id}:invite`,
+    on: invite.invitedOn,
+    kind: 'invite',
+    projectId: project.id,
+    subject: t('mInviteSubject', { gc, trade: pkg.trade, project: name }),
+    lines: [
+      t('mHello', { first: firstName(partner.contact) }),
+      t('mInviteWant', { trade: pkg.trade, project: name }),
+      `${project.address}. ${project.sizeNote.charAt(0).toUpperCase()}${project.sizeNote.slice(1)}.`,
+      ...(due ? [t('mInviteDue', { date: due })] : []),
+      ...(set ? [t('mInvitePlans', { label: set.label, date: pDate(lang, set.issuedOn) })] : []),
+      t('mInviteCover'),
+    ],
+    scope: pkg.scope.map((item) => item.label),
+    ...(portalLeavesOut(pkg, lang).length > 0 ? { leavesOut: portalLeavesOut(pkg, lang) } : {}),
+  }
+}
+
+/** The number passed its last good day: the Board lane's rule (`quoteRanOut`, question 14), so the portal and Compare bids agree. */
+export function bidRanOut(bid: SubBid, today: string): boolean {
+  return quoteRanOut(bid, today)
+}
+
+/**
+ * A company we asked that has never been in its portal (portalFirstVisit): the email may not have
+ * reached it. With the day we first asked, and whether that is past the days a company should take
+ * to open the plans (OPEN_WITHIN_DAYS). Null once it has opened its link.
+ */
+export function linkNeverOpened(state: GcState, partnerId: string): { since: string; days: number; late: boolean } | null {
+  if (!portalFirstVisit(state, partnerId)) return null
+  const asked = state.projects.flatMap((p) => p.packages.flatMap((k) => k.invites.filter((i) => i.partnerId === partnerId).map((i) => i.invitedOn)))
+  if (asked.length === 0) return null
+  const since = [...asked].sort()[0] ?? state.today
+  const days = Math.max(0, -daysUntil(since, state.today))
+  return { since, days, late: days > OPEN_WITHIN_DAYS }
+}
+
+export interface PortalQuestion {
+  q: PlanQuestion
+  /** The company asked it. Another company's question never shows who asked. */
+  mine: boolean
+  state: QuestionState
+  /** The day the answer reached this company. Null: not sent to it yet. */
+  answerOn: string | null
+}
+
+/**
+ * The questions one company sees on one trade: every one it asked, and each other company's once
+ * the answer was sent to it. Newest first.
+ */
+export function portalQuestions(project: GcProject, packageId: string, partnerId: string): PortalQuestion[] {
+  return questionsFor(project, packageId).flatMap((q) => {
+    const mine = q.partnerId === partnerId
+    const sent = q.answerSentTo?.find((x) => x.partnerId === partnerId)?.on ?? null
+    // An answer to its own question shows even from before answers were sent on.
+    const answerOn = q.answer !== null ? (sent ?? (mine ? q.answeredOn : null)) : null
+    if (!mine && answerOn === null) return []
+    return [{ q, mine, state: questionState(q), answerOn }]
   })
 }
