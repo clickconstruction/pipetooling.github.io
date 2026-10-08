@@ -229,7 +229,3 @@ The **⋯** button beside it opens a short menu with four more. **Updates sent**
 :::example What the GC reads
 BFP-1 · Watts 909 RPZ · approved 09/22 · ordered 09/25, PO 119 · 4 wk · expected **10/20 (house)** · required 10/06 · **−14 d** · "Ferguson: 10/20 earliest". The next update leads with that row.
 :::
-
-## What comes next
-
-The Needs You cards, the won question, and the question thread on the room. Each comes in its own release.
