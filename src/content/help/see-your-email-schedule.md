@@ -30,9 +30,9 @@ Below the week, this list shows **every** standing email stream in the app. Each
 
 - **Job report digest** spells out every recurring digest schedule you're on. The line gives the schedule's name, its days and time, and your own slice. Your slice is which jobs, all users or just your team, and whether costs are included. A paused schedule says so. Digests are managed from **Jobs → Reports → Email reports**, with the Digest chips on your row.
 - **Field reports** sends one email per report, the moment it's filed. The line says whose reports you get: *every report anyone files*, *reports from Darren and Paige*, or *reports from everyone Todd leads*. The last one is a team lead's whole team, kept current. If the office set you up but paused it, the row reads **paused** instead of not subscribed. Field reports are managed from **Jobs → Reports → Email reports**, in the **Every report** column on your row. The **Dashboard → Recent Reports** mail button manages them too. See [email reports to owners and managers](?g=email-reports-to-people).
-- **Ready to Bill** is sent when a job moves to Ready to Bill, by email and push. It is managed from Jobs → Pipeline.
-- **Paid in Full** is sent when any job is fully paid. Its list is the **Paid in Full notifications** bell on the Pipeline's Paid in Full header.
-- **Payment received** is sent whenever a payment lands on any job. Its list is the **Paid notifications** bell on the Billed Awaiting Payment header.
+- **Ready to Bill** is sent when a job moves to Ready to Bill, by email and push. Ready to Bill is managed from Jobs → Pipeline.
+- **Paid in Full** is sent when any job is fully paid. The Paid in Full list is the **Paid in Full notifications** bell on the Pipeline's Paid in Full header.
+- **Payment received** is sent whenever a payment lands on any job. The Payment received list is the **Paid notifications** bell on the Billed Awaiting Payment header.
 - **Estimate accepted** is sent on every customer acceptance if you're on the always-notify list. That list is under {{icon:gear}} on Estimates. Estimate accepted is also sent for any **specific estimates** whose Notify list names you. Those estimates show up with their names.
 
 A colored dot means you're subscribed. A hollow gray dot means you're not.

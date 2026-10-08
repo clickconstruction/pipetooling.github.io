@@ -30,8 +30,8 @@ Crew day · Money waiting · Payment forecast — then, during the day, Payment 
 
 The count line under the toolbar reads *26 emails · 26 render live*. Every row wears {{chip:green|renders live}}. The row uses the same email builder the sender runs, fed the sample company. You open the row and the email is in the frame.
 
-- Three template emails read the live rows on **Email templates & testing**. They are the invitation, the sign-in link and the workflow stage notice. So an edit there shows here the moment you refresh. The task reminder's words are fixed in the app.
-- Four digests can also show the real one. They are Crew day, Money waiting, Payment forecast and Billed awaiting payment. Under the sample, {{button:outline|Show the real one — today’s, over live rows, for your eyes only}} builds today's email. {{button:outline|Email me the real one}} sends that same email to you.
+- Three template emails read the live rows on **Email templates & testing**. Those three are the invitation, the sign-in link and the workflow stage notice. So an edit there shows here the moment you refresh. The task reminder's words are fixed in the app.
+- Four digests can also show the real one. The four are Crew day, Money waiting, Payment forecast and Billed awaiting payment. Under the sample, {{button:outline|Show the real one — today’s, over live rows, for your eyes only}} builds today's email. {{button:outline|Email me the real one}} sends that same email to you.
 
 ## Changing who gets one
 
