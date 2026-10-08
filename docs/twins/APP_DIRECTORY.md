@@ -65,7 +65,9 @@ Roles: all.
 
 ### /gc — GC projects
 GC mode's real build, step by step; open to the office and estimators since door 1 (v2.4832), reached
-from the **Trades | GC** switch on Bids. **New here?** walks the page (v2.4838). Lists every GC project as the kernels read it (the plan
+from the **Trades | GC** switch on Bids. **New here?** walks the page (v2.4838). A dev also sees the **Project Board** above the
+list (the Board's B3, guide `see-where-every-gc-project-stands`): the stages with a jump strip, each project's days left, its customer and
+architect, and its price so far with the card behind it. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through
 `gc_create_project`. Who to ask (the companies) is not here yet. **Open the scope book** (`?book=1`)

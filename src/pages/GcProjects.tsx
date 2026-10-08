@@ -23,6 +23,8 @@ import { GcQuestionsWindow } from '../components/gc/GcQuestions'
 import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
+import { GcBoard } from '../components/gc/GcBoard'
+import { boardStateFromRows } from '../lib/gc/boardRows'
 import {
   checkDriveAccess,
   createGcProject,
@@ -34,6 +36,7 @@ import {
   recordQuestion,
   sendQuestionToArchitect,
   loadGcPickerCustomers,
+  loadGcBoardRows,
   loadGcProjects,
   loadScopeBookStore,
   makeDriveFolders,
@@ -47,7 +50,7 @@ import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
-import type { ScopeBookStore } from '../lib/gc/types'
+import type { GcState, ScopeBookStore } from '../lib/gc/types'
 import { gcFocusFromSearch } from '../lib/gc/links'
 
 interface Loaded {
@@ -112,6 +115,28 @@ export default function GcProjects() {
     if (!canOpenGcProjects(role)) return
     void load()
   }, [role, load])
+
+  // The Project Board (the Board's B3): a dev sees it above the projects while it is built; door 1's
+  // list stays for everyone until the board's own door opens it to the office.
+  const [board, setBoard] = useState<GcState | null>(null)
+  const [boardProblem, setBoardProblem] = useState<string | null>(null)
+  useEffect(() => {
+    if (role !== 'dev' || !loaded || loaded.projects.length === 0) return
+    let live = true
+    loadGcBoardRows(loaded.projects, today)
+      .then((rows) => {
+        if (!live) return
+        setBoard(boardStateFromRows(rows))
+        setBoardProblem(null)
+      })
+      .catch((e) => {
+        if (live) setBoardProblem(formatErrorMessage(e, 'The board did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [role, loaded, today])
+  const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
   // The walk shows once the page has loaded, so a stop never points at a card still loading. Its
   // stops are read from the page after that render: an anchor not on it drops out unless the stop
@@ -247,6 +272,29 @@ export default function GcProjects() {
       </div>
 
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
+      {role === 'dev' && loaded && loaded.projects.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Project Board</h2>
+            <Chip tone="grey" title="Only a dev sees the board while it is built. Everyone else sees the projects below.">
+              Devs only
+            </Chip>
+          </div>
+          {board ? (
+            <GcBoard
+              state={board}
+              onOpen={openProjectCard}
+              onPlans={(id) => setPlansWindow(id)}
+              folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
+            />
+          ) : boardProblem ? (
+            <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{boardProblem}</div>
+          ) : (
+            <div style={{ fontSize: '0.875rem' }}>Loading the board…</div>
+          )}
+          <h2 style={{ margin: '0.5rem 0 0', fontSize: '1.1rem' }}>Each project</h2>
+        </div>
+      )}
       {!loaded && !loadProblem && <div style={{ fontSize: '0.875rem' }}>Loading…</div>}
       {loaded && loaded.projects.length === 0 && <div style={{ fontSize: '0.875rem' }}>No GC project yet. Press New project when the first plans come in.</div>}
 
