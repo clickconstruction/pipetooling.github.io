@@ -216,6 +216,23 @@ describe('recording on a day with nothing approved', () => {
     expect(input.onClose).not.toHaveBeenCalled()
   })
 
+  it('a database error shows as words inside the dialog; nothing is saved and Record NCNS is free again', async () => {
+    h.rpcResult = () =>
+      Promise.resolve({
+        data: null,
+        error: { message: 'permission denied for function record_ncns_and_reject_sessions_for_day', code: '42501' },
+      })
+    const input = makeInput()
+    await mount(input)
+    fireEvent.click(ncnsButton())
+    fireEvent.click(await screen.findByRole('button', { name: 'Record NCNS' }))
+    expect((await screen.findByRole('alert')).textContent).not.toBe('')
+    expect(screen.getByRole('alertdialog', { name: 'Record no-call, no-show?' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Record NCNS' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(input.onSaved).not.toHaveBeenCalled()
+    expect(input.onClose).not.toHaveBeenCalled()
+  })
+
   it('Cancel and the backdrop close it; a click inside does not', async () => {
     await mount(makeInput())
     fireEvent.click(ncnsButton())

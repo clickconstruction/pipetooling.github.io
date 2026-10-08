@@ -1,5 +1,5 @@
 /**
- * GC mode, the office's Trade portals card (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md, decision 3): where each
+ * GC mode, a company's portal link in its window, *Their portal* (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md, decision 3): where each
  * company's portal link stands, from its rows in `gc_trade_portal_links` and the outside visits `gc-trade-portal`
  * counted in `public_page_views`. The prototype's `tradePortalStatus` read made-up links; this reads the real ones.
  * Pure. A dev makes the links until the door.

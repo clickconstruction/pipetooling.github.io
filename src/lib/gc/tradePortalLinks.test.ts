@@ -1,4 +1,4 @@
-/** The office's Trade portals card (P1b-ii-b): where each company's link stands, from its rows and its outside visits. */
+/** A company's portal link in its window, *Their portal* (P1b-ii-b): where it stands, from its rows and its outside visits. */
 import { describe, expect, it } from 'vitest'
 import { tradeLinkStatus, tradeLinkVisits, type TradeLinkRow } from './tradePortalLinks'
 

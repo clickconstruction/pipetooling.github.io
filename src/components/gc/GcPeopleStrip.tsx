@@ -1,14 +1,12 @@
 /**
- * GC mode design spike: people on site per week, the strip under the office's chart (G-84; the kernel
- * is `gcPeopleOnSite.ts`, the mock-up `to-dos/gc-mode/mockups/G-84.md`). Each week, the plan's busiest
- * day as an outlined bar and the daily log's busiest day as a filled one, their numbers above them
- * where the week is wide enough, and a card on hover with who made up the plan and where each count
- * came from. A week the log fell short of the plan by SHORT_BY or more reads amber. It draws inside
- * the chart's scroller, so it moves with the weeks; its name stays put like every row's.
+ * GC mode, the real build, the schedule's PR 7a: people on site per week, the strip under the
+ * office's chart (G-84). Moved word for word from the GC mode prototype (branch spike/gc-mode,
+ * `GcPeopleStrip.tsx`); the plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
  */
 import { useState, type CSSProperties } from 'react'
-import { daysBetween, weekdayDate } from '../../lib/gcMode/gcModel'
-import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
+import { daysBetween } from '../../lib/gc/schedule/schedule'
+import { weekdayDate } from '../../lib/gc/words'
+import type { PeopleWeek } from '../../lib/gc/schedule/peopleOnSite'
 
 /** Saturated on purpose, as the chart's own: the log in blue, a short week in amber, the same in both themes. */
 const BLUE = '#3b82f6'

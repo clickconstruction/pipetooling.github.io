@@ -41,6 +41,7 @@ import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
+import type { GcFollowUpNeeds } from './gc/followUpNeeds'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -103,7 +104,6 @@ export type NeedsYouItem = {
     | 'contract-missing'
     | 'contract-stale'
     | 'work-orders-unpriced'
-    | 'gc-follow-up'
     | 'gc-change-requests'
     | 'gc-back-charges'
     | 'gc-stale-schedules'
@@ -117,6 +117,7 @@ export type NeedsYouItem = {
     | 'customer-waiting'
     | 'price-matrix-ready'
     | 'price-requests-late'
+    | 'gc-follow-up'
     | 'robot-backlog'
     | 'test-reports-ready'
     | 'legal-review'
@@ -197,8 +198,6 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'contract-missing': 40,
   'contract-stale': 50,
   'work-orders-unpriced': 40,
-  // Revenue chasing tier: a trade's quote past its day is a GC bid that cannot be priced on time (GC mode spike).
-  'gc-follow-up': 40,
   // Revenue tier: a trade's change request waits on our answer before the work or the bill moves (GC mode spike).
   'gc-change-requests': 40,
   // Revenue tier: a disputed or agreed back-charge is money off a trade's draw, decided before the draw is paid (GC mode spike).
@@ -218,6 +217,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'price-matrix-ready': 40,
   // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
   'price-requests-late': 40,
+  // Revenue chasing tier: a trade partner's quote we need for our own bid (GC mode, Follow up).
+  'gc-follow-up': 40,
   'robot-backlog': 60,
   'legal-review': 40,
   'legal-firm-activity': 20,
@@ -341,13 +342,6 @@ export type NeedsYouInputs = {
    */
   unpricedWorkOrdersEnabled?: boolean
   unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
-  /**
-   * GC mode design spike (the owner, 2026-10-04): the companies to call and the papers past their
-   * day on GC Follow up, from the prototype's session state (`gcNeedsYou`). Null = nothing to chase.
-   * Action opens GC mode on Follow up.
-   */
-  gcFollowUpEnabled?: boolean
-  gcFollowUp?: { count: number; late: boolean; title: string; detail: string } | null
   /**
    * GC mode design spike (the owner, 2026-10-05): change requests trades sent from their portal,
    * waiting on our answer (`gcChangeRequestsNeedsYou`). Our move, so not in the people count.
@@ -591,6 +585,12 @@ export type NeedsYouInputs = {
     count: number
     first: { bidId: string; bidLabel: string; project: string | null; house: string; daysLate: number }
   } | null
+  /**
+   * GC mode's Follow up (v2.4941): the trade partners' asks to call about a quote, the same count as
+   * the Follow up pill on /gc — `useGcFollowUpNeeds` over `lib/gc/followUpNeeds.ts`. The GC office team.
+   */
+  gcFollowUpEnabled?: boolean
+  gcFollowUp?: GcFollowUpNeeds | null
   /**
    * The robots' backlog (v2.3287, dev only): bids that want a shadow and
    * price matrices waiting on the pricer, from `buildRobotBacklog` — the same
@@ -885,19 +885,6 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  if (inputs.gcFollowUpEnabled && inputs.gcFollowUp && inputs.gcFollowUp.count > 0) {
-    const gc = inputs.gcFollowUp
-    items.push({
-      key: 'gc-follow-up',
-      severity: gc.late ? 'red' : 'amber',
-      kicker: 'GC follow up',
-      title: gc.title,
-      detail: gc.detail,
-      figure: String(gc.count),
-      actionLabel: 'Follow up',
-    })
-  }
-
   if (inputs.staleOpenEnabled && (inputs.staleOpen?.count ?? 0) > 0) {
     const { count: n, total, mine, minIdleDays } = inputs.staleOpen!
     const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
@@ -1008,13 +995,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
             ? `${first.payer}'s ${money(first.amount)} check never reached the bank`
             : first.source === 'unbanked'
               ? `${first.payer}'s ${money(first.amount)} check was never deposited`
-              : `${first.payer}'s ${money(first.amount)} check came back`
+              : first.source === 'stripe_dispute'
+                ? `${first.payer} disputed a ${money(first.amount)} card payment`
+                : first.source === 'stripe_debit'
+                  ? `${first.payer}'s ${money(first.amount)} bank payment did not go through`
+                  : `${first.payer}'s ${money(first.amount)} check came back`
           : views.every((v) => v.source === 'unbanked')
             ? `${n} checks were never deposited (${money(total)})`
-            : `${n} checks came back (${money(total)})`,
+            : views.some((v) => v.source === 'stripe_dispute' || v.source === 'stripe_debit')
+              ? `${n} payments came back (${money(total)})`
+              : `${n} checks came back (${money(total)})`,
       detail: `${rows}${more}. Each one sits on top of To match in Accounts Receivable with its next step.`,
       figure: String(n),
-      actionLabel: n === 1 ? 'Open the check' : 'Open Accounts Receivable',
+      actionLabel: n === 1 ? (first.source === 'stripe_dispute' || first.source === 'stripe_debit' ? 'Open the payment' : 'Open the check') : 'Open Accounts Receivable',
     })
   } else if (inputs.bankReturnedEnabled && inputs.bankReturned && inputs.bankReturned.count > 0) {
     const r = inputs.bankReturned
@@ -1626,6 +1619,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: 'The bid cannot be priced on time without them. Nudge an app-sent request, call a hand-sent one, or paste the quote link on the row when it lands.',
       figure: String(count),
       actionLabel: 'Open Price requests',
+    })
+  }
+
+  if (inputs.gcFollowUpEnabled && inputs.gcFollowUp && inputs.gcFollowUp.count > 0) {
+    const f = inputs.gcFollowUp
+    items.push({
+      key: 'gc-follow-up',
+      severity: f.late ? 'red' : 'amber',
+      kicker: 'GC projects',
+      title: f.title,
+      detail: f.detail,
+      figure: String(f.count),
+      actionLabel: 'Follow up',
     })
   }
 

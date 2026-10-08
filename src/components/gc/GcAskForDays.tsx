@@ -1,5 +1,12 @@
+/**
+ * GC mode, the real build, the schedule's PR 7a: Ask for the days under the Projected finish's
+ * whose-days line (G-141). It draws the press and its words, and sends nothing: the window that
+ * holds it says what the press does. Moved word for word from the GC mode prototype (branch
+ * spike/gc-mode, `GcAskForDays.tsx`); the plan is to-dos/gc-mode/mockups/schedule-pr7.md on that
+ * branch.
+ */
 import { Btn } from './gcUi'
-import type { TimeExtensionAsk } from '../../lib/gcMode/gcTimeExtension'
+import type { TimeExtensionAsk } from '../../lib/gc/timeExtension'
 
 /**
  * GC mode design spike: Ask for the days (the Gantt, G-141; mock-up `to-dos/gc-mode/mockups/G-141.md`),

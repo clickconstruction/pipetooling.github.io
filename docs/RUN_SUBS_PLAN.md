@@ -199,7 +199,10 @@ Phases 1 and 2 interleave freely after 0.2/0.3. Every DB PR: file on main → `s
 
 ## Explicitly out of scope (updated after Phase 4 shipped)
 
-> The never-built polish and the roster decisions are tracked in [`to-dos/subs-residuals.md`](../to-dos/subs-residuals.md) (2026-09-05 sweep).
+> **Open, to build the day subs use work orders or the portal** (moved from `to-dos/subs-residuals.md`, #10, retired 2026-10-08; on prod then: 81 sheets, all `working`, no stage ever moved, no progress report, no work order). The roster calls are in [`to-dos/owner-decisions-pending.md`](../to-dos/owner-decisions-pending.md).
+>
+> - **Persist the derived sheet stage, with portal parity.** `effectiveSubSheetStage` (`src/lib/subSheetStageDerived.ts`, v2.3064) shows a sheet as Waiting on inspection when the sub reports 100% or the signed window ends, but stores nothing: `SubSheetStageSource` admits `'auto'` and nothing writes it. Build: a trigger on the progress report and a daily sweep for an ended window, each writing `stage_source = 'auto'` with an Activity line, and the sub portal (`_shared/subPortalStatement.ts`) reading the same stage.
+> - **Run-subs polish:** assign-modal compliance chips (`StepFormModal.tsx` has none; `StepCommitmentPanel` does), the `AssignedStageCard` commitment chip, and offer/accept notification templates (no `notify-*` function covers sub offers; they ride the sub portal and `submit-sub-portal`'s `accept_offer`).
 
 Still out of scope: outbound payment rails (ACH/Stripe payouts); hard compliance blocks; schedule blocks per step; any change to Jobs → Stages; retiring the HCP-string job link on sub sheets. ~~Sub accept/decline on offers~~ and ~~dedicated work-order email templates~~ both **shipped with Phase 4** (`respond_to_work_order` RPC + the `work_order_offered/accepted/declined` template seeds in migration `20260801220000`).
 

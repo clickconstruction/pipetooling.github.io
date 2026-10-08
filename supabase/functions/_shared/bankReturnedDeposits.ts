@@ -14,6 +14,7 @@
  */
 
 import { todayYmdInAppTz } from './appTimeZone.ts'
+import { stripeDisputeReasonWords } from './stripeArCase.ts'
 
 export type MercuryBankReturn = { reason: string }
 
@@ -97,8 +98,14 @@ export type BankReturnNoticeJob = {
  *                 recorded by hand matches it, so a job reads paid with no money
  *   unbanked      (v2.4902) a payment typed in as a check has had no deposit linked to it
  *                 for AR_UNBANKED_CHECK_DAYS, so a job reads paid on money the bank never saw
+ *   stripe_dispute       (v2.4950) the customer disputed a card payment on a Stripe bill:
+ *                        Stripe holds the money while it runs, and the bill reads paid
+ *   stripe_dispute_lost  the customer won it: the money is gone until the bill is put back
+ *   stripe_debit         a bank debit on a Stripe bill failed days after they pressed Pay
  */
-export type ArReturnCaseSituation = 'on_jobs' | 'off_job' | 'never_on_job' | 'rejected' | 'unbanked'
+export type ArReturnCaseSituation = 'on_jobs' | 'off_job' | 'never_on_job' | 'rejected' | 'unbanked' | 'stripe_dispute' | 'stripe_dispute_lost' | 'stripe_debit'
+
+const STRIPE_SITUATIONS: ReadonlySet<ArReturnCaseSituation> = new Set(['stripe_dispute', 'stripe_dispute_lost', 'stripe_debit'])
 
 /**
  * v2.4902: days after a check is typed in by hand before no deposit for it opens a case
@@ -131,6 +138,8 @@ export type BankReturnNoticeInput = {
   failedYmd?: string | null
   /** v2.4325: the deposit's id — the links open its case in Accounts Receivable. */
   caseId?: string | null
+  /** v2.4950, a Stripe case: the bill it was on ("bill 1 on J878 Take 5 Seguin"), its job, the answer's due day. */
+  stripe?: { billLabel: string; jobId: string | null; jobLabel: string; dueYmd: string | null } | null
 }
 
 const money = (n: number): string => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -186,6 +195,10 @@ export function bankReturnNoticeLine(input: Pick<BankReturnNoticeInput, 'counter
     return `Mercury could not take in ${who} ${moneyShort(input.amount)} check${day ? ` on ${day}` : ''}.`
   }
   if (input.situation === 'unbanked') return `No deposit has come in for ${who} ${moneyShort(input.amount)} check.`
+  const payer = input.counterparty.trim() || 'A customer'
+  if (input.situation === 'stripe_dispute') return `${payer} disputed a ${moneyShort(input.amount)} card payment.`
+  if (input.situation === 'stripe_dispute_lost') return `${payer} won the dispute over a ${moneyShort(input.amount)} card payment.`
+  if (input.situation === 'stripe_debit') return `A ${moneyShort(input.amount)} bank payment from ${payer} did not go through.`
   return `The bank sent back ${who} ${moneyShort(input.amount)} check.`
 }
 
@@ -216,6 +229,28 @@ export function bankReturnNoticeSentences(input: BankReturnNoticeInput): string[
     } else out.push(`No deposit has been linked to it in ${AR_UNBANKED_CHECK_DAYS} days.`)
     out.push('Find the check and deposit it.')
     out.push('If it went in with other checks, link it to that deposit in Accounts Receivable.')
+    return out
+  }
+  if (STRIPE_SITUATIONS.has(situation)) {
+    const st = input.stripe
+    if (st) out.push(`It was for ${st.billLabel}.`)
+    if (situation === 'stripe_debit') {
+      if (reason) out.push(`Stripe says: ${reason.replace(/\.$/, '')}.`)
+      out.push(`The bill is still open. ${payer} may think it is paid.`)
+      out.push(`Ask ${payer} for another payment.`)
+      return out
+    }
+    if (situation === 'stripe_dispute') {
+      out.push(stripeDisputeReasonWords(reason))
+      out.push('Stripe took the money back while the dispute runs.')
+      if (st) out.push(`${jobShort(st.jobLabel)} still reads paid.`)
+      const due = shortDate(st?.dueYmd)
+      out.push(due ? `Answer it in Stripe by ${due}.` : 'Answer it in Stripe.')
+      return out
+    }
+    out.push('Stripe keeps the money.')
+    if (st) out.push(`${jobShort(st.jobLabel)} still reads paid.`)
+    out.push('Put the bill back in Accounts Receivable. Then bill it again.')
     return out
   }
   if (reason) out.push(`The reason is ${reason}.`)
@@ -252,9 +287,17 @@ export function bankReturnNoticeSubject(input: BankReturnNoticeInput): string {
   const who = input.counterparty.trim() || 'A customer'
   const situation = situationOf(input)
   if (situation === 'unbanked') return `A check was never deposited · ${who} · ${moneyShort(input.amount)}`
+  if (STRIPE_SITUATIONS.has(situation)) return `${stripeNoticeTitle(situation)} · ${who} · ${moneyShort(input.amount)}`
   return situation === 'rejected'
     ? `A check never reached the bank · ${who} · ${moneyShort(input.amount)}`
     : `A check came back · ${who} · ${moneyShort(input.amount)}`
+}
+
+/** The subject's and the push's first words for a Stripe case. */
+function stripeNoticeTitle(situation: ArReturnCaseSituation): string {
+  if (situation === 'stripe_dispute_lost') return 'A card dispute was lost'
+  if (situation === 'stripe_debit') return 'A bank payment did not go through'
+  return 'A card payment was disputed'
 }
 
 /** Where the notice's button goes: the job's payments while a job still carries it, else Accounts Receivable. */
@@ -263,6 +306,7 @@ export function bankReturnNoticeLinks(input: BankReturnNoticeInput): Array<{ lab
   const theCase = { label: 'Open it in Accounts Receivable', path: bankReturnCasePath(input.caseId) }
   if (situation === 'on_jobs') return [theCase, ...input.jobs.map((j) => ({ label: `${j.jobLabel} · ${money(j.amount)}`, path: bankReturnPaymentsPath(j.jobId) }))]
   if ((situation === 'rejected' || situation === 'unbanked' || situation === 'never_on_job') && input.recorded) return [theCase, { label: `Open ${input.recorded.jobLabel}`, path: bankReturnPaymentsPath(input.recorded.jobId) }]
+  if (STRIPE_SITUATIONS.has(situation) && input.stripe?.jobId) return [theCase, { label: `Open ${input.stripe.jobLabel}`, path: bankReturnPaymentsPath(input.stripe.jobId) }]
   return [theCase]
 }
 
@@ -293,12 +337,14 @@ export function buildBankReturnNoticePush(input: BankReturnNoticeInput, transact
   let body: string
   if (situation === 'rejected') body = input.recorded ? `${who}. ${input.recorded.jobLabel} still reads paid.` : `${who}. It never posted.`
   else if (situation === 'unbanked') body = input.recorded ? `${who}. ${input.recorded.jobLabel} still reads paid.` : `${who}. No deposit is linked to it.`
+  else if (situation === 'stripe_debit') body = input.stripe ? `${who}. ${input.stripe.billLabel.replace(/^[a-z]/, (c) => c.toUpperCase())} is still open.` : `${who}. The bill is still open.`
+  else if (STRIPE_SITUATIONS.has(situation)) body = input.stripe ? `${who}. ${input.stripe.jobLabel} still reads paid.` : `${who}. The bill still reads paid.`
   else if (situation === 'on_jobs') body = `${who}${reason ? ` · ${reason}` : ''}. Still counted as paid on ${input.jobs.length === 1 && first ? first.jobLabel : `${input.jobs.length} jobs`}.`
   else if (situation === 'off_job') body = `${who}${reason ? ` · ${reason}` : ''}. It is on no job now.`
   else body = `${who}${reason ? ` · ${reason}` : ''}. It was never on a job.`
   const links = bankReturnNoticeLinks(input)
   return {
-    title: `${situation === 'unbanked' ? 'A check was never deposited' : situation === 'rejected' ? 'A check never reached the bank' : 'A check came back'} · ${moneyShort(input.amount)}`,
+    title: `${STRIPE_SITUATIONS.has(situation) ? stripeNoticeTitle(situation) : situation === 'unbanked' ? 'A check was never deposited' : situation === 'rejected' ? 'A check never reached the bank' : 'A check came back'} · ${moneyShort(input.amount)}`,
     body,
     url: links[0]?.path ?? AR_RETURN_CASES_PATH,
     tag: `bank-return-${transactionId}`,
@@ -323,7 +369,7 @@ export type ArReturnCaseRow = {
   posted_at: string | null
   failed_at: string | null
   bank_reason: string | null
-  /** bank · hand · rejected · unbanked (v2.4902: a check typed in by hand that never reached the bank; the case's own id rides in mercury_transaction_id) */
+  /** bank · hand · rejected · unbanked (v2.4902: a check typed in by hand that never reached the bank) · stripe_dispute · stripe_debit (v2.4950); the last three carry the case's own id in mercury_transaction_id */
   source: string | null
   opened_at: string | null
   closed_at: string | null
@@ -349,6 +395,27 @@ export type ArReturnCaseRow = {
   recorded_payment: (ArReturnCaseJobRef & { payment_id: string; amount: number | string | null; paid_on: string | null; reference_number?: string | null }) | null
   /** The newest They said… on a job it touched, made after it came back. */
   promise?: { job_id: string; promised_date: string | null; said_by: string | null; created_at: string | null } | null
+  /** v2.4950: what Stripe said, on a stripe_dispute or stripe_debit case (ar_stripe_cases). */
+  stripe_case?: ArStripeCaseInfo | null
+}
+
+/** A Stripe case as list_ar_return_cases carries it (20261009080000). */
+export type ArStripeCaseInfo = ArReturnCaseJobRef & {
+  kind: 'dispute' | 'debit_failed'
+  object_id: string
+  mode: string | null
+  /** Stripe's dispute status (needs_response, under_review, won, lost, …), or 'failed' for a debit. */
+  status: string | null
+  due_by: string | null
+  lost_at: string | null
+  lost_notified_at: string | null
+  amount: number | string | null
+  invoice_id: string | null
+  /** 0-based, as the bills are stored. */
+  invoice_sequence_order: number | null
+  invoice_status: string | null
+  /** The disputed payment is still on the job. */
+  payment_live: boolean | null
 }
 
 /** The company-calendar day of an ISO time — Sep 30 9:19 PM CT is Sep 30, not Oct 1. */
@@ -364,9 +431,11 @@ export function arReturnCaseJobLabel(j: ArReturnCaseJobRef): string {
 }
 
 /** Where the check sits now: on a job, off its last job, on none, or never reached the bank. */
-export function arReturnCaseSituation(row: Pick<ArReturnCaseRow, 'source' | 'live_payments' | 'last_job'>): ArReturnCaseSituation {
+export function arReturnCaseSituation(row: Pick<ArReturnCaseRow, 'source' | 'live_payments' | 'last_job' | 'stripe_case'>): ArReturnCaseSituation {
   if (asText(row.source) === 'rejected') return 'rejected'
   if (asText(row.source) === 'unbanked') return 'unbanked'
+  if (asText(row.source) === 'stripe_dispute') return row.stripe_case?.lost_at ? 'stripe_dispute_lost' : 'stripe_dispute'
+  if (asText(row.source) === 'stripe_debit') return 'stripe_debit'
   if ((row.live_payments ?? []).length > 0) return 'on_jobs'
   if (row.last_job) return 'off_job'
   return 'never_on_job'
@@ -395,5 +464,44 @@ export function noticeInputFromCase(row: ArReturnCaseRow, appOrigin: string): Ba
     recorded: rec ? { jobId: rec.job_id, jobLabel: arReturnCaseJobLabel(rec), amount: Math.abs(Number(rec.amount) || 0), paidYmd: rec.paid_on ? String(rec.paid_on).slice(0, 10) : null } : null,
     failedYmd: appCalendarYmd(row.failed_at),
     caseId: row.mercury_transaction_id,
+    stripe: row.stripe_case ? stripeNoticeOf(row.stripe_case) : null,
   }
+}
+
+/** "bill 2 on J878 Take 5 Seguin" — a Stripe case's bill, for the notice. */
+export function stripeCaseBillLabel(sc: Pick<ArStripeCaseInfo, 'invoice_sequence_order' | 'job_id' | 'job_number' | 'job_name'>): string {
+  const job = sc.job_id ? arReturnCaseJobLabel({ job_id: sc.job_id, job_number: sc.job_number, job_name: sc.job_name }) : 'a job'
+  return typeof sc.invoice_sequence_order === 'number' ? `bill ${sc.invoice_sequence_order + 1} on ${job}` : `a bill on ${job}`
+}
+
+function stripeNoticeOf(sc: ArStripeCaseInfo): NonNullable<BankReturnNoticeInput['stripe']> {
+  return {
+    billLabel: stripeCaseBillLabel(sc),
+    jobId: sc.job_id ?? null,
+    jobLabel: sc.job_id ? arReturnCaseJobLabel({ job_id: sc.job_id, job_number: sc.job_number, job_name: sc.job_name }) : 'a job',
+    dueYmd: appCalendarYmd(sc.due_by),
+  }
+}
+
+/**
+ * Whether the office still has to hear about a case (v2.4950): once when it opens, and a Stripe
+ * dispute once more when the customer wins it.
+ */
+export function arCaseNoticeDue(row: Pick<ArReturnCaseRow, 'notified_at' | 'source' | 'stripe_case'>): boolean {
+  if (!row.notified_at) return true
+  return asText(row.source) === 'stripe_dispute' && !!row.stripe_case?.lost_at && !row.stripe_case.lost_notified_at
+}
+
+/**
+ * Where a notice's once-only claim is written: the deposit ledger for a check the bank holds, or
+ * the case's own row (an unbanked check, a Stripe case), on the column this notice fills.
+ */
+export function arCaseNoticeClaim(
+  row: Pick<ArReturnCaseRow, 'source' | 'live_payments' | 'last_job' | 'stripe_case'>,
+): { table: 'mercury_bank_return_notices' } | { table: 'ar_unbanked_check_cases' | 'ar_stripe_cases'; column: 'notified_at' | 'lost_notified_at' } {
+  const source = asText(row.source)
+  if (source === 'unbanked') return { table: 'ar_unbanked_check_cases', column: 'notified_at' }
+  // A lost dispute's notice fills lost_notified_at (and notified_at, when it opened already lost).
+  if (source === 'stripe_dispute' || source === 'stripe_debit') return { table: 'ar_stripe_cases', column: arReturnCaseSituation(row) === 'stripe_dispute_lost' ? 'lost_notified_at' : 'notified_at' }
+  return { table: 'mercury_bank_return_notices' }
 }

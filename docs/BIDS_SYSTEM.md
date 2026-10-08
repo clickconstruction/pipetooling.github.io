@@ -94,6 +94,7 @@ when_to_read:
 13. [RFI Tab](#rfi-tab)
 14. [Change Order Tab](#change-order-tab)
 15. [Lien Release Tab](#lien-release-tab)
+15½. [Bid history](#bid-history)
 16. [Database Schema](#database-schema)
 17. [Integration with Materials](#integration-with-materials)
 
@@ -1770,6 +1771,18 @@ Generate conditional waiver and lien release documents for progress payments. Ba
 - **Open in Google Docs**: Copies content, opens template copy URL, title format `ClickLienRelease_YYMMDD_ProjectName`
 
 ---
+
+## Bid history
+
+Punch list #73 ([`to-dos/bid-history`](../to-dos/bid-history/README.md)). **The ledger** `bid_changes` (v2.4598): one row per insert, real change or delete on the tables that hold what people type on a bid (`bid_changes_tables()`, eighteen since v2.4864), written by one trigger, `record_bid_change()`, so no save path can miss it. Each row holds the row's name at write time, its bid, version and count row, the changed columns' old and new values, the author, and the request's `x-bid-action` tag with whether the write was the app's own (v2.4736, `bidActionHeader.ts`). Kept three years, then purged (`purge-bid-changes`).
+
+**The reader** (v2.4948; paged since v2.4963): `list_bid_history(p_bid_id)` (SECURITY INVOKER, a total order, read 1,000 rows a page with *Show older changes*; `latest_bid_cell_history` is read whole, page by page) returns the ledger for the bid and every bid adopted into it, each row with its bid number, plus the delete archive's removed rows the ledger lacks. Under the archive's own rule those reach a dev only. The kernel `bidHistory.ts` groups rows into actions (same bid, author, tag and source, five seconds apart at most) and words them. A **History** button after the mark controls on every bid tab's title (`BidHistoryDoor`) opens a read-only window (`BidHistoryWindow`): actions newest first under each day, each opening to its rows, with tab and person chips and a search. Edit Bid changes show `BID_HISTORY_DEFAULT_BID_COLUMNS` and count the rest.
+
+**Past values** (v2.4952): a switch beside the History button (`useBidHistoryCellsSwitch`, per device) shows each typed cell's earlier values under it on Pricing (price), Counts (count), Takeoffs (quantity, unit price) and Labor (stage hours). `BidCellHistoryProvider` in `Bids.tsx` reads `latest_bid_cell_history(p_bid_id)` (SECURITY INVOKER, the ledger only) once for the bid on screen while it is on: each cell's two newest earlier values and count of changes, keyed as the tabs find their cells, and each removed row's last value by name. `BidCellPast` draws them (`bidCellHistory.ts`); a row with no past borrows its name's, so a re-imported fixture shows the old row's value. *+N more* opens the window searched on the row.
+
+**Put back** (v2.4954): each changed value of the open bid in the window has **Put back**, which calls `put_back_bid_change(p_change_id, p_column)` (SECURITY INVOKER: the write runs under the caller's own policies, so only someone who can edit the bid can). It writes the column's old value from the ledger row, tags the request `put-back` for the trigger, and returns the value before and after. Changed values only, on the bid itself (not an adopted bid's rows). The window reads again, says *Lav-1 price is $9,800 again.* under the line, and sends `BID_HISTORY_PUT_BACK_EVENT`: `Bids.tsx` reads the open bid again (`refreshAfterCountsChange`, the pricing loads, `loadBids` for an Edit Bid value) and Past values re-reads. Kernel `bidHistoryPutBack.ts`.
+
+**The owner's calls** (2026-10-08): every estimator sees every change; three years, then purge; anyone who can edit the bid may Put back (PR 4); the builder picks the default columns; the history follows an adopt. Still to come: a removed row put back (`restore_deleted_record`) and undo a whole action (PR 5).
 
 ## Database Schema
 

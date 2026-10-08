@@ -39,7 +39,7 @@ export interface GcProjectRows {
   sets: { id: string; rev: number; label: string; kind: string; issued_on: string; note: string; checked_by_user_id: string | null; drive_url: string; drive_access: string | null; drive_checked_on: string | null }[]
   setItems: { id: string; set_id: string; position: number; kind: string; number: string; title: string; change: string; was_title: string | null; discipline: string | null; page: number | null }[]
   /** The questions about the plans (step 8). Missing on a row set read before they existed. */
-  questions?: { id: string; package_id: string | null; asked_by_name: string; text: string; sheets: string[]; asked_on: string; sent_to_architect_on: string | null; answered_on: string | null; answer: string; in_set_id: string | null }[]
+  questions?: { id: string; package_id: string | null; asked_by_name: string; text: string; sheets: string[]; asked_on: string; sent_to_architect_on: string | null; answered_on: string | null; answer: string; in_set_id: string | null; company_id?: string | null; answer_sent_to?: string[] }[]
 }
 
 /** One set of plans as the kernels read it: the sheets and sections as they stood after it. */
@@ -178,6 +178,45 @@ function setView(rows: GcProjectRows, set: GcProjectRows['sets'][number]): GcPla
 }
 
 /** The rows of one GC project read back as the project the kernels read. */
+/** A `gc_plan_questions` row as the database returns it; `loadGcProjects` reads `*`. */
+export interface QuestionDbRow {
+  id: string
+  package_id: string | null
+  asked_by_name?: string | null
+  text: string
+  sheets: string[] | null
+  asked_on: string
+  sent_to_architect_on: string | null
+  answered_on: string | null
+  answer: string | null
+  in_set_id: string | null
+  company_id?: string | null
+  answer_sent_to?: string[] | null
+}
+
+/**
+ * One question as the project's rows carry it (`loadGcProjects`): every field the questions window reads, with the
+ * company that asked from its portal and the companies the answer was emailed to (P3-b), so the answered card says
+ * who has it (v2.4959).
+ */
+export function questionRowOf(q: QuestionDbRow): NonNullable<GcProjectRows['questions']>[number] {
+  return {
+    id: q.id,
+    package_id: q.package_id,
+    // The column lands with 20261007150000; a types file from before it reads it as absent.
+    asked_by_name: q.asked_by_name ?? '',
+    text: q.text,
+    sheets: q.sheets ?? [],
+    asked_on: q.asked_on,
+    sent_to_architect_on: q.sent_to_architect_on,
+    answered_on: q.answered_on,
+    answer: q.answer ?? '',
+    in_set_id: q.in_set_id,
+    company_id: q.company_id ?? null,
+    answer_sent_to: q.answer_sent_to ?? [],
+  }
+}
+
 export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
   const sets = [...rows.sets].sort((a, b) => a.rev - b.rev)
   const newest = sets[sets.length - 1]?.rev ?? 0
@@ -235,6 +274,8 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
         answeredOn: x.answered_on,
         answer: x.answer,
         inSetId: x.in_set_id,
+        companyId: x.company_id ?? null,
+        answerSentTo: x.answer_sent_to ?? [],
       })),
     // The scope book's names for the same rows.
     packages: trades.map((t) => ({

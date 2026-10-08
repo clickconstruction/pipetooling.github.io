@@ -1,0 +1,38 @@
+{
+  "about": "The schedule's PR 7a (to-dos/gc-mode/mockups/schedule-pr7.md, cut in three; #5017, v2.4966): the chart's two kernels, lifted to src/lib/gc word for word with no caller yet. chartHolds composes what holds a bar (a question, a submittal, a wait, a trade's papers); downloadTextFile saves Export's files. The components are schedule-pr7a-ui.lift.json. No shape moved, so the config has no types and is not in LIFTS. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr7a.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "034f453f417703f79bc159fcd8365da6a5ffd3c6",
+    "spike": "b62bf900542d12e026ad21b24bc7bdf707890d34",
+    "about": "#5017 merged; the spike before its follow-up (spike/schedule-7a-follow)"
+  },
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcChartHolds",
+      "to": "schedule/chartHolds.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 7a: what holds a bar on the chart, in one place: a\n * question, a submittal, a wait, a trade's papers (G-71, G-73 to G-77). Moved word for word from\n * the GC mode prototype (branch spike/gc-mode, `gcChartHolds.ts`); the plan is\n * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.\n */"
+    },
+    {
+      "from": "gcDownloadFile",
+      "to": "downloadFile.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 7a: a file saved through the browser, for Export\n * (G-136). Moved word for word from the GC mode prototype (branch spike/gc-mode,\n * `gcDownloadFile.ts`); the plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch.\n */"
+    }
+  ],
+  "tests": [
+    {
+      "from": "gcChartHolds.test.ts",
+      "to": "schedule/chartHolds.test.ts",
+      "header": "/**\n * GC mode, the real build, the schedule's PR 7a: the chart's holds' test. Moved word for word from\n * the GC mode prototype (branch spike/gc-mode, `gcChartHolds.test.ts`); the plan is\n * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.\n */"
+    }
+  ]
+}

@@ -9,6 +9,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
+// The § Rules window is a lazy chunk that carries every help guide (v2.4695). Its first import takes about a
+// second alone and outlasts a case's 5 s under a loaded full run (the flake on 2026-10-08), so the file loads it
+// here, outside every case's clock; the door's React.lazy then resolves from the module cache (v2.4955).
+import './LienRulesModal'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -98,11 +102,11 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
   })
 
   it('§ Rules names this job with its notice and lien dates from its last work day (v2.4829)', async () => {
-    // The rules window is a lazy chunk that carries every help guide (v2.4695); under a full CI run its first import
-    // outlasts a findBy wait, so it is loaded here first, as LienRulesDoor.render.test.tsx does.
-    await import('./LienRulesModal')
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ last_work_date: '2026-07-20' })} />)
-    fireEvent.click(await screen.findByTestId('lien-rules-door'))
+    // Settle on the timeline the window's load paints, as the cases above do, before pressing the door.
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('lien-rules-door'))
+    // The window arrives on the lazy chunk's Suspense retry.
     await screen.findByTestId('lien-rules-modal')
     const strip = await screen.findByTestId('lien-rules-job')
     expect(strip.textContent).toContain('Sub job')

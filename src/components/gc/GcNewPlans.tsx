@@ -24,6 +24,7 @@ import type { ScopeBookLine } from '../../lib/gc/scopeBook'
 import type { GcProjectView } from '../../lib/gc/projectRows'
 import type { GcTeamMember } from '../../lib/gc/gcIo'
 import type { IssuePlanSetDraft } from '../../lib/gc/planSetDraft'
+import { setEmailRecipients, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient } from '../../lib/gc/setEmail'
 import type { PlanSheet, SpecSection } from '../../lib/gc/types'
 import { ScopeLines, type ScopeLineDraft } from './GcNewProject'
 import { Btn, Chip, input } from './gcUi'
@@ -53,9 +54,17 @@ interface Props {
   team: GcTeamMember[]
   today: string
   onClose: () => void
-  onIssue: (draft: IssuePlanSetDraft) => void
+  /** `emailTo`: the companies to email the set to once it is on (step 7); empty sends none. */
+  onIssue: (draft: IssuePlanSetDraft, emailTo: SetEmailRecipient[]) => void
   issuing?: boolean
   problem?: string | null
+  /** Who was asked on the job and their language (step 7). Null: not read, so nobody hears. */
+  parties?: { invites: SetEmailInvite[]; companies: SetEmailCompany[] } | null
+  /** How the emails went, when some did not, with a retry that sends only to those. */
+  sendReport?: { summary: string; failed: number } | null
+  /** Whether this person may send the email (`canSendGcTradeEmail`): a dev's until the portal's door. */
+  canSend?: boolean
+  onRetrySends?: () => void
 }
 
 /** A trade the set brings, as the office is filling it in. */
@@ -113,7 +122,7 @@ const roleWords: Record<string, string> = {
   superintendent: 'Superintendent',
 }
 
-export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuing, problem }: Props) {
+export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuing, problem, parties, sendReport, onRetrySends, canSend = false }: Props) {
   const stage = project.stage === 'bidding' ? 'pursuing' : project.stage
   const [kind, setKind] = useState(defaultSetKind({ stage }))
   /** Null: the name follows the kind. A string: the office typed its own. */
@@ -140,6 +149,9 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
   /** What a line left with nothing to read reads now, by "line id|sheets" or "line id|specs": 'whole' or a number. */
   const [retie, setRetie] = useState<Record<string, string>>({})
   const [touchOverride, setTouchOverride] = useState<string[] | null>(null)
+  /** Step 7: email the companies asked on the job when the set goes on. */
+  // Starts unticked until the owner names an inbox for real sends (call 3); then it starts ticked.
+  const [emailThem, setEmailThem] = useState(false)
   const [brought, setBrought] = useState<BroughtTrade[]>([])
   /** Scope lines this set adds, by trade (package id). */
   const [newLines, setNewLines] = useState<Record<string, string[]>>({})
@@ -291,6 +303,20 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
   const newLineSpecs = (trade: string) => specIds.filter((id) => tradeForSpec(id) === trade && !goneSpecs.includes(id))
   const linesAdded = project.trades.filter((p) => touches.includes(p.id)).reduce((n, p) => n + (newLines[p.id]?.length ?? 0), 0)
 
+  /** Step 7: who hears the set, the ones whose trade it changes first, each with its lines the set touches and adds. */
+  const recipients = parties
+    ? setEmailRecipients({
+        stage: project.stage,
+        trades: project.trades.map((t) => ({ id: t.id, trade: t.trade })),
+        invites: parties.invites,
+        companies: parties.companies,
+        touches,
+        linesByPackage: Object.fromEntries(
+          project.trades.filter((p) => touches.includes(p.id)).map((p) => [p.id, { touched: linesHeard(p).map((l) => l.label), added: newLines[p.id] ?? [] }]),
+        ),
+      })
+    : []
+
   const issue = () =>
     onIssue({
       projectId: project.id,
@@ -313,7 +339,7 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
         .filter((p) => touches.includes(p.id))
         .flatMap((p) => (newLines[p.id] ?? []).map((l) => ({ packageId: p.id, label: l, sheets: newLineSheets(p.trade), specs: newLineSpecs(p.trade) }))),
       retiedLines,
-    })
+    }, emailThem && canSend ? recipients : [])
 
   const field = { ...input, width: '100%', boxSizing: 'border-box' as const }
 
@@ -691,22 +717,64 @@ export function GcNewPlansWindow({ project, book, team, onClose, onIssue, issuin
               </div>
             </div>
           </section>
+
+          <section>
+            <StepHeading n={3} title="Who hears it" hint="Each company asked on this job gets one email when the set goes on." />
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '0.4rem', fontSize: '0.875rem' }}>
+              {recipients.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)' }}>Nobody is asked on this job yet, so no email goes out.</div>
+              ) : (
+                <>
+                  {canSend ? (
+                    <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={emailThem} onChange={(e) => setEmailThem(e.target.checked)} />
+                      Email them when the set goes on
+                    </label>
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)' }}>Emails to the companies go out once the portal opens.</div>
+                  )}
+                  {recipients.map((r) => (
+                    <div key={r.companyId} style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', opacity: emailThem && canSend ? 1 : 0.55 }}>
+                      <strong>{r.companyName}</strong>
+                      <span style={{ color: 'var(--text-muted)' }}>{r.trades.join(', ')}</span>
+                      <Chip tone={r.touched ? 'amber' : 'grey'}>{r.touched ? 'it changes their trade' : 'for their records'}</Chip>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </section>
         </div>
 
         <div style={{ padding: '0.65rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-600)' }}>
-            {problem
+            {sendReport
+              ? sendReport.summary
+              : problem
               ? problem
               : `${label || 'The set'} replaces ${currentLabel}.${linesAdded > 0 ? ` It adds ${linesAdded} scope ${linesAdded === 1 ? 'line' : 'lines'}.` : ''}${
                   brought.length > 0 ? ` It adds ${brought.length === 1 ? 'a trade' : `${brought.length} trades`}. Nobody is asked yet.` : ''
-                }${goneSheets.length + goneSpecs.length > 0 ? ` It takes out ${goneSheets.length + goneSpecs.length}.` : ''} No email goes out yet.`}
+                }${goneSheets.length + goneSpecs.length > 0 ? ` It takes out ${goneSheets.length + goneSpecs.length}.` : ''}${recipients.length === 0 ? ' Nobody hears it yet.' : emailThem && canSend ? ` It emails ${recipients.length} ${recipients.length === 1 ? 'company' : 'companies'}.` : ' No email goes out.'}`}
           </span>
           <span style={{ flex: 1 }} />
           {missing && <span style={{ fontSize: '0.85rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>{missing}</span>}
-          <Btn kind="quiet" onClick={onClose}>Cancel</Btn>
-          <Btn kind="primary" disabled={missing !== null || Boolean(issuing)} title={missing ?? undefined} onClick={issue}>
-            {issuing ? 'Putting it on…' : `Issue ${label || 'the set'}`}
-          </Btn>
+          {sendReport ? (
+            <>
+              <Btn kind="quiet" onClick={onClose}>Close</Btn>
+              {sendReport.failed > 0 && onRetrySends && (
+                <Btn kind="primary" disabled={Boolean(issuing)} onClick={onRetrySends}>
+                  {issuing ? 'Sending…' : 'Try again'}
+                </Btn>
+              )}
+            </>
+          ) : (
+            <>
+              <Btn kind="quiet" onClick={onClose}>Cancel</Btn>
+              <Btn kind="primary" disabled={missing !== null || Boolean(issuing)} title={missing ?? undefined} onClick={issue}>
+                {issuing ? 'Putting it on…' : `Issue ${label || 'the set'}`}
+              </Btn>
+            </>
+          )}
         </div>
       </div>
     </div>

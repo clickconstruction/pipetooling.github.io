@@ -1,19 +1,19 @@
 ---
-name: "Where the checks went: the two pieces left after the train"
+name: "Where the checks went: Print all, the one piece left after the train"
 number: 55
 group: waiting
-status: filed 2026-09-28; piece 1 (the statement email's line) built the same day as v2.4100; piece 2 (by development) v2.4912 — piece 3 left
+status: filed 2026-09-28; piece 1 (the statement email's line) built the same day as v2.4100; piece 2 (by development) v2.4912; piece 3's PDF v2.4913 — only Print all left
 summary: >
   "Where the checks went" shipped in five PRs plus a print fix: the line under each
   bill (statement print, GC Review's bill lines, the portal), Find a check, the printable
   sheet + CSV, and Your payments on the portal, and (v2.4100) the statement email's line. Two pieces were set aside on purpose
   and said out loud in the fragments; this card is so they are not forgotten.
 next: >
-  (3) the sheet as a PDF (the browser's "about:blank" footer). Print all across every GC stays
-  unbuilt: per GC was the ask. (1) shipped as v2.4100, (2) as v2.4912.
-size: M (3 — a PDF builder)
+  Print all (every GC's sheet at once) stays unbuilt: per GC was the ask. (1) shipped as v2.4100,
+  (2) as v2.4912, (3)'s PDF as v2.4913.
+size: S (Print all — one PDF over every GC's sheet)
 blocker: None.
-opinion: build (2) when a development's statement is asked for; leave (3) unless a bookkeeper asks for a PDF — the print dialog's "Headers and footers" box removes the footer today.
+opinion: leave Print all until someone asks for every GC's sheet at once.
 mockup: not required — the wording and the layout exist on the other surfaces; these copy them
 ---
 
@@ -27,9 +27,9 @@ v2.4044 put *paid $12,000.00 by #48211 on Sep 24 · $1,333.00 still open* / *not
 
 Find a check and its sheet are offered on a development's Share menu too: `fetchDevelopmentChecksInputs` reads the development's jobs, and the kernel with `gcId: null` counts every bill on them, whoever pays it.
 
-### 3. A PDF, and Print all
+### 3. A PDF — shipped, v2.4913 — and Print all
 
-The sheet opens in a blank print window, so the browser's own footer prints "about:blank" unless *Headers and footers* is unticked. The unpaid-invoices print avoids this by building a PDF (`gcUnpaidInvoicePrintIo.ts` → `buildPhysicalInvoicePdfBlob`); the sheet could do the same. **Print all** (every GC's sheet at once) was in the mock-up and not built — it would read every GC's jobs in one go; per GC was the ask.
+The sheet is a PDF now (`gcChecksAppliedPdf.ts`), opened in a tab and filed as the sent copy, so the browser's "about:blank" footer is gone. **Print all** (every GC's sheet at once) was in the mock-up and not built — it would read every GC's jobs in one go; per GC was the ask.
 
 ## Where it plugs in
 

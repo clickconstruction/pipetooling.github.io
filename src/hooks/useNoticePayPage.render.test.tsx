@@ -37,7 +37,8 @@ describe('useNoticePayPage', () => {
   it('answers empty while disabled or without a job, and never fetches', async () => {
     fetchMock.mockClear()
     const { result } = renderHook(() => useNoticePayPage(null))
-    expect(result.current).toEqual({ rows: [], assets: {}, loading: false })
+    expect(result.current).toMatchObject({ rows: [], assets: {}, bills: [], job: null, loading: false })
+    expect(typeof result.current.refresh).toBe('function')
     const off = renderHook(() => useNoticePayPage('j-billed', false))
     expect(off.result.current.rows).toEqual([])
     expect(fetchMock).not.toHaveBeenCalled()

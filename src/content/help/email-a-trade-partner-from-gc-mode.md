@@ -7,7 +7,7 @@ order: 97
 ---
 GC mode sends our emails to a trade partner company for us. Each email carries the company's portal link and reaches the right people there.
 
-Only a dev's press sends one while GC mode is built. The Ask window, a new set of plans and the questions window send them as each step lands.
+Only a dev's press sends one while GC mode is built. The questions window sends an answer to the companies on its trade. [Ask the architect about the plans](/help/ask-the-architect-about-the-plans#email-the-answer-to-the-companies) shows how. The Ask window and a new set of plans come next.
 
 ## What each email says
 

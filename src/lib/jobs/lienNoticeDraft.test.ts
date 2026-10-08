@@ -88,4 +88,12 @@ describe('retainage inside the claim (v2.3753)', () => {
     // v2.4719: a job named for its customer never becomes the kind of work.
     expect(buildLienAffidavitFieldsForJob({ ...aff, jobName: 'Bruce Hall' }).workDescription).toBe('Plumbing labor and materials')
   })
+
+  it('swears to what the sent bills owe when the desk hands it over (v2.4969), the correction still off it', () => {
+    const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
+    expect(buildLienAffidavitFieldsForJob(aff).unpaidAmount).toBe('5000.00')
+    expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000 }).unpaidAmount).toBe('4000.00')
+    expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000, claimAmountOff: 500 }).unpaidAmount).toBe('3500.00')
+    expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000 }).contractAmount).toBe('5000.00')
+  })
 })

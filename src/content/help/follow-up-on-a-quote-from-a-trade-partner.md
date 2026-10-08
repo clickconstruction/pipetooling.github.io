@@ -1,18 +1,20 @@
 ---
 title: follow up on a quote from a trade partner
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, follow up, quote, chase, call, promised, log a contact, will not do it, cannot do it, decline, reason, trade partner
 order: 97
 ---
 After we ask a trade partner for a quote, we wait for their answer. Follow up shows every company we are waiting on, with the ones to call first at the top.
 
-Only a dev sees Follow up while it is built.
+The office and estimators see Follow up.
 
 ## Open Follow up
 
 1. Open [GC projects](/gc).
 2. Press {{button:outline|Follow up}} at the top of the board. The number on the button counts the companies to call.
+
+The Dashboard's **Needs you** shows the same count on a **GC projects** line. Press {{button:outline|Follow up}} on that line to come straight here.
 
 Each card is one company on one job. The chip on the card names the job, the trade and the day our bid is due.
 
@@ -69,7 +71,7 @@ Press {{button:outline|Who else?}} on a card. Trade partners opens at that trade
 
 ## See the asks on a project
 
-Each project card below the board lists its trades. For a dev, each trade also lists every company we asked and where it stands. Log a contact and the two no buttons work there too.
+Each project card below the board lists its trades. Each trade also lists every company we asked and where it stands. Log a contact and the two no buttons work there too.
 
 ## What comes next
 

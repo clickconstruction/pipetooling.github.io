@@ -50,8 +50,8 @@ export function useArReturnCases(open: boolean, enabled: boolean): {
       setAllCases(every)
       const rows = every.filter((r) => r.closed_at == null)
       setCases(rows)
-      // An unbanked case's id names no deposit (v2.4902), so it has no trail to read.
-      const ids = rows.filter((r) => r.source !== 'unbanked').map((r) => r.mercury_transaction_id)
+      // An unbanked case's id names no deposit (v2.4902), nor does a Stripe case's (v2.4950), so they have no trail to read.
+      const ids = rows.filter((r) => r.source !== 'unbanked' && r.source !== 'stripe_dispute' && r.source !== 'stripe_debit').map((r) => r.mercury_transaction_id)
       if (ids.length === 0) {
         setTrails(new Map())
         return

@@ -13,9 +13,16 @@ vi.mock('../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+/** The signed-in role: a dev unless a test says otherwise (door 2 opens the Board to the office). */
+const auth = vi.hoisted(() => ({ role: 'dev' }))
 vi.mock('../hooks/useAuth', async () => {
-  const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
-  return useAuthModuleMock()
+  const { makeUseAuthValue, useAuthModuleMock } = await import('../test/renderSmokeMocks')
+  const byRole = new Map<string, ReturnType<typeof makeUseAuthValue>>()
+  const value = () => {
+    if (!byRole.has(auth.role)) byRole.set(auth.role, makeUseAuthValue({ role: auth.role }))
+    return byRole.get(auth.role)!
+  }
+  return { ...useAuthModuleMock(), useAuth: value, useOptionalAuth: value }
 })
 
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
@@ -66,6 +73,8 @@ vi.mock('../lib/gc/gcIo', async () => {
     markGcLost: vi.fn(),
     bringGcBack: vi.fn(),
     shareGcBidTab: vi.fn(() => Promise.resolve()),
+    loadGcChangeOrders: vi.fn(none),
+    loadGcBillingRows: vi.fn(() => Promise.resolve({ terms: [], contract: [], billing: new Map(), names: {}, payDays: {} })),
   }
 })
 
@@ -107,7 +116,57 @@ describe('GcProjects: New here?', () => {
 
 describe('GcProjects: the Project Board', () => {
   beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
-  afterEach(() => window.localStorage.clear())
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+  })
+
+  it('door 2: an estimator sees the board, Trade partners and Follow up, and never Trade portals', async () => {
+    auth.role = 'estimator'
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('heading', { name: 'Project Board' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Trade partners' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
+    expect(screen.queryByText('Devs only')).toBeNull()
+  })
+
+  it('the Owner Billing door: a controller sees Money and a won job\'s Change orders', async () => {
+    auth.role = 'controller'
+    const base = clinicBoardRows()
+    const rows = { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Money' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Change orders' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
+  })
+
+  it('the Owner Billing door: an estimator sees neither Money nor a won job\'s Change orders', async () => {
+    auth.role = 'estimator'
+    const base = clinicBoardRows()
+    const rows = { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Money' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Change orders/ })).toBeNull()
+  })
+
+  it('a dev has the board, Trade partners, Follow up and Money, and no Trade portals: each link is in its company window', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
+  })
 
   it('a dev sees the board above the projects, with each project still listed under it', async () => {
     const rows = clinicBoardRows()
@@ -154,7 +213,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(concrete).getByRole('button', { name: 'Ask for quotes' }))
     const dialog = screen.getByRole('dialog', { name: 'Ask for Concrete quotes' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' }))
-    await waitFor(() => expect(askGcCompanies).toHaveBeenCalledWith('k2', ['alamo'], expect.any(String), expect.any(String)))
+    // The email tick starts off (the owner's call 3), so a dev's untouched press passes no sender: nothing is emailed.
+    await waitFor(() => expect(askGcCompanies).toHaveBeenCalledWith('k2', ['alamo'], expect.any(String), expect.any(String), null))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ask for Concrete quotes' })).toBeNull())
     vi.mocked(loadGcBoardRows).mockReset()
   })
@@ -173,6 +233,20 @@ describe('GcProjects: the Project Board', () => {
     expect(await within(dialog).findByRole('button', { name: 'Make the link' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
+  })
+
+  it('door 2: an estimator opens a company’s window, without Their portal until the trade wave', async () => {
+    auth.role = 'estimator'
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Trade partners' }))
+    const line = document.querySelector('[data-gc-partner="lonestar"]') as HTMLElement
+    fireEvent.click(within(line).getByRole('button', { name: 'Lonestar Earthworks' }))
+    const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
+    expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
+    expect(within(dialog).queryByText('Their portal')).toBeNull()
   })
 
   it('a dev carries a quote from Compare quotes, and the trades load again so the window reads Carrying', async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { askChoices, askStanding, type AskChoice } from '../../lib/gc/askCompanies'
+import type { AskOutcome } from '../../lib/gc/askEmail'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { currentRev, planLabel } from '../../lib/gc/lookups'
 import { inviteMessage, portalQuoteDue } from '../../lib/gc/portal'
@@ -15,9 +16,9 @@ import { Btn, Chip, type Tone } from './gcUi'
  * the design spike's `GcAskCompanies.tsx` (the owner, 2026-10-05: "build the confirm window").
  * Left: the job, the trade, and each company not yet asked, with what helps choose. Right: the
  * invitation the picked company would get, in its own language, drawn by the Portal's
- * `inviteMessage`. **Ask N companies** records each ask (`gc_invite_companies`). Until the Portal's
- * emails are in (P3) nothing is sent: the window says so, and each ask carries a note saying the
- * email waits.
+ * `inviteMessage`. **Ask N companies** records each ask (`gc_invite_companies`) and, for a dev, emails
+ * each invitation through the Portal's sender (P3, v2.4939). An invitation that does not go out is
+ * listed with the reason before the window closes; the ask is saved either way.
  */
 
 /** The bench's words for how a company answers when asked. */
@@ -28,8 +29,10 @@ const RECORD_WORDS: Record<AnswerRecord, { tone: Tone; word: string }> = {
   silent: { tone: 'red', word: 'often silent' },
 }
 
-/** What the window says under the count until the Portal's emails are in. */
-const ASK_NOT_SENT_WORDS = 'For now nothing is emailed. Each ask is saved, and its email goes out once the portal can send it.'
+/** What the window says under the count: the invitations go out now, wait for the tick, or wait for a dev. */
+const ASK_EMAIL_WORDS = 'Each company gets this invitation by email now, with its portal link.'
+const ASK_EMAIL_OFF_WORDS = 'The asks are saved without an email. Tick Email the invitations now to send them.'
+const ASK_NOT_SENT_WORDS = 'The asks are saved. A dev sends the invitation emails while GC mode is built.'
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
 
@@ -39,6 +42,7 @@ export function GcAskCompanies({
   packageId,
   tick,
   langs,
+  emails = false,
   onAsk,
   onClose,
 }: {
@@ -49,8 +53,13 @@ export function GcAskCompanies({
   tick?: string[]
   /** Each company's language, by id. Missing: English. */
   langs: Record<string, PortalLang>
-  /** Record the asks. The window closes once it resolves. */
-  onAsk: (companyIds: string[]) => Promise<void>
+  /** The reader can email the invitations (`canSendGcTradeEmail`). False: the asks are saved for a dev to send. */
+  emails?: boolean
+  /**
+   * Record the asks, and email them when `email` (a dev with the tick on). The window closes once it resolves,
+   * unless an invitation did not go out.
+   */
+  onAsk: (companyIds: string[], email: boolean) => Promise<AskOutcome[] | void>
   onClose: () => void
 }) {
   const project = state.projects.find((p) => p.id === projectId)
@@ -61,6 +70,11 @@ export function GcAskCompanies({
   const [shown, setShown] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  // The invitations that did not go out, with the reason: the asks are saved, so the window says so and waits.
+  const [refused, setRefused] = useState<AskOutcome[]>([])
+  // Email the invitations with this press: OFF by default until the owner names an inbox for the checks (call 3).
+  // The test company's contacts carry example.com addresses, so a press with this on would send. Call 3 flips it.
+  const [emailNow, setEmailNow] = useState(false)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -90,8 +104,15 @@ export function GcAskCompanies({
   const send = () => {
     setBusy(true)
     setProblem(null)
-    onAsk(asking.map((c) => c.partner.id))
-      .then(onClose)
+    onAsk(
+      asking.map((c) => c.partner.id),
+      emails && emailNow,
+    )
+      .then((outcomes) => {
+        const notSent = (outcomes ?? []).filter((o) => !o.sent && o.words)
+        if (notSent.length > 0) setRefused(notSent)
+        else onClose()
+      })
       .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'The asks were not saved.'))
       .finally(() => setBusy(false))
   }
@@ -209,15 +230,47 @@ export function GcAskCompanies({
           <div style={{ padding: '0.7rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 12rem', display: 'grid', gap: '0.2rem' }}>
               <span>{standing.words}</span>
-              {asking.length > 0 && <strong style={{ color: 'var(--text-amber-800)' }}>{ASK_NOT_SENT_WORDS}</strong>}
+              {refused.length === 0 && emails && (
+                <label style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', color: 'var(--text-base)' }}>
+                  <input type="checkbox" checked={emailNow} onChange={(e) => setEmailNow(e.target.checked)} />
+                  Email the invitations now
+                </label>
+              )}
+              {refused.length === 0 &&
+                asking.length > 0 &&
+                (!emails ? (
+                  <strong style={{ color: 'var(--text-amber-800)' }}>{ASK_NOT_SENT_WORDS}</strong>
+                ) : emailNow ? (
+                  <span>{ASK_EMAIL_WORDS}</span>
+                ) : (
+                  <strong style={{ color: 'var(--text-amber-800)' }}>{ASK_EMAIL_OFF_WORDS}</strong>
+                ))}
+              {refused.length > 0 && (
+                <span data-gc-ask-refused style={{ color: 'var(--text-red-700)', display: 'grid', gap: '0.15rem' }}>
+                  <strong>{refused.length === 1 ? 'One invitation did not go out. The ask is saved.' : `${refused.length} invitations did not go out. The asks are saved.`}</strong>
+                  {refused.map((o) => (
+                    <span key={o.inviteId}>
+                      {state.partners.find((p) => p.id === o.companyId)?.company ?? 'A company'}: {o.words}
+                    </span>
+                  ))}
+                </span>
+              )}
               {problem && <span style={{ color: 'var(--text-red-700)' }}>{problem}</span>}
             </span>
-            <Btn kind="quiet" onClick={onClose}>
-              Cancel
-            </Btn>
-            <Btn kind="primary" disabled={asking.length === 0 || busy} onClick={send}>
-              {asking.length === 1 ? `Ask ${asking[0]?.partner.company ?? '1 company'}` : `Ask ${asking.length} companies`}
-            </Btn>
+            {refused.length > 0 ? (
+              <Btn kind="primary" onClick={onClose}>
+                Done
+              </Btn>
+            ) : (
+              <>
+                <Btn kind="quiet" onClick={onClose}>
+                  Cancel
+                </Btn>
+                <Btn kind="primary" disabled={asking.length === 0 || busy} onClick={send}>
+                  {asking.length === 1 ? `Ask ${asking[0]?.partner.company ?? '1 company'}` : `Ask ${asking.length} companies`}
+                </Btn>
+              </>
+            )}
           </div>
         </div>
         <div style={{ padding: '1rem', background: 'var(--bg-muted)', overflowY: phone ? 'visible' : 'auto', minWidth: 0, display: 'grid', gap: '0.5rem', alignContent: 'start' }}>

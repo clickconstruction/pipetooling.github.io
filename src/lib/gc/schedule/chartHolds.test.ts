@@ -1,8 +1,13 @@
+/**
+ * GC mode, the real build, the schedule's PR 7a: the chart's holds' test. Moved word for word from
+ * the GC mode prototype (branch spike/gc-mode, `gcChartHolds.test.ts`); the plan is
+ * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
+ */
 import { describe, expect, it } from 'vitest'
-import { initialGcState } from './gcFixture'
-import { scheduleMeasures } from './gcBuildingSchedule'
-import { ganttBars, ganttCounts } from './gcGantt'
-import { chartHolds } from './gcChartHolds'
+import { initialGcState } from './testState'
+import { scheduleMeasures } from './schedule'
+import { ganttBars, ganttCounts } from './gantt'
+import { chartHolds } from './chartHolds'
 
 describe('the chart’s holds, in one place (moved unchanged out of the Schedule tab for G-118)', () => {
   it('are what the Schedule tab drew on Fair Oaks D before the move', () => {

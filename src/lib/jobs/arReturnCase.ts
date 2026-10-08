@@ -4,7 +4,8 @@
  * The case rows come from `list_ar_return_cases` (20261001230000): the deposit, the
  * bank's reason, the source (bank · hand · rejected · unbanked, v2.4902), the payments still carrying it,
  * the job it was on last, a hand-recorded payment it matches, the newest promise made
- * after it came back. The trail rows (`list_ar_deposit_trails`) add who applied it and
+ * after it came back. A card dispute or a failed bank debit on a Stripe bill (v2.4950) rides
+ * the same list as stripe_dispute / stripe_debit and gets its own view (`arStripeCaseView`). The trail rows (`list_ar_deposit_trails`) add who applied it and
  * when. This kernel turns one case into what the list row and the pane say:
  *
  *   chip      came back · Insufficient funds  /  never reached the bank
@@ -20,10 +21,12 @@ import type { ArReturnCaseRow } from '../../../supabase/functions/_shared/bankRe
 import { AR_UNBANKED_CHECK_DAYS, appCalendarYmd } from '../../../supabase/functions/_shared/bankReturnedDeposits'
 import type { ArDepositTrailRow } from './arDepositTrail'
 import { ymdAddDays } from '../../utils/dateUtils'
+import { stripeCaseDashboardUrl, stripeDisputeReasonWords } from '../../../supabase/functions/_shared/stripeArCase'
 
 export type { ArReturnCaseRow }
 
-export type ArCaseNextKind = 'take_off' | 'new_check' | 'deposit_again' | 'settle'
+/** v2.4950 adds the Stripe cases' three: answer the dispute, put the bill back, get another payment. */
+export type ArCaseNextKind = 'take_off' | 'new_check' | 'deposit_again' | 'settle' | 'answer_dispute' | 'put_back' | 'new_payment'
 
 export type ArCaseStoryLine = { ymd: string; day: string; text: string; tone?: 'bad' | 'good' }
 
@@ -41,8 +44,8 @@ export type ArReturnCaseView = {
   id: string
   payer: string
   amount: number
-  /** unbanked (v2.4902): a check typed in by hand that never reached the bank; its id is the case's own. */
-  source: 'bank' | 'hand' | 'rejected' | 'unbanked'
+  /** unbanked (v2.4902): a check typed in by hand that never reached the bank; stripe_dispute / stripe_debit (v2.4950); their ids are the case's own. */
+  source: 'bank' | 'hand' | 'rejected' | 'unbanked' | 'stripe_dispute' | 'stripe_debit'
   chip: { text: string; tone: 'red' | 'amber' }
   rowLine: string
   story: ArCaseStoryLine[]
@@ -60,8 +63,12 @@ export type ArReturnCaseView = {
   /** Bills the check paid, for the replacement's allocation lines: invoice id → dollars. */
   billsItPaid: Array<{ invoiceId: string | null; jobId: string; amount: number }>
   daysOpen: number
-  /** YYYY-MM-DD the bank sent it back (or Mercury refused it). */
+  /** YYYY-MM-DD the bank sent it back (or Mercury refused it, or the customer disputed it). */
   cameBackYmd: string | null
+  /** v2.4950: the dispute or the payment in Stripe's Dashboard. */
+  stripe: { url: string; label: string } | null
+  /** v2.4950: a lost dispute's one press, read back first. */
+  putBack: { words: string[]; jobId: string | null } | null
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -169,6 +176,7 @@ export function arReturnCaseView(args: {
   todayYmd: string
 }): ArReturnCaseView {
   const { row, trail, todayYmd } = args
+  if (row.source === 'stripe_dispute' || row.source === 'stripe_debit') return arStripeCaseView(row, todayYmd)
   const source: ArReturnCaseView['source'] =
     row.source === 'rejected' ? 'rejected' : row.source === 'unbanked' ? 'unbanked' : row.source === 'hand' ? 'hand' : 'bank'
   const payer = asText(row.counterparty_name) || 'The customer'
@@ -346,6 +354,93 @@ export function arReturnCaseView(args: {
     billsItPaid,
     daysOpen,
     cameBackYmd,
+    stripe: null,
+    putBack: null,
+  }
+}
+
+/**
+ * A card dispute or a failed bank debit on a Stripe bill (v2.4950, punch list #76 piece 1): the
+ * same pane, its own words. A dispute: Stripe holds the money while it runs, so the next step is to
+ * answer it in Stripe. Lost: the money is gone and the bill still reads paid, so the next step is
+ * the one press that puts the bill back (`put_back_lost_dispute_bill`). A failed debit: the bill is
+ * still open, so ask for another payment.
+ */
+function arStripeCaseView(row: ArReturnCaseRow, todayYmd: string): ArReturnCaseView {
+  const sc = row.stripe_case ?? null
+  const dispute = row.source === 'stripe_dispute'
+  const payer = asText(row.counterparty_name) || 'The customer'
+  const amount = Math.abs(Number(row.amount) || 0)
+  const money = arCaseMoney(amount)
+  const day = (ymd: string | null) => arCaseDay(ymd, todayYmd)
+  const lost = dispute && !!sc?.lost_at
+  const job = sc?.job_id ? { job_id: sc.job_id, job_number: sc.job_number, job_name: sc.job_name } : null
+  const short = job ? jobShort(job) : 'The job'
+  const bill = typeof sc?.invoice_sequence_order === 'number' ? `bill ${sc.invoice_sequence_order + 1}` : 'its bill'
+  const raisedYmd = appCalendarYmd(row.failed_at) ?? appCalendarYmd(row.opened_at)
+  const dueYmd = appCalendarYmd(sc?.due_by ?? null)
+  const lostYmd = appCalendarYmd(sc?.lost_at ?? null)
+  const reason = asText(row.bank_reason)
+  const daysOpen = daysBetween(raisedYmd, todayYmd)
+
+  const story: ArCaseStoryLine[] = []
+  if (dispute) {
+    const paidYmd = asText(row.recorded_payment?.paid_on).slice(0, 10)
+    if (paidYmd) story.push({ ymd: paidYmd, day: day(paidYmd), text: `${money} was paid by card on ${bill} of ${short}.` })
+    if (raisedYmd) story.push({ ymd: raisedYmd, day: day(raisedYmd), text: `${payer} disputed it. ${stripeDisputeReasonWords(reason)}`, tone: 'bad' })
+    if (lostYmd) story.push({ ymd: lostYmd, day: day(lostYmd), text: 'They won the dispute. Stripe keeps the money.', tone: 'bad' })
+  } else if (raisedYmd) {
+    story.push({ ymd: raisedYmd, day: day(raisedYmd), text: `A ${money} bank payment on ${bill} of ${short} did not go through.`, tone: 'bad' })
+  }
+  const promise = row.promise
+  const promiseYmd = promise?.promised_date ? String(promise.promised_date).slice(0, 10) : null
+  const promiseMadeYmd = appCalendarYmd(promise?.created_at ?? null)
+  if (promise && promiseYmd && promiseMadeYmd) {
+    story.push({ ymd: promiseMadeYmd, day: day(promiseMadeYmd), text: `${asText(promise.said_by) || 'They'} said they pay by ${day(promiseYmd)}.`, tone: 'good' })
+  }
+  story.sort((a, b) => a.ymd.localeCompare(b.ymd))
+
+  const jobId = job?.job_id ?? null
+  const chip = dispute ? { text: lost ? 'dispute lost' : 'card disputed', tone: 'red' as const } : { text: 'bank payment failed', tone: 'amber' as const }
+  const stake: ArReturnCaseView['stake'] = !dispute
+    ? { text: `${bill.replace(/^b/, 'B')} on ${short} is still open.`, detail: reason ? `Stripe says: ${reason.replace(/\.$/, '')}.` : null, jobId, tone: 'amber' }
+    : lost
+      ? { text: `${short} reads paid. The ${money} is gone.`, detail: 'Put the bill back and it is billed again.', jobId, tone: 'red' }
+      : { text: `${short} reads paid. Stripe holds the ${money} while the dispute runs.`, detail: null, jobId, tone: 'red' }
+  const rowLine = !dispute
+    ? `bank debit failed · ${bill} on ${short}`
+    : lost
+      ? `dispute lost · ${short} reads paid`
+      : `card disputed · ${bill} on ${short}${dueYmd ? ` · answer by ${shortSlash(dueYmd, todayYmd)}` : ''}`
+  const next: ArReturnCaseView['next'] = !dispute
+    ? { kind: 'new_payment', sentence: `Ask ${payer} for another payment.` }
+    : lost
+      ? { kind: 'put_back', sentence: `The money is gone. Put the bill back, then bill ${payer} again.` }
+      : { kind: 'answer_dispute', sentence: dueYmd ? `Answer the dispute in Stripe by ${day(dueYmd)}.` : 'Answer the dispute in Stripe.' }
+
+  return {
+    id: row.mercury_transaction_id,
+    payer,
+    amount,
+    source: dispute ? 'stripe_dispute' : 'stripe_debit',
+    chip,
+    rowLine,
+    story,
+    stake,
+    next,
+    promiseJob: job ? { jobId: job.job_id, label: arCaseJobLabel(job) } : null,
+    takeOff: null,
+    watch: null,
+    handNote: null,
+    recorded: null,
+    billsItPaid: [],
+    daysOpen,
+    cameBackYmd: raisedYmd,
+    stripe: sc?.object_id ? { url: stripeCaseDashboardUrl(sc.kind, sc.object_id, sc.mode), label: dispute ? 'Open the dispute in Stripe' : 'Open the payment in Stripe' } : null,
+    putBack:
+      lost && sc?.payment_live
+        ? { words: [`${money} comes off ${bill} on ${short}.`, 'The bill goes back to be billed again, with a new Stripe bill.', `${short} owes the ${money} again.`], jobId }
+        : null,
   }
 }
 
@@ -368,8 +463,8 @@ export type ArReplacementDeposit = {
  * cent, from the same payer, posted after the check came back. Oldest first.
  */
 export function arReplacementFor(view: Pick<ArReturnCaseView, 'id' | 'payer' | 'amount' | 'cameBackYmd'> & { source?: ArReturnCaseView['source'] }, deposits: ReadonlyArray<ArReplacementDeposit>): ArReplacementDeposit | null {
-  // A check that was never deposited has no new check to wait for (v2.4902).
-  if (view.source === 'unbanked') return null
+  // A check that was never deposited has no new check to wait for (v2.4902), nor does a Stripe case (v2.4950).
+  if (view.source === 'unbanked' || view.source === 'stripe_dispute' || view.source === 'stripe_debit') return null
   const key = arPayerKey(view.payer)
   if (!key) return null
   const cents = Math.round(view.amount * 100)

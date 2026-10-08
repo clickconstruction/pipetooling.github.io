@@ -26,6 +26,10 @@ export interface PlanQuestionView {
   answer: string
   /** The plan set that carried the answer, by id. Null: not in a set yet. */
   inSetId: string | null
+  /** The company that asked from its portal; null when the office typed who asked. */
+  companyId?: string | null
+  /** The companies the answer was emailed to (P3-b), by id. */
+  answerSentTo?: string[]
 }
 
 export interface QuestionsProject {

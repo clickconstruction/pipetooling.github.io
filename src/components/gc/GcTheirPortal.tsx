@@ -10,8 +10,8 @@ import { Btn, Chip, type Tone } from './gcUi'
  * GC mode, a trade partner's portal link (the Portal lane, PORTAL_REAL_BUILD.md decision 3): where it stands and
  * what a dev can do with it. Make the link, copy it, open it as the office (not counted), make a new one (the old
  * one stops working) or turn it off; the last two ask once more. `GcTheirPortal` loads one company's link and is the
- * company window's *Their portal* section (the Board's B3-c); `TheirPortalControls` is the same block for a list
- * that has loaded every company's links at once (Trade portals).
+ * company window's *Their portal* section (the Board's B3-c), the one place a link is made since v2.4942;
+ * `TheirPortalControls` is its block, given the status already loaded.
  */
 
 const TONE: Record<TradeLinkStatus['state'], Tone> = { none: 'grey', off: 'grey', waiting: 'amber', active: 'green' }

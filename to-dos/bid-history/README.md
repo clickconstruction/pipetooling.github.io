@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours built (v2.4864, migration 20261008071000) · left: PRs 2–5 (the History view, Put back) after the owner's calls
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours live 2026-10-07 (v2.4864 #4899, migration 20261008071000 pushed; its race fixed v2.4903 #4936, migration 20261008091000 pushed); PR 2 the read-only History window live 2026-10-08 (v2.4948 #4994, migration 20261009060000 pushed); PR 3 Past values under the cells built (v2.4952 #5000, migration 20261009090000); PR 4 Put back for a value built (v2.4954, migration 20261009110000) · left: a removed row put back (restore_deleted_record, waits on Grace's archive call), PR 5
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -13,15 +13,15 @@ summary: >
   from CountTooling"); and Put back, per value and per removed row, so an estimator recovers her
   own work without a dev. Three small fixes stop the losses at the source and can ship first.
 next: >
-  The owner answers the four calls (who sees whose edits; how long to keep — three years is
-  planned; may a non-dev put a row back — planned yes, for whoever can edit the bid; which bid
-  columns the pane shows by default) and one raised on 2026-10-06: when a bid is adopted into a
-  package its history stays under the old bid id — should the pane follow the adopt and show both?
-  Then PR 2 (the read-only pane), PR 3 (the pill and the under-cell lines), PR 4 (Put back), PR 5.
-  Meanwhile PR 0b (the Labor sync keeps typed hours through a rename) and PR 0c (archive coverage
-  for three tables) need no answer.
+  The owner answered all five calls on 2026-10-08. (1) Every estimator sees every change. (2) Keep
+  three years, then purge. (3) Anyone who can edit the bid may Put back. (4) The builder picks the
+  default column set. (5) The pane follows the adopt and shows both bids' history, each row labelled
+  with its bid number. PR 2 (the read-only window) and PR 3 (Past values under the cells) are
+  built on them; next PR 4 (Put back), PR 5 (undo a whole action). One question that is not among the
+  five: whether a non-dev sees the delete archive's removed rows in the window (today they reach a
+  dev only, the archive's own rule) — Grace's call.
 size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
-blocker: PRs 2–4 wait on the owner's four calls (and the adopt question). None for 0b and 0c.
+blocker: None. (The archive's removed rows for non-devs wait on Grace; the window works without them.)
 ---
 
 # Bid history: every value anyone entered on a bid, and a way to put one back
@@ -196,9 +196,9 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 | 0c | Archive coverage for `bid_count_row_custom_costs`, `bid_takeoff_stage_splits` and `bid_submittal_takeoff_choices` (the custom-costs FK itself shipped in v2.4413) — **live v2.4861** (#4890, migration `20261008070000` pushed 2026-10-07, all three grouped under the bid) | XS (migration) |
 | 1 | `bid_changes` + `record_bid_change()` on the seventeen tables, RLS, purge, `docs/migrations` — built as v2.4598 (two migrations: the ledger, then the triggers alone) | S — ship first |
 | 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **live v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left for PR 2's reader) | S |
-| 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows | M |
-| 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) | M |
-| 4 | Put back: `put_back_bid_change` for a value, `restore_deleted_record` for a row | S–M |
+| 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows — **built v2.4948** (migration `20261009060000`; a window, not a side pane, and the archive's rows reach a dev only) | M |
+| 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) — **built v2.4952** (migration `20261009090000`; a *Past values* switch beside the History button, per device; the fallback reads the ledger's own removals, not the archive) | M |
+| 4 | Put back: `put_back_bid_change` for a value, `restore_deleted_record` for a row — **value built v2.4954** (migration `20261009110000`; Put back on each changed value in the window; the row restore waits on Grace's archive call) | S–M |
 | 5 | Undo a whole action (the loop over its rows) | S |
 
 Each PR ships its release note and fragment; PR 1 its migration doc; PR 2 the guide paragraph.
@@ -265,3 +265,9 @@ Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right l
 **PR 0c built 2026-10-07 as v2.4861**: the archive trigger on the three tables, grouped under `bid_id`; the restore needed no change (tested on stubs: a removed count row, then the bid, then a full restore). Merged as #4890 and `20261008070000` pushed the same day.
 
 **PR 0b built 2026-10-07 as v2.4864**, directed by Punchlist: a pure plan (`laborSyncPlan.ts`) renames a row whose fixture changed only in case, spacing or a `[Group] ` prefix, sets aside a row no counted fixture claims in `cost_estimate_labor_rows_unmatched` (out of every total), and takes it back before the book when the fixture is counted again; a loose match never merges two fixtures. The Labor tab's *Hours not on the counts* band has Use for and Remove. Each step is tagged (`labor-rename`, `labor-park`, `labor-take-back`, `labor-use-parked`) and the table joined the ledger's list. Before the push the client deletes as before. Merged as #4899 and `20261008071000` pushed 2026-10-07. Its live walk found a race (one version switch started four syncs and each set the same rows aside, ZZ Test only, no total moved): **v2.4903** runs one sync at a time per estimate, claims a row by deleting it before moving it, and adds `UNIQUE (cost_estimate_id, fixture)` to the set-aside table after deleting the copies (migration `20261008091000`).
+
+**PR 2 built 2026-10-08 as v2.4948**, after the owner's five answers: `list_bid_history` (SECURITY INVOKER: the ledger for whoever can read the bid, the adopted bids' rows with their numbers, the archive's removed rows the ledger lacks for a dev only), the kernel `bidHistory.ts` (actions by burst, captions, line words, tabs, filters, the default Edit Bid columns), and a History door on every bid tab's title that opens a read-only window. A window rather than the drawn side pane, as the GC window became on 2026-10-02 (a pane beside the road squeezed the rows). The guide *price a bid with the Workbench* has the paragraph. Push `20261009060000` after it merges, then regenerate the types.
+
+**PR 3 built 2026-10-08 as v2.4952**: `latest_bid_cell_history` (SECURITY INVOKER, the ledger only: each cell's two newest earlier values and its count of changes, both price sources as one history, each removed row's last value by name), the kernel `bidCellHistory.ts`, and **Past values on/off** beside the History door. On, the Workbench price, the count, the takeoff quantity and unit price and each stage's labor hours show their past under the box; a row with no past borrows its name's (*an earlier Lav-1 row*), which covers a re-import. *+N more* opens the window on the row. The switch is per device, not per person: it sits on every bid tab, and a person read would add a load to each. Push `20261009090000` after it merges, then regenerate the types.
+
+**PR 4 (a value) built 2026-10-08 as v2.4954**: `put_back_bid_change(p_change_id, p_column)`, SECURITY INVOKER, so the write runs under the presser's own policies (the owner's call 3). It writes the ledger row's old value for one column, tags the request `put-back` so the trigger records it as the presser's change, puts the headers back, and words its refusals (a removed row, a removal, no rights). In the window every changed value of the open bid has **Put back**; the window reads again and the open bid's tabs reload. Not a removed row: `restore_deleted_record` waits on Grace's call on the archive. Push `20261009110000` after it merges, then regenerate the types.

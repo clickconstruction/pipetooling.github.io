@@ -13,6 +13,15 @@ export function gcFocusFromSearch(search: URLSearchParams): string | null {
   return id ? id : null
 }
 
+/** Follow up on the GC projects page: the companies to call about a quote (the Dashboard's Needs you line). */
+export const GC_FOLLOW_UP_HREF = '/gc?view=followUp'
+
+/** Pure: the view a `?view=` on the GC projects page opens on, or the board. A dev's own views open from their pills only. */
+export function gcViewFromSearch(search: URLSearchParams): 'board' | 'partners' | 'followUp' {
+  const view = search.get('view')
+  return view === 'partners' || view === 'followUp' ? view : 'board'
+}
+
 /** The words a GC project carries outside GC mode (the Projects page, the Workflow page, Edit project). */
 export const GC_PROJECT_WORDS = {
   chip: 'GC',

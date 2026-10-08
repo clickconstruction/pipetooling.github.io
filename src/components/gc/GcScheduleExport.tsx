@@ -1,16 +1,13 @@
 /**
- * GC mode design spike: Export the schedule, the Gantt's G-136 (mock-up and plan
- * `to-dos/gc-mode/mockups/G-136.md`). The window behind the chart toolbar's Export: the whole
- * schedule's count, who it is for, and a button for each file, the spreadsheet and the file
- * Microsoft Project and Primavera P6 open. `gcScheduleExport.ts` makes the rows and both files, and
- * the chart's filters and folds never reach them. The window stays open after a save, for the
- * other file.
+ * GC mode, the real build, the schedule's PR 7a: the chart's Export: the spreadsheet and the
+ * project file (G-136). Moved word for word from the GC mode prototype (branch spike/gc-mode,
+ * `GcScheduleExport.tsx`); the plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
  */
 import { useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { scheduleCsv, scheduleExport, scheduleMspdi, type GanttExportInput } from '../../lib/gcMode/gcScheduleExport'
-import type { GanttPrintFor } from '../../lib/gcMode/gcGanttPrint'
-import { downloadTextFile } from '../../lib/gcMode/gcDownloadFile'
+import { scheduleCsv, scheduleExport, scheduleMspdi, type GanttExportInput } from '../../lib/gc/schedule/export'
+import type { GanttPrintFor } from '../../lib/gc/schedule/ganttPrint'
+import { downloadTextFile } from '../../lib/gc/downloadFile'
 import { Btn } from './gcUi'
 
 export function GcScheduleExport({ input, onClose }: { input: Omit<GanttExportInput, 'for'>; onClose: () => void }) {
@@ -62,14 +59,14 @@ export function GcScheduleExport({ input, onClose }: { input: Omit<GanttExportIn
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Export the schedule"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 560, maxWidth: '100%', boxSizing: 'border-box', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.8rem', fontSize: '0.9rem' }}
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 560, maxWidth: '100%', boxSizing: 'border-box', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.8rem', fontSize: '0.9rem' }}
       >
         <div style={{ display: 'grid', gap: '0.15rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Export the schedule</h3>

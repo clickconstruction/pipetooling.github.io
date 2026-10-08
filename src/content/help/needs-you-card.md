@@ -2,7 +2,7 @@
 title: work the Needs you list on the dashboard
 category: Getting Started
 roles: all
-keywords: needs you, bid follow-ups, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
+keywords: needs you, bid follow-ups, gc projects, trade partner quotes, call again, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill, vehicles, insurance, registration, service
 order: 13
 ---
 The Needs you card sits near the top of the Dashboard. It collects the things waiting on a decision from you.
@@ -60,6 +60,12 @@ Estimators and devs see these.
 - **N bid follow-ups are due**. These are calls you promised a GC for a day, and the day is here or has passed. A missed day turns the card red. {{button:outline|Open the call queue}} opens the Call queue, with those builders on top. See [follow up with builders](/help/follow-up-with-builders).
 - ***N lost bids have no reason recorded · all trades***. {{button:outline|Start call mode}} opens call mode on the Why we lost lens. The card counts every trade and says so on its number. The lens opens on one trade at a time and names it the same way. It reads *59 need a reason · Plumbing*.
 - **N robot bids are waiting on your audit**. {{button:outline|Open Audits}} opens them. **N fixture names have no Division 22 code**. {{button:outline|Pin codes}} opens the audit. The audit folds spellings the same way the card counts them.
+
+**GC projects**
+
+The office and estimators see this one.
+
+- **N calls to make about quotes**. These are trade partners we asked to quote a trade on a GC project. A company may have missed the day it gave, or its quote is due today. A company may never have opened our ask, or gave no day. A missed day or an unopened ask turns the card red. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there counts the same calls. See [follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner).
 
 **Dev only**
 

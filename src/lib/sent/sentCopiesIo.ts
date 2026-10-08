@@ -103,6 +103,32 @@ export async function printWhenReadyAndFile(build: () => Promise<string>, filing
   return ok
 }
 
+const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/**
+ * `printAndFile` for a PDF (v2.4913): the tab opens inside the click and says what it is building,
+ * the PDF lands in it for the viewer to print, and the PDF is filed. A PDF prints with no
+ * "about:blank" in its footer, as a page from a blank window does. 'blocked' when the tab was
+ * refused, 'failed' when the PDF could not be built; nothing is filed then.
+ */
+export async function printPdfAndFile(build: () => Promise<{ blob: Blob; fileName: string }>, filing: Omit<SentFiling, 'how'>, building: string): Promise<'opened' | 'blocked' | 'failed'> {
+  const win = window.open('', '_blank')
+  if (!win) return 'blocked'
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(building)}</title></head><body style="font:14px system-ui,sans-serif;margin:2rem;color:#4b5563">${escapeHtml(building)}</body></html>`)
+  win.document.close()
+  try {
+    const { blob, fileName } = await build()
+    const url = URL.createObjectURL(blob)
+    win.location.href = url
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    void fileSentCopy({ ...filing, how: 'print' }, { blob, fileName, contentType: 'application/pdf' })
+    return 'opened'
+  } catch {
+    win.close()
+    return 'failed'
+  }
+}
+
 /** Everything sent about one job, newest first. A read that fails is no rows. */
 export async function loadSentCopiesForJob(jobId: string): Promise<SentCopy[]> {
   try {

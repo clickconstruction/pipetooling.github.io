@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { answeredNotInSet, answeredQuestions, openQuestions, questionInNote, questionState, questionsCloseOn, questionsOpen, type PlanQuestionView } from '../../lib/gc/questions'
 import type { GcProjectView } from '../../lib/gc/projectRows'
+import type { AnswerRecipient } from '../../lib/gc/tradeEmail'
 import { Btn, Chip, input } from './gcUi'
 import { Picker } from './GcNewProjectPickers'
 import { FIELD_HEIGHT_PX } from './GcNewProjectPickerRows'
@@ -9,15 +10,26 @@ import { FIELD_HEIGHT_PX } from './GcNewProjectPickerRows'
  * GC mode, the real build, step 8: questions about the plans on real data, moved from the
  * prototype (branch spike/gc-mode, `GcNewProjectQuestions.tsx`). A company asks by phone or email
  * and the office records it; the office sends it to the architect and records the answer; a new
- * set of plans carries the answers in its note. Who hears the answer (every company quoting the
- * trade while we bid) waits for the company record; until then the answer is recorded and carried.
+ * set of plans carries the answers in its note. Since the Portal lane's P3-b, a dev ticks the
+ * companies on the trade and one press records the answer and emails it to them (`gc-trade-email`).
  */
 
 export interface QuestionWrites {
   onRecord: (q: { packageId: string | null; askedByName: string; text: string; sheets: string[] }) => void
   onSendToArchitect: (questionId: string) => void
   onMarkSent: (questionId: string) => void
-  onAnswer: (questionId: string, answer: string) => void
+  /** Records the answer, then emails it to the companies ticked (none: it is only recorded). */
+  onAnswer: (questionId: string, answer: string, to: string[]) => void
+  /** Emails an answer already recorded to companies that have not had it. */
+  onSendAnswer?: (questionId: string, to: string[]) => void
+}
+
+/** Who hears an answer by email, and whether this person may send it. */
+export interface AnswerReach {
+  canSend: boolean
+  /** The companies on a question's trade (`answerRecipients`). */
+  recipients: (packageId: string | null) => AnswerRecipient[]
+  companyName: (companyId: string) => string | null
 }
 
 interface Props {
@@ -28,6 +40,8 @@ interface Props {
   writes: QuestionWrites
   busy?: string | null
   problem?: string | null
+  /** Null while the company record is not loaded for this person: the answer is recorded and carried, and no email goes. */
+  answerReach?: AnswerReach | null
   onClose: () => void
 }
 
@@ -39,7 +53,7 @@ const shortDate = (ymd: string | null) => {
 
 const daysSince = (from: string, today: string) => Math.round((Date.parse(`${today}T12:00:00`) - Date.parse(`${from}T12:00:00`)) / 86_400_000)
 
-export function GcQuestionsWindow({ project, architectName, today, writes, busy, problem, onClose }: Props) {
+export function GcQuestionsWindow({ project, architectName, today, writes, busy, problem, answerReach = null, onClose }: Props) {
   const open = openQuestions(project)
   const answered = answeredQuestions(project)
   const waiting = answeredNotInSet(project).length
@@ -99,7 +113,7 @@ export function GcQuestionsWindow({ project, architectName, today, writes, busy,
             <strong>Waiting on an answer ({open.length})</strong>
             {open.length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No question is waiting.</span>}
             {open.map((q) => (
-              <OpenQuestion key={q.id} q={q} trade={tradeOf(q)} today={today} architect={architect} writes={writes} busy={busy === q.id} />
+              <OpenQuestion key={q.id} q={q} trade={tradeOf(q)} today={today} architect={architect} writes={writes} busy={busy === q.id} reach={answerReach} ours={project.stage !== 'bidding'} />
             ))}
           </section>
 
@@ -117,8 +131,10 @@ export function GcQuestionsWindow({ project, architectName, today, writes, busy,
                   <strong>Answer:</strong> {q.answer}
                 </div>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  Answered {shortDate(q.answeredOn)}. {q.inSetId ? `It went out in ${project.planSets.find((s) => s.id === q.inSetId)?.label ?? 'a set'}.` : 'Not in a set yet.'} In the set's note it reads: {questionInNote(q, tradeOf(q))}
+                  Answered {shortDate(q.answeredOn)}. {sentWords(q, answerReach)}
+                  {q.inSetId ? `It went out in ${project.planSets.find((s) => s.id === q.inSetId)?.label ?? 'a set'}.` : 'Not in a set yet.'} In the set's note it reads: {questionInNote(q, tradeOf(q))}
                 </span>
+                <SendToTheRest q={q} reach={answerReach} writes={writes} busy={busy === q.id} />
               </QuestionCard>
             ))}
           </section>
@@ -153,8 +169,45 @@ function QuestionCard({ q, trade, today, children }: { q: PlanQuestionView; trad
   )
 }
 
-function OpenQuestion({ q, trade, today, architect, writes, busy }: { q: PlanQuestionView; trade: string | null; today: string; architect: string; writes: QuestionWrites; busy: boolean }) {
+/** "Sent to A and B." from the question's `answer_sent_to`, by name when the company record is loaded. */
+function sentWords(q: PlanQuestionView, reach: AnswerReach | null): string {
+  const sent = q.answerSentTo ?? []
+  if (sent.length === 0) return ''
+  const names = sent.map((id) => reach?.companyName(id) ?? null)
+  if (names.some((n) => n === null)) return `Sent to ${sent.length} ${sent.length === 1 ? 'company' : 'companies'}. `
+  const known = names as string[]
+  return `${`Sent to ${known.length <= 1 ? known[0] : `${known.slice(0, -1).join(', ')} and ${known[known.length - 1]}`}`.replace(/\.?$/, '.')} `
+}
+
+/** An answer some company on the trade has not had: a failed send, or one answered before the emails. */
+function SendToTheRest({ q, reach, writes, busy }: { q: PlanQuestionView; reach: AnswerReach | null; writes: QuestionWrites; busy: boolean }) {
+  if (!reach?.canSend || !writes.onSendAnswer) return null
+  const sent = q.answerSentTo ?? []
+  const rest = reach.recipients(q.packageId).filter((r) => !sent.includes(r.companyId))
+  if (rest.length === 0) return null
+  return (
+    <div>
+      <Btn disabled={busy} onClick={() => writes.onSendAnswer?.(q.id, rest.map((r) => r.companyId))}>
+        {busy ? 'Sending…' : rest.length === 1 ? `Send it to ${rest[0]!.company}` : `Send it to the ${rest.length} companies that have not had it`}
+      </Btn>
+    </div>
+  )
+}
+
+function OpenQuestion({ q, trade, today, architect, writes, busy, reach, ours }: { q: PlanQuestionView; trade: string | null; today: string; architect: string; writes: QuestionWrites; busy: boolean; reach: AnswerReach | null; ours: boolean }) {
   const [answer, setAnswer] = useState('')
+  const [skipped, setSkipped] = useState<string[]>([])
+  const recipients = reach?.canSend ? reach.recipients(q.packageId) : []
+  const going = recipients.filter((r) => !skipped.includes(r.companyId))
+  const who = !reach?.canSend
+    ? 'Emails to the companies go out once the portal opens.'
+    : recipients.length === 0
+      ? !q.packageId
+        ? 'A question about the job as a whole is not emailed.'
+        : ours
+          ? 'The job is ours, and only the company awarded the trade hears it. None is awarded yet, so no email goes.'
+          : 'No company has an open ask on the trade, so no email goes.'
+      : 'It goes to the companies ticked.'
   return (
     <QuestionCard q={q} trade={trade} today={today}>
       {!q.sentToArchitectOn && (
@@ -168,11 +221,22 @@ function OpenQuestion({ q, trade, today, architect, writes, busy }: { q: PlanQue
         </div>
       )}
       <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={2} placeholder="The architect's answer, as they gave it" aria-label={`The answer to ${q.text}`} style={{ ...input, width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical' }} />
+      <span style={{ color: 'var(--text-muted)' }}>The answer rides in the next set of plans. {who}</span>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ color: 'var(--text-muted)' }}>The answer rides in the next set of plans. Telling the companies comes with the company record.</span>
+        {recipients.map((r) => (
+          <label key={r.companyId} style={{ whiteSpace: 'nowrap', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', minHeight: 32 }}>
+            <input
+              type="checkbox"
+              checked={!skipped.includes(r.companyId)}
+              onChange={(e) => setSkipped((all) => (e.target.checked ? all.filter((x) => x !== r.companyId) : [...all, r.companyId]))}
+            />
+            {r.company}
+            {q.companyId && r.companyId === q.companyId ? ' · asked it' : ''}
+          </label>
+        ))}
         <span style={{ flex: 1 }} />
-        <Btn kind="primary" disabled={answer.trim() === '' || busy} title={answer.trim() === '' ? 'Type the answer first.' : undefined} onClick={() => writes.onAnswer(q.id, answer.trim())}>
-          Record the answer
+        <Btn kind="primary" disabled={answer.trim() === '' || busy} title={answer.trim() === '' ? 'Type the answer first.' : undefined} onClick={() => writes.onAnswer(q.id, answer.trim(), going.map((r) => r.companyId))}>
+          {busy ? 'Sending…' : going.length > 0 ? `Send the answer to ${going.length} ${going.length === 1 ? 'company' : 'companies'}` : 'Record the answer'}
         </Btn>
       </div>
     </QuestionCard>

@@ -14,6 +14,8 @@ import { catalogUnitPricesEffectivelyEqual } from '../../lib/materialPartCatalog
 import { roughCountMultiplier, takeoffFixtureCountLabel } from '../../lib/bids/bidTakeoffHelpers'
 import { takeoffRowDomId } from '../../lib/bids/bidTabRowJump'
 import { StageSplitChips } from './StageSplitChips'
+import { BidCellPast } from './BidCellPast'
+import { takeoffCellKeys } from '../../lib/bids/bidCellHistory'
 import { STAGE_KEYS, toggleStage, weightsEqual, type StageSplitLookup, type StageWeights } from '../../lib/bids/materialsByStage'
 import type { StageSplitScopeKey } from '../../lib/bids/materialsByStageIo'
 
@@ -522,6 +524,7 @@ export function SortableRoughPartLineRow({
       </td>
       <td style={{ padding: '0.75rem 0.25rem 0.75rem 0.75rem', textAlign: 'left', verticalAlign: 'top' }}>
         {!line.partId ? (
+          <>
           <MoneyDecimalAmountInput
             value={Math.max(0, Number(line.unitPrice) || 0)}
             onChange={(n) =>
@@ -533,6 +536,8 @@ export function SortableRoughPartLineRow({
             aria-label="Unit price"
             style={{ width: 96, minWidth: 88, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
           />
+          <BidCellPast keys={takeoffCellKeys(line.id, 'unit_price')} label={partName || bundleName} />
+          </>
         ) : (
           <div
             style={{
@@ -574,6 +579,7 @@ export function SortableRoughPartLineRow({
                   style={{ width: 96, minWidth: 88, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                 />
                 {roughUnitPriceStatus}
+                <BidCellPast keys={takeoffCellKeys(line.id, 'unit_price')} label={partName || bundleName} />
               </div>
               <div
                 style={{
@@ -665,6 +671,8 @@ export function SortableRoughPartLineRow({
           onWheel={roughQtyPadActive ? undefined : (ev) => ev.currentTarget.blur()}
           style={{ width: 56, maxWidth: '100%' }}
         />
+        {/* Bid history (punch list #73, PR 3): the quantity's and the price's earlier values while Past values is on. */}
+        <BidCellPast keys={takeoffCellKeys(line.id, 'quantity')} label={partName || bundleName} />
       </td>
       <td
         style={{

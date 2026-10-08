@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildGcChecksReport, type ChecksJobIn } from '../jobs/gcChecksApplied'
-import { GC_CHECKS_CSV_HEADER, buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName, gcChecksReportSubtitle, paidByWords } from './gcChecksAppliedReport'
+import { GC_CHECKS_CSV_HEADER, buildGcChecksAppliedCsv, gcChecksCsvFileName, gcChecksPdfFileName, gcChecksReportSubtitle, gcChecksSheetModel, paidByWords, type SheetCell, type SheetRun } from './gcChecksAppliedReport'
 
 const GC = 'gc-1'
 
@@ -45,44 +45,63 @@ const report = buildGcChecksReport({
   sinceYmd: '2026-06-01',
 })
 
-describe('buildGcChecksAppliedReportHtml', () => {
-  const html = buildGcChecksAppliedReportHtml('A&B <Builders>', report, { asOfYmd: '2026-09-28' })
-  it('titles the sheet for the GC, escapes, and carries the period', () => {
-    expect(html).toContain('A&amp;B &lt;Builders&gt; — where your checks were applied')
-    expect(html).toContain('Since Jun 1, 2026 · as of Sep 28, 2026 · Click Plumbing and Electrical')
+/** A cell's words, one string per line ("· amount" on a line that has one). */
+const runs = (r: SheetRun[]) => r.map((x) => x.text).join('')
+const lines = (c: SheetCell) => c.lines.map((l) => `${runs(l.runs)}${l.amount ? ` · ${l.amount}` : ''}`)
+const words = (c: SheetCell) => lines(c).join(' / ')
+
+describe('gcChecksSheetModel', () => {
+  const m = gcChecksSheetModel('A&B <Builders>', report, { asOfYmd: '2026-09-28' })
+  it('titles the sheet for the GC and carries the period', () => {
+    expect(m.title).toBe('A&B <Builders> — where your checks were applied')
+    expect(m.subtitle).toBe('Since Jun 1, 2026 · as of Sep 28, 2026 · Click Plumbing and Electrical')
     expect(gcChecksReportSubtitle({ sinceYmd: null }, '2026-09-28')).toContain('Every payment on record')
   })
-  it('sums the period, names the unapplied remainder and the retainage', () => {
-    expect(html).toContain('<b>1 payment</b> received · <b>$18,400.00</b>')
-    expect(html).toContain('<b>$500.00</b> received, not yet applied')
-    expect(html).toContain('<b>$1,333.00</b> still open · of which <b>$1,333.00</b> is retainage you hold')
+  it('sums the period, names the unapplied remainder and the retainage, its figures bold', () => {
+    expect(m.summary.map(runs)).toEqual(['1 payment received · $18,400.00', 'applied to 2 invoices on 2 jobs', '$500.00 received, not yet applied', '$1,333.00 still open · of which $1,333.00 is retainage you hold'])
+    expect(m.summary[0]!.filter((r) => r.tone === 'bold').map((r) => r.text)).toEqual(['1 payment', '$18,400.00'])
   })
   it('lists each payment with its lines grouped under the job, its stamps and where it was', () => {
-    expect(html).toContain('<b>#48211</b>')
-    expect(html).toContain('mailed Sep 19 · deposited Sep 25')
-    expect(html).toContain('<div style="font-weight:600">210 Maple Ct · 1058 Maple, &quot;Ct&quot; <span style="color:#15803d;font-weight:600">job paid in full</span></div>')
-    expect(html).toContain('<div style="font-weight:600">4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2</div>')
-    expect(html).toContain('padding-left:0.9rem"><span>Invoice 2 of 2</span>')
-    expect(html).toContain('not yet applied — tell us the invoice')
-    expect(html).toContain('<th>Was on</th>')
-    expect(html).toContain('$12,000.00 was on 210 Maple Ct · 1058 Maple, &quot;Ct&quot; until Sep 26')
-    expect(html).toContain('1 earlier payment is not on this sheet')
+    const t = m.checks.table
+    expect(t.head.map(words)).toEqual(['Payment', 'Received', 'Amount', 'Applied now to', 'Was on'])
+    expect(t.widths.reduce((a, b) => a + b, 0)).toBeCloseTo(1)
+    const [payment, received, amount, applied, wasOn] = t.rows[0]!
+    expect(lines(payment!)).toEqual(['#48211', 'mailed Sep 19 · deposited Sep 25'])
+    expect(payment!.lines[1]!.small).toBe(true)
+    expect(words(received!)).toBe('Sep 24, 2026')
+    expect(amount!.align).toBe('right')
+    expect(lines(applied!)).toEqual([
+      '210 Maple Ct · 1058 Maple, "Ct" job paid in full',
+      'Invoice 1 of 1 · $6,400.00',
+      '4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2',
+      'Invoice 2 of 2 · $12,000.00',
+      'not yet applied — tell us the invoice · $500.00',
+    ])
+    expect(applied!.lines.map((l) => [!!l.indent, !!l.gapBefore])).toEqual([[false, false], [true, false], [false, true], [true, false], [false, true]])
+    expect(applied!.lines[0]!.runs[1]).toEqual({ text: ' job paid in full', tone: 'green' })
+    expect(words(wasOn!)).toBe('$12,000.00 was on 210 Maple Ct · 1058 Maple, "Ct" until Sep 26')
+    expect(t.total.map(words)).toEqual(['Received since Jun 1:', '$18,400.00', '$17,900.00 applied · $500.00 not yet applied'])
+    expect(t.total.map((c) => c.span ?? 1)).toEqual([2, 1, 2])
+    expect(m.checks.earlier).toBe('1 earlier payment is not on this sheet; the job table counts every payment.')
   })
   it('rolls each job up as Open then Paid in full, with dated paid-by words, and reconciles the open total', () => {
-    expect(html).toContain('<h3>Open</h3>')
-    expect(html).toContain('<h3>Paid in full</h3>')
-    expect(html).toContain('#47001 May 10 · #48211 Sep 24')
-    expect(html).toContain('#48211 · Sep 24')
-    expect(html).toContain('Open on 1 job (matches your statement) · retainage held:')
-    expect(html).toContain('1 job paid in full · billed:')
-    expect(html).toContain('<span style="color:#15803d;font-weight:600">paid</span>')
+    const open = m.jobs.open!
+    expect(open.head.map(words)).toEqual(['Job', 'Billed', 'Paid by', 'Last applied', 'Retainage held', 'Still open'])
+    expect(open.rows[0]!.map(words)).toEqual(['4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2 · 2 invoices', '$23,083.00', '#47001 May 10 · #48211 Sep 24', '#48211 · Sep 24', '$1,333.00', '$1,333.00'])
+    expect(open.rows[0]![5]!.lines[0]!.runs[0]!.tone).toBe('red')
+    expect(open.total.map(words)).toEqual(['Open on 1 job (matches your statement) · retainage held:', '$1,333.00', '$1,333.00'])
+    const paid = m.jobs.paid!
+    expect(paid.rows[0]![5]!.lines[0]!.runs[0]).toEqual({ text: 'paid', tone: 'green' })
+    expect(paid.total.map(words)).toEqual(['1 job paid in full · billed:', '$6,400.00'])
+    expect(paid.total[0]!.span).toBe(5)
   })
-  it('draws no Was on or Retainage column when nothing would be in them, and keeps rows whole on paper', () => {
-    const bare = buildGcChecksAppliedReportHtml('GC', buildGcChecksReport({ gcId: GC, jobs: jobs.map((j) => ({ ...j, lien_retainage_held: null })) }), { asOfYmd: '2026-09-28' })
-    expect(bare).not.toContain('<th>Was on</th>')
-    expect(bare).not.toContain('Retainage held')
-    expect(bare).toContain('tr { page-break-inside: avoid; break-inside: avoid; }')
-    expect(bare).not.toContain('section { page-break-inside')
+  it('draws no Was on or Retainage column when nothing would be in them', () => {
+    const bare = gcChecksSheetModel('GC', buildGcChecksReport({ gcId: GC, jobs: jobs.map((j) => ({ ...j, lien_retainage_held: null })) }), { asOfYmd: '2026-09-28' })
+    expect(bare.checks.table.head.map(words)).not.toContain('Was on')
+    expect(bare.jobs.paid!.head.map(words)).not.toContain('Retainage held')
+    expect(bare.checks.table.widths.reduce((a, b) => a + b, 0)).toBeCloseTo(1)
+    expect(bare.jobs.paid!.widths.reduce((a, b) => a + b, 0)).toBeCloseTo(1)
+    expect(bare.checks.earlier).toBeNull()
   })
   it('words paid-by as dates, and folds four or more into a span', () => {
     expect(paidByWords([])).toBe('—')
@@ -103,5 +122,6 @@ describe('buildGcChecksAppliedCsv', () => {
   it('names the file after the GC and the day', () => {
     expect(gcChecksCsvFileName('A&B <Builders> LLC', '2026-09-28')).toBe('checks-applied_A-B-Builders-LLC_2026-09-28.csv')
     expect(gcChecksCsvFileName('  ', '2026-09-28')).toBe('checks-applied_gc_2026-09-28.csv')
+    expect(gcChecksPdfFileName('A&B <Builders> LLC', '2026-09-28')).toBe('checks-applied_A-B-Builders-LLC_2026-09-28.pdf')
   })
 })
