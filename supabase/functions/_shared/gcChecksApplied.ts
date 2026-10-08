@@ -176,6 +176,8 @@ const ymd = (v: string | null | undefined): string | null => {
   return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : null
 }
 
+/** Labels in reading order: "Invoice 2 of 12" before "Invoice 10 of 12", "9 Cedar Ln" before "10 Cedar Ln" (v2.4947). */
+const byLabel = (a: string, b: string): number => a.localeCompare(b, undefined, { numeric: true })
 const numberKey = (reference: string | null | undefined): string => checkNumberText(reference).toLowerCase().replace(/[^a-z0-9]/g, '')
 /** The fold key keeps a deposit id — one deposit's allocations share it — where the display number drops it. */
 const foldNumberKey = (reference: string | null | undefined): string =>
@@ -370,7 +372,7 @@ export function buildGcChecksReport(input: {
   const all = [...drafts.values()]
   for (const d of all) {
     d.wasOn.sort((a, b) => b.onYmd.localeCompare(a.onYmd))
-    d.lines.sort((a, b) => a.jobLabel.localeCompare(b.jobLabel) || a.invoiceLabel.localeCompare(b.invoiceLabel))
+    d.lines.sort((a, b) => byLabel(a.jobLabel, b.jobLabel) || byLabel(a.invoiceLabel, b.invoiceLabel))
   }
   // Newest first; a check with no received date is an anomaly, so it sits last.
   all.sort((a, b) => (b.receivedYmd ?? '').localeCompare(a.receivedYmd ?? '') || b.createdAt.localeCompare(a.createdAt) || a.key.localeCompare(b.key))
@@ -403,7 +405,7 @@ export function buildGcChecksReport(input: {
       paid: billed > 0 && stillOpen <= 0.005,
     })
   }
-  jobs.sort((a, b) => b.stillOpen - a.stillOpen || a.jobLabel.localeCompare(b.jobLabel))
+  jobs.sort((a, b) => b.stillOpen - a.stillOpen || byLabel(a.jobLabel, b.jobLabel))
 
   return {
     gcId: input.gcId,
