@@ -9,13 +9,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 type Handler = (req: Request) => Promise<Response>
 const box: { handler: Handler | null } = { handler: null }
-const db: { cached: { lat: number; lng: number } | null; upserts: string[] } = { cached: null, upserts: [] }
+const db: { cached: { lat: number; lng: number } | null; upserts: string[]; role: string } = { cached: null, upserts: [], role: 'dev' }
 
 type Chain = { [method: string]: (...args: unknown[]) => unknown }
 function table(name: string): Chain {
   const chain: Chain = {}
   for (const m of ['select', 'eq']) chain[m] = () => chain
-  chain.single = () => Promise.resolve({ data: name === 'users' ? { role: 'dev' } : null, error: null })
+  chain.single = () => Promise.resolve({ data: name === 'users' ? { role: db.role } : null, error: null })
   chain.maybeSingle = () => Promise.resolve({ data: name === 'address_geocodes' ? db.cached : null, error: null })
   chain.upsert = (row: unknown) => {
     db.upserts.push((row as { address_normalized: string }).address_normalized)
@@ -60,6 +60,7 @@ afterAll(() => {
 beforeEach(() => {
   db.cached = null
   db.upserts = []
+  db.role = 'dev'
   net.nominatim = []
   net.county = 'Travis County'
 })
@@ -92,6 +93,25 @@ describe('geocode-one answers with a 200 the browser can read (v2.4878)', () => 
     expect(res.status).toBe(200)
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(await res.json()).toMatchObject({ ok: false, error: 'not_found' })
+  })
+})
+
+describe('geocode-one admits the roles that may open /map (v2.4974)', () => {
+  it('a controller is answered like an assistant, not refused', async () => {
+    db.role = 'controller'
+    db.cached = { lat: 30.2642, lng: -97.7437 }
+    const res = await post('100 Congress Ave, Austin, TX 78701')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: true })
+  })
+
+  it('a superintendent, who cannot open /map, is refused with a 403 the browser can read', async () => {
+    db.role = 'superintendent'
+    db.cached = { lat: 30.2642, lng: -97.7437 }
+    const res = await post('100 Congress Ave, Austin, TX 78701')
+    expect(res.status).toBe(403)
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
+    expect(db.upserts).toEqual([])
   })
 })
 
