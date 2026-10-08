@@ -18,6 +18,17 @@ import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
 import type { BillingRows, ContractLineRow, OwnerTermsRow } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
+import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
+import { sendGcTradeEmail } from './tradeEmailIo'
+import {
+  setEmailKey,
+  setEmailWords,
+  setSendRows,
+  type SetEmailCompany,
+  type SetEmailInvite,
+  type SetEmailRecipient,
+  type SetEmailResult,
+} from './setEmail'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
 export interface GcPickerCustomer {
@@ -180,6 +191,56 @@ export async function loadGcTeam(): Promise<GcTeamMember[]> {
 export async function issuePlanSet(draft: IssuePlanSetDraft): Promise<string> {
   const id = taken(await supabase.rpc('gc_issue_plan_set', { set_in: issueDraftForRpc(draft) as Json }), 'put the set on the project')
   return id
+}
+
+// --- The set email (step 7) ---
+
+/**
+ * Who was asked on the project's trades, and each company's name and language: the Board's
+ * `gc_invites` and `gc_companies` (B1). Their policies are dev only until door 2, so for anyone
+ * else this reads nobody and no email goes out.
+ */
+export async function loadSetEmailParties(packageIds: string[]): Promise<{ invites: SetEmailInvite[]; companies: SetEmailCompany[] }> {
+  if (packageIds.length === 0) return { invites: [], companies: [] }
+  const invites = taken(await supabase.from('gc_invites').select('id, package_id, company_id, status').in('package_id', packageIds), 'load who was asked') ?? []
+  const ids = [...new Set(invites.map((i) => i.company_id))]
+  const companies = ids.length > 0 ? (taken(await supabase.from('gc_companies').select('id, name, lang').in('id', ids), 'load the companies') ?? []) : []
+  return {
+    invites: invites.map((i) => ({ id: i.id, packageId: i.package_id, companyId: i.company_id, status: i.status as SetEmailInvite['status'] })),
+    companies: companies.map((c) => ({ id: c.id, name: c.name, lang: c.lang === 'es' ? 'es' : 'en' })),
+  }
+}
+
+/**
+ * Email a set to each company, all at once, through the Portal lane's `gc-trade-email` (kind
+ * `plans`, one company a call, the same key for every company so a retry sends nothing twice),
+ * then record each one that went in `gc_plan_set_sends`. A company with no email on file is
+ * skipped, and a failed send is reported, never thrown: the set is already on the project.
+ */
+export async function sendSetEmails(input: {
+  setId: string
+  projectId: string
+  set: { label: string; project: string; note: string; sheets: string[]; quoteDueOn?: string | null }
+  recipients: SetEmailRecipient[]
+}): Promise<SetEmailResult[]> {
+  const setRow = taken(await supabase.from('gc_plan_sets').select('rev').eq('id', input.setId).single(), 'read the set') as { rev: number }
+  const key = setEmailKey(input.projectId, setRow.rev)
+  const results = await Promise.all(
+    input.recipients.map(async (r): Promise<SetEmailResult> => {
+      const lang = tradeMailLang(r.lang)
+      const words = setEmailWords(lang, input.set, r)
+      const answer = await sendGcTradeEmail({ companyId: r.companyId, kind: 'plans', key, projectId: input.projectId, lang, subject: words.subject, lines: words.lines })
+      if (!answer.ok) {
+        // Nobody at the company has an email for it: skipped, as the sender's own refusal says (call them).
+        if (answer.key === 'noEmail') return { companyId: r.companyId, outcome: 'no email' }
+        return { companyId: r.companyId, outcome: 'failed', error: gcTradeEmailRefusal(answer.key) }
+      }
+      return { companyId: r.companyId, outcome: 'sent', messageId: answer.messageId, emailSendLogId: answer.emailSendLogId, to: answer.to, already: answer.already }
+    }),
+  )
+  const rows = setSendRows(input.setId, input.recipients, results)
+  if (rows.length > 0) taken(await supabase.from('gc_plan_set_sends').upsert(rows, { onConflict: 'set_id,company_id' }).select('id'), 'record who got the set')
+  return results
 }
 
 // --- Questions about the plans (step 8) ---
