@@ -132,6 +132,8 @@ function place(cfg, prior) {
         if (ud && copies.get(ud.name) === ud.s.getText(ud.sf)) {
           placed.set(u, e.to)
           keptCopies.set(u, e.to)
+          // What a kept copy uses is on main beside it too: walk it, or the follow-up leaves it behind.
+          stack.push(u)
           continue
         }
         want.add(u)
