@@ -28865,6 +28865,7 @@ export type Database = {
       gc_record_promise: { Args: { p: Json }; Returns: string }
       gc_record_question: { Args: { q: Json }; Returns: string }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
+      gc_save_daily_log: { Args: { log: Json }; Returns: string }
       gc_schedule_add_activity: {
         Args: {
           p_bar: Json
