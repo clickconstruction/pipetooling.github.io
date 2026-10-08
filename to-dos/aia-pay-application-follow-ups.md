@@ -2,7 +2,7 @@
 name: "AIA G702-G703: what the history train left"
 number: 92
 group: residual
-status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · Restore shipped 2026-10-07 (v2.4883) · left: Put the amounts back, a paid line, Taunya's look on a phone
+status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · Restore (v2.4883) and Put the amounts back (v2.4885) shipped 2026-10-07 · left: a paid line (the owner's call), Taunya's look on a phone
 summary: >
   The pay application window now opens on the job's history: where the job stands, one line per
   application with who saved it and each workbook that went out, a warning naming what changed
@@ -10,9 +10,9 @@ summary: >
   or raised and left: putting a deleted application back, showing what the GC actually paid on
   each application, a one-press "put the amounts back" on the changed-after warning, and whether
   a phone should land on the history or the form.
-next: build 3, which needs no new data. Taunya's look on her phone decides item 4. Item 2 needs the owner's yes on how an application is tied to a bill.
-size: S (3) · M (2) · a look (4)
-blocker: None for 3. Item 2 waits on the owner's call on the bill tie; item 4 on Taunya.
+next: the owner's answer on the bill tie (a row in owner-decisions-pending.md), then build 2. Taunya's look on her phone decides item 4.
+size: M (2) · a look (4)
+blocker: Item 2 waits on the owner's call on the bill tie; item 4 on Taunya.
 ver: v2.4710 · v2.4714 · v2.4715
 opinion: later — the history answers the owner's question today; build 3 the first time someone hits the warning, 2 when the office asks what was paid on an application.
 mockup: the train's mock-up and its critique — https://claude.ai/artifact/7x1hxdFQbgdoh9RRhhLHeB (section C)
@@ -49,10 +49,8 @@ as three PRs. This file holds what C drew or the critique raised but the train d
    The call: does the office pick the bill an application became (a nullable
    `job_pay_applications.invoice_id`), or does the app match by amount and date? Then the line reads
    the bill's payments the way the job window's money card does.
-3. **Put the amounts back** (S). The changed-after warning names each amount that moved since the
-   newest workbook went out, but offers no press to undo it. The carry-mismatch warning already has
-   *Use application N's amounts* (`withCarriedAmounts`); the same shape here would rebuild the form
-   from `parsePayApplicationSnapshot(copy.sourceSnapshot)` and leave it unsaved for a Save.
+3. **Put the amounts back** — shipped v2.4885 (the open form names what moved since the newest
+   workbook went out, and *Put the amounts back* rebuilds it from that workbook's snapshot, unsaved).
 4. **History or form first on a phone** (a look). C opens the history first everywhere a job has
    saved applications; the monthly typist loses one tap. Ask Taunya on her phone whether the history
    is what she wants to see first there, or the new application.

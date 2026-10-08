@@ -139,7 +139,7 @@ The history is the first thing you see on a job with saved applications. It answ
 - **What each application asked for.** One line per application. Its number, its name, its period and the payment due.
 - **Who saved it and when.** Under each line. A second save shows as *saved again*, with the name and the day.
 - **What went out.** Each workbook you generated, with the time and who pressed Generate. Press the file name to download the same file again.
-- **What changed after it went out.** A warning names each amount that moved since the workbook was generated. Generate again to send the change, or put the amounts back.
+- **What changed after it went out.** A warning names each amount that moved since the workbook was generated. Generate again to send the change. Or open the application and press {{button:outline|Put the amounts back}}, then {{button:outline|Save}}.
 
 :::example job 892, two applications
 The line reads *2 saved · $24,458.76 certified · 72% complete*. Application 1 says *Saved Aug 1 by Taunya* and *Went out Aug 1, 9:40 AM by Taunya as J892-App1.xlsx*. Application 2 says *Saved Sep 2 by Taunya · saved again Sep 18 by Robert*.

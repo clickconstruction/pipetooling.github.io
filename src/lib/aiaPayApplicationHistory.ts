@@ -1,5 +1,5 @@
-import type { SavedPayApplication } from './aiaPayApplications'
-import type { PayApplicationLine } from './aiaPayApplicationLines'
+import type { PayApplicationForm, SavedPayApplication } from './aiaPayApplications'
+import { type PayApplicationLine, cents, emptyLine } from './aiaPayApplicationLines'
 import { formatAiaMoney } from './aiaG702G703Preview'
 import type { SentCopy } from './sent/sentCopies'
 import { formatDenverCalendarDayShort, formatDenverDateTimeShort } from '../utils/dateUtils'
@@ -285,4 +285,27 @@ export function changedAfterWords(changed: ChangedAfterWentOut, when: (iso: stri
   const at = when(changed.copy.sentAt)
   const moved = changed.differences.map((d) => `${d.label} ${formatAiaMoney(d.was)} → ${formatAiaMoney(d.now)}`).join(' · ')
   return `Changed after it went out${at ? ` ${at}` : ''}: ${moved}`
+}
+
+/**
+ * The form with the amounts the workbook went out with (#92): the GC has that workbook, so a
+ * change made since is undone in one press and left unsaved for a Save. Each line takes the
+ * four typed amounts it went out with, matched by id, then by label; a line added since comes
+ * off and a line taken off since comes back; the lines read in the workbook's order. The G702
+ * takes back the retainage percent and the previous certificates (earned less retainage minus
+ * the payment due). The contract sum's own fields are not in the snapshot and stay as they are.
+ */
+export function withWentOutAmounts<T extends Pick<PayApplicationForm, 'values' | 'lines'>>(form: T, snap: PayApplicationSnapshot): T {
+  const taken = new Set<PayApplicationLine>()
+  const lines = snap.lines.map((then) => {
+    const now = form.lines.find((l) => !taken.has(l) && then.id !== '' && l.id === then.id) ?? form.lines.find((l) => !taken.has(l) && l.label.trim() === then.label.trim())
+    if (now) taken.add(now)
+    const base = now ?? { ...emptyLine(then.id || undefined), label: then.label }
+    return { ...base, scheduledValue: then.scheduledValue, fromPrevious: then.fromPrevious, thisPeriod: then.thisPeriod, stored: then.stored }
+  })
+  const values = { ...form.values, g702_c28_retainage_percent: snap.retainagePct }
+  const previous = cents(snap.totalEarnedLessRetainage - snap.currentPaymentDue)
+  if (previous !== 0) values.g702_h40_less_previous_certificates = previous
+  else delete values.g702_h40_less_previous_certificates
+  return { ...form, values, lines: lines.length > 0 ? lines : form.lines }
 }
