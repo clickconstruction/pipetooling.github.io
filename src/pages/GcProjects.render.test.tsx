@@ -73,6 +73,8 @@ vi.mock('../lib/gc/gcIo', async () => {
     markGcLost: vi.fn(),
     bringGcBack: vi.fn(),
     shareGcBidTab: vi.fn(() => Promise.resolve()),
+    loadGcChangeOrders: vi.fn(none),
+    loadGcBillingRows: vi.fn(() => Promise.resolve({ terms: [], contract: [], billing: new Map(), names: {}, payDays: {} })),
   }
 })
 
@@ -130,6 +132,31 @@ describe('GcProjects: the Project Board', () => {
     expect(screen.getByRole('button', { name: 'Trade partners' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
     expect(screen.queryByText('Devs only')).toBeNull()
+  })
+
+  it('the Owner Billing door: a controller sees Money and a won job\'s Change orders', async () => {
+    auth.role = 'controller'
+    const base = clinicBoardRows()
+    const rows = { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Money' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Change orders' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
+  })
+
+  it('the Owner Billing door: an estimator sees neither Money nor a won job\'s Change orders', async () => {
+    auth.role = 'estimator'
+    const base = clinicBoardRows()
+    const rows = { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Money' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Change orders/ })).toBeNull()
   })
 
   it('a dev has the board, Trade partners, Follow up and Money, and no Trade portals: each link is in its company window', async () => {
