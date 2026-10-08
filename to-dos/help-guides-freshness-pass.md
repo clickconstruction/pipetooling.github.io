@@ -2,7 +2,7 @@
 name: "Help guides: the freshness pass, surface by surface"
 number: 91
 group: ready
-status: open · the list was made by the plain-words sweep (#75, closed 2026-10-06) · the lien guides are done (v2.4614 to v2.4623) · the start-here guides are done (v2.4860) · Track a GC is done (v2.4882) · the rest not started
+status: open · the list was made by the plain-words sweep (#75, closed 2026-10-06) · the lien guides are done (v2.4614 to v2.4623) · the start-here guides are done (v2.4860) · the rest not started
 summary: >
   The plain-words sweep rewrote every guide sentence by sentence and kept every fact. Reading
   them, it found about twenty guides that describe screens that have since moved: a tab renamed,
@@ -11,8 +11,8 @@ summary: >
   sweep (guessed plain words, phrases kept word for word, two counts that disagree with their
   lists) so one pass per surface can take them all.
 next: >
-  One PR per surface below, read against main's code: Bills, then Emails and settings,
-  Submittals, the others. The start-here guides (v2.4860) and Track a GC (v2.4882) are done. Each PR fixes the
+  One PR per surface below, read against main's code: Track a GC, then Bills, Emails and
+  settings, Submittals, the others. The start-here guides went first (v2.4860). Each PR fixes the
   stale facts, settles that surface's guessed words and kept phrases, and strikes its line here.
   Delete this card when the list is empty.
 size: M (about twenty guides over seven surfaces; S per surface)
@@ -40,6 +40,8 @@ rows below).
 - **Lien desk**: *understand how liens work and which lien tool to use* says the retainage notice
   is "not modeled in the app yet"; names "Lien instruments, the orange lien icon" (now the Lien
   window and the gavel); "Bill Customer → Lien releases"; the desk's three views (v2.4588).
+- **Track a GC**: the Share menu lacks *Find a check…* (v2.4046); the billing section predates
+  *Bills go to* (v2.3345); rows now group by account man; it overlaps *run your GC statement round*.
 - **Submittals**: *turn a won bid into a job*'s submittals section predates this week's parts
   and GC-sees changes.
 - **Bills**: *turn a bill into a Stripe bill* and *sub labor outstanding* describe the old Bill
@@ -91,6 +93,7 @@ None of these fail a test; each wants someone who knows the screens or the trade
 | reports | a turnaway, "a visit where the work could not be done" |
 | review a collections account before it goes to your attorney | writing it down, the contingency %, exhibits |
 | run the robots from Claude Desktop | a shadow, a shell, a price matrix, a harness |
+| run your GC statement round | retainage, certification |
 | see a customer's full history and lifetime value | lien-ready, "the record a lien filing needs is complete" |
 | see how close the robots are | a shadow run, "the robot pricing a live bid before our number exists" |
 
@@ -103,7 +106,7 @@ caught. The owner-facing residue:
 - **Phrases kept word for word** because no rewriter could tell what they mean: "the same quiet
   electronic-signature line" (share a sub their portal); "the pile counsel named", "by the run or
   by hand" (the attorney guide); "whose exposure an unpaid balance is" (the supply-house quote
-  link); "raises lowering C" (overhead numbers); "the fold candidates" (usage
+  link); "raises lowering C" (overhead numbers); "statemented" (track a GC); "the fold candidates" (usage
   dashboard); "Since v2.2967" in user prose (write a change order).
 - **Left without a plain word**: robot delta, gross (Balances computes net minus paid), exhibits,
   Sworn account, § 53.056 notice, day ledger, true margin, bond, warranty-shaped, alternate.
@@ -114,4 +117,6 @@ caught. The owner-facing residue:
   Correction to an earlier row: "the portals" in *choose who gets the bill* is better glossed
   "the GC's own web page of open bills and payments" (the card's own words), not "pages a customer
   or GC signs in to".
+- **Two counts that disagree with their lists**, kept as written: *track a general contractor on a
+  job* says "Reply to is the third line" of a four-line list; the earlier two are above.
 

@@ -103,7 +103,7 @@ Open Draft Message on a GC whose total is $0.00 and the dialog says **Nothing ow
 Want the statement to open with a line of your own? A dev sets it in {{icon:gear}} ***Settings → Email templates & testing → GC statement (Draft Message + scheduled)***. The template holds the subject and an intro paragraph. Saved once, both Draft Message and the scheduled sends carry it. The subject prefills in the dialog. You can still edit it for a send now. A scheduled send uses the standard subject. {{button:outline|Preview}} shows the intro in place.
 
 Don't want to remember to send it? You flip **When** to **Schedule…** and pick a date and time, in Central time. You can also tick **Repeat weekly**. The app then sends the statement by itself. The statement is rebuilt fresh at send time, so it always shows that morning's numbers. A GC with nothing outstanding is skipped, never emailed an empty statement. Draft Message applies the same rule before you click. Every office scheduled send appears in the **Scheduled statement sends** list on GC Review's **Scheduled** tab. Only whoever scheduled a send, or a dev, sees its **Cancel**. Cancelling ends a weekly repeat. The **Share all** dialog's email can be scheduled the same way.
-- When any job has a **development** set, two pills appear, **By GC** and **By Development**. A development is a group of properties built as one project. You press **By Development** to see the same rollup per development instead.
+- When any job has a **development** set, two pills appear, **By GC** and **By Development**. A development is a named group of jobs, like a subdivision. You press **By Development** to see the same rollup per development instead.
 
 ## Share the whole report
 
