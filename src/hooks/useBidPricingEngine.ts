@@ -16,6 +16,7 @@ import { STAR_NOT_OWN_PRICE_MESSAGE, starWriteAllowed } from '../lib/bids/versio
 import { IDLE_PRICING_RESOLVE, beginPricingResolve, settlePricingResolve, type PricingResolveState } from '../lib/bids/pricingResolve'
 import { shouldMintCostEstimateOnLoad } from '../lib/bids/laborTabLoadGate'
 import { laborHoursOf, planLaborSync } from '../lib/bids/laborSyncPlan'
+import { oneLaborSyncAtATime } from '../lib/bids/laborSyncQueue'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
 import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
 import type { BidCountRow } from '../types/bids'
@@ -498,25 +499,38 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   /**
-   * Set a labor row aside: copy it to the unmatched table, then delete it. When the table cannot be
-   * read or written (the minutes between this client and its migration), the row is deleted as it
-   * was before bid history PR 0b; the ledger still keeps its old values.
+   * Set a labor row aside. The row is claimed by deleting it (RETURNING), and only the sync whose
+   * delete returned it writes the copy, so two syncs or two tabs never set one row aside twice
+   * (v2.4903). When the copy cannot be written, or the table cannot be read (the minutes before its
+   * migration), the row is gone as it was before bid history PR 0b; the ledger keeps its values.
    */
   async function parkLaborRow(row: CostEstimateLaborRow, canPark: boolean) {
-    if (canPark) {
-      const { data: parked, error: parkErr } = await withBidAction(supabase
-        .from('cost_estimate_labor_rows_unmatched')
-        .insert({ cost_estimate_id: row.cost_estimate_id, fixture: row.fixture, count: row.count, labor_row_id: row.id, ...laborHoursOf(row) })
-        .select('id')
-        .single(), BID_ACTIONS.laborPark)
-      if (!parkErr && parked) {
-        const { error: delErr } = await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', row.id), BID_ACTIONS.laborPark)
-        // The row stayed, so its copy goes: one place for the hours, never two.
-        if (delErr) await withBidAction(supabase.from('cost_estimate_labor_rows_unmatched').delete().eq('id', (parked as { id: string }).id), BID_ACTIONS.laborPark)
-        return
-      }
+    if (!canPark) {
+      await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', row.id), BID_ACTIONS.laborSync)
+      return
     }
-    await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', row.id), BID_ACTIONS.laborSync)
+    const { data: claimed } = await withBidAction(supabase.from('cost_estimate_labor_rows').delete().eq('id', row.id).select('*'), BID_ACTIONS.laborPark)
+    const gone = (claimed as CostEstimateLaborRow[] | null)?.[0]
+    if (!gone) return
+    await withBidAction(supabase
+      .from('cost_estimate_labor_rows_unmatched')
+      .insert({ cost_estimate_id: gone.cost_estimate_id, fixture: gone.fixture, count: gone.count, labor_row_id: gone.id, ...laborHoursOf(gone) }), BID_ACTIONS.laborPark)
+  }
+
+  /**
+   * Take a set-aside row back as a live row. The set-aside row is claimed by deleting it
+   * (RETURNING), so only one sync ever takes it back (v2.4903). Returns false when another sync
+   * claimed it first, or when the live row could not be written (the set-aside row is then put
+   * back, so its hours stay); the caller mints nothing either way.
+   */
+  async function takeBackLaborRow(parkedId: string, insert: { cost_estimate_id: string; fixture: string; count: number; sequence_order: number }): Promise<boolean> {
+    const { data: claimed } = await withBidAction(supabase.from('cost_estimate_labor_rows_unmatched').delete().eq('id', parkedId).select('*'), BID_ACTIONS.laborTakeBack)
+    const p = (claimed as CostEstimateUnmatchedLaborRow[] | null)?.[0]
+    if (!p) return false
+    const { error } = await withBidAction(supabase.from('cost_estimate_labor_rows').insert({ ...insert, ...laborHoursOf(p) }), BID_ACTIONS.laborTakeBack)
+    if (!error) return true
+    await withBidAction(supabase.from('cost_estimate_labor_rows_unmatched').insert(p), BID_ACTIONS.laborTakeBack)
+    return false
   }
 
   /**
@@ -524,7 +538,13 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
    * takes back its parked row, or a live row renamed only in case, spacing or a group prefix, before
    * the book is asked; a row no counted fixture claims is set aside, not deleted.
    */
-  async function loadCostEstimateLaborRowsAndSync(estimateId: string, countRows: BidCountRow[], defaults: LaborMintDefault[]) {
+  function loadCostEstimateLaborRowsAndSync(estimateId: string, countRows: BidCountRow[], defaults: LaborMintDefault[]): Promise<void> {
+    // One at a time per estimate (v2.4903): a version switch starts several loads at once, and a
+    // sync plans from what it reads, so a queued one waits and then reads what the one before it left.
+    return oneLaborSyncAtATime(estimateId, () => syncCostEstimateLaborRows(estimateId, countRows, defaults))
+  }
+
+  async function syncCostEstimateLaborRows(estimateId: string, countRows: BidCountRow[], defaults: LaborMintDefault[]) {
     const { data: laborData, error: laborErr } = await supabase
       .from('cost_estimate_labor_rows')
       .select('*')
@@ -560,17 +580,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     ].sort((a, b) => (countOrder.get(a.fixture) ?? 0) - (countOrder.get(b.fixture) ?? 0))
     let seq = rows.length === 0 ? 0 : Math.max(...rows.map((r) => r.sequence_order))
     for (const add of adds) {
-      const p = add.parkedId ? parked?.find((x) => x.id === add.parkedId) : undefined
-      if (p) {
-        const { data: back, error: backErr } = await withBidAction(supabase
-          .from('cost_estimate_labor_rows')
-          .insert({ cost_estimate_id: estimateId, fixture: add.fixture, count: add.count, sequence_order: ++seq, ...laborHoursOf(p) })
-          .select('id')
-          .single(), BID_ACTIONS.laborTakeBack)
-        if (!backErr && back) {
-          await withBidAction(supabase.from('cost_estimate_labor_rows_unmatched').delete().eq('id', p.id), BID_ACTIONS.laborTakeBack)
-          continue
-        }
+      if (add.parkedId) {
+        // Taken back, or claimed by another sync, or put back after a refused write: never minted as well.
+        await takeBackLaborRow(add.parkedId, { cost_estimate_id: estimateId, fixture: add.fixture, count: add.count, sequence_order: ++seq })
+        continue
       }
       const def = defaults.find((d) => d.fixture.toLowerCase() === add.fixture.toLowerCase())
       // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
