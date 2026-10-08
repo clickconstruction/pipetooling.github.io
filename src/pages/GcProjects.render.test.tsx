@@ -5,7 +5,7 @@ import GcProjects from './GcProjects'
 import { renderSettled, settle } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
-import { askGcCompanies, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 
 vi.mock('../lib/supabase', async () => {
@@ -49,6 +49,10 @@ vi.mock('../lib/gc/gcIo', async () => {
     askGcCompanies: vi.fn(() => Promise.resolve()),
     declineGcAsk: vi.fn(),
     setGcCompanyLanguage: vi.fn(),
+    setGcAskPlugs: vi.fn(),
+    setGcAskExclusionCovers: vi.fn(),
+    setGcAskTakenAlternates: vi.fn(),
+    carryGcTrade: vi.fn(() => Promise.resolve()),
   }
 })
 
@@ -154,5 +158,20 @@ describe('GcProjects: the Project Board', () => {
     expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
+  })
+
+  it('a dev carries a quote from Compare quotes, and the trades load again so the window reads Carrying', async () => {
+    const rows = clinicBoardRows()
+    const carried = rows.projects.map((p) => ({ ...p, trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i1' } : t)) }))
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects).mockResolvedValueOnce(carried)
+    vi.mocked(loadGcBoardRows).mockImplementation((projects) => Promise.resolve({ ...rows, projects }))
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const sitework = document.querySelector('[data-gc-project="p1"] [data-gc-trade-asks="k1"]') as HTMLElement
+    fireEvent.click(within(sitework).getByRole('button', { name: 'Compare quotes (1)' }))
+    const dialog = screen.getByRole('dialog', { name: 'Compare Sitework quotes' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Carry this number' }))
+    await waitFor(() => expect(carryGcTrade).toHaveBeenCalledWith('k1', { inviteId: 'i1' }))
+    expect(await screen.findByRole('button', { name: 'Carrying. Stop' })).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
   })
 })

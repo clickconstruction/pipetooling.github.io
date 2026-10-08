@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { bidsIn, carriedUncosted, proposalUncostedWords, uncostedWords } from '../../lib/gc/bids'
 import { aboutMoney, isHole, priceStanding, type TradeStanding, type TradeStandingRow } from '../../lib/gc/priceStanding'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
-import { Btn } from './gcUi'
+import { Btn, PlusUnknown } from './gcUi'
 import type { PriceCardHandle } from './usePriceCard'
 
 /**
@@ -73,7 +74,20 @@ export function GcPriceLikely({ state, project }: { state: GcState; project: GcP
 }
 
 /** The card itself, hung under the trigger that opened it; a sheet from the bottom on a phone. */
-export function GcPriceCard({ card, state, project, onOpen }: { card: PriceCardHandle; state: GcState; project: GcProject; onOpen: () => void }) {
+export function GcPriceCard({
+  card,
+  state,
+  project,
+  onOpen,
+  onCompare,
+}: {
+  card: PriceCardHandle
+  state: GcState
+  project: GcProject
+  onOpen: () => void
+  /** Opens Compare quotes on one trade (B5-b). Without it the trade lines have no button. */
+  onCompare?: (packageId: string) => void
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const phone = useMatchMedia('(max-width: 720px)')
   const [, redraw] = useState(0)
@@ -160,13 +174,27 @@ export function GcPriceCard({ card, state, project, onOpen }: { card: PriceCardH
           {p.rows
             .filter((r) => r.standing === st)
             .map((r, i) => (
-              <TradeLine key={r.pkg.id} row={r} first={i === 0} />
+              <TradeLine
+                key={r.pkg.id}
+                row={r}
+                first={i === 0}
+                onCompare={
+                  onCompare &&
+                  (() => {
+                    card.close()
+                    onCompare(r.pkg.id)
+                  })
+                }
+              />
             ))}
         </div>
       ))}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.1rem 0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-strong)', fontVariantNumeric: 'tabular-nums' }}>
         <span style={{ color: 'var(--text-muted)' }}>Trades with a number</span>
-        <span style={{ textAlign: 'right' }}>{money(p.trades)}</span>
+        <span style={{ textAlign: 'right' }}>
+          {money(p.trades)}
+          <PlusUnknown words={proposalUncostedWords(project)} />
+        </span>
         <span style={{ color: 'var(--text-muted)' }}>General conditions</span>
         <span style={{ textAlign: 'right' }}>{money(p.generalConditions)}</span>
         <span style={{ color: 'var(--text-muted)' }}>
@@ -174,7 +202,10 @@ export function GcPriceCard({ card, state, project, onOpen }: { card: PriceCardH
         </span>
         <span style={{ textAlign: 'right' }}>{money(p.markups)}</span>
         <strong>Price so far</strong>
-        <strong style={{ textAlign: 'right' }}>{money(p.soFar)}</strong>
+        <strong style={{ textAlign: 'right' }}>
+          {money(p.soFar)}
+          <PlusUnknown words={proposalUncostedWords(project)} />
+        </strong>
         {p.holes > 0 && (
           <>
             <span style={{ color: 'var(--text-muted)' }}>The {days(p.holes)} with no number, estimated, with contingency and fee</span>
@@ -201,9 +232,10 @@ export function GcPriceCard({ card, state, project, onOpen }: { card: PriceCardH
   )
 }
 
-function TradeLine({ row, first }: { row: TradeStandingRow; first: boolean }) {
+function TradeLine({ row, first, onCompare }: { row: TradeStandingRow; first: boolean; onCompare?: (() => void) | undefined }) {
   const { pkg, standing } = row
   const amount = isHole(standing) ? row.estimate : row.carried
+  const uncosted = isHole(standing) ? [] : carriedUncosted(pkg)
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.1rem 0.75rem', padding: '0.35rem 0', borderTop: first ? 'none' : '1px solid var(--border)' }}>
       <span style={{ fontWeight: 600 }}>
@@ -212,8 +244,16 @@ function TradeLine({ row, first }: { row: TradeStandingRow; first: boolean }) {
       </span>
       <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: isHole(standing) ? 'var(--text-muted)' : undefined, whiteSpace: 'nowrap' }} title={isHole(standing) ? 'An estimate. It is not in the price yet.' : undefined}>
         {amount === null ? '' : money(amount)}
+        {!isHole(standing) && <PlusUnknown words={uncostedWords(uncosted)} />}
       </span>
       {row.words && <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)' }}>{row.words}</span>}
+      {onCompare && bidsIn(pkg).length > 0 && (
+        <span style={{ gridColumn: '1 / -1' }}>
+          <Btn kind="quiet" onClick={onCompare}>
+            {uncosted.length > 0 ? 'Set a cost' : 'Compare quotes'}
+          </Btn>
+        </span>
+      )}
     </div>
   )
 }

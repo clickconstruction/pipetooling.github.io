@@ -94,6 +94,18 @@ describe('the board read from its rows', () => {
     expect(boardStateFromRows(base).partners[0]!.people).toBeUndefined()
   })
 
+  it('a trade carries the quote on its ask, or our budget, and a quote reads back the exclusions it answered', () => {
+    const base = rows()
+    const carried = rows({
+      projects: base.projects.map((p) => ({ ...p, trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i1' } : t.id === 'k2' ? { ...t, carryBudget: true } : t)) })),
+      quotes: base.quotes.map((q) => (q.id === 'q1' ? { ...q, exclusions_answered: ['Dewatering'] } : q)),
+    })
+    const [sitework, concrete, plumbing] = boardStateFromRows(carried).projects[0]!.packages
+    expect([sitework!.carried, concrete!.carried, plumbing!.carried]).toEqual(['i1', 'plug', 'self'])
+    expect(sitework!.invites[0]!.bid?.exclusionsAnswered).toEqual(['Dewatering'])
+    expect(boardStateFromRows(base).projects[0]!.packages[0]!.carried).toBeNull()
+  })
+
   it('a promise with the day it moved from', () => {
     expect(boardStateFromRows(rows()).tradePromises).toEqual([
       { id: 'tp1', partnerId: 'lonestar', kind: 'insurance', what: 'the renewed insurance certificate', by: '2026-10-12', madeOn: '2026-10-06', from: 'office', moved: [{ by: '2026-10-09', on: '2026-10-07' }] },
