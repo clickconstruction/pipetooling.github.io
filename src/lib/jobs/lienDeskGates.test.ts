@@ -123,3 +123,22 @@ describe('lienFootBlockedSentence (v2.4797)', () => {
     expect(lienAffidavitGateShortWords({ key: 'legal' })).toBe('county or legal description missing')
   })
 })
+
+describe('the fifth gate: nothing billed (v2.4969)', () => {
+  it('is drawn only when the sent bills owe nothing and money is still on the job', () => {
+    expect(buildLienDeskGates({ ...clear, billedOpen: 4_000, unbilled: 1_000 }).gates.map((g) => g.key)).toEqual(['owner', 'gc', 'kind', 'months'])
+    expect(buildLienDeskGates({ ...clear, billedOpen: 0, unbilled: 0 }).gates).toHaveLength(4)
+    expect(buildLienDeskGates(clear).gates).toHaveLength(4)
+    const { gates, verdict } = buildLienDeskGates({ ...clear, billedOpen: 0, unbilled: 6_400, sentBills: 0 })
+    expect(gates[4]).toMatchObject({ n: 5, key: 'billed', label: 'Nothing billed', value: 'Bill the work first', tone: 'blocker' })
+    expect(gates[4]!.title).toMatch(/No bill has gone out/)
+    expect(verdict).toMatchObject({ ready: false, blockers: 1, headline: "Can't go out yet", summary: '1 blocker' })
+    expect(buildLienDeskGates({ ...clear, billedOpen: 0, unbilled: 1_000, sentBills: 2 }).gates[4]!.title).toMatch(/sent bills are paid/)
+  })
+
+  it('the footer sentence and the stop chip name it', () => {
+    const gate = buildLienDeskGates({ ...clear, billedOpen: 0, unbilled: 6_400 }).gates[4]!
+    expect(lienFootBlockedSentence(gate, 1)).toBe("Don't send yet. Bill the work first. A notice claims what is billed.")
+    expect(lienGateShortWords(gate)).toBe('nothing billed')
+  })
+})

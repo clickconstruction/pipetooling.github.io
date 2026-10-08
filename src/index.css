@@ -4029,6 +4029,29 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 @container lien-cal-axis (max-width: 420px) { .lienCalDateFull, .lienCalDateCount { display: none; } .lienCalDateShort { display: inline; } }
 .lienMonthsClaimCol { display: grid; align-content: center; gap: 0.35rem; min-width: 9.5rem; }
 .lienMonthsClaimTail { padding-left: 1.1rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
+.lienClaimBills { display: grid; gap: 0; padding-top: 0.5rem; border-top: 1px solid var(--border); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+.lienClaimBillsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; padding-bottom: 0.3rem; }
+.lienClaimBillsHead strong { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienClaimBillsHead span, .lienClaimBillsEmpty { font-size: 0.72rem; color: var(--text-muted); }
+.lienClaimBill { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: 0.1rem 1rem; align-items: baseline; padding: 0.3rem 0; border-top: 1px dashed var(--border); }
+.lienClaimBill[data-tone='amber'] { color: var(--text-amber-800); }
+.lienClaimBillName { min-width: 0; display: grid; }
+.lienClaimBillName strong { font-weight: 600; color: var(--text-strong); overflow-wrap: anywhere; }
+.lienClaimBill[data-tone='amber'] .lienClaimBillName strong { color: var(--text-amber-800); }
+.lienClaimBillName small { font-size: 0.7rem; color: var(--text-muted); }
+.lienClaimBillNum { display: grid; justify-items: end; white-space: nowrap; font-weight: 600; color: var(--text-strong); min-width: 4.5rem; }
+.lienClaimBillNum small { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienClaimBill[data-owed='no'] .lienClaimBillNum[data-col='owed'] { color: var(--text-muted); font-weight: 500; }
+.lienClaimBillNum[data-col='door'] { grid-column: 2 / -1; }
+.lienClaimBillNum button { border: none; background: none; color: var(--text-link); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+.lienClaimBillNum button:disabled { color: var(--text-muted); cursor: default; }
+.lienClaimBillNum button:hover:not(:disabled), .lienClaimBillNum button:focus-visible { text-decoration: underline; }
+@container lien-months (max-width: 520px) {
+  .lienClaimBill { grid-template-columns: minmax(0, 1fr) auto; }
+  .lienClaimBillNum[data-col='billed'], .lienClaimBillNum[data-col='paid'] { display: none; }
+  .lienClaimBillNum[data-col='door'] { grid-column: 2; }
+}
+.lienGatesGrid[data-count='5'] { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .lienMonthsHistory { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .lienMonthsHistoryLead { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-right: 0.4rem; }
 .lienMonthDot { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-subtle); color: var(--text-700); font: inherit; font-size: 0.75rem; cursor: pointer; }

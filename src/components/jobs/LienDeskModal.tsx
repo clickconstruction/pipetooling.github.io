@@ -123,6 +123,11 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
 import PropertyKindSwitch from './PropertyKindSwitch'
 import LienClaimBox from './LienClaimBox'
+import LienClaimBills from './LienClaimBills'
+import { lienBillsCountWords, lienNothingBilledWords, lienUnbilled } from '../../lib/jobs/lienClaimBills'
+import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
+import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
+import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, type PropertyKind } from '../../lib/jobs/propertyKind'
@@ -312,6 +317,8 @@ export default function LienDeskModal({
   onOpenCompanySettings,
 }: LienDeskModalProps) {
   const { showToast } = useToastContext()
+  // Bill Customer over the desk (v2.4969): the same window the Pipeline's Bill button opens, above every other window; null outside its provider.
+  const billCustomer = useBillCustomerModal()
   const isMobile = useIsMobile()
   /** v2.4065: the title-bar toggle — the desk fills the screen above the app's bottom bar, and remembers the choice. */
   const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('lien-desk')
@@ -698,6 +705,7 @@ export default function LienDeskModal({
           customerName: rowJob?.customer_name,
           revenue: Number(rowJob?.revenue ?? 0),
           paymentsMade: Number(rowJob?.payments_made ?? 0),
+          openBalance: e?.openBalance,
           claimAmountOff: correction?.amountOff,
           lastMonth: e?.lastMonth ?? '',
           noticesRecorded: e?.gates.find((g) => g.key === 'notice')?.ok ?? false,
@@ -1001,6 +1009,24 @@ export default function LienDeskModal({
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
   const payPage = useNoticePayPage(selected?.jobId ?? null, open)
+  // The bills behind the claim (v2.4969): the desk's money is what the sent bills still owe (`lien_billed_open()`), so the
+  // claim and the pay page cannot disagree; the Months card lists the bills, and the part of the job no sent bill carries.
+  const claimBills = payPage.bills
+  const unbilled = job ? lienUnbilled(job, openBalance) : 0
+  const billFromHere = () => {
+    const j = payPage.job
+    if (!billCustomer || !j || !selected) return
+    if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
+      showToast('Link this job to a customer before billing.', 'error')
+      return
+    }
+    const reread = async () => {
+      payPage.refresh()
+      onChanged()
+    }
+    billCustomer.openBillCustomer({ payload: { kind: 'job', job: jobBillingContextFromJob(j) }, onSuccess: reread, onAfterEnsureSuccess: reread })
+  }
+  const billWhy = !billCustomer ? 'Billing opens from the Pipeline on this screen' : !payPage.job ? (payPage.loading ? 'Reading the job’s bills…' : 'The job’s bills could not be read') : ''
   const payLinesNow = useMemo(() => ({ ...(storedDraft?.payLines ?? {}), ...payLineEdits }), [storedDraft?.payLines, payLineEdits])
   const payChanged = useMemo(() => changedPayLines(payPage.rows, payLinesNow), [payPage.rows, payLinesNow])
   const payChangedCount = Object.keys(payChanged).length
@@ -1084,7 +1110,9 @@ export default function LienDeskModal({
   }
   // Readiness (v2.3450 kernel): GC, owner with a mailing address, months — and never a public owner.
   const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length })
-  const ready = readiness.ready
+  // The fifth gate (v2.4969): nothing owed on the sent bills while money is still on the job — a notice claims what is billed, so the send waits.
+  const nothingBilled = Boolean(selected) && openBalance <= 0.005 && unbilled > 0.005
+  const ready = readiness.ready && !nothingBilled
 
 
   /** Why this one comes to the leader (v2.3405) — said once, in the footer, beside the button (v2.3522). */
@@ -1633,6 +1661,9 @@ export default function LienDeskModal({
     pickedMonthsCount: monthsList.length,
     pendingSessions: wm?.pendingSessions ?? 0,
     datedFromCreation: selected?.datedFromCreation ?? false,
+    billedOpen: selected ? openBalance : undefined,
+    unbilled,
+    sentBills: claimBills.length,
   })
   const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
 
@@ -1735,7 +1766,7 @@ export default function LienDeskModal({
         gates: { ready: gateVerdict.ready, headline: gateVerdict.headline, summary: gateVerdict.summary },
         houses: supplierJob ? { count: supplierJob.houses.length, housesOwed: supplierJob.housesOwed, owed: supplierJob.owed, paid: supplierJob.paid, asOf: formatYmdMonthDay(todayYmd) } : null,
         months: monthsList,
-        claimWords: formatUsdNoCents(claimed.claim),
+        claimWords: claimBills.length ? `${formatUsdNoCents(claimed.claim)} · ${lienBillsCountWords(claimBills.filter((b) => b.owed > 0).length, claimBills.length)}` : formatUsdNoCents(claimed.claim),
         pages: pageTotal,
         gcEmail: Boolean(gc?.email),
         monthShort: workMonthShort,
@@ -2109,6 +2140,22 @@ export default function LienDeskModal({
               ) : null}
             </>
           ),
+          // The fifth gate (v2.4969), drawn only while it blocks: nothing owed on the sent bills, money still on the job.
+          billed: (
+            <div className="lienGateFact" data-lien-gate-billed-fact>
+              <span style={{ minWidth: 0 }}>{lienNothingBilledWords(claimBills.length)}</span>
+              <span className="lienGateFactActions">
+                {office ? (
+                  <button type="button" style={linkBtn} disabled={Boolean(billWhy)} title={billWhy || undefined} onClick={billFromHere} data-lien-gate-bill-from-here>
+                    Bill it from here ›
+                  </button>
+                ) : null}
+                <button type="button" style={linkBtn} onClick={() => paneRef.current?.querySelector('[data-lien-claim-bills]')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })}>
+                  The bills ↓
+                </button>
+              </span>
+            </div>
+          ),
         }}
       />
       </div>
@@ -2175,6 +2222,7 @@ export default function LienDeskModal({
             </span>
           ) : null
         }
+        bills={<LienClaimBills bills={claimBills} unbilled={unbilled} revenue={job?.revenue} loading={payPage.loading} onBill={office ? billFromHere : undefined} billWhy={billWhy} />}
         onNoteMissed={office ? (month) => void noteMissed([month]) : undefined}
         onRecordByHand={office ? () => setByHandOpen(true) : undefined}
         claim={formatUsdNoCents(claimed.claim)}

@@ -17,6 +17,8 @@ import LienDeskModal from './LienDeskModal'
 import { LienJobSuppliersCard } from './LienJobSuppliers'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
+import type { LienClaimBill } from '../../lib/jobs/lienClaimBills'
+import type { JobWithDetails } from '../../types/jobWithDetails'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
@@ -45,8 +47,13 @@ vi.mock('../../lib/jobs/lienClaimCorrectionIo', async () => {
   return { ...actual, saveLienClaimCorrection: (...args: unknown[]) => saveClaimMock(...args), clearLienClaimCorrection: (...args: unknown[]) => clearClaimMock(...args), lookLienClaimCorrection: vi.fn() }
 })
 const savePropertyKindMock = vi.fn()
-const payPageState: { rows: Array<{ invoiceId: string; label: string; description: string; openAmount: number; payable: boolean }>; assets: Record<string, { svg: string; png: string | null }>; loading: boolean } = { rows: [], assets: {}, loading: false }
+const payPageRefresh = vi.fn()
+const payPageState: { rows: Array<{ invoiceId: string; label: string; description: string; openAmount: number; payable: boolean }>; assets: Record<string, { svg: string; png: string | null }>; bills: LienClaimBill[]; job: JobWithDetails | null; loading: boolean; refresh: () => void } = { rows: [], assets: {}, bills: [], job: null, loading: false, refresh: payPageRefresh }
 vi.mock('../../hooks/useNoticePayPage', () => ({ useNoticePayPage: () => payPageState }))
+// Bill Customer over the desk (v2.4969): the window is the provider's; the desk only asks it to open.
+const openBillCustomerMock = vi.fn()
+const billCustomerState: { value: { openBillCustomer: (o: unknown) => void; closeBillCustomer: () => void } | null } = { value: { openBillCustomer: (o: unknown) => openBillCustomerMock(o), closeBillCustomer: () => {} } }
+vi.mock('../../contexts/BillCustomerModalContext', () => ({ useBillCustomerModal: () => billCustomerState.value }))
 // Supply houses on the desk's jobs (v2.4404): the read is a seam; the kernel has its own tests.
 const supplierState: { byJob: Map<string, LienSupplierJob> } = { byJob: new Map() }
 const supplierReload = vi.fn()
@@ -109,6 +116,12 @@ beforeEach(() => {
   saveClaimMock.mockResolvedValue(undefined)
   clearClaimMock.mockReset()
   clearClaimMock.mockResolvedValue(undefined)
+  payPageState.rows = []
+  payPageState.bills = []
+  payPageState.job = null
+  payPageState.loading = false
+  payPageRefresh.mockReset()
+  openBillCustomerMock.mockReset()
 })
 
 const TODAY = '2026-09-14'
@@ -1687,5 +1700,53 @@ describe('LienDeskModal — find on the list (v2.4721)', () => {
     fireEvent.click(screen.getByTestId('lien-desk-find-clear'))
     expect(box.getAttribute('data-finding')).toBe('no')
     expect(screen.queryByTestId('lien-desk-find-nothing')).toBeNull()
+  })
+
+  it('the Months card lists the bills behind the claim, and Bill it from here opens Bill Customer and re-reads the desk (v2.4969)', async () => {
+    // Job 922's shape: a $33,500 job, two bills sent that still owe $25,000, the rest not billed.
+    const bill = (invoiceId: string, number: string, what: string, owed: number, paid = 0): LienClaimBill => ({ invoiceId, number, what, sentYmd: '2026-09-24', stripe: true, dueYmd: '2026-09-24', billed: owed + paid, paid, owed })
+    payPageState.bills = [bill('inv-rough', '#650-2609241309', 'Rough In', 15_000), bill('inv-top', '#650-2609301442', 'Top Out', 10_000, 2_000)]
+    payPageState.job = { id: 'j650', master_user_id: 'u-master', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', customer_id: 'ati', customer_name: 'ATI Schertz', customer_email: 'ap@ati.test', job_address: '1204 Elbel Rd, Schertz, TX', customer_phone: null, last_work_date: null } as unknown as JobWithDetails
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true, open_balance: 25_000 })), [], true)} onChanged={onChanged} />)
+    await settle()
+    // The claim is what the sent bills owe, and the pane's Months row counts them.
+    expect((document.querySelector('[data-lien-pane-head="months"]') as HTMLElement | null)?.textContent ?? document.body.textContent).toContain('$25,000 · 2 bills')
+    const list = document.querySelector('[data-lien-claim-bills]') as HTMLElement
+    expect(list).toBeTruthy()
+    const rows = within(list).getAllByText(/Owed/).map((el) => el.parentElement!.textContent)
+    expect(rows).toEqual(['Owed$15,000.00', 'Owed$10,000.00'])
+    expect((list.querySelector('[data-lien-claim-bill="inv-top"]') as HTMLElement).textContent).toContain('#650-2609301442 · Top Out')
+    expect((list.querySelector('[data-lien-claim-bill="inv-top"]') as HTMLElement).textContent).toContain('Paid$2,000.00')
+    const unbilled = list.querySelector('[data-lien-claim-unbilled]') as HTMLElement
+    expect(unbilled.textContent).toContain('$8,500 of the job’s $33,500 · not claimed until it is billed')
+    // No fifth gate while the sent bills still owe money.
+    expect(document.querySelector('[data-gate="billed"]')).toBeNull()
+    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    // The door opens the app's own Bill Customer window on this job; once the bill goes, the desk reads the job and the queue again.
+    fireEvent.click(within(unbilled).getByRole('button', { name: 'Bill it from here ›' }))
+    expect(openBillCustomerMock).toHaveBeenCalledTimes(1)
+    const opts = openBillCustomerMock.mock.calls[0]![0] as { payload: { kind: string; job: { id: string; customer_id: string } }; onSuccess: () => Promise<void> }
+    expect(opts.payload.kind).toBe('job')
+    expect(opts.payload.job).toMatchObject({ id: 'j650', customer_id: 'ati' })
+    await opts.onSuccess()
+    expect(payPageRefresh).toHaveBeenCalledTimes(1)
+    expect(onChanged).toHaveBeenCalledTimes(1)
+  })
+
+  it('nothing owed on the sent bills while money is still on the job: the fifth gate holds the send (v2.4969)', async () => {
+    payPageState.bills = []
+    payPageState.job = { id: 'j650', master_user_id: 'u-master', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', customer_id: 'ati', customer_name: 'ATI Schertz', customer_email: '', job_address: '', customer_phone: null, last_work_date: null } as unknown as JobWithDetails
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true, open_balance: 0 })), [], true)} />)
+    await settle()
+    const gate = document.querySelector('[data-gate="billed"]') as HTMLElement
+    expect(gate.textContent).toBe('5Nothing billed✗ Bill the work first')
+    expect((document.querySelector('[data-lien-gate-billed-fact]') as HTMLElement).textContent).toContain('Nothing is billed on this job yet. A notice claims what is billed.')
+    expect(screen.getByRole('button', { name: /Go to gate 5/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect(document.body.textContent).toContain("Don't send yet. Bill the work first. A notice claims what is billed.")
+    // The gate's own door bills from the desk too.
+    fireEvent.click(document.querySelector('[data-lien-gate-bill-from-here]') as HTMLElement)
+    expect(openBillCustomerMock).toHaveBeenCalledTimes(1)
   })
 })

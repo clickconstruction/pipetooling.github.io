@@ -106,6 +106,7 @@ export default function LienDeskMonths({
   onNoteMissed,
   claimNode,
   claimTail,
+  bills,
   onPreviewThis,
   onRecordByHand,
   tail,
@@ -121,6 +122,8 @@ export default function LienDeskMonths({
   claimNode?: ReactNode
   /** One line under the claim (v2.3753): the retainage named inside it, or the door to record it. */
   claimTail?: ReactNode
+  /** The bills behind the claim (v2.4969): drawn full width under the claim and the notes. */
+  bills?: ReactNode
   /** Read this notice as the paper prints it. */
   onPreviewThis?: () => void
   /** A paper that went out by hand (v2.3770) — record it, and it becomes a column. */
@@ -220,6 +223,7 @@ export default function LienDeskMonths({
           {grid.lateUntil && grid.rows.some((r) => r.thisNotice.late) ? <div data-lien-months-late>{grid.rows.filter((r) => r.thisNotice.late).map((r) => workMonthShort(r.month)).join(', ')} closed with nothing sent — claimed on this notice late; the affidavit can follow by <strong style={{ color: 'var(--text-700)' }}>{formatYmdMonthDay(grid.lateUntil)}</strong>.</div> : null}
         </div>
       </div>
+      {bills ?? null}
     </div>
   )
 }

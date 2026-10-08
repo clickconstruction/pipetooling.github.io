@@ -9,11 +9,11 @@ import { DATED_FROM_CREATION_WORDS } from './lienDesk'
  * is worth a look but lets it go (an unknown property kind only moves the
  * deadline), `ok` is clear.
  */
-export type LienGateKey = 'owner' | 'gc' | 'kind' | 'months'
+export type LienGateKey = 'owner' | 'gc' | 'kind' | 'months' | 'billed'
 export type LienGateTone = 'ok' | 'blocker' | 'check'
 
 export interface LienGate {
-  n: 1 | 2 | 3 | 4
+  n: 1 | 2 | 3 | 4 | 5
   key: LienGateKey
   label: string
   /** The answer in a word or two — the name when clear, what is wrong when not. */
@@ -48,6 +48,12 @@ export interface LienDeskGatesInput {
   pendingSessions: number
   /** The job has no approved clock hours: its one month is the month it was created (v2.3747) — the gate says so instead of "Approved hours". */
   datedFromCreation?: boolean
+  /** What the job's sent bills still owe — the claim's base (v2.4969). Absent on a reader that has no bills to show. */
+  billedOpen?: number
+  /** The part of the job no sent bill carries (v2.4969): with nothing owed on the sent bills, a fifth gate holds the send until it is billed. */
+  unbilled?: number
+  /** How many bills have gone out, for the fifth gate's words. */
+  sentBills?: number
 }
 
 export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate[]; verdict: LienGateVerdict } {
@@ -97,7 +103,13 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
           }
       : { n: 4, key: 'months', label: input.datedFromCreation ? 'Dated from creation' : 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
 
-  const gates = [ownerGate, gcGate, kindGate, monthsGate]
+  // The fifth gate (v2.4969) is drawn only when it blocks: nothing owed on the sent bills while money is still on the
+  // job — work not yet billed, or a bill still at Ready to Bill. A notice claims what is billed, so the send waits.
+  const nothingBilled = input.billedOpen != null && input.billedOpen <= 0.005 && (input.unbilled ?? 0) > 0.005
+  const billedGate: LienGate | null = nothingBilled
+    ? { n: 5, key: 'billed', label: 'Nothing billed', value: 'Bill the work first', tone: 'blocker', title: (input.sentBills ?? 0) === 0 ? 'No bill has gone out on this job — a notice claims what is billed' : 'The sent bills are paid; what is left on the job is not billed yet' }
+    : null
+  const gates = billedGate ? [ownerGate, gcGate, kindGate, monthsGate, billedGate] : [ownerGate, gcGate, kindGate, monthsGate]
   const blockers = gates.filter((g) => g.tone === 'blocker').length
   const checks = gates.filter((g) => g.tone === 'check').length
   const parts = [blockers ? `${blockers} ${blockers === 1 ? 'blocker' : 'blockers'}` : '', checks ? `${checks} to check` : ''].filter(Boolean)
@@ -191,6 +203,7 @@ export function lienFootBlockedSentence(gate: Pick<LienGate, 'key' | 'value' | '
   if (gate.key === 'gc') return `${stop} Set the GC on the job first.`
   if (gate.key === 'months') return `${stop} Pick at least one month first.`
   if (gate.key === 'kind') return `${stop} Set the property kind on the property record first.`
+  if (gate.key === 'billed') return `${stop} Bill the work first. A notice claims what is billed.`
   return `${stop} Clear gate ${gate.n}, ${gate.label.toLowerCase()}, first.`
 }
 
@@ -204,6 +217,7 @@ export function lienGateShortWords(gate: Pick<LienGate, 'key' | 'value' | 'label
   if (gate.key === 'gc') return 'no GC on the job'
   if (gate.key === 'months') return 'no month picked'
   if (gate.key === 'kind') return 'property kind unknown'
+  if (gate.key === 'billed') return 'nothing billed'
   return `${gate.label.toLowerCase()} ${v}`
 }
 
