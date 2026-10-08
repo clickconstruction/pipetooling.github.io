@@ -249,6 +249,11 @@ a moved day is a new row and the old one stays.
   Board's map card (`BidBoardMapCard.tsx`, `bidBoardMap.ts`). The prototype's town list
   (`TOWNS`) stays on the spike.
 - **Payment promise events**: the append-only shape that `gc_trade_promises` and its moves follow.
+- **The company's day: `public.app_today()`** (`20260903190000`), the SQL twin of `todayYmdInAppTz()`.
+  The database runs in UTC, so `CURRENT_DATE` is tomorrow every evening after 7 PM Central. Every
+  date default and every function that stamps a day uses `public.app_today()`, never `CURRENT_DATE`.
+  B1 used `CURRENT_DATE`, and `20261008120000` (#4951, v2.4918) fixed its six defaults and four
+  functions. B5 and B6 use `public.app_today()` from the start.
 - **Email**: P3's function on `sendEmailViaResend`, logged to `email_send_log`.
 - **The read-only blocks, release notes, fragments, help guides and the plain-words test**: as every
   feature.
