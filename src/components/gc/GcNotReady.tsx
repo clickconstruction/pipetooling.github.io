@@ -8,7 +8,7 @@
  */
 import type { GcProject, GcState } from '../../lib/gcMode/gcTypes'
 import { notReadyBlock, uninsuredBlock } from '../../lib/gcMode/gcNotReady'
-import { useCompanyOpener } from './gcCompanyOpener'
+import { useCompanyOpener } from './gcCompanyOpener.proto'
 import { Btn } from './gcUi'
 
 export function GcNotReady({ state, project, lineId }: { state: GcState; project: GcProject; lineId: string }) {

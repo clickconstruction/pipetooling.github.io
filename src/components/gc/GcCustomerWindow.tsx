@@ -30,7 +30,7 @@ import {
 import { GcOwnerBillingPortal } from './GcOwnerBillingPortal'
 import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
 import { GcCustomerPayReminder, GcCustomerSend } from './GcCustomerSend'
-import type { CompanyTab } from './gcCompanyOpener'
+import type { CompanyTab } from './gcCompanyOpener.proto'
 import { Btn, Chip, Stat, num, td, th, type Tone } from './gcUi'
 
 /**

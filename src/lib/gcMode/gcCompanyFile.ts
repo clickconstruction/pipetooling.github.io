@@ -5,60 +5,25 @@
  * Documents lead with status (what is missing, what runs out), and the activity is one timeline
  * merged from what the model already keeps. Readers only: no state of its own.
  */
-import type { GcCustomer, GcProject, GcState, PaperKind, Partner, PromiseKind, TradePackage } from './gcTypes'
+import type { GcCustomer, GcState, PaperKind, Partner, PromiseKind } from './gcTypes'
 import { money, shortDate, weekdayDate } from './gcWords'
 import { declineReasonWords } from './gcDecline'
 import { tradePromisesOf, tradePromiseWords } from './gcPromises'
 import { priceToOwner } from './gcCustomers'
-import { retainageHeldNow, tradeChangesFor } from './gcBuilding'
+import { tradeChangesFor } from './gcBuilding'
 import { buildingActivity } from './gcBuildingActivity'
 import { paperSendActivity } from './gcPaperSend'
 import { customerSentWords } from './gcCustomerSend'
 import { latePayApps, payReminderSentWords } from './gcOwnerBillingRemind'
 // What moved to main (the real build) is re-exported from there, so there is one copy.
 import type { CompanyDoc, CompanyDocGroup, CompanyPaper } from '../gc/companyFile'
+export type { PartnerWork } from '../gc/companyFile'
+export { partnerWork } from '../gc/companyFile'
+
 export type { CompanyDoc, CompanyDocGroup, CompanyPaper } from '../gc/companyFile'
 export { DOC_KEYS, partnerDocuments, partnerPaper } from '../gc/companyFile'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
-
-function awardedPackages(state: GcState, partnerId: string): { project: GcProject; pkg: TradePackage }[] {
-  const out: { project: GcProject; pkg: TradePackage }[] = []
-  for (const project of state.projects) {
-    for (const pkg of project.packages) {
-      const awarded = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
-      if (awarded?.partnerId === partnerId && pkg.sow) out.push({ project, pkg })
-    }
-  }
-  return out
-}
-
-/** The work a trade has with us and where its money stands: what About leads with. */
-export interface PartnerWork {
-  jobs: { project: GcProject; pkg: TradePackage; price: number; signed: boolean }[]
-  underContract: number
-  paid: number
-  /** Approved, not paid yet. */
-  approved: number
-  /** Retainage we hold on their draws. */
-  held: number
-}
-
-export function partnerWork(state: GcState, partner: Partner): PartnerWork {
-  const jobs = awardedPackages(state, partner.id).map(({ project, pkg }) => ({ project, pkg, price: pkg.sow?.price ?? 0, signed: pkg.sow?.status === 'signed' }))
-  let paid = 0
-  let approved = 0
-  let held = 0
-  for (const { pkg } of jobs) {
-    if (!pkg.sow) continue
-    for (const d of pkg.sow.draws) {
-      if (d.status === 'paid') paid += d.net
-      if (d.status === 'approved') approved += d.net
-    }
-    held += retainageHeldNow(pkg.sow)
-  }
-  return { jobs, underContract: jobs.reduce((t, j) => t + j.price, 0), paid, approved, held }
-}
 
 /** `work`: what a trade did on the job (Building lane, 2026-10-04): submittals, punch items, inspections. */
 export type ActivityKind = 'note' | 'quote' | 'paper' | 'money' | 'work'

@@ -64,7 +64,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { linkNeverOpened } from '../../lib/gcMode/gcPortal'
 import { VettingChip } from './GcVetting'
-import { useCompanyOpener } from './gcCompanyOpener'
+import { useCompanyOpener } from './gcCompanyOpener.proto'
 import { PartnerLink, PartnerName } from './GcCompanyFile'
 import { GcSovSideBySide } from './GcSovSideBySide'
 import { PlanSetDriveLine } from './GcNewProjectDriveLink.proto'

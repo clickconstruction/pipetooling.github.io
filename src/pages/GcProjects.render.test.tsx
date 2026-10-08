@@ -48,6 +48,7 @@ vi.mock('../lib/gc/gcIo', async () => {
     logGcAskContact: vi.fn(),
     askGcCompanies: vi.fn(() => Promise.resolve()),
     declineGcAsk: vi.fn(),
+    setGcCompanyLanguage: vi.fn(),
   }
 })
 
@@ -139,5 +140,19 @@ describe('GcProjects: the Project Board', () => {
     await waitFor(() => expect(askGcCompanies).toHaveBeenCalledWith('k2', ['alamo'], expect.any(String), expect.any(String)))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ask for Concrete quotes' })).toBeNull())
     vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev opens a company’s window from its name on Trade partners', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Trade partners' }))
+    const line = document.querySelector('[data-gc-partner="lonestar"]') as HTMLElement
+    fireEvent.click(within(line).getByRole('button', { name: 'Lonestar Earthworks' }))
+    const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
+    expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
   })
 })

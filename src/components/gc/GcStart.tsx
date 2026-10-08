@@ -14,7 +14,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { AwardBlocked, AwardButton, type GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
-import { useCompanyOpener } from './gcCompanyOpener'
+import { useCompanyOpener } from './gcCompanyOpener.proto'
 
 /**
  * GC mode design spike: going into the job. One page that answers "can we start?": the things

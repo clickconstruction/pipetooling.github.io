@@ -12,6 +12,7 @@ import { shortDate } from '../../lib/gc/words'
 import { GcBoardStrip, type BoardStripItem } from './GcBoardStages'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { useJumpStrip } from './useJumpStrip'
+import { PartnerName } from './GcPartnerName'
 import { benchAnchor } from '../../lib/gc/tradeViews'
 
 /**
@@ -224,7 +225,7 @@ function VetRow({ partner, writes }: { partner: Partner; writes: TradePartnerWri
           flexWrap: 'wrap',
         }}
       >
-        <strong>{partner.company}</strong>
+        <PartnerName partnerId={partner.id} company={partner.company} />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {partner.trades.join(', ')} · {partner.contact || 'no contact yet'}
         </span>
@@ -771,7 +772,7 @@ function PartnerLine({ state, partner, bench, writes }: { state: GcState; partne
     <>
       <tr data-gc-partner={partner.id}>
         <td style={{ ...td, minWidth: '14rem' }}>
-          <strong>{partner.company}</strong> <VettingChip partner={partner} />
+          <PartnerName partnerId={partner.id} company={partner.company} /> <VettingChip partner={partner} />
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
             {partner.contact || 'no contact yet'}
             {partner.phone ? ` · ${partner.phone}` : ''}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { shortDate, type ActivityKind, type CompanyDoc, type CompanyDocGroup, type CompanyEvent, type CompanyPaper, type CompanyPortalStatus, type DocStatus, type PortalState } from '../../lib/gcMode/gcModel'
-import { useCompanyOpener, type CompanyTab } from './gcCompanyOpener'
+import { useCompanyOpener, type CompanyTab } from './gcCompanyOpener.proto'
 import { Btn, input } from './gcUi'
 
 /**

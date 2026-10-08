@@ -1,20 +1,12 @@
 import { createContext, useContext } from 'react'
 
-/** The company window's tabs (the owner, 2026-10-04): About, Activity, Documents, then Their portal. */
-export type CompanyTab = 'about' | 'activity' | 'documents' | 'portal'
-
 /**
- * GC mode design spike: open a trade's company window from anywhere below the page, at the tab
- * and paper that was clicked. Null outside the page (a portal, a test): chips then stay plain.
+ * GC mode, the real build (the Board's B3-c), from the design spike's `gcCompanyOpener.ts`: open a
+ * trade's company window from anywhere below the page. Null outside the page (a test, a portal):
+ * names then stay plain. The spike's tabs and papers come as their kernels land; this opens About.
  */
 export interface CompanyOpener {
-  /**
-   * `focus`: an Activity line to light and scroll to, like a promise (`promise:<id>`, `ask:<invite id>`).
-   * `send`: open on the paper's send, its next step already pressed (a not-ready bar's button, G-77), as `openCustomer` does.
-   */
-  openPartner: (partnerId: string, at?: { tab?: CompanyTab; doc?: string; focus?: string; send?: boolean }) => void
-  /** A customer's window, at a tab or a paper, its send open (`send`): Get started's Send to sign. */
-  openCustomer: (customerId: string, at?: { tab?: CompanyTab; doc?: string; send?: boolean }) => void
+  openPartner: (partnerId: string) => void
 }
 
 export const GcCompanyOpenerContext = createContext<CompanyOpener | null>(null)

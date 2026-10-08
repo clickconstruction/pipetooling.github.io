@@ -7,41 +7,12 @@
  */
 import type { GcState, Partner, PortalMailGroup, PromiseKind } from './gcTypes'
 import { partnerReach, type FollowItem } from './gcFollowUpSheet'
-import { contactGets, mailRecipients, PORTAL_MAIL_GROUPS } from './gcPortal'
-import { pt, type PortalKey, type PortalLang } from './gcPortalI18n'
-
-const GROUP_NAME: Record<PortalMailGroup, PortalKey> = { quotes: 'grpQuotes', job: 'grpJob', contracts: 'grpContracts', pay: 'grpPay' }
-
-/** "Pay and papers": a kind's name, in the portal's words. */
-export function mailGroupName(group: PortalMailGroup, lang: PortalLang = 'en'): string {
-  return pt(lang, GROUP_NAME[group])
-}
-
-/** "quotes and plans, and pay and papers": the kinds, lowercase, for a sentence. */
-export function mailGroupList(groups: PortalMailGroup[]): string {
-  const words = groups.map((g) => mailGroupName(g).toLowerCase())
-  return words.length <= 1 ? (words[0] ?? '') : `${words.slice(0, -1).join(', ')}, and ${words[words.length - 1]}`
-}
-
-export interface CompanyPerson {
-  name: string
-  /** "Bookkeeper". The main contact: "Main contact". */
-  role: string
-  email: string
-  /** A made-up address stands in: the record has none. */
-  madeUp: boolean
-  main: boolean
-  gets: PortalMailGroup[]
-}
-
-/** Everyone the company named, the main contact first, with the emails each gets. */
-export function companyPeople(partner: Partner): CompanyPerson[] {
-  const reach = partnerReach(partner)
-  return [
-    { name: reach.name, role: 'Main contact', email: reach.email, madeUp: !partner.email, main: true, gets: contactGets(partner) },
-    ...(partner.people ?? []).map((p) => ({ name: p.name, role: p.role, email: p.email, madeUp: false, main: false, gets: p.gets })),
-  ]
-}
+import { mailRecipients, PORTAL_MAIL_GROUPS } from './gcPortal'
+import { type PortalLang } from './gcPortalI18n'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { mailGroupList } from '../gc/companyPeople'
+export type { CompanyPerson } from '../gc/companyPeople'
+export { companyPeople, mailGroupList, mailGroupName } from '../gc/companyPeople'
 
 const PROMISE_GROUP: Record<PromiseKind, PortalMailGroup> = {
   insurance: 'pay',

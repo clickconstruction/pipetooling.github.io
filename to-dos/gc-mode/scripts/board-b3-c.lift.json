@@ -2,6 +2,11 @@
   "about": "The Board's B3-c (to-dos/gc-mode/BOARD_REAL_BUILD.md, B3): the company window's About reads who at a company gets which emails and its work with us, lifted to src/lib/gc/companyPeople.ts and appended to src/lib/gc/companyFile.ts. followItemMailGroup stays for B2b, which lifts Follow up's items. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b3-c.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "66243f5284eb5ba5fbcea7fb43ba03120c4ba10e",
+    "spike": "fc34933920f030c30f9f2549ed6ecb4f22e46b4f",
+    "about": "#4952 merged; the spike before its follow-up"
+  },
   "existing": {
     "src/lib/gcMode/gcTypes.ts#Partner": "types.ts",
     "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
