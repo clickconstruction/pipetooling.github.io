@@ -31,6 +31,14 @@ export function paymentMoveBlock(row: PaymentRow, job: JobWithDetails | null, pe
   return null
 }
 
+/** The Why box's word when nobody types one (v2.4895: a placeholder, never text the typing runs onto). */
+export const PAYMENT_MOVE_DEFAULT_REASON = 'wrong job'
+
+/** The reason a move records: what was typed, else *wrong job*. */
+export function paymentMoveReason(typed: string | null | undefined): string {
+  return (typed ?? '').trim() || PAYMENT_MOVE_DEFAULT_REASON
+}
+
 export function paymentMoveBlockText(block: PaymentMoveBlock, billAmountUsd?: number | null): string {
   if (block === 'unsaved') return 'Save the job first, then it can move'
   if (block === 'stripe') return 'Recorded from the Stripe bill — Stripe owns it'

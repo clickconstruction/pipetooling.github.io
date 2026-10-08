@@ -34,6 +34,8 @@ export type JobFormPaymentActionsArgs = {
   billingAutosave: Pick<JobFormAutosaveSlice, 'cancelPending' | 'isRunning'>
   /** The payment ids the billing slice last read or wrote — its next diff starts from them. */
   hydratedPaymentIdsRef: MutableRefObject<string[]>
+  /** The ids the last billing write saved (v2.4895); a row among them is saved, as one the job was read with. */
+  writtenPaymentIds?: readonly string[]
   /**
    * The engine's, for the re-read after a removal: the payments that came back are the saved
    * ones, and the billing slice takes them as saved rather than writing them again.
@@ -70,16 +72,18 @@ export type JobFormPaymentActions = {
  * The payment lines themselves, and the three payment windows' open states, stay the form's.
  */
 export function useJobFormPaymentActions(args: JobFormPaymentActionsArgs): JobFormPaymentActions {
-  const { editing, setEditing, authRole, payments, setPayments, removePaymentRow, jobTotalWithRidersDollars, billingAutosave, hydratedPaymentIdsRef, paymentsRereadFromDb, onSavedRef } = args
+  const { editing, setEditing, authRole, payments, setPayments, removePaymentRow, jobTotalWithRidersDollars, billingAutosave, hydratedPaymentIdsRef, writtenPaymentIds, paymentsRereadFromDb, onSavedRef } = args
   const { showToast } = useToastContext()
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
 
+  // v2.4895: what the job was read with, and what the autosave wrote since. A payment typed in and
+  // autosaved is saved: Move to job… and the remove path treat it as one read from the job.
   const persistedLedgerPaymentIds = useMemo(
-    () => new Set((editing?.payments ?? []).map((p) => p.id)),
-    [editing?.payments],
+    () => new Set([...(editing?.payments ?? []).map((p) => p.id), ...(writtenPaymentIds ?? [])]),
+    [editing?.payments, writtenPaymentIds],
   )
 
   const paymentRemovePreview = useMemo(

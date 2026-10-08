@@ -66,6 +66,8 @@ export type JobFormAutosaveEngine = {
   identityFieldsRef: MutableRefObject<JobIdentityFormFields>
   /** What the form last knew to be saved. Hydration sets these; each save moves them on. */
   hydratedPaymentIdsRef: MutableRefObject<string[]>
+  /** The payment ids the last billing write saved, as state (v2.4895): a row it wrote reads saved at once. */
+  writtenPaymentIds: readonly string[]
   persistedDiscountSnapshotRef: MutableRefObject<DiscountSnapshotEntry[]>
   persistedPicturesLinkRef: MutableRefObject<string>
   persistedCustomerPhoneRef: MutableRefObject<string>
@@ -114,6 +116,12 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
    * by Undo — it tracks DB reality, not form state.
    */
   const hydratedPaymentIdsRef = useRef<string[]>([])
+  /**
+   * v2.4895: the payment ids the last billing write saved, as state, so a row the autosave just
+   * wrote reads saved (Move to job…) without the job being opened again. The ref above stays the
+   * diff's own record; this one only re-renders the lines.
+   */
+  const [writtenPaymentIds, setWrittenPaymentIds] = useState<readonly string[]>([])
   const autosaveRiderFeesRef = useRef(riderFeesDollars)
   autosaveRiderFeesRef.current = riderFeesDollars
   const autosaveJobIdRef = useRef<string | null>(null)
@@ -131,6 +139,7 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
   const openJobId = editing?.id ?? null
   useEffect(() => {
     toldHeldPaymentDatesRef.current = []
+    setWrittenPaymentIds([])
   }, [openJobId])
 
   /**
@@ -151,6 +160,7 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
         persistedDiscounts: persistedDiscountSnapshotRef.current,
         onPaymentsWritten: (ids) => {
           hydratedPaymentIdsRef.current = ids
+          setWrittenPaymentIds(ids)
         },
         onDiscountsWritten: (saved) => {
           persistedDiscountSnapshotRef.current = saved
@@ -413,6 +423,7 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     autosaveTeamIdsRef,
     identityFieldsRef,
     hydratedPaymentIdsRef,
+    writtenPaymentIds,
     persistedDiscountSnapshotRef,
     persistedPicturesLinkRef,
     persistedCustomerPhoneRef,

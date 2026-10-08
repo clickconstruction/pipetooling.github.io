@@ -111,6 +111,14 @@ describe('useJobFormPaymentActions — Remove', () => {
     expect([...mount({ editing: null }).result.current.persistedLedgerPaymentIds]).toEqual([])
   })
 
+  it('a line the autosave just wrote is saved too, without the job being read again (v2.4895)', () => {
+    // p-typed is not on the job as it was read; the billing write saved it.
+    const { result } = mount({ payments: [saved, typed], writtenPaymentIds: ['p-saved', 'p-typed'] })
+    expect(result.current.persistedLedgerPaymentIds.has('p-typed')).toBe(true)
+    act(() => result.current.requestRemovePaymentRow(typed))
+    expect(result.current.paymentRemoveConfirmsPersistedRpc).toBe(true)
+  })
+
   it('refuses a bank-matched line and a line on a Stripe bill, and opens no confirm', () => {
     const { result } = mount()
     act(() => result.current.requestRemovePaymentRow(bank))
