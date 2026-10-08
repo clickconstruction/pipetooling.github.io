@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -98,20 +98,27 @@ describe('buildLienDeskRun', () => {
     expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.ownerUnconfirmed).toBe(false)
   })
 
-  it('the packet is one document: cover sheet with a line per envelope, then per envelope the cover page and the copy', () => {
+  it('the packet is one document (v2.4971): the checklist sheet, then per envelope its divider, the cover page and the copy, every page with its foot', () => {
     const d = data([approved])
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
-    const cover = runCoverSheetBlocks(run, TODAY)
-    expect(cover.filter((b) => b.kind === 'numbered')).toHaveLength(2)
-    expect(cover.find((b) => b.kind === 'numbered' && b.n === 1)).toMatchObject({ text: expect.stringContaining('Owner of record: Elbel Holdings LLC, 4 Example Way, Schertz, TX · certified mail, return receipt · tracking # ________________ — 650 · ATI Schertz — June and July 2026 — $33,500.00') })
-    expect(cover.find((b) => b.kind === 'paragraph')).toMatchObject({ text: expect.stringContaining('1 notice · 2 envelopes.') })
     expect(runCoverNoteBlocks(run[0]!).some((b) => b.kind === 'paragraph')).toBe(true)
     const ownerCopy = runNoticeBlocks(run[0]!, run[0]!.recipients[0]!)
     expect(ownerCopy.find((b) => b.kind === 'refstrip')).toMatchObject({ items: ['Job #650', 'Work months June and July 2026', 'September 14, 2026', 'Copy for: Owner of record'] })
     const html = runPacketHtml(run, TODAY, null)
-    expect(html.split('page-break-after:always').length - 1).toBe(3) // cover sheet · [owner envelope: note, owner copy] · [GC envelope: GC copy] last
+    // sheet · divider 1 · [owner envelope: note, owner copy] · divider 2 · [GC envelope: GC copy] last
+    expect(html.split('page-break-after:always').length - 1).toBe(5)
+    expect(html).toContain('data-run-sheet')
+    expect(html).toContain('Today’s mail <span>· 2 envelopes · 3 documents · September 14, 2026</span>')
+    expect(html).toContain('<td class="n">1</td><td class="to"><strong>Elbel Holdings LLC</strong><small>4 Example Way<br>Schertz, TX</small></td>')
+    expect(html).toContain('data-run-divider="1"')
+    expect(html).toContain('data-run-divider="2"')
+    expect(html).toContain('<div class="facen">Envelope 2 of 2 · Original contractor</div>')
     expect(html).toContain('Notice of Claim for Unpaid Labor or Materials')
     expect(html).toContain('Copy for: Original contractor')
+    expect(html).toContain('<span><b>Job #650</b> · copy for the owner of record</span><span>Cover letter · 1 of 2</span>')
+    expect(html).toContain('<span><b>Job #650</b> · copy for the original contractor</span><span>§ 53.056 notice · copy for original contractor · 1 of 1</span>')
+    // The sheet never says "envelope N of M" on a page that goes out; the dividers and the sheet stay on the desk.
+    expect((html.match(/data-run-page-foot/g) ?? []).length).toBe(3)
   })
 
   it('the filing payload records every month named and both sends', () => {
@@ -179,22 +186,20 @@ describe('one envelope per name and address (v2.3720, punch list #16)', () => {
     const d = twoJobsOneOwner()
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
     expect(run).toHaveLength(2)
-    const cover = runCoverSheetBlocks(run, TODAY)
-    const lines = cover.filter((b) => b.kind === 'numbered').map((b) => (b as { text: string }).text)
-    expect(lines).toHaveLength(2)
-    expect(lines[0]).toContain('Owner of record: Elbel Holdings LLC, 4 Example Way, Schertz, TX · certified mail, return receipt · tracking # ________________ — 2 notices: 650 · ATI Schertz — June and July 2026 — $33,500.00; 651 · ATI Schertz II')
-    expect(lines[1]).toContain('Original contractor: Loberg Contracting, 2904 Corporate Cr, Flower Mound, TX')
-    expect(lines[1]).toContain('2 notices:')
-    expect((cover.find((b) => b.kind === 'paragraph') as { text: string }).text).toContain('2 notices · 2 envelopes. ')
-    expect((cover.find((b) => b.kind === 'paragraph') as { text: string }).text).toContain('share an envelope')
+    const html = runPacketHtml(run, TODAY, null)
+    expect((html.match(/data-run-sheet-envelope=/g) ?? []).length).toBe(2)
+    expect(html).toContain('<td class="n">1</td><td class="to"><strong>Elbel Holdings LLC</strong><small>4 Example Way<br>Schertz, TX</small></td>')
+    expect(html).toMatch(/<b>2 notices<\/b> · 650 · ATI Schertz · \$33,500\.00 · 651 · ATI Schertz II/)
+    expect(html).toContain('<td class="n">2</td><td class="to"><strong>Loberg Contracting</strong><small>2904 Corporate Cr<br>Flower Mound, TX</small></td>')
+    expect(html).toContain('Today’s mail <span>· 2 envelopes ·')
   })
   it('the packet prints in envelope order — the owner envelope (letter + copy, letter + copy), then the GC envelope (copy, copy)', () => {
     const d = twoJobsOneOwner()
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
     const html = runPacketHtml(run, TODAY, null)
-    const order = [...html.matchAll(/Copy for: (Owner of record|Original contractor)|This page is a cover letter/g)].map((m) => m[0])
-    expect(order).toEqual(['This page is a cover letter', 'Copy for: Owner of record', 'This page is a cover letter', 'Copy for: Owner of record', 'Copy for: Original contractor', 'Copy for: Original contractor'])
-    expect(html.split('page-break-after:always').length - 1).toBe(6) // 7 pages: cover sheet + 4 owner pages + 2 GC pages
+    const order = [...html.matchAll(/Copy for: (Owner of record|Original contractor)|This page is a cover letter|data-run-divider="\d"/g)].map((m) => m[0])
+    expect(order).toEqual(['data-run-divider="1"', 'This page is a cover letter', 'Copy for: Owner of record', 'This page is a cover letter', 'Copy for: Owner of record', 'data-run-divider="2"', 'Copy for: Original contractor', 'Copy for: Original contractor'])
+    expect(html.split('page-break-after:always').length - 1).toBe(8) // 9 pages: the sheet + divider + 4 owner pages + divider + 2 GC pages
   })
 })
 
@@ -247,10 +252,13 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(runFilingPayload(n, [], 'u1')).toMatchObject({ kind: 'retainage_53_057', amount: 1_760, months_covered: [] })
     const coverTitle = runCoverNoteBlocks(n).find((b) => b.kind === 'title')
     expect(coverTitle && coverTitle.kind === 'title' ? coverTitle.lines : []).toEqual(['Re: 650 · ATI Schertz', 'retainage'])
-    // Both kinds in one run: the cover sheet names both statutes.
+    // Both kinds in one run share the sheet, each envelope with its own row (v2.4971).
     const monthly = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'R', TODAY)
-    const sheet = runCoverSheetBlocks([...monthly, n], TODAY).find((b) => b.kind === 'paragraph')
-    expect(sheet && sheet.kind === 'paragraph' ? sheet.text : '').toContain('Each § 53.056 notice and each § 53.057 retainage notice')
+    const html = runPacketHtml([...monthly, n], TODAY, null)
+    // The same owner and GC: the retainage notice rides in the monthly notice's two envelopes.
+    expect((html.match(/data-run-sheet-envelope=/g) ?? []).length).toBe(2)
+    expect(html).toContain('<b>2 notices</b> · ')
+    expect(html).toContain('§ 53.057 retainage notice · copy for owner of record · ')
   })
 
   it("{{phone}} is the signer's own number when the desk hands one over", () => {
@@ -295,7 +303,7 @@ describe('the pay page in the packet (v2.3758)', () => {
     const jobId = run[0]!.jobId
     const html = runPacketHtml(run, TODAY, null, { [jobId]: ['<div data-invoice></div>'] }, { [jobId]: { owner: '<div data-pay-page></div>' } })
     // cover sheet · note · owner copy · pay page · invoice · GC copy · invoice
-    expect(html.split('page-break-after:always').length - 1).toBe(6)
+    expect(html.split('page-break-after:always').length - 1).toBe(8) // + the two dividers (v2.4971)
     expect(html.split('data-pay-page').length - 1).toBe(1)
     expect(html.indexOf('data-pay-page')).toBeGreaterThan(html.indexOf('Copy for: Owner of record'))
     expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('data-invoice'))
@@ -377,7 +385,7 @@ describe('the pages one copy prints (v2.4621 — the run preview reads them, the
     expect(runCopyPages(n, gc!, invoices, pay).map((p) => p.label)).toEqual(['§ 53.056 notice · copy for original contractor', 'Unpaid invoice 1 of 2', 'Unpaid invoice 2 of 2'])
     // The packet is those pages, in envelope order, behind the cover sheet.
     const html = runPacketHtml(run, TODAY, null, invoices, pay)
-    expect(html.split('page-break-after:always').length - 1).toBe(1 + 5 + 3 - 1)
+    expect(html.split('page-break-after:always').length - 1).toBe(1 + 1 + 5 + 1 + 3 - 1) // the sheet, a divider, 5 owner pages, a divider, 3 GC pages
     expect(html.indexOf('pay codes')).toBeLessThan(html.indexOf('invoice one'))
   })
   it('stepRunPreview walks the packet and stops at its ends', () => {

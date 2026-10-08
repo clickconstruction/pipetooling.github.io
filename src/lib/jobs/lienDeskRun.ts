@@ -13,7 +13,8 @@ import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { lienSupplierLetterParagraphFor, type LienSupplierJob } from './lienJobSuppliers'
 import { conditionalReleaseParagraph, noticeReleaseEnclosureWords, noticeReleaseLabel, noticeReleasePageHtml, type NoticeRelease } from './lienNoticeRelease'
-import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
+import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
+import { RUN_PAPER_CSS, runDividerHtml, runMailing, runPageFoot, runSheetHtml } from './lienRunPaper'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
 
@@ -266,41 +267,6 @@ export function runNoticeProblems(n: RunNotice): string[] {
   return out
 }
 
-/** One envelope's contents as the cover sheet lists them: "650 · ATI Schertz — June and July 2026 — $33,500.00", or "2 notices: … ; …". */
-export function envelopeContentsText(env: RunEnvelope): string {
-  const lines = env.contents.map((c) => `${c.notice.label} — ${runNoticeWhatWords(c.notice)} — ${demandMoney(String(c.notice.amount))}`)
-  return lines.length === 1 ? lines[0]! : `${lines.length} notices: ${lines.join('; ')}`
-}
-
-/** The cover sheet's statute sentence: which forms are in the run and who each goes to. */
-function runInstrumentsSentence(notices: ReadonlyArray<RunNotice>): string {
-  const hasMonthly = notices.some((n) => n.kind !== 'retainage_53_057')
-  const hasRetainage = notices.some((n) => n.kind === 'retainage_53_057')
-  if (hasMonthly && hasRetainage) return 'Each § 53.056 notice and each § 53.057 retainage notice goes to the owner of record and the original contractor (Tex. Prop. Code §§ 53.056(a-1), 53.057(a))'
-  if (hasRetainage) return 'Each § 53.057 retainage notice goes to the owner of record and the original contractor (Tex. Prop. Code § 53.057(a))'
-  return 'Each § 53.056 notice goes to the owner of record and the original contractor (Tex. Prop. Code § 53.056(a-1))'
-}
-
-/** The cover sheet: one line per envelope — who it goes to, how, a blank for the tracking number, and what is inside. */
-export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd: string, extras?: FilingDocExtras): FilingDocBlock[] {
-  const envelopes = runEnvelopes(notices)
-  const shared = envelopes.length < runCopies(notices)
-  const blocks: FilingDocBlock[] = [
-    { kind: 'title', lines: ['Lien notice run', demandDate(todayYmd)] },
-    { kind: 'paragraph', text: `${notices.length} ${notices.length === 1 ? 'notice' : 'notices'} · ${envelopes.length} ${envelopes.length === 1 ? 'envelope' : 'envelopes'}. ${runInstrumentsSentence(notices)}; certified mail with return receipt, or another traceable service, is the delivery the statute recognises (§ 53.003).${shared ? ' Notices to one name at one address share an envelope; its tracking number covers everything inside.' : ''}` },
-  ]
-  for (const env of envelopes) {
-    blocks.push({
-      kind: 'numbered',
-      n: env.n,
-      text: `${env.label}: ${env.name || '—'}${env.address ? `, ${env.address}` : ''} · ${RUN_SEND_METHODS.find((m) => m.key === env.method)?.label ?? env.method}${env.tracking ? ` · ${env.tracking}` : ' · tracking # ________________'} — ${envelopeContentsText(env)}`,
-    })
-  }
-  const head: FilingDocBlock[] = []
-  if (extras?.letterhead && extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...extras.letterhead })
-  return [...head, ...blocks]
-}
-
 /**
  * The cover page as its own short page, signed by the contact person: the
  * run's letter when the item carries one (v2.3482 — every paragraph, the
@@ -418,13 +384,16 @@ export function runPacketHtml(
   invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>,
   payPagesByJob?: RunPayPages,
 ): string {
-  const pages: string[] = []
-  const letter = { letterhead: filingLetterheadFromIssuer(issuer) }
-  pages.push(filingDocHtml(runCoverSheetBlocks(notices, todayYmd, letter)))
-  for (const env of runEnvelopes(notices)) {
-    for (const { notice: n, recipient: r } of env.contents) {
-      for (const pg of runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob)) pages.push(pg.html)
-    }
+  // The run on paper (v2.4971): the checklist sheet, then for each envelope that goes out its divider and
+  // its copies, every page with its foot. A held envelope — no mailing address, nothing to claim — prints
+  // nothing; the sheet lists it in red with the reason.
+  const mailing = runMailing(runEnvelopes(notices))
+  const copyPages = (env: RunEnvelope) => env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((pg) => ({ n, r, pg })))
+  const pages: string[] = [runSheetHtml({ mailing, todayYmd, issuer, docsFor: (env) => copyPages(env).map((x) => x.pg.label) })]
+  for (const env of mailing.mailed) {
+    const inside = copyPages(env)
+    pages.push(runDividerHtml(env, mailing.mailed.length, issuer, inside.map((x) => x.pg.label)))
+    inside.forEach(({ n, r, pg }, i) => pages.push(pg.html + runPageFoot(n, r, pg.label, i + 1, inside.length)))
   }
   return runPagesHtml(pages, `Lien notice run — ${demandDate(todayYmd)}`)
 }
@@ -437,6 +406,7 @@ export function runPagesHtml(pages: ReadonlyArray<string>, title: string): strin
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   section + section { margin-top: 3rem; }
   @media print { body { margin: 0.5in auto; } section + section { margin-top: 0; } }
+${RUN_PAPER_CSS}
 </style></head><body>${body}</body></html>`
 }
 
@@ -445,11 +415,13 @@ export function runPagesHtml(pages: ReadonlyArray<string>, title: string): strin
  * the packet stacks them, or one envelope — every copy inside it, in packet order.
  */
 export function runCopyHtml(n: RunNotice, r: RunRecipient, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>, payPagesByJob?: RunPayPages): string {
-  return runPagesHtml(runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((p) => p.html), `${n.label} — copy for ${r.label.toLowerCase()}`)
+  const pages = runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob)
+  return runPagesHtml(pages.map((p, i) => p.html + runPageFoot(n, r, p.label, i + 1, pages.length)), `${n.label} — copy for ${r.label.toLowerCase()}`)
 }
 
 export function runEnvelopeHtml(env: Pick<RunEnvelope, 'n' | 'label' | 'name' | 'contents'>, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>, payPagesByJob?: RunPayPages): string {
-  const pages = env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((p) => p.html))
+  const inside = env.contents.flatMap(({ notice: n, recipient: r }) => runCopyPages(n, r, invoiceSectionsByJob, payPagesByJob).map((pg) => ({ n, r, pg })))
+  const pages = inside.map(({ n, r, pg }, i) => pg.html + runPageFoot(n, r, pg.label, i + 1, inside.length))
   return runPagesHtml(pages, `Envelope ${env.n} — ${env.label} ${env.name}`.trim())
 }
 
