@@ -42,6 +42,9 @@ vi.mock('../lib/gc/gcIo', async () => {
     saveScopeBookLine: vi.fn(),
     saveScopeSet: vi.fn(),
     sendQuestionToArchitect: vi.fn(),
+    addGcCompany: vi.fn(),
+    vetGcCompany: vi.fn(),
+    setGcCompanyCoverage: vi.fn(),
   }
 })
 
@@ -93,6 +96,19 @@ describe('GcProjects: the Project Board', () => {
     expect(screen.getByRole('heading', { name: 'Project Board' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Each project' })).toBeTruthy()
     expect(document.querySelector('[data-gc-board-row="p1"]')).toBeTruthy()
+    expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
+  })
+
+  it('a dev switches to Trade partners, with the company new to us waiting at the top', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Trade partners' }))
+    expect(screen.getByRole('heading', { name: 'Trade partners' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Jump to a trade' })).toBeTruthy()
+    expect(document.querySelector('[data-gc-vet="hillside"]')).toBeTruthy()
+    expect(document.querySelector('[data-gc-board-row="p1"]')).toBeNull()
     expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
   })
 })

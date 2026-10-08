@@ -337,11 +337,14 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
   const inviteIds = inviteRows.map((i) => i.id)
   const promiseIds = promiseRows.map((p) => p.id)
   const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
-  const [quotes, contacts, moves, users] = await Promise.all([
+  const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
+  const [quotes, contacts, moves, users, forms] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
     deciders.length ? supabase.from('users').select('id, name').in('id', deciders) : none,
+    // The forms of the companies still waiting on our decision, for the queue on Trade partners.
+    waiting.length ? supabase.from('gc_company_vetting_forms').select('*').in('company_id', waiting) : none,
   ])
   return {
     today,
@@ -355,5 +358,33 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
     promises: promiseRows,
     promiseMoves: taken(moves, 'load the promises’ earlier days'),
     userNames: Object.fromEntries(taken(users, 'load our team').map((u) => [u.id, u.name ?? ''])),
+    vettingForms: taken(forms, 'load the vetting forms'),
   }
+}
+
+/** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */
+export interface NewCompanyDraft {
+  name: string
+  trades: string[]
+  contactName: string
+  phone: string
+  email: string
+  address: string
+  maxMiles: number | null
+  known: boolean
+}
+
+/** Add a company: the row and its main contact in one press. The new company's id comes back. */
+export async function addGcCompany(draft: NewCompanyDraft): Promise<string> {
+  return taken(await supabase.rpc('gc_add_company', { company: draft as unknown as Json }), 'add the company')
+}
+
+/** Approve a company new to us, up to an amount on one award or with no limit, or decline it. The signed-in user is who decided. */
+export async function vetGcCompany(companyId: string, status: 'approved' | 'declined', limit: number | null, note: string): Promise<void> {
+  taken(await supabase.rpc('gc_vet_company', { p_company_id: companyId, p_status: status, ...(limit === null ? {} : { p_limit: limit }), p_note: note }), 'save the decision')
+}
+
+/** Where a company's crews drive from and how far they go. Empty miles: no limit. */
+export async function setGcCompanyCoverage(companyId: string, address: string, maxMiles: number | null): Promise<void> {
+  taken(await supabase.from('gc_companies').update({ address, max_miles: maxMiles }).eq('id', companyId).select('id').single(), 'save the address')
 }
