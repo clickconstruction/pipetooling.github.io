@@ -7,6 +7,9 @@ import type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer,
 import type { ChangeOrderReason, OwnerBilling, OwnerRetainageStep } from '../gc/types'
 import type { BidTab, PlanQuestion, Town } from '../gc/types'
 import type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
+import type { PreBidMeeting } from '../gc/types'
+export type { PreBidMeeting } from '../gc/types'
+
 export type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
 
 export type { BidTab, PlanQuestion, Town } from '../gc/types'
@@ -366,30 +369,6 @@ export interface GcCustomer {
   past: { name: string; year: number; outcome: 'built' | 'lost'; value: number; note: string }[]
   /** What Trades mode knows about the same company. */
   tradesNote: string | null
-}
-/**
- * A pre-bid meeting or site walk before our bid is due (the owner, 2026-10-04: "Let's build the
- * pre bid meeting into the prototype"). The companies quoting are invited; what they ask there
- * goes the way of any question, and the minutes ride in the next set.
- */
-export interface PreBidMeeting {
-  /** The day, YYYY-MM-DD, and the time, like "10:00". */
-  on: string
-  at: string
-  place: string
-  /** Who runs it: the architect's meeting, or our own walk with the trades. */
-  host: 'architect' | 'us'
-  /** A company has to come to quote. */
-  mandatory: boolean
-  /** The companies that came, by partner id. Null: not held yet. */
-  attended: string[] | null
-  /** The set that carried the minutes. Missing: not sent yet. */
-  minutesInSetRev?: number
-  /**
-   * The day it was set, or last moved: the day of the invitation every company got. A move sends a
-   * new one. Missing: set before the prototype kept it.
-   */
-  setOn?: string
 }
 export interface GcProject {
   id: string

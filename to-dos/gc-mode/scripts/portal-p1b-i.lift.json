@@ -169,5 +169,14 @@
       "to": "portal.test.ts",
       "append": true
     }
-  ]
+  ],
+  "pin": {
+    "main": "08054096942b8dc141fc03bde0b5590ef46ac1cc",
+    "spike": "926160792c08b246ec1a339cf188d6174514650c",
+    "about": "#4938 merged; the spike before its follow-up",
+    "known": {
+      "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
+      "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same"
+    }
+  }
 }

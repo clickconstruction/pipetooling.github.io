@@ -9,7 +9,6 @@
 import type { GcProject, GcState, TradePackage } from './gcTypes'
 import { money, shortDate, weekdayDate, daysUntil } from './gcWords'
 import { currentRev, partnerById, planLabel } from './gcLookups'
-import { questionsCloseOn } from './gcPlans'
 import { startChecklist } from './gcStart'
 import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGuess, quoteRanOut } from './gcBids'
 import { projectPeople } from './gcProjectPeople'
@@ -20,6 +19,9 @@ import { punchCounts } from './gcBuildingPunch'
 import { missingLogs } from './gcBuildingLog'
 import { priceToOwner } from './gcCustomers'
 import { stageProgress } from './gcProgress'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { quotesWantedOn } from '../gc/planQuestions'
+export { quotesWantedOn } from '../gc/planQuestions'
 
 export type HealthVerdict = 'on track' | 'watch' | 'behind'
 
@@ -478,22 +480,6 @@ function buildingHealth(state: GcState, project: GcProject): StageHealth {
     { label: 'Waiting on us', value: String(onUsItems), note: onUsItems === 0 ? 'nothing' : [draws.length > 0 ? `${draws.length} ${draws.length === 1 ? 'draw' : 'draws'}` : null, submittalOnUs.length > 0 ? `${submittalOnUs.length} ${submittalOnUs.length === 1 ? 'submittal' : 'submittals'}` : null, punchToCheck > 0 ? 'a punch check' : null, lookAheadWaiting > 0 ? 'look-ahead marks' : null, noLog.length > 0 ? 'a daily log' : null].filter(Boolean).join(', '), ...(onUsItems > 0 ? { tone: 'bad' as const } : {}) },
   ]
   return { verdict, why, next, calendar, tiles, numbers, bars, askStartDate: false }
-}
-
-// ---------------------------------------------------------------------------------------------
-// The calendar: a square a day, a little space where one week becomes the next (the owner,
-// 2026-10-04, `bid-calendar-mockup.html`). Weekends are narrow, each day carries what happened on
-// it, the deadlines ahead are marked, and building, months long, is a square a week.
-// ---------------------------------------------------------------------------------------------
-
-/**
- * The day we want every quote in: the day questions close, three days before our bid is due, so
- * there are days left to level the quotes and price our bid. Null: no bid date, or not bidding.
- * The trades' portal gives it as their due day (the Portal lane's `portalQuoteDue`): if this ever
- * stops being the questions-close day, say which one the trades' due day follows.
- */
-export function quotesWantedOn(project: GcProject): string | null {
-  return questionsCloseOn(project)
 }
 
 function addDay(on: string, n: number): string {

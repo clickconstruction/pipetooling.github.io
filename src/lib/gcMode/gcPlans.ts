@@ -7,6 +7,9 @@ import { weekdayDate } from './gcWords'
 import { currentRev, partnerById } from './gcLookups'
 // What moved to main (the real build) is re-exported from there, so there is one copy.
 import { preBidInvited } from '../gc/preBid'
+import { questionsCloseOn } from '../gc/planQuestions'
+export { questionState, questionsCloseOn, questionsFor } from '../gc/planQuestions'
+
 export { preBidInvited } from '../gc/preBid'
 
 // The pure sheet kernels live in the real build's library now (NEW_PROJECT_REAL_BUILD.md, PR 1).
@@ -217,17 +220,6 @@ export type QuestionState = 'asked' | 'with the architect' | 'answered'
 /** Questions close this many days before our bid is due (the owner, 2026-10-03). */
 export const QUESTIONS_CLOSE_DAYS = 3
 
-/**
- * The day questions close on a project we are bidding: three days before our bid is due. From
- * that day on no company can ask. Null: they never close, because there is no due date or the
- * job is ours (questions while building are part of the work).
- */
-export function questionsCloseOn(project: GcProject): string | null {
-  if (project.stage !== 'pursuing' || !project.bidDue) return null
-  const [y, m, d] = project.bidDue.split('-').map(Number)
-  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) - QUESTIONS_CLOSE_DAYS)).toISOString().slice(0, 10)
-}
-
 /** A company can still ask today. Never on a bid we lost: nobody is open on it. */
 export function questionsOpen(project: GcProject, today: string): boolean {
   if (project.lostOn) return false
@@ -235,20 +227,9 @@ export function questionsOpen(project: GcProject, today: string): boolean {
   return close === null || today < close
 }
 
-/** Where a question stands: asked and not sent on, with the architect, or answered. */
-export function questionState(q: PlanQuestion): QuestionState {
-  if (q.answer !== null) return 'answered'
-  return q.sentToArchitectOn ? 'with the architect' : 'asked'
-}
-
 /** The project's questions still waiting on an answer, the oldest first. */
 export function openQuestions(project: GcProject): PlanQuestion[] {
   return project.questions.filter((q) => q.answer === null).sort((a, b) => a.askedOn.localeCompare(b.askedOn))
-}
-
-/** One trade's questions, the newest first. */
-export function questionsFor(project: GcProject, packageId: string): PlanQuestion[] {
-  return project.questions.filter((q) => q.packageId === packageId).sort((a, b) => b.askedOn.localeCompare(a.askedOn))
 }
 
 /** Answered questions no set has carried yet: the ones a new set can put in its note. */
