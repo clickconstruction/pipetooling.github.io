@@ -11,6 +11,7 @@ import { addedActivityProblem } from './addedActivity'
 import { importRefusal } from './import'
 import { MOVE_NOTE_MIN, MOVE_REASONS, moveWhyProblem, planMove } from './moves'
 import { PLACE_MAX, placeProblem } from './places'
+import { draftRefusal } from './scheduleWindow'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 import { theirDatesRefusal } from './theirDates'
@@ -86,6 +87,12 @@ describe("the schedule's writes say a refusal the way the screen does", () => {
       theirDatesRefusal(job('helotes')),
       theirDatesRefusal({ ...fairOaks, whatIf: copy }),
     ]) expect(says(w), w ?? '').toBe(true)
+  })
+
+  it('refuses a first draft on a lost job and while we bid in draftRefusal’s words (the Schedule window, 7b)', () => {
+    const job = (id: string) => s.projects.find((p) => p.id === id)!
+    for (const w of [draftRefusal(job('boerne')), draftRefusal({ ...job('helotes'), lostOn: '2026-10-01' })]) expect(says(w), w ?? '').toBe(true)
+    expect(draftRefusal(job('helotes'))).toBeNull()
   })
 
   it('refuses a stale press with the phrase and the DETAIL keys the reader reads', () => {

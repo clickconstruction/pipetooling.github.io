@@ -23,6 +23,7 @@ import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
+import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
 import { GcMoney } from '../components/gc/GcMoney'
 import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
@@ -143,6 +144,8 @@ export default function GcProjects() {
   const plansProjectId = params.get('plans')
   /** The questions window: `questions=<projectId>`. */
   const questionsProjectId = params.get('questions')
+  /** The schedule's window (the schedule's PR 7b): `schedule=<projectId>`, a dev's until the schedule's PR 10. */
+  const scheduleProjectId = params.get('schedule')
   const [questionBusy, setQuestionBusy] = useState<string | null>(null)
   const [questionProblem, setQuestionProblem] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
@@ -530,6 +533,14 @@ export default function GcProjects() {
     else next.delete('plans')
     setParams(next, { replace: true })
   }
+  const setScheduleWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('schedule', projectId)
+    else next.delete('schedule')
+    setParams(next, { replace: true })
+  }
+  // The schedule reads the board's job: a dev's only, as the gc_schedule_* tables are until the schedule's PR 10 (G-133).
+  const scheduleProject = scheduleProjectId && role === 'dev' ? (board?.projects.find((x) => x.id === scheduleProjectId) ?? null) : null
   const setSetWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('set', projectId)
@@ -643,6 +654,11 @@ export default function GcProjects() {
               {!p.lostOn && (
                 <Btn kind="quiet" dataTour={tour('gc-new-set')} onClick={() => setSetWindow(p.id)}>
                   A new set of plans came in
+                </Btn>
+              )}
+              {role === 'dev' && board && (
+                <Btn kind="quiet" onClick={() => setScheduleWindow(p.id)}>
+                  Schedule
                 </Btn>
               )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
@@ -786,6 +802,7 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
           key={openCompany.id}
