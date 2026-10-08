@@ -86,6 +86,8 @@ export interface QuoteRow {
   alternates: { label: string; amount: number }[] | null
   quote_file: string
   exclusions: { name: string; said?: string; unitPrice?: { amount: number; unit: string } }[] | null
+  /** The exclusion names they answered about (B5-b). Missing or null: none. */
+  exclusions_answered?: string[] | null
   created_at: string
 }
 
@@ -240,6 +242,7 @@ function quoteOf(invite: InviteRow, quotes: QuoteRow[]): SubBid | null {
     ...(newest.quote_file ? { quoteFile: newest.quote_file } : {}),
     ...(invite.taken_alternates && invite.taken_alternates.length ? { takenAlternates: invite.taken_alternates } : {}),
     ...(newest.exclusions ? { exclusions: newest.exclusions } : {}),
+    ...(newest.exclusions_answered && newest.exclusions_answered.length ? { exclusionsAnswered: newest.exclusions_answered } : {}),
     ...(invite.exclusion_covers && Object.keys(invite.exclusion_covers).length ? { exclusionCovers: invite.exclusion_covers } : {}),
   }
 }
@@ -349,7 +352,8 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     // Our own trade's number is its Trades mode bid; until the board reads that bid, our budget stands in, not priced.
     selfPerform: t.ours ? { ref: t.ownBidId ?? '', value: t.budget, note: 'Our own crew.', priced: false } : null,
     invites: invitesByPackage.get(t.id) ?? [],
-    carried: t.ours ? 'self' : null,
+    // What we carry (B5): our own trade, the quote on an ask, our budget, or nothing yet.
+    carried: t.ours ? 'self' : (t.carriedInviteId ?? (t.carryBudget ? 'plug' : null)),
     awardedInviteId: null,
     sow: null,
     ...(t.excludes.length ? { excludes: t.excludes } : {}),

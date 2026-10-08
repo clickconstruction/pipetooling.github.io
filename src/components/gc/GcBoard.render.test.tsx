@@ -23,6 +23,24 @@ describe('GcBoard', () => {
     expect(within(row).getByText(/Oak Street Partners/)).toBeTruthy()
   })
 
+  it('marks a price with a missing cost as + ?, on the row and on the carried trade in the price card', () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({
+      projects: base.projects.map((p) => ({ ...p, trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i1' } : t)) })),
+      invites: base.invites.map((i) => (i.id === 'i1' ? { ...i, plugs: {} } : i)),
+    })
+    const onCompare = vi.fn()
+    render(<GcBoard state={boardStateFromRows(rows)} onOpen={() => undefined} onPlans={() => undefined} onCompare={onCompare} />)
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    expect(within(row).getByText(/In Sitework, 1 line has no cost yet: paving\./)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /so far, with 2 holes/ }))
+    const card = screen.getByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })
+    expect(within(card).getAllByText(/1 line has no cost yet: paving/).length).toBeGreaterThan(0)
+    fireEvent.click(within(card).getByRole('button', { name: 'Set a cost' }))
+    expect(onCompare).toHaveBeenCalledWith('p1', 'k1')
+    expect(screen.queryByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })).toBeNull()
+  })
+
   it('opens the project from its row, the plans from the plans link, and the price card from the price line', () => {
     const onOpen = vi.fn()
     const onPlans = vi.fn()
@@ -34,6 +52,7 @@ describe('GcBoard', () => {
     fireEvent.click(screen.getByRole('button', { name: /so far, with 3 holes/ }))
     const card = screen.getByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })
     expect(within(card).getByText(/Pick a quote to carry/)).toBeTruthy()
+    expect(within(card).queryByRole('button', { name: 'Compare quotes' })).toBeNull()
     fireEvent.click(within(card).getByRole('button', { name: 'Open the project' }))
     expect(onOpen).toHaveBeenCalledWith('p1')
   })

@@ -28,6 +28,7 @@ import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTra
 import { GcTradePortals } from '../components/gc/GcTradePortals'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
+import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
@@ -36,6 +37,7 @@ import type { PortalLang } from '../lib/gc/portalI18n'
 import {
   addGcCompany,
   askGcCompanies,
+  carryGcTrade,
   checkDriveAccess,
   createGcProject,
   declineGcAsk,
@@ -55,6 +57,9 @@ import {
   mergeScopeBookLines,
   saveScopeBookLine,
   saveScopeSet,
+  setGcAskExclusionCovers,
+  setGcAskPlugs,
+  setGcAskTakenAlternates,
   setGcCompanyCoverage,
   setGcCompanyLanguage,
   vetGcCompany,
@@ -163,9 +168,35 @@ export default function GcProjects() {
   const refreshBoard = async () => {
     if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today))
   }
+  // What a trade carries sits on the trade (`gc_trade_packages`), which only the projects' load reads.
+  // A new `loaded` reloads the board too (the effect above).
+  const reloadProjects = async () => {
+    const projects = await loadGcProjects()
+    setLoaded((was) => (was ? { ...was, projects } : was))
+  }
   // The Ask window (the Board's B4-a): a job's trade, with these companies ticked. Unset: everyone in range.
   const [asking, setAsking] = useState<{ projectId: string; packageId: string; tick?: string[] } | null>(null)
   const openAsk = (projectId: string, packageId: string, tick?: string[]) => setAsking({ projectId, packageId, ...(tick ? { tick } : {}) })
+  // Compare quotes (the Board's B5-b): one trade's quotes side by side, and what it carries.
+  const [comparing, setComparing] = useState<{ projectId: string; packageId: string } | null>(null)
+  const compareWrites: CompareWrites = {
+    setPlugs: async (inviteId, plugs) => {
+      await setGcAskPlugs(inviteId, plugs)
+      await refreshBoard()
+    },
+    setCovers: async (inviteId, covers) => {
+      await setGcAskExclusionCovers(inviteId, covers)
+      await refreshBoard()
+    },
+    setTakenAlternates: async (inviteId, labels) => {
+      await setGcAskTakenAlternates(inviteId, labels)
+      await refreshBoard()
+    },
+    carry: async (packageId, carry) => {
+      await carryGcTrade(packageId, carry)
+      await reloadProjects()
+    },
+  }
   // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for a dev.
   const [companyId, setCompanyId] = useState<string | null>(null)
   const companyOpener: CompanyOpener | null = role === 'dev' && board ? { openPartner: setCompanyId } : null
@@ -377,6 +408,7 @@ export default function GcProjects() {
                 state={board}
                 onOpen={openProjectCard}
                 onPlans={(id) => setPlansWindow(id)}
+                onCompare={(projectId, packageId) => setComparing({ projectId, packageId })}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
               />
             ) : devView === 'partners' ? (
@@ -514,7 +546,7 @@ export default function GcProjects() {
                     ))}
                   </ul>
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} />}
+                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
               ))}
             </div>
@@ -556,6 +588,9 @@ export default function GcProjects() {
             openProjectCard(projectId)
           }}
         />
+      )}
+      {comparing && board && (
+        <GcCompareQuotes key={comparing.packageId} state={board} projectId={comparing.projectId} packageId={comparing.packageId} writes={compareWrites} onClose={() => setComparing(null)} />
       )}
       {asking && board && (
         <GcAskCompanies

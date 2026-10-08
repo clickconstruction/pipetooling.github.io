@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { bidsIn } from '../../lib/gc/bids'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, followUps, promiseWords, wordRecord, type FollowUp, type FollowUpWhy, type PromiseState } from '../../lib/gc/followUp'
 import { telHref } from '../../lib/gc/followUpSheet'
@@ -178,17 +179,40 @@ function DeclineButtons({ project, pkg, invite, partner, writes }: { project: Gc
 }
 
 /** A trade's asks on a project: each company asked, where it stands, and its story, with Ask for quotes while a company in the trade is not asked. */
-export function GcTradeAsks({ state, projectId, packageId, writes, onAsk }: { state: GcState; projectId: string; packageId: string; writes: AskWrites; onAsk?: () => void }) {
+export function GcTradeAsks({
+  state,
+  projectId,
+  packageId,
+  writes,
+  onAsk,
+  onCompare,
+}: {
+  state: GcState
+  projectId: string
+  packageId: string
+  writes: AskWrites
+  onAsk?: () => void
+  /** Open Compare quotes on this trade (B5-b). Shown once a quote is in. */
+  onCompare?: () => void
+}) {
   const project = state.projects.find((p) => p.id === projectId)
   const pkg = project?.packages.find((k) => k.id === packageId)
   if (!project || !pkg || pkg.selfPerform) return null
   const asked = new Set(pkg.invites.map((i) => i.partnerId))
   const canAsk = Boolean(onAsk) && !project.lostOn && state.partners.some((p) => p.trades.includes(pkg.trade) && !asked.has(p.id))
-  const ask = canAsk && onAsk && (
-    <div>
-      <Btn kind="quiet" onClick={onAsk}>
-        Ask for quotes
-      </Btn>
+  const quotes = bidsIn(pkg).length
+  const ask = ((canAsk && onAsk) || (onCompare && quotes > 0)) && (
+    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+      {onCompare && quotes > 0 && (
+        <Btn kind="primary" onClick={onCompare}>
+          Compare quotes ({quotes})
+        </Btn>
+      )}
+      {canAsk && onAsk && (
+        <Btn kind="quiet" onClick={onAsk}>
+          Ask for quotes
+        </Btn>
+      )}
     </div>
   )
   if (pkg.invites.length === 0)
