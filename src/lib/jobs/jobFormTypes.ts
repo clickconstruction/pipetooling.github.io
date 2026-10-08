@@ -6,7 +6,7 @@
 import type { Database } from '../../types/database'
 import type { StageKind } from './stagePlan'
 
-export type JobFormServiceType = { id: string; name: string; color: string | null }
+export type JobFormServiceType = { id: string; name: string; color: string | null; billing_only?: boolean }
 
 export type MeServiceTypeColumns = {
   role?: string

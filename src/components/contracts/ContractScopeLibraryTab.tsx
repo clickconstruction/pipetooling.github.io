@@ -58,7 +58,7 @@ export function ContractScopeLibraryTab({ onQuickSend, canEdit }: { onQuickSend:
     try {
       const [iRes, sRes, dRes, pRes] = await Promise.all([
         supabase.from('sub_scope_items').select('*').is('archived_at', null).order('sequence_order', { ascending: true }),
-        supabase.from('service_types').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
+        supabase.from('service_types').select('id, name, sequence_order').eq('billing_only', false).order('sequence_order', { ascending: true }),
         supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').order('sequence_order', { ascending: true }),
         supabase.from('people').select('id').eq('kind', 'sub').is('archived_at', null),
       ])

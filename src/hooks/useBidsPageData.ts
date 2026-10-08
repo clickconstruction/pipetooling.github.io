@@ -164,6 +164,7 @@ export function useBidsPageData(input: {
     const { data, error } = await supabase
       .from('service_types' as any)
       .select('*')
+      .eq('billing_only', false)
       .order('sequence_order', { ascending: true })
     
     if (error) {

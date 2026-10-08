@@ -186,7 +186,9 @@ async function fetchJobFollowupCandidatesUncached(todayYmd: string): Promise<Job
         supabase
           .from('jobs_ledger')
           .select('id, hcp_number, job_name, job_address, status, customer_name, pct_complete, revenue, payments_made')
-          .in('status', JOB_FOLLOWUP_STAGES),
+          .in('status', JOB_FOLLOWUP_STAGES)
+          // A GC job's billing job has no crew to follow up on (v2.4958).
+          .eq('billing_only', false),
       'followup jobs',
     ),
     withSupabaseRetry(

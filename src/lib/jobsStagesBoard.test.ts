@@ -583,6 +583,13 @@ describe('buildJobsStagesBoardLists', () => {
     expect(readyToBillRows).toHaveLength(0)
   })
 
+  it('leaves a GC job\'s billing-only job out of Working, and a crew job stays (v2.4958)', () => {
+    const crew = jobStub({ id: 'job-1', status: 'working', invoices: [] })
+    const billing = jobStub({ id: 'job-2', status: 'working', invoices: [], billing_only: true })
+    const lists = buildJobsStagesBoardLists([crew, billing], '')
+    expect(lists.working.map((j) => j.id)).toEqual(['job-1'])
+  })
+
   it('waiting job lands in the waiting list and no other bucket', () => {
     const job = jobStub({
       id: 'job-1',

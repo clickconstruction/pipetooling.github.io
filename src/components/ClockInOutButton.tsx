@@ -727,7 +727,7 @@ export default function ClockInOutButton({
   useEffect(() => {
     if (!(clockInModalOpen || updateFocusModalOpen || clockOutReviewOpen || tallyPreClockOutOpen)) return
     const load = async () => {
-      const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
+      const { data: stData } = await supabase.from('service_types').select('id, name').eq('billing_only', false).order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
       if (authUser?.id) {
         const { data: meData } = await supabase

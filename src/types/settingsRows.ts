@@ -46,6 +46,8 @@ export interface ServiceType {
   updated_at: string
   ledger_job_prefix?: string | null
   ledger_bid_prefix?: string | null
+  /** Only billing-only jobs carry it (GC mode's General contracting): left out of the pickers (`pickableServiceTypes`). */
+  billing_only?: boolean
 }
 
 export interface FixtureType {

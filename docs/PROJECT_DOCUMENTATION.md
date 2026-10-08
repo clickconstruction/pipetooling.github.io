@@ -1034,7 +1034,7 @@ uuid3           | Supply House C    | 0
   - `sequence_order` (integer, required) - Display order (lower numbers first)
   - `ledger_job_prefix` (text, nullable) - Shown before **HCP** numbers in the app (e.g. `JP`). **Trimmed** in UI logic. **Null or blank** means use the legacy default **`J`**.
   - `ledger_bid_prefix` (text, nullable) - Shown before **bid #** in the app (e.g. `BP`). **Null or blank** means use the legacy default **`B`**.
-  - `billing_only` (boolean, v2.4958) - The type only billing-only jobs carry (GC mode's General contracting); no picker reads it yet.
+  - `billing_only` (boolean, v2.4958) - The type only billing-only jobs carry (GC mode's General contracting). The pickers leave it out (`pickableServiceTypes`, v2.4972); a lookup by id still reads it.
   - `created_at`, `updated_at` (timestamptz)
 - **Initial Data**:
   - Plumbing (sequence_order: 1)
@@ -1496,7 +1496,7 @@ The jobs pipeline postdates the schema sections above; its column semantics are 
 - `last_work_date` is trigger-maintained from approved clock sessions; the manual `last_bill_date` column was retired in v2.1154 (nothing reads or writes it).
 - `collections_at` / `collections_by` / `collections_note` — the Collections flag on a `billed` job (not a status): set and cleared by `set_job_collections_flag`, cleared by trigger when the job pays; the rules in [BILLING_FLOWS.md](./BILLING_FLOWS.md) → *Collections*, the term in [GLOSSARY.md](./GLOSSARY.md) → *Collections*.
 - `uncollectible_at` / `uncollectible_by` / `uncollectible_reason` (v2.4782) — the Uncollectible mark on a Collections job: `set_job_uncollectible` with a required reason; in no owed total (v2.4784), off the Lien desk (v2.4788), the stamped band under Collections (v2.4792); the term in [GLOSSARY.md](./GLOSSARY.md) → *Collections*.
-- `billing_only` (v2.4958) — a job that only carries bills (GC mode's billing job). Triggers refuse it on `clock_sessions`, `job_schedule_blocks` and `jobs_ledger_team_members`, and `search_jobs_ledger` leaves it out unless `include_billing_only`; see [BILLING_FLOWS.md](./BILLING_FLOWS.md#billing-only-jobs-v24958).
+- `billing_only` (v2.4958) — a job that only carries bills (GC mode's billing job). Triggers refuse it on `clock_sessions`, `job_schedule_blocks` and `jobs_ledger_team_members`, `search_jobs_ledger` leaves it out unless `include_billing_only`, and the crew lists and Pipeline's Working column leave it out (v2.4972); see [BILLING_FLOWS.md](./BILLING_FLOWS.md#billing-only-jobs-v24958).
 - FKs: `customer_id` (required before billing), `gc_customer_id` (optional GC link), `development_id` (optional job grouping), `project_id` (job's `master_user_id` synced to project owner), `service_type_id`. The two `customers` FKs make bare embeds ambiguous — always name the FK (PGRST201).
 - Link columns: `google_drive_link` (customer files), `job_pictures_link`, `job_plans_link`.
 

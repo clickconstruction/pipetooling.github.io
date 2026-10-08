@@ -54,7 +54,7 @@ const bidLabel = (row: Row, prefixes: PrefixMap): string => formatBidLedgerNumbe
 // ---------------------------------------------------------------------------
 
 export async function findJob(reader: Reader, text: string) {
-  const [hits, prefixes] = await Promise.all([reader.rpc('search_jobs_ledger', { search_text: text.trim() }, FIND_LIMIT), part(() => prefixMap(reader))])
+  const [hits, prefixes] = await Promise.all([reader.rpc('search_jobs_ledger', { search_text: text.trim(), include_billing_only: true }, FIND_LIMIT), part(() => prefixMap(reader))])
   const map = failed(prefixes) ? {} : prefixes
   return { matches: asRows(hits).map((r) => ({ id: r.id, label: jobLabel(r, map), job_name: r.job_name, job_address: r.job_address, service_type: r.service_type_name })) }
 }
