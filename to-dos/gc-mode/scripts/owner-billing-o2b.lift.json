@@ -1,0 +1,168 @@
+{
+  "about": "Owner Billing's O2b (to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md, Kernels): the rest of billing the customer, now that the Building lane's kernels it reads are on main (U2), lifted to src/lib/gc on a spike that reads O2a from main. timeExtension and lateFinish go in src/lib/gc/, never schedule/ (billing reads the schedule, never the other way). payAppFile.ts takes the cells; the Excel and PDF writers wait for O4a. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/owner-billing-o2b.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcOwnerBilling",
+      "to": "ownerBilling.ts",
+      "append": true,
+      "moves": "all"
+    },
+    {
+      "from": "gcOwnerBillingDay",
+      "to": "ownerBillingDay.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: bill day across every job, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcOwnerBillingDay.ts`).\n */"
+    },
+    {
+      "from": "gcOwnerBillingMargin",
+      "to": "ownerBillingMargin.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: what each job makes us, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcOwnerBillingMargin.ts`).\n */"
+    },
+    {
+      "from": "gcOwnerBillingAhead",
+      "to": "ownerBillingAhead.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: the next weeks of money in and out, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcOwnerBillingAhead.ts`).\n */"
+    },
+    {
+      "from": "gcBillingForecast",
+      "to": "billingForecast.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: the billing forecast that follows the schedule (G-97), moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcBillingForecast.ts`).\n */"
+    },
+    {
+      "from": "gcCashForecast",
+      "to": "cashForecast.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: the cash weeks that follow the bars (G-140), moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcCashForecast.ts`).\n */"
+    },
+    {
+      "from": "gcTimeExtension",
+      "to": "timeExtension.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: asking the customer for the days (G-141), moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcTimeExtension.ts`).\n */"
+    },
+    {
+      "from": "gcLateFinish",
+      "to": "lateFinish.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: the late-finish days against the contract (G-98), moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcLateFinish.ts`).\n */"
+    },
+    {
+      "from": "gcPayAppFile",
+      "to": "payAppFile.ts",
+      "moves": [
+        "PayAppParties",
+        "PAY_APP_FIRST_ROW",
+        "PAY_APP_LAST_ROW",
+        "PayAppRow",
+        "PayAppCells",
+        "splitAddress",
+        "payAppCells",
+        "payAppFileName"
+      ],
+      "header": "/**\n * GC mode, the real build, Owner Billing's O2b: one pay application as the AIA G702 and G703's cells, for ours to the\n * customer and a trade's to us, moved word for word from the GC mode prototype (branch spike/gc-mode, `gcPayAppFile.ts`).\n * The Excel and PDF writers come with O4a, on main's own filler.\n */"
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "The shapes O2b's kernels read, written again with their fields added (each field word for word).",
+      "fields": {
+        "GcProject": [
+          "id",
+          "name",
+          "startedOn",
+          "packages",
+          "schedule",
+          "whatIf",
+          "changeOrders",
+          "stage",
+          "owner",
+          "town",
+          "closedOn",
+          "waits",
+          "crewCounts",
+          "dailyLogs",
+          "customerId",
+          "customerRole",
+          "lostOn",
+          "rough",
+          "scheduleSends",
+          "address",
+          "architect",
+          "punch",
+          "submittals",
+          "rfis",
+          "weeklyReports",
+          "ownerBilling",
+          "ourBidSentOn",
+          "bidDue",
+          "planSets",
+          "generalConditions",
+          "contingencyPct",
+          "feePct",
+          "team",
+          "lostWhy",
+          "wonBy",
+          "ownerContractWorth",
+          "ownerLateInterest",
+          "ownerLateFinish",
+          "point",
+          "ownerContractSignedOn",
+          "ownerContractSentOn",
+          "permitOn",
+          "startDate",
+          "architectId",
+          "questions",
+          "changeRequests",
+          "sizeNote",
+          "preBid",
+          "propertyOwner",
+          "ownerRetainageStep"
+        ],
+        "GcCustomer": [
+          "id",
+          "name",
+          "contact",
+          "portalOn",
+          "payDays",
+          "retainagePct",
+          "address"
+        ]
+      },
+      "names": [
+        "GcProject",
+        "GcCustomer"
+      ]
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
+    "src/lib/gcMode/gcTypes.ts#ChangeOrder": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#SovLine": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Sow": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/aiaG702G703Template.ts#AiaFieldValues": "../aiaG702G703Template.ts",
+    "src/lib/gcMode/gcTypes.ts#CustomerRole": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#PlanSet": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#DailyLog": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "tests": [
+    {
+      "from": "gcOwnerBilling.test.ts",
+      "to": "ownerBilling.test.ts",
+      "header": "/**\n * The tests of `gcOwnerBilling.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (Owner Billing's O2a and O2b). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer stay on the spike, where they run against these kernels.\n */"
+    }
+  ]
+}
