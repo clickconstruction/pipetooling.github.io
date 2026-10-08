@@ -1,5 +1,4 @@
 import { readPhonePeopleView, writePhonePeopleView, type PhonePeopleView, resolvePhonePeopleView, type PhonePeopleViewPref } from '../../lib/scheduleDispatch/phonePeopleBoard'
-import { blockCoverageKey, coverageOfAssignees, supervisionWarningFor } from '../../lib/schedule/blockGroupCoverage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate } from '../../lib/scheduleDispatchDayLink'
@@ -7,6 +6,7 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useScheduleDispatchHubData } from '../../hooks/useScheduleDispatchHubData'
 import { useScheduleDispatchNotComingIn } from '../../hooks/useScheduleDispatchNotComingIn'
 import { useScheduleDispatchHubModes } from '../../hooks/useScheduleDispatchHubModes'
+import { useScheduleDispatchAddBlockModal } from '../../hooks/useScheduleDispatchAddBlockModal'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../../hooks/useAuth'
 import { OPEN_BID_EDIT_QUERY } from '../../contexts/BidPreviewModalContext'
@@ -24,12 +24,6 @@ import {
   type JobScheduleBlockRow,
   type ScheduleTeamMember,
 } from '../../lib/jobScheduleBlocks'
-import { dispatchMinutesToHHmm, timeInputToPg } from '../../lib/dispatchAddBlockTime'
-import { scheduleTimeToMinutesFromMidnight } from '../../lib/jobScheduleOverlap'
-import {
-  defaultNewBlockRangeInFirstGap,
-  type AddBlockTimelineSegment,
-} from '../../lib/scheduleDispatchAddBlockTimeline'
 import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { executeScheduleDispatchBlockReassign, moveScheduleDispatchBlockTo } from '../../lib/scheduleDispatchDragEnd'
 import { moveDayLabel } from '../../lib/scheduleDispatchMoveBlock'
@@ -45,7 +39,6 @@ import { ScheduleDispatchModeBanners, ScheduleDispatchMultiCellBar } from './Sch
 import {
   hubPersonDayKey,
   findDuplicateJobAddress,
-  formatScheduleDispatchHubJobTitle,
 } from '../../lib/scheduleDispatchHub'
 import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
 import {
@@ -68,7 +61,6 @@ import {
   CAN_VIEW_SCHEDULE_DISPATCH_ROLES,
   canWriteTimeOff,
 } from '../../lib/scheduleDispatchEditRoles'
-import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
 import { RemoveScheduleBlockConfirmModal } from './scheduleDispatchRemoveBlockModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
@@ -98,10 +90,6 @@ function readScheduleDispatchHighlightLinkedGroups(): boolean {
     return false
   }
 }
-
-type ScheduleDispatchBlockModalState =
-  | { kind: 'add'; assigneeUserId: string; workDate: string; jobId: string }
-  | { kind: 'edit'; blockId: string }
 
 export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' | 'tomorrow' }) {
   const { user: authUser, role, loading: authLoading } = useAuth()
@@ -354,18 +342,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     return m
   }, [teamMembers])
 
-  const [blockModalState, setBlockModalState] = useState<ScheduleDispatchBlockModalState | null>(null)
   const [deleteBlockId, setDeleteBlockId] = useState<string | null>(null)
   const [deleteBlockBusy, setDeleteBlockBusy] = useState(false)
-  const [addTimeStart, setAddTimeStart] = useState('08:00')
-  const [addTimeEnd, setAddTimeEnd] = useState('16:00')
-  const [addNote, setAddNote] = useState('')
-  const [addSaving, setAddSaving] = useState(false)
-  const [addError, setAddError] = useState<string | null>(null)
-  const [addBlockTimelineSegments, setAddBlockTimelineSegments] = useState<AddBlockTimelineSegment[]>([])
-  const [addBlockDraftByBlockId, setAddBlockDraftByBlockId] = useState<
-    Record<string, { time_start: string; time_end: string }>
-  >({})
   // Press-and-hold Move sheet (phone-first): which block, plus save state.
   const [moveSheetBlock, setMoveSheetBlock] = useState<JobScheduleBlockRow | null>(null)
   const [moveSheetSaving, setMoveSheetSaving] = useState(false)
@@ -391,11 +369,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     setHubAssignJobPickerSearch('')
     setHubAssignJobPickerNumberQuery('')
   }, [])
-  /** Entering a placement closes the add-block window (`addBlock` in the mode rule). */
-  const closeAddBlockWindow = useCallback(() => {
-    setBlockModalState(null)
-    setAddError(null)
-  }, [])
+  // The add-block window and the modes end each other: a placement shuts the window, and the
+  // window ends the modes (the mode rule's `addBlock` column). The modes hook comes first, so it
+  // reaches the window's closer through this bridge, which the window's hook below fills.
+  const closeAddBlockWindowRef = useRef<() => void>(() => {})
+  const closeAddBlockWindow = useCallback(() => closeAddBlockWindowRef.current(), [])
   // Every mode flag and the rule that entering one leaves the others (lib/scheduleDispatch/hubModes),
   // in useScheduleDispatchHubModes since v2.4986. It hands out intents only, never a flag's setter.
   const {
@@ -456,6 +434,34 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     closeAddBlockWindow,
   })
 
+  // The add-block window (SCHEDULE_DISPATCH map, step 6), in useScheduleDispatchAddBlockModal since
+  // v2.4992. It opens and shuts only through the mode rule (leaveModesFor).
+  const {
+    blockModalState,
+    openAddBlock,
+    closeAdd,
+    closeAddBlockWindow: closeAddBlockWindowNow,
+    addBlockModalProps,
+  } = useScheduleDispatchAddBlockModal({
+    jobId,
+    jobTitle,
+    blocks,
+    blockById,
+    nameByUserId,
+    hubPersonDayBlocks,
+    hubJobTitleById,
+    hubPeopleNameById,
+    hubPersonById,
+    hubBlockCoverageByKey,
+    getHubJobDisplayTitle,
+    authUser,
+    showToast,
+    load,
+    loadHub,
+    leaveModesFor,
+  })
+  closeAddBlockWindowRef.current = closeAddBlockWindowNow
+
   useEffect(() => {
     if (deleteBlockId == null) return
     const onKey = (e: KeyboardEvent) => {
@@ -464,51 +470,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [deleteBlockId, deleteBlockBusy])
-
-  const openAddBlock = useCallback(
-    (args: { assigneeUserId: string; workDate: string; jobId: string }) => {
-      leaveModesFor('openAddBlock')
-      setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
-      const rows = jobId
-        ? blocks.filter((b) => b.assignee_user_id === args.assigneeUserId && b.work_date === args.workDate)
-        : (hubPersonDayBlocks.get(hubPersonDayKey(args.assigneeUserId, args.workDate)) ?? [])
-      const labelFor = (jid: string) =>
-        jobId ? jobTitle : hubJobTitleById.get(jid) ?? formatScheduleDispatchHubJobTitle(null, null)
-      const segments: AddBlockTimelineSegment[] = [...rows]
-        .map((b) => ({
-          blockId: b.id,
-          jobId: scheduleBlockAnchorId(b),
-          label: labelFor(scheduleBlockAnchorId(b)),
-          time_start: b.time_start,
-          time_end: b.time_end,
-          shared_block_group_id: b.shared_block_group_id,
-        }))
-        .sort(
-          (a, b) =>
-            scheduleTimeToMinutesFromMidnight(timeInputToPg(a.time_start.slice(0, 5))) -
-            scheduleTimeToMinutesFromMidnight(timeInputToPg(b.time_start.slice(0, 5))),
-        )
-      setAddBlockTimelineSegments(segments)
-      setAddBlockDraftByBlockId({})
-      const def = defaultNewBlockRangeInFirstGap({ segments, draftByBlockId: {} })
-      if (def) {
-        setAddTimeStart(dispatchMinutesToHHmm(def.startMin))
-        setAddTimeEnd(dispatchMinutesToHHmm(def.endMin))
-      } else {
-        setAddTimeStart('08:00')
-        setAddTimeEnd('16:00')
-      }
-      setAddNote('')
-      setAddError(null)
-    },
-    [blocks, hubPersonDayBlocks, jobId, jobTitle, hubJobTitleById, leaveModesFor],
-  )
-
-  const closeAdd = useCallback(() => {
-    leaveModesFor('closeAddBlock')
-    setAddBlockTimelineSegments([])
-    setAddBlockDraftByBlockId({})
-  }, [leaveModesFor])
 
   const saveMoveSheet = useCallback(
     async (target: { workDate: string; assigneeUserId: string }) => {
@@ -669,130 +630,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     hubMultiCellAddSelection.size,
     hubCellAddContext,
     hubEmptyCellChoiceSubtitle,
-  ])
-
-  const blockModalPersonLabel = useMemo(() => {
-    if (!blockModalState) return ''
-    if (blockModalState.kind === 'add') {
-      if (jobId) {
-        return nameByUserId.get(blockModalState.assigneeUserId) ?? 'Unknown'
-      }
-      return hubPeopleNameById.get(blockModalState.assigneeUserId) ?? 'Unknown'
-    }
-    const b = blockById.get(blockModalState.blockId)
-    return b ? nameByUserId.get(b.assignee_user_id) ?? 'Unknown' : ''
-  }, [blockModalState, nameByUserId, blockById, jobId, hubPeopleNameById])
-
-  /** v2.3612 Supervision: the live line under the person while a block is built — null when covered. */
-  const blockModalSupervisionWarning = useMemo(() => {
-    if (!blockModalState) return null
-    if (blockModalState.kind === 'add') {
-      const id = blockModalState.assigneeUserId
-      return supervisionWarningFor(blockModalPersonLabel, hubPersonById.get(id), coverageOfAssignees([id], hubPersonById))
-    }
-    const b = blockById.get(blockModalState.blockId)
-    if (!b) return null
-    return supervisionWarningFor(blockModalPersonLabel, hubPersonById.get(b.assignee_user_id), hubBlockCoverageByKey.get(blockCoverageKey(b)))
-  }, [blockModalState, blockModalPersonLabel, hubPersonById, blockById, hubBlockCoverageByKey])
-
-  const blockModalJobTitleForModal = useMemo(() => {
-    if (!blockModalState) return ''
-    if (blockModalState.kind === 'add') {
-      return getHubJobDisplayTitle(blockModalState.jobId)
-    }
-    return jobTitle
-  }, [blockModalState, getHubJobDisplayTitle, jobTitle])
-
-  const blockModalWorkDate = useMemo(() => {
-    if (!blockModalState) return ''
-    if (blockModalState.kind === 'add') return blockModalState.workDate
-    const b = blockById.get(blockModalState.blockId)
-    return b?.work_date ?? ''
-  }, [blockModalState, blockById])
-
-  const addBlockModalTimeline = useMemo(() => {
-    if (blockModalState?.kind !== 'add') return undefined
-    return {
-      segments: addBlockTimelineSegments,
-      draftByBlockId: addBlockDraftByBlockId,
-      setDraftByBlockId: setAddBlockDraftByBlockId,
-    }
-  }, [blockModalState, addBlockTimelineSegments, addBlockDraftByBlockId])
-
-  const saveBlockModal = useCallback(async () => {
-    if (!blockModalState) return
-    if (blockModalState.kind === 'edit' && !jobId) return
-    if (blockModalState.kind === 'add' && !authUser?.id) return
-
-    if (blockModalState.kind === 'add') {
-      const createdBy = authUser?.id
-      if (!createdBy) return
-      setAddSaving(true)
-      setAddError(null)
-      const res = await saveNewScheduleBlockForPersonDay({
-        authUserId: createdBy,
-        assigneeUserId: blockModalState.assigneeUserId,
-        workDate: blockModalState.workDate,
-        targetJobId: blockModalState.jobId,
-        addTimeStart,
-        addTimeEnd,
-        addNote,
-        addBlockDraftByBlockId,
-      })
-      setAddSaving(false)
-      if (!res.ok) {
-        setAddError(res.error)
-        return
-      }
-      showToast('Block added.', 'success')
-      closeAdd()
-      if (jobId) {
-        await load()
-      } else {
-        await loadHub({ quiet: true })
-      }
-      return
-    }
-
-    const b = blockById.get(blockModalState.blockId)
-    if (!b) {
-      showToast('Block not found.', 'error')
-      closeAdd()
-      return
-    }
-    setAddSaving(true)
-    setAddError(null)
-    const res = await saveEditedScheduleBlockTimes({
-      blockId: blockModalState.blockId,
-      jobId,
-      assigneeUserId: b.assignee_user_id,
-      workDate: b.work_date,
-      sharedBlockGroupId: b.shared_block_group_id,
-      timeStart: addTimeStart,
-      timeEnd: addTimeEnd,
-      note: addNote,
-    })
-    setAddSaving(false)
-    if (!res.ok) {
-      setAddError(res.error)
-      return
-    }
-    showToast('Block updated.', 'success')
-    closeAdd()
-    await load()
-  }, [
-    blockModalState,
-    jobId,
-    authUser?.id,
-    addTimeStart,
-    addTimeEnd,
-    addNote,
-    addBlockDraftByBlockId,
-    blockById,
-    closeAdd,
-    load,
-    loadHub,
-    showToast,
   ])
 
   // Not coming in, NCNS and their undo (SCHEDULE_DISPATCH map, step 4).
@@ -1252,21 +1089,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           onRequestHubMultiCellAddChooseJob={onRequestHubMultiCellAddChooseJob}
         />
         <ScheduleDispatchAddBlockModal
-          open={blockModalState != null}
-          mode={blockModalState?.kind === 'edit' ? 'edit' : 'add'}
-          jobTitle={blockModalJobTitleForModal}
-          personLabel={blockModalPersonLabel}
-          workDate={blockModalWorkDate}
-          timeStart={addTimeStart}
-          timeEnd={addTimeEnd}
-          note={addNote}
-          saving={addSaving}
-          error={addError}
-          onClose={closeAdd}
-          onChangeStart={setAddTimeStart}
-          onChangeEnd={setAddTimeEnd}
-          onChangeNote={setAddNote}
-          onSave={() => void saveBlockModal()}
+          {...addBlockModalProps}
           onRemove={
             blockModalState?.kind === 'edit' && canEdit
               ? () => {
@@ -1276,8 +1099,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                 }
               : undefined
           }
-          addTimeline={addBlockModalTimeline}
-          warning={blockModalSupervisionWarning}
         />
         {removeScheduleBlockConfirmModal}
         {markOffConfirmTarget ? (
