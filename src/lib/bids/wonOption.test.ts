@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { planSamePageLetter, type SamePageSection } from './coverLetterSamePage'
-import { agreedValueForOption, letterOptionVersions, roomSectionsForLetterOptions, wonOptionVersionId, wonOptionWrites } from './wonOption'
+import { buildBidRoomRevisionPayload } from './bidRoomPayload'
+import { agreedValueForOption, letterOptionVersions, roomSectionsForLetterOptions, roomSectionsForPacket, wonOptionVersionId, wonOptionWrites } from './wonOption'
 
 const v = (id: string, name: string, sort_order: number, over: Partial<{ include_in_submission: boolean; is_alternate: boolean; outcome: string | null; customer_id: string | null }> = {}) => ({
   id, name, sort_order, include_in_submission: true, is_alternate: false, outcome: null, customer_id: null, ...over,
@@ -54,5 +55,42 @@ describe('roomSectionsForLetterOptions — every signable combination, carrying 
       ['Phase 2 only', true, 500000, 'p2v'],
     ])
     expect(rows[0]!.fixtureRows).toEqual([{ fixture: 'WC', count: 6 }])
+  })
+})
+
+describe('roomSectionsForPacket — a room never sums two base bids (v2.4892)', () => {
+  const sec = (over: Partial<SamePageSection> & { name: string }): SamePageSection => ({ bidVersionId: over.name, revenueSum: 0, fixtureRows: [], isAlternate: false, ...over })
+  const labels = () => ({ option: (o: { n: number; section: SamePageSection }) => `Option ${o.n} — ${o.section.name}`, alternate: (_o: unknown, _a: unknown, j: number) => `Alternate ${j + 1}` })
+  const payload = (sections: ReturnType<typeof roomSectionsForPacket>) =>
+    buildBidRoomRevisionPayload({ projectName: 'P', projectAddress: 'A', gcName: 'G', serviceTypeName: 'Plumbing', sections, inclusions: '', exclusions: '', terms: '' })!
+      .options.map((o) => [o.name, o.is_base, o.total_cents, o.bid_version_id ?? null])
+
+  it('two base versions: the room offers each as its own option at its own total, with its version', () => {
+    const rows = roomSectionsForPacket([sec({ name: 'To Plans', bidVersionId: 'tp', revenueSum: 120000 }), sec({ name: 'Value Engineered', bidVersionId: 've', revenueSum: 95000 })], labels)
+    expect(payload(rows)).toEqual([
+      ['Option 1 — To Plans', true, 12_000_000, 'tp'],
+      ['Option 2 — Value Engineered', false, 9_500_000, 've'],
+    ])
+  })
+
+  it('what the room did before: the same two sections handed over raw fold into one base at their sum', () => {
+    const raw = [sec({ name: 'To Plans', bidVersionId: null, revenueSum: 120000 }), sec({ name: 'Value Engineered', bidVersionId: null, revenueSum: 95000 })]
+    expect(payload(raw.map((s) => ({ ...s })))).toEqual([['Base bid', true, 21_500_000, null]])
+  })
+
+  it('one base: the sections as they are, the base carrying its version for the signature', () => {
+    const rows = roomSectionsForPacket([sec({ name: 'To Plans', bidVersionId: 'tp', revenueSum: 120000 }), sec({ name: 'Phase 2', bidVersionId: 'p2', revenueSum: 30000, isAlternate: true })], labels)
+    expect(payload(rows)).toEqual([
+      ['To Plans', true, 12_000_000, 'tp'],
+      ['Phase 2', false, 3_000_000, 'p2'],
+    ])
+  })
+
+  it('a bid with no versions: one base and its offered prices, unchanged', () => {
+    const rows = roomSectionsForPacket([sec({ name: 'Standard', bidVersionId: null, revenueSum: 1000 }), sec({ name: 'Budget', bidVersionId: null, revenueSum: 800, isAlternate: true, offeredPricingId: 'p2' })], labels)
+    expect(rows.map((r) => [r.name, r.isAlternate, r.revenueSum, r.bidVersionId])).toEqual([
+      ['Standard', false, 1000, null],
+      ['Budget', true, 800, null],
+    ])
   })
 })
