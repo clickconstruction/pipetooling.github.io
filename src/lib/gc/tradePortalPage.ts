@@ -130,7 +130,7 @@ export function pastWords(ask: PortalAsk, lang: PortalLang): string {
   return pt(lang, key, { gc: GC })
 }
 
-/** Until the presses come (P2b): who to email a quote or a question to. The project manager when we have one. */
+/** Their own quote file waits for P5a (decision 9): who to email it to. The project manager when we have one. */
 export function replyByEmailWords(project: GcProject, lang: PortalLang): string {
   const pm = (project.team ?? []).find((c) => c.role === 'projectManager' && c.email)
   return pm ? pt(lang, 'replyByEmail', { name: `${pm.name} (${pm.email})` }) : pt(lang, 'replyByEmailGc', { gc: GC_COMPANY.name })

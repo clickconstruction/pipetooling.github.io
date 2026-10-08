@@ -32,4 +32,10 @@ describe('a company’s link', () => {
     expect(tradeLinkStatus(rows, 'c1', visits.c1 ?? null).words).toBe('Opened 2 times, last Oct 6.')
     expect(tradeLinkStatus(rows, 'c2', visits.c2 ?? null)).toMatchObject({ state: 'active', word: 'active', words: 'Opened once, last Oct 5.' })
   })
+
+  it('dates a visit by the office’s day, so an evening in Central time is not the next day', () => {
+    const rows = [row('c1', '2026-10-07T15:00:00Z', null)]
+    const visits = tradeLinkVisits([{ entity_id: 'c1', occurred_at: '2026-10-08T03:30:00Z' }], rows)
+    expect(tradeLinkStatus(rows, 'c1', visits.c1 ?? null).words).toBe('Opened once, last Oct 7.')
+  })
 })

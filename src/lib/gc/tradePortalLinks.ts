@@ -4,6 +4,7 @@
  * counted in `public_page_views`. The prototype's `tradePortalStatus` read made-up links; this reads the real ones.
  * Pure. A dev makes the links until the door.
  */
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { shortDate } from './words'
 
 /** A company's link row, as a dev reads it. */
@@ -33,7 +34,8 @@ export interface TradeLinkStatus {
   token: string | null
 }
 
-const day = (iso: string | null): string => shortDate((iso ?? '').slice(0, 10))
+// The office's day for a moment, so an evening in Central time is not read as the next day.
+const day = (iso: string | null): string => (iso ? shortDate(calendarYmdInAppTzFromIso(iso)) : '')
 
 /** Where one company's link stands. */
 export function tradeLinkStatus(rows: TradeLinkRow[], companyId: string, visits: TradeLinkVisits | null): TradeLinkStatus {
