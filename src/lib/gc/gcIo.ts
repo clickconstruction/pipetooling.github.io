@@ -10,7 +10,9 @@ import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorH
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
+import { inviteAsks, type AskOutcome, type NewAsk } from './askEmail'
 import type { BoardRows } from './boardRows'
+import type { TradeEmailAnswer } from './tradeEmail'
 import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { DeclineReason, GcLostWhy, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
@@ -563,24 +565,36 @@ export async function declineGcAsk(inviteId: string, why: 'wont' | 'cant', reaso
   taken(await supabase.rpc('gc_office_decline', { p_invite_id: inviteId, p_why: why, p_reason: reason, p_note: note }), 'take them off the ask')
 }
 
-/** The line each new ask carries until the Portal's emails are in (P3): the office's own note, not a contact with the company. */
-export const ASK_NOT_SENT_NOTE = 'Asked to quote. The invitation email goes out once the portal can send it.'
-
 /**
  * Ask companies to quote a trade (the Board's B4-a): `gc_invite_companies` records each ask, skipping a
- * company already asked, then each new ask gets a note that its email waits. Nothing is emailed yet.
+ * company already asked. With `send` (a dev, `canSendGcTradeEmail`), each new ask's invitation goes out through
+ * `gc-trade-email` and the ask reads *Invitation emailed.* or the refusal's words; without it each ask carries
+ * a note that a dev sends the email (`inviteAsks`, askEmail.ts).
  */
-export async function askGcCompanies(packageId: string, companyIds: string[], byName: string, on: string): Promise<void> {
+export async function askGcCompanies(
+  packageId: string,
+  companyIds: string[],
+  byName: string,
+  on: string,
+  send: ((ask: NewAsk) => Promise<TradeEmailAnswer>) | null = null,
+): Promise<AskOutcome[]> {
   const made = taken(await supabase.rpc('gc_invite_companies', { p_package_id: packageId, p_company_ids: companyIds }), 'ask the companies') ?? []
-  if (made.length === 0) return
-  const asks = taken(await supabase.from('gc_invites').select('id, company_id').in('id', made), 'read the new asks')
-  taken(
-    await supabase
-      .from('gc_company_contacts')
-      .insert(asks.map((a) => ({ company_id: a.company_id, invite_id: a.id, contacted_on: on, by_name: byName, how: 'note', note: ASK_NOT_SENT_NOTE })))
-      .select('id'),
-    'note that the emails wait',
+  if (made.length === 0) return []
+  const rows = taken(await supabase.from('gc_invites').select('id, company_id').in('id', made), 'read the new asks')
+  const { outcomes, lines } = await inviteAsks(
+    rows.map((r) => ({ inviteId: r.id, companyId: r.company_id })),
+    send,
   )
+  if (lines.length > 0) {
+    taken(
+      await supabase
+        .from('gc_company_contacts')
+        .insert(lines.map((l) => ({ company_id: l.companyId, invite_id: l.inviteId, contacted_on: on, by_name: byName, how: l.how, note: l.note })))
+        .select('id'),
+      'note what each ask came to',
+    )
+  }
+  return outcomes
 }
 
 /** The company's language (the Board's B3-c): its portal opens in it and our emails to it go out in it. */

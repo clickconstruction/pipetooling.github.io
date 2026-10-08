@@ -43,12 +43,17 @@ From Click Construction. To Hector Luna. {{chip:yellow|not sent yet}}
 ## Ask them
 
 1. Check the line at the bottom. It says whether the trade will reach the two quotes we want.
-2. Press {{button:blue|Ask 2 companies}}. The button counts the companies ticked.
+2. To email the invitations, tick **Email the invitations now**. The box starts empty while GC mode is built.
+3. Press {{button:blue|Ask 2 companies}}. The button counts the companies ticked.
 
-The window closes. Each company now shows as asked on the trade.
+With the box ticked, each company gets the email with a link to its portal. The window closes. Each ask on the trade then reads *Invitation emailed*.
 
-## Nothing is emailed yet
+Without the tick, the asks are saved and no email goes out.
 
-For now the app saves each ask but sends no email. The email goes out once the portal can send it. Until then, call or email the company yourself.
+Sometimes an email cannot go out. The window then says why before it closes, and the ask is saved anyway. A company with no email on file needs a call.
+
+## Who sends the email
+
+While GC mode is built, only a dev sees the box and sends the email. Anyone else can still ask. Their asks are saved, and a dev sends the emails.
 
 When they answer, log it on Follow up. [Follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner) shows how.

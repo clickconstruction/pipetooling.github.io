@@ -185,7 +185,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(concrete).getByRole('button', { name: 'Ask for quotes' }))
     const dialog = screen.getByRole('dialog', { name: 'Ask for Concrete quotes' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' }))
-    await waitFor(() => expect(askGcCompanies).toHaveBeenCalledWith('k2', ['alamo'], expect.any(String), expect.any(String)))
+    // The email tick starts off (the owner's call 3), so a dev's untouched press passes no sender: nothing is emailed.
+    await waitFor(() => expect(askGcCompanies).toHaveBeenCalledWith('k2', ['alamo'], expect.any(String), expect.any(String), null))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Ask for Concrete quotes' })).toBeNull())
     vi.mocked(loadGcBoardRows).mockReset()
   })
