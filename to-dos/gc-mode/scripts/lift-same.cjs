@@ -157,7 +157,7 @@ function compare(config, mainFile, spikeFile) {
 
   // A main file several entries write (planQuestions.ts from gcPlans and gcStageHealth) is checked per entry on the names its spike file has.
   const writers = (to) => config.files.filter((x) => x.to === to).length
-  for (const e of config.files) check(path.join(mainBase, e.to), path.join(spikeDir, e.from + '.ts'), e.append || writers(e.to) > 1 ? 'shared' : null)
+  for (const e of config.files) check(path.join(mainBase, e.to), path.join(spikeDir, /\.tsx?$/.test(e.from) ? e.from : e.from + '.ts'), e.append || writers(e.to) > 1 ? 'shared' : null)
   for (const t of config.types || []) check(path.join(mainBase, t.to), path.join(spikeDir, (t.from ?? 'gcTypes') + '.ts'), t.whole ? (t.append ? 'shared' : null) : Object.keys(t.fields || {}))
   for (const t of config.tests || []) checkTests(path.join(mainBase, t.to), path.join(spikeDir, t.from))
   const knownNow = Object.entries(known).map(([n, why]) => ({ n, why, still: knownSeen.has(n) }))
