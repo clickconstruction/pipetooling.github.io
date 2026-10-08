@@ -6,6 +6,7 @@ import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate } from
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useScheduleDispatchHubData } from '../../hooks/useScheduleDispatchHubData'
 import { useScheduleDispatchNotComingIn } from '../../hooks/useScheduleDispatchNotComingIn'
+import { useScheduleDispatchHubModes } from '../../hooks/useScheduleDispatchHubModes'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../../hooks/useAuth'
 import { OPEN_BID_EDIT_QUERY } from '../../contexts/BidPreviewModalContext'
@@ -33,14 +34,6 @@ import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobSc
 import { executeScheduleDispatchBlockReassign, moveScheduleDispatchBlockTo } from '../../lib/scheduleDispatchDragEnd'
 import { moveDayLabel } from '../../lib/scheduleDispatchMoveBlock'
 import ScheduleDispatchMoveBlockSheet from './ScheduleDispatchMoveBlockSheet'
-import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
-import {
-  summarizeLinkedCopyApply,
-  summarizeLinkedCopyLaneApply,
-  toggleLinkedCopyBlockSelection,
-  type LinkedCopyLegResult,
-  type LinkedCopyMode,
-} from '../../lib/scheduleDispatchLinkedCopy'
 import { ScheduleDispatchAddBlockModal } from './ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal'
 import { ScheduleDispatchAssignJobPickerModal } from './ScheduleDispatchAssignJobPickerModal'
@@ -49,19 +42,12 @@ import ManagePersonDayModal from '../dispatchMode/ManagePersonDayModal'
 import { ScheduleDispatchHub } from './ScheduleDispatchHub'
 import { ScheduleShareModal } from './ScheduleShareModal'
 import { ScheduleDispatchModeBanners, ScheduleDispatchMultiCellBar } from './ScheduleDispatchModeBanners'
-import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import {
   hubPersonDayKey,
   findDuplicateJobAddress,
   formatScheduleDispatchHubJobTitle,
 } from '../../lib/scheduleDispatchHub'
 import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
-import {
-  MULTI_CELL_ADD_TIME_END,
-  MULTI_CELL_ADD_TIME_START,
-  addJobToHubCells,
-  summarizeMultiCellAddResult,
-} from '../../lib/scheduleDispatch/multiCellAdd'
 import {
   fetchJobSearchEvidence,
   jobSearchEvidenceModeForRole,
@@ -83,10 +69,7 @@ import {
   canWriteTimeOff,
 } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
-import {
-  RemoveScheduleBlockConfirmModal,
-  validateScheduleDispatchBlockTimeRange,
-} from './scheduleDispatchRemoveBlockModal'
+import { RemoveScheduleBlockConfirmModal } from './scheduleDispatchRemoveBlockModal'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 import ConfirmDialog from '../ConfirmDialog'
@@ -119,12 +102,6 @@ function readScheduleDispatchHighlightLinkedGroups(): boolean {
 type ScheduleDispatchBlockModalState =
   | { kind: 'add'; assigneeUserId: string; workDate: string; jobId: string }
   | { kind: 'edit'; blockId: string }
-
-type HubAssignJobPlacementState = { jobId: string }
-
-type HubCellAddContextState = { assigneeUserId: string; workDate: string }
-
-type HubAssignJobPickerIntent = 'toolbar' | 'cell' | 'multi'
 
 export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' | 'tomorrow' }) {
   const { user: authUser, role, loading: authLoading } = useAuth()
@@ -350,73 +327,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     refetchSwimLanes,
   } = useScheduleDispatchHubData({ jobId, weekStart, weekEnd, role, authUserId: authUser?.id, canEdit, showToast })
 
-  const applyHubMultiCellJob = useCallback(
-    async (targetJobId: string, selectionKeys: readonly string[]) => {
-      const createdBy = authUser?.id
-      if (!createdBy) {
-        showToast('You must be signed in to add blocks.', 'error')
-        return
-      }
-      if (selectionKeys.length === 0) {
-        showToast('No cells selected.', 'info')
-        return
-      }
-      const rangeErr = validateScheduleDispatchBlockTimeRange(MULTI_CELL_ADD_TIME_START, MULTI_CELL_ADD_TIME_END)
-      if (rangeErr) {
-        showToast(rangeErr, 'error')
-        return
-      }
-      const counts = await addJobToHubCells({ targetJobId, selectionKeys, createdBy })
-      const summary = summarizeMultiCellAddResult(counts)
-      showToast(summary.message, summary.tone)
-
-      setHubMultiCellAddActive(false)
-      setHubMultiCellAddSelection(new Set())
-      setHubAssignJobPickerOpen(false)
-      setHubAssignJobPickerIntent('toolbar')
-      setHubCellAddContext(null)
-      await loadHub({ quiet: true })
-    },
-    [authUser?.id, showToast, loadHub],
-  )
-
-  useEffect(() => {
-    setHubMultiCellAddActive(false)
-    setHubMultiCellAddSelection(new Set())
-  }, [weekStart])
-
-  useEffect(() => {
-    if (jobId) return
-    if (isTomorrow) {
-      placeJobArmKeyRef.current = ''
-      return
-    }
-    const pj = searchParams.get('placeJob')?.trim() ?? ''
-    if (!pj) {
-      placeJobArmKeyRef.current = ''
-      return
-    }
-    if (hubTab === 'jobs') {
-      setSearchParams((prev) => {
-        const n = new URLSearchParams(prev)
-        n.set('week', weekStart)
-        n.delete('hubTab')
-        n.set('placeJob', pj)
-        return n
-      }, { replace: true })
-      return
-    }
-    if (hubLoading) return
-    const key = `${pj}|${weekStart}`
-    if (placeJobArmKeyRef.current === key) return
-    placeJobArmKeyRef.current = key
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-    setHubMultiCellAddActive(false)
-    setHubMultiCellAddSelection(new Set())
-    setHubAssignJobPlacement({ jobId: pj })
-  }, [isTomorrow, jobId, weekStart, hubTab, hubLoading, searchParams, setSearchParams])
-
   /** Job-week data load. Hub-only page always has `jobId === ''`; full job-week view lives in `ScheduleDispatch`. */
   const load = useCallback(async () => {
     if (!jobId) return
@@ -429,13 +339,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   useEffect(() => {
     closeJobDetail?.()
   }, [jobId, weekStart, closeJobDetail])
-
-  useEffect(() => {
-    if (!jobId) return
-    setHubAssignJobPlacement(null)
-    setHubAssignJobPickerOpen(false)
-    placeJobArmKeyRef.current = ''
-  }, [jobId])
 
   const blockById = useMemo(() => {
     const m = new Map<string, JobScheduleBlockRow>()
@@ -463,15 +366,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [addBlockDraftByBlockId, setAddBlockDraftByBlockId] = useState<
     Record<string, { time_start: string; time_end: string }>
   >({})
-  const [cardPlacementMode, setCardPlacementMode] = useState<ScheduleDispatchCardPlacementMode | null>(null)
   // Press-and-hold Move sheet (phone-first): which block, plus save state.
   const [moveSheetBlock, setMoveSheetBlock] = useState<JobScheduleBlockRow | null>(null)
   const [moveSheetSaving, setMoveSheetSaving] = useState(false)
   const [moveSheetError, setMoveSheetError] = useState<string | null>(null)
-  /** Two-stage "copy jobs linked to people" flow (toolbar chains button). */
-  const [linkedCopyMode, setLinkedCopyMode] = useState<LinkedCopyMode | null>(null)
-  const [linkedCopyApplyBusy, setLinkedCopyApplyBusy] = useState(false)
-  const [plusMenuBlockId, setPlusMenuBlockId] = useState<string | null>(null)
   // v2.3156: the People board on a phone vs the desktop grid — per device, page-owned so the mode banners know to stand down.
   // An explicit pick wins at any width (a phone rotated to landscape keeps its board); unset follows the viewport.
   const [phonePeopleViewPref, setPhonePeopleViewPref] = useState<PhonePeopleViewPref>(() => readPhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage))
@@ -481,58 +379,82 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     writePhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage, view)
   }, [])
   const phoneBoardActive = !isTomorrow && hubTab === 'people' && phonePeopleView === 'board'
-  const onCancelCardPlacement = useCallback(() => {
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-  }, [])
   const [blockNoteEdit, setBlockNoteEdit] = useState<JobScheduleBlockRow | null>(null)
   const [blockNoteBusy, setBlockNoteBusy] = useState(false)
   const [blockNoteError, setBlockNoteError] = useState<string | null>(null)
-  const [hubAssignJobPlacement, setHubAssignJobPlacement] = useState<HubAssignJobPlacementState | null>(null)
-  const [hubAssignJobPickerOpen, setHubAssignJobPickerOpen] = useState(false)
   const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
   /** Money-rail evidence for picker rows, accumulated per job id (fetched only for short result lists). */
   const [hubJobEvidence, setHubJobEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
   const [hubAssignJobPickerNumberQuery, setHubAssignJobPickerNumberQuery] = useState('')
-  const [hubCellAddContext, setHubCellAddContext] = useState<HubCellAddContextState | null>(null)
-  const [hubAssignJobPickerIntent, setHubAssignJobPickerIntent] = useState<HubAssignJobPickerIntent>('toolbar')
-  const [hubMultiCellAddActive, setHubMultiCellAddActive] = useState(false)
-  const [hubMultiCellAddSelection, setHubMultiCellAddSelection] = useState<Set<string>>(() => new Set())
-  const placeJobArmKeyRef = useRef<string>('')
-
-  const closeHubAssignJobPicker = useCallback(() => {
-    setHubAssignJobPickerOpen(false)
-    setHubCellAddContext(null)
-    setHubAssignJobPickerIntent('toolbar')
-    setHubMultiCellAddActive(false)
-    setHubMultiCellAddSelection(new Set())
+  /** The picker's search and number query start empty each time it opens; they stay page-owned. */
+  const onPickerOpened = useCallback(() => {
+    setHubAssignJobPickerSearch('')
+    setHubAssignJobPickerNumberQuery('')
   }, [])
-
-  const placementSourceBlock = useMemo(() => {
-    if (!cardPlacementMode) return null
-    const m = jobId ? blockById : hubBlockById
-    return m.get(cardPlacementMode.sourceBlockId) ?? null
-  }, [cardPlacementMode, jobId, blockById, hubBlockById])
-
-  useEffect(() => {
-    if (!cardPlacementMode && !hubAssignJobPlacement) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setCardPlacementMode(null)
-        setPlusMenuBlockId(null)
-        setHubAssignJobPlacement(null)
-        setHubCellAddContext(null)
-        setSearchParams((prev) => {
-          const n = new URLSearchParams(prev)
-          if (!n.has('placeJob')) return prev
-          n.delete('placeJob')
-          return n
-        }, { replace: true })
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [cardPlacementMode, hubAssignJobPlacement, setSearchParams])
+  /** Entering a placement closes the add-block window (`addBlock` in the mode rule). */
+  const closeAddBlockWindow = useCallback(() => {
+    setBlockModalState(null)
+    setAddError(null)
+  }, [])
+  // Every mode flag and the rule that entering one leaves the others (lib/scheduleDispatch/hubModes),
+  // in useScheduleDispatchHubModes since v2.4986. It hands out intents only, never a flag's setter.
+  const {
+    cardPlacementMode,
+    plusMenuBlockId,
+    linkedCopyMode,
+    linkedCopyApplyBusy,
+    hubAssignJobPlacement,
+    hubAssignJobPickerOpen,
+    hubAssignJobPickerIntent,
+    hubCellAddContext,
+    hubMultiCellAddActive,
+    hubMultiCellAddSelection,
+    placementSourceBlock,
+    setCardPlacementMode,
+    setPlusMenuBlockId,
+    setLinkedCopyMode,
+    onPlusMenuBlockIdChange,
+    onCancelCardPlacement,
+    onStartCardPlacement,
+    onCardPlacementPickCell,
+    onCancelHubAssignJobPlacement,
+    onRequestHubAddJob,
+    onHubEmptyCellOpenChoice,
+    onRequestHubMultiCellAddMode,
+    onHubMultiCellAddToggle,
+    onRequestHubMultiCellAddChooseJob,
+    closeHubAssignJobPicker,
+    applyHubMultiCellJob,
+    onStartLinkedCopyMode,
+    onLinkedCopyToggleBlock,
+    onLinkedCopySetStage,
+    onLinkedCopyApplyToPerson,
+    onLinkedCopyApplyToLane,
+    onCopyBlockToPeople,
+    leaveModesFor,
+    pickJobToPlace,
+    placeNewJob,
+  } = useScheduleDispatchHubModes({
+    jobId,
+    isTomorrow,
+    hubTab,
+    weekStart,
+    hubLoading,
+    searchParams,
+    setSearchParams,
+    canEdit,
+    authUser,
+    showToast,
+    blockById,
+    hubBlockById,
+    blocks,
+    hubWeekBlocks,
+    hubPeopleNameById,
+    load,
+    loadHub,
+    onPickerOpened,
+    closeAddBlockWindow,
+  })
 
   useEffect(() => {
     if (deleteBlockId == null) return
@@ -543,46 +465,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     return () => window.removeEventListener('keydown', onKey)
   }, [deleteBlockId, deleteBlockBusy])
 
-  useEffect(() => {
-    if (!linkedCopyMode) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLinkedCopyMode(null)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [linkedCopyMode])
-
-  useEffect(() => {
-    if (!hubMultiCellAddActive) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setHubMultiCellAddActive(false)
-        setHubMultiCellAddSelection(new Set())
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [hubMultiCellAddActive])
-
-  const stripPlaceJobFromUrl = useCallback(() => {
-    setSearchParams((prev) => {
-      const n = new URLSearchParams(prev)
-      if (!n.has('placeJob')) return prev
-      n.delete('placeJob')
-      return n
-    }, { replace: true })
-  }, [setSearchParams])
-
   const openAddBlock = useCallback(
     (args: { assigneeUserId: string; workDate: string; jobId: string }) => {
-      setCardPlacementMode(null)
-      setPlusMenuBlockId(null)
-      setHubAssignJobPlacement(null)
-      setHubAssignJobPickerOpen(false)
-      setHubCellAddContext(null)
-      setHubAssignJobPickerIntent('toolbar')
-      setHubMultiCellAddActive(false)
-      setHubMultiCellAddSelection(new Set())
+      leaveModesFor('openAddBlock')
       setBlockModalState({ kind: 'add', assigneeUserId: args.assigneeUserId, workDate: args.workDate, jobId: args.jobId })
       const rows = jobId
         ? blocks.filter((b) => b.assignee_user_id === args.assigneeUserId && b.work_date === args.workDate)
@@ -616,154 +501,14 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setAddNote('')
       setAddError(null)
     },
-    [blocks, hubPersonDayBlocks, jobId, jobTitle, hubJobTitleById],
+    [blocks, hubPersonDayBlocks, jobId, jobTitle, hubJobTitleById, leaveModesFor],
   )
 
   const closeAdd = useCallback(() => {
-    setBlockModalState(null)
-    setAddError(null)
+    leaveModesFor('closeAddBlock')
     setAddBlockTimelineSegments([])
     setAddBlockDraftByBlockId({})
-    stripPlaceJobFromUrl()
-  }, [stripPlaceJobFromUrl])
-
-  const onStartCardPlacement = useCallback(
-    (source: JobScheduleBlockRow, variant: ScheduleDispatchCardPlacementVariant) => {
-      if (!canEdit) return
-      if (jobId) {
-        if (source.job_id !== jobId) return
-      } else if (hubTab !== 'people') {
-        showToast('Switch to the People tab to place a copy on the grid.', 'info')
-        return
-      }
-      setBlockModalState(null)
-      setAddError(null)
-      setPlusMenuBlockId(null)
-      setHubAssignJobPlacement(null)
-      setHubMultiCellAddActive(false)
-      setHubMultiCellAddSelection(new Set())
-      setLinkedCopyMode(null)
-      stripPlaceJobFromUrl()
-      setCardPlacementMode({ sourceBlockId: source.id, variant })
-      if (variant === 'move') {
-        showToast('Tap a day above, or any cell, to move this block there. Cancel to keep it where it is.', 'info')
-        return
-      }
-      const extra =
-        variant === 'linked'
-          ? ' Linked copies stay on the same work day as the source.'
-          : ' Solo copies can go on any day in this week.'
-      showToast(`Click a team member's day cell to add the copy. Press Esc to cancel.${extra}`, 'info')
-    },
-    [canEdit, jobId, hubTab, showToast, stripPlaceJobFromUrl],
-  )
-
-  const onCardPlacementPickCell = useCallback(
-    async (assigneeUserId: string, workDate: string) => {
-      if (!cardPlacementMode || !authUser?.id) return
-      const placementVariant = cardPlacementMode.variant
-      const sourceBlockId = cardPlacementMode.sourceBlockId
-
-      if (placementVariant === 'move') {
-        // Tap-to-move: same kernel as a drop, on either grid.
-        const moved = await moveScheduleDispatchBlockTo(
-          sourceBlockId,
-          { workDate, assigneeUserId },
-          {
-            blockById: jobId ? blockById : hubBlockById,
-            canEdit,
-            showToast,
-            onSuccess: async () => {
-              if (jobId) await load()
-              else await loadHub({ quiet: true })
-            },
-          },
-        )
-        if (moved) {
-          setCardPlacementMode(null)
-          showToast(`Moved to ${moveDayLabel(workDate)}.`, 'success')
-        }
-        return
-      }
-
-      if (jobId) {
-        const source = blockById.get(sourceBlockId)
-        if (!source || source.job_id !== jobId) {
-          setCardPlacementMode(null)
-          return
-        }
-        if (placementVariant === 'linked' && workDate !== source.work_date) {
-          showToast(
-            'Linked copies use the source block’s day. Use drag to move the whole crew to another day.',
-            'info',
-          )
-          return
-        }
-
-        const { error } = await insertScheduleDispatchCopiedLeg({
-          jobId,
-          createdBy: authUser.id,
-          source,
-          targetAssigneeUserId: assigneeUserId,
-          targetWorkDate: workDate,
-          linkMode: placementVariant === 'linked' ? 'linked' : 'unlinked',
-          allJobBlocks: blocks,
-        })
-        if (error) {
-          showToast(error, 'error')
-          return
-        }
-        setCardPlacementMode(null)
-        showToast(placementVariant === 'linked' ? 'Linked copy added.' : 'Solo copy added.', 'success')
-        await load()
-        return
-      }
-
-      const source = hubBlockById.get(sourceBlockId)
-      if (!source) {
-        setCardPlacementMode(null)
-        return
-      }
-      if (placementVariant === 'linked' && workDate !== source.work_date) {
-        showToast(
-          'Linked copies use the source block’s day. Use drag to move the whole crew to another day.',
-          'info',
-        )
-        return
-      }
-
-      const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
-      const { error: hubInsErr } = await insertScheduleDispatchCopiedLeg({
-        jobId: scheduleBlockAnchorId(source),
-        createdBy: authUser.id,
-        source,
-        targetAssigneeUserId: assigneeUserId,
-        targetWorkDate: workDate,
-        linkMode: placementVariant === 'linked' ? 'linked' : 'unlinked',
-        allJobBlocks,
-      })
-      if (hubInsErr) {
-        showToast(hubInsErr, 'error')
-        return
-      }
-      setCardPlacementMode(null)
-      showToast(placementVariant === 'linked' ? 'Linked copy added.' : 'Solo copy added.', 'success')
-      await loadHub({ quiet: true })
-    },
-    [
-      cardPlacementMode,
-      jobId,
-      authUser?.id,
-      canEdit,
-      blockById,
-      hubBlockById,
-      blocks,
-      hubWeekBlocks,
-      load,
-      loadHub,
-      showToast,
-    ],
-  )
+  }, [leaveModesFor])
 
   const saveMoveSheet = useCallback(
     async (target: { workDate: string; assigneeUserId: string }) => {
@@ -797,236 +542,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     (assigneeUserId: string, workDate: string) => {
       if (!hubAssignJobPlacement) return
       const jid = hubAssignJobPlacement.jobId
-      setHubAssignJobPlacement(null)
+      leaveModesFor('assignCellPick')
       openAddBlock({ assigneeUserId, workDate, jobId: jid })
     },
-    [hubAssignJobPlacement, openAddBlock],
+    [hubAssignJobPlacement, openAddBlock, leaveModesFor],
   )
 
-  const onCancelHubAssignJobPlacement = useCallback(() => {
-    setHubAssignJobPlacement(null)
-    stripPlaceJobFromUrl()
-  }, [stripPlaceJobFromUrl])
-
-  const onRequestHubAddJob = useCallback(() => {
-    setLinkedCopyMode(null)
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-    setHubAssignJobPlacement(null)
-    setHubCellAddContext(null)
-    setHubMultiCellAddActive(false)
-    setHubMultiCellAddSelection(new Set())
-    stripPlaceJobFromUrl()
-    setHubAssignJobPickerIntent('toolbar')
-    setHubAssignJobPickerSearch('')
-    setHubAssignJobPickerNumberQuery('')
-    setHubAssignJobPickerOpen(true)
-  }, [stripPlaceJobFromUrl])
-
-  const onHubEmptyCellOpenChoice = useCallback((personUserId: string, workDate: string) => {
-    setHubCellAddContext({ assigneeUserId: personUserId, workDate })
-    setHubAssignJobPickerIntent('cell')
-    setHubAssignJobPickerSearch('')
-    setHubAssignJobPickerNumberQuery('')
-    setHubAssignJobPickerOpen(true)
-  }, [])
-
-  const onRequestHubMultiCellAddMode = useCallback(() => {
-    if (hubMultiCellAddActive) {
-      setHubMultiCellAddActive(false)
-      setHubMultiCellAddSelection(new Set())
-      return
-    }
-    setLinkedCopyMode(null)
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-    setHubAssignJobPlacement(null)
-    setHubCellAddContext(null)
-    setHubAssignJobPickerOpen(false)
-    setHubAssignJobPickerIntent('toolbar')
-    stripPlaceJobFromUrl()
-    setHubMultiCellAddSelection(new Set())
-    setHubMultiCellAddActive(true)
-  }, [hubMultiCellAddActive, stripPlaceJobFromUrl])
-
-  const onHubMultiCellAddToggle = useCallback((personUserId: string, workDate: string) => {
-    const k = hubPersonDayKey(personUserId, workDate)
-    setHubMultiCellAddSelection((prev) => {
-      const next = new Set(prev)
-      if (next.has(k)) next.delete(k)
-      else next.add(k)
-      return next
-    })
-  }, [])
-
-  /** Toolbar chains button: enter (or exit) the two-stage linked-copy flow. */
-  const onStartLinkedCopyMode = useCallback(() => {
-    if (linkedCopyMode) {
-      setLinkedCopyMode(null)
-      return
-    }
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-    setHubAssignJobPlacement(null)
-    setHubCellAddContext(null)
-    setHubAssignJobPickerOpen(false)
-    setHubMultiCellAddActive(false)
-    setHubMultiCellAddSelection(new Set())
-    stripPlaceJobFromUrl()
-    setLinkedCopyMode({ stage: 1, selectedBlockIds: new Set() })
-  }, [linkedCopyMode, stripPlaceJobFromUrl])
-
-  /** Stage 1: card click toggles a source block in/out of the selection. */
-  const onLinkedCopyToggleBlock = useCallback((blockId: string) => {
-    setLinkedCopyMode((m) =>
-      m && m.stage === 1
-        ? { ...m, selectedBlockIds: toggleLinkedCopyBlockSelection(m.selectedBlockIds, blockId) }
-        : m,
-    )
-  }, [])
-
-  const onLinkedCopySetStage = useCallback((stage: 1 | 2) => {
-    setLinkedCopyMode((m) => (m ? { ...m, stage } : m))
-  }, [])
-
-  /** Stage 2: person click applies a linked copy of every selected block to them
-   * (each on its source block's own day; per-leg overlap/duplicate safety lives
-   * in insertScheduleDispatchCopiedLeg). Mode stays active for more people. */
-  const onLinkedCopyApplyToPerson = useCallback(
-    async (personUserId: string) => {
-      if (!linkedCopyMode || linkedCopyMode.stage !== 2 || !authUser?.id || linkedCopyApplyBusy) return
-      const sources = [...linkedCopyMode.selectedBlockIds]
-        .map((id) => hubBlockById.get(id))
-        .filter((b): b is JobScheduleBlockRow => b != null)
-      if (sources.length === 0) return
-      setLinkedCopyApplyBusy(true)
-      try {
-        const results: LinkedCopyLegResult[] = []
-        for (const source of sources) {
-          const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
-          const { error } = await insertScheduleDispatchCopiedLeg({
-            jobId: scheduleBlockAnchorId(source),
-            createdBy: authUser.id,
-            source,
-            targetAssigneeUserId: personUserId,
-            targetWorkDate: source.work_date,
-            linkMode: 'linked',
-            allJobBlocks,
-          })
-          results.push({ blockId: source.id, error })
-        }
-        const sum = summarizeLinkedCopyApply(results)
-        const personName = hubPeopleNameById.get(personUserId) ?? 'Person'
-        showToast(`${personName}: ${sum.message}`, sum.tone)
-        await loadHub({ quiet: true })
-      } finally {
-        setLinkedCopyApplyBusy(false)
-      }
-    },
-    [
-      linkedCopyMode,
-      linkedCopyApplyBusy,
-      authUser?.id,
-      hubBlockById,
-      hubWeekBlocks,
-      hubPeopleNameById,
-      loadHub,
-      showToast,
-    ],
-  )
-
-
-  /** Stage 2 + lanes grouping: lane-heading click = the person apply for every
-   * crew member, one combined toast (per-leg safety unchanged). */
-  const onLinkedCopyApplyToLane = useCallback(
-    async (laneLabel: string, memberUserIds: string[]) => {
-      if (!linkedCopyMode || linkedCopyMode.stage !== 2 || !authUser?.id || linkedCopyApplyBusy) return
-      const sources = [...linkedCopyMode.selectedBlockIds]
-        .map((id) => hubBlockById.get(id))
-        .filter((b): b is JobScheduleBlockRow => b != null)
-      if (sources.length === 0 || memberUserIds.length === 0) return
-      setLinkedCopyApplyBusy(true)
-      try {
-        const results: LinkedCopyLegResult[] = []
-        for (const memberUserId of memberUserIds) {
-          for (const source of sources) {
-            const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
-            const { error } = await insertScheduleDispatchCopiedLeg({
-              jobId: scheduleBlockAnchorId(source),
-              createdBy: authUser.id,
-              source,
-              targetAssigneeUserId: memberUserId,
-              targetWorkDate: source.work_date,
-              linkMode: 'linked',
-              allJobBlocks,
-            })
-            results.push({ blockId: source.id, error })
-          }
-        }
-        const sum = summarizeLinkedCopyLaneApply(laneLabel, memberUserIds.length, results)
-        showToast(sum.message, sum.tone)
-        await loadHub({ quiet: true })
-      } finally {
-        setLinkedCopyApplyBusy(false)
-      }
-    },
-    [
-      linkedCopyMode,
-      linkedCopyApplyBusy,
-      authUser?.id,
-      hubBlockById,
-      hubWeekBlocks,
-      loadHub,
-      showToast,
-    ],
-  )
-
-  /** v2.3156: the phone board's Copy to techs sheet — one block to a chosen list of people, no mode state needed. */
-  const onCopyBlockToPeople = useCallback(
-    async (args: { blockId: string; userIds: string[]; linked: boolean }): Promise<{ applied: number } | null> => {
-      // `null` = nothing was attempted (the sheet stays open); the busy case is silent, the rest say why.
-      if (!authUser?.id || linkedCopyApplyBusy) return null
-      const source = hubBlockById.get(args.blockId)
-      if (!source) {
-        showToast('That block is no longer on the schedule.', 'error')
-        return null
-      }
-      if (args.userIds.length === 0) return null
-      setLinkedCopyApplyBusy(true)
-      try {
-        const results: LinkedCopyLegResult[] = []
-        const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
-        for (const userId of args.userIds) {
-          const { error } = await insertScheduleDispatchCopiedLeg({
-            jobId: scheduleBlockAnchorId(source),
-            createdBy: authUser.id,
-            source,
-            targetAssigneeUserId: userId,
-            targetWorkDate: source.work_date,
-            linkMode: args.linked ? 'linked' : 'unlinked',
-            allJobBlocks,
-          })
-          results.push({ blockId: source.id, error })
-        }
-        const sum = summarizeLinkedCopyLaneApply('Selected techs', args.userIds.length, results, { linked: args.linked })
-        showToast(sum.message, sum.tone)
-        await loadHub({ quiet: true })
-        return { applied: sum.applied }
-      } finally {
-        setLinkedCopyApplyBusy(false)
-      }
-    },
-    [authUser?.id, linkedCopyApplyBusy, hubBlockById, hubWeekBlocks, loadHub, showToast],
-  )
-
-  const onRequestHubMultiCellAddChooseJob = useCallback(() => {
-    if (hubMultiCellAddSelection.size === 0) return
-    setHubCellAddContext(null)
-    setHubAssignJobPickerIntent('multi')
-    setHubAssignJobPickerSearch('')
-    setHubAssignJobPickerNumberQuery('')
-    setHubAssignJobPickerOpen(true)
-  }, [hubMultiCellAddSelection])
 
   const onCreateNewJobFromHubJobPicker = useCallback(() => {
     if (!jobFormModal) return
@@ -1034,10 +555,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     const intentSnapshot = hubAssignJobPickerIntent
     const multiKeys =
       intentSnapshot === 'multi' && hubMultiCellAddSelection.size > 0 ? [...hubMultiCellAddSelection] : null
-    setHubAssignJobPickerOpen(false)
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-    setHubCellAddContext(null)
+    leaveModesFor('newJob')
     jobFormModal.openNewJob({
       onCreatedJobId: (newId) => {
         void loadHub().then(async () => {
@@ -1048,7 +566,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           if (ctx) {
             openAddBlock({ assigneeUserId: ctx.assigneeUserId, workDate: ctx.workDate, jobId: newId })
           } else {
-            setHubAssignJobPlacement({ jobId: newId })
+            placeNewJob(newId)
             showToast('Click a person day cell to add the first block for this job.', 'info')
           }
         })
@@ -1064,6 +582,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     loadHub,
     showToast,
     applyHubMultiCellJob,
+    leaveModesFor,
+    placeNewJob,
   ])
 
   const hubAssignJobPickerRows = useMemo(
@@ -1373,13 +893,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const shiftWeek = useCallback(
     (deltaWeeks: number) => {
-      setHubAssignJobPlacement(null)
       // A copy / move / linked-copy mode is anchored to blocks in the loaded week; the phone board
       // would lose its bar (and Cancel) once they are gone, so the week change ends the mode.
-      setCardPlacementMode(null)
-      setPlusMenuBlockId(null)
-      setLinkedCopyMode(null)
-      placeJobArmKeyRef.current = ''
+      leaveModesFor('weekNav')
       const next = ymdAddDays(weekStart, deltaWeeks * 7)
       if (isTomorrow) {
         const dayKeep = pickDayForScheduleDispatchUrl(tomorrowYmd, next, hideWeekend)
@@ -1404,15 +920,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         setSearchParams(p, { replace: false })
       }
     },
-    [isTomorrow, tomorrowYmd, jobId, weekStart, navigate, setSearchParams, hubTab, dayRaw, hideWeekend],
+    [isTomorrow, tomorrowYmd, jobId, weekStart, navigate, setSearchParams, hubTab, dayRaw, hideWeekend, leaveModesFor],
   )
 
   const goThisWeek = useCallback(() => {
-    setHubAssignJobPlacement(null)
-    setCardPlacementMode(null)
-    setPlusMenuBlockId(null)
-    setLinkedCopyMode(null)
-    placeJobArmKeyRef.current = ''
+    leaveModesFor('weekNav')
     const s = getDefaultWeekRange().start
     if (isTomorrow) {
       const dayKeep = pickDayForScheduleDispatchUrl(tomorrowYmd, s, hideWeekend)
@@ -1436,25 +948,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       if (dayKeep) p.day = dayKeep
       setSearchParams(p, { replace: false })
     }
-  }, [isTomorrow, tomorrowYmd, jobId, navigate, setSearchParams, hubTab, dayRaw, hideWeekend])
+  }, [isTomorrow, tomorrowYmd, jobId, navigate, setSearchParams, hubTab, dayRaw, hideWeekend, leaveModesFor])
 
   const setHubTab = useCallback(
     (t: 'jobs' | 'people' | 'day') => {
       if (t === 'jobs') {
-        setCardPlacementMode(null)
-        setPlusMenuBlockId(null)
-        setHubAssignJobPlacement(null)
-        setHubMultiCellAddActive(false)
-        setHubMultiCellAddSelection(new Set())
-        stripPlaceJobFromUrl()
+        leaveModesFor('tabAway')
       }
       if (t === 'day') {
-        setCardPlacementMode(null)
-        setPlusMenuBlockId(null)
-        setHubAssignJobPlacement(null)
-        setHubMultiCellAddActive(false)
-        setHubMultiCellAddSelection(new Set())
-        stripPlaceJobFromUrl()
+        leaveModesFor('tabAway')
         if (isTomorrow) {
           setLocalHubTab('day')
           return
@@ -1491,7 +993,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         return n
       }, { replace: true })
     },
-    [isTomorrow, weekStart, setSearchParams, stripPlaceJobFromUrl],
+    [isTomorrow, weekStart, setSearchParams, leaveModesFor],
   )
 
   const openJobWeekGrid = useCallback(
@@ -1679,7 +1181,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             cardPlacementMode={cardPlacementMode}
             placementSourceWorkDate={placementSourceBlock?.work_date ?? null}
             plusMenuBlockId={plusMenuBlockId}
-            onPlusMenuBlockIdChange={setPlusMenuBlockId}
+            onPlusMenuBlockIdChange={onPlusMenuBlockIdChange}
             onStartCardPlacement={(b, v) => onStartCardPlacement(b, v)}
             onCardPlacementCellPick={(assigneeUserId, workDate) =>
               void onCardPlacementPickCell(assigneeUserId, workDate)
@@ -1843,11 +1345,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               })
               return
             }
-            setHubAssignJobPickerOpen(false)
-            setHubAssignJobPickerIntent('toolbar')
-            setCardPlacementMode(null)
-            setPlusMenuBlockId(null)
-            setHubAssignJobPlacement({ jobId: pickedJobId })
+            pickJobToPlace(pickedJobId)
             showToast('Click a person day cell to place a block for this job.', 'info')
           }}
           onCreateNewJob={jobFormModal ? onCreateNewJobFromHubJobPicker : undefined}
