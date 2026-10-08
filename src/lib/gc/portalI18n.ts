@@ -946,6 +946,29 @@ const S = {
   replyByEmail: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {name}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {name}.' },
   replyByEmailGc: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {gc}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {gc}.' },
   sentTo: { en: 'To {names}', es: 'Para {names}' },
+
+  // What a press says when it is refused (P2b-i, submit-gc-trade-portal's keys)
+  errBadRequest: { en: 'That did not go through. Reload the page and try again.', es: 'No se pudo enviar. Vuelva a cargar la página e inténtelo de nuevo.' },
+  errSpanishHeld: { en: 'Spanish is not ready yet. The portal stays in English for now.', es: 'El español todavía no está listo. Por ahora el portal sigue en inglés.' },
+  errTooMany: { en: 'That is a lot at once. Give us an hour, or call our office.', es: 'Es mucho a la vez. Espere una hora o llame a nuestra oficina.' },
+  errFailed: { en: 'That did not save. Try again in a minute.', es: 'No se guardó. Inténtelo de nuevo en un minuto.' },
+  errNotFound: { en: 'That is not on your portal any more. Reload the page.', es: 'Eso ya no está en su portal. Vuelva a cargar la página.' },
+  errNotYours: { en: 'That belongs to another company. Reload the page.', es: 'Eso pertenece a otra empresa. Vuelva a cargar la página.' },
+  errProjectLost: { en: '{gc} did not win this project, so nothing more is needed on it.', es: '{gc} no ganó este proyecto, así que no se necesita nada más.' },
+  errYouPassed: { en: 'You passed on this one. Call us if you want back in.', es: 'Usted no cotizó este. Llámenos si quiere volver a participar.' },
+  errAlreadyQuoted: { en: 'Your quote is already in. Change it if you need to.', es: 'Su cotización ya llegó. Cámbiela si lo necesita.' },
+  errNoQuote: { en: 'Send your quote first.', es: 'Primero envíe su cotización.' },
+  errNothingToAnswer: { en: 'Nothing on your quote is waiting for an answer.', es: 'Nada de su cotización está esperando respuesta.' },
+  errDayPassed: { en: 'Pick today or a day after it.', es: 'Elija hoy o un día posterior.' },
+  errNotOnTrade: { en: 'Only a company asked to quote this trade can ask about it.', es: 'Solo una empresa invitada a cotizar esta especialidad puede preguntar sobre ella.' },
+  errQuestionsClosed: { en: 'Questions are closed for this project.', es: 'Las preguntas de este proyecto ya están cerradas.' },
+  errEveryKind: { en: 'Every kind of email needs someone to get it.', es: 'Cada tipo de correo necesita a alguien que lo reciba.' },
+  errAmountNeeded: { en: 'Type the amount of your quote.', es: 'Escriba el monto de su cotización.' },
+  errNameNeeded: { en: 'Type the person’s name.', es: 'Escriba el nombre de la persona.' },
+  errEmailNeeded: { en: 'Type an email address that works.', es: 'Escriba un correo que funcione.' },
+  errPickAKind: { en: 'Pick at least one kind of email.', es: 'Elija al menos un tipo de correo.' },
+  errQuestionNeeded: { en: 'Type your question first.', es: 'Primero escriba su pregunta.' },
+  errTooLong: { en: 'That is too long. Make it shorter.', es: 'Es demasiado largo. Hágalo más corto.' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

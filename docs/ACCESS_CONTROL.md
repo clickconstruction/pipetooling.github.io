@@ -208,6 +208,7 @@ GC mode's first door. **Who:** `gc_office_team()` — today `is_office_or_estima
 - **Who makes a link**: a dev only until the portal's door. `mint_gc_trade_portal_link(company, rotate)` and `revoke_gc_trade_portal_link(company)` are `SECURITY DEFINER` and refuse anyone else in words; **Trade portals** on `/gc` calls them and shows only to a dev.
 - **Who reads** `gc_trade_portal_links`, `gc_trade_messages` and the portal's rows of `public_page_views`: a dev only (`is_dev()`). Nobody writes them from the client.
 - **The link holder** is not a role. `/t/<link>` is public; `gc-trade-portal` resolves the link with the service role and returns one company's slice, filtered by `TRADE_PORTAL_FIELDS`: never our price to the customer, our budgets or fee, another company or the office's notes. The page is read only until the submit function (P2b).
+- **What the link holder may write** (v2.4925): only through `submit-gc-trade-portal`, which resolves the link with the service role and calls P2a's `gc_trade_<verb>` functions (`20261008140000_gc_trade_writes.sql`) with the link's company first. Those functions are granted to `service_role` alone and refuse another company's rows (`notYours`). The writes are capped at 10 free-text writes a company an hour, and the sample token writes nothing.
 
 ### Scheduled GC-statement sends readable by the GC Review cohort; statement rows of the email log too (v2.2888, `20260905190000_gc_statement_requests_office_read.sql`)
 
