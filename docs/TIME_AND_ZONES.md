@@ -27,7 +27,7 @@ There is one "today" per runtime, and it is the Central civil date — never the
 
 Rule 5 (v2.3061): no `toLocaleDateString('en-CA')` without options as a `YYYY-MM-DD` source — Node 20 / ICU 72 render it `MM/DD/YYYY`; use `todayYmdInAppTz()` for today or `localCalendarDayKey(d)` for a device-local Date.
 
-Rules `npm run check:timezone` enforces: no `new Date().toISOString().slice(0, 10)` (or the substring/split spellings) outside download-filename stamps; no end-of-day built as `<ymd> + 'T23:59:59Z'` (that is 7 PM Central — use `endOfYmdInAppTzMs`, or compare civil dates); no `CURRENT_DATE` in migrations newer than `20260903190000`. A deliberate exception takes `// tz-ok: <why>` (or `-- tz-ok:` in SQL) on the line. Pure date arithmetic on a `YYYY-MM-DD` via `Date.UTC(...)` is fine — a day is a day.
+Rules `npm run check:timezone` enforces: no `new Date().toISOString().slice(0, 10)` (or the substring/split spellings), download-filename stamps included since v2.4891; no end-of-day built as `<ymd> + 'T23:59:59Z'` (that is 7 PM Central — use `endOfYmdInAppTzMs`, or compare civil dates); no `CURRENT_DATE` in migrations newer than `20260903190000`. A deliberate exception takes `// tz-ok: <why>` (or `-- tz-ok:` in SQL) on the line. Pure date arithmetic on a `YYYY-MM-DD` via `Date.UTC(...)` is fine — a day is a day.
 
 ## What we store
 

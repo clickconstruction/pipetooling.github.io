@@ -318,10 +318,11 @@ export function buildAiaPrefillLinesFromJob(job: JobWithDetails | LimitedJobDeta
 }
 
 /** The file's name: the job's number, the application number when it is one, and the day. */
-export function aiaDownloadFilename(jobNumberOrFallback: string, applicationNumber?: string | number | null): string {
+export function aiaDownloadFilename(jobNumberOrFallback: string, applicationNumber?: string | number | null, now: Date = new Date()): string {
   const safe = (jobNumberOrFallback || 'job').replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-|-$/g, '') || 'job'
   const app = String(applicationNumber ?? '').trim()
   const appPart = /^\d{1,4}$/.test(app) ? `-app-${app}` : ''
-  const ymd = new Date().toISOString().slice(0, 10) // tz-ok: filename stamp
+  // The company's day, not the UTC clock's: an evening download was named for tomorrow (v2.4891).
+  const ymd = todayYmdInAppTz(now)
   return `AIA-G702-G703-${safe}${appPart}-${ymd}.xlsx`
 }

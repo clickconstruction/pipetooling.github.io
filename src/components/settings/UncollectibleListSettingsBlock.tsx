@@ -5,6 +5,7 @@ import { buildUncollectibleReport, uncollectibleReportCsv, type UncollectibleRep
 import { uncollectibleDayWords } from '../../lib/jobs/uncollectible'
 import { saveBlobAs } from '../../lib/storageSave'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 // The three columns are ahead of the generated types until they regenerate.
 const db = supabase as unknown as SupabaseClient
@@ -49,7 +50,7 @@ export default function UncollectibleListSettingsBlock() {
   }, [open, report])
   const download = () => {
     if (!report) return
-    saveBlobAs(new Blob([uncollectibleReportCsv(report)], { type: 'text/csv;charset=utf-8' }), `uncollectible-${new Date().toISOString().slice(0, 10)}.csv`)
+    saveBlobAs(new Blob([uncollectibleReportCsv(report)], { type: 'text/csv;charset=utf-8' }), `uncollectible-${todayYmdInAppTz()}.csv`)
   }
   return (
     <div data-testid="uncollectible-list-block" style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>

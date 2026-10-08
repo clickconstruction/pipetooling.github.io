@@ -34,6 +34,7 @@ import type {
   CostEstimate,
   CostEstimateLaborRow,
 } from '../bids/bidPricingEngineTypes'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 type PricingAssignmentInput = {
   count_row_id: string
@@ -400,6 +401,6 @@ export function buildPricingCsvForBid(
   }))
 
   const csv = buildPricingCsv(rowCalcs, { totalBidCost, totalRevenue })
-  const filename = `pricing_${sanitizeCsvFilenamePart(bidLabel)}_${sanitizeCsvFilenamePart(versionName)}_${new Date().toISOString().slice(0, 10)}.csv`
+  const filename = `pricing_${sanitizeCsvFilenamePart(bidLabel)}_${sanitizeCsvFilenamePart(versionName)}_${todayYmdInAppTz()}.csv`
   return { csv, filename }
 }

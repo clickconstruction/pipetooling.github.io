@@ -41,6 +41,7 @@ import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type Brea
 import { referenceGradeChip, referenceGradeChipApplies } from '../../lib/bids/referenceGradeChip'
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** v2.4720: rows per insert statement on an import (PostgREST takes the whole array; chunked only so a huge paste stays well under the request limit). */
 const COUNTS_IMPORT_INSERT_CHUNK = 500
@@ -800,7 +801,7 @@ export function BidsCountsTab({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `counts_${sanitizeCsvFilenamePart(bidLabel)}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `counts_${sanitizeCsvFilenamePart(bidLabel)}_${todayYmdInAppTz()}.csv`
     a.click()
     URL.revokeObjectURL(url)
     showToast('Counts exported to CSV.', 'success')
