@@ -150,7 +150,12 @@ describe('JobContractModal — the signed state', () => {
     expect(paper.textContent).toContain('for Michael Palmer and Grace Palmer')
     const sig = within(paper).getByTestId('paper-signature').textContent ?? ''
     expect(sig).toContain('✍ Michael Palmer and Grace Palmer')
-    expect(sig).toContain('Signed on paper by Michael Palmer and Grace Palmer · recorded Sep 21, 2026, 7:00 AM CT')
+    // v2.4876: a Signed on day reads as the day they signed, with no time nobody recorded.
+    expect(sig).toContain('Signed on paper by Michael Palmer and Grace Palmer on Sep 21, 2026')
+    expect(sig).not.toContain('7:00 AM')
+    const banner = within(rail).getByTestId('contract-signed-banner').textContent ?? ''
+    expect(banner).toContain('· Sep 21, 2026')
+    expect(banner).not.toContain('7:00 AM')
     expect(within(paper).queryByTestId('paper-cosignature')).toBeNull()
     expect(within(paper).queryByTestId('paper-cosigner-frame')).toBeNull()
   })
@@ -168,7 +173,7 @@ describe('JobContractModal — the signed state', () => {
     expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/· Michael Palmer and Grace Palmer$/)
     const paper = screen.getByTestId('contract-paper')
     const sig = within(paper).getByTestId('paper-signature').textContent ?? ''
-    expect(sig).toContain('Signed on paper by Michael Palmer · recorded Sep 21, 2026, 7:00 AM CT')
+    expect(sig).toContain('Signed on paper by Michael Palmer on Sep 21, 2026')
     expect(sig).not.toContain('Signed on paper by Michael Palmer and Grace Palmer')
     expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed electronically by Grace Palmer (drawn) · Sep 20, 2026, 12:00 PM CT')
   })
