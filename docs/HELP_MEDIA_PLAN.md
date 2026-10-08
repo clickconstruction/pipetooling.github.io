@@ -66,4 +66,4 @@ Chosen for traffic × spatial complexity — flows where "where is it / how does
 
 | Schedule Dispatch phone moves: grip tap → day chip → "Moved to Fri 9/4." → press-and-hold → Move sheet → back to Thu (`schedule-dispatch-move-by-thumb.gif`, phone width, 500×1000, ~0.5 MB, 8 keyframes via Playwright + ffmpeg as dev on Isiah's J878 — the block was moved to Friday and back on camera, ending where it started) | ✅ 2026-09-03 | ✅ |
 
-(The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and stays.)
+(The one existing recording, `settings-basics.gif` in `settings-basics.md`, predates this plan and wants re-recording: made 2026-07-09, it shows the old PipeTooling header, the old Settings tab bar and the old gear menu, from before the v2.2088 zones and the v2.3539 rail, and runs 20 seconds. The guide keeps it until the new one exists.)
