@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-09-30
+last_updated: 2026-10-08
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -60,7 +60,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 
 ### /dashboard — Dashboard
 Landing page for every role: pinned pages, role-relevant cards (recent reports, my bids,
-Wednesday GC-certification nudge, tasks). Start here to orient; do work elsewhere.
+Wednesday GC-certification nudge, tasks, and for the office team the **GC projects** Follow up line on Needs you, v2.4941). Start here to orient; do work elsewhere.
 Roles: all.
 
 ### /gc — GC projects
@@ -86,7 +86,7 @@ is every scope line we keep by trade: edit, add, fold duplicates, save a project
 project through `gc_issue_plan_set`. **The plans** (`?plans=<project id>`) is the plans window: the sheets and
 the manual as they stood at each set, what each set changed and took out, and the scope that reads from a sheet.
 **Questions about the plans** (`?questions=<project id>`) records a company's question, emails it to the architect
-(`gc-plan-question-email`) and records the answer; the next set carries it.
+(`gc-plan-question-email`) and records the answer; the next set carries it. For a dev, a new set emails the companies asked to quote (**Who hears it**, v2.4940) and an answer reaches the companies on the trade (v2.4938), both through `gc-trade-email`. `?view=partners` and `?view=followUp` open those views (v2.4941).
 Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=issue-a-new-set-of-plans`,
 `/help?g=read-the-plans-of-a-gc-project`, `/help?g=ask-the-architect-about-the-plans`.
 Roles: dev, master_technician, assistant, controller, estimator.
@@ -264,6 +264,14 @@ the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
 (`/dispatch-mode/schedule`) · PO (`/dispatch-mode/po`) · Inbox (`/dispatch-mode/inbox`) · More (a sheet
 with *The dock* row — tap a slot there to swap it — every page, the mode switches and Help /
 Settings / Sign out); holding a slot on the bar swaps it too.
+
+### /t/:token — A trade partner's portal (public)
+One no-password link per trade partner company (v2.4920, `GcTradePortal.tsx`, read through `gc-trade-portal`): the
+company's asks, quotes, plans and questions on each project. From it the company names its people, promises a quote
+day, quotes, answers lines, passes, asks about the plans and picks who gets our emails (v2.4935, through
+`submit-gc-trade-portal`). `/t/sample` is the sample. A link is made by a dev in the company window's **Their portal**
+until the trade wave, and the first email to the company makes one (v2.4936).
+Roles: public.
 
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then

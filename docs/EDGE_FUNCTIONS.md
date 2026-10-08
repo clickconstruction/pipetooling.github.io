@@ -993,7 +993,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the same two as [drive-intake](#drive-intake); setup in `docs/DRIVE_INTAKE_SETUP.md`). Google helpers from `_shared/driveUpload.ts`.
 
-**Doors**: the dev-only GC projects page (`/gc`) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
+**Doors**: the GC projects page (`/gc`, the office and estimators since door 1, v2.4832) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
 
 ---
 
@@ -1005,7 +1005,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_plan_question`.
 
-**Doors**: the dev-only GC projects page (`/gc`), the questions window's **Email it to the architect** (`src/lib/gc/gcIo.ts`, `sendQuestionToArchitect`).
+**Doors**: the GC projects page (`/gc`, the office and estimators since door 1, v2.4832), the questions window's **Email it to the architect** (`src/lib/gc/gcIo.ts`, `sendQuestionToArchitect`).
 
 
 ---
@@ -1075,7 +1075,7 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 
 ### gc-trade-email
 
-**Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. Nothing calls it until a lane switches to it (P3-b, New project's step 7, the Ask window).
+**Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. The questions window's answer (v2.4938), the Ask window's invitation (v2.4939) and a new set's plans (v2.4940) call it; `nudge` comes next.
 
 **Endpoint**: `POST /functions/v1/gc-trade-email` with `{ companyId, kind, key, projectId | null, lang, subject, lines, group? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { companyId, messageId, emailSendLogId, to }`, the same with `already: true` for a key sent before, or `{ error: key, detail? }`.
 
