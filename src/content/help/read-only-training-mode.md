@@ -15,7 +15,7 @@ Three people can switch it: a dev, a controller, or a leader approved for pay. A
 
 ## Start them in training mode when you invite them
 
-The easiest moment is before they exist. You open People → Users and press {{button:blue|+ Hire}}. A dev sees a ***Start in training mode (read-only)*** checkbox beside the invite. Only a dev sees it, because only a dev sends the invite. **Set a password now** on the same form keeps the checkbox. You tick it and the account is flagged before their first sign-in. There is nothing to remember afterwards. The invite email names the role in plain words, such as *as a Helper*, never a database label. The role itself is the dialog's **Kind**. The Kind starts on Helper, so check it. See [invite someone to sign in](?g=invite-someone-to-sign-in).
+The easiest moment is before they exist. You open People → Users and press {{button:blue|+ Hire}}. A dev sees a ***Start in training mode (read-only)*** checkbox beside the invite. Only a dev sees it, because only a dev sends the invite. **Set a password now** on the same form keeps the checkbox. You tick it and the account is flagged before their first sign-in. There is nothing to remember afterwards. The invite email names the role in plain words, such as *as a Helper*, never a database label. The role itself is the dialog's **Kind**. The Kind starts on Helper, so check it. See [invite someone to sign in](/help/invite-someone-to-sign-in).
 
 If the invite link expires before they use it, a dev opens their desk and presses {{button:outline|Send sign-in email}}. The account keeps its training mode. Nothing has to be ticked again.
 
@@ -44,4 +44,4 @@ You untick the same checkbox. Their normal write access returns the next time th
 
 ## Related
 
-- To take away someone's sign-in entirely, see [archive and restore user accounts](?g=archive-user-accounts).
+- To take away someone's sign-in entirely, see [archive and restore user accounts](/help/archive-user-accounts).
