@@ -21,6 +21,7 @@ import { useBidPricingRows } from '../hooks/useBidPricingRows'
 import { useBidCustomCosts } from '../hooks/useBidCustomCosts'
 import { useToastContext } from '../contexts/ToastContext'
 import { useRoleGate } from '../hooks/useRoleGate'
+import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import {
   formatBidLedgerNumberLabel,
@@ -1973,6 +1974,7 @@ export default function Bids() {
           onEditBid={openEditBid}
           onNewBidWithCustomer={openNewBidWithCustomer}
           onViewSubmissions={bidsTabOpenFor('submission-followup', myRole) ? handleLastContactClick : undefined}
+          canOpenMap={isPathAllowedForRole(myRole, '/map', false)}
           onSetCustomers={setCustomers}
           newCustomerModal={newCustomerModal}
           editCustomerModal={editCustomerModal}

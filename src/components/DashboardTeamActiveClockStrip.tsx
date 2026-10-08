@@ -13,6 +13,7 @@ import {
 } from 'react'
 import { PersonNameDoor } from './personDesk/PersonNameDoor'
 import { Link } from 'react-router-dom'
+import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
 
 const QuickAssignSheet = lazy(() => import('./dispatchMode/QuickAssignSheet'))
 const ManagePersonDayModal = lazy(() => import('./dispatchMode/ManagePersonDayModal'))
@@ -3082,6 +3083,7 @@ export function DashboardTeamActiveClockStrip({
   {clockedInMapOpen ? (
     <Suspense fallback={null}>
       <ClockedInMapModal
+        canOpenFullMap={isPathAllowedForRole(viewerRole, '/map', false)}
         sessions={sessions}
         prefixMap={prefixMap}
         nowMs={nowMs}
