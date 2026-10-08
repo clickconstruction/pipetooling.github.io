@@ -65,11 +65,14 @@ const byName = (sf) => {
   for (const s of sf.statements) for (const n of declared(s)) m.set(n, s)
   return m
 }
-/** Every it(...) or test(...) in a file, by its title. */
+/** Every it(...) or test(...) in a file, by its title: a title several tests share keeps them all, in the file's order. */
 function testsOf(sf) {
   const m = new Map()
   const visit = (n) => {
-    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && ['it', 'test'].includes(n.expression.text) && n.arguments.length >= 2) m.set(n.arguments[0].getText(sf), n)
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && ['it', 'test'].includes(n.expression.text) && n.arguments.length >= 2) {
+      const title = n.arguments[0].getText(sf)
+      m.set(title, [...(m.get(title) ?? []), n])
+    }
     ts.forEachChild(n, visit)
   }
   visit(sf)
@@ -139,10 +142,14 @@ function compare(config, mainFile, spikeFile) {
     const theirs = testsOf(spike)
     let same = 0
     const differ = []
-    for (const [title, call] of testsOf(main)) {
-      const o = theirs.get(title)
-      if (o && call.getText(main).replace(/^[ \t]+/gm, '') === o.getText(spike).replace(/^[ \t]+/gm, '')) same++
-      else differ.push(`${title}${o ? '' : ' (not on the spike)'}`)
+    const flat = (text) => text.replace(/^[ \t]+/gm, '')
+    for (const [title, calls] of testsOf(main)) {
+      const ours = theirs.get(title) ?? []
+      // A moved test is the same when any spike test of its title is word for word it (the spike has titles in more than one describe).
+      for (const call of calls) {
+        if (ours.some((o) => flat(call.getText(main)) === flat(o.getText(spike)))) same++
+        else differ.push(`${title}${ours.length ? '' : ' (not on the spike)'}`)
+      }
     }
     bad += differ.length
     rows.push([mainRel, spikeRel, same, 0, differ.length, differ.join('; ')])
