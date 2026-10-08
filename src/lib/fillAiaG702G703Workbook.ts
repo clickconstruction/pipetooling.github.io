@@ -1,5 +1,5 @@
 import type { Cell, CellValue, Workbook } from 'exceljs'
-import { type AiaPreviewMath, buildAiaPreview } from './aiaG702G703Preview'
+import { type AiaPreviewMath, type AiaPreviewOptions, buildAiaPreview } from './aiaG702G703Preview'
 import { AIA_G703_FIRST_ROW, AIA_G703_MAX_ROWS, type PayApplicationLine, printRowsOf } from './aiaPayApplicationLines'
 import {
   AIA_FIELD_DEFS,
@@ -194,14 +194,43 @@ export class AiaTooManyRows extends Error {
   }
 }
 
-export type AiaFillOptions = { splitLaborMaterial?: boolean }
+/**
+ * GC mode's pay application to its customer (Owner Billing's O4a): the words the template fixes
+ * for a job billed to an owner through a construction manager, set for ours. The Pipeline's own
+ * window never passes it, so its file is unchanged.
+ */
+export interface AiaGcForm {
+  /** A5, "TO OWNER:" on the template: who the bill goes to. */
+  to: string
+  /** J44, "CONSTRUCTION MGR:" on the template: who certifies it. */
+  certifier: string
+  /** L8 and N8: the property's owner, when someone other than the customer. */
+  projectOwner?: string | null
+  /** J26: the state the contractor signs in, for the notary's wet signature. The county stays a blank. */
+  notaryState?: string | null
+}
+
+export type AiaFillOptions = AiaPreviewOptions & { gcForm?: AiaGcForm }
+
+/** The GC form's words over the template's fixed ones. */
+function writeGcForm(wb: Workbook, form: AiaGcForm): void {
+  const ws = wb.getWorksheet(AIA_G702_SHEET)
+  if (!ws) return
+  ws.getCell('A5').value = form.to
+  ws.getCell('J44').value = form.certifier
+  if (form.projectOwner) {
+    ws.getCell('L8').value = 'PROJECT OWNER:'
+    ws.getCell('N8').value = form.projectOwner
+  }
+  if (form.notaryState) ws.getCell('J26').value = `State of: ${form.notaryState}     County of: ______________________`
+}
 
 /**
  * The application's lines onto the G703's item rows (13–46): description, scheduled value, work
  * from previous applications, work this period, material stored. Every item row is written, a
  * row with no line as blank: the template's own first row was saved from a real job.
  */
-function writeLines(wb: Workbook, lines: ReadonlyArray<PayApplicationLine>, split: boolean): void {
+function writeLines(wb: Workbook, lines: ReadonlyArray<PayApplicationLine>, split: boolean, rowRetainage?: ReadonlyArray<number | null>): void {
   const ws = wb.getWorksheet(AIA_G703_SHEET)
   if (!ws) return
   const rows = printRowsOf(lines, split)
@@ -214,6 +243,9 @@ function writeLines(wb: Workbook, lines: ReadonlyArray<PayApplicationLine>, spli
     ws.getCell(`E${n}`).value = r ? r.fromPrevious : 0
     ws.getCell(`F${n}`).value = r ? r.thisPeriod : 0
     ws.getCell(`G${n}`).value = r ? r.stored : 0
+    // A row's own retainage replaces its H × C28 formula (a step that lowers it partway).
+    const own = r ? rowRetainage?.[i] : undefined
+    if (own !== undefined && own !== null) ws.getCell(`K${n}`).value = own
   }
 }
 
@@ -254,7 +286,8 @@ export async function fillAiaG702G703Workbook(
   }
 
   placeContractorBlock(wb, values)
-  writeLines(wb, lines, options.splitLaborMaterial === true)
+  writeLines(wb, lines, options.splitLaborMaterial === true, options.rowRetainage)
+  if (options.gcForm) writeGcForm(wb, options.gcForm)
   materializeG703Mirrors(wb)
   stampFormulaResults(wb, buildAiaPreview(values, lines, options).math)
 
