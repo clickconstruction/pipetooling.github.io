@@ -209,7 +209,7 @@ claimed at its cut, so the queue clears faster and 7a's review is the script's.
   DIRTY on each other.
 - **7b, the window**: `GcScheduleWindow` with its body, the bar card, *Draw a first draft*, the gate
   and the docs. Cut after 7a merges.
-- **7c, the call list** (G-115): `gcCallList.ts`, `GcCallList`, `PeopleRows` and `theirWork`.
+- **7c, the call list** (G-115): `gcCallList.ts`, `GcCallList`, `PeopleRows` and `theirWork`. Measured on 2026-10-08, it needs Follow up's people model, the counts and a customer-send kernel too, and is cut in two: 7c-i the kernels, 7c-ii the window (`schedule-pr7c.md`).
 
 The one-line change to `lift-same.cjs` (call 6) rides the lane's `spike/schedule-follow`, with the
 lead's nod while Helper 7 is away. 7a's configs are pinned in its follow-up, so `--all` proves its
