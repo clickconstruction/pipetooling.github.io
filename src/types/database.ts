@@ -9367,6 +9367,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          invoice_id: string | null
           number: number
           project_id: string
           sent_on: string
@@ -9376,6 +9377,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          invoice_id?: string | null
           number: number
           project_id: string
           sent_on: string
@@ -9385,6 +9387,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          invoice_id?: string | null
           number?: number
           project_id?: string
           sent_on?: string
@@ -9473,10 +9476,12 @@ export type Database = {
           certified_by: string | null
           certified_note: string
           certified_on: string | null
+          conditional_waiver_id: string | null
           created_at: string
           due: number
           final: boolean
           id: string
+          invoice_id: string | null
           number: number
           period_to: string
           project_id: string
@@ -9494,10 +9499,12 @@ export type Database = {
           certified_by?: string | null
           certified_note?: string
           certified_on?: string | null
+          conditional_waiver_id?: string | null
           created_at?: string
           due: number
           final?: boolean
           id?: string
+          invoice_id?: string | null
           number: number
           period_to: string
           project_id: string
@@ -9515,10 +9522,12 @@ export type Database = {
           certified_by?: string | null
           certified_note?: string
           certified_on?: string | null
+          conditional_waiver_id?: string | null
           created_at?: string
           due?: number
           final?: boolean
           id?: string
+          invoice_id?: string | null
           number?: number
           period_to?: string
           project_id?: string
@@ -28628,6 +28637,15 @@ export type Database = {
         Returns: undefined
       }
       gc_office_team: { Args: never; Returns: boolean }
+      gc_owner_contract_now: { Args: { p_project_id: string }; Returns: number }
+      gc_record_certificate: {
+        Args: { p_amount: number; p_note?: string; p_on: string; p_pay_app_id: string }
+        Returns: string
+      }
+      gc_send_owner_pay_app: {
+        Args: { p_app: Json; p_project_id: string }
+        Returns: string
+      }
       gc_questions_close_on: { Args: { p_project: string }; Returns: string }
       gc_record_promise: { Args: { p: Json }; Returns: string }
       gc_record_question: { Args: { q: Json }; Returns: string }

@@ -44,6 +44,8 @@ function rowsOf(state: GcState, project: GcProject): OwnerBillingRows {
         certified_on: certified === null ? null : (app.certifiedOn ?? app.sentOn),
         certified_note: app.certifiedNote ?? '',
         certified_by: null,
+        invoice_id: null,
+        conditional_waiver_id: null,
         created_at: `${app.sentOn}T15:00:00Z`,
       }
     }),
@@ -144,7 +146,7 @@ describe('our bills to the customer, read back from their rows', () => {
       payApps: [{ ...first, certified: null, certified_on: null, retainage_step_at_pct: 50, retainage_step_to_pct: 5, retainage_step_way: 'after' }],
       lines: rows.lines.filter((l) => l.pay_app_id === first.id).map((l, i) => (i === 0 ? { ...l, stored: 1200 } : l)),
       reminders: [{ id: 'r1', pay_app_id: first.id, sent_on: '2026-10-02', sent_by: null, pay_by: '2026-10-07', note: 'Thank you.', subject: 'Reminder', lines: ['Hello'], email_send_log_id: null, created_at: '2026-10-02T15:00:00Z' }],
-      interestBills: [{ id: 'i1', project_id: project.id, number: 1, sent_on: '2026-10-02', amount: 412.5, created_by: null, created_at: '2026-10-02T15:00:00Z' }],
+      interestBills: [{ id: 'i1', project_id: project.id, number: 1, sent_on: '2026-10-02', amount: 412.5, created_by: null, created_at: '2026-10-02T15:00:00Z', invoice_id: null }],
       acceptance: { project_id: project.id, accepted_on: '2026-10-01', accepted_by_name: 'Elena Marchetti', how: 'office', note: '', recorded_by: null, created_at: '2026-10-01T15:00:00Z' },
     })!
     const app = waiting.payApps![0]!
