@@ -63,7 +63,7 @@ import {
   deriveGcAccountMen,
   type RoundMarkRow,
 } from '../../lib/jobs/gcStatementRounds'
-import { buildGcWorklist, worklistCards } from '../../lib/jobs/gcWorklist'
+import { pipelineRoundCards } from '../../lib/jobs/gcWorklist'
 import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
 import {
@@ -1628,18 +1628,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const gcRoundCards = useMemo(() => {
     if (!roundRollup) return null
     // The week's list, office-wide: what waits on a check, what is checked and waits on its statement.
-    return worklistCards(
-      buildGcWorklist({
-        groups: roundRollup.groups,
-        certsByGc: latestCertByGc(roundCertRows),
-        marks: roundMarks,
-        senders: roundSenders,
-        accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
-        lastSentByGcId: gcLastSentByGcId,
-        weekStartYmd: roundWeekStart,
-      }),
-    )
-  }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, gcLastSentByGcId, roundWeekStart])
+    return pipelineRoundCards({
+      groups: roundRollup.groups,
+      certsByGc: latestCertByGc(roundCertRows),
+      marks: roundMarks,
+      recentMarks: roundTempMarks,
+      todayYmd: todayYmdInAppTz(),
+      senders: roundSenders,
+      accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
+      lastSentByGcId: gcLastSentByGcId,
+      weekStartYmd: roundWeekStart,
+    })
+  }, [roundRollup, roundCertRows, roundMarks, roundTempMarks, roundSenders, unfilteredBoardLists, gcLastSentByGcId, roundWeekStart])
 
   /**
    * Payment chase queue (v2.2025). The CARD derives from the lean stats
