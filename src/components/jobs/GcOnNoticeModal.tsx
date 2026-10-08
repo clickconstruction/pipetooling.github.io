@@ -29,7 +29,7 @@ import {
   gcNoticeSavedRun,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
-import { approveLienDeskItem, markLienDeskItemsPrinted, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
+import { approveLienDeskItem, markLienDeskItemsPrinted, takeBackLienDeskItems, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
 import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
@@ -1241,6 +1241,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
             refetch()
             onChanged()
+          }}
+          onTakeBack={async (ids) => {
+            const n = await takeBackLienDeskItems(ids, { userId: authUserId, userName: authName || null })
+            refetch()
+            onChanged()
+            return n
           }}
           onRecorded={() => {
             // A recorded run is mailed: there is nothing left to undo.

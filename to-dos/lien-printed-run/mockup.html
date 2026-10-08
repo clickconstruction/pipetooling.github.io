@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien desk: a printed run</title>
+<style>
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --red: #dc2626; --amber: #92400e; --amber-tint: #fef3c7; --green: #15803d; --green-tint: #dcfce7; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #d1d5db; --line-2: #e5e7eb; --surface: #ffffff; --page: #f3f4f6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1560px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 100ch; }
+  h2 { font-size: 18px; margin: 40px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 105ch; }
+  .two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 1100px) { .two { grid-template-columns: minmax(0, 1fr); } }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; }
+  .cap.old { background: var(--line-2); color: var(--ink-2); }
+  .cap.new { background: var(--blue-tint); color: var(--blue-ink); }
+  .fit { border: 1px solid #cbd5e1; border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 12px; overflow-x: auto; }
+  .note { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-2); }
+  .note b { color: var(--ink); }
+
+  /* the desk */
+  .desk { background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; min-width: 640px; font-size: 13px; }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .bar .t { font-weight: 700; font-size: 15px; margin-right: 4px; }
+  .views { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .views span { padding: 2px 9px; font-weight: 600; color: var(--ink-2); }
+  .views span.on { background: var(--blue); color: #fff; }
+  .btn { display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; padding: 3px 10px; font: inherit; font-weight: 600; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: default; white-space: nowrap; }
+  .btn.p { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.q { border-color: transparent; background: none; color: var(--blue-ink); padding: 3px 4px; text-decoration: underline; text-underline-offset: 2px; }
+  .btn.red { background: var(--red); border-color: var(--red); color: #fff; }
+  button.btn { cursor: pointer; }
+  button.btn.live { outline: 3px solid #93c5fd; outline-offset: 2px; }
+  .find { margin: 8px 12px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); }
+  .rail { display: grid; grid-template-columns: 70px repeat(4, minmax(0, 1fr)); gap: 0; margin: 4px 12px 8px; align-items: stretch; }
+  .rail .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--muted); display: flex; align-items: center; }
+  .rail .r { border: 1px solid var(--line); margin-left: -1px; padding: 4px 8px; display: flex; align-items: center; gap: 6px; }
+  .rail .r:first-of-type { border-radius: 7px 0 0 7px; }
+  .rail .r:last-of-type { border-radius: 0 7px 7px 0; }
+  .rail .r .c { margin-left: auto; font-weight: 700; color: var(--muted); }
+  .rail .r.hot .c { color: var(--ink); }
+  .rail .r small { color: var(--muted); font-size: 11px; }
+  .you { background: #fde68a; color: #78350f; border-radius: 999px; font-size: 10px; font-weight: 700; padding: 0 6px; }
+  .grp { margin: 10px 12px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .grp.now { color: var(--red); }
+  .grp.mine { color: var(--blue-ink); }
+  .list { margin: 0 12px 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .row { display: grid; grid-template-columns: 62px minmax(0, 1.5fr) 62px minmax(0, 1.4fr) 128px 112px; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line-2); }
+  .row:first-child { border-top: 0; }
+  .row.muted { color: var(--muted); }
+  .chip { display: inline-block; background: #eff6ff; color: var(--blue-ink); border-radius: 5px; padding: 0 6px; font-weight: 600; }
+  .chip.run { background: var(--amber-tint); color: var(--amber); }
+  .dots { color: #9ca3af; letter-spacing: 1px; font-size: 11px; }
+  .dots b { color: var(--blue); }
+  .due { color: var(--red); font-weight: 600; white-space: nowrap; }
+  .due.quiet { color: var(--muted); font-weight: 500; }
+  .sub { color: var(--ink-2); }
+  .act { text-align: right; }
+  .more { padding: 5px 10px; color: var(--muted); font-style: italic; border-top: 1px solid var(--line-2); }
+  .runrow { padding: 8px 10px; border-top: 1px solid var(--line-2); background: #fffdf5; }
+  .runrow:first-child { border-top: 0; }
+  .runrow .top { display: grid; grid-template-columns: 62px minmax(0, 1fr) 128px auto; gap: 8px; align-items: center; }
+  .runrow .ttl { font-weight: 600; }
+  .runrow .s { color: var(--ink-2); font-size: 12.5px; }
+  .runrow .acts { display: flex; gap: 6px; justify-content: flex-end; }
+  .fold { margin: 6px 0 0 70px; border-left: 2px solid var(--line); padding-left: 10px; font-size: 12px; color: var(--ink-2); display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 1px 10px; }
+  .fold .d { color: var(--red); text-align: right; }
+  .fold .d.q { color: var(--muted); }
+  .toggle { color: var(--blue-ink); font-weight: 600; font-size: 12px; cursor: pointer; background: none; border: 0; padding: 0; font: inherit; }
+
+  /* the run window */
+  .win { background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; min-width: 640px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.08); }
+  .win .hd { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .win .hd h3 { margin: 0; font-size: 15px; }
+  .win .hd .x { margin-left: auto; color: var(--muted); }
+  .steps { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 7px 14px; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--ink-2); }
+  .st { border: 1px solid #9ca3af; border-radius: 999px; padding: 1px 9px; background: var(--surface); }
+  .st.done { background: var(--green-tint); }
+  .st.at { background: var(--blue-tint); }
+  .steps .hint { margin-left: auto; color: var(--muted); }
+  .strip { margin: 10px 14px 0; padding: 8px 12px; border-radius: 8px; font-size: 12.5px; }
+  .strip.ok { background: var(--green-tint); color: #14532d; }
+  .strip.warn { background: #fff7ed; border: 1px solid #fdba74; color: #7c2d12; }
+  .strip h4 { margin: 0 0 4px; font-size: 14px; color: var(--ink); }
+  .strip p { margin: 0 0 4px; }
+  .strip ul { margin: 2px 0 8px; padding-left: 18px; }
+  .strip .acts { display: flex; gap: 8px; margin-top: 6px; }
+  .envs { margin: 10px 14px; border: 1px solid var(--line); border-radius: 8px; }
+  .env { display: grid; grid-template-columns: 26px minmax(0, 1fr) 210px; gap: 8px; align-items: center; padding: 6px 10px; border-top: 1px solid var(--line-2); }
+  .env:first-child { border-top: 0; }
+  .env .n { font-weight: 700; font-size: 15px; color: var(--ink-2); }
+  .env .who { font-weight: 600; }
+  .env .in { color: var(--muted); font-size: 12px; }
+  .box { border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; color: #9ca3af; font-size: 12px; }
+  .ft { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .ft .sp { flex: 1; color: var(--muted); font-size: 12px; }
+  .tip { font-size: 11.5px; color: var(--muted); border: 1px dashed #cbd5e1; border-radius: 6px; padding: 3px 8px; background: #f8fafc; }
+  .stage[hidden] { display: none; }
+
+  .wrong { margin-top: 40px; padding: 14px 18px; border: 1px solid #cbd5e1; border-radius: 10px; background: var(--surface); max-width: 110ch; }
+  .wrong h2 { margin-top: 0; }
+  .wrong li { margin: 5px 0; }
+  .wrong .y { color: var(--green); font-weight: 700; }
+  .wrong .n { color: var(--red); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+<p class="eyebrow">Punch list #101 · Lien desk: a printed run · drawn 2026-10-08</p>
+<h1>A printed run the office can take back, and a Do now that reads as one job</h1>
+<p>Three changes, today on the left and the proposal on the right. The jobs, GCs and people are made up. The windows, piles, buttons and counts match the app on 2026-10-08. The office printed a run of 19 notices, then changed the packet's layout before mailing. Today the run cannot go back to the printer.</p>
+</header>
+
+<!-- ================= 1 ================= -->
+<section>
+<h2><span class="num">1</span>Take back a printed run (PR 1)</h2>
+<p class="lede">Open the run from <b>Record the mailing · 19</b>. Today the window only moves forward. Proposed, the printed step carries <b>Take back…</b>. Click the outlined buttons on the right to walk it.</p>
+<div class="two">
+<div><div class="cap old">Today</div><div class="fit">
+  <div class="win">
+    <div class="hd"><h3>Record the mailing · 19 notices</h3><span class="x">✕</span></div>
+    <div class="steps"><span class="st done">1 · Printed Oct 7</span>→<span class="st">2 · Mail</span>→<span class="st at">3 · Record the mailing</span><span class="hint">Back from the post office? Type each envelope’s number below.</span></div>
+    <div class="envs">
+      <div class="env"><span class="n">1</span><div><div class="who">Owner of record · Hillcrest Holdings LLC</div><div class="in">Job 701 · notice, pay page, 2 invoices</div></div><span class="box">Tracking number</span></div>
+      <div class="env"><span class="n">2</span><div><div class="who">GC · Ridgeline Builders</div><div class="in">Jobs 701, 712, 715 · three notices</div></div><span class="box">Tracking number</span></div>
+      <div class="env"><span class="n">3</span><div><div class="who">Owner of record · Cedar Park Retail LP</div><div class="in">Job 712 · notice, pay page, 1 invoice</div></div><span class="box">Tracking number</span></div>
+      <div class="env" style="color:var(--muted)"><span class="n">…</span><div>12 more envelopes</div><span></span></div>
+    </div>
+    <div class="ft"><span class="btn">Envelope faces</span><span class="btn">Print it again · 15 envelopes</span><span class="sp">No numbers yet.</span><span class="btn" style="opacity:.5">Record the mailing</span></div>
+  </div>
+  <p class="note"><b>The only ways back:</b> <i>Print it again</i>, whose hint says it is for a lost copy, or <i>Back to ready</i> on each of the 19 notices, one at a time.</p>
+</div></div>
+
+<div><div class="cap new">Proposed</div><div class="fit">
+  <div class="win" id="w1">
+    <div class="hd"><h3 data-title>Record the mailing · 19 notices</h3><span class="x">✕</span></div>
+
+    <div class="stage" data-s="a">
+      <div class="steps"><span class="st done">1 · Printed Oct 7 <button type="button" class="btn q live" data-go="b" style="font-size:12px">Take back…</button></span>→<span class="st">2 · Mail</span>→<span class="st at">3 · Record the mailing</span><span class="hint">Back from the post office? Type each envelope’s number below.</span></div>
+    </div>
+
+    <div class="stage" data-s="b" hidden>
+      <div class="steps"><span class="st done">1 · Printed Oct 7</span>→<span class="st">2 · Mail</span>→<span class="st at">3 · Record the mailing</span></div>
+      <div class="strip warn">
+        <h4>Take back the run?</h4>
+        <p>Use this when none of these envelopes was mailed.</p>
+        <ul>
+          <li>The 19 notices go back to Ready to send. The approvals stand.</li>
+          <li>Then print the packet again. It prints the way the app draws it today.</li>
+          <li>The copies printed Oct 7 stay in each job’s Documents, filed as printed.</li>
+          <li data-typed>The 2 tracking numbers typed here are not saved.</li>
+        </ul>
+        <p>Mailed some of them? Record those first. Then take back the rest.</p>
+        <div class="acts"><button type="button" class="btn red live" data-go="c">Take back 19 notices</button><button type="button" class="btn" data-go="a">Keep it</button></div>
+      </div>
+    </div>
+
+    <div class="stage" data-s="c" hidden>
+      <div class="steps"><span class="st at">1 · Print the packet</span>→<span class="st">2 · Mail</span>→<span class="st">3 · Record the mailing</span></div>
+      <div class="strip ok">Taken back. Dana took back the run printed Oct 7. Nothing was recorded. Print the packet again when it is ready.</div>
+    </div>
+
+    <div class="envs">
+      <div class="env"><span class="n">1</span><div><div class="who">Owner of record · Hillcrest Holdings LLC</div><div class="in">Job 701 · notice, pay page, 2 invoices</div></div><span class="box" data-trk>9407 1118 9876 5432 1012</span></div>
+      <div class="env"><span class="n">2</span><div><div class="who">GC · Ridgeline Builders</div><div class="in">Jobs 701, 712, 715 · three notices</div></div><span class="box" data-trk>9407 1118 9876 5432 1029</span></div>
+      <div class="env"><span class="n">3</span><div><div class="who">Owner of record · Cedar Park Retail LP</div><div class="in">Job 712 · notice, pay page, 1 invoice</div></div><span class="box">Tracking number</span></div>
+      <div class="env" style="color:var(--muted)"><span class="n">…</span><div>12 more envelopes</div><span></span></div>
+    </div>
+    <div class="ft" data-foot-a><span class="btn">Envelope faces</span><span class="btn">Print it again · 15 envelopes</span><span class="sp">2 numbers typed.</span><span class="btn p">Record 2 mailed</span></div>
+    <div class="ft" data-foot-c hidden><span class="btn">Envelope faces</span><span class="sp">Nothing printed yet.</span><span class="btn p">Print the packet · 15 envelopes</span></div>
+  </div>
+  <p class="note"><b>What it writes:</b> each notice’s printed stamp is cleared, and the notice keeps a line saying who took it back and when. Nothing else. Print has no other side effect: the releases issue and the courtesy emails go only when the mailing is recorded. <button type="button" class="toggle" data-go="a">Start again</button></p>
+</div></div>
+</div>
+</section>
+
+<!-- ================= 2 ================= -->
+<section>
+<h2><span class="num">2</span>The run is one row on Do now (PR 2)</h2>
+<p class="lede">Today every printed notice is its own row, each with <b>Add tracking</b>, and all 19 open the same window. The rail’s last step reads 0 while 19 notices wait in the mail. Proposed, the printed notices are one row, the way a GC’s ready notices already are. Its words ask the question the app cannot answer: were they mailed?</p>
+<div class="two">
+<div><div class="cap old">Today</div><div class="fit">
+  <div class="desk">
+    <div class="bar"><span class="t">Lien desk</span><span class="views"><span class="on">Do now · 22</span><span>Deadlines</span><span>All filings</span></span><span class="btn p">Record the mailing · 19</span></div>
+    <div class="rail"><span class="k">NOTICES</span><span class="r">① Find the owner<span class="c">0</span></span><span class="r">② Draft notice<span class="c">0</span></span><span class="r hot">③ Approve <span class="you">you</span><span class="c">3</span></span><span class="r">④ Send the run<span class="c">0</span></span></div>
+    <div class="grp now">Needs you now · 17</div>
+    <div class="list">
+      <div class="row"><span class="chip">Notice ✓</span><span>701 · Ridgeline Builders, Hillcrest</span><span class="dots">●●●● —</span><span class="sub">In the mail · tracking owed</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Add tracking</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>744 · Summit Row GC, Pecan St</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Approve</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>712 · Ridgeline Builders, Cedar Park</span><span class="dots">●●●● —</span><span class="sub">In the mail · tracking owed</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Add tracking</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>715 · Ridgeline Builders, Leander</span><span class="dots">●●●● —</span><span class="sub">In the mail · tracking owed</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Add tracking</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>728 · Oakmont Service, 412 Elm</span><span class="dots">●●●● —</span><span class="sub">In the mail · tracking owed</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Add tracking</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>751 · Bluebonnet GC, Kyle</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Approve</span></span></div>
+      <div class="more">… 11 more rows reading In the mail · tracking owed</div>
+    </div>
+    <div class="grp">Coming up · 5</div>
+    <div class="list">
+      <div class="row"><span class="chip">Notice ✓</span><span>760 · Harmon &amp; Sons, Buda</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span></span><span class="act"><span class="btn p">Approve</span></span></div>
+      <div class="more">… 4 more rows reading In the mail · tracking owed</div>
+    </div>
+  </div>
+</div></div>
+
+<div><div class="cap new">Proposed</div><div class="fit">
+  <div class="desk">
+    <div class="bar"><span class="t">Lien desk</span><span class="views"><span class="on">Do now · 4</span><span>Deadlines</span><span>All filings</span></span><span class="btn p">Record the mailing · 19</span></div>
+    <div class="rail"><span class="k">NOTICES</span><span class="r">① Find the owner<span class="c">0</span></span><span class="r">② Draft notice<span class="c">0</span></span><span class="r hot">③ Approve <span class="you">you</span><span class="c">3</span></span><span class="r hot">④ Send the run <small>19 printed</small><span class="c">19</span></span></div>
+    <div class="grp now">Needs you now · 3</div>
+    <div class="list">
+      <div class="runrow">
+        <div class="top"><span class="chip run">Run</span><div><div class="ttl">19 notices printed Oct 7 · 15 envelopes</div><div class="s">Mailed? Type each envelope’s number. Not mailing them? Take the run back.</div></div><span class="due">Mail by Oct 15 · 7 days left</span><span class="acts"><span class="btn">Take back…</span><span class="btn p">Record the mailing</span></span></div>
+        <div style="margin:4px 0 0 70px"><button type="button" class="toggle" data-fold>▸ The 19 jobs</button></div>
+        <div class="fold" data-fold-body hidden>
+          <span>701 · Ridgeline Builders, Hillcrest</span><span class="d">Oct 15</span>
+          <span>712 · Ridgeline Builders, Cedar Park</span><span class="d">Oct 15</span>
+          <span>715 · Ridgeline Builders, Leander</span><span class="d">Oct 15</span>
+          <span>728 · Oakmont Service, 412 Elm</span><span class="d">Oct 15</span>
+          <span>… 11 more due Oct 15</span><span></span>
+          <span>733 · Pinewood GC, Wimberley</span><span class="d q">Nov 15</span>
+          <span>… 3 more due Nov 15</span><span></span>
+        </div>
+      </div>
+      <div class="row"><span class="chip">Notice ✓</span><span>744 · Summit Row GC, Pecan St</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Approve</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>751 · Bluebonnet GC, Kyle</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Approve</span></span></div>
+    </div>
+    <div class="grp">Coming up · 1</div>
+    <div class="list">
+      <div class="row"><span class="chip">Notice ✓</span><span>760 · Harmon &amp; Sons, Buda</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due quiet">Nov 15</span><span class="act"><span class="btn p">Approve</span></span></div>
+    </div>
+  </div>
+  <p class="note"><b>The run row</b> sits in the group of its earliest day. Its two buttons open the run window: <i>Record the mailing</i> on step 3, <i>Take back…</i> on the confirm from part 1, so the rule lives in one place. The find box still finds a job inside the run and opens the fold. A notice printed on its own, outside a run, joins the same row: the run window already holds every printed notice.</p>
+</div></div>
+</div>
+</section>
+
+<!-- ================= 3 ================= -->
+<section>
+<h2><span class="num">3</span>What only you can do comes first (PR 3)</h2>
+<p class="lede">Approving is the one step only the leader can take, and it sat between the printed rows. Proposed, the leader’s approvals lead the list as their own group. The office sees the same rows last, under the leader’s name, with no button, since it cannot press them.</p>
+<div class="two">
+<div><div class="cap new">Proposed · the leader opens the desk</div><div class="fit">
+  <div class="desk">
+    <div class="bar"><span class="t">Lien desk</span><span class="views"><span class="on">Do now · 4</span><span>Deadlines</span><span>All filings</span></span><span class="btn p">Record the mailing · 19</span></div>
+    <div class="grp mine">Only you can approve · 3</div>
+    <div class="list">
+      <div class="row"><span class="chip">Notice ✓</span><span>744 · Summit Row GC, Pecan St</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Approve</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>751 · Bluebonnet GC, Kyle</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due">Oct 15 · 7 days left</span><span class="act"><span class="btn p">Approve</span></span></div>
+      <div class="row"><span class="chip">Notice ✓</span><span>760 · Harmon &amp; Sons, Buda</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Waiting on your approval</span><span class="due quiet">Nov 15</span><span class="act"><span class="btn p">Approve</span></span></div>
+    </div>
+    <div class="grp now">Needs you now · 1</div>
+    <div class="list">
+      <div class="runrow"><div class="top"><span class="chip run">Run</span><div><div class="ttl">19 notices printed Oct 7 · 15 envelopes</div><div class="s">Mailed? Type each envelope’s number. Not mailing them? Take the run back.</div></div><span class="due">Mail by Oct 15 · 7 days left</span><span class="acts"><span class="btn">Take back…</span><span class="btn p">Record the mailing</span></span></div></div>
+    </div>
+  </div>
+</div></div>
+
+<div><div class="cap new">Proposed · the office opens the desk</div><div class="fit">
+  <div class="desk">
+    <div class="bar"><span class="t">Lien desk</span><span class="views"><span class="on">Do now · 1</span><span>Deadlines</span><span>All filings</span></span><span class="btn p">Record the mailing · 19</span></div>
+    <div class="grp now">Needs you now · 1</div>
+    <div class="list">
+      <div class="runrow"><div class="top"><span class="chip run">Run</span><div><div class="ttl">19 notices printed Oct 7 · 15 envelopes</div><div class="s">Mailed? Type each envelope’s number. Not mailing them? Take the run back.</div></div><span class="due">Mail by Oct 15 · 7 days left</span><span class="acts"><span class="btn">Take back…</span><span class="btn p">Record the mailing</span></span></div></div>
+    </div>
+    <div class="grp">Waiting on Sam · 3</div>
+    <div class="list">
+      <div class="row muted"><span class="chip">Notice ✓</span><span>744 · Summit Row GC, Pecan St</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Sent to Sam Oct 6</span><span class="due quiet">Oct 15</span><span class="act"></span></div>
+      <div class="row muted"><span class="chip">Notice ✓</span><span>751 · Bluebonnet GC, Kyle</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Sent to Sam Oct 6</span><span class="due quiet">Oct 15</span><span class="act"></span></div>
+      <div class="row muted"><span class="chip">Notice ✓</span><span>760 · Harmon &amp; Sons, Buda</span><span class="dots"><b>●●●</b>○ 3/4</span><span class="sub">Sent to Sam Oct 7</span><span class="due quiet">Nov 15</span><span class="act"></span></div>
+    </div>
+  </div>
+  <p class="note"><b>Do now’s count</b> is the rows the viewer can press. The office’s count drops from 22 to 1. The leader’s waiting rows still show, quiet, so the office can see what it is waiting on and chase it. A master is office too, so for the leader every other row keeps its button.</p>
+</div></div>
+</div>
+</section>
+
+<!-- ================= the question ================= -->
+<div class="wrong">
+<h2><span class="num">?</span>Is this the best we can do?</h2>
+<p>What else was weighed, and why it lost.</p>
+<ul>
+  <li><span class="n">No ·</span> <b>Ask “Did it print right?” after every print</b>, so a bad print never becomes “in the mail”. It adds a step to every run for a rare case. Taking back covers it after the fact.</li>
+  <li><span class="n">No ·</span> <b>Only reword <i>Print it again</i></b> as “print with today’s layout”. That fixes this week, but not “we are not mailing these yet” or “fix a notice first”.</li>
+  <li><span class="n">No, for now ·</span> <b>Take back one envelope in step 3.</b> An envelope can hold several notices, and a notice goes in two envelopes. Taking back one envelope leaves notices half mailed, the state v2.4971 just closed. One job already has <i>Back to ready</i>.</li>
+  <li><span class="n">No ·</span> <b>Drop the printed state.</b> v2.4119 added it so a printed notice cannot vanish between the printer and the record.</li>
+  <li><span class="n">No ·</span> <b>Mark the filed copies “taken back”.</b> Sent copies are append-only by the owner’s rule. They did print, so they stay. The notice’s own line says it was taken back.</li>
+  <li><span class="n">No ·</span> <b>A “Mine only” switch</b> instead of part 3. A switch hides rows and is easy to leave on. A group shows everything in order.</li>
+  <li><span class="y">Yes ·</span> <b>Take back lives in the run window</b>, where the office already goes to finish a run. The Do now row only opens it there.</li>
+  <li><span class="y">Yes ·</span> <b>The run row borrows the GC row’s shape</b>, which Do now already uses for a GC with several ready notices.</li>
+</ul>
+<p><b>For you:</b> should taking back need the leader? Proposed: no. Nothing left the building, and approvals stand, so the leader’s word is not undone.</p>
+</div>
+
+</div>
+<script>
+  const w = document.getElementById('w1')
+  const show = (s) => {
+    w.querySelectorAll('.stage').forEach((el) => (el.hidden = el.dataset.s !== s))
+    w.querySelector('[data-foot-a]').hidden = s === 'c'
+    w.querySelector('[data-foot-c]').hidden = s !== 'c'
+    w.querySelector('[data-title]').textContent = s === 'c' ? 'Send the run · 19 notices' : 'Record the mailing · 19 notices'
+    w.querySelectorAll('[data-trk]').forEach((el) => (el.textContent = s === 'c' ? 'Tracking number' : el.dataset.v || el.textContent))
+  }
+  w.querySelectorAll('[data-trk]').forEach((el) => (el.dataset.v = el.textContent))
+  document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => show(b.dataset.go)))
+  document.querySelectorAll('[data-fold]').forEach((b) => b.addEventListener('click', () => {
+    const body = b.parentElement.nextElementSibling
+    body.hidden = !body.hidden
+    b.textContent = (body.hidden ? '▸' : '▾') + ' The 19 jobs'
+  }))
+</script>
+</body>
+</html>

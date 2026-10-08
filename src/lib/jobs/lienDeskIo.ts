@@ -3,6 +3,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { LienDeskDraftFields } from './lienNoticeDraft'
 import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lienDesk'
 import type { LienWordChannel } from './lienWord'
+import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -214,11 +215,38 @@ export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, u
 }
 
 /** Back to Ready to send (v2.4568): the packet was not mailed after all, or was printed by mistake. The approval stands. */
-export async function clearLienDeskItemPrinted(itemId: string): Promise<void> {
-  await withSupabaseRetry(
-    () => supabase.from('job_lien_desk_items').update({ printed_at: null, printed_by: null } as never).eq('id', itemId),
-    'lien desk: clear printed',
+export async function clearLienDeskItemPrinted(itemId: string, by: { userId: string | null; userName: string | null } = { userId: null, userName: null }): Promise<void> {
+  await takeBackLienDeskItems([itemId], by)
+}
+
+/**
+ * Take back a printed run (punch list #101): every listed item still printed and not sent goes
+ * back to Ready to send, keeping its approval and a line saying who took it back
+ * (`fields.runTakenBack`). Returns how many were taken back; a row sent or cleared meanwhile is left alone.
+ */
+export async function takeBackLienDeskItems(itemIds: ReadonlyArray<string>, by: { userId: string | null; userName: string | null }): Promise<number> {
+  if (itemIds.length === 0) return 0
+  const rows = await withSupabaseRetry(
+    () => supabase.from('job_lien_desk_items').select('id, fields, printed_at, status, voided_at').in('id', [...itemIds]),
+    'lien desk: read printed',
   )
+  const at = new Date().toISOString()
+  const live = ((rows ?? []) as Array<{ id: string; fields: unknown; printed_at: string | null; status: string | null; voided_at: string | null }>).filter(canTakeBackItem)
+  await Promise.all(
+    live.map((r) =>
+      withSupabaseRetry(
+        () =>
+          supabase
+            .from('job_lien_desk_items')
+            .update({ printed_at: null, printed_by: null, fields: fieldsWithTakeBack(r.fields, { at, by: by.userId, byName: by.userName, printedAt: r.printed_at }) } as never)
+            .eq('id', r.id)
+            .not('printed_at', 'is', null)
+            .neq('status', 'sent'),
+        'lien desk: take back',
+      ),
+    ),
+  )
+  return live.length
 }
 
 export async function markLienDeskItemSent(itemId: string, filingId: string): Promise<void> {

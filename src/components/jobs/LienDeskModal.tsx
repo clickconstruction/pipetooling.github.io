@@ -65,7 +65,8 @@ import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
+import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
@@ -1229,7 +1230,7 @@ export default function LienDeskModal({
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
-  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id))), 'Back in Ready to send.')
+  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Ready to send.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   const saveRule = (policy: LienNoticePolicy) =>
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
@@ -2803,7 +2804,7 @@ export default function LienDeskModal({
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         <div className="lienFootRow" data-lien-desk-foot="ready">
-          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName)} data-lien-desk-ready-words />
+          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)))} data-lien-desk-ready-words />
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
@@ -3330,6 +3331,11 @@ export default function LienDeskModal({
           onPrinted={async (ids) => {
             await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
             onChanged()
+          }}
+          onTakeBack={async (ids) => {
+            const n = await takeBackLienDeskItems(ids, { userId: authUserId, userName: authName || null })
+            onChanged()
+            return n
           }}
           notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
