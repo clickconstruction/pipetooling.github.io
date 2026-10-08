@@ -99,6 +99,8 @@ import { summarizeStubDayBreakdown } from '../lib/officeJobRateSplit'
 import { generatePayStubRecord, type GeneratePayStubResult } from '../lib/pay/generatePayStub'
 import { fetchPayReportInputs } from '../lib/pay/payReportInputs'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
+import { usePeopleMergeDuplicates } from '../hooks/usePeopleMergeDuplicates'
+import PeopleMergeDuplicatesBanner from '../components/people/PeopleMergeDuplicatesBanner'
 import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -350,8 +352,6 @@ export default function People() {
     peopleRosterRef,
     usersRef,
   })
-  const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
-  const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   /** Hire (v2.3701): the one form for a new person, opened from People → Users. */
   const [hireOpen, setHireOpen] = useState(false)
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
@@ -571,6 +571,19 @@ export default function People() {
     isDocVisible,
     peopleHoursClockRealtimeInFilter,
     realtimeCallbacksRef,
+  })
+  const { mergeDuplicates, mergingPersonName, handleMergeDuplicate, dropMergeDuplicate } = usePeopleMergeDuplicates({
+    enabled: activeTab === 'hours' && canAccessPay,
+    people,
+    users,
+    payConfig,
+    setError,
+    loadPayConfig,
+    afterMerge: () => {
+      if (activeTab === 'hours') {
+        loadPeopleHours(hoursDateStart, hoursDateEnd)
+      }
+    },
   })
   const {
     crewJobsByDatePerson,
@@ -1018,7 +1031,7 @@ export default function People() {
           people.map((p) => ({ id: p.id, name: p.name, email: p.email })),
         )
         await loadPayConfig()
-        setMergeDuplicates((prev) => prev.filter((x) => x.personName !== invitedDup.personName))
+        dropMergeDuplicate(invitedDup.personName)
       } catch (mergeErr) {
         setError(mergeErr instanceof Error ? mergeErr.message : 'Merge failed')
       }
@@ -1030,35 +1043,6 @@ export default function People() {
     const p = inviteConfirm
     setInviteConfirm(null)
     inviteAsUser(p)
-  }
-
-  async function handleMergeDuplicate(dup: { personName: string; userDisplayName: string; email: string }) {
-    setMergingPersonName(dup.personName)
-    setError(null)
-    let userId: string | undefined
-    if (dup.email?.trim()) {
-      userId = users.find((u) => u.email?.toLowerCase() === dup.email?.toLowerCase())?.id
-    } else {
-      userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
-    }
-    try {
-      await mergePersonIntoUser(
-        dup.personName,
-        dup.userDisplayName,
-        payConfig,
-        userId,
-        people.map((p) => ({ id: p.id, name: p.name, email: p.email })),
-      )
-      await loadPayConfig()
-      setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
-      if (activeTab === 'hours') {
-        loadPeopleHours(hoursDateStart, hoursDateEnd)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Merge failed')
-    } finally {
-      setMergingPersonName(null)
-    }
   }
 
   // v2.3702: the Users tab's Pay lens edits the pay-config map, which only the Hours / Payroll / Review
@@ -1222,15 +1206,6 @@ export default function People() {
   async function printPayStub(stub: PayStubRow) {
     openPayStubWindow(await buildPayStubViewHtml(stub), true)
   }
-
-  useEffect(() => {
-    if (activeTab === 'hours' && canAccessPay && Object.keys(payConfig).length > 0) {
-      const dups = findPersonUserDuplicates(people, users, payConfig)
-      setMergeDuplicates(dups)
-    } else {
-      setMergeDuplicates([])
-    }
-  }, [activeTab, payConfig, people, users])
 
   async function loadHoursDisplayOrder() {
     if (!canAccessHours && !canAccessPay) return
@@ -2667,27 +2642,8 @@ export default function People() {
               teamDeletingId={teamDeletingId}
               getCostForPersonDateTeams={getCostForPersonDateTeams}
             />
-            {canAccessPay && mergeDuplicates.length > 0 && (
-            <section style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 4 }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: 'var(--text-amber-800)' }}>
-                Found {mergeDuplicates.length} duplicate{mergeDuplicates.length !== 1 ? 's' : ''}: person name vs user. Merge to consolidate.
-              </p>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {mergeDuplicates.map((dup) => (
-                  <li key={dup.personName} style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>{dup.personName} → {dup.userDisplayName}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleMergeDuplicate(dup)}
-                      disabled={mergingPersonName === dup.personName}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer' }}
-                    >
-                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {canAccessPay && (
+              <PeopleMergeDuplicatesBanner duplicates={mergeDuplicates} mergingPersonName={mergingPersonName} onMerge={handleMergeDuplicate} />
             )}
             </>
           </div>
