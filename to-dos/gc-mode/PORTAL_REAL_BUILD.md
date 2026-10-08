@@ -259,11 +259,11 @@ it word for word.
 
 **`gc-trade-email`'s contract** (agreed with Helper 6 for step 7, 2026-10-08):
 
-- **Request:** `POST {companyId, kind, key, projectId | null, lang, subject, lines: string[]}` with a staff JWT.
-  - `lines` are plain-text paragraphs without the greeting. The server writes "Hello Dana," or "Hello Marcus and Dana," from the recipients it picks. It adds the portal link as a button.
+- **Request:** `POST {companyId, kind, key, projectId | null, lang, subject, lines}` with a staff JWT. `lines` is `Array<string | {title?: string, items: string[]}>`: a string is a paragraph, and an object is a list under its title, such as an invitation's scope lines and what it leaves out (agreed with Helper 2, 2026-10-08).
+  - `lines` come without the greeting. The function trims each string and drops empty ones, and it stores `lines` as sent in `gc_trade_messages.lines`, a JSON list. The server writes "Hello Dana," or "Hello Marcus and Dana," from the recipients it picks. It adds the portal link as a button.
   - `key` is the prototype's message key and the dedupe key, unique per company. A plan set's is `${projectId}:plans:${rev}`.
   - `lang` comes from `tradeMailLang(company.lang)` in `portal.ts`. That returns `en` while Spanish is held (decision 8), and the server refuses `es` then.
-  - The words are built with `pt()` exactly as `portalMessages` builds that kind.
+  - The words are built with `pt()` exactly as `portalMessages` builds that kind. An invitation comes from `inviteMessage(project, pkg, invite, partner, lang)`, split out of `portalMessages` on the spike and lifted in P1b-i, so the Ask window previews an invite it has not written yet.
 - **Calls:** one company a call, any number in parallel.
 - **Response:** `200 {companyId, messageId, emailSendLogId, to}`.
   - A repeated key returns the first send's ids and `already: true`, and sends nothing.

@@ -896,6 +896,39 @@ function setOn(project: GcProject, day: string): PlanSet | undefined {
 }
 
 /**
+ * The invitation to quote one trade (Board lane's Ask window and the portal's messages): what we want
+ * priced, where, by when, on which set, and the lines the number should cover. Pure, so the Ask
+ * window previews it on an invite it has not written yet.
+ */
+export function inviteMessage(project: GcProject, pkg: TradePackage, invite: Invite, partner: Partner, lang: PortalLang): PortalMessage {
+  const gc = GC_COMPANY.name
+  const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
+  const name = project.name
+  const set = setOn(project, invite.invitedOn)
+  // The day quotes are wanted by; a company asked after that day is given our bid day.
+  const wanted = portalQuoteDue(project)
+  const dueOn = wanted && invite.invitedOn <= wanted ? wanted : project.bidDue && invite.invitedOn <= project.bidDue ? project.bidDue : null
+  const due = dueOn ? pWeekday(lang, dueOn) : null
+  return {
+    key: `${invite.id}:invite`,
+    on: invite.invitedOn,
+    kind: 'invite',
+    projectId: project.id,
+    subject: t('mInviteSubject', { gc, trade: pkg.trade, project: name }),
+    lines: [
+      t('mHello', { first: firstName(partner.contact) }),
+      t('mInviteWant', { trade: pkg.trade, project: name }),
+      `${project.address}. ${project.sizeNote.charAt(0).toUpperCase()}${project.sizeNote.slice(1)}.`,
+      ...(due ? [t('mInviteDue', { date: due })] : []),
+      ...(set ? [t('mInvitePlans', { label: set.label, date: pDate(lang, set.issuedOn) })] : []),
+      t('mInviteCover'),
+    ],
+    scope: pkg.scope.map((item) => item.label),
+    ...(portalLeavesOut(pkg, lang).length > 0 ? { leavesOut: portalLeavesOut(pkg, lang) } : {}),
+  }
+}
+
+/**
  * Everything we sent one company, newest first: invitations, reminders, new plan sets, bid tabs,
  * the master agreement, a statement of work to sign, and the day work starts.
  */
@@ -1178,28 +1211,11 @@ export function portalMessages(state: GcState, partnerId: string, language?: Por
       out.push({ key: `${move.id}:dates`, on: move.toldOn, kind: 'dates', projectId: project.id, subject: msg.subject, lines: msg.lines })
     }
     for (const { pkg, invite } of mine) {
-      const set = setOn(project, invite.invitedOn)
       // The day quotes are wanted by; a company asked after that day is given our bid day.
       const wanted = portalQuoteDue(project)
       const dueOn = wanted && invite.invitedOn <= wanted ? wanted : project.bidDue && invite.invitedOn <= project.bidDue ? project.bidDue : null
       const due = dueOn ? pWeekday(lang, dueOn) : null
-      out.push({
-        key: `${invite.id}:invite`,
-        on: invite.invitedOn,
-        kind: 'invite',
-        projectId: project.id,
-        subject: t('mInviteSubject', { gc, trade: pkg.trade, project: name }),
-        lines: [
-          hello,
-          t('mInviteWant', { trade: pkg.trade, project: name }),
-          `${project.address}. ${project.sizeNote.charAt(0).toUpperCase()}${project.sizeNote.slice(1)}.`,
-          ...(due ? [t('mInviteDue', { date: due })] : []),
-          ...(set ? [t('mInvitePlans', { label: set.label, date: pDate(lang, set.issuedOn) })] : []),
-          t('mInviteCover'),
-        ],
-        scope: pkg.scope.map((item) => item.label),
-        ...(portalLeavesOut(pkg, lang).length > 0 ? { leavesOut: portalLeavesOut(pkg, lang) } : {}),
-      })
+      out.push(inviteMessage(project, pkg, invite, partner, lang))
 
       for (const c of invite.contacts ?? []) {
         if (c.how !== 'nudge') continue

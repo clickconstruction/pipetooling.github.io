@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import {
+  inviteMessage,
   alternateWords,
   bidGoodUntil,
   bidRanOut,
@@ -188,6 +189,18 @@ describe('how a company arrives', () => {
     expect(invite?.lines).toContain('Your quote is due Mon Oct 5.')
     expect(invite?.scope?.length).toBeGreaterThan(0)
     expect(invite).not.toHaveProperty('text')
+  })
+
+  it('previews an invitation on an invite not written yet, as the messages send it (the Ask window)', () => {
+    const project = state.projects.find((p) => p.id === 'boerne')!
+    const pkg = project.packages.find((k) => k.invites.some((i) => i.partnerId === 'voltage'))!
+    const invite = pkg.invites.find((i) => i.partnerId === 'voltage')!
+    const partner = state.partners.find((p) => p.id === 'voltage')!
+    const sent = portalMessages(state, 'voltage').find((m) => m.key === `${invite.id}:invite`)!
+    const draft = inviteMessage(project, pkg, invite, partner, 'en')
+    // The messages greet whoever gets quotes at the company; everything after the greeting is the same.
+    expect([draft.key, draft.subject, draft.lines.slice(1), draft.scope, draft.leavesOut]).toEqual([sent.key, sent.subject, sent.lines.slice(1), sent.scope, sent.leavesOut])
+    expect(inviteMessage(project, pkg, { ...invite, id: 'draft', invitedOn: '2026-10-02', status: 'invited', bid: null }, partner, 'en').key).toBe('draft:invite')
   })
 
   it('tells Hillside the new set does not change Sitework, and Voltage that it changes Electrical', () => {
