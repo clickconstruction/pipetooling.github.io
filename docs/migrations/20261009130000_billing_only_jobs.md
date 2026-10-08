@@ -4,7 +4,7 @@ A billing-only job, kept off every crew screen. The plan is `to-dos/gc-mode/mock
 
 GC mode gives each GC job we win one Pipeline job, its **billing job** (Owner Billing's decision 1), so our bills to the customer use the app's statement, Stripe, payments, promises, the chase list and the waiver train as they are. Nothing on main could keep such a job away from the crews. This migration closes every way in on the database side. Owner Billing's O4a comes next and is the first to set the column.
 
-The client's part comes in its own PR after the types are regenerated:
+The client's part is v2.4972 (BO-2), its own PR after the types were regenerated:
 - the money searches opt in;
 - the crew lists filter;
 - Stages' Working column leaves these jobs out;
@@ -105,4 +105,4 @@ A one-off migration:
 - re-create `search_jobs_ledger(text)` from `20260905220000` and `search_jobs_for_self_schedule` from `20260811140701`;
 - leave the two columns.
 
-The columns read false and nothing else reads them before the client PR.
+The client (v2.4972) filters on the columns, so they stay. Its opt-in calls pass `include_billing_only`, which the one-argument search does not take, so a rollback reverts those calls in the same release.

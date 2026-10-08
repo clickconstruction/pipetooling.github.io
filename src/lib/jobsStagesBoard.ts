@@ -568,7 +568,9 @@ export function buildJobsStagesBoardLists(
   )
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const waiting = filtered.filter((j) => status(j) === 'waiting')
-  const working = filtered.filter((j) => status(j) === 'working')
+  // A GC job's billing job stays working for good and has no work to do: it is left out (v2.4958, the owner's
+  // default). Its bills still show under Ready to Bill and Billed.
+  const working = filtered.filter((j) => status(j) === 'working' && !j.billing_only)
   const paid = filtered.filter((j) => status(j) === 'paid')
   const readyToBillJobs = filtered.filter(
     (j) => status(j) === 'ready_to_bill' || (status(j) === 'working' && jobHasReadyToBillInvoice(j)),

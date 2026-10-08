@@ -125,7 +125,7 @@ export function JobPaymentMoveModal({
     const t = window.setTimeout(() => {
       void (async () => {
         try {
-          const raw = await withSupabaseRetry(async () => supabase.rpc('search_jobs_ledger', { search_text: q }), 'move payment · job search')
+          const raw = await withSupabaseRetry(async () => supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }), 'move payment · job search')
           if (cancelled) return
           setCandidates(((raw ?? []) as Candidate[]).filter((r) => r.id !== fromJob?.id).slice(0, 20))
         } catch {

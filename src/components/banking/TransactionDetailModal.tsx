@@ -238,7 +238,7 @@ export function TransactionDetailModal({
         return
       }
       setJobSearchLoading(true)
-      void withSupabaseRetry(async () => supabase.rpc('search_jobs_ledger', { search_text: q }), 'tx detail job search')
+      void withSupabaseRetry(async () => supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }), 'tx detail job search')
         .then((data) => {
           setJobSearchLoading(false)
           setJobResults((data ?? []) as JobSearchRow[])

@@ -6,6 +6,7 @@ import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { OrphanedPriceRow } from '../../lib/settingsCatalogs'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
+import { pickableServiceTypes } from '../../lib/serviceTypePickers'
 import { ORDER_INCREMENT_UNITS, formatOrderIncrement, parseOrderIncrement, parseOrderIncrementUnit, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 import type {
   AssemblyType,
@@ -979,7 +980,7 @@ export default function SettingsCatalogsTab({
               style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
-              {serviceTypes.map((st) => (
+              {pickableServiceTypes(serviceTypes).map((st) => (
                 <option key={st.id} value={st.id}>{st.name}</option>
               ))}
             </select>
@@ -1163,7 +1164,7 @@ export default function SettingsCatalogsTab({
               style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
-              {serviceTypes.map((st) => (
+              {pickableServiceTypes(serviceTypes).map((st) => (
                 <option key={st.id} value={st.id}>{st.name}</option>
               ))}
             </select>

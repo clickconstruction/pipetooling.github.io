@@ -251,7 +251,7 @@ export default function PaidInFullEmailSettingsModal({
     }
     setJobSearching(true)
     const t = setTimeout(() => {
-      void withSupabaseRetry(() => supabase.rpc('search_jobs_ledger', { search_text: q }), 'paid email job search')
+      void withSupabaseRetry(() => supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }), 'paid email job search')
         .then((rows) => {
           const jobs = (rows ?? []) as Array<{
             id: string

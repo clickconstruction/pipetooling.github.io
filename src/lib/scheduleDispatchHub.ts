@@ -191,6 +191,8 @@ export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
         await supabase
           .from('jobs_ledger')
           .select('id, hcp_number, click_number, job_name, project_id, created_at, job_address, customer_name, status, service_type:service_types(name)')
+          // A GC job's billing job carries only bills: no crew is dispatched to it (v2.4958).
+          .eq('billing_only', false)
           .order('hcp_number', { ascending: false }),
       'fetchJobsLedgerForScheduleDispatchHub',
     )

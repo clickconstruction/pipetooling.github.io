@@ -286,10 +286,11 @@ Edit Job Bill tab — the payment lines under each bill and ③ Other money on t
 `jobs_ledger.billing_only` marks a job that only carries bills: GC mode's billing job for a project we build (Owner Billing's O4a sets it). Its bills follow every rule on this page. The difference is the crew side:
 - clock sessions, schedule blocks and crew members on it are refused by trigger;
 - `search_jobs_ledger` leaves it out unless a caller passes `include_billing_only` (the money and office searches);
-- My Schedule's **+ Add job** never lists it;
+- My Schedule's **+ Add job** never lists it, and neither do the dispatch board, Job Tally's office list, `/map` or the follow-up queue (v2.4972);
+- Pipeline's **Working** column leaves it out, while its bills show under Ready to Bill and Billed (v2.4972);
 - the flag cannot be turned off.
 
-Its service type carries `service_types.billing_only`, meant to keep it out of the crew, bid, materials and supply-house pickers; no picker reads the flag yet. Migration `20261009130000_billing_only_jobs.sql`.
+Its service type carries `service_types.billing_only`, which keeps it out of the crew, bid, materials and supply-house pickers (`pickableServiceTypes`, v2.4972). Migration `20261009130000_billing_only_jobs.sql`.
 
 ## System of record (the 2026-08-24 policy)
 

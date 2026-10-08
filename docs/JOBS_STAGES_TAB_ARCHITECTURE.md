@@ -20,6 +20,8 @@ last_updated: 2026-10-08
 
 The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsStages*` filenames are unchanged): Waiting → Working → Ready to Bill → Billed Awaiting Payment → Collections → Paid in Full, rendered by [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx).
 
+**Billing-only jobs** (`jobs_ledger.billing_only`, GC mode's billing job for a GC project we build): `buildJobsStagesBoardLists` leaves them out of **Working**, where one would sit for good with no work to do (the owner's default). Their bills still show under Ready to Bill and Billed.
+
 | File | Lines | Shape |
 |---|---|---|
 | [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) | 4,909 | `forwardRef(function JobsStagesTabInner)` 478–4907. Hook census: **114 useState** · 0 useReducer · **35 effects** (incl. `useImperativeHandle` 2339) · 48 useMemo · 28 useCallback · 3 useRef · 29 custom-hook calls. **60 props** (`JobsStagesTabProps` 358–430) + **11-method** `JobsStagesTabHandle` (333–356). 202 local imports; 68 distinct child elements in the render (3034–4906) |
