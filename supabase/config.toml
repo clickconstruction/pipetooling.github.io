@@ -627,6 +627,10 @@ verify_jwt = false
 [functions.notify-bid-mark]
 verify_jwt = false
 
+# Push (or email) to the leader when the office sends a lien notice for his approval (v2.4872): Bearer + getUser, caller must be the drafter.
+[functions.notify-lien-approval]
+verify_jwt = false
+
 [functions.send-report-notification]
 verify_jwt = false
 

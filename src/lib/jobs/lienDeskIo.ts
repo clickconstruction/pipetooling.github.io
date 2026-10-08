@@ -63,6 +63,27 @@ export async function submitLienDeskItem(itemId: string, outcome: LienSubmitOutc
   await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update(patch as never).eq('id', itemId), 'lien desk: submit')
 }
 
+/**
+ * Tell the leader (v2.4872): his phone buzzes, or the same words go by email, when the office sends
+ * a notice for his approval. Best effort — a failure here never undoes the send. The function
+ * writes the words itself; the client hands it only the item and the mail-by day.
+ */
+export async function tellLeaderOfLienApproval(itemId: string, dueYmd: string | null): Promise<{ pushSent: number; emailSent: boolean; leaderName: string | null }> {
+  const { data, error } = await supabase.functions.invoke('notify-lien-approval', { body: { item_id: itemId, due_ymd: dueYmd ?? undefined } })
+  if (error) throw error
+  const d = (data ?? {}) as { push_sent?: number; email_sent?: boolean; leader_name?: string | null }
+  return { pushSent: d.push_sent ?? 0, emailSent: Boolean(d.email_sent), leaderName: d.leader_name ?? null }
+}
+
+/** The words the office reads after a send for approval (v2.4872): which way it reached the leader. */
+export function leaderToldWords(result: { pushSent: number; emailSent: boolean; leaderName: string | null } | null): string {
+  const who = result?.leaderName?.trim().split(/\s+/)[0] || 'the leader'
+  if (!result) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} will see it on the Dashboard.`
+  if (result.pushSent > 0) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)}'s phone has it.`
+  if (result.emailSent) return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} has it by email.`
+  return `Sent for approval. ${who[0]!.toUpperCase()}${who.slice(1)} will see it on the Dashboard.`
+}
+
 /** "Robert said to send it" — approved on the leader's spoken word, with who / when / how (or, v2.3813, that he is standing here / typing it in). */
 export async function sendLienDeskItemOnWord(itemId: string, word: { note: string; channel: LienWordChannel }): Promise<void> {
   await withSupabaseRetry(

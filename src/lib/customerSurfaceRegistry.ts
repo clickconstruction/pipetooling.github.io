@@ -95,6 +95,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'ct-roster-audit', audience: 'staff', exempt: 'Weekly roster drift audit to every dev.' },
   { kind: 'sender', ref: 'invite-user', audience: 'staff', exempt: 'Staff account invites.' },
   { kind: 'sender', ref: 'money-waiting-email-dispatch', audience: 'staff', exempt: 'The office\'s Money waiting list.' },
+  { kind: 'sender', ref: 'notify-lien-approval', audience: 'staff', exempt: 'Tells the leader a lien notice awaits his approval, by push or else email.' },
   { kind: 'sender', ref: 'payment-forecast-email-dispatch', audience: 'staff', exempt: 'The office\'s Payment forecast.' },
   { kind: 'sender', ref: 'schedule-share-dispatch', audience: 'staff', exempt: 'Schedule shares go to app users.' },
   { kind: 'sender', ref: 'paid-job-email', audience: 'staff', exempt: 'Internal paid-job notice to three staff ids, never the payer.' },

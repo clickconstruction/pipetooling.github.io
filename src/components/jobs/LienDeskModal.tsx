@@ -37,7 +37,7 @@ import {
   sendLienDeskItemOnWord,
   setCustomerLienNoticePolicy,
   noteLienWindowMissed,
-  submitLienDeskItem,
+  submitLienDeskItem, tellLeaderOfLienApproval, leaderToldWords,
   noteGcAuthorizedDirectPay,
   startLetterTwo,
   noteOwnerCall,
@@ -1171,8 +1171,13 @@ export default function LienDeskModal({
           ? ({ status: 'awaiting_approval', reason: 'claim_by_hand' } as const)
           : submitOutcome(selected, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(selected.gcCustomerId && data.gcsWithPriorNotice.has(selected.gcCustomerId)), gcHeldBefore: Boolean(selected.gcCustomerId && data.gcsHeldBefore.has(selected.gcCustomerId)) }, todayYmd)
         await submitLienDeskItem(id, outcome)
+        // His phone buzzes (v2.4872): best effort, after the write, with the mail-by day the desk knows.
+        if (outcome.status === 'awaiting_approval') {
+          const told = await tellLeaderOfLienApproval(id, selected.earliestDeadline).catch(() => null)
+          showToast(leaderToldWords(told), 'success')
+        }
       },
-      ruleLive && !promise && !claimGate ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : 'Sent for approval.',
+      ruleLive && !promise && !claimGate ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : undefined,
     )
   const sendOnWord = () =>
     run(

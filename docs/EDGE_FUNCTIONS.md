@@ -161,6 +161,7 @@ when_to_read:
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
+   - [notify-lien-approval](#notify-lien-approval)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
    - [recurring-job-report-preview](#recurring-job-report-preview)
@@ -2558,6 +2559,38 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 ```
 
 **Deploy**: `supabase functions deploy notify-bid-mark` after the `20261001170000_bid_mark_requests.sql` push (it reads `bid_mark_requests`).
+
+---
+
+### notify-lien-approval
+
+**Purpose** (v2.4872): the leader's phone buzzes when the office sends a lien notice for his approval. The Lien desk's **Send for approval** calls it right after `submitLienDeskItem` lands the item in *Awaiting approval* (never after a standing rule approved or held it). Before this the pile count went up and nobody was told.
+
+**Endpoint**: `POST /functions/v1/notify-lien-approval`
+
+**Required Role**: any signed-in user, but only the item's **drafter** (`job_lien_desk_items.drafted_by`); anyone else gets 403. An item not awaiting approval returns 200 with nothing sent.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (the push), `RESEND_API_KEY` (the email when no device is registered), `APP_ORIGIN` (the email's link; defaults to the live site).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and the drafter with the service role.
+
+#### Request body
+
+```json
+{ "item_id": "<job_lien_desk_items.id>", "due_ymd": "2026-10-15" }
+```
+
+`due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 1, "email_sent": false, "leader_name": "Malachi Whites" }
+```
+
+`leader_name` is set when exactly one leader was told; the desk's toast reads *Sent for approval. Malachi's phone has it.* / *… has it by email.* / *… will see it on the Dashboard.*
+
+**Deploy**: `bash scripts/deploy-functions.sh notify-lien-approval dev-mcp` (the catalog lists it).
 
 ---
 
