@@ -74,7 +74,7 @@ every company we wait on for a quote, the ones to call first at the top, with Lo
 **Cannot do it**, and **Trade portals** (guide `share-a-trade-partner-its-portal`): each company's portal link, made,
 copied, remade or turned off, and whether they opened it. For a dev each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, and saves the asks; no email goes out yet.
-A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, and its language.
+A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language and its portal link.
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
 **Our number** on a project's card (guide `set-our-number-and-send-our-bid`) adds our costs and fee to the trades for the money team; **We sent our bid**, **We won this** and **We lost this** sit on the project's head.
 **Bid tabs** on a project's card (guide `share-a-bid-tab-with-the-trades`) share each trade's quotes, low to high, with the companies that quoted once our bid is in. Lists every GC project as the kernels read it (the plan

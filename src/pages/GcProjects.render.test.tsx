@@ -20,6 +20,13 @@ vi.mock('../hooks/useAuth', async () => {
 
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 
+// The company window's Their portal loads one company's link; none is made yet.
+vi.mock('../lib/gc/tradePortalLinksIo', () => ({
+  loadTradePortalLinks: vi.fn(() => Promise.resolve({ links: [], visits: {} })),
+  makeTradePortalLink: vi.fn(),
+  turnOffTradePortalLink: vi.fn(),
+}))
+
 // No GC project yet: the page loads empty, so the card stops show their missing words.
 vi.mock('../lib/gc/gcIo', async () => {
   const { EMPTY_SCOPE_BOOK } = await import('../lib/gc/scopeBook')
@@ -162,6 +169,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(line).getByRole('button', { name: 'Lonestar Earthworks' }))
     const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
     expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
+    expect(within(dialog).getByText('Their portal')).toBeTruthy()
+    expect(await within(dialog).findByRole('button', { name: 'Make the link' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
   })

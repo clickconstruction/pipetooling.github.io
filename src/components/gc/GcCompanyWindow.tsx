@@ -17,8 +17,8 @@ import { VettingChip } from './GcTradePartners'
  * GC mode, the real build (the Board's B3-c): a trade company's window, from the design spike's
  * `GcCompanyWindow.tsx`. About is what decides whether to ask or award them: how they answer, their
  * vetting and insurance, who at the company gets which emails, their work with us and the times they
- * passed. The office sets the company's language here. Activity, Documents and Their portal come as
- * their kernels land, so this window is About alone for now.
+ * passed. The office sets the company's language here. Their portal is the Portal lane's block, passed in
+ * by the page (v2.4932). Activity and Documents come as their kernels land.
  */
 
 const RECORD: Record<AnswerRecord, { tone: Tone; word: string }> = {
@@ -41,6 +41,7 @@ export function GcCompanyWindow({
   onLanguage,
   onClose,
   onOpenProject,
+  portal,
 }: {
   state: GcState
   partner: Partner
@@ -50,6 +51,8 @@ export function GcCompanyWindow({
   onLanguage: (lang: PortalLang) => Promise<void>
   onClose: () => void
   onOpenProject: (projectId: string) => void
+  /** Their portal (the Portal lane's `GcTheirPortal`): their link, where it stands, and what a dev can do with it. */
+  portal?: ReactNode
 }) {
   const [problem, setProblem] = useState<string | null>(null)
   useEffect(() => {
@@ -117,6 +120,12 @@ export function GcCompanyWindow({
         </div>
         <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
           <About state={state} partner={partner} onOpenProject={onOpenProject} />
+          {portal && (
+            <section style={{ marginTop: '1rem' }}>
+              <Heading>Their portal</Heading>
+              {portal}
+            </section>
+          )}
         </div>
       </div>
     </div>,

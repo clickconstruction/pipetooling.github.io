@@ -68,6 +68,18 @@ describe('GcCompanyWindow', () => {
     await within(dialog).findByText('That did not save.')
   })
 
+  it('shows their portal when the page passes it, and no such section when it does not', () => {
+    const state = boardStateFromRows(rows())
+    const partner = state.partners.find((p) => p.id === 'lonestar')!
+    const { unmount } = render(<GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={vi.fn()} onOpenProject={() => undefined} portal={<p>The link is on.</p>} />)
+    const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
+    expect(within(dialog).getByText('Their portal')).toBeTruthy()
+    expect(within(dialog).getByText('The link is on.')).toBeTruthy()
+    unmount()
+    const { dialog: plain } = open('lonestar')
+    expect(within(plain).queryByText('Their portal')).toBeNull()
+  })
+
   it('closes on Escape and on its close button', () => {
     const onClose = vi.fn()
     const { dialog } = open('hillside', { onClose })
