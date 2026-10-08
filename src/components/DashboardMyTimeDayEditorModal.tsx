@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   leaderReplaceClockSessionClusterMixed,
   leaderSplitClockSessionCluster,
@@ -33,22 +33,14 @@ import {
 import { applyScheduleProportionsToClockSession } from '../lib/applyScheduleProportionsToClockSession'
 import type { DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import {
-  buildDayTimeline,
-  daySpanMs,
-  getNextSessionClusterInTimeline,
-  CLOCK_OVERLAP_WARNING_EPS_MS,
-  hasPairwiseClockIntervalOverlap,
   sessionClusterId,
   normalizeDayEditorSession,
   type DayEditorSession,
-  type DayTimelineItem,
 } from '../lib/myTimeDayTimeline'
 import {
   type AssignSessionJobPopoverSession,
   type AssignSessionJobSavedPatch,
 } from './clock-sessions/AssignSessionJobPopover'
-import { MyTimeDayClusterForm } from './my-time-day-editor/MyTimeDayClusterForm'
-import { MyTimeDayClusterVisual } from './my-time-day-editor/MyTimeDayClusterVisual'
 import { useMyTimeCompactMergeMedia } from './my-time-day-editor/useMyTimeCompactMergeMedia'
 import {
   MyTimeMergeSegmentsModal,
@@ -87,6 +79,8 @@ import { useMyTimeSalaryPrefetch } from './my-time-day-editor/useMyTimeSalaryPre
 import { useMyTimeSplitEditor } from './my-time-day-editor/useMyTimeSplitEditor'
 import { useMyTimeBoundaryGestures } from './my-time-day-editor/useMyTimeBoundaryGestures'
 import { useMyTimeDaySessions } from './my-time-day-editor/useMyTimeDaySessions'
+import { MyTimeDayTimelineBody } from './my-time-day-editor/MyTimeDayTimelineBody'
+import { formatDurationMs } from './my-time-day-editor/myTimeDayEditorDatetime'
 import {
   MyTimeNotComingInButton,
   MyTimeNotComingInConfirm,
@@ -94,11 +88,6 @@ import {
 import { emptyDayLine } from '../lib/myTimeSalaryPrefetch'
 
 export type { DayEditorSession }
-
-function formatDurationMs(ms: number): string {
-  const h = ms / 3600000
-  return h % 1 === 0 ? `${h.toFixed(1)} h` : `${h.toFixed(2)} h`
-}
 
 type Props = {
   dateStr: string
@@ -532,13 +521,6 @@ export function DashboardMyTimeDayEditorModal({
       sortedSessions.length === 1 ? '' : 's'
     }`
   }, [sortedSessions, dayTotalClockedMs])
-
-  const timelineItems = useMemo(
-    () => buildDayTimeline(sortedSessions, nowTick, { splitClustersWithPairwiseOverlap: true }),
-    [sortedSessions, nowTick],
-  )
-  const { dayStartMs, dayEndMs } = useMemo(() => daySpanMs(sortedSessions, nowTick), [sortedSessions, nowTick])
-  const totalDur = Math.max(1, dayEndMs - dayStartMs)
 
   /** Option B: subtitle when clock data spans more than one company calendar day. */
   const sessionsSpanDenverSubtitle = useMemo(() => {
@@ -1260,214 +1242,48 @@ export function DashboardMyTimeDayEditorModal({
                 {layoutModeToggleEl}
               </div>
             ) : null}
-            <div
-              className="myTimeDayTimelineScroll"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                overflowX: 'hidden',
-                overflowY: 'auto',
-                minHeight: 260,
-                maxHeight: 'min(65vh, 640px)',
-                border: myTimeCompactLayout ? 'none' : '1px solid var(--border)',
-                borderRadius: myTimeCompactLayout ? 0 : 8,
-                padding: myTimeCompactLayout ? 4 : 8,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: myTimeCompactLayout ? 4 : 6,
-              }}
-            >
-              {!editorInitialized ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading editor…</p>
-              ) : (
-                timelineItems.map((item: DayTimelineItem, idx: number) => {
-                  if (item.type === 'gap') {
-                    const flexW = Math.max(0.12, (item.endMs - item.startMs) / totalDur)
-                    return (
-                      <div
-                        key={`gap-${idx}-${item.startMs}`}
-                        className="myTimeDayGapStrip"
-                        style={{
-                          flex: `${Math.max(0.35, flexW * 6)} 0 auto`,
-                          minHeight: 32,
-                          padding: '0.35rem 0.5rem',
-                          borderRadius: 6,
-                          background: 'repeating-linear-gradient(-45deg, var(--bg-muted), var(--bg-muted) 8px, var(--bg-page) 8px, var(--bg-page) 16px)',
-                          fontSize: '0.75rem',
-                          color: 'var(--text-muted)',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        Off clock · {formatDurationMs(item.endMs - item.startMs)}
-                      </div>
-                    )
-                  }
-
-                  const c = item.sessions
-                  const lastS = c[c.length - 1]!
-                  const clusterId = item.clusterId
-                  const split = splitByCluster[clusterId]!
-                  const t0 = item.startMs
-                  const t1 = item.endMs
-                  const span = Math.max(1, t1 - t0)
-                  const flexW = (item.endMs - item.startMs) / totalDur
-                  const clusterIntervalOverlap = hasPairwiseClockIntervalOverlap(c, nowTick, CLOCK_OVERLAP_WARNING_EPS_MS)
-                  const nextClusterBlock = getNextSessionClusterInTimeline(timelineItems, idx)
-                  const formOverlapDividerBelow =
-                    nextClusterBlock != null &&
-                    hasPairwiseClockIntervalOverlap([...c, ...nextClusterBlock.sessions], nowTick, CLOCK_OVERLAP_WARNING_EPS_MS)
-                  const showClusterBottomDivider = idx !== timelineItems.length - 1
-
-                  return (
-                    <Fragment key={clusterId}>
-                      {clusterIntervalOverlap ? (
-                        <div
-                          role="status"
-                          style={{
-                            fontSize: '0.8125rem',
-                            color: 'var(--text-amber-800)',
-                            background: 'var(--bg-amber-tint)',
-                            border: '1px solid #f59e0b',
-                            borderRadius: 6,
-                            padding: '0.45rem 0.6rem',
-                            marginBottom: 2,
-                          }}
-                        >
-                          <strong style={{ fontWeight: 600 }}>Overlapping clock times</strong>
-                          {' — '}
-                          adjust boundaries or close one session.
-                        </div>
-                      ) : null}
-                      {layoutMode === 'visual' ? (
-                        <MyTimeDayClusterVisual
-                          clusterId={clusterId}
-                          c={c}
-                          lastS={lastS}
-                          split={split}
-                          t0={t0}
-                          t1={t1}
-                          span={span}
-                          flexW={flexW}
-                          nowTick={nowTick}
-                          saving={saving}
-                          jobLabels={mergedJobLabels}
-                          bidLabels={mergedBidLabels}
-                          setStripEl={(el) => {
-                            stripRefs.current[clusterId] = el
-                          }}
-                          onStripPointerDown={(e) => handleStripPointerDown(clusterId, c, e)}
-                          onStripKeyDown={(e) => handleStripKeyDown(clusterId, e)}
-                          onStartDrag={(index, ev, undo) => startDrag(clusterId, index, ev, undo)}
-                          onFocusHandle={(index) => setFocusedHandle({ clusterId, index })}
-                          patchClusterAction={(action) => patchCluster(clusterId, action)}
-                          setAssignBulk={setAssignBulk}
-                          onAssignJobSaved={handleAssignJobSaved}
-                          resolveAssignSession={(segIdx) =>
-                            resolveAssignSessionForSegment(clusterId, segIdx)
-                          }
-                          onRequestMergeJobChoice={(payload) =>
-                            openMergeJobChoiceForCluster(clusterId, payload)
-                          }
-                          onForceClockOut={allowPunchTimeActions && !saving ? openForceClockOut : undefined}
-                          onAdjustTimes={allowPunchTimeActions && !saving ? openAdjustTimes : undefined}
-                          onRejectSession={allowPunchTimeActions && !saving ? handleRejectSession : undefined}
-                          rejectSessionBusyId={rejectSessionBusyId}
-                          dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
-                          dispatchScheduleWorkDateYmd={dateStr}
-                          draftLocalJobBidAssign={
-                            onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
-                          }
-                          showApplyScheduleProportions={showApplyScheduleProportions}
-                          onApplyScheduleProportions={(picks) =>
-                            void applyScheduleProportionsToCluster(clusterId, picks)
-                          }
-                          salariedStripFooterLabel={showSalariedLabelUnderVisualStrip}
-                          showClusterBottomDivider={showClusterBottomDivider}
-                        />
-                      ) : (
-                        <MyTimeDayClusterForm
-                          clusterId={clusterId}
-                          c={c}
-                          lastS={lastS}
-                          split={split}
-                          t0={t0}
-                          t1={t1}
-                          span={span}
-                          flexW={flexW}
-                          nowTick={nowTick}
-                          saving={saving}
-                          jobLabels={mergedJobLabels}
-                          bidLabels={mergedBidLabels}
-                          segmentTimeInputsReadOnly={clockTimesReadOnly}
-                          patchClusterAction={(action) => patchCluster(clusterId, action)}
-                          onCommitInnerBoundary={(boundaryIndex, ms) =>
-                            commitInnerBoundary(clusterId, boundaryIndex, ms)
-                          }
-                          setAssignBulk={setAssignBulk}
-                          onAssignJobSaved={handleAssignJobSaved}
-                          resolveAssignSession={(segIdx) =>
-                            resolveAssignSessionForSegment(clusterId, segIdx)
-                          }
-                          onRequestMergeJobChoice={(payload) =>
-                            openMergeJobChoiceForCluster(clusterId, payload)
-                          }
-                          onForceClockOut={allowPunchTimeActions && !saving ? openForceClockOut : undefined}
-                          onAdjustTimes={allowPunchTimeActions && !saving ? openAdjustTimes : undefined}
-                          onRejectSession={allowPunchTimeActions && !saving ? handleRejectSession : undefined}
-                          rejectSessionBusyId={rejectSessionBusyId}
-                          dispatchScheduleAssigneeUserId={effectiveSubjectUserId ?? undefined}
-                          dispatchScheduleWorkDateYmd={dateStr}
-                          overlapDividerBelow={formOverlapDividerBelow}
-                          showClusterBottomDivider={showClusterBottomDivider}
-                          draftLocalJobBidAssign={
-                            onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
-                          }
-                          showApplyScheduleProportions={showApplyScheduleProportions}
-                          onApplyScheduleProportions={(picks) =>
-                            void applyScheduleProportionsToCluster(clusterId, picks)
-                          }
-                        />
-                      )}
-                    </Fragment>
-                  )
-                })
-              )}
-              {effectiveEditable &&
-              allowPunchTimeActions &&
-              !priorWeekGateActive &&
-              sessionsProp.length === 0 &&
-              !sessionsLoading &&
-              !pendingAuthForFetch ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    marginTop: -4,
-                  }}
-                >
-                  <button
-                    type="button"
-                    title="Add a separate clock session to this day"
-                    aria-label="Add session"
-                    onClick={() => setAddDisjointOpen(computeAddDisjointDefaults())}
-                    disabled={saving}
-                    style={{
-                      padding: '0.2rem 0.6rem',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: 'var(--surface)',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      color: 'var(--text-700)',
-                      fontSize: '0.75rem',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    + Add session
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            <MyTimeDayTimelineBody
+              myTimeCompactLayout={myTimeCompactLayout}
+              editorInitialized={editorInitialized}
+              sortedSessions={sortedSessions}
+              nowTick={nowTick}
+              layoutMode={layoutMode}
+              saving={saving}
+              splitByCluster={splitByCluster}
+              patchCluster={patchCluster}
+              commitInnerBoundary={commitInnerBoundary}
+              openMergeJobChoiceForCluster={openMergeJobChoiceForCluster}
+              stripRefs={stripRefs}
+              handleStripPointerDown={handleStripPointerDown}
+              handleStripKeyDown={handleStripKeyDown}
+              startDrag={startDrag}
+              setFocusedHandle={setFocusedHandle}
+              mergedJobLabels={mergedJobLabels}
+              mergedBidLabels={mergedBidLabels}
+              setAssignBulk={setAssignBulk}
+              handleAssignJobSaved={handleAssignJobSaved}
+              resolveAssignSessionForSegment={resolveAssignSessionForSegment}
+              allowPunchTimeActions={allowPunchTimeActions}
+              openForceClockOut={openForceClockOut}
+              openAdjustTimes={openAdjustTimes}
+              handleRejectSession={handleRejectSession}
+              rejectSessionBusyId={rejectSessionBusyId}
+              effectiveSubjectUserId={effectiveSubjectUserId}
+              dateStr={dateStr}
+              onPatchSeededSessionsJobBid={onPatchSeededSessionsJobBid}
+              draftLocalJobBidAssign={draftLocalJobBidAssign}
+              showApplyScheduleProportions={showApplyScheduleProportions}
+              applyScheduleProportionsToCluster={applyScheduleProportionsToCluster}
+              showSalariedLabelUnderVisualStrip={showSalariedLabelUnderVisualStrip}
+              clockTimesReadOnly={clockTimesReadOnly}
+              effectiveEditable={effectiveEditable}
+              priorWeekGateActive={priorWeekGateActive}
+              sessionsProp={sessionsProp}
+              sessionsLoading={sessionsLoading}
+              pendingAuthForFetch={pendingAuthForFetch}
+              setAddDisjointOpen={setAddDisjointOpen}
+              computeAddDisjointDefaults={computeAddDisjointDefaults}
+            />
 
             {error && <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>}
 

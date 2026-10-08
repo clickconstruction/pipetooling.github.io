@@ -39,3 +39,9 @@ export function parseTimeOnAnchorDateToMs(anchorYmd: string, timeHm: string): nu
     tm[3] ? Number(tm[3]) : 0,
   )
 }
+
+/** A duration in hours for the editor's labels: whole hours keep one decimal (`3.0 h`), the rest two (`1.25 h`). */
+export function formatDurationMs(ms: number): string {
+  const h = ms / 3600000
+  return h % 1 === 0 ? `${h.toFixed(1)} h` : `${h.toFixed(2)} h`
+}
