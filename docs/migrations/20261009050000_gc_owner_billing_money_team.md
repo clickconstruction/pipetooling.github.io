@@ -59,7 +59,7 @@ What the columns show:
 3. **Writes per role, rolled back:**
    - a controller's `gc_draft_change_order` on the test project returns an id;
    - an estimator's is refused;
-   - an estimator's `UPDATE gc_projects SET owner_retainage_pct = 5` is refused in the guard's words, and their `size_note` update goes through.
+   - an estimator's `UPDATE gc_projects SET owner_retainage_pct = 5 WHERE project_id = '<test project>'` is refused in the guard's words, and their `size_note` update goes through. (`gc_projects` is keyed by `project_id`, not `id`.)
 4. **The page**, a dev through **View as…**:
    - *Sample controller:* `/gc` shows **Money**, and the test project's card shows **Change orders · 1**.
    - *Sample estimator:* neither, and `/gc?changes=<test project>` opens nothing.
@@ -67,3 +67,21 @@ What the columns show:
 ## Rollback
 
 A one-off migration that re-creates the seven `_dev` policies as `20261008010000` wrote them, drops the seven `_money` ones, and drops the guard trigger and its function. The client's gates then read the money team over dev-only tables, so they show empty until the client goes back too.
+
+## Status
+
+Written 2026-10-09 for the Owner Billing door (v2.4943, clickconstruction/pipetooling.github.io#4986).
+
+Applied to prod about 15:10 UTC 2026-10-09 by the lead, with `supabase db push` from a clean checkout of main (`npm run check:migration-drift`: 798 local, 798 remote). Regenerating the types and the dev-mcp catalog changed nothing, so there is no types PR. Every write ran in a transaction that rolled back. What the verify steps said:
+
+- **Step 1.** The seven tables each carry one `<table>_money` policy with one qual and no `_dev`, and `anon` has no privilege on them. The five functions read invoker. The guard is enabled.
+- **Step 2.** On the test project, a controller and a leader each read 1 change order, and an estimator read 0.
+- **Step 3.**
+  - A controller's `gc_draft_change_order` returned an id.
+  - An estimator's was refused by the policy.
+  - An estimator's `owner_retainage_pct` update was refused in the guard's words, and their `size_note` update wrote.
+  - A controller's `owner_retainage_pct` update wrote.
+- **Step 4**, through **View as** on main's build:
+  - *Sample controller:* sees **Money**, whose lens draws bill day Oct 25 at $36 from the signed change order, and **Change orders · 1** on the test project.
+  - *Sample estimator:* sees three pills, no **Change orders**, and `/gc?changes=<test project>` opens nothing.
+
