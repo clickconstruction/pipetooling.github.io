@@ -1103,7 +1103,7 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_trade_email`.
 
-**Doors**: a dev only until the portal's door. The first callers come with P3-b (the questions window's answer), New project's step 7 (a set's plans) and the Ask window (`invite`, `nudge`).
+**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). New project's step 7 (a set's plans) and the Ask window (`invite`, `nudge`) come next.
 
 ---
 
