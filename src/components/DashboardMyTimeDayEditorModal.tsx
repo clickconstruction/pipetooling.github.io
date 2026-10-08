@@ -355,9 +355,8 @@ export function DashboardMyTimeDayEditorModal({
       setRejectSessionBusyId(session.id)
       setRejectSessionError(null)
       try {
-        // The reject and the people_hours resync in one transaction (v2.4964); the old two
-        // requests until the migration is pushed.
-        await rejectClockSession(session.id, authUserId ?? null)
+        // The reject and the people_hours resync in one transaction (v2.4964).
+        await rejectClockSession(session.id)
         setRejectSessionConfirm(null)
         setSessionsFetchNonce((n) => n + 1)
         onLinkedSessionsUpdated?.()
@@ -370,7 +369,7 @@ export function DashboardMyTimeDayEditorModal({
         setRejectSessionBusyId(null)
       }
     },
-    [authUserId, onLinkedSessionsUpdated, onSaved, sessionsProp.length, setSessionsFetchNonce],
+    [onLinkedSessionsUpdated, onSaved, sessionsProp.length, setSessionsFetchNonce],
   )
 
   const {

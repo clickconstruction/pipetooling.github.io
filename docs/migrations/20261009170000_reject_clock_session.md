@@ -1,6 +1,6 @@
 # 20261009170000_reject_clock_session.sql (2026-10-08, v2.4964)
 
-One function, `public.reject_clock_session(p_session_id uuid) RETURNS void`. It is the My Time day editor's **Reject session** as one transaction: punch list **#46** row 10, the MY_TIME_DAY_EDITOR_MODAL map's risk flag. Additive. The client calls it once it is pushed, and until then it falls back to today's two requests.
+One function, `public.reject_clock_session(p_session_id uuid) RETURNS void`. It is the My Time day editor's **Reject session** as one transaction: punch list **#46** row 10, the MY_TIME_DAY_EDITOR_MODAL map's risk flag. Additive. The client calls it. Its fallback to the two requests, kept until the push, went in v2.4973.
 
 ## Why
 
@@ -26,9 +26,9 @@ When the second failed, the row stayed rejected with its hours still counted, an
 
 **One deliberate change**, as `save_my_time_day` does: an `UPDATE` that changes no row is raised. That is a session deleted meanwhile, or one RLS hides from the caller. The browser's request succeeded there with nothing written, and the dialog closed as if the session were rejected.
 
-## The client until the push
+## The client
 
-`src/lib/rejectClockSession.ts` calls `reject_clock_session`. When PostgREST answers that the function is missing (`PGRST202`, or Postgres's `42883`), it falls back to the two requests, verbatim, and the gap stays until the push. Any other answer is shown in the dialog as before. Tests: `rejectClockSession.test.ts` and the modal's render test, both for the one call and for the fallback.
+`src/lib/rejectClockSession.ts` calls `reject_clock_session`, and any refusal is shown in the dialog as before. Until the push it fell back to the two requests, verbatim, when PostgREST answered that the function was missing (`PGRST202`, or Postgres's `42883`). v2.4973 dropped that fallback once the push was live, so a missing function is now an error like any other. Tests: `rejectClockSession.test.ts` and the modal's render test.
 
 ## Tried before the push
 
