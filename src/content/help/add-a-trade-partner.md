@@ -63,4 +63,4 @@ Press Escape to leave the address as it was.
 
 ## What comes next
 
-To ask a company for a quote, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). A company's papers and its own window come in a later step.
+To ask a company for a quote, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). Press a company's name to open its window, as [Look up a trade partner](/help/look-up-a-trade-partner) shows. A company's papers come in a later step.

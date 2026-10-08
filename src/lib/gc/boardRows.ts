@@ -26,6 +26,7 @@ import type {
   Partner,
   PartnerVetting,
   PlanQuestion,
+  PortalMailGroup,
   PromiseKind,
   SubBid,
   Town,
@@ -50,6 +51,8 @@ export interface CompanyRow {
   vetting_decided_on: string | null
   vetting_decided_by: string | null
   vetting_note: string
+  /** The kinds of email the main contact gets. Null or missing: every kind. */
+  contact_gets?: string[] | null
 }
 
 /** `gc_invites`: one company asked to quote one trade. */
@@ -133,6 +136,16 @@ export interface BoardDatesRow {
 }
 
 /** A company's vetting form (B1's `gc_company_vetting_forms`), as they wrote it. */
+/** `gc_company_people`: someone else the company named, with the emails they get (B3-c). Removed people are not read. */
+export interface PersonRow {
+  id: string
+  company_id: string
+  name: string
+  email: string
+  role: string
+  gets: string[]
+}
+
 export interface VettingFormRow {
   company_id: string
   license: string
@@ -160,6 +173,8 @@ export interface BoardRows {
   userNames?: Record<string, string>
   /** The vetting forms that came in (B3-b). Missing: none read, so no company shows a form. */
   vettingForms?: VettingFormRow[]
+  /** The people each company named (B3-c). Missing: none read, so each company is its main contact alone. */
+  people?: PersonRow[]
   /** Points from the app's geocoded addresses, by the address as written. Missing: the towns stand in. */
   points?: Record<string, { lat: number; lng: number }>
 }
@@ -179,6 +194,12 @@ const DECLINE_REASONS: DeclineReason[] = ['busy', 'far', 'size', 'scope', 'terms
 const LOST_WHYS: GcLostWhy[] = ['price', 'other_builder', 'project_died', 'no_bid', 'no_answer']
 const PROMISE_KINDS: PromiseKind[] = ['insurance', 'w9', 'sow', 'start', 'submittals', 'delivery', 'payApp', 'punch', 'closeout', 'msa']
 const HOWS: AskContact['how'][] = ['call', 'text', 'email', 'nudge', 'portal']
+const MAIL_GROUPS: PortalMailGroup[] = ['quotes', 'job', 'contracts', 'pay']
+
+/** The kinds of email a row names, in the kernels' words; an unknown word is dropped. */
+function mailGroups(gets: string[]): PortalMailGroup[] {
+  return MAIL_GROUPS.filter((g) => gets.includes(g))
+}
 
 function pointOf(rows: BoardRows, address: string): Town | undefined {
   const p = address ? rows.points?.[address] : undefined
@@ -259,11 +280,12 @@ function vettingOf(c: CompanyRow, names: Record<string, string>, form: VettingFo
 }
 
 /** A company as the kernels read it. Its counts come from its asks; its papers wait for B6. */
-export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms'>): Partner {
+export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people'>): Partner {
   const asks = invites.filter((i) => i.company_id === c.id)
   const quoted = new Set(quotes.map((q) => q.invite_id))
   const basePoint = pointOf(rows as BoardRows, c.address)
   const vetting = vettingOf(c, rows.userNames ?? {}, rows.vettingForms?.find((f) => f.company_id === c.id))
+  const people = (rows.people ?? []).filter((p) => p.company_id === c.id).map((p) => ({ id: p.id, name: p.name, email: p.email, role: p.role, gets: mailGroups(p.gets) }))
   return {
     id: c.id,
     company: c.name,
@@ -286,6 +308,8 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     ...(vetting ? { vetting } : {}),
     ...(c.phone ? { phone: c.phone } : {}),
     ...(c.email ? { email: c.email } : {}),
+    ...(people.length ? { people } : {}),
+    ...(c.contact_gets ? { contactGets: mailGroups(c.contact_gets) } : {}),
   }
 }
 

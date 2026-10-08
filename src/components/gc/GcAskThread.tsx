@@ -5,6 +5,7 @@ import { telHref } from '../../lib/gc/followUpSheet'
 import type { AskContact, DeclineReason, GcProject, GcState, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, shortDate, weekdayDate } from '../../lib/gc/words'
 import { GcDeclineForm } from './GcDeclineForm'
+import { PartnerName } from './GcPartnerName'
 import { Btn, Card, Chip, input, type Tone } from './gcUi'
 
 /**
@@ -208,7 +209,7 @@ export function GcTradeAsks({ state, projectId, packageId, writes, onAsk }: { st
         return (
           <div key={invite.id} style={{ borderLeft: '3px solid var(--border)', paddingLeft: '0.6rem', display: 'grid', gap: '0.25rem' }}>
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-              <strong>{partner.company}</strong>
+              <PartnerName partnerId={partner.id} company={partner.company} />
               {invite.status === 'declined' ? (
                 <Chip tone="grey" title={declinedTitle(invite)}>
                   {declinedWords(invite)}
@@ -273,7 +274,7 @@ function FollowUpCard({ state, followUp, writes, onWhoElse }: { state: GcState; 
   return (
     <Card style={{ borderLeft: `4px solid ${why === 'waiting' ? 'var(--border-blue)' : why === 'passed' || why === 'silent' ? '#dc2626' : '#d97706'}` }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }} data-gc-follow-up={invite.id}>
-        <strong>{partner.company}</strong>
+        <PartnerName partnerId={partner.id} company={partner.company} />
         <span style={{ color: 'var(--text-muted)' }}>{partner.contact}</span>
         {/* The bid date sits with the job, once, not as a sentence on every card. */}
         <Chip tone="grey">

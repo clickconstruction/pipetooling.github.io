@@ -325,7 +325,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
     named.length ? supabase.from('customers').select('id, name').in('id', named) : none,
     supabase
       .from('gc_companies')
-      .select('id, name, trades, contact_name, phone, email, address, max_miles, license, lang, vetting_status, vetting_limit, vetting_decided_on, vetting_decided_by, vetting_note')
+      .select('id, name, trades, contact_name, phone, email, address, max_miles, license, lang, vetting_status, vetting_limit, vetting_decided_on, vetting_decided_by, vetting_note, contact_gets')
       .order('name'),
     packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
     supabase.from('gc_trade_promises').select('*'),
@@ -338,13 +338,15 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
   const promiseIds = promiseRows.map((p) => p.id)
   const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
   const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
-  const [quotes, contacts, moves, users, forms] = await Promise.all([
+  const [quotes, contacts, moves, users, forms, people] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
     deciders.length ? supabase.from('users').select('id, name').in('id', deciders) : none,
     // The forms of the companies still waiting on our decision, for the queue on Trade partners.
     waiting.length ? supabase.from('gc_company_vetting_forms').select('*').in('company_id', waiting) : none,
+    // Who else each company named, for the company window's Who gets our emails (B3-c).
+    companyRows.length ? supabase.from('gc_company_people').select('id, company_id, name, email, role, gets').is('removed_at', null).order('created_at') : none,
   ])
   return {
     today,
@@ -359,6 +361,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
     promiseMoves: taken(moves, 'load the promises’ earlier days'),
     userNames: Object.fromEntries(taken(users, 'load our team').map((u) => [u.id, u.name ?? ''])),
     vettingForms: taken(forms, 'load the vetting forms'),
+    people: taken(people, 'load the people each company named'),
   }
 }
 
@@ -424,4 +427,9 @@ export async function askGcCompanies(packageId: string, companyIds: string[], by
       .select('id'),
     'note that the emails wait',
   )
+}
+
+/** The company's language (the Board's B3-c): its portal opens in it and our emails to it go out in it. */
+export async function setGcCompanyLanguage(companyId: string, lang: 'en' | 'es'): Promise<void> {
+  taken(await supabase.from('gc_companies').update({ lang }).eq('id', companyId).select('id').single(), 'save the language')
 }
