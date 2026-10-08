@@ -44,7 +44,8 @@ export type LienNextUpTarget =
   | { open: 'run'; gcId: string | null; takeBack?: boolean }
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' }
 
-export type LienNextUpGroup = 'now' | 'coming'
+/** `now` / `coming` by the day; the list draws `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. */
+export type LienNextUpGroup = 'mine' | 'now' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
@@ -103,6 +104,8 @@ export type LienNextUpInput = {
   todayYmd: string
   jobTitle: (jobId: string) => string
   gcName: (gcId: string) => string
+  /** The leader who approves this job's paper, by name (the job's master), for the office's waiting rows; null or absent reads *the leader*. */
+  leaderName?: (jobId: string) => string | null
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
@@ -133,9 +136,13 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
     const button = r.button !== undefined ? r.button : canAct ? BUTTON[r.action] : null
     rows.push({ ...r, button, group: groupOf(r.daysLeft, r.severity) })
   }
-  /** Awaiting approval: the leader approves; the office waits, with no button. */
-  const awaiting = (): { action: LienNextUpAction; button: string | null; sub: string } =>
-    leader ? { action: 'approve', button: BUTTON.approve, sub: 'Waiting on your approval' } : { action: 'approve', button: null, sub: 'Waiting on the leader' }
+  /** Awaiting approval: the leader approves; the office waits on him by name, with no button. */
+  const awaiting = (jobId: string, item: { submitted_at?: string | null } | null | undefined): { action: LienNextUpAction; button: string | null; sub: string } => {
+    if (leader) return { action: 'approve', button: BUTTON.approve, sub: 'Waiting on your approval' }
+    const name = input.leaderName?.(jobId)?.trim() || 'the leader'
+    const since = item?.submitted_at ? calendarYmdInAppTzFromIso(item.submitted_at) : ''
+    return { action: 'approve', button: null, sub: `Waiting on ${name}${/^\d{4}-\d{2}-\d{2}$/.test(since) ? ` · since ${formatYmdMonthDay(since)}` : ''}` }
+  }
 
   // ---- § 53.056 notices ----
   const readyByGc = new Map<string, LienDeskEntry[]>()
@@ -159,7 +166,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({ ...base, key: `notice:${e.jobId}`, sub: 'Notice to draft', action: 'draft', target: pane('to_draft') })
         break
       case 'awaiting': {
-        const a = awaiting()
+        const a = awaiting(e.jobId, e.item)
         push({ ...base, key: `notice:${e.jobId}`, sub: a.sub, action: a.action, button: a.button, target: pane('awaiting') })
         break
       }
@@ -255,7 +262,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({ ...base, key, sub: 'Affidavit to draft', action: 'draft', button: canAct ? 'Draft affidavit' : null })
         break
       case 'awaiting': {
-        const a = awaiting()
+        const a = awaiting(e.jobId, e.item)
         push({ ...base, key, sub: `Affidavit · ${a.sub.charAt(0).toLowerCase()}${a.sub.slice(1)}`, action: a.action, button: a.button })
         break
       }
@@ -287,7 +294,7 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         push({ ...base, key, sub: 'Retainage notice to draft', action: 'draft' })
         break
       case 'awaiting': {
-        const a = awaiting()
+        const a = awaiting(e.jobId, e.item)
         push({ ...base, key, sub: `Retainage · ${a.sub.charAt(0).toLowerCase()}${a.sub.slice(1)}`, action: a.action, button: a.button })
         break
       }
@@ -316,12 +323,32 @@ export function lienPrintedDaysWords(stamps: ReadonlyArray<string | null>): stri
   return a === b ? `printed ${a}` : `printed ${a} to ${b}`
 }
 
-/** The two groups, in order, each with its rows — what the view draws. */
-export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>): Array<{ group: LienNextUpGroup; label: string; rows: LienNextUpRow[] }> {
-  const now = rows.filter((r) => r.group === 'now')
-  const coming = rows.filter((r) => r.group === 'coming')
+/** An approval only the leader can give (punch list #101 PR 3): his, when the row has his button; the office waits on it. */
+function approvalGroup(r: LienNextUpRow): 'mine' | 'waiting' | null {
+  if (r.action !== 'approve') return null
+  return r.button ? 'mine' : 'waiting'
+}
+
+/**
+ * The groups, in order, each with its rows — what the view draws. The leader's approvals lead as
+ * *Only you can approve*; the rest run by day (*Needs you now*, *Coming up*); the approvals the
+ * office waits on close the list as *Waiting on <leader>* (`waitingOn`, else *the leader*).
+ */
+export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { waitingOn?: string | null } = {}): Array<{ group: LienNextUpGroup; label: string; rows: LienNextUpRow[] }> {
+  const mine = rows.filter((r) => approvalGroup(r) === 'mine')
+  const waiting = rows.filter((r) => approvalGroup(r) === 'waiting')
+  const rest = rows.filter((r) => approvalGroup(r) == null)
+  const now = rest.filter((r) => r.group === 'now')
+  const coming = rest.filter((r) => r.group === 'coming')
   return [
+    ...(mine.length ? [{ group: 'mine' as const, label: 'Only you can approve', rows: mine }] : []),
     ...(now.length ? [{ group: 'now' as const, label: 'Needs you now', rows: now }] : []),
     ...(coming.length ? [{ group: 'coming' as const, label: 'Coming up', rows: coming }] : []),
+    ...(waiting.length ? [{ group: 'waiting' as const, label: `Waiting on ${opts.waitingOn?.trim() || 'the leader'}`, rows: waiting }] : []),
   ]
+}
+
+/** Do now's count (punch list #101 PR 3): every row but the ones waiting on the leader — what this viewer can move. */
+export function lienNextUpCount(rows: ReadonlyArray<LienNextUpRow>): number {
+  return rows.filter((r) => approvalGroup(r) !== 'waiting').length
 }

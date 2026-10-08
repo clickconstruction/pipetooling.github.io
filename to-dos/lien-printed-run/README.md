@@ -1,15 +1,15 @@
 ---
 name: "Lien desk: take back a printed run, and a Do now that reads as one job"
 number: 101
-group: ready
-status: the owner approved the mock-up 2026-10-08 (no leader needed to take back) · PR 1 built v2.4983 (#5044) · PR 2 built v2.4982 on claude/lien-run-row · PR 3 next
+group: close
+status: the owner approved the mock-up 2026-10-08 (no leader needed to take back) · PR 1 built v2.4983 (#5044) · PR 2 built v2.4982 (#5047) · PR 3 built v2.4985 on claude/lien-only-you · delete this folder once all three merged and a week of use raises nothing
 summary: >
   The office printed a run of 19 notices, then changed the packet's layout before mailing.
   Printing stamps every notice as in the mail, and nothing takes a whole run back. PR 1 puts
   Take back… on the run window's printed step. PR 2 draws every printed notice as one run row
   on Do now, with the rail counting them. PR 3 puts the leader's approvals first, and the
   office sees them last under the leader's name.
-next: Merge PR 1, then build PR 2 (the run row) and PR 3 (only you can approve).
+next: Merge the three PRs. Then use it for a week and delete this folder.
 size: S, M, S
 blocker: none
 opinion: build — PR 1 is a batch of the Back to ready the desk already has; PR 2 reuses the GC row's shape
