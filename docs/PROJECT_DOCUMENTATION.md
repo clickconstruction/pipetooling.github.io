@@ -1857,6 +1857,8 @@ The schedule is a dev's **Schedule** window on each project's card (v2.4987, `Gc
 
 The switch's fourth pill, **Money** (Owner Billing's O6a, `GcMoney.tsx` with `GcMoneyAhead` and `GcMoneyMargin`), is money across every job that is ours, read only: `allJobsMoney`, who owes us, `billDay`, `cashAhead` and `allJobsMargin` over `billingStateForAll` (`src/lib/gc/billCustomer.ts`, read by `loadGcBillingRows`). A section whose data is not in the app yet says so in one line. **Money** and **Change orders** are the money team's (`canSeeGcMoney` ↔ `gc_money_team()`: the owner, the leaders and the controller) since the Owner Billing door (v2.4943), which moved Owner Billing's seven tables to `gc_money_team()` and keeps our terms with the customer on `gc_projects` to that team.
 
+The card's **Daily log** (Building's U3a-ii, `GcDailyLog.tsx`) opens on a job being built, for a dev while Building is built (`canUseGcBuilding`): the working days of the last week with no log, each with **Write**; today's log, started from the day before (`newDailyLog`), or read back with **Change it**; **This week** at a glance; and the earlier days. **Save the log** goes through `gc_save_daily_log` (`dailyLogIo.ts`, the words trimmed and the day checked by `dailyLogPayload`), and the logs are read back with their crews and delays in one select and laid over the board's projects by `withDailyLogs` (`dailyLogRows.ts`). A log names our own crew and the trades whose statement of work is signed (`logTrades`), so only our own crew until the Board's B6. The button counts the missed days (**Daily log · 2 missed**).
+
 ---
 
 ## File Structure

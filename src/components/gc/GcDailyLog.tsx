@@ -1,0 +1,442 @@
+import { useEffect, useState } from 'react'
+import { dailyLogOn, logTrades, missingLogs, newDailyLog, weekOfLogs } from '../../lib/gc/buildingLog'
+import { partnerById } from '../../lib/gc/lookups'
+import type { LookAheadReason } from '../../lib/gc/schedule/types'
+import type { DailyLog, GcProject, GcState, WeatherSky } from '../../lib/gc/types'
+import { shortDate, weekdayDate } from '../../lib/gc/words'
+import { Btn, Card, Chip, input } from './gcUi'
+
+/**
+ * GC mode, the real build, the Building lane's U3a-ii: the superintendent's daily log on real data,
+ * ported from the prototype's `GcBuildingLog.tsx` (branch spike/gc-mode). Today's log on top: the
+ * weather, who was on site and how many, what got done, what held work up and who came by. A day missed
+ * in the last week can be caught up. The week at a glance, then the days before. The press is
+ * `gc_save_daily_log` (migration 20261009120000), which checks the day and the trades again; the
+ * window only carries it. The prototype tab's Friday report (U7), morning list (G-118) and log
+ * against the chart (G-60) join with their own lanes.
+ */
+
+type Draft = Omit<DailyLog, 'writtenOn'>
+
+interface Props {
+  state: GcState
+  /** The project as the board maps it, its daily logs laid over it. */
+  project: GcProject
+  today: string
+  /** A save is working. */
+  busy?: boolean
+  problem?: string | null
+  /** Saves a day's log. Resolves true once it is saved; false keeps the form open, the problem above it. */
+  onSave: (log: Draft) => Promise<boolean>
+  onClose: () => void
+}
+
+const SKIES: { key: WeatherSky; word: string }[] = [
+  { key: 'clear', word: 'Clear' },
+  { key: 'cloudy', word: 'Cloudy' },
+  { key: 'rain', word: 'Rain' },
+  { key: 'storm', word: 'Storm' },
+  { key: 'wind', word: 'Wind' },
+]
+const SKY_WORD: Record<WeatherSky, string> = { clear: 'clear', cloudy: 'cloudy', rain: 'rain', storm: 'storm', wind: 'wind' }
+const REASONS: LookAheadReason[] = ['weather', 'trade before', 'materials', 'crew', 'other']
+
+function companyOf(state: GcState, project: GcProject, packageId: string | null): string {
+  if (packageId === null) return 'The job'
+  const pkg = project.packages.find((k) => k.id === packageId)
+  if (!pkg) return packageId
+  if (pkg.selfPerform) return `${pkg.trade} · our own crew`
+  const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+  const company = invite ? partnerById(state, invite.partnerId)?.company : undefined
+  return company ? `${pkg.trade} · ${company}` : pkg.trade
+}
+
+export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, onClose }: Props) {
+  const missing = missingLogs(project, today)
+  const [day, setDay] = useState(today)
+  const [editing, setEditing] = useState(false)
+  const building = project.stage === 'building' && Boolean(project.startedOn)
+  const log = dailyLogOn(project, day)
+  const earlier = [...(project.dailyLogs ?? [])].filter((l) => !weekOfLogs(project, today).some((w) => w.date === l.date)).reverse()
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  // A log names only the trades it may, as the prototype's reducer kept it: our own crew, and a trade
+  // whose statement of work is signed. The press itself takes any trade on the job until U3b.
+  const save = (draft: Draft) => {
+    const trades = new Set(logTrades(project).map((k) => k.id))
+    const kept = { ...draft, crews: draft.crews.filter((c) => trades.has(c.packageId)), delays: draft.delays.filter((d) => d.packageId === null || trades.has(d.packageId)) }
+    void onSave(kept).then((saved) => {
+      if (saved) setEditing(false)
+    })
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.55)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${project.name}: daily log`}
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, width: 'min(860px, 100%)', maxHeight: 'min(94vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border-strong)' }}
+      >
+        <div style={{ padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>{project.name} · daily log</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+              Our superintendent writes one log for each working day on the job. Each log says the weather and who was on site. It also says what got
+              done, what held work up and who came by.
+            </div>
+          </div>
+          <span style={{ flex: 1 }} />
+          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+            ×
+          </button>
+        </div>
+
+        <div style={{ padding: '0.8rem 1rem', overflowY: 'auto', display: 'grid', gap: '0.9rem' }}>
+          {problem && (
+            <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
+              {problem}
+            </div>
+          )}
+
+          {!building ? (
+            <Card>The daily log starts once work starts.</Card>
+          ) : (
+            <>
+              {missing.length > 0 && (
+                <Card style={{ border: '1px solid var(--border-strong)' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
+                    <Chip tone="amber">no log</Chip>
+                    <span>{missing.length === 1 ? 'One working day in the last week has no log.' : `${missing.length} working days in the last week have no log.`}</span>
+                    {missing.map((d) => (
+                      <Btn
+                        key={d}
+                        kind={day === d ? 'primary' : 'quiet'}
+                        onClick={() => {
+                          setDay(d)
+                          setEditing(true)
+                        }}
+                      >
+                        Write {weekdayDate(d)}
+                      </Btn>
+                    ))}
+                  </div>
+                </Card>
+              )}
+
+              {log && !editing ? (
+                <LogCard state={state} project={project} log={log} title={day === today ? "Today's log" : `The log for ${weekdayDate(day)}`} onChange={() => setEditing(true)} />
+              ) : (
+                <LogForm
+                  key={day}
+                  state={state}
+                  project={project}
+                  start={log ?? newDailyLog(project, day)}
+                  title={day === today ? `Today's log · ${weekdayDate(day)}` : `The log for ${weekdayDate(day)} · caught up`}
+                  busy={busy}
+                  onSave={save}
+                  onCancel={log ? () => setEditing(false) : undefined}
+                />
+              )}
+              {day !== today && (
+                <div>
+                  <Btn
+                    kind="quiet"
+                    onClick={() => {
+                      setDay(today)
+                      setEditing(false)
+                    }}
+                  >
+                    Back to today
+                  </Btn>
+                </div>
+              )}
+
+              <WeekCard
+                project={project}
+                today={today}
+                picked={day}
+                onPick={(d) => {
+                  setDay(d)
+                  setEditing(false)
+                }}
+              />
+
+              {earlier.length > 0 && (
+                <Card>
+                  <div style={{ fontWeight: 700, marginBottom: '0.4rem' }}>Earlier days</div>
+                  <div style={{ display: 'grid', gap: '0.5rem' }}>
+                    {earlier.map((l) => (
+                      <LogLine key={l.date} state={state} project={project} log={l} />
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** A log to fill in: the weather, the crews, what got done, the delays, the visitors. */
+function LogForm({
+  state,
+  project,
+  start,
+  title,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  state: GcState
+  project: GcProject
+  start: Draft
+  title: string
+  busy: boolean
+  onSave: (draft: Draft) => void
+  onCancel?: () => void
+}) {
+  const [d, setD] = useState<Draft>(start)
+  const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }))
+  const workers = (id: string) => d.crews.find((c) => c.packageId === id)?.workers ?? 0
+  const setWorkers = (id: string, n: number) =>
+    set({ crews: [...d.crews.filter((c) => c.packageId !== id), ...(n > 0 ? [{ packageId: id, workers: n }] : [])] })
+  const label = { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' } as const
+  const trades = logTrades(project)
+  const ready = Number.isFinite(d.high) && Number.isFinite(d.low) && !busy
+  return (
+    <Card style={{ border: '2px solid #2563eb' }}>
+      <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.875rem' }}>
+        <strong>{title}</strong>
+
+        <div style={{ display: 'grid', gap: '0.3rem' }}>
+          <span style={label}>Weather</span>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {SKIES.map((s) => (
+              <Btn key={s.key} kind={d.sky === s.key ? 'primary' : 'quiet'} onClick={() => set({ sky: s.key })}>
+                {s.word}
+              </Btn>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>High</span>
+              <input type="number" value={d.high} onChange={(e) => set({ high: Number(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="High, degrees" />
+            </label>
+            <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Low</span>
+              <input type="number" value={d.low} onChange={(e) => set({ low: Number(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="Low, degrees" />
+            </label>
+            <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+              <input type="checkbox" checked={d.weatherStop} onChange={(e) => set({ weatherStop: e.target.checked })} />
+              <span>Work stopped for the weather</span>
+            </label>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: '0.3rem' }}>
+          <span style={label}>Who was on site · how many workers</span>
+          {trades.map((k) => (
+            <label key={k.id} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+              <span style={{ color: workers(k.id) > 0 ? undefined : 'var(--text-muted)' }}>{companyOf(state, project, k.id)}</span>
+              <input
+                type="number"
+                min={0}
+                value={workers(k.id)}
+                onChange={(e) => setWorkers(k.id, Math.max(0, Number(e.target.value) || 0))}
+                style={{ ...input, width: '4.5rem' }}
+                aria-label={`Workers on site, ${k.trade}`}
+              />
+            </label>
+          ))}
+          {trades.length === 0 ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No trade can be logged yet. A trade we hire shows here once its statement of work is signed.</span>
+          ) : (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>It starts from the day before. 0 means they were not there.</span>
+          )}
+        </div>
+
+        <label style={{ display: 'grid', gap: '0.2rem' }}>
+          <span style={label}>What got done</span>
+          <textarea
+            value={d.done}
+            onChange={(e) => set({ done: e.target.value })}
+            rows={3}
+            placeholder="Membrane down on the east half. Ductwork in bay 4."
+            style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical' }}
+          />
+        </label>
+
+        <div style={{ display: 'grid', gap: '0.35rem' }}>
+          <span style={label}>What held work up</span>
+          {d.delays.map((delay, i) => (
+            <div key={i} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <select
+                value={delay.packageId ?? ''}
+                onChange={(e) => set({ delays: d.delays.map((x, j) => (j === i ? { ...x, packageId: e.target.value || null } : x)) })}
+                style={input}
+                aria-label="Whose work it held up"
+              >
+                <option value="">The job</option>
+                {trades.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.trade}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={delay.reason}
+                onChange={(e) => set({ delays: d.delays.map((x, j) => (j === i ? { ...x, reason: e.target.value as LookAheadReason } : x)) })}
+                style={input}
+                aria-label="Why"
+              >
+                {REASONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={delay.note}
+                onChange={(e) => set({ delays: d.delays.map((x, j) => (j === i ? { ...x, note: e.target.value } : x)) })}
+                placeholder="What happened"
+                aria-label="What happened"
+                style={{ ...input, flex: '1 1 12rem' }}
+              />
+              <Btn kind="quiet" onClick={() => set({ delays: d.delays.filter((_, j) => j !== i) })}>
+                Take off
+              </Btn>
+            </div>
+          ))}
+          <div>
+            <Btn kind="quiet" onClick={() => set({ delays: [...d.delays, { packageId: null, reason: 'weather', note: '' }] })}>
+              Add a delay
+            </Btn>
+          </div>
+        </div>
+
+        <label style={{ display: 'grid', gap: '0.2rem' }}>
+          <span style={label}>Inspections and visitors</span>
+          <input value={d.visitors} onChange={(e) => set({ visitors: e.target.value })} placeholder="The city inspector, the customer's walk" style={input} />
+        </label>
+
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Btn kind="primary" disabled={!ready} onClick={() => onSave(d)}>
+            {busy ? 'Saving…' : 'Save the log'}
+          </Btn>
+          {onCancel && (
+            <Btn kind="quiet" onClick={onCancel}>
+              Keep it as it was
+            </Btn>
+          )}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function LogCard({ state, project, log, title, onChange }: { state: GcState; project: GcProject; log: DailyLog; title: string; onChange: () => void }) {
+  return (
+    <Card>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline', marginBottom: '0.4rem' }}>
+        <strong>{title}</strong>
+        <Btn kind="quiet" onClick={onChange}>
+          Change it
+        </Btn>
+      </div>
+      <LogLine state={state} project={project} log={log} full />
+    </Card>
+  )
+}
+
+/** One day's log: the weather, the crews, what got done, the delays, the visitors. */
+function LogLine({ state, project, log, full = false }: { state: GcState; project: GcProject; log: DailyLog; full?: boolean }) {
+  const workers = log.crews.reduce((n, c) => n + c.workers, 0)
+  return (
+    <div style={{ display: 'grid', gap: '0.2rem', fontSize: '0.875rem', paddingTop: full ? 0 : '0.45rem', borderTop: full ? 'none' : '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+        {!full && <strong>{weekdayDate(log.date)}</strong>}
+        <span style={{ color: 'var(--text-muted)' }}>
+          {SKY_WORD[log.sky]}, {log.high}° / {log.low}° · {workers} on site
+        </span>
+        {log.weatherStop && <Chip tone="amber">work stopped</Chip>}
+        {log.writtenOn > log.date && <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>written {shortDate(log.writtenOn)}</span>}
+      </div>
+      {full && log.crews.length > 0 && (
+        <div style={{ color: 'var(--text-muted)' }}>
+          {log.crews.map((c) => `${companyOf(state, project, c.packageId)}: ${c.workers}`).join(' · ')}
+        </div>
+      )}
+      {log.done && <div>{log.done}</div>}
+      {log.delays.map((d, i) => (
+        <div key={i} style={{ color: 'var(--text-amber-800)' }}>
+          Held up, {d.reason}: {companyOf(state, project, d.packageId)}. {d.note}
+        </div>
+      ))}
+      {log.visitors && <div style={{ color: 'var(--text-muted)' }}>Visitors: {log.visitors}</div>}
+    </div>
+  )
+}
+
+/** The week at a glance: each working day's weather, crews and delays, or no log. */
+function WeekCard({ project, today, picked, onPick }: { project: GcProject; today: string; picked: string; onPick: (date: string) => void }) {
+  const week = weekOfLogs(project, today)
+  return (
+    <Card>
+      <div style={{ fontWeight: 700, marginBottom: '0.5rem' }}>This week</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(7.5rem, 1fr))', gap: '0.5rem' }}>
+        {week.map(({ date, log }) => {
+          const future = date > today
+          const workers = log ? log.crews.reduce((n, c) => n + c.workers, 0) : 0
+          return (
+            <button
+              key={date}
+              type="button"
+              disabled={future}
+              onClick={() => onPick(date)}
+              style={{
+                textAlign: 'left',
+                border: `1px solid ${picked === date ? '#2563eb' : 'var(--border)'}`,
+                borderRadius: 8,
+                padding: '0.45rem 0.55rem',
+                background: 'var(--surface)',
+                color: 'var(--text-base)',
+                cursor: future ? 'default' : 'pointer',
+                opacity: future ? 0.55 : 1,
+                font: 'inherit',
+                fontSize: '0.82rem',
+                display: 'grid',
+                gap: '0.15rem',
+              }}
+            >
+              <strong>{weekdayDate(date)}</strong>
+              {log ? (
+                <>
+                  <span style={{ color: 'var(--text-muted)' }}>
+                    {SKY_WORD[log.sky]}, {log.high}°
+                  </span>
+                  <span>{workers} on site</span>
+                  {log.delays.length > 0 && <span style={{ color: 'var(--text-amber-800)' }}>{log.delays.length === 1 ? '1 delay' : `${log.delays.length} delays`}</span>}
+                </>
+              ) : future ? (
+                <span style={{ color: 'var(--text-muted)' }}>not yet</span>
+              ) : (
+                <span style={{ color: 'var(--text-amber-800)' }}>{date === today ? 'to write' : 'no log'}</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
