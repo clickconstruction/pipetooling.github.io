@@ -6,7 +6,7 @@ import { customerRoleColumn, customerRoleOf, gcProjectFromRows, sheetsAtSet, spe
 function clinic(): GcProjectRows {
   return {
     project: { id: 'p1', name: 'Hill Country Clinic', address: '12 Oak St, Boerne', customer_id: 'c1', plans_link: 'https://drive.google.com/drive/folders/1HcBidSetAnyoneWithTheLink' },
-    gc: { stage: 'bidding', bid_due: '2026-10-20', sq_ft: '6800', size_note: 'one story, four exam rooms', customer_role: 'owners_rep', property_owner_customer_id: 'c9', architect_customer_id: 'c2', project_manager_user_id: null, general_conditions: '12000', contingency_pct: 3, fee_pct: '8', drive_folder_url: '', lost_on: null },
+    gc: { stage: 'bidding', bid_due: '2026-10-20', sq_ft: '6800', size_note: 'one story, four exam rooms', customer_role: 'owners_rep', property_owner_customer_id: 'c9', architect_customer_id: 'c2', project_manager_user_id: null, drive_folder_url: '', lost_on: null },
     packages: [
       { id: 'k2', trade: 'Concrete', position: 1, budget: '84000', ours: false, own_bid_id: null },
       { id: 'k1', trade: 'Sitework', position: 0, budget: 60000, ours: false, own_bid_id: null },
@@ -40,7 +40,9 @@ function clinic(): GcProjectRows {
 describe('a GC project read back from its rows', () => {
   it('reads the project, its trades in order with their scope and exclusions, and the numbers as numbers', () => {
     const p = gcProjectFromRows(clinic())
-    expect(p).toMatchObject({ id: 'p1', name: 'Hill Country Clinic', stage: 'bidding', sqFt: 6800, customerRole: 'ownersRep', propertyOwnerId: 'c9', architectId: 'c2', generalConditions: 12000, contingencyPct: 3, feePct: 8 })
+    expect(p).toMatchObject({ id: 'p1', name: 'Hill Country Clinic', stage: 'bidding', sqFt: 6800, customerRole: 'ownersRep', propertyOwnerId: 'c9', architectId: 'c2' })
+    // Our number's inputs come from gc_project_money through the board's rows (B5-c), never the project.
+    expect('generalConditions' in p || 'contingencyPct' in p || 'feePct' in p).toBe(false)
     expect(p.trades.map((t) => [t.trade, t.budget, t.ours, t.ownBidId])).toEqual([['Sitework', 60000, false, null], ['Concrete', 84000, false, null], ['Plumbing', 0, true, 'b7']])
     expect(p.trades[0]?.scope.map((l) => [l.label, l.sheets, l.specs, l.addedInSetId])).toEqual([
       ['Clearing and grading', null, null, null],

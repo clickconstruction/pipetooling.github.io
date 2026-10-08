@@ -5,7 +5,7 @@ import GcProjects from './GcProjects'
 import { renderSettled, settle } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
-import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 
 vi.mock('../lib/supabase', async () => {
@@ -53,6 +53,11 @@ vi.mock('../lib/gc/gcIo', async () => {
     setGcAskExclusionCovers: vi.fn(),
     setGcAskTakenAlternates: vi.fn(),
     carryGcTrade: vi.fn(() => Promise.resolve()),
+    setGcProjectMoney: vi.fn(() => Promise.resolve()),
+    markGcBidSent: vi.fn(() => Promise.resolve()),
+    markGcWon: vi.fn(),
+    markGcLost: vi.fn(),
+    bringGcBack: vi.fn(),
   }
 })
 
@@ -172,6 +177,38 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Carry this number' }))
     await waitFor(() => expect(carryGcTrade).toHaveBeenCalledWith('k1', { inviteId: 'i1' }))
     expect(await screen.findByRole('button', { name: 'Carrying. Stop' })).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev reads our number with the money, opens it on the card and saves an input', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(loadGcBoardRows).toHaveBeenCalledWith(rows.projects, expect.any(String), { money: true })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Our number' }))
+    const fee = within(card).getByLabelText('Fee')
+    fireEvent.change(fee, { target: { value: '9' } })
+    fireEvent.blur(fee)
+    await waitFor(() => expect(setGcProjectMoney).toHaveBeenCalledWith('p1', { generalConditions: 12000, contingencyPct: 3, feePct: 9 }))
+    await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(1))
+    fireEvent.click(within(card).getByRole('button', { name: 'Hide our number' }))
+    expect(card.querySelector('[data-gc-our-number]')).toBeNull()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev marks our bid sent from the card, and the projects load again', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockImplementation((projects) =>
+      Promise.resolve({ ...rows, projects, boardDates: { p1: { ...rows.boardDates.p1!, our_bid_sent_on: vi.mocked(markGcBidSent).mock.calls.length ? '2026-10-08' : null } } }),
+    )
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'We sent our bid' }))
+    await waitFor(() => expect(markGcBidSent).toHaveBeenCalledWith('p1'))
+    expect(await within(card).findByText('our bid went in Oct 8')).toBeTruthy()
     vi.mocked(loadGcBoardRows).mockReset()
   })
 })

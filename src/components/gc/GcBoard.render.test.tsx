@@ -41,6 +41,17 @@ describe('GcBoard', () => {
     expect(screen.queryByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })).toBeNull()
   })
 
+  it('outside the money team, the row and the price card read the trades alone', () => {
+    const state = boardStateFromRows(clinicBoardRows({ money: [], moneyShown: false }))
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} moneyShown={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /^trades so far, with 3 holes/ }))
+    const card = screen.getByRole('dialog', { name: 'What the price of Hill Country Clinic is made of' })
+    expect(within(card).getByText('Trades so far')).toBeTruthy()
+    expect(within(card).queryByText('Price so far')).toBeNull()
+    expect(within(card).queryByText('General conditions')).toBeNull()
+    expect(within(card).queryByText(/Contingency/)).toBeNull()
+  })
+
   it('opens the project from its row, the plans from the plans link, and the price card from the price line', () => {
     const onOpen = vi.fn()
     const onPlans = vi.fn()

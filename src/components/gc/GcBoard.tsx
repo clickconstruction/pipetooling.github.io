@@ -68,6 +68,7 @@ export function GcBoard({
   onOpen,
   onPlans,
   onCompare,
+  moneyShown = true,
   folderUrls = {},
 }: {
   state: GcState
@@ -76,6 +77,8 @@ export function GcBoard({
   onPlans: (projectId: string) => void
   /** Opens Compare quotes on one trade, from the price card's trade line (B5-b). */
   onCompare?: (projectId: string, packageId: string) => void
+  /** The reader is on the money team (B5-c). False: each price is the trades alone, and says so. */
+  moneyShown?: boolean
   /** Each project's Drive folder, by project id. */
   folderUrls?: Record<string, string>
 }) {
@@ -113,6 +116,7 @@ export function GcBoard({
                   onOpen={() => onOpen(p.id)}
                   onPlans={() => onPlans(p.id)}
                   onCompare={onCompare && ((packageId) => onCompare(p.id, packageId))}
+                  moneyShown={moneyShown}
                   folderUrl={folderUrls[p.id] ?? ''}
                 />
               ))
@@ -248,6 +252,7 @@ function ProjectRow({
   onOpen,
   onPlans,
   onCompare,
+  moneyShown,
   folderUrl,
 }: {
   project: GcProject
@@ -255,8 +260,11 @@ function ProjectRow({
   onOpen: () => void
   onPlans: () => void
   onCompare?: ((packageId: string) => void) | undefined
+  moneyShown: boolean
   folderUrl: string
 }) {
+  // Outside the money team the price is the trades alone (B5-c), so its words say so.
+  const soFar = moneyShown ? 'so far' : 'trades so far'
   const totals = proposalTotals(project)
   const card = usePriceCard()
   const newest = planLabel(project, currentRev(project))
@@ -333,8 +341,8 @@ function ProjectRow({
         <PlusUnknown words={proposalUncostedWords(project)} />
         {totals.holes.length > 0 ? (
           <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
-            <GcPriceTrigger card={card} label={`so far, with ${totals.holes.length} ${totals.holes.length === 1 ? 'hole' : 'holes'}. Show each trade.`}>
-              so far, with {totals.holes.length} {totals.holes.length === 1 ? 'hole' : 'holes'}
+            <GcPriceTrigger card={card} label={`${soFar}, with ${totals.holes.length} ${totals.holes.length === 1 ? 'hole' : 'holes'}. Show each trade.`}>
+              {soFar}, with {totals.holes.length} {totals.holes.length === 1 ? 'hole' : 'holes'}
             </GcPriceTrigger>
           </span>
         ) : (
@@ -346,9 +354,12 @@ function ProjectRow({
             </span>
           )
         )}
+        {!moneyShown && totals.holes.length === 0 && totals.plugged.length === 0 && (
+          <span style={{ display: 'block', fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>the trades alone</span>
+        )}
         <GcPriceLikely state={state} project={project} />
       </span>
-      <GcPriceCard card={card} state={state} project={project} onOpen={onOpen} {...(onCompare ? { onCompare } : {})} />
+      <GcPriceCard card={card} state={state} project={project} onOpen={onOpen} moneyShown={moneyShown} {...(onCompare ? { onCompare } : {})} />
     </div>
   )
 }
