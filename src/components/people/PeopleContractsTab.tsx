@@ -55,6 +55,7 @@ import { ContractsAgreementsPanel } from './ContractsAgreementsPanel'
 import { PersonContractSignedRecordModal } from '../contracts/PersonContractSignedRecordModal'
 import { ContractBookIcon } from '../icons/ContractBookIcon'
 import { useToastContext } from '../../contexts/ToastContext'
+import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '../../lib/people/rosterPeople'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
 function ContractStatusChip({ status, label }: { status: string; label: string }) {
@@ -102,10 +103,8 @@ type UserRow = { id: string; email: string | null; name: string; role: string; n
 export type PeopleContractsTabProps = {
   people: Person[]
   users: UserRow[]
-  /** Archived roster people (page-level state) — grouped into the collapsed Archived section at the bottom (v2.1408). */
-  archivedPeople?: Person[]
-  /** The names archived roster rows answer to (`archivedRosterNames`, from `roster_people`) — same Archived section. */
-  archivedUserNames?: ReadonlySet<string>
+  /** Who is archived (`buildArchivedRoster`, from `roster_people`): grouped into the collapsed Archived section at the bottom (v2.1408). */
+  archived?: ArchivedRoster
   canDeletePeopleContracts: boolean
   /** The signed-in staff member — the send email's Reply-To and "reach" line (v2.2773). */
   currentUserId?: string | null
@@ -113,7 +112,7 @@ export type PeopleContractsTabProps = {
   isDev?: boolean
 }
 
-export default function PeopleContractsTab({ people, users, archivedPeople, archivedUserNames, canDeletePeopleContracts, currentUserId, isDev = false }: PeopleContractsTabProps) {
+export default function PeopleContractsTab({ people, users, archived = NO_ARCHIVED_ROSTER, canDeletePeopleContracts, currentUserId, isDev = false }: PeopleContractsTabProps) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
@@ -1147,36 +1146,23 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
     return tableRows
   }
 
-  /** Archived names win over active twins (v2.1409): archiving a user account often leaves its linked
-   *  roster person active (Bill/Juan/Joseph pattern) — a name archived as EITHER entity belongs in the
-   *  Archived section, not the active list. */
-  const contractsArchivedNameSet = useMemo(() => {
-    const names = new Set<string>()
-    for (const p of archivedPeople ?? []) {
-      const n = (p.name ?? '').trim()
-      if (n) names.add(n)
-    }
-    for (const raw of archivedUserNames ?? []) {
-      const n = raw.trim()
-      if (n) names.add(n)
-    }
-    return names
-  }, [archivedPeople, archivedUserNames])
-
-  const contractsPersonNamesSorted = useMemo(() => {
-    return [...new Set([...people.map((p) => p.name), ...users.map((u) => u.name)])]
-      .filter((n): n is string => Boolean(n?.trim()))
-      .filter((n) => !contractsArchivedNameSet.has(n.trim()))
-      .sort((a, b) => a.localeCompare(b))
-  }, [people, users, contractsArchivedNameSet])
+  /** The roster by name, split id first (#29 item 3, v2.4867): each people row asks by its own id, each
+   *  account by its own. A roster person whose linked account is archived is one archived roster row, so it
+   *  folds (the v2.1409 Bill/Juan/Joseph pattern), and a living namesake keeps the name. */
+  const contractsNames = useMemo(
+    () =>
+      splitNamesByArchived(
+        [...people.map((p) => ({ name: p.name, person_id: p.id })), ...users.map((u) => ({ name: u.name, user_id: u.id }))],
+        archived,
+      ),
+    [people, users, archived],
+  )
+  const contractsPersonNamesSorted = contractsNames.active
 
   const contractsSearchNormalized = useMemo(() => contractsSearchQuery.trim().toLowerCase(), [contractsSearchQuery])
 
-  /** Archived roster names (people + user accounts) not shadowed by an active name — the bottom Archived section. */
-  const contractsArchivedNames = useMemo(
-    () => [...contractsArchivedNameSet].sort((a, b) => a.localeCompare(b)),
-    [contractsArchivedNameSet],
-  )
+  /** Archived roster names not carried by a living row — the bottom Archived section. */
+  const contractsArchivedNames = contractsNames.archived
 
     const [contractsRosterFilterStored, setContractsRosterFilterStored] = useState<ContractsRosterFilter | null>(() => {
     try {

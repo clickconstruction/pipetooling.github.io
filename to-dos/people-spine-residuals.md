@@ -3,7 +3,7 @@ name: People spine — residuals
 number: 29
 group: ready
 status: >
-  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); v2.4859: item 3b (the RPC dropped, pushed 2026-10-07); 3c the types PR (#4906, dev-mcp redeployed); v2.4862 and v2.4865: item 3, id-first archived matching on the Hours grid, Teams and Offsets (Contracts next); item 4 open
+  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); v2.4859: item 3b (the RPC dropped, pushed 2026-10-07); 3c the types PR (#4906, dev-mcp redeployed); v2.4862, v2.4865 and v2.4867: item 3, id-first archived matching on the Hours grid, Teams, Offsets and Contracts (Review left); item 4 open
 summary: >
   **People spine residuals**: after the roster view, Leave, Hire, the Users lenses and the pointers
   landed, small things stayed open. Done in v2.4658: the edge functions' hand-written sample
@@ -12,12 +12,13 @@ summary: >
   moved to the roster view in v2.4671). Open: the types PR after that push, id-first archived
   matching, and one fixture account has its twin flag unset in prod.
 next: >
-  Item 3's id-first train: Contracts next, then Review only if its rows carry `person_id`. Wave C
+  Item 3's id-first train: Review last, only if its rows carry `person_id`, after decomposition row 8
+  in `PeopleReviewTab` lands. Wave C
   of v2.4658's deploys waits on purpose. Item 4, the Training Helper row and the archived duplicate
   "Kyle" row (a Combine… candidate, see v2.4865) are the owner's.
 size: S
 blocker: none for item 3; item 4 and the Training Helper row are the owner's data.
-ver: v2.3698 · 3700 · 3701 · 3702 · 3705 · 4658 · 4664 · 4671 · 4859 · 4862 · 4865
+ver: v2.3698 · 3700 · 3701 · 3702 · 3705 · 4658 · 4664 · 4671 · 4859 · 4862 · 4865 · 4867
 opinion: do the sweep when the next roster surface is touched anyway; the guardrail that mattered (pay lists) is in.
 mockup: not required — a sweep and a data fix, no screen changes
 ---
@@ -41,7 +42,7 @@ The train: [`docs/recent-features/v2.3698.md`](../docs/recent-features/v2.3698.m
    - **Left alone on purpose:** `create-user` (writes the flag), `dev-mcp` and `_shared/devMcpComposites` (View-as reads the samples), and `_shared/rosterRow.ts` (fixture accounts get no roster row, v2.3701).
 3. **`get_archived_user_names()`** served five surfaces, all through one set built in `People.tsx`: Offsets (the archived fold), Contracts (archived grouped at the bottom), Review (pay names filtered beside the pay roster), the Teams member filter, and the Hours grid's roster (`src/lib/people/hoursGridRoster.ts`, rule 1).
    - **3a, done in v2.4671:** the set now comes from the `roster_people` read `People.tsx` already makes (`archivedRosterNames`). That means every name an archived roster row answers to, except a living namesake's. It is a pure source swap; no consumer changed.
-   - **Id-first matching** (by `person_id`, which the roster rows carry), one PR per consumer, per the identity plan: the row's id takes the roster row's verdict and the archived names are only the fallback (`isArchivedRosterRef`). **Done in v2.4862:** the Hours grid's rule 1 and the Teams member filter. **v2.4865:** Offsets (the one `person_id` a board name's offsets and hours carry). **Next:** Contracts (by the `people` and `users` ids). Review last, only if its rows carry `person_id`.
+   - **Id-first matching** (by `person_id`, which the roster rows carry), one PR per consumer, per the identity plan: the row's id takes the roster row's verdict and the archived names are only the fallback (`isArchivedRosterRef`). **Done in v2.4862:** the Hours grid's rule 1 and the Teams member filter. **v2.4865:** Offsets (the one `person_id` a board name's offsets and hours carry). **v2.4867:** Contracts (each `people` row by its id, each account by its own). **Left:** Review, only if its rows carry `person_id`. On 2026-10-07's prod rows the train moved one person: Kyle, a living linked person whom an archived duplicate sub row hid on Offsets and Contracts.
    - **3b, done in v2.4859:** `20261008060000_drop_get_archived_user_names.sql` drops the RPC. No REVOKE first: the DROP takes the grants with it. Pushed 2026-10-07 (drift 787/787).
    - **3c, done (#4906):** the types PR after that push regenerated `database.ts` and dev-mcp's `catalog.ts`; dev-mcp redeployed from main 1f2439900.
 4. **Twin Estimator 2** (`twin-estimator-2@twins.pipetooling.local`) has `is_digital_twin = false` in prod, so it sits in the People → Users roster under Estimators and the roster view calls it a person. Until the flag is set, v2.4658's twin refusal does not catch it either. A dev sets the flag from Settings → System → Digital twins & samples (the twin minter sets it after `create-user`; this one predates that). Data, not code — the owner's.
