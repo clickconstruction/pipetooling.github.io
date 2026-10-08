@@ -47,6 +47,17 @@ describe('the board read from its rows', () => {
     expect(wordRecord(s, hillside)).toEqual({ made: 1, kept: 0 })
   })
 
+  it('our number’s inputs come from the money rows, and read 0 for someone outside the money team', () => {
+    const p = boardStateFromRows(rows()).projects[0]!
+    expect([p.generalConditions, p.contingencyPct, p.feePct]).toEqual([12000, 3, 8])
+    const outside = boardStateFromRows(rows({ money: [], moneyShown: false })).projects[0]!
+    expect([outside.generalConditions, outside.contingencyPct, outside.feePct]).toEqual([0, 0, 0])
+    // Their price is the trades alone: nothing of ours is added.
+    expect(proposalTotals(outside).price).toBe(proposalTotals(outside).trades)
+    const { money: _none, ...unread } = rows()
+    expect(boardStateFromRows(unread).projects[0]!.generalConditions).toBe(0)
+  })
+
   it('a company: its counts from its asks, its vetting, its drive from a point when the app has one', () => {
     const s = boardStateFromRows(rows())
     const [lonestar, hillside] = s.partners

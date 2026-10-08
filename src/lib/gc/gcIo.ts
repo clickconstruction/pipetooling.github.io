@@ -13,7 +13,7 @@ import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
 import type { BoardRows } from './boardRows'
 import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { DeclineReason, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
+import type { DeclineReason, GcLostWhy, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
 
@@ -315,7 +315,11 @@ export async function checkDriveAccess(url: string, at?: { projectId: string; re
  * (B1): the companies, their asks with the quotes and the call log, and the promises. The board's
  * mapper (`boardStateFromRows`) turns them into the kernels' shapes.
  */
-export async function loadGcBoardRows(projects: GcProjectView[], today: string): Promise<BoardRows> {
+/**
+ * `money` (B5-c): the reader is on the money team (`canSeeGcMoney`), so our number's inputs are read.
+ * Anyone else skips the read: the policy would return no row, and the screens show the trades alone.
+ */
+export async function loadGcBoardRows(projects: GcProjectView[], today: string, { money = false }: { money?: boolean } = {}): Promise<BoardRows> {
   const ids = projects.map((p) => p.id)
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
@@ -340,7 +344,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
   const promiseIds = promiseRows.map((p) => p.id)
   const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
   const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
-  const [quotes, contacts, moves, users, forms, people] = await Promise.all([
+  const [quotes, contacts, moves, users, forms, people, moneyRows] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
@@ -349,6 +353,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
     waiting.length ? supabase.from('gc_company_vetting_forms').select('*').in('company_id', waiting) : none,
     // Who else each company named, for the company window's Who gets our emails (B3-c).
     companyRows.length ? supabase.from('gc_company_people').select('id, company_id, name, email, role, gets').is('removed_at', null).order('created_at') : none,
+    // Our number's inputs, for the money team only (B5-c).
+    money && ids.length ? supabase.from('gc_project_money').select('project_id, general_conditions, contingency_pct, fee_pct').in('project_id', ids) : none,
   ])
   return {
     today,
@@ -364,6 +370,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
     userNames: Object.fromEntries(taken(users, 'load our team').map((u) => [u.id, u.name ?? ''])),
     vettingForms: taken(forms, 'load the vetting forms'),
     people: taken(people, 'load the people each company named'),
+    money: taken(moneyRows, 'load our number'),
+    moneyShown: money,
   }
 }
 
@@ -528,4 +536,33 @@ export async function setChangeOrderPct(changeOrderId: string, pct: number): Pro
 /** A draft taken off: one that went to the customer stays (the database refuses it). */
 export async function deleteChangeOrderDraft(changeOrderId: string): Promise<void> {
   taken(await supabase.from('gc_change_orders').delete().eq('id', changeOrderId).select('id').single(), 'delete the draft')
+}
+
+/** Our number's three inputs on a project (the Board's B5-c), for the money team: general conditions in dollars, contingency and fee in percent. */
+export async function setGcProjectMoney(projectId: string, values: { generalConditions: number; contingencyPct: number; feePct: number }): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_project_money')
+      .upsert({ project_id: projectId, general_conditions: values.generalConditions, contingency_pct: values.contingencyPct, fee_pct: values.feePct, updated_at: new Date().toISOString() }, { onConflict: 'project_id' })
+      .select('project_id')
+      .single(),
+    'save our number',
+  )
+}
+
+/** The project's outcome (the Board's B5-c): each stamps the company's day in the database. */
+export async function markGcBidSent(projectId: string): Promise<void> {
+  taken(await supabase.rpc('gc_mark_bid_sent', { p_project_id: projectId }), 'mark our bid sent')
+}
+
+export async function markGcWon(projectId: string): Promise<void> {
+  taken(await supabase.rpc('gc_mark_won', { p_project_id: projectId }), 'mark it won')
+}
+
+export async function markGcLost(projectId: string, why: GcLostWhy, wonBy: string, note: string): Promise<void> {
+  taken(await supabase.rpc('gc_mark_lost', { p_project_id: projectId, p_why: why, p_won_by: wonBy, p_note: note }), 'mark it lost')
+}
+
+export async function bringGcBack(projectId: string): Promise<void> {
+  taken(await supabase.rpc('gc_bring_back', { p_project_id: projectId }), 'bring it back')
 }
