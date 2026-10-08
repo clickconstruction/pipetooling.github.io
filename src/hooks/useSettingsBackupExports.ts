@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchAllRows } from '../lib/supabasePaging'
 import type { SupabaseClientResult } from '../utils/errorHandling'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 const LAST_FULL_BACKUP_AT_KEY_PREFIX = 'pipetooling_last_full_backup_at'
 
@@ -95,7 +96,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           workflow_projections: r8.data ?? [],
         },
       }
-      downloadJson(`projects-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`projects-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -129,7 +130,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           material_template_items: r5.data ?? [],
         },
       }
-      downloadJson(`materials-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`materials-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -189,7 +190,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           bid_versions: r17.data ?? [],
         },
       }
-      downloadJson(`bids-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`bids-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -223,7 +224,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           pay_approved_masters: r7.data ?? [],
         },
       }
-      downloadJson(`people-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`people-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -279,7 +280,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           supply_house_invoices: r15.data ?? [],
         },
       }
-      downloadJson(`jobs-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`jobs-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -307,7 +308,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           checklist_instances: r2.data ?? [],
         },
       }
-      downloadJson(`checklist-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`checklist-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -341,7 +342,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           user_report_notification_preferences: r5.data ?? [],
         },
       }
-      downloadJson(`reports-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`reports-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -371,7 +372,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           prospect_comments: r3.data ?? [],
         },
       }
-      downloadJson(`prospects-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`prospects-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -421,7 +422,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           email_templates: r12.data ?? [],
         },
       }
-      downloadJson(`settings-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`settings-backup-${todayYmdInAppTz()}.json`, payload)
     } catch (e) {
       setExportError(e instanceof Error ? e.message : 'Export failed')
     } finally {
@@ -594,7 +595,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           email_templates: r72.data ?? [],
         },
       }
-      downloadJson(`full-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)
+      downloadJson(`full-backup-${todayYmdInAppTz()}.json`, payload)
       const backupKey = getLastFullBackupStorageKey(userId)
       const nowIso = new Date().toISOString()
       try {
