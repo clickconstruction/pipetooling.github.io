@@ -1,0 +1,33 @@
+{
+  "about": "The Board's B3-c (to-dos/gc-mode/BOARD_REAL_BUILD.md, B3): the company window's About reads who at a company gets which emails and its work with us, lifted to src/lib/gc/companyPeople.ts and appended to src/lib/gc/companyFile.ts. followItemMailGroup stays for B2b, which lifts Follow up's items. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b3-c.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#Partner": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts"
+  },
+  "files": [
+    {
+      "from": "gcCompanyPeople",
+      "to": "companyPeople.ts",
+      "moves": [
+        "mailGroupName",
+        "mailGroupList",
+        "CompanyPerson",
+        "companyPeople"
+      ],
+      "header": "/**\n * GC mode, the real build, the Board's B3-c: who at a trade gets which emails, on the office's side, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcCompanyPeople.ts`). `followItemMailGroup` stays on the spike until Follow up's items lift (B2b).\n */"
+    },
+    {
+      "from": "gcCompanyFile",
+      "to": "companyFile.ts",
+      "append": true,
+      "moves": [
+        "partnerWork",
+        "PartnerWork"
+      ]
+    }
+  ]
+}
