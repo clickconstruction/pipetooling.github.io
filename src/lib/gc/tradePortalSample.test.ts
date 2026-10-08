@@ -3,8 +3,9 @@
  * slice builder as a real company's, then the mapper and the portal's kernels, the way the page reads it.
  */
 import { describe, expect, it } from 'vitest'
+import { parseTradeSubmit } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { TRADE_PORTAL_FIELDS } from '../../../supabase/functions/_shared/gcTradePortalSlice'
-import { gcTradePortalSample, gcTradePortalSampleRows } from '../../../supabase/functions/_shared/gcTradePortalSample'
+import { gcTradePortalSample, SAMPLE_TRADE_IDS, gcTradePortalSampleRows } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { portalAsks, portalPlanNews, portalPromiseLine, portalQuestions } from './portal'
 import { tradePortalState } from './tradePortalState'
 
@@ -45,3 +46,13 @@ describe('the trade portal’s sample', () => {
     ])
   })
 })
+
+describe('a press on the sample (P2b-ii)', () => {
+  it('passes the submit function’s shape check, so What customers see’s walk never errors', () => {
+    const quote = { amount: 60000, includes: { [SAMPLE_TRADE_IDS.line1]: 'yes', [SAMPLE_TRADE_IDS.line2]: 'yes', [SAMPLE_TRADE_IDS.line3]: 'no' } }
+    expect(parseTradeSubmit({ token: 'sample', kind: 'submit_quote', inviteId: SAMPLE_TRADE_IDS.ask, quote }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'ask_question', packageId: SAMPLE_TRADE_IDS.trade, text: 'Q?' }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'remove_person', personId: SAMPLE_TRADE_IDS.person }).ok).toBe(true)
+  })
+})
+

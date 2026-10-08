@@ -1,0 +1,39 @@
+import { createContext, useContext, useState } from 'react'
+import type { TradeSubmitKind } from '../../../supabase/functions/_shared/gcTradeSubmit'
+
+/**
+ * GC mode, the trade partner portal (P2b-ii): what a press does. The page provides it: it posts the kind to
+ * `submit-gc-trade-portal`, reads the company's slice again when it went through (decision 10), and answers null, or
+ * the refusal in the company's words. No provider: the portal reads only, and no press is drawn.
+ */
+export interface PortalPress {
+  send: (kind: TradeSubmitKind, fields?: Record<string, unknown>) => Promise<string | null>
+  /** The office's preview: presses are drawn, and each says nothing is saved. */
+  preview: boolean
+}
+
+export const PortalPressContext = createContext<PortalPress | null>(null)
+
+export function usePortalPress(): PortalPress | null {
+  return useContext(PortalPressContext)
+}
+
+/** One control's press: busy while it goes, and the words when it was refused, shown under the control. */
+export function usePress(): { busy: boolean; problem: string | null; run: (kind: TradeSubmitKind, fields?: Record<string, unknown>) => Promise<boolean>; clear: () => void } {
+  const press = usePortalPress()
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const run = async (kind: TradeSubmitKind, fields?: Record<string, unknown>) => {
+    if (!press) return false
+    setBusy(true)
+    setProblem(null)
+    try {
+      const refused = await press.send(kind, fields)
+      setProblem(refused)
+      return refused === null
+    } finally {
+      setBusy(false)
+    }
+  }
+  return { busy, problem, run, clear: () => setProblem(null) }
+}

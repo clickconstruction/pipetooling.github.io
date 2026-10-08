@@ -284,6 +284,12 @@ export interface ScopeItem {
   label: string
 }
 
+/** A line of a trade's own schedule of values, as it wrote it (question 4): often rough-in, top out, trim. */
+export interface TheirSovLine {
+  label: string
+  amount: number
+}
+
 export interface SubBid {
   amount: number
   basedOnRev: number
@@ -303,6 +309,8 @@ export interface SubBid {
    * alternate moves the all-in number and what we carry; one not taken changes nothing.
    */
   takenAlternates?: string[]
+  /** The company's own schedule of values, sent with its quote (question 4): "Rough-in", $98,000. Unset: not sent. */
+  sov?: TheirSovLine[]
   /**
    * What their quote leaves out, as they listed it (the owner, 2026-10-04: track exclusions per
    * company). From the portal's quote form or typed by the office from an emailed quote.

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { GcTradePortalView } from '../components/gc/GcTradePortalView'
+import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePortalPress'
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
-import { readTradePortalAnswer, sentMessages, setDriveUrl, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
+import { readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
+import { submitTradePortal } from '../lib/gc/tradePortalSubmit'
 import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -28,22 +30,26 @@ export default function GcTradePortal() {
   const [page, setPage] = useState<PageState>({ kind: 'loading' })
   const [tries, setTries] = useState(0)
 
+  const read = useCallback(async (): Promise<TradePortalAnswer> => {
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/gc-trade-portal?t=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders() })
+      const body = (await res.json().catch(() => null)) as unknown
+      return readTradePortalAnswer(res.ok, body)
+    } catch {
+      return { kind: 'error', key: 'linkFailed' }
+    }
+  }, [token, preview])
+
   useEffect(() => {
     let live = true
     setPage({ kind: 'loading' })
-    void (async () => {
-      try {
-        const res = await fetch(`${supabaseUrl}/functions/v1/gc-trade-portal?t=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders() })
-        const body = (await res.json().catch(() => null)) as unknown
-        if (live) setPage(readTradePortalAnswer(res.ok, body))
-      } catch {
-        if (live) setPage({ kind: 'error', key: 'linkFailed' })
-      }
-    })()
+    void read().then((answer) => {
+      if (live) setPage(answer)
+    })
     return () => {
       live = false
     }
-  }, [token, preview, tries])
+  }, [read, tries])
 
   const ready = page.kind === 'ready' ? page : null
   const mapped = useMemo(() => (ready ? tradePortalState(ready.slice, ready.today) : null), [ready])
@@ -51,6 +57,22 @@ export default function GcTradePortal() {
   const planUrl = useCallback((projectId: string, rev: number) => (ready ? setDriveUrl(ready.slice, projectId, rev) : ''), [ready])
   const lang: PortalLang = portalShownLang(mapped?.lang ?? 'en')
   const retry = () => setTries((n) => n + 1)
+
+  // A press (P2b-ii): post it, then read the slice again in place, so the page keeps where the company is (decision 10).
+  const press = useMemo<PortalPress>(
+    () => ({
+      preview,
+      send: async (kind, fields) => {
+        if (preview) return pt(lang, 'previewNothing')
+        const result = await submitTradePortal(token, kind, fields)
+        if (!result.ok) return tradeErrorWords(result.key, lang)
+        const answer = await read()
+        setPage(answer)
+        return null
+      },
+    }),
+    [preview, lang, token, read],
+  )
 
   return (
     <main data-theme="light" style={{ minHeight: '100vh', background: PAPER, color: INK, fontFamily: PORTAL_FONT, padding: '16px 16px 32px', boxSizing: 'border-box' }}>
@@ -66,6 +88,7 @@ export default function GcTradePortal() {
           )}
         </div>
       ) : mapped ? (
+        <PortalPressContext.Provider value={press}>
         <GcTradePortalView
           state={mapped.state}
           partnerId={mapped.partnerId}
@@ -74,6 +97,7 @@ export default function GcTradePortal() {
           planUrl={planUrl}
           banner={page.sample ? pt(lang, 'samplePortal') : preview ? pt(lang, 'officePreview') : undefined}
         />
+        </PortalPressContext.Provider>
       ) : null}
     </main>
   )

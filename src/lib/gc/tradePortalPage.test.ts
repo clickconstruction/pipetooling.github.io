@@ -3,7 +3,7 @@
  * the home's words, through the sample `gc-trade-portal` answers for the sample token.
  */
 import { describe, expect, it } from 'vitest'
-import { gcTradePortalSample } from '../../../supabase/functions/_shared/gcTradePortalSample'
+import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { portalAsks } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
@@ -43,8 +43,8 @@ describe('the function’s answer', () => {
 
 describe('the plans’ links and the messages we sent', () => {
   it('opens a set’s Drive link by its number, and nothing that is not an https link', () => {
-    expect(setDriveUrl(slice, 'sample-project', 1)).toBe('https://drive.google.com/drive/folders/sample')
-    expect(setDriveUrl(slice, 'sample-project', 7)).toBe('')
+    expect(setDriveUrl(slice, ID.project, 1)).toBe('https://drive.google.com/drive/folders/sample')
+    expect(setDriveUrl(slice, ID.project, 7)).toBe('')
     expect(setDriveUrl({ ...slice, sets: [{ project_id: 'p', rev: 0, drive_url: 'javascript:alert(1)' }] }, 'p', 0)).toBe('')
   })
 
@@ -56,7 +56,7 @@ describe('the plans’ links and the messages we sent', () => {
         { id: 'm-new', subject: 'Plans changed', sent_on: '2026-10-07', lines: ['', 'A new set.', { title: 'It touches:', items: ['Lighting', ' '] }, { items: [] }], to_names: ['Dana Ortiz', ''] },
       ],
     })
-    expect(messages.map((m) => m.id)).toEqual(['m-new', 'sample-message'])
+    expect(messages.map((m) => m.id)).toEqual(['m-new', ID.message])
     expect(messages[0]).toEqual({ id: 'm-new', on: '2026-10-07', subject: 'Plans changed', lines: ['A new set.', { title: 'It touches:', items: ['Lighting'] }], to: ['Dana Ortiz'] })
     expect(messages[1]?.lines[2]).toEqual({ items: ['Service and gear', 'Panels and feeders'] })
   })
@@ -78,9 +78,9 @@ describe('the home’s words', () => {
     expect(askWhen(ask, '2026-10-21', 'en')).toBe('Was due Mon Oct 19.')
   })
 
-  it('tells the company who to email until the presses come', () => {
-    expect(replyByEmailWords(bidding[0]!.project, 'en')).toBe('Quoting from this page comes soon. Until then, email your quote or your question to Avery Lin (avery@example.com).')
-    expect(replyByEmailWords(past[0]!.project, 'en')).toBe('Quoting from this page comes soon. Until then, email your quote or your question to Click Construction.')
+  it('tells the company who to email its own quote file to until files come', () => {
+    expect(replyByEmailWords(bidding[0]!.project, 'en')).toBe('Have your own quote file? Email it to Avery Lin (avery@example.com).')
+    expect(replyByEmailWords(past[0]!.project, 'en')).toBe('Have your own quote file? Email it to Click Construction.')
   })
 
   it('holds Spanish until a native speaker reads it', () => {

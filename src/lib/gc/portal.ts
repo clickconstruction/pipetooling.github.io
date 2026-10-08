@@ -14,7 +14,7 @@ import { INSURANCE_ASK_DAYS, PROMISE_WHAT, tradePromiseState, tradePromisesOf } 
 import type { LookAheadState, ScheduleRow } from './schedule/schedule'
 import { activityName, inspectionItems, lookAheadWeeks, markState, mondayOf, scheduleRows } from './schedule/schedule'
 import type { LookAheadMark } from './schedule/types'
-import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
+import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './types'
 import { daysUntil, money } from './words'
 import { bidIsStale, quoteRanOut } from './bids'
 import type { AskPromise } from './followUp'
@@ -23,6 +23,7 @@ import { questionState, questionsFor, quotesWantedOn } from './planQuestions'
 import { preBidInvited } from './preBid'
 import type { QuestionState } from './questions'
 import { vettingOf } from './vetting'
+import { SOV_STAGES, theirSovGap } from './theirSov'
 
 // ---------------------------------------------------------------------------------------------
 // Your pay: every pay application on the company's jobs, when it was asked, approved and paid
@@ -1059,4 +1060,26 @@ export function portalQuestions(project: GcProject, packageId: string, partnerId
     if (!mine && answerOn === null) return []
     return [{ q, mine, state: questionState(q), answerOn }]
   })
+}
+
+const STAGE_WORDS: Record<string, PortalKey> = { 'Rough-in': 'sovRough', 'Top out': 'sovTop', Trim: 'sovTrim' }
+
+/** The lines a company's form starts with, in its language. Amounts are left for it to fill in. */
+export function portalSovStart(lang: PortalLang = 'en'): string[] {
+  return SOV_STAGES.map((s) => (STAGE_WORDS[s] ? pt(lang, STAGE_WORDS[s]) : s))
+}
+
+/**
+ * Where the company's lines stand against the number they must add up to: nothing typed yet (it
+ * sends none), short, over, or adding up. Lines with no name or no amount are left out.
+ */
+export function portalSovCheck(lines: TheirSovLine[], target: number, lang: PortalLang = 'en'): { state: 'empty' | 'short' | 'over' | 'ok'; words: string | null; lines: TheirSovLine[] } {
+  const kept = lines.filter((l) => l.label.trim() !== '' && l.amount > 0).map((l) => ({ label: l.label.trim(), amount: l.amount }))
+  if (kept.length === 0) return { state: 'empty', words: null, lines: [] }
+  const gap = theirSovGap(kept, target)
+  const sum = money(target + gap)
+  if (gap === 0) return { state: 'ok', words: pt(lang, 'sovAddsUp'), lines: kept }
+  return gap < 0
+    ? { state: 'short', words: pt(lang, 'sovShort', { sum, gap: money(-gap) }), lines: kept }
+    : { state: 'over', words: pt(lang, 'sovOver', { sum, gap: money(gap) }), lines: kept }
 }

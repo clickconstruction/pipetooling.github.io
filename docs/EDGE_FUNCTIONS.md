@@ -1015,7 +1015,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash) by `_shared/gcTradeLink.ts`, the one rule the writes share (v2.4925). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
 
-**Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, dated from today, and no visit is counted.
+**Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, dated from today, and no visit is counted. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
 
 **Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count.
 
