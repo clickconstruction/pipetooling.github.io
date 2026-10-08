@@ -38,6 +38,7 @@ import { GcBidTabs } from '../components/gc/GcBidTabs'
 import { GcOurNumber } from '../components/gc/GcOurNumber'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
+import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
@@ -727,6 +728,7 @@ export default function GcProjects() {
             await refreshBoard()
           }}
           onClose={() => setCompanyId(null)}
+          portal={<GcTheirPortal companyId={openCompany.id} />}
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)
