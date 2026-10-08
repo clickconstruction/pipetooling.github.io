@@ -14,7 +14,7 @@ import { inviteAsks, type AskOutcome, type NewAsk } from './askEmail'
 import type { BoardRows } from './boardRows'
 import type { TradeEmailAnswer } from './tradeEmail'
 import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
-import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
+import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { DeclineReason, GcLostWhy, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
@@ -148,21 +148,7 @@ export async function loadGcProjects(): Promise<GcProjectView[]> {
       exclusions: exclusionRows.filter((x) => mineIds.has(x.package_id)),
       sets: mySets,
       setItems: setItemRows.filter((i) => mySetIds.has(i.set_id)),
-      questions: questionRows
-        .filter((q) => q.project_id === gc.project_id)
-        .map((q) => ({
-          id: q.id,
-          package_id: q.package_id,
-          // The column lands with 20261007150000; a types file from before it reads it as absent.
-          asked_by_name: (q as { asked_by_name?: string | null }).asked_by_name ?? '',
-          text: q.text,
-          sheets: q.sheets ?? [],
-          asked_on: q.asked_on,
-          sent_to_architect_on: q.sent_to_architect_on,
-          answered_on: q.answered_on,
-          answer: q.answer ?? '',
-          in_set_id: q.in_set_id,
-        })),
+      questions: questionRows.filter((q) => q.project_id === gc.project_id).map(questionRowOf),
     }
     out.push(gcProjectFromRows(rows))
   }

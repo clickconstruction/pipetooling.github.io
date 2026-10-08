@@ -178,6 +178,45 @@ function setView(rows: GcProjectRows, set: GcProjectRows['sets'][number]): GcPla
 }
 
 /** The rows of one GC project read back as the project the kernels read. */
+/** A `gc_plan_questions` row as the database returns it; `loadGcProjects` reads `*`. */
+export interface QuestionDbRow {
+  id: string
+  package_id: string | null
+  asked_by_name?: string | null
+  text: string
+  sheets: string[] | null
+  asked_on: string
+  sent_to_architect_on: string | null
+  answered_on: string | null
+  answer: string | null
+  in_set_id: string | null
+  company_id?: string | null
+  answer_sent_to?: string[] | null
+}
+
+/**
+ * One question as the project's rows carry it (`loadGcProjects`): every field the questions window reads, with the
+ * company that asked from its portal and the companies the answer was emailed to (P3-b), so the answered card says
+ * who has it (v2.4959).
+ */
+export function questionRowOf(q: QuestionDbRow): NonNullable<GcProjectRows['questions']>[number] {
+  return {
+    id: q.id,
+    package_id: q.package_id,
+    // The column lands with 20261007150000; a types file from before it reads it as absent.
+    asked_by_name: q.asked_by_name ?? '',
+    text: q.text,
+    sheets: q.sheets ?? [],
+    asked_on: q.asked_on,
+    sent_to_architect_on: q.sent_to_architect_on,
+    answered_on: q.answered_on,
+    answer: q.answer ?? '',
+    in_set_id: q.in_set_id,
+    company_id: q.company_id ?? null,
+    answer_sent_to: q.answer_sent_to ?? [],
+  }
+}
+
 export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
   const sets = [...rows.sets].sort((a, b) => a.rev - b.rev)
   const newest = sets[sets.length - 1]?.rev ?? 0
