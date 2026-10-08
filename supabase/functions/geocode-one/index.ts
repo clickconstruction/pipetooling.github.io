@@ -108,15 +108,19 @@ serve(async (req) => {
   if (profileErr) {
     return jsonResponse(500, { error: 'Could not load user role' })
   }
+  // The roles that may open /map — the client's `isPathAllowedForRole(role, '/map')`. The
+  // controller acts as an assistant everywhere (v2.662); v2.4974 names it here too, so the job
+  // form's *On the map* line and the Map page's Google refresh answer the controller as well.
   const mapGeocodeRole = (profile as { role: string } | null)?.role
   if (
     mapGeocodeRole !== 'dev' &&
     mapGeocodeRole !== 'master_technician' &&
     mapGeocodeRole !== 'assistant' &&
+    mapGeocodeRole !== 'controller' &&
     mapGeocodeRole !== 'estimator'
   ) {
     return jsonResponse(403, {
-      error: 'Map geocoding is restricted to dev, master_technician, assistant, and estimator roles',
+      error: 'Map geocoding is restricted to dev, master_technician, assistant, controller, and estimator roles',
     })
   }
 

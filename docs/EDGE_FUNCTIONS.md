@@ -2298,13 +2298,15 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-one
 
+> **v2.4974 — the controller is admitted**: the role check named dev, master_technician, assistant and estimator, while the Edit Job *On the map* line (and `/map` itself) opened to the controller too, so a controller's form showed a line the function answered with a 403. The list is now the five `/map` roles — the client's `isPathAllowedForRole(role, '/map')`. **Redeploy required** (until then a controller's line reads *could not place it*).
+
 > **v2.4975 — only points in the lower 48 are kept**: a point outside lat 24–50, lng −125 to −66 ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)) from OpenStreetMap, Google or the Census is a miss. It is not written to `address_geocodes`, it is logged with the raw answer, `detail` names it (*OpenStreetMap placed it outside the lower 48 (26.7813, 91.9274)*), and the next geocoder is asked. A cached point outside the box is not a cache hit: the address is asked again and a good answer replaces the row. **Redeploy after merge.**
 
 > **v2.4878 — every answer crashed**: v2.4783's `answer()` called itself, so any call that reached an answer recursed until the stack overflowed, and Deno sent a 500 with no CORS header (the browser shows a CORS error). It returns the 200 itself now. Cached addresses masked it: the job form and the Map page read `address_geocodes` directly. **Redeploy required.**
 
 > **v2.4783 — the county on every ok answer**: `county` is Google's `administrative_area_level_2` on a Google answer, else the county the point sits in from the Census geographies lookup ([`_shared/censusGeocode.ts`](../supabase/functions/_shared/censusGeocode.ts) `censusCountyFromPoint`, free, no key), for cache hits too; '' when neither knows. The job form's *On the map* line reads it. **Redeploy required** (the old answer has no county; the line then reads *placed*).
 
-**Purpose**: Single-address geocoding for **`address_geocodes`** (**`dev`**, **`master_technician`**, **`assistant`**, **`estimator`** only): same cache and upsert as batch. **Map** bulk resolution uses **`geocode-address-batch`** from [`useMapPageData.ts`](../src/hooks/useMapPageData.ts). **`geocode-one`** covers **Review geocodes** **`refresh_google_only`**, **Settings** default map label lookup ([`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts)), and any caller that wants one row per request. For a normal (non **`refresh_google_only`**) miss: **Nominatim** first, then **Google** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates.
+**Purpose**: Single-address geocoding for **`address_geocodes`** (**`dev`**, **`master_technician`**, **`assistant`**, **`controller`**, **`estimator`** only — the roles that may open **`/map`**): same cache and upsert as batch. **Map** bulk resolution uses **`geocode-address-batch`** from [`useMapPageData.ts`](../src/hooks/useMapPageData.ts). **`geocode-one`** covers **Review geocodes** **`refresh_google_only`**, **Settings** default map label lookup ([`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts)), and any caller that wants one row per request. For a normal (non **`refresh_google_only`**) miss: **Nominatim** first, then **Google** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates.
 
 **Endpoint**: `POST /functions/v1/geocode-one`
 
@@ -2323,7 +2325,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional **`GOOGLE_MAPS_API_KEY`** (enable **Geocoding API** in Google Cloud; same key as Street View is typical). If unset, Nominatim miss returns **`ok: false`** (e.g. **`not_found`**) as before.
 
-**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','estimator')`** in the function (**403** otherwise).
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','controller','estimator')`** in the function (**403** otherwise; v2.4974 added the controller).
 
 **Client pacing**: The **batch** function waits **~1.1s** between *rows* for Nominatim inside one request. **Map** callers that loop **`geocode-one`** (e.g. **`refresh_google_only`** with a short sleep between rows — [`MapGeocodeReviewModal.tsx`](../src/components/map/MapGeocodeReviewModal.tsx)) should avoid hammering Nominatim / Google; follow Google’s Maps Platform terms for your deployment.
 
