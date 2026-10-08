@@ -4,12 +4,12 @@ import { GC_STATEMENT_COMPANY_NAME } from './gcStatementEmail'
 
 /**
  * "Where the checks went" — the sheet (v2.4050, PR 4 of the train; laid out
- * for paper in v2.4091): every payment a GC sent in the period, where each
- * sits now (one line per job and bill), what moved, what came in and is not
- * yet on a bill, and where each job stands. Pure HTML builder in the GC
- * statement print's mold (light, inline styles; the window.open/print glue
- * stays at the call site), plus the same rows as a CSV for the bookkeeper
- * who reconciles in a spreadsheet.
+ * for paper in v2.4091; a PDF since v2.4913): every payment a GC sent in the
+ * period, where each sits now (one line per job and bill), what moved, what
+ * came in and is not yet on a bill, and where each job stands.
+ * `gcChecksSheetModel` is the pure half — every cell, tested;
+ * `gcChecksAppliedPdf.ts` draws it. The same rows go out as a CSV for the
+ * bookkeeper who reconciles in a spreadsheet.
  *
  * Paper rules (from the first print, RMC 2026-09-28): rows never split
  * across a page but sections may, so page 1 is not a heading over white
@@ -18,12 +18,8 @@ import { GC_STATEMENT_COMPANY_NAME } from './gcStatementEmail'
  * job table is Open then Paid in full, each with its subtotal.
  */
 
-const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const money = (n: number): string => `$${formatCurrency(n)}`
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
-const GREEN = 'color:#15803d;font-weight:600'
-const RED = 'color:#b91c1c;font-weight:600'
-const MUTED = 'color:#4b5563'
 
 export function gcChecksReportTitle(gcName: string): string {
   return `${gcName} — where your checks were applied`
@@ -66,121 +62,129 @@ function lastAppliedWords(j: GcCheckJob): string {
   return j.lastApplied.receivedYmd ? `${label} · ${formatYmdShort(j.lastApplied.receivedYmd)}` : label
 }
 
-/** A check's lines grouped under each job, the job named once. */
-function appliedLinesHtml(c: GcCheck): string {
-  const byJob = new Map<string, GcCheck['lines']>()
-  for (const l of c.lines) byJob.set(l.jobLabel, [...(byJob.get(l.jobLabel) ?? []), l])
-  const groups = [...byJob.entries()].map(([jobLabel, lines]) => {
-    const jobPaid = lines.some((l) => l.jobPaidInFull)
-    const rows = lines
-      .map((l) => {
-        const tag = l.invoiceId && !jobPaid && l.billPaidInFull ? ` <span style="${GREEN}">paid in full</span>` : ''
-        return `<div style="display:flex;justify-content:space-between;gap:12px;padding-left:0.9rem"><span>${escapeHtml(l.invoiceLabel)}${tag}</span><span style="white-space:nowrap">${money(l.amount)}</span></div>`
-      })
-      .join('')
-    const head = `<div style="font-weight:600">${escapeHtml(jobLabel)}${jobPaid ? ` <span style="${GREEN}">job paid in full</span>` : ''}</div>`
-    return `<div>${head}${rows}</div>`
-  })
-  const unapplied = c.unapplied > 0.005 ? `<div style="display:flex;justify-content:space-between;gap:12px"><span style="color:#b45309;font-weight:600">not yet applied — tell us the invoice</span><span style="white-space:nowrap">${money(c.unapplied)}</span></div>` : ''
-  return `<div style="display:grid;gap:5px">${groups.join('')}${unapplied}</div>`
+export type SheetTone = 'ink' | 'bold' | 'muted' | 'green' | 'red' | 'amber'
+export type SheetRun = { text: string; tone?: SheetTone }
+/** One line of a cell: its words, an amount at the cell's right edge, set in under its job, small. */
+export type SheetLine = { runs: SheetRun[]; amount?: string; indent?: boolean; small?: boolean; gapBefore?: boolean }
+export type SheetCell = { lines: SheetLine[]; align?: 'right'; span?: number }
+export type SheetTable = {
+  /** Each column's share of the width; they sum to 1. */
+  widths: number[]
+  head: SheetCell[]
+  rows: SheetCell[][]
+  /** The subtotal row, shaded. */
+  total: SheetCell[]
+}
+export type GcChecksSheetModel = {
+  title: string
+  subtitle: string
+  /** The summary box: one phrase each, its figures bold. */
+  summary: SheetRun[][]
+  checks: { heading: string; note: string; table: SheetTable; earlier: string | null }
+  jobs: { heading: string; note: string; open: SheetTable | null; paid: SheetTable | null }
+  foot: string
 }
 
-export function buildGcChecksAppliedReportHtml(gcName: string, report: GcChecksReport, opts: { asOfYmd: string }): string {
-  const title = escapeHtml(gcChecksReportTitle(gcName))
+const cell = (text: string, tone?: SheetTone, align?: 'right'): SheetCell => ({ lines: [{ runs: [{ text, tone }] }], ...(align ? { align } : {}) })
+const head = (text: string, align?: 'right'): SheetCell => cell(text, 'bold', align)
+const totalCell = (text: string, o: { align?: 'right'; span?: number } = {}): SheetCell => ({ lines: text ? [{ runs: [{ text, tone: 'bold' }] }] : [], ...o })
+
+/** A check's lines grouped under each job, the job named once. */
+function appliedLines(c: GcCheck): SheetLine[] {
+  const byJob = new Map<string, GcCheck['lines']>()
+  for (const l of c.lines) byJob.set(l.jobLabel, [...(byJob.get(l.jobLabel) ?? []), l])
+  const out: SheetLine[] = []
+  for (const [jobLabel, lines] of byJob) {
+    const jobPaid = lines.some((l) => l.jobPaidInFull)
+    out.push({ runs: [{ text: jobLabel, tone: 'bold' }, ...(jobPaid ? [{ text: ' job paid in full', tone: 'green' as const }] : [])], ...(out.length > 0 ? { gapBefore: true } : {}) })
+    for (const l of lines) {
+      const tag = l.invoiceId && !jobPaid && l.billPaidInFull
+      out.push({ runs: [{ text: l.invoiceLabel }, ...(tag ? [{ text: ' paid in full', tone: 'green' as const }] : [])], amount: money(l.amount), indent: true })
+    }
+  }
+  if (c.unapplied > 0.005) out.push({ runs: [{ text: 'not yet applied — tell us the invoice', tone: 'amber' }], amount: money(c.unapplied), ...(out.length > 0 ? { gapBefore: true } : {}) })
+  return out
+}
+
+export function gcChecksSheetModel(gcName: string, report: GcChecksReport, opts: { asOfYmd: string }): GcChecksSheetModel {
   const s = report.summary
-  const summary = [
-    `<b>${plural(s.payments, 'payment', 'payments')}</b> received · <b>${money(s.received)}</b>`,
-    `applied to <b>${plural(s.appliedLines, 'invoice', 'invoices')}</b> on <b>${plural(s.jobsPaid, 'job', 'jobs')}</b>`,
-    ...(s.unapplied > 0.005 ? [`<b>${money(s.unapplied)}</b> received, not yet applied`] : []),
-    `<b>${money(s.stillOpen)}</b> still open${s.retainageHeld > 0.005 ? ` · of which <b>${money(s.retainageHeld)}</b> is retainage you hold` : ''}`,
+  const summary: SheetRun[][] = [
+    [{ text: plural(s.payments, 'payment', 'payments'), tone: 'bold' }, { text: ' received · ' }, { text: money(s.received), tone: 'bold' }],
+    [{ text: 'applied to ' }, { text: plural(s.appliedLines, 'invoice', 'invoices'), tone: 'bold' }, { text: ' on ' }, { text: plural(s.jobsPaid, 'job', 'jobs'), tone: 'bold' }],
+    ...(s.unapplied > 0.005 ? [[{ text: money(s.unapplied), tone: 'bold' as const }, { text: ' received, not yet applied' }]] : []),
+    [{ text: money(s.stillOpen), tone: 'bold' }, { text: ' still open' }, ...(s.retainageHeld > 0.005 ? [{ text: ' · of which ' }, { text: money(s.retainageHeld), tone: 'bold' as const }, { text: ' is retainage you hold' }] : [])],
   ]
-    .map((x) => `<span>${x}</span>`)
-    .join('')
 
   const showWasOn = report.checks.some((c) => c.wasOn.length > 0)
   const showRetainage = report.jobs.some((j) => j.retainageHeld > 0.005)
 
-  const checkRows = report.checks
-    .map((c) => {
-      const stamp = [
-        c.sentYmd && c.sentYmd !== c.receivedYmd ? `mailed ${formatYmdShort(c.sentYmd)}` : '',
-        c.depositedYmd ? `deposited ${formatYmdShort(c.depositedYmd)}` : '',
-      ]
-        .filter(Boolean)
-        .join(' · ')
-      const label = c.noNumber ? `<span style="${MUTED}">${escapeHtml(sheetPaymentLabel(c))}</span>` : `<b>${escapeHtml(c.label)}</b>`
-      const wasOn = showWasOn ? `<td style="font-size:0.75rem;${MUTED}">${c.wasOn.map((m) => escapeHtml(checkWasOnWords(m))).join('<br />')}</td>` : ''
-      return `<tr>
-        <td>${label}${stamp ? `<br /><span style="font-size:0.75rem;${MUTED}">${escapeHtml(stamp)}</span>` : ''}</td>
-        <td style="white-space:nowrap">${c.receivedYmd ? escapeHtml(formatYmdLong(c.receivedYmd)) : '—'}</td>
-        <td style="text-align:right;white-space:nowrap">${money(c.amount)}</td>
-        <td>${appliedLinesHtml(c)}</td>${wasOn}
-      </tr>`
-    })
-    .join('')
+  const checkRows = report.checks.map((c): SheetCell[] => {
+    const stamp = [c.sentYmd && c.sentYmd !== c.receivedYmd ? `mailed ${formatYmdShort(c.sentYmd)}` : '', c.depositedYmd ? `deposited ${formatYmdShort(c.depositedYmd)}` : ''].filter(Boolean).join(' · ')
+    const payment: SheetCell = { lines: [{ runs: [c.noNumber ? { text: sheetPaymentLabel(c), tone: 'muted' } : { text: c.label, tone: 'bold' }] }, ...(stamp ? [{ runs: [{ text: stamp, tone: 'muted' as const }], small: true }] : [])] }
+    const row = [payment, cell(c.receivedYmd ? formatYmdLong(c.receivedYmd) : '—'), cell(money(c.amount), undefined, 'right'), { lines: appliedLines(c) }]
+    if (showWasOn) row.push({ lines: c.wasOn.map((m) => ({ runs: [{ text: checkWasOnWords(m), tone: 'muted' as const }], small: true })) })
+    return row
+  })
+  const applied = s.received - s.unapplied
+  const checks: SheetTable = {
+    widths: showWasOn ? [0.13, 0.14, 0.13, 0.44, 0.16] : [0.15, 0.14, 0.13, 0.58],
+    head: [head('Payment'), head('Received'), head('Amount', 'right'), head('Applied now to'), ...(showWasOn ? [head('Was on')] : [])],
+    rows: checkRows,
+    total: [
+      totalCell(`Received${report.sinceYmd ? ` since ${formatYmdShort(report.sinceYmd)}` : ''}:`, { align: 'right', span: 2 }),
+      totalCell(money(s.received), { align: 'right' }),
+      totalCell(s.unapplied > 0.005 ? `${money(applied)} applied · ${money(s.unapplied)} not yet applied` : '', showWasOn ? { span: 2 } : {}),
+    ],
+  }
 
-  const applied = report.summary.received - report.summary.unapplied
-  const checksTotal = `<tr class="total">
-        <td colspan="2" style="text-align:right">Received${report.sinceYmd ? ` since ${escapeHtml(formatYmdShort(report.sinceYmd))}` : ''}:</td>
-        <td style="text-align:right;white-space:nowrap">${money(report.summary.received)}</td>
-        <td${showWasOn ? ' colspan="2"' : ''}>${report.summary.unapplied > 0.005 ? `${money(applied)} applied · ${money(report.summary.unapplied)} not yet applied` : ''}</td>
-      </tr>`
-  const checksCols = `<colgroup><col style="width:${showWasOn ? '13%' : '15%'}" /><col style="width:14%" /><col style="width:13%" /><col />${showWasOn ? '<col style="width:16%" />' : ''}</colgroup>`
-  const checksHead = `<thead><tr><th>Payment</th><th>Received</th><th style="text-align:right">Amount</th><th>Applied now to</th>${showWasOn ? '<th>Was on</th>' : ''}</tr></thead>`
-
+  const jobWidths = showRetainage ? [0.27, 0.12, 0.21, 0.16, 0.11, 0.13] : [0.34, 0.13, 0.21, 0.17, 0.15]
+  const jobHead = [head('Job'), head('Billed', 'right'), head('Paid by'), head('Last applied'), ...(showRetainage ? [head('Retainage held', 'right')] : []), head('Still open', 'right')]
+  const jobRow = (j: GcCheckJob): SheetCell[] => [
+    { lines: [{ runs: [{ text: j.jobLabel }, { text: ` · ${plural(j.billCount, 'invoice', 'invoices')}`, tone: 'muted' }] }] },
+    cell(money(j.billed), undefined, 'right'),
+    cell(paidByWords(j.paidBy)),
+    cell(lastAppliedWords(j)),
+    ...(showRetainage ? [cell(j.retainageHeld > 0.005 ? money(j.retainageHeld) : '—', undefined, 'right')] : []),
+    j.paid ? cell('paid', 'green', 'right') : cell(money(j.stillOpen), 'red', 'right'),
+  ]
   const open = report.jobs.filter((j) => !j.paid)
   const paid = report.jobs.filter((j) => j.paid)
-  const jobCols = `<colgroup><col style="width:${showRetainage ? '26%' : '33%'}" /><col style="width:12%" /><col style="width:20%" /><col style="width:16%" />${showRetainage ? '<col style="width:10%" />' : ''}<col style="width:12%" /></colgroup>`
-  const jobHead = `<thead><tr><th>Job</th><th style="text-align:right">Billed</th><th>Paid by</th><th>Last applied</th>${showRetainage ? '<th style="text-align:right">Retainage held</th>' : ''}<th style="text-align:right">Still open</th></tr></thead>`
-  const jobRow = (j: GcCheckJob) => `<tr>
-        <td>${escapeHtml(j.jobLabel)} <span style="font-size:0.75rem;${MUTED};white-space:nowrap">· ${plural(j.billCount, 'invoice', 'invoices')}</span></td>
-        <td style="text-align:right;white-space:nowrap">${money(j.billed)}</td>
-        <td>${escapeHtml(paidByWords(j.paidBy))}</td>
-        <td style="white-space:nowrap">${escapeHtml(lastAppliedWords(j))}</td>${showRetainage ? `<td style="text-align:right;white-space:nowrap">${j.retainageHeld > 0.005 ? money(j.retainageHeld) : '—'}</td>` : ''}
-        <td style="text-align:right;white-space:nowrap">${j.paid ? `<span style="${GREEN}">paid</span>` : `<span style="${RED}">${money(j.stillOpen)}</span>`}</td>
-      </tr>`
-  const colsBeforeMoney = showRetainage ? 4 : 4
-  const openTotal = `<tr class="total">
-        <td colspan="${colsBeforeMoney}" style="text-align:right">Open on ${plural(open.length, 'job', 'jobs')} (matches your statement)${showRetainage ? ' · retainage held' : ''}:</td>${showRetainage ? `<td style="text-align:right;white-space:nowrap">${money(report.summary.retainageHeld)}</td>` : ''}
-        <td style="text-align:right;white-space:nowrap">${money(report.summary.stillOpen)}</td>
-      </tr>`
-  const paidTotal = `<tr class="total">
-        <td colspan="${colsBeforeMoney + (showRetainage ? 1 : 0)}" style="text-align:right">${plural(paid.length, 'job', 'jobs')} paid in full · billed:</td>
-        <td style="text-align:right;white-space:nowrap">${money(paid.reduce((t, j) => t + j.billed, 0))}</td>
-      </tr>`
+  const openTable: SheetTable | null =
+    open.length > 0
+      ? {
+          widths: jobWidths,
+          head: jobHead,
+          rows: open.map(jobRow),
+          total: [
+            totalCell(`Open on ${plural(open.length, 'job', 'jobs')} (matches your statement)${showRetainage ? ' · retainage held' : ''}:`, { align: 'right', span: 4 }),
+            ...(showRetainage ? [totalCell(money(s.retainageHeld), { align: 'right' })] : []),
+            totalCell(money(s.stillOpen), { align: 'right' }),
+          ],
+        }
+      : null
+  const paidTable: SheetTable | null =
+    paid.length > 0
+      ? {
+          widths: jobWidths,
+          head: jobHead,
+          rows: paid.map(jobRow),
+          total: [totalCell(`${plural(paid.length, 'job', 'jobs')} paid in full · billed:`, { align: 'right', span: showRetainage ? 5 : 4 }), totalCell(money(paid.reduce((t, j) => t + j.billed, 0)), { align: 'right' })],
+        }
+      : null
 
-  const earlier = report.earlierCount > 0 ? `<p class="note">${plural(report.earlierCount, 'earlier payment is', 'earlier payments are')} not on this sheet; the job table counts every payment.</p>` : ''
-
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 0.75in; color: #1f2937; }
-  h1 { font-size: 1.25rem; margin: 0 0 0.15rem; }
-  h2 { font-size: 1rem; margin: 1.1rem 0 0.2rem; }
-  h3 { font-size: 0.875rem; margin: 0.8rem 0 0.1rem; color: #4b5563; }
-  p.sub { margin: 0 0 0.8rem; font-size: 0.875rem; color: #4b5563; }
-  p.note { margin: 0.2rem 0 0.35rem; font-size: 0.8125rem; color: #4b5563; }
-  .sum { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 0.875rem; margin: 0 0 0.5rem; padding: 0.55rem 0.7rem; background: #fafaf7; border: 1px solid #ccc; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.35rem; font-size: 0.8125rem; table-layout: fixed; }
-  th, td { border: 1px solid #ccc; padding: 0.35rem 0.45rem; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-  th { background: #f5f5f5; }
-  thead { display: table-header-group; }
-  tr { page-break-inside: avoid; break-inside: avoid; }
-  tr.total td { background: #f9fafb; font-weight: 600; }
-  h2, h3 { page-break-after: avoid; break-after: avoid; }
-  .foot { margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #ccc; font-size: 0.8125rem; color: #4b5563; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <p class="sub">${escapeHtml(gcChecksReportSubtitle(report, opts.asOfYmd))}</p>
-  <div class="sum">${summary}</div>
-  <h2>Each payment, and where it sits now</h2>
-  <p class="note">Newest first. A check that covered more than one job lists each job.${showWasOn ? ' "Was on" records a move after the check was first recorded.' : ''}</p>
-  <table>${checksCols}${checksHead}<tbody>${checkRows}${checksTotal}</tbody></table>${earlier}
-  <h2>Where each job stands</h2>
-  <p class="note">The same payments read by job. "Last applied" is the newest payment sitting on the job today.</p>
-  ${open.length > 0 ? `<h3>Open</h3><table>${jobCols}${jobHead}<tbody>${open.map(jobRow).join('')}${openTotal}</tbody></table>` : ''}
-  ${paid.length > 0 ? `<h3>Paid in full</h3><table>${jobCols}${jobHead}<tbody>${paid.map(jobRow).join('')}${paidTotal}</tbody></table>` : ''}
-  <p class="foot">Questions about a check? Reply to your statement email or call the office. Your live statement, with Pay online, is on your portal link.</p>
-</body></html>`
+  return {
+    title: gcChecksReportTitle(gcName),
+    subtitle: gcChecksReportSubtitle(report, opts.asOfYmd),
+    summary,
+    checks: {
+      heading: 'Each payment, and where it sits now',
+      note: `Newest first. A check that covered more than one job lists each job.${showWasOn ? ' "Was on" records a move after the check was first recorded.' : ''}`,
+      table: checks,
+      earlier: report.earlierCount > 0 ? `${plural(report.earlierCount, 'earlier payment is', 'earlier payments are')} not on this sheet; the job table counts every payment.` : null,
+    },
+    jobs: { heading: 'Where each job stands', note: 'The same payments read by job. "Last applied" is the newest payment sitting on the job today.', open: openTable, paid: paidTable },
+    foot: 'Questions about a check? Reply to your statement email or call the office. Your live statement, with Pay online, is on your portal link.',
+  }
 }
 
 const csvCell = (v: string | number | null | undefined): string => {
@@ -234,7 +238,9 @@ export function buildGcChecksAppliedCsv(report: GcChecksReport): string {
 }
 
 /** A file name a browser accepts: letters, digits and dashes from the GC's name, then the day. */
-export function gcChecksCsvFileName(gcName: string, asOfYmd: string): string {
+function gcChecksFileName(gcName: string, asOfYmd: string, ext: 'csv' | 'pdf'): string {
   const part = gcName.trim().replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'gc'
-  return `checks-applied_${part}_${asOfYmd}.csv`
+  return `checks-applied_${part}_${asOfYmd}.${ext}`
 }
+export const gcChecksCsvFileName = (gcName: string, asOfYmd: string): string => gcChecksFileName(gcName, asOfYmd, 'csv')
+export const gcChecksPdfFileName = (gcName: string, asOfYmd: string): string => gcChecksFileName(gcName, asOfYmd, 'pdf')
