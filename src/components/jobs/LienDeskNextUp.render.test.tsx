@@ -138,8 +138,10 @@ describe('LienDeskNextUp · the steps (v2.4631)', () => {
   it('every row wears four dots and its fraction; hovering them opens the card beside, with the ladder written out and the row’s own button', () => {
     const onAct = vi.fn()
     render(<LienDeskNextUp rows={rows} loading={false} isMobile={false} onAct={onAct} factsFor={() => ({ ownerName: 'Elbel Holdings LLC', viewerIsLeader: true })} viewerIsLeader />)
-    const marks = screen.getAllByTestId('lien-step-mark')
-    expect(marks).toHaveLength(4)
+    expect(screen.getAllByTestId('lien-step-mark')).toHaveLength(4)
+    // By row, not by place: the leader's approval leads the list since punch list #101 PR 3.
+    const markOf = (key: string) => within(document.querySelector(`[data-lien-next-up-row="${key}"]`) as HTMLElement).getByTestId('lien-step-mark')
+    const marks = [null, null, markOf('notice:j3'), markOf('affidavit:j4')]
     expect(marks[2]!.textContent).toBe('3/4')
     expect(screen.queryByTestId('lien-step-card')).toBeNull()
     fireEvent.mouseEnter(marks[2]!)
@@ -233,5 +235,17 @@ describe('LienDeskNextUp · the printed run (punch list #101)', () => {
     render(<LienDeskNextUp rows={[run]} loading={false} isMobile onAct={() => {}} foldsOpen />)
     expect(document.querySelector('[data-lien-next-up-fold-body="run:printed"]')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Take back…' }) as HTMLButtonElement).style.width).toBe('100%')
+  })
+})
+
+describe('LienDeskNextUp · only you can approve, first (punch list #101 PR 3)', () => {
+  it('the leader’s approvals lead under their own title; the office’s close the list under the leader’s name', () => {
+    const approve = row({ key: 'notice:j2', jobId: 'j2', title: '744 · Pecan St', action: 'approve', button: 'Approve', sub: 'Waiting on your approval', dueOn: '2026-11-15', daysLeft: 41, severity: 'quiet', group: 'coming' })
+    render(<LienDeskNextUp rows={[row({}), approve]} loading={false} isMobile={false} onAct={() => {}} />)
+    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
+    expect(titles).toEqual(['Only you can approve · 1', 'Needs you now · 1'])
+    cleanup()
+    render(<LienDeskNextUp rows={[row({}), { ...approve, button: null, sub: 'Waiting on Sam' }]} loading={false} isMobile={false} onAct={() => {}} waitingOn="Sam" />)
+    expect(Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)).toEqual(['Needs you now · 1', 'Waiting on Sam · 1'])
   })
 })

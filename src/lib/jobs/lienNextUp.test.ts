@@ -3,7 +3,7 @@ import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
-import { buildLienNextUp, groupLienNextUp, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
+import { buildLienNextUp, groupLienNextUp, lienNextUpCount, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -205,5 +205,36 @@ describe('buildLienNextUp — the printed run is one row (punch list #101)', () 
     expect(lienPrintedDaysWords(['2026-10-07T16:00:00Z', '2026-10-07T20:00:00Z'])).toBe('printed Oct 7')
     expect(lienPrintedDaysWords(['2026-10-08T16:00:00Z', null, '2026-10-07T16:00:00Z'])).toBe('printed Oct 7 to Oct 8')
     expect(lienPrintedDaysWords([null])).toBe('printed')
+  })
+})
+
+describe('groupLienNextUp — only you can approve, first (punch list #101 PR 3)', () => {
+  const submitted = { id: 'i1', status: 'awaiting_approval', submitted_at: '2026-10-04T15:00:00Z' } as unknown as LienDeskEntry['item']
+  const notices = [notice('j1', 'to_draft', { earliestDeadline: '2026-10-08', daysLeft: 3, severity: 'red' }), notice('j2', 'awaiting', { item: submitted }), notice('j3', 'awaiting', { earliestDeadline: '2026-11-15', daysLeft: 41 })]
+  it('the leader: his approvals lead, whatever their day; the rest run by day', () => {
+    const rows = build({ notices, role: 'master_technician' })
+    const groups = groupLienNextUp(rows)
+    expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.jobId)])).toEqual([
+      ['mine', 'Only you can approve', ['j2', 'j3']],
+      ['now', 'Needs you now', ['j1']],
+    ])
+    expect(lienNextUpCount(rows)).toBe(3)
+  })
+  it('the office: the approvals wait last, under the leader’s name, and leave the count', () => {
+    const rows = build({ notices, role: 'assistant', leaderName: (id) => (id === 'j2' || id === 'j3' ? 'Sam' : null) })
+    expect(rows.find((r) => r.jobId === 'j2')!.sub).toBe('Waiting on Sam · since Oct 4')
+    expect(rows.find((r) => r.jobId === 'j3')!.sub).toBe('Waiting on Sam')
+    const groups = groupLienNextUp(rows, { waitingOn: 'Sam' })
+    expect(groups.map((g) => [g.group, g.label, g.rows.map((r) => r.jobId)])).toEqual([
+      ['now', 'Needs you now', ['j1']],
+      ['waiting', 'Waiting on Sam', ['j2', 'j3']],
+    ])
+    const plain = groupLienNextUp(rows)
+    expect(plain[plain.length - 1]!.label).toBe('Waiting on the leader')
+    expect(lienNextUpCount(rows)).toBe(1)
+  })
+  it('an affidavit or retainage notice waiting on the leader names him too', () => {
+    const rows = build({ affidavits: [affidavit('j5', 'awaiting')], retainage: [retainage('j6', 'awaiting')], role: 'assistant', leaderName: () => 'Sam' })
+    expect(rows.map((r) => r.sub).sort()).toEqual(['Affidavit · waiting on Sam', 'Retainage · waiting on Sam'])
   })
 })
