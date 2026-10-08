@@ -1,0 +1,38 @@
+{
+  "about": "Owner Billing's O3 (to-dos/gc-mode/mockups/owner-billing-o3.md): no kernel moves; ChangeOrder gains the two fields the change order rows carry that main's shape lacks (price, pctDone), written again word for word over the union of the earlier lifts' fields (portal-p0's list, which already holds O2a's).",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [],
+  "types": [
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "ChangeOrder with O3's fields added (each field word for word).",
+      "fields": {
+        "ChangeOrder": [
+          "id",
+          "number",
+          "packageId",
+          "description",
+          "status",
+          "days",
+          "daysOnChart",
+          "answeredOn",
+          "sentOn",
+          "reason",
+          "schedule",
+          "tradeChange",
+          "cost",
+          "price",
+          "pctDone"
+        ]
+      },
+      "names": [
+        "ChangeOrder"
+      ]
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#ChangeOrderReason": "types.ts"
+  }
+}
