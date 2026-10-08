@@ -162,7 +162,7 @@ describe('back-charges (owner, 2026-10-05)', () => {
 
 describe('a trade asks for a change (owner, 2026-10-04)', () => {
   const request: TradeChangeRequest = { id: 'cr1', packageId: 'elec', partnerId: 'p1', askedOn: '2026-09-30', description: 'Rock at 3 ft', reason: 'field', amount: 14820, days: 2, file: null, changeOrderId: null, turnedDown: null }
-  const co: ChangeOrder = { id: 'co1', number: 1, description: 'Rock at 3 ft', reason: 'field', schedule: '+2 days', packageId: 'elec', cost: 14820, status: 'draft', sentOn: null, answeredOn: null }
+  const co: ChangeOrder = { id: 'co1', number: 1, description: 'Rock at 3 ft', reason: 'field', schedule: '+2 days', packageId: 'elec', cost: 14820, price: 16302, status: 'draft', sentOn: null, answeredOn: null, pctDone: 0 }
   const withCo = (c: ChangeOrder) => projectWith({ changeOrders: [c] })
 
   it('follows the change order the office made of it, to the customer and back to the trade', () => {

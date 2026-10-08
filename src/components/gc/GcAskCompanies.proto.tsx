@@ -1,24 +1,18 @@
-import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { askChoices, askStanding, type AskChoice } from '../../lib/gc/askCompanies'
-import { GC_COMPANY } from '../../lib/gc/company'
-import { currentRev, planLabel } from '../../lib/gc/lookups'
-import { inviteMessage, portalQuoteDue } from '../../lib/gc/portal'
-import { pt, type PortalLang } from '../../lib/gc/portalI18n'
-import type { AnswerRecord } from '../../lib/gc/reliability'
-import type { GcState, Invite } from '../../lib/gc/types'
-import { daysUntil, weekdayDate } from '../../lib/gc/words'
-import { Btn, Chip, type Tone } from './gcUi'
-
 /**
- * GC mode, the real build (the Board's B4-a): the window before companies are asked to quote, from
- * the design spike's `GcAskCompanies.tsx` (the owner, 2026-10-05: "build the confirm window").
- * Left: the job, the trade, and each company not yet asked, with what helps choose. Right: the
- * invitation the picked company would get, in its own language, drawn by the Portal's
- * `inviteMessage`. **Ask N companies** records each ask (`gc_invite_companies`). Until the Portal's
- * emails are in (P3) nothing is sent: the window says so, and each ask carries a note saying the
- * email waits.
+ * GC mode design spike: the window before companies are asked to quote (the owner, 2026-10-05:
+ * "build the confirm window"; mock-up `to-dos/gc-mode/ask-companies-mockup.html`). Trade partners'
+ * "Ask the 2 we have not asked", a company's "+ Ask on …" and the assistants' Ask all open it.
+ * Left: the job, the trade, and each company with what helps choose. Right: the invitation the
+ * picked company would get, in its own language. In the prototype nothing leaves the app.
  */
+import { useEffect, useState, type Dispatch } from 'react'
+import { createPortal } from 'react-dom'
+import { GC_COMPANY, daysUntil, planLabel, currentRev, weekdayDate, type GcAction, type GcState } from '../../lib/gcMode/gcModel'
+import { portalLink, portalQuoteDue } from '../../lib/gcMode/gcPortal'
+import { pt } from '../../lib/gcMode/gcPortalI18n'
+import { askChoices, askDraft, askStanding, type AskChoice } from '../../lib/gcMode/gcAskCompanies'
+import type { AnswerRecord } from '../../lib/gcMode/gcReliability'
+import { Btn, Chip, type Tone } from './gcUi'
 
 /** The bench's words for how a company answers when asked. */
 const RECORD_WORDS: Record<AnswerRecord, { tone: Tone; word: string }> = {
@@ -28,39 +22,32 @@ const RECORD_WORDS: Record<AnswerRecord, { tone: Tone; word: string }> = {
   silent: { tone: 'red', word: 'often silent' },
 }
 
-/** What the window says under the count until the Portal's emails are in. */
-const ASK_NOT_SENT_WORDS = 'For now nothing is emailed. Each ask is saved, and its email goes out once the portal can send it.'
-
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
 
 export function GcAskCompanies({
   state,
+  dispatch,
   projectId,
   packageId,
   tick,
-  langs,
-  onAsk,
   onClose,
 }: {
   state: GcState
+  dispatch: Dispatch<GcAction>
   projectId: string
   packageId: string
   /** The companies ticked when it opens. Unset: every company in range that we have not declined. */
   tick?: string[]
-  /** Each company's language, by id. Missing: English. */
-  langs: Record<string, PortalLang>
-  /** Record the asks. The window closes once it resolves. */
-  onAsk: (companyIds: string[]) => Promise<void>
   onClose: () => void
 }) {
   const project = state.projects.find((p) => p.id === projectId)
   const pkg = project?.packages.find((k) => k.id === packageId)
   const choices = askChoices(state, projectId, packageId)
-  const [picked, setPicked] = useState<Set<string>>(() => new Set(tick ?? choices.filter((c) => c.inZone && !c.declined).map((c) => c.partner.id)))
+  const [picked, setPicked] = useState<Set<string>>(
+    () => new Set(tick ?? choices.filter((c) => c.inZone && !c.declined).map((c) => c.partner.id)),
+  )
   // The company whose invitation shows on the right: the first ticked one, until a row is pressed.
   const [shown, setShown] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string | null>(null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -73,10 +60,8 @@ export function GcAskCompanies({
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 700px)').matches
   const asking = choices.filter((c) => picked.has(c.partner.id))
   const showing = choices.find((c) => c.partner.id === shown) ?? asking[0] ?? choices[0] ?? null
-  const lang: PortalLang = showing ? (langs[showing.partner.id] ?? 'en') : 'en'
-  // The invitation as it would read once asked today: a draft ask, nothing written.
-  const draftInvite: Invite | null = showing ? { id: 'draft', partnerId: showing.partner.id, status: 'invited', invitedOn: state.today, bid: null, seenRev: null } : null
-  const draft = showing && draftInvite ? inviteMessage(project, pkg, draftInvite, showing.partner, lang) : null
+  const draft = showing ? askDraft(state, projectId, packageId, showing.partner.id) : null
+  const lang = showing?.partner.lang ?? 'en'
   const standing = askStanding(state, projectId, packageId, asking.length)
   const due = project.ourBidSentOn === null ? portalQuoteDue(project) : null
   const dueDays = due ? daysUntil(due, state.today) : null
@@ -88,12 +73,8 @@ export function GcAskCompanies({
       return next
     })
   const send = () => {
-    setBusy(true)
-    setProblem(null)
-    onAsk(asking.map((c) => c.partner.id))
-      .then(onClose)
-      .catch((e: unknown) => setProblem(e instanceof Error ? e.message : 'The asks were not saved.'))
-      .finally(() => setBusy(false))
+    for (const c of asking) dispatch({ type: 'invite', projectId, packageId, partnerId: c.partner.id })
+    onClose()
   }
   const first = choices.filter((c) => c.inZone && !c.declined)
   const rest = choices.filter((c) => !c.inZone || c.declined)
@@ -105,7 +86,6 @@ export function GcAskCompanies({
     return (
       <div
         key={c.partner.id}
-        data-gc-ask-choice={c.partner.id}
         onClick={() => setShown(c.partner.id)}
         style={{
           display: 'grid',
@@ -119,7 +99,14 @@ export function GcAskCompanies({
           opacity: on ? 1 : 0.8,
         }}
       >
-        <input type="checkbox" checked={on} onChange={() => toggle(c.partner.id)} onClick={(e) => e.stopPropagation()} aria-label={`Ask ${c.partner.company}`} style={{ marginTop: '0.2rem' }} />
+        <input
+          type="checkbox"
+          checked={on}
+          onChange={() => toggle(c.partner.id)}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Ask ${c.partner.company}`}
+          style={{ marginTop: '0.2rem' }}
+        />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontWeight: 700 }}>{c.partner.company}</div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.83rem', overflowWrap: 'anywhere' }}>
@@ -132,7 +119,7 @@ export function GcAskCompanies({
               {c.partner.invited > 0 ? ` · ${c.partner.bids} of ${c.partner.invited}` : ''}
             </Chip>
             {c.travel && <Chip tone={c.inZone ? 'grey' : 'amber'}>{c.travel}</Chip>}
-            {langs[c.partner.id] === 'es' && <Chip tone="grey">Español</Chip>}
+            {c.partner.lang === 'es' && <Chip tone="grey">Español</Chip>}
             {c.notVetted && (
               <Chip tone="amber" title="It can quote. No award until we approve it on Trade partners.">
                 not vetted yet
@@ -150,16 +137,7 @@ export function GcAskCompanies({
     <div
       role="presentation"
       onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 1200,
-        background: 'rgba(0,0,0,0.45)',
-        display: 'flex',
-        alignItems: phone ? 'flex-end' : 'center',
-        justifyContent: 'center',
-        padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem',
-      }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}
     >
       <div
         role="dialog"
@@ -171,7 +149,7 @@ export function GcAskCompanies({
           color: 'var(--text-base)',
           borderRadius: phone ? '12px 12px 0 0' : 12,
           width: phone ? '100%' : 'min(920px, 100%)',
-          maxHeight: phone ? 'min(92vh, 100%)' : 'min(92vh, 720px, 100%)',
+          maxHeight: phone ? '92vh' : 'min(92vh, 720px)',
           display: 'grid',
           gridTemplateColumns: phone ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)',
           overflow: phone ? 'auto' : 'hidden',
@@ -182,8 +160,7 @@ export function GcAskCompanies({
           <div style={{ padding: '1rem 1rem 0.6rem', display: 'grid', gap: '0.35rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Ask for {pkg.trade} quotes</h3>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.87rem' }}>
-              {project.name}
-              {project.sizeNote ? ` · ${project.sizeNote}` : ''}
+              {project.name} · {project.sizeNote}
             </div>
             <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
               <Chip tone={standing.quotes >= standing.wanted ? 'green' : standing.quotes === 0 ? 'red' : 'amber'}>
@@ -195,27 +172,26 @@ export function GcAskCompanies({
                   Quotes wanted {weekdayDate(due)} · {dueDays < 0 ? 'passed' : dueDays === 1 ? '1 day' : `${dueDays} days`}
                 </Chip>
               )}
-              {project.planSets.length > 0 && <Chip tone="grey">Plans: {planLabel(project, currentRev(project))}</Chip>}
+              <Chip tone="grey">Plans: {planLabel(project, currentRev(project))}</Chip>
               <Chip tone={pkg.scope.length === 0 ? 'red' : 'grey'}>{pkg.scope.length === 1 ? '1 scope line' : `${pkg.scope.length} scope lines`}</Chip>
             </div>
           </div>
           <div style={{ padding: '0 1rem 0.8rem', overflowY: 'auto', display: 'grid', gap: '0.45rem', alignContent: 'start', minHeight: 0, flex: 1 }}>
-            {choices.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Every company in this trade is already asked on this job. Add a company on Trade partners to ask another.</div>}
+            {choices.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Every company in this trade is already asked on this job.</div>}
             {first.length > 0 && <div style={label}>Who to ask</div>}
             {first.map(row)}
             {rest.length > 0 && <div style={{ ...label, marginTop: first.length > 0 ? '0.3rem' : 0 }}>Too far, or declined</div>}
             {rest.map(row)}
           </div>
           <div style={{ padding: '0.7rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 12rem', display: 'grid', gap: '0.2rem' }}>
-              <span>{standing.words}</span>
-              {asking.length > 0 && <strong style={{ color: 'var(--text-amber-800)' }}>{ASK_NOT_SENT_WORDS}</strong>}
-              {problem && <span style={{ color: 'var(--text-red-700)' }}>{problem}</span>}
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 12rem' }}>
+              {standing.words}
+              {asking.length > 0 ? ' In the prototype nothing leaves the app.' : ''}
             </span>
             <Btn kind="quiet" onClick={onClose}>
               Cancel
             </Btn>
-            <Btn kind="primary" disabled={asking.length === 0 || busy} onClick={send}>
+            <Btn kind="primary" disabled={asking.length === 0} onClick={send}>
               {asking.length === 1 ? `Ask ${asking[0]?.partner.company ?? '1 company'}` : `Ask ${asking.length} companies`}
             </Btn>
           </div>
@@ -244,14 +220,14 @@ export function GcAskCompanies({
                     }}
                   >
                     {c.partner.company}
-                    {langs[c.partner.id] === 'es' ? ' · Español' : ''}
+                    {c.partner.lang === 'es' ? ' · Español' : ''}
                   </button>
                 )
               })}
             </div>
           )}
           {draft && showing ? (
-            <article style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }} aria-label={`The invitation ${showing.partner.company} gets`}>
+            <article style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
               <div style={{ padding: '0.55rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.82rem', display: 'grid', gap: '0.1rem' }}>
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>From </span>
@@ -261,10 +237,7 @@ export function GcAskCompanies({
                   <span style={{ color: 'var(--text-muted)' }}>To </span>
                   {showing.to.map((t) => (t.email ? `${t.name} <${t.email}>` : t.name)).join(', ')}
                 </span>
-                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{draft.subject}</span>
-                  <Chip tone="amber">not sent yet</Chip>
-                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, marginTop: '0.2rem' }}>{draft.subject}</span>
               </div>
               <div style={{ padding: '0.7rem 0.75rem', display: 'grid', gap: '0.5rem', fontSize: '0.9rem', lineHeight: 1.45 }}>
                 {draft.lines.map((line) => (
@@ -287,7 +260,7 @@ export function GcAskCompanies({
                     </ul>
                   </>
                 )}
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Their own portal link goes here once the portal is open to them.</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{portalLink(showing.partner.id)}</div>
               </div>
             </article>
           ) : (

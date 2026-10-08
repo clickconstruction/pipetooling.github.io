@@ -45,4 +45,4 @@ The guess for a trade with no number is its lowest quote. When there is none, it
 
 ## What comes next
 
-Carrying a quote and asking a company come to the board in later steps. So do the ring on each row and *Who to call*. Until then, use the project's card below the board.
+Carrying a quote comes to the board in a later step. So do the ring on each row and *Who to call*. To ask a company for a quote, press Ask for quotes on the project's card below the board.

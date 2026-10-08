@@ -1,62 +1,98 @@
 // @vitest-environment jsdom
-/**
- * Render smoke for the Ask window (the owner, 2026-10-05: "build the confirm window";
- * `to-dos/gc-mode/ask-companies-mockup.html`): nobody is asked until the button is pressed, an
- * unticked company is left out, and the invitation shows before it goes.
- */
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcAskCompanies } from './GcAskCompanies'
-import { initialGcState } from '../../lib/gcMode/gcFixture'
+import { boardStateFromRows, type BoardRows, type CompanyRow } from '../../lib/gc/boardRows'
+import { clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { installDomShims } from '../../test/renderSmokeMocks'
 
-afterEach(cleanup)
+installDomShims()
 
-function padBConcrete() {
-  const state = initialGcState()
-  const project = state.projects.find((p) => p.name === 'Boerne Retail Pad B')!
-  const pkg = project.packages.find((k) => k.trade === 'Concrete')!
-  return { state, projectId: project.id, packageId: pkg.id }
+const concrete = (over: Partial<CompanyRow>): CompanyRow => ({
+  id: 'x',
+  name: 'x',
+  trades: ['Concrete'],
+  contact_name: '',
+  phone: '',
+  email: '',
+  address: '',
+  max_miles: null,
+  license: '',
+  lang: 'en',
+  vetting_status: null,
+  vetting_limit: null,
+  vetting_decided_on: null,
+  vetting_decided_by: null,
+  vetting_note: '',
+  ...over,
+})
+
+/** The clinic with two concrete companies: one in Boerne that chose Spanish, one in Laredo that goes 40 miles. */
+function rows(): BoardRows {
+  const base = clinicBoardRows()
+  return {
+    ...base,
+    companies: [
+      ...base.companies,
+      concrete({ id: 'alamo', name: 'Alamo Concrete', contact_name: 'Hector Luna', email: 'hector@alamo.test', address: '9 Main St, Boerne', max_miles: 60, lang: 'es' }),
+      concrete({ id: 'border', name: 'Border Flatwork', contact_name: 'Ines Barrera', address: '2 Rio St, Laredo', max_miles: 40 }),
+    ],
+  }
 }
 
-describe('the Ask window', () => {
-  it('shows who and the invitation, and asks only on the press', () => {
-    const { state, projectId, packageId } = padBConcrete()
-    const dispatch = vi.fn()
-    const onClose = vi.fn()
-    render(<GcAskCompanies state={state} dispatch={dispatch} projectId={projectId} packageId={packageId} onClose={onClose} />)
-    expect(screen.getByRole('dialog', { name: 'Ask for Concrete quotes' })).toBeTruthy()
-    expect(screen.getByLabelText('Ask Alamo Concrete')).toBeTruthy()
-    expect(screen.getByLabelText('Ask Guadalupe Flatwork')).toBeTruthy()
-    expect(screen.getByText('0 of 2 quotes')).toBeTruthy()
-    // The invitation is on screen before anything goes.
-    expect(screen.getAllByText(/Boerne Retail Pad B/).length).toBeGreaterThan(1)
-    expect(dispatch).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByText('Ask 2 companies'))
-    expect(dispatch).toHaveBeenCalledTimes(2)
-    expect(dispatch.mock.calls.every(([a]) => a.type === 'invite' && a.projectId === projectId && a.packageId === packageId)).toBe(true)
-    expect(onClose).toHaveBeenCalled()
+function open(over: { onAsk?: (ids: string[]) => Promise<void>; onClose?: () => void; tick?: string[] } = {}) {
+  const onAsk = over.onAsk ?? vi.fn(() => Promise.resolve())
+  const onClose = over.onClose ?? vi.fn()
+  render(
+    <GcAskCompanies state={boardStateFromRows(rows())} projectId="p1" packageId="k2" langs={{ alamo: 'es', border: 'en' }} onAsk={onAsk} onClose={onClose} {...(over.tick ? { tick: over.tick } : {})} />,
+  )
+  return { onAsk, onClose, dialog: screen.getByRole('dialog', { name: 'Ask for Concrete quotes' }) }
+}
+
+describe('GcAskCompanies', () => {
+  it('ticks the company in range, offers the far one unticked, and says nothing is emailed yet', () => {
+    const { dialog } = open()
+    expect((within(dialog).getByLabelText('Ask Alamo Concrete') as HTMLInputElement).checked).toBe(true)
+    expect((within(dialog).getByLabelText('Ask Border Flatwork') as HTMLInputElement).checked).toBe(false)
+    expect(within(dialog).getByText('Too far, or declined')).toBeTruthy()
+    const far = dialog.querySelector('[data-gc-ask-choice="border"]') as HTMLElement
+    expect(within(far).getByText('no email on file')).toBeTruthy()
+    expect(within(dialog).getByText(/1 email goes out/)).toBeTruthy()
+    expect(within(dialog).getByText(/For now nothing is emailed/)).toBeTruthy()
+    expect(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' })).toBeTruthy()
   })
 
-  it('leaves out a company that is unticked, and names the one left', () => {
-    const { state, projectId, packageId } = padBConcrete()
-    const dispatch = vi.fn()
-    render(<GcAskCompanies state={state} dispatch={dispatch} projectId={projectId} packageId={packageId} onClose={() => undefined} />)
-    fireEvent.click(screen.getByLabelText('Ask Guadalupe Flatwork'))
-    fireEvent.click(screen.getByText('Ask Alamo Concrete', { selector: 'button' }))
-    expect(dispatch).toHaveBeenCalledTimes(1)
-    expect(state.partners.find((p) => p.id === dispatch.mock.calls[0]![0].partnerId)?.company).toBe('Alamo Concrete')
+  it('draws the invitation in the company’s own language, marked not sent yet, to its real address', () => {
+    const { dialog } = open()
+    const email = within(dialog).getByRole('article', { name: 'The invitation Alamo Concrete gets' })
+    expect(within(email).getByText('not sent yet')).toBeTruthy()
+    expect(within(email).getByText(/Hector Luna <hector@alamo.test>/)).toBeTruthy()
+    expect(within(email).getByText('Foundations')).toBeTruthy()
+    expect(email.textContent).toMatch(/Hill Country Clinic/)
+    expect(email.textContent).toMatch(/Hola|cotiz/i)
   })
 
-  it('opens with one company ticked from its own Ask chip, and Cancel asks nobody', () => {
-    const { state, projectId, packageId } = padBConcrete()
-    const alamo = state.partners.find((p) => p.company === 'Alamo Concrete')!
-    const dispatch = vi.fn()
-    const onClose = vi.fn()
-    render(<GcAskCompanies state={state} dispatch={dispatch} projectId={projectId} packageId={packageId} tick={[alamo.id]} onClose={onClose} />)
-    expect((screen.getByLabelText('Ask Alamo Concrete') as HTMLInputElement).checked).toBe(true)
-    expect((screen.getByLabelText('Ask Guadalupe Flatwork') as HTMLInputElement).checked).toBe(false)
-    fireEvent.click(screen.getByText('Cancel'))
-    expect(dispatch).not.toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
+  it('asks the ticked companies, then closes', async () => {
+    const { onAsk, onClose, dialog } = open()
+    fireEvent.click(within(dialog).getByLabelText('Ask Border Flatwork'))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ask 2 companies' }))
+    await waitFor(() => expect(onAsk).toHaveBeenCalledWith(['alamo', 'border']))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('keeps the window open with the problem in words when the asks do not save', async () => {
+    const onAsk = vi.fn(() => Promise.reject(new Error('We lost this bid. Nobody is asked on it.')))
+    const { onClose, dialog } = open({ onAsk })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Ask Alamo Concrete' }))
+    await within(dialog).findByText('We lost this bid. Nobody is asked on it.')
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('opens with only the companies it was given ticked, and asks nobody with none ticked', () => {
+    const { dialog } = open({ tick: ['border'] })
+    expect((within(dialog).getByLabelText('Ask Alamo Concrete') as HTMLInputElement).checked).toBe(false)
+    fireEvent.click(within(dialog).getByLabelText('Ask Border Flatwork'))
+    expect((within(dialog).getByRole('button', { name: 'Ask 0 companies' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(within(dialog).getByText('Tick a company to ask.')).toBeTruthy()
   })
 })

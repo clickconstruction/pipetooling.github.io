@@ -32,7 +32,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { CompanyLanguagePick } from './GcPortalLanguagePick'
 import { GcPartnersTab, PaperworkChips } from './GcOfficeTabs'
-import { GcAskCompanies } from './GcAskCompanies'
+import { GcAskCompanies } from './GcAskCompanies.proto'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { GcVetQueue, VettingChip } from './GcVetting'
 import { GcBoardStrip, type BoardStripItem } from './GcBoardStages.proto'

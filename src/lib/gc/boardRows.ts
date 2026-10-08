@@ -185,9 +185,14 @@ function pointOf(rows: BoardRows, address: string): Town | undefined {
   return p ? { name: address, lat: p.lat, lng: p.lng } : undefined
 }
 
-/** An ask's story, newest first, as the kernels read it (`Invite.contacts`). A company's own note is not an ask's line. */
+/**
+ * An ask's story, newest first, as the kernels read it (`Invite.contacts`). A company's own note is not
+ * an ask's line, and neither is the office's note on an ask (`how` 'note', such as the line saying its
+ * email waits): it is not a contact with the company, so it never reads as a call or a chase.
+ */
 function askContacts(lines: ContactRow[]): AskContact[] {
   return [...lines]
+    .filter((c) => c.how !== 'note')
     .sort((a, b) => b.contacted_on.localeCompare(a.contacted_on) || b.created_at.localeCompare(a.created_at))
     .map((c) => ({
       on: c.contacted_on,

@@ -94,6 +94,7 @@ when_to_read:
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
    - [gc-plan-question-email](#gc-plan-question-email)
+   - [gc-trade-portal](#gc-trade-portal)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -1003,6 +1004,23 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_plan_question`.
 
 **Doors**: the dev-only GC projects page (`/gc`), the questions window's **Email it to the architect** (`src/lib/gc/gcIo.ts`, `sendQuestionToArchitect`).
+
+
+---
+
+### gc-trade-portal
+
+**Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. The read never carries our price to the customer, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
+
+**Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
+
+**Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, dated from today, and no visit is counted.
+
+**Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
+
+**Doors**: links are made only through `mint_gc_trade_portal_link` (dev only until the portal's door, migration `20261008050000_gc_trade_portal_links`), so no real trade can open one before then. The page at `/t/:token` comes with the next PR.
 
 ---
 

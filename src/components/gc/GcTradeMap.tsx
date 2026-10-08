@@ -22,7 +22,7 @@ import {
 import { AskThread, PromiseChip } from './GcAskThread.proto'
 import { Btn, Chip, type Tone } from './gcUi'
 import { GcDeclineForm } from './GcDeclineForm.proto'
-import { GcAskCompanies } from './GcAskCompanies'
+import { GcAskCompanies } from './GcAskCompanies.proto'
 
 /**
  * GC mode design spike: line up quotes for one trade on one project. The map shows the project

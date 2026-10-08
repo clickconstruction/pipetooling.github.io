@@ -45,15 +45,21 @@ const ASK_WORDS: Record<Invite['status'], { tone: Tone; word: string }> = {
   declined: { tone: 'grey', word: 'passed' },
 }
 
+/** Open the Ask window (the Board's B4-a): a job's trade, with these companies ticked. Unset: everyone in range. */
+export type AskFor = (projectId: string, packageId: string, tick?: string[]) => void
+
 export function GcTradePartners({
   state,
   writes,
   onOpenProject,
+  onAsk,
   trades = [],
 }: {
   state: GcState
   writes: TradePartnerWrites
   onOpenProject: (projectId: string) => void
+  /** Open the Ask window. Unset: no Ask buttons. */
+  onAsk?: AskFor
   /** Trades on our projects that no company does yet, so each still gets a card to add one to. */
   trades?: string[]
 }) {
@@ -102,6 +108,7 @@ export function GcTradePartners({
       {rules.length > 0 && benches.length > 0 && (
         <AssistantActions
           rules={rules}
+          {...(onAsk ? { onAsk } : {})}
           onAdd={(trade) => {
             setAddingTrade(trade)
             document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -115,6 +122,7 @@ export function GcTradePartners({
           bench={bench}
           writes={writes}
           onOpenProject={onOpenProject}
+          {...(onAsk ? { onAsk } : {})}
           adding={addingTrade === bench.trade}
           onAdding={(on) => setAddingTrade(on ? bench.trade : null)}
         />
@@ -268,7 +276,7 @@ function VetRow({ partner, writes }: { partner: Partner; writes: TradePartnerWri
 }
 
 /** Each standard the office holds itself to: the ideal, where we are, and what closes the gap. Read only here but for adding a company. */
-function AssistantActions({ rules, onAdd }: { rules: AssistantRule[]; onAdd: (trade: string) => void }) {
+function AssistantActions({ rules, onAdd, onAsk }: { rules: AssistantRule[]; onAdd: (trade: string) => void; onAsk?: AskFor }) {
   const [folded, setFolded] = useState(false)
   const [open, setOpen] = useState<AssistantRule['key'] | null>('bench')
   const todo = rules.reduce((n, r) => n + r.items.length, 0)
@@ -381,6 +389,11 @@ function AssistantActions({ rules, onAdd }: { rules: AssistantRule[]; onAdd: (tr
                               {item.actionLabel}
                             </Btn>
                           )}
+                          {item.action?.kind === 'ask' && !item.doneNote && onAsk && (
+                            <Btn kind="quiet" onClick={() => item.action?.kind === 'ask' && onAsk(item.action.projectId, item.action.packageId, item.action.partnerIds)}>
+                              {item.actionLabel}
+                            </Btn>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -399,6 +412,7 @@ function BenchCard({
   bench,
   writes,
   onOpenProject,
+  onAsk,
   adding,
   onAdding,
 }: {
@@ -406,6 +420,7 @@ function BenchCard({
   bench: TradeBench
   writes: TradePartnerWrites
   onOpenProject: (projectId: string) => void
+  onAsk?: AskFor
   adding: boolean
   onAdding: (on: boolean) => void
 }) {
@@ -568,7 +583,7 @@ function BenchCard({
           }}
         >
           {bench.needs.map((need) => (
-            <NeedLine key={need.pkg.id} state={state} need={need} bench={bench} onOpenProject={onOpenProject} />
+            <NeedLine key={need.pkg.id} state={state} need={need} bench={bench} onOpenProject={onOpenProject} {...(onAsk ? { onAsk } : {})} />
           ))}
         </div>
       )}
@@ -671,7 +686,7 @@ function CoverageFields({
   )
 }
 
-function NeedLine({ state, need, bench, onOpenProject }: { state: GcState; need: TradeNeed; bench: TradeBench; onOpenProject: (projectId: string) => void }) {
+function NeedLine({ state, need, bench, onOpenProject, onAsk }: { state: GcState; need: TradeNeed; bench: TradeBench; onOpenProject: (projectId: string) => void; onAsk?: AskFor }) {
   const asked = new Set(need.pkg.invites.map((i) => i.partnerId))
   const unasked = bench.partners.filter((p) => !asked.has(p.id))
   const notAsked = unasked.filter((p) => travelFor(state, p, need.project).inZone)
@@ -718,6 +733,12 @@ function NeedLine({ state, need, bench, onOpenProject }: { state: GcState; need:
         <span style={{ color: 'var(--text-600)' }}>
           {notAsked.length} in range {notAsked.length === 1 ? 'is' : 'are'} not asked yet
         </span>
+      )}
+      {/* Every company not asked yet opens the Ask window, those in range ticked (the owner, 2026-10-05). */}
+      {onAsk && unasked.length > 0 && (
+        <Btn kind={need.short > 0 && notAsked.length > 0 ? 'primary' : 'quiet'} onClick={() => onAsk(need.project.id, need.pkg.id)}>
+          {notAsked.length > 0 ? `Ask the ${notAsked.length === 1 ? '1' : notAsked.length} we have not asked` : 'Ask anyway'}
+        </Btn>
       )}
       {/* With no company on the trade, the table under it says so: nobody to have asked. */}
       {need.short > 0 && notAsked.length === 0 && bench.partners.length > 0 && <span style={{ color: 'var(--text-red-700)', fontWeight: 600 }}>Everyone in range is asked. Add a company.</span>}

@@ -26,10 +26,13 @@ import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
+import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
-import { boardStateFromRows } from '../lib/gc/boardRows'
+import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
+import type { PortalLang } from '../lib/gc/portalI18n'
 import {
   addGcCompany,
+  askGcCompanies,
   checkDriveAccess,
   createGcProject,
   declineGcAsk,
@@ -128,13 +131,19 @@ export default function GcProjects() {
   // list stays for everyone until the board's own door opens it to the office.
   const [board, setBoard] = useState<GcState | null>(null)
   const [boardProblem, setBoardProblem] = useState<string | null>(null)
+  // Each company's language, for the invitation the Ask window draws (the kernels' company carries none yet).
+  const [langs, setLangs] = useState<Record<string, PortalLang>>({})
+  const takeRows = (rows: BoardRows) => {
+    setBoard(boardStateFromRows(rows))
+    setLangs(Object.fromEntries(rows.companies.map((c) => [c.id, c.lang === 'es' ? 'es' : 'en'])))
+  }
   useEffect(() => {
     if (role !== 'dev' || !loaded || loaded.projects.length === 0) return
     let live = true
     loadGcBoardRows(loaded.projects, today)
       .then((rows) => {
         if (!live) return
-        setBoard(boardStateFromRows(rows))
+        takeRows(rows)
         setBoardProblem(null)
       })
       .catch((e) => {
@@ -148,8 +157,11 @@ export default function GcProjects() {
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   const [devView, setDevView] = useState<'board' | 'partners' | 'followUp'>('board')
   const refreshBoard = async () => {
-    if (loaded) setBoard(boardStateFromRows(await loadGcBoardRows(loaded.projects, today)))
+    if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today))
   }
+  // The Ask window (the Board's B4-a): a job's trade, with these companies ticked. Unset: everyone in range.
+  const [asking, setAsking] = useState<{ projectId: string; packageId: string; tick?: string[] } | null>(null)
+  const openAsk = (projectId: string, packageId: string, tick?: string[]) => setAsking({ projectId, packageId, ...(tick ? { tick } : {}) })
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
       await addGcCompany(draft)
@@ -359,7 +371,7 @@ export default function GcProjects() {
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
               />
             ) : devView === 'partners' ? (
-              <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
+              <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
             ) : (
               <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} />
             )
@@ -491,7 +503,7 @@ export default function GcProjects() {
                     ))}
                   </ul>
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} />}
+                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} />}
                 </div>
               ))}
             </div>
@@ -517,6 +529,21 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+      {asking && board && (
+        <GcAskCompanies
+          key={`${asking.projectId}:${asking.packageId}`}
+          state={board}
+          projectId={asking.projectId}
+          packageId={asking.packageId}
+          {...(asking.tick ? { tick: asking.tick } : {})}
+          langs={langs}
+          onAsk={async (companyIds) => {
+            await askGcCompanies(asking.packageId, companyIds, profileName ?? '', today)
+            await refreshBoard()
+          }}
+          onClose={() => setAsking(null)}
+        />
+      )}
 
       {questionsProject && loaded && (
         <GcQuestionsWindow

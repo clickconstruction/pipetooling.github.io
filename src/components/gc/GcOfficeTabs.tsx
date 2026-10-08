@@ -81,7 +81,7 @@ import { BUILDING_CSS } from './gcBuildingCss'
 import { GcBuildingCrewCard } from './GcBuildingCrew'
 import { GcPlansDoors } from './GcNewPlans.proto'
 import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th, type Tone } from './gcUi'
-import { GcAskCompanies } from './GcAskCompanies'
+import { GcAskCompanies } from './GcAskCompanies.proto'
 import { proposalWeeksWords, roughWeeks, roughWeeksWords } from '../../lib/gcMode/gcRoughSchedule'
 
 /** GC mode design spike: the office's side of one project. */
