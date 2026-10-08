@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { GcFollowUpTab } from './GcAskThread'
+import { GcFollowUpTab } from './GcAskThread.proto'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 
 afterEach(cleanup)

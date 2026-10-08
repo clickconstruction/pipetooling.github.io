@@ -8,7 +8,7 @@ import {
   GcPackagesTab,
   GcPlansTab,
 } from '../components/gc/GcOfficeTabs'
-import { GcFollowUpTab } from '../components/gc/GcAskThread'
+import { GcFollowUpTab } from '../components/gc/GcAskThread.proto'
 import { GcOwnerBillingTab } from '../components/gc/GcOwnerBillingTab'
 import { GcCloseoutTab } from '../components/gc/GcCloseout'
 import { GcBuildingScheduleBlock, GcBuildingScheduleTab } from '../components/gc/GcBuildingSchedule'

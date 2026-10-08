@@ -19,9 +19,9 @@ import {
   type LineupRow,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
-import { AskThread, PromiseChip } from './GcAskThread'
+import { AskThread, PromiseChip } from './GcAskThread.proto'
 import { Btn, Chip, type Tone } from './gcUi'
-import { GcDeclineForm } from './GcDeclineForm'
+import { GcDeclineForm } from './GcDeclineForm.proto'
 import { GcAskCompanies } from './GcAskCompanies'
 
 /**
