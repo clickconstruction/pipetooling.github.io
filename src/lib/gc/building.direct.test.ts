@@ -160,10 +160,12 @@ describe('a change order’s trade side', () => {
     schedule: 'none',
     packageId: 'fsteel',
     cost: 18400,
+    price: 20240,
     status: 'signed',
     sentOn: '2026-09-20',
     answeredOn: '2026-09-22',
     tradeChange: { status: 'signed', sentOn: '2026-09-23', signedOn: '2026-09-24', sovLineId: 'fsteel-co-1' },
+    pctDone: 0,
   }
 
   it('says where each stands, and reads the trade’s percent once it signed', () => {

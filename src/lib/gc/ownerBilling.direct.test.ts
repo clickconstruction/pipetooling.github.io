@@ -43,7 +43,7 @@ import { money } from './words'
 const job = (s: GcState, id: string) => s.projects.find((p) => p.id === id)!
 const cents = (n: number) => Math.round(n * 100) / 100
 /** A change order to ask about, owned by no trade until a case says so. */
-const co: ChangeOrder = { id: 'co-9', number: 9, description: 'A test change', reason: 'owner', schedule: 'none', packageId: null, cost: 0, status: 'signed', sentOn: '2026-09-28', answeredOn: '2026-10-01' }
+const co: ChangeOrder = { id: 'co-9', number: 9, description: 'A test change', reason: 'owner', schedule: 'none', packageId: null, cost: 0, price: 0, status: 'signed', sentOn: '2026-09-28', answeredOn: '2026-10-01', pctDone: 0 }
 /** A draft pay application, written out: two trades and the fee, half of one trade new this month. */
 const draft: OwnerPayApp = {
   number: 4,
