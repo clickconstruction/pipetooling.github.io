@@ -2,6 +2,11 @@
   "about": "The Board's B5-b (to-dos/gc-mode/mockups/board-b5.md, section 4): Compare quotes' exclusion rows, appended to src/lib/gc/exclusions.ts. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b5-b.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "f2b84f11e33a6aa455971142d4de2e96632247c8",
+    "spike": "065fd1cc64da9c7ed805312b01e4d81bb330be0e",
+    "about": "#4967 merged; the spike before its follow-up"
+  },
   "existing": {
     "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
     "src/lib/gcMode/gcTypes.ts#GcCustomer": "types.ts",

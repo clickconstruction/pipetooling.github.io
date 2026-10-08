@@ -67,12 +67,15 @@ export function GcBoard({
   state,
   onOpen,
   onPlans,
+  onCompare,
   folderUrls = {},
 }: {
   state: GcState
   /** Opens a project: its card on the GC projects page. */
   onOpen: (projectId: string) => void
   onPlans: (projectId: string) => void
+  /** Opens Compare quotes on one trade, from the price card's trade line (B5-b). */
+  onCompare?: (projectId: string, packageId: string) => void
   /** Each project's Drive folder, by project id. */
   folderUrls?: Record<string, string>
 }) {
@@ -102,7 +105,17 @@ export function GcBoard({
             {list.length === 0 ? (
               <span style={{ color: 'var(--text-muted)', fontSize: '0.88rem', padding: '0 0.25rem' }}>{SECTIONS[key].empty}</span>
             ) : (
-              list.map((p) => <ProjectRow key={p.id} project={p} state={state} onOpen={() => onOpen(p.id)} onPlans={() => onPlans(p.id)} folderUrl={folderUrls[p.id] ?? ''} />)
+              list.map((p) => (
+                <ProjectRow
+                  key={p.id}
+                  project={p}
+                  state={state}
+                  onOpen={() => onOpen(p.id)}
+                  onPlans={() => onPlans(p.id)}
+                  onCompare={onCompare && ((packageId) => onCompare(p.id, packageId))}
+                  folderUrl={folderUrls[p.id] ?? ''}
+                />
+              ))
             )}
           </div>
         )
@@ -229,7 +242,21 @@ const linkIcon: CSSProperties = {
   borderRadius: 6,
 }
 
-function ProjectRow({ project, state, onOpen, onPlans, folderUrl }: { project: GcProject; state: GcState; onOpen: () => void; onPlans: () => void; folderUrl: string }) {
+function ProjectRow({
+  project,
+  state,
+  onOpen,
+  onPlans,
+  onCompare,
+  folderUrl,
+}: {
+  project: GcProject
+  state: GcState
+  onOpen: () => void
+  onPlans: () => void
+  onCompare?: ((packageId: string) => void) | undefined
+  folderUrl: string
+}) {
   const totals = proposalTotals(project)
   const card = usePriceCard()
   const newest = planLabel(project, currentRev(project))
@@ -321,7 +348,7 @@ function ProjectRow({ project, state, onOpen, onPlans, folderUrl }: { project: G
         )}
         <GcPriceLikely state={state} project={project} />
       </span>
-      <GcPriceCard card={card} state={state} project={project} onOpen={onOpen} />
+      <GcPriceCard card={card} state={state} project={project} onOpen={onOpen} {...(onCompare ? { onCompare } : {})} />
     </div>
   )
 }

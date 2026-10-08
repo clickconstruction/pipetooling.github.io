@@ -308,6 +308,8 @@ export interface SubBid {
    * company). From the portal's quote form or typed by the office from an emailed quote.
    */
   exclusions?: QuoteExclusion[]
+  /** Exclusion names they answered about: in `exclusions` means left out, otherwise it is in their price. */
+  exclusionsAnswered?: string[]
   /** The office's cost to cover each exclusion, by name, so the all-in number compares like with like. */
   exclusionCovers?: Record<string, number>
 }

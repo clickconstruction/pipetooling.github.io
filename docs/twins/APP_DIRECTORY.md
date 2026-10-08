@@ -74,7 +74,8 @@ every company we wait on for a quote, the ones to call first at the top, with Lo
 **Cannot do it**, and **Trade portals** (guide `share-a-trade-partner-its-portal`): each company's portal link, made,
 copied, remade or turned off, and whether they opened it. For a dev each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, and saves the asks; no email goes out yet.
-A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, and its language. Lists every GC project as the kernels read it (the plan
+A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, and its language.
+Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through
 `gc_create_project`. **Open the scope book** (`?book=1`)

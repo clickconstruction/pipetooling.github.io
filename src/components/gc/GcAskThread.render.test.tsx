@@ -97,6 +97,13 @@ describe('GcTradeAsks', () => {
     expect(screen.queryByRole('button', { name: 'Ask for quotes' })).toBeNull()
   })
 
+  it('opens Compare quotes once a quote is in on the trade, counting the quotes', () => {
+    const onCompare = vi.fn()
+    render(<GcTradeAsks state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k1" writes={writes()} onCompare={onCompare} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Compare quotes (1)' }))
+    expect(onCompare).toHaveBeenCalled()
+  })
+
   it('says no company is asked yet, and draws nothing for our own trade', () => {
     const { container, rerender } = render(<GcTradeAsks state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k2" writes={writes()} />)
     expect(screen.getByText('No company asked yet.')).toBeTruthy()

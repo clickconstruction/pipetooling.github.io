@@ -29,7 +29,7 @@ export interface GcProjectRows {
     drive_folder_url: string
     lost_on: string | null
   }
-  packages: { id: string; trade: string; position: number; budget: number | string; ours: boolean; own_bid_id: string | null }[]
+  packages: { id: string; trade: string; position: number; budget: number | string; ours: boolean; own_bid_id: string | null; carried_invite_id?: string | null; carry_budget?: boolean }[]
   scopeItems: { id: string; package_id: string; position: number; label: string; sheets: string[] | null; specs: string[] | null; added_in_set_id: string | null }[]
   exclusions: { id: string; package_id: string; position: number; label: string; by: string }[]
   sets: { id: string; rev: number; label: string; kind: string; issued_on: string; note: string; checked_by_user_id: string | null; drive_url: string; drive_access: string | null; drive_checked_on: string | null }[]
@@ -68,6 +68,9 @@ export interface GcTradeView {
   budget: number
   ours: boolean
   ownBidId: string | null
+  /** The quote we carry as this trade's number (the Board's B5), or our budget. Unset or null and false: nothing carried yet. */
+  carriedInviteId?: string | null
+  carryBudget?: boolean
   scope: { id: string; label: string; sheets: string[] | null; specs: string[] | null; addedInSetId: string | null }[]
   excludes: ScopeExclusion[]
 }
@@ -186,6 +189,8 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
       budget: num(p.budget),
       ours: p.ours,
       ownBidId: p.own_bid_id,
+      carriedInviteId: p.carried_invite_id ?? null,
+      carryBudget: p.carry_budget ?? false,
       scope: rows.scopeItems
         .filter((x) => x.package_id === p.id)
         .sort((a, b) => a.position - b.position)

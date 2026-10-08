@@ -470,3 +470,25 @@ export async function askGcCompanies(packageId: string, companyIds: string[], by
 export async function setGcCompanyLanguage(companyId: string, lang: 'en' | 'es'): Promise<void> {
   taken(await supabase.from('gc_companies').update({ lang }).eq('id', companyId).select('id').single(), 'save the language')
 }
+
+/**
+ * Compare quotes (the Board's B5-b): the office's own numbers on an ask, never the quote itself.
+ * Each write sends the whole map or list as the screen holds it, so the ask's row is the screen's.
+ */
+export async function setGcAskPlugs(inviteId: string, plugs: Record<string, number>): Promise<void> {
+  taken(await supabase.from('gc_invites').update({ plugs }).eq('id', inviteId).select('id').single(), 'save the cost to cover it')
+}
+
+export async function setGcAskExclusionCovers(inviteId: string, covers: Record<string, number>): Promise<void> {
+  taken(await supabase.from('gc_invites').update({ exclusion_covers: covers }).eq('id', inviteId).select('id').single(), 'save the cost to cover it')
+}
+
+export async function setGcAskTakenAlternates(inviteId: string, taken_alternates: string[]): Promise<void> {
+  taken(await supabase.from('gc_invites').update({ taken_alternates }).eq('id', inviteId).select('id').single(), 'save the alternate')
+}
+
+/** Carry a quote (its ask), our budget, or nothing as a trade's number. */
+export async function carryGcTrade(packageId: string, carry: { inviteId: string } | 'budget' | null): Promise<void> {
+  const row = carry === 'budget' ? { carried_invite_id: null, carry_budget: true } : { carried_invite_id: carry?.inviteId ?? null, carry_budget: false }
+  taken(await supabase.from('gc_trade_packages').update(row).eq('id', packageId).select('id').single(), 'save what we carry')
+}

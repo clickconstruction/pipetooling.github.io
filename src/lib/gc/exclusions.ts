@@ -6,7 +6,7 @@
  * reads these. The cover costs' total came with the schedule's PR 1a, which reads it for a line's
  * worth; the quote's own cells and habits stay with the prototype until their step.
  */
-import type { QuoteExclusion, SubBid, TradePackage } from './types'
+import type { Invite, QuoteExclusion, SubBid, TradePackage } from './types'
 import { money } from './words'
 
 /** Exclusions any trade's quote may list, and each trade's own. The portal's form offers these as ticks. */
@@ -102,4 +102,51 @@ export function exclusionListWords(list: QuoteExclusion[]): string {
 /** "$38 per cy" */
 export function unitPriceWords(u: { amount: number; unit: string }): string {
   return `${money(u.amount)} per ${u.unit}`
+}
+
+/** Where one company stands on one exclusion. */
+export type ExclusionCell = 'excluded' | 'included' | 'unsaid' | 'expected'
+
+export interface ExclusionRow {
+  name: string
+  /** The trade's Known exclusion it matches, with who does it instead. Null: not a known exclusion. */
+  known: { by: string } | null
+  cells: { invite: Invite; state: ExclusionCell; exclusion: QuoteExclusion | null; cover: number | null }[]
+}
+
+function inList(list: QuoteExclusion[] | undefined, name: string): QuoteExclusion | null {
+  return (list ?? []).find((e) => fold(e.name) === fold(name)) ?? null
+}
+
+/** A company's answer on one exclusion: in their list, answered and not in it, or not said. */
+function cellFor(bid: SubBid, name: string): ExclusionCell {
+  if (inList(bid.exclusions, name)) return 'excluded'
+  return (bid.exclusionsAnswered ?? []).some((n) => fold(n) === fold(name)) ? 'included' : 'unsaid'
+}
+
+/**
+ * Compare quotes' rows: every exclusion any company quoting names, and the trade's Known
+ * exclusions (expected for everyone, no cover needed), each with every quoting company's answer.
+ */
+export function exclusionRows(pkg: TradePackage): ExclusionRow[] {
+  const bidders = pkg.invites.filter((i) => i.bid)
+  const names: string[] = []
+  const add = (n: string) => {
+    if (n && !names.some((x) => fold(x) === fold(n))) names.push(n)
+  }
+  for (const i of bidders) for (const e of i.bid?.exclusions ?? []) add(e.name)
+  const knownOf = (n: string) => (pkg.excludes ?? []).find((k) => fold(k.label) === fold(n)) ?? null
+  return names.map((name) => {
+    const known = knownOf(name)
+    return {
+      name,
+      known: known ? { by: known.by } : null,
+      cells: bidders.map((invite) => {
+        const bid = invite.bid as SubBid
+        const state: ExclusionCell = known ? 'expected' : cellFor(bid, name)
+        const cover = bid.exclusionCovers?.[name] ?? null
+        return { invite, state, exclusion: inList(bid.exclusions, name), cover }
+      }),
+    }
+  })
 }

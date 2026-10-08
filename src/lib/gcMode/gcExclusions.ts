@@ -6,8 +6,11 @@
  * companies up on every exclusion any of them names, a cover cost puts it in the all-in number, the
  * company keeps a record across its quotes, and the statement of work says what they will not do.
  */
-import type { GcState, Invite, Partner, QuoteExclusion, SubBid, TradePackage } from './gcTypes'
+import type { GcState, Partner, SubBid, TradePackage } from './gcTypes'
 // What moved to main (the real build) is re-exported from there, so there is one copy.
+export type { ExclusionCell, ExclusionRow } from '../gc/exclusions'
+export { exclusionRows } from '../gc/exclusions'
+
 export { exclusionListWords, uncoveredExclusions, unitPriceWords } from '../gc/exclusions'
 
 export { exclusionCoversTotal } from '../gc/exclusions'
@@ -73,48 +76,6 @@ export function exclusionName(said: string): string {
   if (known) return known
   const t = said.trim()
   return t.charAt(0).toUpperCase() + t.slice(1)
-}
-/** Where one company stands on one exclusion. */
-export type ExclusionCell = 'excluded' | 'included' | 'unsaid' | 'expected'
-export interface ExclusionRow {
-  name: string
-  /** The trade's Known exclusion it matches, with who does it instead. Null: not a known exclusion. */
-  known: { by: string } | null
-  cells: { invite: Invite; state: ExclusionCell; exclusion: QuoteExclusion | null; cover: number | null }[]
-}
-function inList(list: QuoteExclusion[] | undefined, name: string): QuoteExclusion | null {
-  return (list ?? []).find((e) => fold(e.name) === fold(name)) ?? null
-}
-/** A company's answer on one exclusion: in their list, answered and not in it, or not said. */
-function cellFor(bid: SubBid, name: string): ExclusionCell {
-  if (inList(bid.exclusions, name)) return 'excluded'
-  return (bid.exclusionsAnswered ?? []).some((n) => fold(n) === fold(name)) ? 'included' : 'unsaid'
-}
-/**
- * Compare quotes' rows: every exclusion any company quoting names, and the trade's Known
- * exclusions (expected for everyone, no cover needed), each with every quoting company's answer.
- */
-export function exclusionRows(pkg: TradePackage): ExclusionRow[] {
-  const bidders = pkg.invites.filter((i) => i.bid)
-  const names: string[] = []
-  const add = (n: string) => {
-    if (n && !names.some((x) => fold(x) === fold(n))) names.push(n)
-  }
-  for (const i of bidders) for (const e of i.bid?.exclusions ?? []) add(e.name)
-  const knownOf = (n: string) => (pkg.excludes ?? []).find((k) => fold(k.label) === fold(n)) ?? null
-  return names.map((name) => {
-    const known = knownOf(name)
-    return {
-      name,
-      known: known ? { by: known.by } : null,
-      cells: bidders.map((invite) => {
-        const bid = invite.bid as SubBid
-        const state: ExclusionCell = known ? 'expected' : cellFor(bid, name)
-        const cover = bid.exclusionCovers?.[name] ?? null
-        return { invite, state, exclusion: inList(bid.exclusions, name), cover }
-      }),
-    }
-  })
 }
 export interface PartnerExclusionHabit {
   name: string
