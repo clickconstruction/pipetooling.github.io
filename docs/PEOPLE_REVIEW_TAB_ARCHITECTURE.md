@@ -118,7 +118,7 @@ No render smoke exists for `PeopleReviewTab`, `TeamSummaryInline` or `drilldowns
 
 ### G. Labor/Profit contributors modal
 
-- **Render location:** 4038–4163 on `reviewLaborBreakdownContext !== null`; rows = `reviewLaborByJobAndPerson[ctx.jobId]`, "(you)" highlight, totals footer, mismatch footnote when `|sumOfRows − totalLaborOnJob| > 1` (4155).
+- **Render location:** 4038–4163 on `reviewLaborBreakdownContext !== null`; rows = `reviewLaborByJobAndPerson[ctx.jobId]`, "(you)" highlight, totals footer, mismatch footnote when `|sumOfRows − totalLaborOnJob| > 1` (4155). Since v2.4911 a sub sheet's row is costed as the job costs it (`laborJobSubCost`: a line's direct $ and rate override count), so the rows add up to the job's total; before, a direct-$ line with no hours (JP1007's $2,150) showed as "—" and the footnote fired. A sheet with several assignees is still one row under all the names; whether it splits is on the owner's list.
 - **State:** `reviewLaborBreakdownContext` 373 (`ReviewLaborBreakdownContext` 363–372: `mode`, `jobId`, `jobName`, `jobAddress`, `jobNumberLabel`, `totalLaborOnJob`, `revenueBeforeOverhead`, `userPersonName`); openers at 3009, 3043, 3351, 3385; closers 4049, 4066; **also reset to null by E's loader** (`loadReviewDataCore` 1043). That reset, plus `reviewLaborByJobAndPerson` (E-owned, read only here), means the context state moves with E's panel in Stage B, not into the modal.
 - **Extraction:** `ReviewLaborBreakdownModal({ ctx, rows, onClose })`; rides with F.
 
