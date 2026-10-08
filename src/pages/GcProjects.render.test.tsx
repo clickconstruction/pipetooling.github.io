@@ -7,6 +7,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
+import { loadSchedule } from '../lib/gc/scheduleIo'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -32,6 +33,12 @@ vi.mock('../lib/gc/tradePortalLinksIo', () => ({
   loadTradePortalLinks: vi.fn(() => Promise.resolve({ links: [], visits: {} })),
   makeTradePortalLink: vi.fn(),
   turnOffTradePortalLink: vi.fn(),
+}))
+
+// The schedule's window (PR 7b) reads the job's schedule over the board: nothing is drawn on the test board.
+vi.mock('../lib/gc/scheduleIo', () => ({
+  loadSchedule: vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null })),
+  drawSchedule: vi.fn(),
 }))
 
 // No GC project yet: the page loads empty, so the card stops show their missing words.
@@ -297,6 +304,28 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Hide the bid tabs' }))
     expect(card.querySelector('[data-gc-bid-tabs]')).toBeNull()
     vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('the schedule’s PR 7b: a dev opens a project’s Schedule from its card', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
+    expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
+    expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
+  })
+
+  it('the schedule’s PR 7b: the office team has no Schedule on a card until the schedule’s PR 10', async () => {
+    auth.role = 'assistant'
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    expect(within(card).getByRole('button', { name: 'The plans' })).toBeTruthy()
+    expect(within(card).queryByRole('button', { name: 'Schedule' })).toBeNull()
   })
 
   it('a dev marks our bid sent from the card, and the projects load again', async () => {
