@@ -11,9 +11,9 @@ import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } f
 import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
-import { COMPANY_EMAIL_FROM_LABEL, estimateEmailFrom } from './customerEmailFrom'
+import { COMPANY_EMAIL_FROM_LABEL, CUSTOMER_EMAIL_FROM_ADDRESS, estimateEmailFrom } from './customerEmailFrom'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
-import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
 import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
 import { testReportSampleEmail } from './jobs/testReportSample'
@@ -30,6 +30,12 @@ import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
 import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
+import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
+import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
+import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
+import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
+import { inviteEmailLines } from './gc/tradeEmail'
+import { tradePortalState } from './gc/tradePortalState'
 
 export type { AppSettingRow }
 
@@ -315,6 +321,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
+  if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
@@ -329,6 +336,29 @@ export function buildSampleGcPlanQuestionEmail(ctx: SampleEmailContext): BuiltEm
     text: 'The foundation plan shows 18 in. piers at grid C; the detail on S-102 shows 24 in. Which one do we price?',
     signer: ctx.sender?.name || 'The project manager',
     companyName: 'Click Construction',
+  })
+}
+
+/**
+ * GC mode (P3-a): an email to a trade partner, as `gc-trade-email` sends it. The sample company's invitation from the
+ * portal's own kernels, to who gets its kind, through the same frame, linking the sample portal.
+ */
+export function buildSampleGcTradeEmail(ctx: SampleEmailContext): BuiltEmail {
+  const { state, partnerId } = tradePortalState(gcTradePortalSample(ctx.todayYmd), ctx.todayYmd)
+  const project = state.projects[0]!
+  const pkg = project.packages[0]!
+  const partner = state.partners.find((p) => p.id === partnerId)!
+  const m = inviteMessage(project, pkg, pkg.invites[0]!, partner, 'en')
+  const pm = gcTradePortalSampleRows(ctx.todayYmd).projects[0]?.team.find((t) => t.role === 'projectManager')
+  return buildGcTradeEmail({
+    lang: 'en',
+    recipients: mailRecipients(partner, portalMailGroup(state, m)).map((r) => r.name),
+    company: partner.company,
+    subject: m.subject,
+    lines: inviteEmailLines(m, 'en'),
+    linkUrl: `${ctx.origin}${TRADE_PORTAL_SAMPLE_PATH}`,
+    signer: String(pm?.name ?? ctx.sender?.name ?? 'The project manager'),
+    gc: GC_TRADE_EMAIL_FROM_NAME,
   })
 }
 
@@ -351,5 +381,6 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
+  if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

@@ -24,3 +24,15 @@ export const GC_MONEY_TEAM: readonly UserRole[] = ['dev', 'master_technician', '
 export function canSeeGcMoney(role: UserRole | null | undefined): boolean {
   return role != null && GC_MONEY_TEAM.includes(role)
 }
+
+/**
+ * GC mode, P3-a (v2.4936): who may email a trade partner through `gc-trade-email`. A dev until the portal's door, then
+ * the office team. The client's copy of the function's `GC_TRADE_EMAIL_ROLES`
+ * (`supabase/functions/_shared/gcTradeEmail.ts`); `access.test.ts` fails when the two differ. A screen offers a send only
+ * to this team and tells everyone else the emails go out once the portal opens.
+ */
+export const GC_TRADE_EMAIL_TEAM: readonly UserRole[] = ['dev']
+
+export function canSendGcTradeEmail(role: UserRole | null | undefined): boolean {
+  return role != null && GC_TRADE_EMAIL_TEAM.includes(role)
+}

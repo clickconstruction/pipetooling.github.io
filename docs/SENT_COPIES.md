@@ -2,7 +2,7 @@
 
 > Every time the company sends someone something, a copy is kept and the office can find it in Documents. This file is the plan, the rules and the list of what is wired; the code is `src/lib/sent/`.
 
-last_updated: 2026-10-06
+last_updated: 2026-10-08
 
 ## The owner's rules
 
@@ -22,7 +22,7 @@ Why it matters: before this, about thirty kinds of paper kept a "sent" date and 
 - **One helper each side.** The client calls `fileSentCopy(filing, body)`, `printAndFile(html, filing)` or `printWhenReadyAndFile(build, filing)` ([`sentCopiesIo.ts`](../src/lib/sent/sentCopiesIo.ts)); the rules are pure in [`sentCopies.ts`](../src/lib/sent/sentCopies.ts) (13 tests). Opening a kept file goes through [`storageSave.ts`](../src/lib/storageSave.ts) since v2.4610: a PDF opens in its own tab, a file the browser cannot show is read into the page and saved from the app's own address, so Safari asks once at most. An email function calls `fileSentEmailBestEffort(filing, message)` ([`_shared/fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts)), or passes `options.file` to `sendEmailViaResend`: the message as it was read and each attachment are kept.
 - **Best effort, never in the way.** Filing never throws and is not awaited by a click. If the copy cannot be stored the row is still written with no path, and the list says *The copy was not kept*.
 - **A repeat does not pile up.** The copy's SHA-256 is on the row. A second print of the same page points at the first file, and the list folds the rows into one line (*Printed 3 times, last …*).
-- **A key is never kept.** The law firm's portal link (`legal_firm_link`, from `legal-send-firm-link`) is a key to the firm's portal, so its filed copy shows the button and the address with `?t=…` (`sentCopyKeptHtml` in `_shared/sentCopyEmail.ts`); the firm's link is never in a filed copy.
+- **A key is never kept.** The law firm's portal link (`legal_firm_link`, from `legal-send-firm-link`) is a key to the firm's portal, so its filed copy shows the button and the address with `?t=…` (`sentCopyKeptHtml` in `_shared/sentCopyEmail.ts`); the firm's link is never in a filed copy. A GC mode trade partner's email (`gc_trade_email`, from `gc-trade-email`, v2.4936) carries its company's portal link, and its filed copy shows `/t/…`. It has no company key on `sent_documents` yet, so it is found by kind and by its message row (`source_id`).
 - **A copy is shown, never run.** A kept page opens inside a frame whose sandbox has scripts, forms and navigation off (`sentCopyFrameHtml`): the file was stored by someone on staff and is treated as a file.
 - **Where it reads.** The Job window's Documents tab, section **Sent from this job** ([`JobDocumentsSent.tsx`](../src/components/jobs/JobDocumentsSent.tsx)), by `job_ids`. A pay application's workbook (kind `pay_application`) lists under its application instead, in the tab's Pay applications table and in the AIA window's history (v2.4710), and stays out of that section; it also carries the application's figures in `source_snapshot` (v2.4714, `SentFiling.sourceSnapshot`: what the source record said when the copy went, null for every other paper so far), so a later change to the saved application is named against what went. A send that names no job (a GC statement, a price request, a bid letter, a law-firm notice) is kept and waits for step 4: the Documents page and the customer page.
 

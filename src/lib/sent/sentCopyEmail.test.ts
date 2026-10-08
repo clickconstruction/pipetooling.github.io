@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { sentAttachmentFileName, sentAttachmentPath, sentAttachmentType, sentCopyKeptHtml, sentEmailAddresses, sentEmailCopyHtml, sentEmailRow } from '../../../supabase/functions/_shared/sentCopyEmail'
+import { buildGcTradeEmail } from '../../../supabase/functions/_shared/gcTradeEmail'
 
 const ID = '11111111-2222-4333-8444-555555555555'
 const JOB = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -103,5 +104,17 @@ describe('sentCopyKeptHtml (punch list #85, item 21)', () => {
     expect(sentCopyKeptHtml('bill', html)).toBe(html)
     const short = '<a href="https://my.clickplumbing.com/snell-law-firm-k4tp9x2mq7zr">Open</a> my.clickplumbing.com/snell-law-firm-k4tp9x2mq7zr'
     expect(sentCopyKeptHtml('legal_firm_link', short)).toBe('<a href="https://my.clickplumbing.com/…">Open</a> my.clickplumbing.com/…')
+  })
+
+  it('keeps a trade partner\u2019s portal link out of its filed copy: /t/… and never the token', () => {
+    const token = 'a'.repeat(32) + '0123456789abcdef0123456789abcdef'
+    const { html } = buildGcTradeEmail({ lang: 'en', recipients: ['Dana Ortiz'], company: 'Sample Electric Co.', subject: 'Plans', lines: ['Addendum 1 is out.'], linkUrl: `https://clicktooling.com/t/${token}`, signer: 'Avery Lin', gc: 'Click Construction' })
+    expect(html).toContain(token)
+    const kept = sentCopyKeptHtml('gc_trade_email', html)
+    expect(kept).not.toContain(token)
+    expect(kept).not.toMatch(/\/t\/[A-Za-z0-9]/)
+    expect(kept).toContain('href="https://clicktooling.com/t/…"')
+    expect(kept).toContain('>https://clicktooling.com/t/…</p>')
+    expect(sentCopyKeptHtml('gc_plan_question', html)).toBe(html)
   })
 })
