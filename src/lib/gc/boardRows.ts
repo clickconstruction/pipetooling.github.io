@@ -14,6 +14,7 @@ import { townFromAddress } from './map'
 import type { GcProjectView } from './projectRows'
 import type {
   AskContact,
+  BidTab,
   DeclineReason,
   GcCustomer,
   GcLostWhy,
@@ -166,6 +167,20 @@ export interface ProjectMoneyRow {
   fee_pct: number | string
 }
 
+/** `gc_bid_tabs` (B5): a trade's bid tab, shared with the companies that quoted. */
+export interface BidTabShareRow {
+  package_id: string
+  shared_on: string
+  show_names: boolean
+}
+
+/** `gc_bid_tab_views` (B5): a company that opened a shared tab in its portal (the Portal's P5e writes it). */
+export interface BidTabViewRow {
+  package_id: string
+  company_id: string
+  seen_on: string
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -194,6 +209,9 @@ export interface BoardRows {
   money?: ProjectMoneyRow[]
   /** True when the reader is on the money team: the screens show the price. Missing or false: the trades alone. */
   moneyShown?: boolean
+  /** The bid tabs shared (B5-d), and who opened each. Missing: none shared. */
+  bidTabs?: BidTabShareRow[]
+  bidTabViews?: BidTabViewRow[]
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -363,7 +381,7 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
   const packages: TradePackage[] = view.trades.map((t) => ({
     id: t.id,
     trade: t.trade,
-    bidTab: null,
+    bidTab: bidTabOf(rows, t.id),
     scope: t.scope.map((s) => ({ id: s.id, label: s.label })),
     budget: t.budget,
     // Our own trade's number is its Trades mode bid; until the board reads that bid, our budget stands in, not priced.
@@ -417,6 +435,14 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     lostWhy,
     wonBy: dates?.won_by ?? null,
   }
+}
+
+/** A trade's shared bid tab (B5-d): its day, whether names show, and the companies that opened it. Null: not shared. */
+function bidTabOf(rows: BoardRows, packageId: string): BidTab | null {
+  const tab = rows.bidTabs?.find((t) => t.package_id === packageId)
+  if (!tab) return null
+  const seenBy = (rows.bidTabViews ?? []).filter((v) => v.package_id === packageId).map((v) => v.company_id)
+  return { sharedOn: tab.shared_on, showNames: tab.show_names, seenBy }
 }
 
 /** Everything the board reads, as the Board's kernels read it. */

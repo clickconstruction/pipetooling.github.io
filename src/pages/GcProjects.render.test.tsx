@@ -58,6 +58,7 @@ vi.mock('../lib/gc/gcIo', async () => {
     markGcWon: vi.fn(),
     markGcLost: vi.fn(),
     bringGcBack: vi.fn(),
+    shareGcBidTab: vi.fn(() => Promise.resolve()),
   }
 })
 
@@ -195,6 +196,23 @@ describe('GcProjects: the Project Board', () => {
     await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(1))
     fireEvent.click(within(card).getByRole('button', { name: 'Hide our number' }))
     expect(card.querySelector('[data-gc-our-number]')).toBeNull()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev opens the bid tabs on a card once a trade has two quotes', async () => {
+    const base = clinicBoardRows()
+    const rows = clinicBoardRows({
+      invites: base.invites.map((i) => (i.id === 'i2' ? { ...i, status: 'bid' } : i)),
+      quotes: [...base.quotes, { id: 'q2', invite_id: 'i2', amount: 60000, based_on_rev: 0, submitted_on: '2026-10-06', includes: { s1: 'yes', s2: 'yes' }, note: '', good_for_days: null, alternates: [], quote_file: '', exclusions: null, created_at: '2026-10-06T10:00:00Z' }],
+    })
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Bid tabs (1)' }))
+    expect(card.querySelector('[data-gc-bid-tab="k1"]')).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: 'Hide the bid tabs' }))
+    expect(card.querySelector('[data-gc-bid-tabs]')).toBeNull()
     vi.mocked(loadGcBoardRows).mockReset()
   })
 

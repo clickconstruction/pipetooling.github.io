@@ -344,7 +344,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const promiseIds = promiseRows.map((p) => p.id)
   const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
   const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
-  const [quotes, contacts, moves, users, forms, people, moneyRows] = await Promise.all([
+  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
@@ -355,6 +355,9 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     companyRows.length ? supabase.from('gc_company_people').select('id, company_id, name, email, role, gets').is('removed_at', null).order('created_at') : none,
     // Our number's inputs, for the money team only (B5-c).
     money && ids.length ? supabase.from('gc_project_money').select('project_id, general_conditions, contingency_pct, fee_pct').in('project_id', ids) : none,
+    // The bid tabs shared, and who opened each (B5-d).
+    packageIds.length ? supabase.from('gc_bid_tabs').select('package_id, shared_on, show_names').in('package_id', packageIds) : none,
+    packageIds.length ? supabase.from('gc_bid_tab_views').select('package_id, company_id, seen_on').in('package_id', packageIds) : none,
   ])
   return {
     today,
@@ -372,6 +375,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     people: taken(people, 'load the people each company named'),
     money: taken(moneyRows, 'load our number'),
     moneyShown: money,
+    bidTabs: taken(tabs, 'load the bid tabs'),
+    bidTabViews: taken(tabViews, 'load who opened the bid tabs'),
   }
 }
 
@@ -565,4 +570,12 @@ export async function markGcLost(projectId: string, why: GcLostWhy, wonBy: strin
 
 export async function bringGcBack(projectId: string): Promise<void> {
   taken(await supabase.rpc('gc_bring_back', { p_project_id: projectId }), 'bring it back')
+}
+
+/**
+ * Share a trade's bid tab with the companies that quoted (the Board's B5-d), or change whether they see
+ * each other's names. The day it was first shared stays: an upsert sets only the names.
+ */
+export async function shareGcBidTab(packageId: string, showNames: boolean): Promise<void> {
+  taken(await supabase.from('gc_bid_tabs').upsert({ package_id: packageId, show_names: showNames }, { onConflict: 'package_id' }).select('package_id').single(), 'share the bid tab')
 }

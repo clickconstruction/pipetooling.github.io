@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { canOpenGcProjects, canSeeGcMoney } from '../lib/gc/access'
+import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
@@ -31,6 +32,7 @@ import { GcTradePortals } from '../components/gc/GcTradePortals'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
+import { GcBidTabs } from '../components/gc/GcBidTabs'
 import { GcOurNumber } from '../components/gc/GcOurNumber'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
@@ -75,6 +77,7 @@ import {
   setGcAskPlugs,
   setGcAskTakenAlternates,
   setGcProjectMoney,
+  shareGcBidTab,
   setGcCompanyCoverage,
   setGcCompanyLanguage,
   vetGcCompany,
@@ -219,6 +222,12 @@ export default function GcProjects() {
   const [numberOpen, setNumberOpen] = useState<string | null>(null)
   const saveMoney = async (projectId: string, values: { generalConditions: number; contingencyPct: number; feePct: number }) => {
     await setGcProjectMoney(projectId, values)
+    await refreshBoard()
+  }
+  // Bid tabs (the Board's B5-d), opened on a project's card for a dev; sharing reloads the board.
+  const [tabsOpen, setTabsOpen] = useState<string | null>(null)
+  const shareTab = async (packageId: string, showNames: boolean) => {
+    await shareGcBidTab(packageId, showNames)
     await refreshBoard()
   }
   // How a bid ends (B5-c): each writes gc_projects, so the projects load again and the board after them.
@@ -513,6 +522,7 @@ export default function GcProjects() {
         // The board's reading of this project, for a dev while it is built (B5-c's outcome and Our number).
         const boardProject = role === 'dev' ? board?.projects.find((x) => x.id === p.id) : undefined
         const showNumber = boardProject && canSeeGcMoney(role)
+        const tabs = boardProject ? boardProject.packages.filter(packageHasTab).length : 0
         return (
           <div key={p.id} data-gc-project={p.id} data-tour={tour('gc-project-card')} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -547,9 +557,15 @@ export default function GcProjects() {
                   {numberOpen === p.id ? 'Hide our number' : 'Our number'}
                 </Btn>
               )}
+              {tabs > 0 && (
+                <Btn kind="quiet" onClick={() => setTabsOpen(tabsOpen === p.id ? null : p.id)}>
+                  {tabsOpen === p.id ? 'Hide the bid tabs' : `Bid tabs (${tabs})`}
+                </Btn>
+              )}
             </div>
             {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
             {showNumber && board && numberOpen === p.id && <GcOurNumber state={board} project={boardProject} onSave={(values) => saveMoney(p.id, values)} />}
+            {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
             <div style={{ fontSize: '0.85rem' }}>
               {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
               {newest ? `, newest ${newest.label} of ${newest.issuedOn}` : ''}. {p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}
