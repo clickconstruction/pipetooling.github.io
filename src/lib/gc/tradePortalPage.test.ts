@@ -4,9 +4,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { gcTradePortalSample } from '../../../supabase/functions/_shared/gcTradePortalSample'
+import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { portalAsks } from './portal'
-import { PORTAL_SPANISH_ON, portalShownLang } from './portalI18n'
-import { askChips, askWhen, pastWords, portalHomeGroups, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, tradePortalPath, tradePortalUrl } from './tradePortalPage'
+import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
+import { askChips, askWhen, pastWords, portalHomeGroups, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
 import { tradePortalState } from './tradePortalState'
 
 const TODAY = '2026-10-08'
@@ -85,5 +86,23 @@ describe('the home’s words', () => {
   it('holds Spanish until a native speaker reads it', () => {
     expect(PORTAL_SPANISH_ON).toBe(false)
     expect([portalShownLang('es'), portalShownLang('en')]).toEqual(['en', 'en'])
+  })
+})
+
+describe('the words for every refusal a press can get (P2b-i)', () => {
+  it('has words in both languages for every key submit-gc-trade-portal can answer', () => {
+    for (const key of TRADE_SUBMIT_ERROR_KEYS) {
+      const words = portalString(TRADE_ERROR_WORDS[key])
+      expect([key, words.en.trim() !== '', words.es.trim() !== '']).toEqual([key, true, true])
+      expect(tradeErrorWords(key, 'en'), key).not.toMatch(/[{}]/)
+      expect(tradeErrorWords(key, 'es'), key).not.toMatch(/[{}]/)
+    }
+  })
+
+  it('says each in the company’s words, and an unknown key as did not save', () => {
+    expect(tradeErrorWords('tooMany', 'en')).toBe('That is a lot at once. Give us an hour, or call our office.')
+    expect(tradeErrorWords('projectLost', 'en')).toBe('Click Construction did not win this project, so nothing more is needed on it.')
+    expect(tradeErrorWords('openFirst', 'es')).toBe('Primero abra los planos.')
+    expect(tradeErrorWords('somethingNew', 'en')).toBe('That did not save. Try again in a minute.')
   })
 })

@@ -6,6 +6,7 @@
  * messages we sent) and words the rows the way the prototype's home did.
  */
 import type { SliceRow, TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import type { TradeSubmitErrorKey } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { GC_COMPANY } from './company'
 import { portalQuoteDue, type PortalAsk } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
@@ -133,4 +134,40 @@ export function pastWords(ask: PortalAsk, lang: PortalLang): string {
 export function replyByEmailWords(project: GcProject, lang: PortalLang): string {
   const pm = (project.team ?? []).find((c) => c.role === 'projectManager' && c.email)
   return pm ? pt(lang, 'replyByEmail', { name: `${pm.name} (${pm.email})` }) : pt(lang, 'replyByEmailGc', { gc: GC_COMPANY.name })
+}
+
+/** The portal's words for each refusal `submit-gc-trade-portal` can answer (P2b-i). Where the page already says the
+ * same thing (open the plans first, answer each line), the refusal reads the page's own words. */
+export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
+  badRequest: 'errBadRequest',
+  linkOff: 'linkOff',
+  spanishHeld: 'errSpanishHeld',
+  tooMany: 'errTooMany',
+  failed: 'errFailed',
+  notFound: 'errNotFound',
+  notYours: 'errNotYours',
+  projectLost: 'errProjectLost',
+  youPassed: 'errYouPassed',
+  openFirst: 'openFirst',
+  alreadyQuoted: 'errAlreadyQuoted',
+  noQuote: 'errNoQuote',
+  nothingToAnswer: 'errNothingToAnswer',
+  dayPassed: 'errDayPassed',
+  notOnTrade: 'errNotOnTrade',
+  questionsClosed: 'errQuestionsClosed',
+  everyKindNeedsSomeone: 'errEveryKind',
+  amountNeeded: 'errAmountNeeded',
+  answerEach: 'answerEach',
+  sovMustAdd: 'sovMustAdd',
+  nameNeeded: 'errNameNeeded',
+  emailNeeded: 'errEmailNeeded',
+  pickAKind: 'errPickAKind',
+  questionNeeded: 'errQuestionNeeded',
+  tooLong: 'errTooLong',
+}
+
+/** A refusal in the company's words. A key the page does not know reads as did not save. */
+export function tradeErrorWords(key: string, lang: PortalLang): string {
+  const words = Object.prototype.hasOwnProperty.call(TRADE_ERROR_WORDS, key) ? TRADE_ERROR_WORDS[key as TradeSubmitErrorKey] : 'errFailed'
+  return pt(lang, words, { gc: GC_COMPANY.name })
 }

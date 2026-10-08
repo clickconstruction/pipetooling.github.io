@@ -95,6 +95,7 @@ when_to_read:
    - [gc-drive-access](#gc-drive-access)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-trade-portal](#gc-trade-portal)
+   - [submit-gc-trade-portal](#submit-gc-trade-portal)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -1012,7 +1013,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. The read never carries our price to the customer, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
 
-**Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
+**Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash) by `_shared/gcTradeLink.ts`, the one rule the writes share (v2.4925). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
 
 **Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, dated from today, and no visit is counted.
 
@@ -1023,6 +1024,45 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Doors**: links are made only through `mint_gc_trade_portal_link` (dev only until the portal's door, migration `20261008050000_gc_trade_portal_links`), so no real trade can open one before then. The page at `/t/:token` (`src/pages/GcTradePortal.tsx`, v2.4920) reads it, and a dev makes, copies, remakes or turns off a company's link on **Trade portals** on `/gc`.
 
 **Status**: deployed 2026-10-08 after #4946 merged. Probed on prod: `?t=sample` answers 200 with today and Sample Electric Co.'s slice; an unknown 64-character token answers `{"error":"linkOff"}`.
+
+---
+
+### submit-gc-trade-portal
+
+**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, and asking about the plans. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The presses on the page come with P2b-ii.
+
+**Endpoint**: `POST /functions/v1/submit-gc-trade-portal` with `{ token, kind, website?, ...fields }` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. **Response**: `{ ok: true, value? }` or `{ error: key }`.
+
+**In order**:
+1. A filled `website` (the honeypot) answers `{ ok: true }` and writes nothing.
+2. A shape the portal never sends answers `400 badRequest`. That is `parseTradeSubmit` in `_shared/gcTradeSubmit.ts`: the kind, uuids, `YYYY-MM-DD` days, text caps and the four kinds of email.
+3. The sample token answers `{ ok: true, sample: true }` and writes nothing.
+4. A token under 16 or over 128 characters answers `400 badRequest`.
+5. The link is resolved by `_shared/gcTradeLink.ts`: the raw token, then its hash. An unknown or turned-off link answers `404 linkOff`.
+6. `set_lang` with `es` while Spanish is held answers `400 spanishHeld`.
+7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes and its portal contact lines.
+8. The verb runs. Its refusal is `P0001` with a key, which `tradeErrorOf` passes through with its status: 409 for a state, 400 for a field, 404 for `notFound`. Anything else answers `500 failed` and is logged.
+
+**Kinds**:
+
+| kind | fields |
+|---|---|
+| `got_it` | none |
+| `set_lang` | `lang` |
+| `add_person` | `name`, `email`, `role`, `gets[]` |
+| `remove_person` | `personId` |
+| `set_gets` | `personId` or null, `gets[]` |
+| `open_plans`, `confirm_quote`, `decline` | `inviteId` |
+| `quote_day` | `inviteId`, `by` |
+| `submit_quote` | `inviteId`, `quote` |
+| `answer_lines` | `inviteId`, `answers` |
+| `ask_question` | `packageId`, `text`, `sheets[]` |
+
+The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/lib/gc/tradePortalPage.ts`). A test fails when a key has no words.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Doors**: a write needs a link. Links are made only by a dev until the portal's door (`mint_gc_trade_portal_link`), so no real trade writes before then. The office's preview (`?preview=1`) posts nothing; the page holds it (P2b-ii).
 
 ---
 
