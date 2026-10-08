@@ -6,6 +6,8 @@ import type { GcProject, GcState, Invite, LogEntry, Partner, Sow, TradePackage }
 import { currentRev, partnerById } from './gcLookups'
 import { leveledTotal } from './gcBids'
 import { sowExcluded } from './gcExclusions'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+export { find } from '../gc/lookups'
 
 // ---------------------------------------------------------------------------------------------
 // Reducer
@@ -30,14 +32,6 @@ export function mapSow(pkg: TradePackage, fn: (s: Sow) => Sow): TradePackage {
 export function logged(state: GcState, who: LogEntry['who'], text: string): GcState {
   const id = (state.log[0]?.id ?? 0) + 1
   return { ...state, log: [{ id, who, text }, ...state.log].slice(0, 30) }
-}
-
-export function find(state: GcState, projectId: string, packageId: string, inviteId?: string) {
-  const project = state.projects.find((p) => p.id === projectId)
-  const pkg = project?.packages.find((p) => p.id === packageId)
-  const invite = inviteId ? pkg?.invites.find((i) => i.id === inviteId) : undefined
-  const partner = invite ? partnerById(state, invite.partnerId) : undefined
-  return { project, pkg, invite, partner }
 }
 
 export function awardedPartner(state: GcState, pkg: TradePackage | undefined): Partner | undefined {
