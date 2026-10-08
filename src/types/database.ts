@@ -28936,6 +28936,117 @@ export type Database = {
         Args: { p_project_id: string; p_signed_on: string; p_worth?: Json }
         Returns: undefined
       }
+      gc_trade_add_person: {
+        Args: {
+          p_company_id: string
+          p_email: string
+          p_gets: string[]
+          p_name: string
+          p_role: string
+        }
+        Returns: string
+      }
+      gc_trade_answer_lines: {
+        Args: { p_answers: Json; p_company_id: string; p_invite_id: string }
+        Returns: string
+      }
+      gc_trade_ask: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: {
+          company_id: string
+          created_at: string
+          decline_note: string
+          decline_reason: string | null
+          declined_on: string | null
+          declined_why: string | null
+          exclusion_covers: Json
+          id: string
+          invited_by: string | null
+          invited_on: string
+          package_id: string
+          plugs: Json
+          seen_rev: number | null
+          status: string
+          taken_alternates: string[]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "gc_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      gc_trade_ask_question: {
+        Args: {
+          p_company_id: string
+          p_package_id: string
+          p_sheets: string[]
+          p_text: string
+        }
+        Returns: string
+      }
+      gc_trade_confirm_quote: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: string
+      }
+      gc_trade_current_rev: { Args: { p_package_id: string }; Returns: number }
+      gc_trade_decline: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: undefined
+      }
+      gc_trade_got_it: { Args: { p_company_id: string }; Returns: string }
+      gc_trade_mail_groups: { Args: { p_groups: string[] }; Returns: string[] }
+      gc_trade_newest_quote: {
+        Args: { p_invite_id: string }
+        Returns: {
+          alternates: Json
+          amount: number
+          based_on_rev: number
+          created_at: string
+          created_by: string | null
+          exclusions: Json | null
+          exclusions_answered: string[] | null
+          good_for_days: number | null
+          id: string
+          includes: Json
+          invite_id: string
+          note: string
+          quote_file: string
+          source: string
+          sov: Json | null
+          submitted_on: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "gc_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      gc_trade_open_plans: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: number
+      }
+      gc_trade_quote_day: {
+        Args: { p_by: string; p_company_id: string; p_invite_id: string }
+        Returns: string
+      }
+      gc_trade_remove_person: {
+        Args: { p_company_id: string; p_person_id: string }
+        Returns: undefined
+      }
+      gc_trade_set_gets: {
+        Args: { p_company_id: string; p_gets: string[]; p_person_id: string }
+        Returns: undefined
+      }
+      gc_trade_set_lang: {
+        Args: { p_company_id: string; p_lang: string }
+        Returns: undefined
+      }
+      gc_trade_submit_quote: {
+        Args: { p_company_id: string; p_invite_id: string; q: Json }
+        Returns: string
+      }
       gc_vet_company: {
         Args: {
           p_company_id: string
