@@ -27,6 +27,8 @@ import { crewRateWords, effectiveLaborRate, type CrewRate } from '../../lib/bids
 import { bookMultiplier, bookMultiplierWords, calibratedEntryHours, entryEvidence, type CalibrationJob } from '../../lib/bids/laborBookCalibration'
 import { bookSummaryWords, calibrationNote, calibrationProposalWords, calibrationSetPlan, laborBookRights, type CalibrationProposal } from '../../lib/bids/laborEntryProvenance'
 import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
+import { BidCellPast } from './BidCellPast'
+import { laborCellKeys } from '../../lib/bids/bidCellHistory'
 
 /**
  * The New Labor view (the Labor refresh PR 1 — "Hours that learn"; PR 2 made
@@ -792,6 +794,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                             {sub ? (
                               <span style={{ color: 'var(--text-muted)' }}>—</span>
                             ) : (
+                              <>
                               <input
                                 type="number"
                                 min={0}
@@ -806,6 +809,9 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                                 style={{ ...cellInput, ...p.cellSaveStyle(`labor:${row.id}:${k.replace('_hrs_per_unit', '')}`) }}
                                 title={`${STAGE_LONG[k]} · ${fmtHours(stageHoursOf(row, k))} h on this row`}
                               />
+                              {/* Bid history (punch list #73, PR 3): the stage's earlier hours while Past values is on. */}
+                              <BidCellPast keys={laborCellKeys(row.id, k, row.fixture)} label={row.fixture} />
+                              </>
                             )}
                           </td>
                         ))}

@@ -144,6 +144,23 @@ describe('groupBidHistory — actions, not rows', () => {
   })
 })
 
+describe('an action across tabs', () => {
+  it('is a Counts action when a count row is in it, else the tab most rows are on', () => {
+    const removed = groupBidHistory([
+      row({ op: 'delete', label: 'SUMP', changedAt: at(0) }),
+      row({ op: 'delete', table: 'bids_takeoff_rough_part_lines', label: 'P-trap', changedAt: at(0) }),
+      row({ op: 'delete', table: 'bids_takeoff_rough_part_lines', label: 'Carrier', changedAt: at(0) }),
+    ])
+    expect(removed[0]!.tab).toBe('counts')
+    const mixed = groupBidHistory([
+      row({ table: 'bid_count_row_custom_prices', op: 'update', changed: ['unit_price'], changedAt: at(0) }),
+      row({ table: 'bid_count_row_custom_prices', op: 'update', changed: ['unit_price'], changedAt: at(1) }),
+      row({ table: 'cost_estimate_labor_rows', op: 'update', changed: ['rough_in_hrs_per_unit'], changedAt: at(2) }),
+    ])
+    expect(mixed[0]!.tab).toBe('pricing')
+  })
+})
+
 describe('bidHistoryCaption', () => {
   it('a count row removed with what hung on it', () => {
     expect(bidHistoryCaption([
@@ -160,7 +177,8 @@ describe('bidHistoryCaption', () => {
   })
   it('an Edit Bid save names the default columns it touched', () => {
     expect(bidHistoryCaption([row({ table: 'bids', op: 'update', label: null, changed: ['bid_due_date', 'bid_value'] })])).toBe('Edit Bid · due and value')
-    expect(bidHistoryCaption([row({ table: 'bids', op: 'update', label: null, changed: ['sov_shape'] })])).toBe('Edit Bid · other fields')
+    expect(bidHistoryCaption([row({ table: 'bids', op: 'update', label: null, changed: ['selected_bid_version_id'] })])).toBe('Edit Bid · active version')
+    expect(bidHistoryCaption([row({ table: 'bids', op: 'update', label: null, changed: ['sov_shape'] })])).toBe('Edit Bid · sov shape')
   })
   it('the app’s own labor work, by its tag', () => {
     expect(bidHistoryCaption([row({ table: 'cost_estimate_labor_rows', op: 'delete', action: 'labor-park', byApp: true }), row({ table: 'cost_estimate_labor_rows_unmatched', op: 'insert', action: 'labor-park', byApp: true })])).toBe('Set aside 1 labor row no fixture claims')

@@ -312,6 +312,18 @@ export function bidHistoryWho(row: Pick<BidHistoryRow, 'changedBy' | 'changedByN
   return row.changedBy ? 'someone' : 'the app'
 }
 
+/**
+ * An action's tab: its rows' one tab; with several, Counts when a count row is among them (a fixture
+ * removed with its takeoff parts and labor is a Counts action), else the tab most of its rows are on.
+ */
+function actionTab(rows: ReadonlyArray<BidHistoryRow>, tabs: ReadonlySet<BidHistoryTab>): BidHistoryTab {
+  if (tabs.size === 1) return [...tabs][0]!
+  if (tabs.has('counts')) return 'counts'
+  const tally = new Map<BidHistoryTab, number>()
+  for (const r of rows) tally.set(bidHistoryTabOf(r), (tally.get(bidHistoryTabOf(r)) ?? 0) + 1)
+  return [...tally.entries()].sort((a, b) => b[1] - a[1])[0]![0]
+}
+
 /** Group rows (any order) into actions, newest first: same bid, author, tag and source, rows within five seconds. */
 export function groupBidHistory(rows: ReadonlyArray<BidHistoryRow>): BidHistoryAction[] {
   const ordered = [...rows].sort((a, b) => a.changedAt.localeCompare(b.changedAt) || (a.id ?? 0) - (b.id ?? 0))
@@ -339,7 +351,7 @@ export function groupBidHistory(rows: ReadonlyArray<BidHistoryRow>): BidHistoryA
         bidNumber: first.bidNumber,
         who: bidHistoryWho(first),
         whoId: first.byApp || first.action === 'robot-paste' ? null : first.changedBy,
-        tab: tabs.size === 1 ? [...tabs][0]! : bidHistoryTabOf(first),
+        tab: actionTab(g, tabs),
         caption: bidHistoryCaption(g),
         startedAt: first.changedAt,
         endedAt: g[g.length - 1]!.changedAt,
@@ -413,7 +425,11 @@ export function bidHistoryCaption(rows: ReadonlyArray<BidHistoryRow>): string {
   if (ops.size === 1 && ops.has('update')) {
     if (tables.size === 1 && first.table === 'bids') {
       const cols = [...new Set(rows.flatMap((r) => bidHistoryShownColumns(r).shown))].map(bidHistoryColumnName)
-      return cols.length ? `Edit Bid · ${cols.length > 3 ? `${cols.slice(0, 3).join(', ')} and ${cols.length - 3} more` : cols.join(' and ')}` : 'Edit Bid · other fields'
+      // The default columns when it touched any; else the ones it did touch (a version switch reads
+      // "Edit Bid · active version", not "other fields").
+      const touched = [...new Set(rows.flatMap((r) => r.changed.filter((c) => !STAMP_COLUMNS.has(c))))]
+      const named = (cols.length ? cols : touched.map(bidHistoryColumnName))
+      return named.length ? `Edit Bid · ${named.length > 3 ? `${named.slice(0, 3).join(', ')} and ${named.length - 3} more` : named.join(' and ')}` : 'Edit Bid'
     }
     if (rows.length === 1) {
       const col = first.changed.find((c) => !STAMP_COLUMNS.has(c))

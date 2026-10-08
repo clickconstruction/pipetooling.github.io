@@ -1778,7 +1778,9 @@ Punch list #73 ([`to-dos/bid-history`](../to-dos/bid-history/README.md)). **The 
 
 **The reader** (v2.4948): `list_bid_history(p_bid_id)` (SECURITY INVOKER) returns the ledger for the bid and every bid adopted into it, each row with its bid number, plus the delete archive's removed rows the ledger lacks. Under the archive's own rule those reach a dev only. The kernel `bidHistory.ts` groups rows into actions (same bid, author, tag and source, five seconds apart at most) and words them. A **History** button after the mark controls on every bid tab's title (`BidHistoryDoor`) opens a read-only window (`BidHistoryWindow`): actions newest first under each day, each opening to its rows, with tab and person chips and a search. Edit Bid changes show `BID_HISTORY_DEFAULT_BID_COLUMNS` and count the rest.
 
-**The owner's calls** (2026-10-08): every estimator sees every change; three years, then purge; anyone who can edit the bid may Put back (PR 4); the builder picks the default columns; the history follows an adopt. Still to come: the under-cell lines and the switch (PR 3), Put back (PR 4), undo a whole action (PR 5).
+**Past values** (v2.4952): a switch beside the History button (`useBidHistoryCellsSwitch`, per device) shows each typed cell's earlier values under it on Pricing (price), Counts (count), Takeoffs (quantity, unit price) and Labor (stage hours). `BidCellHistoryProvider` in `Bids.tsx` reads `latest_bid_cell_history(p_bid_id)` (SECURITY INVOKER, the ledger only) once for the bid on screen while it is on: each cell's two newest earlier values and count of changes, keyed as the tabs find their cells, and each removed row's last value by name. `BidCellPast` draws them (`bidCellHistory.ts`); a row with no past borrows its name's, so a re-imported fixture shows the old row's value. *+N more* opens the window searched on the row.
+
+**The owner's calls** (2026-10-08): every estimator sees every change; three years, then purge; anyone who can edit the bid may Put back (PR 4); the builder picks the default columns; the history follows an adopt. Still to come: Put back (PR 4), undo a whole action (PR 5).
 
 ## Database Schema
 
