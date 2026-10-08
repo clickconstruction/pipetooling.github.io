@@ -302,7 +302,7 @@ describe('openTeamSummaryWindow — Open in new window', () => {
     expect(open).toHaveBeenCalledWith('', '_blank')
     expect(h.union).toHaveBeenCalledTimes(1)
     expect(showToast).not.toHaveBeenCalled()
-    expect(win.document.write.mock.calls.at(-1)).toEqual(['popup:Ann Lee,Bo Park|Last 30 days|rate=31.5'])
+    expect(win.document.write.mock.calls[win.document.write.mock.calls.length - 1]).toEqual(['popup:Ann Lee,Bo Park|Last 30 days|rate=31.5'])
   })
 
   it('without a cache it loads afresh and reads the rates as they are when the rows land', async () => {
@@ -320,7 +320,7 @@ describe('openTeamSummaryWindow — Open in new window', () => {
     // The rates finish while the popup's rows are still loading.
     rerender(inputs({ reviewOverheadRates: RATES }))
     await settle(popupLoad, { tag: 'popup' })
-    expect(win.document.write.mock.calls.at(-1)).toEqual(['popup:Ann Lee,Bo Park|Last 30 days|rate=31.5'])
+    expect(win.document.write.mock.calls[win.document.write.mock.calls.length - 1]).toEqual(['popup:Ann Lee,Bo Park|Last 30 days|rate=31.5'])
   })
 
   it('with no roster it warns and opens no window; a blocked popup says so and loads nothing', () => {
