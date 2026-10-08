@@ -3,9 +3,11 @@
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
   "pin": {
-    "about": "main's side is pinned at the lift's merge by its follow-up",
+    "main": "aea0c41da51d5114a4b0f640a103e99230ac4406",
+    "spike": "a8e100c070c6840b446aca58075c725e6cb3333d",
+    "about": "#4939 merged; the spike before its follow-up",
     "known": {
-      "askChoices": "main shows no address for a contact the record has none for, where the prototype made one up through partnerReach (the lead, 2026-10-08: never a made-up address on real rows); one line, the rest word for word"
+      "askChoices": "main shows no address for a contact the record has none for, where the prototype made one up through partnerReach (the lead, 2026-10-08: never a made-up address on real rows). The spike keeps its own askChoices, not re-exported, because the fixture's companies with no email need their made-up address."
     }
   },
   "existing": {

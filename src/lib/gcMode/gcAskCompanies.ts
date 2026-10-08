@@ -6,33 +6,17 @@
  *
  * Its own file, out of the barrel: it reads the reducer, which reads nearly everything.
  */
-import type { GcState, Partner } from './gcTypes'
+import type { GcState } from './gcTypes'
 import { gcReducer } from './gcReducer'
 import { find } from './gcReducerHelpers'
 import { mailRecipients, portalMessages, type PortalMessage } from './gcPortal'
 import { travelFor, travelWords } from './gcMap'
-import { answerRecord, type AnswerRecord } from './gcReliability'
-import { bidsIn } from './gcBids'
+import { answerRecord } from './gcReliability'
 import { partnerReach } from './gcFollowUpSheet'
-
-/** The quotes we want on every trade (the bench's rule). */
-const QUOTES_WANTED = 2
-
-/** One company that could be asked to quote a trade on a job. */
-export interface AskChoice {
-  partner: Partner
-  /** Inside the distance they said they go. A company past it is offered, not ticked. */
-  inZone: boolean
-  /** "35 mi", or "82 mi, past their 60". Empty when the coverage is not set. */
-  travel: string
-  record: AnswerRecord
-  /** New to us and not approved yet: it can quote, and no award until we approve it. */
-  notVetted: boolean
-  /** We declined to work with them. Offered last, never ticked. */
-  declined: boolean
-  /** Who at the company gets an invitation, the main contact first. */
-  to: { name: string; email: string | null }[]
-}
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import type { AskChoice } from '../gc/askCompanies'
+export type { AskChoice } from '../gc/askCompanies'
+export { askStanding } from '../gc/askCompanies'
 
 /**
  * Every company in the trade we have not asked on this job: those in range first, a company we
@@ -72,21 +56,4 @@ export function askDraft(state: GcState, projectId: string, packageId: string, p
   if (!pkg || pkg.invites.some((i) => i.partnerId === partnerId)) return null
   const after = gcReducer(state, { type: 'invite', projectId, packageId, partnerId })
   return portalMessages(after, partnerId).find((m) => m.key === `${pkg.id}-${partnerId}:invite`) ?? null
-}
-
-/** Where the trade stands on quotes, and where asking this many would leave it. */
-export function askStanding(state: GcState, projectId: string, packageId: string, asking: number): { quotes: number; wanted: number; out: number; words: string } {
-  const { pkg } = find(state, projectId, packageId)
-  const quotes = pkg ? bidsIn(pkg).length : 0
-  // Companies already asked that have not quoted or said no.
-  const out = pkg ? pkg.invites.filter((i) => i.bid === null && i.status !== 'declined').length : 0
-  const reach = quotes + out + asking
-  const emails = asking === 1 ? '1 email goes out' : `${asking} emails go out`
-  const words =
-    asking === 0
-      ? 'Tick a company to ask.'
-      : reach >= QUOTES_WANTED
-        ? `${emails}, each with the company's own portal link. If they answer, ${pkg?.trade ?? 'the trade'} has the ${QUOTES_WANTED} quotes we want.`
-        : `${emails}, each with the company's own portal link. That still leaves ${pkg?.trade ?? 'the trade'} short of ${QUOTES_WANTED} quotes.`
-  return { quotes, wanted: QUOTES_WANTED, out, words }
 }
