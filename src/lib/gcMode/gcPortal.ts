@@ -20,7 +20,7 @@ import { inSentence, lineSheets, linesOnSpecs, specsAtRev, specsGoneAtRev, trade
 import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './gcBuilding'
 import { mondayOf } from './gcBuildingSchedule'
 import { submittalRowsOn } from './gcBuildingSubmittals'
-import { SOV_STAGES, stageReached, theirSovGap } from './gcTheirSov'
+import { stageReached } from './gcTheirSov'
 import { exclusionsFor } from './gcExclusions'
 import { scopeBookExclusions } from './gcScopeBook'
 import { punchItems, punchState } from './gcBuildingPunch'
@@ -31,6 +31,8 @@ import type { PortalJobMoney, PortalLine, PortalMessage, PortalPaper, PortalPape
 import { COI_WARN_DAYS, bidGoodUntil, changeRequestState, lookAheadOwed, mailRecipients, portalBackCharges, portalChangeRequests, portalClosedWords, portalInsurance, portalMailGroup, portalPlanNews } from '../gc/portal'
 import type { PortalAsk } from '../gc/portal'
 import { inviteMessage, portalAsks, portalPreBid, portalPromises, portalQuestions, portalQuoteDue, portalVetting } from '../gc/portal'
+export { portalSovCheck, portalSovStart } from '../gc/portal'
+
 export type { PortalAsk, PortalQuestion } from '../gc/portal'
 export { bidRanOut, inviteMessage, linkNeverOpened, portalAsks, portalPreBid, portalPromiseLine, portalPromises, portalQuestions, portalQuoteDue, portalVetting } from '../gc/portal'
 
@@ -111,33 +113,6 @@ export function portalPapers(state: GcState, partnerId: string, lang: PortalLang
     if (papers.length > 0) jobs.push({ project, trade: pkg.trade, papers: papers.sort(newestFirst) })
   }
   return { company: company.sort(newestFirst), jobs }
-}
-
-// ---------------------------------------------------------------------------------------------
-// The trade's own schedule of values (owner, 2026-10-04, question 4: draws by percent with
-// retainage, and their schedule of values beside ours, usually rough-in, top out, trim)
-// ---------------------------------------------------------------------------------------------
-
-const STAGE_WORDS: Record<string, PortalKey> = { 'Rough-in': 'sovRough', 'Top out': 'sovTop', Trim: 'sovTrim' }
-
-/** The lines a company's form starts with, in its language. Amounts are left for it to fill in. */
-export function portalSovStart(lang: PortalLang = 'en'): string[] {
-  return SOV_STAGES.map((s) => (STAGE_WORDS[s] ? pt(lang, STAGE_WORDS[s]) : s))
-}
-
-/**
- * Where the company's lines stand against the number they must add up to: nothing typed yet (it
- * sends none), short, over, or adding up. Lines with no name or no amount are left out.
- */
-export function portalSovCheck(lines: TheirSovLine[], target: number, lang: PortalLang = 'en'): { state: 'empty' | 'short' | 'over' | 'ok'; words: string | null; lines: TheirSovLine[] } {
-  const kept = lines.filter((l) => l.label.trim() !== '' && l.amount > 0).map((l) => ({ label: l.label.trim(), amount: l.amount }))
-  if (kept.length === 0) return { state: 'empty', words: null, lines: [] }
-  const gap = theirSovGap(kept, target)
-  const sum = money(target + gap)
-  if (gap === 0) return { state: 'ok', words: pt(lang, 'sovAddsUp'), lines: kept }
-  return gap < 0
-    ? { state: 'short', words: pt(lang, 'sovShort', { sum, gap: money(-gap) }), lines: kept }
-    : { state: 'over', words: pt(lang, 'sovOver', { sum, gap: money(gap) }), lines: kept }
 }
 
 /** "Billed $89,000 to date: through Rough-in, 19% into Top out", on the company's own lines. */

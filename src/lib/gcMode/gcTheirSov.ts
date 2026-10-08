@@ -6,24 +6,14 @@
  */
 import type { Sow, TheirSovLine, TradePackage } from './gcTypes'
 import { money } from './gcWords'
-
-/** The lines a trade's form starts with. They can rename, add or take any out. */
-export const SOV_STAGES = ['Rough-in', 'Top out', 'Trim']
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+export { SOV_STAGES, theirSovGap, theirSovSum } from '../gc/theirSov'
 
 /** Their schedule of values: on the statement of work once awarded, else on the quote we carry. */
 export function theirSovOf(pkg: TradePackage): TheirSovLine[] | null {
   if (pkg.sow?.theirSov && pkg.sow.theirSov.length > 0) return pkg.sow.theirSov
   const invite = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
   return invite?.bid?.sov && invite.bid.sov.length > 0 ? invite.bid.sov : null
-}
-
-export function theirSovSum(lines: TheirSovLine[]): number {
-  return lines.reduce((t, l) => t + l.amount, 0)
-}
-
-/** Their lines' total less the number it should match. 0: it adds up. */
-export function theirSovGap(lines: TheirSovLine[], amount: number): number {
-  return Math.round((theirSovSum(lines) - amount) * 100) / 100
 }
 
 /** Billed to date on the original contract, by our lines: what the draws claimed. Change orders are left out. */

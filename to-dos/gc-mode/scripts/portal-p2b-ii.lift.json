@@ -1,0 +1,87 @@
+{
+  "about": "The Portal lane's P2b-ii (to-dos/gc-mode/mockups/portal-p2b.md): what the portal's quote form reads, lifted to src/lib/gc word for word before the presses. The schedule of values the form starts with and its add-up check (portal.ts), and the two pieces of gcTheirSov they call (theirSov.ts, agreed with the Board, whose B6 appends the rest). SubBid's list is the Board's B5-b list with sov. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p2b-ii.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcTheirSov",
+      "to": "theirSov.ts",
+      "moves": [
+        "SOV_STAGES",
+        "theirSovSum",
+        "theirSovGap"
+      ],
+      "header": "/**\n * GC mode, the real build: a trade's own schedule of values beside ours, moved word for word from the GC mode prototype (branch\n * spike/gc-mode, `gcTheirSov.ts`). The Portal lane's P2b-ii brought the lines a quote form starts with and the add-up check; the\n * Board's B6 brings where the money claimed stands on their lines.\n */"
+    },
+    {
+      "from": "gcPortal",
+      "to": "portal.ts",
+      "append": true,
+      "moves": [
+        "portalSovStart",
+        "portalSovCheck"
+      ]
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "whole": true,
+      "append": true,
+      "names": [
+        "TheirSovLine"
+      ]
+    },
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "SubBid as the Board's B5-b list with sov appended (agreed with Helper 2, 2026-10-08). It replaces the one in types.ts.",
+      "fields": {
+        "SubBid": [
+          "amount",
+          "basedOnRev",
+          "submittedOn",
+          "includes",
+          "plugs",
+          "goodForDays",
+          "alternates",
+          "takenAlternates",
+          "exclusions",
+          "exclusionCovers",
+          "note",
+          "quoteFile",
+          "exclusionsAnswered",
+          "sov"
+        ]
+      },
+      "names": [
+        "SubBid"
+      ]
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#Includes": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#BidAlternate": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#QuoteExclusion": "types.ts"
+  },
+  "tests": [
+    {
+      "from": "gcTheirSov.test.ts",
+      "to": "theirSov.test.ts"
+    },
+    {
+      "from": "gcPortal.test.ts",
+      "to": "portal.test.ts",
+      "append": true
+    }
+  ],
+  "pin": {
+    "main": "886046144c793b0dd9bf9245898e6a02379a8aef",
+    "spike": "ad423ab00cbbd1a7c5c3b309703c6fcea14d8181",
+    "about": "#4974 merged; the spike before its follow-up",
+    "known": {
+      "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
+      "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same"
+    }
+  }
+}

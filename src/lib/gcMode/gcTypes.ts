@@ -8,6 +8,9 @@ import type { ChangeOrderReason, OwnerBilling, OwnerRetainageStep } from '../gc/
 import type { BidTab, PlanQuestion, Town } from '../gc/types'
 import type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
 import type { PreBidMeeting } from '../gc/types'
+import type { TheirSovLine } from '../gc/types'
+export type { TheirSovLine } from '../gc/types'
+
 export type { PreBidMeeting } from '../gc/types'
 
 export type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
@@ -143,11 +146,6 @@ export interface QuoteExclusion {
   said?: string
   /** "$38 per cy": what it costs if it comes up, for things like rock. */
   unitPrice?: { amount: number; unit: string }
-}
-/** A line of a trade's own schedule of values, as it wrote it (question 4): often rough-in, top out, trim. */
-export interface TheirSovLine {
-  label: string
-  amount: number
 }
 export interface BidAlternate {
   label: string
