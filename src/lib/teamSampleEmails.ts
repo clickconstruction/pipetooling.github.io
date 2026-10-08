@@ -1,7 +1,7 @@
 /**
  * The sample team emails What the team sees renders in the browser (punch list #60, v2.4142):
- * the same builders the edge functions run, fed the sample company — and, for the four
- * template-driven emails, the live `email_templates` rows with sample variables, so an edit
+ * the same builders the edge functions run, fed the sample company — and, for the three
+ * template-driven emails (the invitation, the sign-in link, the workflow stage notice), the live `email_templates` rows with sample variables, so an edit
  * on Email templates shows here the way a Settings edit shows on What customers see.
  */
 import { buildSignedAgreementEmail } from './signedAgreementEmail'

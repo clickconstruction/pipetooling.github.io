@@ -45,7 +45,7 @@ export function convertToStripeEligibility(
   if (payments.some((p) => p.invoice_id === invoice.id)) {
     return {
       ok: false,
-      reason: 'Payments are applied to this bill — unlink them first (Payments received below).',
+      reason: 'Payments are applied to this bill — unlink them first, from each payment’s ⋯ under the bill.',
     }
   }
   return { ok: true }

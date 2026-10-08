@@ -333,9 +333,9 @@ export function SettingsWhatTheTeamSeesTab() {
                             {row.real ? (
                               <div style={{ marginTop: '0.5rem' }}>
                                 {real[row.id] == null ? (
-                                  <button type="button" style={PILL} onClick={() => showReal(row)}>Show the real one — today\u2019s, over live rows, for your eyes only</button>
+                                  <button type="button" style={PILL} onClick={() => showReal(row)}>Show the real one — today’s, over live rows, for your eyes only</button>
                                 ) : real[row.id] === 'loading' ? (
-                                  <span style={MUTED}>Building today\u2019s email…</span>
+                                  <span style={MUTED}>Building today’s email…</span>
                                 ) : 'error' in (real[row.id] as object) ? (
                                   <span style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{(real[row.id] as { error: string }).error}</span>
                                 ) : (
