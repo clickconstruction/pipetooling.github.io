@@ -3,22 +3,22 @@ name: People spine — residuals
 number: 29
 group: ready
 status: >
-  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); 3b, 3c and item 4 open
+  open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); the view is pushed and typed. 2026-10-06 (v2.4658): item 2 swept (the edge functions take one `REAL_ACCOUNT` rule; deployed in waves after the merge), item 1 closed by a pin; v2.4664: item 5 done; v2.4671: item 3a (the archived names from the roster view); v2.4859: item 3b (the RPC dropped, push after merge); 3c and item 4 open
 summary: >
   **People spine residuals**: after the roster view, Leave, Hire, the Users lenses and the pointers
   landed, small things stayed open. Done in v2.4658: the edge functions' hand-written sample
   filters (one shared rule that also refuses twins), and the crew pickers (pinned to the view, not
-  moved); in v2.4664, the `as never` cast. Open: `get_archived_user_names()` still serves five
-  surfaces, and one fixture account has its twin flag unset in prod.
+  moved); in v2.4664, the `as never` cast. In v2.4859, `get_archived_user_names()` is dropped (its five surfaces
+  moved to the roster view in v2.4671). Open: the types PR after that push, id-first archived
+  matching, and one fixture account has its twin flag unset in prod.
 next: >
-  Step 3b, not before 2026-10-07 08:20Z (a day after v2.4671 went live): one migration that drops
-  `get_archived_user_names()` (the hand-off section below has the file). Before its push, list the
-  pending migrations: a push applies every pending file, and another train may be holding one. Then
-  3c, the types PR (`src/types/database.ts` and the dev-mcp catalog regenerated). Wave C of
+  Push v2.4859's `20261008060000_drop_get_archived_user_names.sql` once it merges. Before the push,
+  list the pending migrations: a push applies every pending file, and another train may be holding
+  one. Then 3c, the types PR (`src/types/database.ts` and the dev-mcp catalog regenerated). Wave C of
   v2.4658's deploys waits on purpose. Item 4 and one data fix are the owner's.
 size: S
-blocker: 3b not before 2026-10-07 08:20Z; item 4 and the Training Helper row are the owner's data.
-ver: v2.3698 · 3700 · 3701 · 3702 · 3705 · 4658 · 4664 · 4671
+blocker: 3c waits on v2.4859's push; item 4 and the Training Helper row are the owner's data.
+ver: v2.3698 · 3700 · 3701 · 3702 · 3705 · 4658 · 4664 · 4671 · 4859
 opinion: do the sweep when the next roster surface is touched anyway; the guardrail that mattered (pay lists) is in.
 mockup: not required — a sweep and a data fix, no screen changes
 ---
@@ -43,7 +43,7 @@ The train: [`docs/recent-features/v2.3698.md`](../docs/recent-features/v2.3698.m
 3. **`get_archived_user_names()`** served five surfaces, all through one set built in `People.tsx`: Offsets (the archived fold), Contracts (archived grouped at the bottom), Review (pay names filtered beside the pay roster), the Teams member filter, and the Hours grid's roster (`src/lib/people/hoursGridRoster.ts`, rule 1).
    - **3a, done in v2.4671:** the set now comes from the `roster_people` read `People.tsx` already makes (`archivedRosterNames`). That means every name an archived roster row answers to, except a living namesake's. It is a pure source swap; no consumer changed.
    - **Id-first matching** (by `person_id`, which the roster rows carry) is left to each consumer's own PR, per the identity plan.
-   - **3b:** drop the RPC once 3a has been live a day (REVOKE and DROP in one file; `20260906180000` revoked anon on it). PUNCHLIST pushes it.
+   - **3b, done in v2.4859:** `20261008060000_drop_get_archived_user_names.sql` drops the RPC. No REVOKE first: the DROP takes the grants with it. PUNCHLIST pushes it.
    - **3c:** the types PR after that push. It regenerates `database.ts` and dev-mcp's `catalog.ts`.
 4. **Twin Estimator 2** (`twin-estimator-2@twins.pipetooling.local`) has `is_digital_twin = false` in prod, so it sits in the People → Users roster under Estimators and the roster view calls it a person. Until the flag is set, v2.4658's twin refusal does not catch it either. A dev sets the flag from Settings → System → Digital twins & samples (the twin minter sets it after `create-user`; this one predates that). Data, not code — the owner's.
 5. **The `as never` cast** in `src/lib/people/rosterPeople.ts` — done in v2.4664: `fetchRosterPeople` takes the typed client and reads `roster_people` by name (`src/types/database.ts` has carried the view since the 2026-09-22 regen).

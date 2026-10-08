@@ -39,10 +39,14 @@ type OkGeocode = {
 }
 type Fail = { ok: false; address_normalized: string; error: string; detail?: string }
 
-/** The 200 answer; an ok one without a county asks the Census lookup for the point's (v2.4783). */
+/**
+ * The 200 answer; an ok one without a county asks the Census lookup for the point's (v2.4783).
+ * v2.4878: it builds the Response itself. v2.4783 had it call itself, so every answer recursed
+ * until the stack overflowed and Deno sent a 500 with no CORS header.
+ */
 async function answer(out: OkCache | OkGeocode | Fail): Promise<Response> {
   if (out.ok && !out.county) out.county = await censusCountyFromPoint(out.lat, out.lng)
-  return await answer(out)
+  return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 
 function googleErrorToClientCode(e: GoogleGeocodeErrorCode): string {

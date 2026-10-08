@@ -1561,6 +1561,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [lienDesk, gcNotice, authRole])
   // The lien signer for any lien window (v2.3858): the job's master — his title line or his name — else the person at the keyboard (`lienSigner.ts`). The desk, the tooling prefill, the release and the instruments windows all read it for their own job.
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
+  // The master's plain name for the desk's word row (v2.4856) — his name, not the signer line the letters print.
+  const lienDeskLeaderFor = useCallback((masterUserId: string | null) => (masterUserId ? users.find((u) => u.id === masterUserId)?.name?.trim() ?? '' : ''), [users])
   // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
   const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
 
@@ -4636,6 +4638,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         workMonths={lienDeskWorkMonths}
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
+        leaderNameFor={lienDeskLeaderFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
         initialJobId={lienDesk?.jobId ?? null}
         // The Calendar is the desk's landing (v2.4101); a door that names a job lands on its notice as before.

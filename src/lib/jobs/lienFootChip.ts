@@ -47,11 +47,11 @@ export function awaitingChip(item: LienFootChipItem | null | undefined): LienFoo
 }
 
 /** The ready footer: approved on the leader’s word, by the GC’s standing rule, or by the leader on a day; the offer rides along. */
-export function readyChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined): LienFootChip {
+export function readyChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined, leaderName?: string | null): LienFootChip {
   const offer = offerWords ? ` · ${offerWords}` : ''
   if (item?.approval_mode === 'word') {
     const day = shortDay(item.approved_at)
-    return { tone: 'green', words: `Approved · leader’s word${day ? ` · ${day}` : ''}${offer}`, title: `On ${wordRecordWords({ word_note: item.word_note ?? null, word_channel: item.word_channel ?? null }).slice(3)}${offer} · in the run.` }
+    return { tone: 'green', words: `Approved · leader’s word${day ? ` · ${day}` : ''}${offer}`, title: `On ${wordRecordWords({ word_note: item.word_note ?? null, word_channel: item.word_channel ?? null }, leaderName).slice(3)}${offer} · in the run.` }
   }
   if (item?.approval_mode === 'rule') {
     const gc = gcName?.trim() || 'the GC'

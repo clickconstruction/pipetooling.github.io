@@ -2,7 +2,7 @@
  * GC mode, the real build: lookups the kernels share, moved word for word from the GC mode prototype
  * (branch spike/gc-mode, `gcLookups.ts`) by the schedule's PR 1a.
  */
-import type { GcState, Partner, TradePackage } from './types'
+import type { GcProject, GcState, Partner, TradePackage } from './types'
 
 export function partnerById(state: GcState, id: string): Partner | undefined {
   return state.partners.find((p) => p.id === id)
@@ -14,4 +14,13 @@ export function partnerById(state: GcState, id: string): Partner | undefined {
  */
 export function ownBidPriced(pkg: TradePackage): boolean {
   return pkg.selfPerform !== null && pkg.selfPerform.priced !== false
+}
+
+export function planLabel(project: GcProject, rev: number | null): string {
+  if (rev === null) return 'not opened'
+  return project.planSets.find((s) => s.rev === rev)?.label ?? `Rev ${rev}`
+}
+
+export function currentRev(project: GcProject): number {
+  return project.planSets.reduce((max, s) => Math.max(max, s.rev), 0)
 }

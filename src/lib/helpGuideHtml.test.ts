@@ -31,6 +31,16 @@ describe('encode/restore in-app guide links', () => {
     )
   })
 
+  it('v2.4868: carries the short ?g=<slug>, and a heading of another guide as a data-guide-anchor', () => {
+    const html = '<a href="?g=review-your-subs">a</a> <a href="/help/give-a-customer-a-lien-release#enclose-one-with-a-lien-notice">b</a>'
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks(html))).toBe(
+      '<a href="/help?g=review-your-subs" data-guide="review-your-subs">a</a> ' +
+        '<a href="/help?g=give-a-customer-a-lien-release#enclose-one-with-a-lien-notice" data-guide="give-a-customer-a-lien-release" data-guide-anchor="enclose-one-with-a-lien-notice">b</a>',
+    )
+    // A bare slug is a relative path, not a guide link: left for the sanitizer to drop, and the guides test catches it.
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks('<a href="review-your-subs">c</a>'))).toBe('<a href="review-your-subs">c</a>')
+  })
+
   it('encodes to an absolute https placeholder, which is what the sanitizer keeps', () => {
     expect(encodeHelpGuideLinks('<a href="/help/texas-lien-rules-the-app-follows">x</a>')).toBe(
       '<a href="https://guide.help.internal/texas-lien-rules-the-app-follows">x</a>',

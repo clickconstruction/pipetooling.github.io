@@ -48,6 +48,10 @@ const ARCHIVE_TABLE_LABELS: Record<string, string> = {
   bid_proposal_rooms: 'bid rooms',
   bid_proposal_room_revisions: 'bid room revisions',
   bid_proposal_room_events: 'bid room events',
+  // Bid history PR 0c: three bid tables joined the archive (20261008070000).
+  bid_count_row_custom_costs: 'quoted costs',
+  bid_takeoff_stage_splits: 'takeoff stage splits',
+  bid_submittal_takeoff_choices: 'submittal picks',
 }
 
 export function humanizeArchiveTable(tableName: string): string {
@@ -252,6 +256,13 @@ export function summarizeDeletedRowForTable(
   if (tableName === 'bid_count_row_custom_prices') {
     const price = finiteNumber(rowData.custom_price) ?? finiteNumber(rowData.price)
     return price != null ? `custom price ${formatMoney(price)}` : 'custom price'
+  }
+  if (tableName === 'bid_count_row_custom_costs') {
+    const cents = finiteNumber(rowData.unit_materials_cents)
+    const house = nonEmptyString(rowData.house_name)
+    const parts = [cents != null ? `quoted cost ${formatMoney(cents / 100)}` : 'quoted cost']
+    if (house) parts.push(house)
+    return parts.join(' · ')
   }
   return summarizeDeletedRow(rowData)
 }

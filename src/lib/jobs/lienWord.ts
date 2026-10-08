@@ -17,8 +17,8 @@ export const LIEN_WORD_CHANNEL_WORDS: Record<LienWordChannel, { pick: string; re
   phone: { pick: 'by phone', record: 'by phone' },
   in_person: { pick: 'in person', record: 'in person' },
   text: { pick: 'by text', record: 'by text' },
-  standing_over: { pick: 'he is standing over me', record: 'standing over the desk' },
-  typing: { pick: 'he is typing it in', record: 'typed it in himself' },
+  standing_over: { pick: 'standing over me', record: 'standing over the desk' },
+  typing: { pick: 'typing it in', record: 'typed it in himself' },
 }
 
 export function isLienWordChannel(v: string | null | undefined): v is LienWordChannel {
@@ -41,20 +41,68 @@ export function wordRecordBlock(claimGate: 'leader' | 'look' | null, channel: st
   return 'The claim is set by hand over the balance — the leader approves that one himself. If he is here, say so.'
 }
 
-/** The record line: `on the leader’s word · Robert, Sep 24 · standing over the desk`. */
-export function wordRecordWords(item: { word_note: string | null; word_channel: string | null } | null | undefined): string {
-  const note = item?.word_note?.trim() ?? ''
-  const how = isLienWordChannel(item?.word_channel) ? LIEN_WORD_CHANNEL_WORDS[item.word_channel].record : ''
-  return ['on the leader’s word', note, how].filter(Boolean).join(' · ')
+/** The leader's first name, for `on Malachi's word` (v2.4856); '' when the desk does not know him. */
+export function leaderFirstName(leaderName: string | null | undefined): string {
+  return (leaderName ?? '').trim().split(/\s+/)[0] ?? ''
 }
 
-/** The line under the picker once a presence channel is picked — what the record will say and who made it. */
-export function presenceLine(channel: string | null | undefined, recorderName: string | null | undefined): string {
+/** `on Malachi’s word` when the desk knows the job's master (v2.4856), else `on the leader’s word`. */
+export function onWhoseWord(leaderName?: string | null): string {
+  const first = leaderFirstName(leaderName)
+  return first ? `on ${first}’s word` : 'on the leader’s word'
+}
+
+/** The record line: `on Malachi’s word · Malachi Whites, Sep 24 · standing over the desk` (`on the leader’s word` when the master is not known). */
+export function wordRecordWords(item: { word_note: string | null; word_channel: string | null } | null | undefined, leaderName?: string | null): string {
+  const note = item?.word_note?.trim() ?? ''
+  const how = isLienWordChannel(item?.word_channel) ? LIEN_WORD_CHANNEL_WORDS[item.word_channel].record : ''
+  return [onWhoseWord(leaderName), note, how].filter(Boolean).join(' · ')
+}
+
+/**
+ * The short line beside the row once a presence channel is picked (v2.4856: one sentence each, the rest
+ * is in the preview) — who is making the record, and that the leader can pull it back.
+ */
+export function presenceLine(channel: string | null | undefined, recorderName: string | null | undefined, leaderName?: string | null): string {
   if (!leaderPresent(channel)) return ''
   const who = recorderName?.trim() || 'the office'
-  return channel === 'typing'
-    ? `Recorded by ${who}: the leader typed this in himself, at this desk. It goes to Ready to send on his word; he can pull it back with “Not what I said”.`
-    : `Recorded by ${who}: the leader was standing here and said to send it. It goes to Ready to send on his word; he can pull it back with “Not what I said”.`
+  const he = leaderFirstName(leaderName) || 'He'
+  return `Recorded by ${who}. ${he} can pull it back with “Not what I said”.`
+}
+
+export type WordRecordPreview = {
+  /** On the notice, in Ready to send: the footer's first words. */
+  ready: string
+  /** The desk's title bar, for the leader. */
+  strip: string
+  /** The queue row's state words. */
+  row: string
+  /** Who recorded it and what pulls it back. */
+  record: string
+  /** The paper is untouched. */
+  paper: string
+}
+
+/**
+ * What the record will say in every place it lands (v2.4856, the owner's ask: *see what that signature
+ * looks like on what it goes on*). The word is written to the desk item only — never onto the notice —
+ * and shows in three places: the notice's Ready footer, the leader's *Sent on your word* strip, and
+ * the queue row. The same `wordRecordWords` the desk draws afterwards, so the preview cannot drift.
+ */
+export function wordRecordPreview(input: { leaderName?: string | null; note: string; channel: LienWordChannel; recorderName?: string | null; jobLabel: string; gcName?: string | null; amountWords?: string }): WordRecordPreview {
+  const words = wordRecordWords({ word_note: input.note, word_channel: input.channel }, input.leaderName)
+  const who = input.recorderName?.trim() || 'the office'
+  const he = leaderFirstName(input.leaderName) || 'the leader'
+  const present = leaderPresent(input.channel)
+  return {
+    ready: `On ${words.slice(3)}`,
+    strip: `Sent on your word: ${input.jobLabel}`,
+    row: [input.jobLabel, input.gcName ? `GC ${input.gcName}` : '', input.amountWords ?? '', words].filter(Boolean).join(' · '),
+    record: present
+      ? `Recorded by ${who}: ${he} was at the desk and said to send it. ${he} can pull it back with “Not what I said” while it has not gone out.`
+      : `Recorded by ${who} from ${he}'s word, given ${LIEN_WORD_CHANNEL_WORDS[input.channel].record}. ${he} can pull it back with “Not what I said” while it has not gone out.`,
+    paper: 'The notice itself does not change. The owner and the GC never see who approved it or how; the record stays on the desk and in the job’s history.',
+  }
 }
 
 /** The note the row opens with: `Robert, Sep 24` when the leader is named, else `the leader, Sep 24`. */

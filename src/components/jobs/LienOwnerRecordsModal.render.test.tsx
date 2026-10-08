@@ -216,6 +216,9 @@ describe('LienOwnerRecordsModal', () => {
     expect(step('acknowledgment').textContent).toContain('Signed on their portal')
     expect(step('acknowledgment').textContent).toContain('by Umar Khan, drawn')
     expect(within(step('acknowledgment')).queryByRole('button', { name: 'Change' })).toBeNull()
+    // Their signing is the request: check 1 offers no Change either (v2.4866).
+    expect(step('request').textContent).toContain('Their signing is the request.')
+    expect(within(step('request')).queryByRole('button', { name: 'Change' })).toBeNull()
   })
 
   it('On their portal is a way to send once the records were offered there, and files the packet as a PDF (v2.4651)', async () => {

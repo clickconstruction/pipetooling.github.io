@@ -15,6 +15,18 @@ describe('helpGuideMarkdownToSafeHtml (DOM sanitizer)', () => {
     expect(out).toContain('data-guide="texas-lien-rules-the-app-follows"')
   })
 
+  it('v2.4868: the short ?g=<slug> and a heading of another guide both reach the page alive', () => {
+    const out = helpGuideMarkdownToSafeHtml('See [your subs](?g=review-your-subs) and [the enclosure](/help/give-a-customer-a-lien-release#enclose-one-with-a-lien-notice).')
+    expect(out).toContain('href="/help?g=review-your-subs" data-guide="review-your-subs"')
+    expect(out).toContain('href="/help?g=give-a-customer-a-lien-release#enclose-one-with-a-lien-notice" data-guide="give-a-customer-a-lien-release" data-guide-anchor="enclose-one-with-a-lien-notice"')
+  })
+
+  it('v2.4868: an example email address prints as text, not as a link that does nothing', () => {
+    const out = helpGuideMarkdownToSafeHtml('Bills go to ap@knight.com and taunya@clickplumbing.com.')
+    expect(out).toContain('ap@knight.com')
+    expect(out).not.toContain('<a')
+  })
+
   it('v2.4290: keeps a link to a page of the app as its path plus the data-app hook', () => {
     const out = helpGuideMarkdownToSafeHtml('Go to [GC Review](/jobs?tab=stages&gcReview=1).')
     expect(out).toContain('>GC Review</a>')

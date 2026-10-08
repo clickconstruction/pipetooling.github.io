@@ -2,7 +2,7 @@
 name: "Records for an owner, on their portal: they ask, they sign, they download"
 number: 86
 group: close
-status: live 2026-10-06 (v2.4650, v2.4651, v2.4702) · left: the end-to-end walk on a ZZ TEST request, then the first real owner
+status: live 2026-10-06 (v2.4650, v2.4651, v2.4702) · walked end to end on ZZ TEST requests 2026-10-07, all eight steps passed; two fixes v2.4866 · left: the first real owner
 summary: >
   Today an owner's records request is worked by hand: the office puts their written request on
   file, prints the acknowledgment for them to sign, prints or downloads the packet and hands it
@@ -13,10 +13,10 @@ summary: >
   store and the records window all exist; this plugs them together. Two shapes were drawn: the
   full one (ask → sign → the papers live on the portal) and a shorter one (sign → download,
   nothing kept on the portal). The owner picked the shorter one, and it is live.
-next: Walk it end to end on a ZZ TEST request, as How to verify below says. Offer it, sign on the portal, record it as sent On their portal, download. Delete this folder once the first real owner has signed.
+next: Nothing to build. Delete this folder once the first real owner has signed.
 size: XS
-blocker: A live walk. The office side needs a signed-in session; the localhost dev login (AGENTS.md) gives one.
-ver: v2.4650 · v2.4651 · v2.4702
+blocker: The first real owner who asks for records.
+ver: v2.4650 · v2.4651 · v2.4702 · v2.4866
 ---
 
 # Records for an owner, on their portal
@@ -95,7 +95,7 @@ Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/
 
 **Live 2026-10-06.** Both PRs merged (v2.4650 as #4641, v2.4651 as #4643). Migration `20261006040000` is pushed. `sign-owner-records` and `customer-portal` are deployed, and each answers an empty POST with 400 *Missing token*. The client is on clicktooling.com. Shape B is complete.
 
-**Left: one end-to-end walk, for any session.** Nothing on prod has run the flow yet. The session that built it stopped at the deploys: its browser pane was signed out. The recipe is under *How to verify*. The first portal signing is also the first `lien_owner_record_request` row in `esign_consents`, so a failure at that step points at the migration.
+**Walked 2026-10-07, v2.4866.** All eight steps under *How to verify* passed on two ZZ TEST requests, J1064 and J904, since the ZZ sweep had folded J1050–J1053 into the sink. The first `lien_owner_record_request` consent row is on prod. The walk found two things, both fixed in [v2.4866](../../docs/recent-features/v2.4866.md): a job with no address left the acknowledgment's first sentence blank, and check 1 still offered Change after a portal signing. Left: the first real owner. A ZZ property reaches the picker only with a notice row on the desk; the fragment says how the walk made one and voided it after.
 
 **The Dashboard's Needs you line, v2.4702.** The plan's stop 4 line, which v2.4650 and v2.4651 left out: a portal signing puts *Umar Khan signed for the records on 9703 Lenox Hill* on the Needs you card, and Quickfill's, until the request is recorded as sent. **Open their request** opens the Lien desk with this window on that property (`?ownerrecords=<job id>`).
 
@@ -103,7 +103,7 @@ Each PR ships its release note, its `docs/recent-features/` fragment, its `docs/
 
 ## How to verify
 
-The walk. **This is prod data: use a ZZ TEST request only** (*ZZ TEST GC On Notice*, J1050–J1052). What it writes stays as test residue on those jobs: one request row, one portal link, one `esign_consents` row, and the packet PDF (plus the ink PNG when drawn) in `sent-documents`.
+The walk. **This is prod data: use a ZZ TEST request only** (the ZZ jobs left after the sweep: J1064 *ZZ TEST sink* and J904 in 2026-10-07's walk). What it writes stays as test residue on those jobs: one request row, one portal link, one `esign_consents` row, and the packet PDF (plus the ink PNG when drawn) in `sent-documents`.
 
 1. **Sign in on localhost.** Copy `.env` and `.env.local` from the main checkout into the worktree (worktrees lack them), run `npm run dev`, and open `http://localhost:<port>/dev-login?as=1&to=/jobs`. Then open the Lien desk at `/jobs?tab=stages&liendesk=1`.
 2. **Open the request.** Press **An owner asked for records ›** and pick a ZZ TEST property. **Offer it on their portal ›** shows only when the property's owner of record is a customer row; make sure that customer is a test one, since the offer mints that customer's portal link.

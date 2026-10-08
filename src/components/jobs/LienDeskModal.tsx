@@ -42,7 +42,7 @@ import {
   startLetterTwo,
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
-import { wordRecordBlock, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
@@ -155,6 +155,8 @@ export type LienDeskModalProps = {
   issuer: PhysicalInvoiceIssuer | null
   /** The signer's "Full name and title" for a job's master (else the session name) — the notice's contact person. */
   signerNameFor: (masterUserId: string | null) => string
+  /** The job's master by his plain name (v2.4856): the word row and the record say *on Malachi's word*; '' when not known. */
+  leaderNameFor?: (masterUserId: string | null) => string
   /** The signer's own phone for the cover letters' `{{phone}}` (v2.3753); the letterhead's when he has none. */
   signerPhoneFor?: (masterUserId: string | null) => string
   /** Land on this job's item when given (the forecast's Send notice…, the row icon). */
@@ -287,6 +289,7 @@ export default function LienDeskModal({
   workMonths,
   issuer,
   signerNameFor,
+  leaderNameFor,
   signerPhoneFor,
   initialJobId,
   onChanged,
@@ -822,6 +825,11 @@ export default function LienDeskModal({
   const monthsList = [...months].sort()
 
   const openBalance = selected?.openBalance ?? 0
+  // The job's master by name (v2.4856): the word row, the record and the queue row say *on Malachi's word*.
+  const leaderName = leaderNameFor?.(job?.master_user_id ?? null) ?? ''
+  const wordPreview = selected
+    ? wordRecordPreview({ leaderName, note: wordNote, channel: wordChannel, recorderName: authName, jobLabel: jobLabel(job, selected.jobId), gcName: gc?.name ?? null, amountWords: formatUsdNoCents(openBalance) })
+    : undefined
   const supplierJob = selected ? suppliers.byJob.get(selected.jobId) : undefined
   // The claim set by hand (v2.3682): an amount off the moving balance, carried until cleared; the notice claims the rest.
   const correction = selected && data ? data.claimCorrectionsByJob[selected.jobId] ?? null : null
@@ -1404,7 +1412,7 @@ export default function LienDeskModal({
                   ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.submitted_at)) : ''}`
                   : e.pile === 'ready'
                     ? e.item?.approval_mode === 'word'
-                      ? wordRecordWords(e.item)
+                      ? wordRecordWords(e.item, leaderNameFor?.(data?.jobsById[e.jobId]?.master_user_id ?? null))
                       : e.item?.approval_mode === 'rule'
                         ? 'standing rule'
                         : 'approved'
@@ -2555,7 +2563,9 @@ export default function LienDeskModal({
               onChannel={setWordChannel}
               radioName="word-channel"
               recorderName={authName}
-              actionLabel="Record it and send ▸"
+              leaderName={leaderName}
+              preview={wordPreview}
+              actionLabel="Approve on his word ▸"
               onAction={sendOnWord}
               actionDisabled={busy || !wordNote.trim()}
               actionBlock={wordRecordBlock(claimGate, wordChannel)}
@@ -2582,7 +2592,7 @@ export default function LienDeskModal({
               <div className="lienFootActions">
                 <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
                 {canSendOnWord(authRole) && !blocked ? (
-                  <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
+                  <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
                     The leader said to send it…
                   </button>
                 ) : null}
@@ -2644,8 +2654,10 @@ export default function LienDeskModal({
           onChannel={setWordChannel}
           radioName="word-channel"
           recorderName={authName}
-          leadIn="Leader here — who, when, and how:"
-          actionLabel="Record it and send ▸"
+          leaderName={leaderName}
+          preview={wordPreview}
+          leadIn="Leader here"
+          actionLabel="Approve on his word ▸"
           onAction={sendOnWord}
           actionDisabled={busy || !wordNote.trim()}
           actionBlock={wordRecordBlock(claimGate, wordChannel)}
@@ -2667,7 +2679,7 @@ export default function LienDeskModal({
           {canSendOnWord(authRole) ? (
             <button
               type="button"
-              onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordChannel('standing_over'); setWordOpen(true) }}
+              onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordChannel('standing_over'); setWordOpen(true) }}
               disabled={busy}
               style={btn('primary', busy)}
               data-lien-desk-leader-here
@@ -2684,7 +2696,7 @@ export default function LienDeskModal({
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         <div className="lienFootRow" data-lien-desk-foot="ready">
-          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null)} data-lien-desk-ready-words />
+          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName)} data-lien-desk-ready-words />
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
