@@ -12,7 +12,7 @@ import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
 import type { BoardRows } from './boardRows'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
+import type { DeclineReason, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
@@ -387,4 +387,21 @@ export async function vetGcCompany(companyId: string, status: 'approved' | 'decl
 /** Where a company's crews drive from and how far they go. Empty miles: no limit. */
 export async function setGcCompanyCoverage(companyId: string, address: string, maxMiles: number | null): Promise<void> {
   taken(await supabase.from('gc_companies').update({ address, max_miles: maxMiles }).eq('id', companyId).select('id').single(), 'save the address')
+}
+
+/** One line on an ask's story (the Board's B4-b): a call, a text or an email, with the day they promised the quote by. */
+export async function logGcAskContact(line: { companyId: string; inviteId: string; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string; promisedBy: string | null }): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_company_contacts')
+      .insert({ company_id: line.companyId, invite_id: line.inviteId, contacted_on: line.on, by_name: line.byName, how: line.how, note: line.note, promised_by: line.promisedBy })
+      .select('id')
+      .single(),
+    'log the contact',
+  )
+}
+
+/** The office takes a company's no by phone: it will not or cannot do it, with the reason kept on the ask. */
+export async function declineGcAsk(inviteId: string, why: 'wont' | 'cant', reason: DeclineReason, note: string): Promise<void> {
+  taken(await supabase.rpc('gc_office_decline', { p_invite_id: inviteId, p_why: why, p_reason: reason, p_note: note }), 'take them off the ask')
 }

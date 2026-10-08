@@ -69,7 +69,9 @@ from the **Trades | GC** switch on Bids. **New here?** walks the page (v2.4838).
 list (the Board's B3, guide `see-where-every-gc-project-stands`): the stages with a jump strip, each project's days left, its customer and
 architect, and its price so far with the card behind it. Its switch opens **Trade partners** (guides `add-a-trade-partner`,
 `approve-a-company-new-to-us`): each trade's companies and the projects short of quotes, **Add a company**, and the
-**New to us** box to approve or decline a company. Lists every GC project as the kernels read it (the plan
+**New to us** box to approve or decline a company, and **Follow up** (guide `follow-up-on-a-quote-from-a-trade-partner`):
+every company we wait on for a quote, the ones to call first at the top, with Log a contact and **Will not do it** /
+**Cannot do it**. For a dev each project's trades list their asks too. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through
 `gc_create_project`. Asking a company for a quote is not here yet. **Open the scope book** (`?book=1`)

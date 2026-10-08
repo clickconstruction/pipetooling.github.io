@@ -12,6 +12,7 @@ import { shortDate } from '../../lib/gc/words'
 import { GcBoardStrip, type BoardStripItem } from './GcBoardStages'
 import { Btn, Card, Chip, input, td, th, type Tone } from './gcUi'
 import { useJumpStrip } from './useJumpStrip'
+import { benchAnchor } from '../../lib/gc/tradeViews'
 
 /**
  * GC mode, the real build (the Board's B3-b): Trade partners on real data, from the design spike's
@@ -42,10 +43,6 @@ const ASK_WORDS: Record<Invite['status'], { tone: Tone; word: string }> = {
   opened: { tone: 'blue', word: 'looking' },
   bid: { tone: 'green', word: 'quote in' },
   declined: { tone: 'grey', word: 'passed' },
-}
-
-function benchAnchor(trade: string): string {
-  return `gc-bench-${trade.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
 }
 
 export function GcTradePartners({
