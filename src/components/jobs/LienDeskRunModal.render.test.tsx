@@ -6,7 +6,7 @@
  * address on file.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
@@ -368,5 +368,40 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
     expect(overlay.textContent).toContain('#878-2609161138')
     expect(overlay.textContent).toContain('October 16, 2026')
     expect(overlay.textContent).not.toContain('#0')
+  })
+
+  it('Addresses for the labels saves one CSV row per envelope that goes out, in the label service’s columns (v2.4977)', async () => {
+    const two = [notice(), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', amount: 0, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Nobody Home', address: '', email: '', method: 'certified_mail', tracking: '' }] })]
+    let saved = ''
+    const urlApi = URL as unknown as { createObjectURL?: (b: Blob) => string; revokeObjectURL?: (u: string) => void }
+    const hadCreate = urlApi.createObjectURL
+    const hadRevoke = urlApi.revokeObjectURL
+    urlApi.createObjectURL = (b: Blob) => {
+      // jsdom's Blob has no text(); FileReader reads it.
+      const r = new FileReader()
+      r.onload = () => { saved = String(r.result ?? '') }
+      r.readAsText(b)
+      return 'blob:labels'
+    }
+    urlApi.revokeObjectURL = () => {}
+    const clicks: string[] = []
+    const origClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) { clicks.push(this.getAttribute('download') ?? '') }
+    try {
+      renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      await settle()
+      // The second notice's envelope is held (no address, $0): it is listed, never on the labels.
+      expect(screen.getByTestId('run-held-3').textContent).toMatch(/^Held · /)
+      fireEvent.click(screen.getByTestId('run-label-addresses'))
+      await waitFor(() => expect(saved).toContain('Company,Name,Address Line 1'))
+      expect(clicks).toEqual(['certified-labels_2026-10-08.csv'])
+      expect(saved).toContain('\r\n,Elbel Holdings LLC,4 Example Way,,"Schertz, TX",,,,Envelope 1 · 650\r\n')
+      expect(saved).toContain(',Loberg Contracting,2904 Corporate Cr,,,,,,Envelope 2 · 650\r\n')
+      expect(saved).not.toContain('Nobody Home')
+    } finally {
+      HTMLAnchorElement.prototype.click = origClick
+      urlApi.createObjectURL = hadCreate
+      urlApi.revokeObjectURL = hadRevoke
+    }
   })
 })

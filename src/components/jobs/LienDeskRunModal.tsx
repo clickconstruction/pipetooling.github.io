@@ -9,6 +9,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runMailing } from '../../lib/jobs/lienRunPaper'
+import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
 import { RUN_SEND_METHODS, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -222,6 +223,24 @@ export default function LienDeskRunModal({
       return
     }
     notePrinted(env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key))))
+  }
+  // The run's addresses for a certified-mail label service (v2.4977): one CSV row per envelope that goes out on paper,
+  // in the vendor's batch columns, numbered as the sheet is. Nothing is filed: the labels the service prints are the record.
+  const saveLabelAddresses = () => {
+    const rows = runLabelRows(mailing)
+    if (rows.length === 0) {
+      showToast(runLabelSavedWords(0), 'info')
+      return
+    }
+    const blob = new Blob([runLabelCsv(rows)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = runLabelFilename(todayYmd)
+    a.setAttribute('data-run-labels-download', 'yes')
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast(runLabelSavedWords(rows.length), 'success')
   }
   // The envelope faces are addresses, not a paper anyone reads: the packet is what is filed.
   const printEnvelopes = () => {
@@ -447,6 +466,9 @@ export default function LienDeskRunModal({
           </label>
           <button type="button" onClick={printEnvelopes} disabled={envelopes.length === 0} title="One page per envelope — the return address, the certified line, a blank for the article number, and the recipient as the notice names it" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
             Envelope faces
+          </button>
+          <button type="button" onClick={saveLabelAddresses} disabled={mailing.mailed.length === 0} data-testid="run-label-addresses" title="Saves a spreadsheet for a certified-mail label service: one row per envelope that goes out, the name and address as the envelope reads them, the envelope number and its jobs as the reference. Upload it as a batch; the labels print with the 20-digit number already on them." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+            Addresses for the labels
           </button>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
             {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}
