@@ -330,7 +330,8 @@ describe('the ways out — Cancel, the backdrop and Escape', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     fireEvent.click(screen.getAllByRole('presentation')[0]!)
     escape()
-    expect(m.onClose).toHaveBeenCalledTimes(3)
+    // Escape is read by a key listener the window adds after it paints, so wait for it on a busy CI box.
+    await waitFor(() => expect(m.onClose).toHaveBeenCalledTimes(3))
     expect(saves()).toHaveLength(0)
   })
 
