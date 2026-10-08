@@ -24,3 +24,11 @@ export function planLabel(project: GcProject, rev: number | null): string {
 export function currentRev(project: GcProject): number {
   return project.planSets.reduce((max, s) => Math.max(max, s.rev), 0)
 }
+
+export function find(state: GcState, projectId: string, packageId: string, inviteId?: string) {
+  const project = state.projects.find((p) => p.id === projectId)
+  const pkg = project?.packages.find((p) => p.id === packageId)
+  const invite = inviteId ? pkg?.invites.find((i) => i.id === inviteId) : undefined
+  const partner = invite ? partnerById(state, invite.partnerId) : undefined
+  return { project, pkg, invite, partner }
+}
