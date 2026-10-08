@@ -9,7 +9,7 @@ keywords: payments made, payments list, sort payments, pay run payments, payment
 
 The columns are these:
 
-- **Unpaid reports** is what's still owed on pay reports. It is gross pay, the pay before anything comes off, minus recorded payments.
+- **Unpaid reports** is what's still owed on pay reports. A report owes its net pay. Net pay is its gross, the pay before anything comes off, less its Less lines plus its Additional lines. Recorded payments come off that.
 - **No report yet** is weeks of approved hours that never became a pay report. Those weeks are priced at the person's hourly wage, like *3 wk · 79.16 h · ~$1,187*.
 - **Credits** and **Charges** are pending offsets, split by direction. An offset is an amount added to pay or taken off it.
 - **Settle up** is the answer. Settle up totals everything above into one figure, with charges taken off: {{chip:green|pay $1,499.82}} or {{chip:red|owes $3,082.49}}.

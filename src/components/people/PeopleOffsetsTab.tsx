@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../pay/PersonOffsetFormModal'
-import { buildSettleUpBoard, type StubPaymentLike } from '../../lib/people/personMoneyLedger'
+import { buildSettleUpBoard, payStubNetById, type StubPaymentLike } from '../../lib/people/personMoneyLedger'
 import { fetchLaborPayConfigMap } from '../../utils/teamLabor'
 import PersonMoneyLedgerModal from './PersonMoneyLedgerModal'
 import { localCalendarDayKey } from '../../utils/dateUtils'
@@ -22,12 +22,15 @@ export type PeopleOffsetsTabProps = {
   people: Person[]
   users: UserRow[]
   payStubs: PayStubRow[]
+  /** Each report's Less and Additional lines (usePayStubsData): Settle up owes net − paid, as Balances does (v2.4900). */
+  payStubDeductionsByStubId: Record<string, ReadonlyArray<{ amount: number }>>
+  payStubAdditionalByStubId: Record<string, ReadonlyArray<{ line_total: number }>>
   loadPayStubs: () => Promise<unknown>
   /** Who is archived (`buildArchivedRoster`, from `roster_people`): their rows fold into the Archived users section. */
   archived?: ArchivedRoster
 }
 
-export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs, archived = NO_ARCHIVED_ROSTER }: PeopleOffsetsTabProps) {
+export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeductionsByStubId, payStubAdditionalByStubId, loadPayStubs, archived = NO_ARCHIVED_ROSTER }: PeopleOffsetsTabProps) {
   const confirmDialog = useConfirmDialog()
   const [offsets, setOffsets] = useState<PersonOffset[]>([])
   const [offsetsLoading, setOffsetsLoading] = useState(false)
@@ -152,9 +155,14 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
     else loadOffsets()
   }
 
+  const netByStubId = useMemo(
+    () => payStubNetById(payStubs, payStubDeductionsByStubId, payStubAdditionalByStubId),
+    [payStubs, payStubDeductionsByStubId, payStubAdditionalByStubId],
+  )
   const settleRows = useMemo(
     () =>
       buildSettleUpBoard({
+        netByStubId,
         offsets,
         payStubs,
         stubPayments: allStubPayments,
@@ -164,7 +172,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
           return wage != null && wage > 0 ? wage : null
         },
       }),
-    [offsets, payStubs, allStubPayments, allDayHours, wageMap],
+    [offsets, payStubs, allStubPayments, allDayHours, wageMap, netByStubId],
   )
   const filteredSettleRows = useMemo(() => {
     const q = offsetsTabSearch.trim().toLowerCase()
@@ -601,6 +609,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
           personName={ledgerPersonName}
           offsets={offsets.filter((o) => o.person_name.trim().toLowerCase() === ledgerPersonName.trim().toLowerCase())}
           payStubs={payStubs.filter((s) => s.person_name.trim().toLowerCase() === ledgerPersonName.trim().toLowerCase())}
+          netByStubId={netByStubId}
           onClose={() => setLedgerPersonName(null)}
           onApplyOffset={(offsetId) => {
             const o = offsets.find((x) => x.id === offsetId)

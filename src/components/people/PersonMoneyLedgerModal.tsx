@@ -52,6 +52,8 @@ export type PersonMoneyLedgerModalProps = {
   personName: string
   offsets: PersonOffsetLike[]
   payStubs: PayStubLike[]
+  /** Each report's net (`payStubNetById`): Settle up and the weekly history owe net − paid, as Balances does (v2.4900). */
+  netByStubId: ReadonlyMap<string, number>
   onClose: () => void
   /** Open the existing apply-to-report modal for a pending charge (closes this ledger first). */
   onApplyOffset?: (offsetId: string) => void
@@ -80,7 +82,7 @@ const JOBS_RANGE_OPTIONS: Array<{ value: CrewPnlRangePreset; label: string }> = 
   { value: 'all', label: 'All time' },
 ]
 
-export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, onClose, onApplyOffset }: PersonMoneyLedgerModalProps) {
+export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, netByStubId, onClose, onApplyOffset }: PersonMoneyLedgerModalProps) {
   const [, setSearchParams] = useSearchParams()
   const [teamLabor, setTeamLabor] = useState<TeamLaborRow[] | null>(null)
   const [jobs, setJobs] = useState<JobRow[] | null>(null)
@@ -153,13 +155,13 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
   )
 
   const settle = useMemo(
-    () => personSettleUp({ payStubs, stubPayments: stubPayments ?? [], offsets, pricedWeeks }),
-    [payStubs, stubPayments, offsets, pricedWeeks],
+    () => personSettleUp({ payStubs, stubPayments: stubPayments ?? [], offsets, pricedWeeks, netByStubId }),
+    [payStubs, stubPayments, offsets, pricedWeeks, netByStubId],
   )
 
   const weeklyGroups = useMemo(
-    () => buildWeeklyHistoryGroups({ payStubs, stubPayments: stubPayments ?? [], offsets }),
-    [payStubs, stubPayments, offsets],
+    () => buildWeeklyHistoryGroups({ payStubs, stubPayments: stubPayments ?? [], offsets, netByStubId }),
+    [payStubs, stubPayments, offsets, netByStubId],
   )
 
   const unpaidStubs = useMemo(() => {
@@ -169,12 +171,13 @@ export default function PersonMoneyLedgerModal({ personName, offsets, payStubs, 
       .map((s) => {
         const paid = paidByStub.get(s.id)
         if (paid == null && s.paid_at != null) return null
-        const remaining = Math.round((s.gross_pay - (paid ?? 0)) * 100) / 100
+        // A report owes its net, gross − Less + Additional, as Settle up and Balances read it (v2.4900).
+        const remaining = Math.round(((netByStubId.get(s.id) ?? s.gross_pay) - (paid ?? 0)) * 100) / 100
         return remaining > 0.01 ? { stub: s, remaining, partial: (paid ?? 0) > 0 } : null
       })
       .filter((x): x is { stub: PayStubLike; remaining: number; partial: boolean } => x != null)
       .sort((a, b) => b.stub.period_start.localeCompare(a.stub.period_start))
-  }, [payStubs, stubPayments])
+  }, [payStubs, stubPayments, netByStubId])
 
   const pendingOffsets = useMemo(
     () => offsets.filter((o) => o.pay_stub_id == null).sort((a, b) => b.occurred_date.localeCompare(a.occurred_date)),

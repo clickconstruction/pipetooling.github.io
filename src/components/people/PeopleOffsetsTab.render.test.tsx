@@ -78,6 +78,8 @@ describe('PeopleOffsetsTab settle-up board', () => {
         people={[]}
         users={[]}
         payStubs={PAY_STUBS}
+        payStubDeductionsByStubId={{}}
+        payStubAdditionalByStubId={{}}
         loadPayStubs={() => Promise.resolve()}
         archived={ARCHIVED}
       />,
@@ -124,5 +126,30 @@ describe('PeopleOffsetsTab settle-up board', () => {
     expect((await screen.findAllByText(/Week /)).length).toBeGreaterThan(0)
     expect(screen.getByText(/Paid Aug 5.*cashapp/)).toBeTruthy()
     expect(screen.getByText('$840.00 still owed')).toBeTruthy()
+  })
+
+  // v2.4900: a report's Less line lowers what it owes. $1,840 gross with a $840 Less line and $1,000 paid
+  // is paid in full — Balances and Record payment already read it so, and the database caps payments at net.
+  it('a report with a Less line owes its net: the same report with $840 taken off is paid in full', async () => {
+    renderWithProviders(
+      <PeopleOffsetsTab
+        people={[]}
+        users={[]}
+        payStubs={PAY_STUBS}
+        payStubDeductionsByStubId={{ s1: [{ amount: 840 }] }}
+        payStubAdditionalByStubId={{}}
+        loadPayStubs={() => Promise.resolve()}
+        archived={ARCHIVED}
+      />,
+    )
+    expect((await screen.findAllByText('Abraham')).length).toBeGreaterThan(0)
+    // Before, the Unpaid reports column read $840.00 (gross − paid) and the net read pay $415.00.
+    // Now nothing is owed on the report once the $1,000 payment loads, so only the $425 charge is left.
+    expect((await findExact('owes $425.00')).length).toBeGreaterThan(0)
+    expect(screen.queryAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === '$840.00')).toHaveLength(0)
+    expect(screen.queryAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === 'pay $415.00')).toHaveLength(0)
+    fireEvent.click(screen.getAllByText('Abraham')[0]!)
+    expect(await screen.findByText('Needs action')).toBeTruthy()
+    expect(screen.queryByText('Partly paid')).toBeNull()
   })
 })

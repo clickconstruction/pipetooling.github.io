@@ -2738,6 +2738,8 @@ export default function People() {
           people={people}
           users={users}
           payStubs={payStubs}
+          payStubDeductionsByStubId={payStubDeductionsByStubId}
+          payStubAdditionalByStubId={payStubAdditionalByStubId}
           loadPayStubs={loadPayStubs}
           archived={archivedRoster}
         />
