@@ -583,12 +583,20 @@ before B6 is cut, and the standalone `gc_sows` alternative stays open until then
   - `boardRows.ts` maps the company record, the asks, quotes, call log and promises to the kernels' shapes.
   - `GcBoard.tsx` draws the stages, the strip, the rows and a read-only price card, dev only above door 1's list.
   - The guide is `see-where-every-gc-project-stands`.
-- **B3-a** is clickconstruction/pipetooling.github.io#4919 (v2.4889), armed.
-- **B3-b** is clickconstruction/pipetooling.github.io#4928 (v2.4896), a draft stacked on #4919 and armed once #4919 merges. It is Trade partners, dev only behind a Project Board | Trade partners switch on `/gc`.
+- **B3-a** (#4919, v2.4889) is merged as fd8188568.
+  - P0 made `Invite.seenRev` required while it was queued. Another checkout's fix (94989a4e6) carries `gc_invites.seen_rev` through the mapper, and was checked and kept.
+  - B3-a moved no kernel from the spike. `boardRows.ts` is main's own mapper, and the board's components are ports. So it has no lift config and no pin, and the spike keeps its board as it is.
+- **B3-b** is clickconstruction/pipetooling.github.io#4928 (v2.4896), rebased onto main and armed. It is Trade partners, dev only behind a Project Board | Trade partners | Follow up switch on `/gc`.
   - The New to us box approves, approves up to an amount, or declines through `gc_vet_company`.
   - Each trade's card has its companies and the projects short of quotes. **Add a company** goes through `gc_add_company`, and the address and miles are a plain update.
   - The guides are `add-a-trade-partner` and `approve-a-company-new-to-us`.
   - The company window's About, with language and people, moves to **B3-c**, after #4857 lands the Portal's `contactGets`. B4 comes before it, at the lead's word.
+- **B4-b** is clickconstruction/pipetooling.github.io#4931 (v2.4898), a draft on B3-b, to be armed once #4928 merges.
+  - It adds Follow up for quote asks and each ask's story: Log a contact, and Will not do it / Cannot do it through `gc_office_decline` with the owner's six reasons.
+  - Each project card also lists its asks under each trade.
+- **B4-a's kernels** are clickconstruction/pipetooling.github.io#4939 (v2.4906), armed from main. They are `askChoices`, `askStanding` and `find`, lifted with `board-b4-a.lift.json`.
+  - The spike keeps its own `askChoices` as the known difference, because the fixture's companies with no email need their made-up address.
+  - The window waits for #4928 on main and for the Portal's `inviteMessage` (P1b-i).
 - **Test rows on prod (rule 5), kept for P1b's link mint and B4's Ask check, swept at call 13:**
   - `gc_companies` `ff11d0fb-269e-44de-b92a-e7256c180f67`, "GC test trade company, delete me". It does Concrete, its contact is "Test contact" at gc-test-trade@example.com, and it drives from 200 Main St, Boerne, up to 50 miles.
   - It was added through B3-b's Add a company as a dev on 2026-10-08. It was approved up to $50,000 with a note, then its miles were changed from 60 to 50. Each step was read back from the table.
