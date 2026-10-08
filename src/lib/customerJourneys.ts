@@ -62,6 +62,8 @@ export const BID_ROOM_SAMPLE_DONE_PATH = `/bid-room?t=${SAMPLE_TOKEN_DONE}`
 export const CUSTOMER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN}`
 export const GC_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_GC}`
 export const SUB_PORTAL_SAMPLE_PATH = `/sub?t=${SAMPLE_TOKEN}`
+/** GC mode's trade partner portal (P1b-ii-b): `gc-trade-portal` answers the sample token with a made-up company. */
+export const TRADE_PORTAL_SAMPLE_PATH = `/t/${SAMPLE_TOKEN}`
 export const CONTRACT_SAMPLE_PATH = `/contract/accept?t=${SAMPLE_TOKEN}`
 export const CONTRACT_SAMPLE_DONE_PATH = `/contract/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The customer's own agreement (v2.3510) — not the sub's contract above. */
@@ -408,6 +410,16 @@ export function customerJourneys(): Journey[] {
           guide: 'share-a-sub-their-portal',
           reflects: ['Sub pay-run day and explainer (Settings)', 'Portal letterhead (portalCompany)', 'Paperwork states and the insurance-expiry nudge'],
           render: { kind: 'page', path: SUB_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-trade-portal',
+          label: 'GC mode: a trade partner\'s portal',
+          sublabel: 'GC projects → Trade portals → Copy link (devs only for now)',
+          when: 'From the first ask to quote',
+          customerCan: 'See every ask to quote, its plans, its scope lines, the questions it may read, who to call and the emails we sent.',
+          guide: 'share-a-trade-partner-its-portal',
+          reflects: ['The company\'s asks, plans and questions on GC projects', 'Who gets our emails at the company'],
+          render: { kind: 'page', path: TRADE_PORTAL_SAMPLE_PATH },
         },
         {
           id: 'sub-contract-email',

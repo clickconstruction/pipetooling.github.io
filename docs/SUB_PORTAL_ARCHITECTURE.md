@@ -15,6 +15,8 @@ last_updated: 2026-09-25
 
 ## What this surface is
 
+Its company-keyed sibling for GC mode is the trade partner portal at `/t/<link>` (`src/pages/GcTradePortal.tsx`, `gc-trade-portal`); [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md#gc-trade-portal) has its read.
+
 The no-login **"Work & pay statement"** a subcontractor opens from a minted capability link — the customer portal's person-keyed sibling. The sub sees their open sheets (line items, Agreed · Paid · Open, a four-dot stage rail), the 90-day payment ledger, paperwork status, "Your days", and can **act**: report percent done, say "my work here is done", move their picked dates, sign-to-accept / decline / "can't do those days" on work offers, open a signing page for unsigned paperwork, and mark days off. Bilingual EN/ES toggle, print-ready (Print = the PDF path), single-theme light.
 
 | Fact | Value |

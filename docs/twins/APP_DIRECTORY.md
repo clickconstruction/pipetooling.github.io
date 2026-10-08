@@ -71,7 +71,8 @@ architect, and its price so far with the card behind it. Its switch opens **Trad
 `approve-a-company-new-to-us`): each trade's companies and the projects short of quotes, **Add a company**, and the
 **New to us** box to approve or decline a company, and **Follow up** (guide `follow-up-on-a-quote-from-a-trade-partner`):
 every company we wait on for a quote, the ones to call first at the top, with Log a contact and **Will not do it** /
-**Cannot do it**. For a dev each project's trades list their asks too, with **Ask for quotes**: the Ask window
+**Cannot do it**, and **Trade portals** (guide `share-a-trade-partner-its-portal`): each company's portal link, made,
+copied, remade or turned off, and whether they opened it. For a dev each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, and saves the asks; no email goes out yet. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through

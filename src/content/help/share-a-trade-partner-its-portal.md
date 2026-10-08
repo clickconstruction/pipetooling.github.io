@@ -1,0 +1,55 @@
+---
+title: share a trade partner its portal
+category: Bids & Estimating
+roles: dev
+keywords: gc mode, trade partner, trade portal, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor
+order: 96
+---
+Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
+
+Only a dev makes links while the portal is built. The portal reads only for now. Sending a quote from it comes later.
+
+## What the company sees
+
+The link opens on the company's home. The home shows:
+
+- Each project it is asked to quote, with the day its quote is due.
+- Who at the company gets our emails.
+- The asks it passed on, and jobs we did not win, under **Before**.
+
+A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
+
+The page tells the company to email its quote or question to our project manager for now.
+
+## Make the link
+
+1. Open [GC projects](/gc).
+2. Press {{button:outline|Trade portals}} at the top of the board.
+3. Find the company and press {{button:blue|Make the link}}.
+
+The status reads {{chip:yellow|not opened yet}} until the company opens it.
+
+:::example A company with its link on
+{{chip:yellow|not opened yet}} {{button:blue|Copy link}} {{button:outline|Make a new link}} {{button:outline|Turn it off}}
+:::
+
+## Send it
+
+1. Press {{button:blue|Copy link}}.
+2. Paste the link into the email that asks them to quote.
+
+One link holds every project, so send the same link each time.
+
+Press **Open it as the office** to see what they see. Your look is never counted as theirs.
+
+## See if they opened it
+
+The status turns {{chip:green|active}} once the company opens its link. The line under it says how often and when.
+
+## Make a new link or turn it off
+
+Press {{button:outline|Make a new link}} when the link went to the wrong person. The old link stops working at once. Send them the new one.
+
+Press {{button:outline|Turn it off}} to stop the link with no new one. The company then reads that the link is no longer active.
+
+Each press asks once more before it acts. Press {{button:outline|Keep it}} to leave the link as it is.
