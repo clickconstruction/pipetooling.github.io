@@ -86,6 +86,18 @@ ROLLBACK;
 
 Then run `npm run check:migration-drift` and the types PR: `database.ts` gains the two columns and the second argument, and the dev-mcp catalog is rebuilt. The client PR follows.
 
+## Status
+
+Merged as v2.4958 (#5007) and pushed to prod on 2026-10-08 (the types followed in #5013; the ledger read 806 of 806 at 20:30 UTC). The five verify steps ran on prod at 20:45 UTC as `postgres` over the session pooler, the stand-in job inside one transaction that rolled back; nothing stayed.
+
+1. **Passed.** `jobs_ledger`: 0 of 865 rows flagged; `service_types`: 0 of 3.
+2. **Passed.** The four triggers read `O`. A clock session, a schedule block and a crew member moved onto `…b1110` were each refused with *That job only carries a GC job's bills. Pick the job the work is on.*
+3. **Passed.** `UPDATE 1` on a clock session's own job. `billing_only = true` on a job with sessions was refused with *That job has hours, a schedule or a crew, so it cannot only carry bills.*; `…b1110` back to false with *A job that carries a GC job's bills stays that way.*
+4. **Passed.** `search_jobs_ledger('Billing check')` 0, with `true` 1; `search_jobs_for_self_schedule('Billing check')` 0; `search_jobs_ledger('')` 50.
+5. **Passed.** As `anon`, `search_jobs_ledger('a')` gave *permission denied for function search_jobs_ledger*.
+
+`npm run check:migration-drift`: fully applied. `npm run check:edge-drift`: all 142 current (dev-mcp's catalog carries the two columns and the second argument since #5013 / #5021).
+
 ## Rollback
 
 A one-off migration:
