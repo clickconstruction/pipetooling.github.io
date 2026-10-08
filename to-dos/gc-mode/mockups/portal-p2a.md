@@ -7,7 +7,11 @@ The lead reviews the rest and compares the PR's SQL to the block below byte for 
 - **Migration:** `20261008140000_gc_trade_writes` (claimed), version **v2.4924** (claimed).
 - **What it holds:** twelve `gc_trade_<verb>` functions, plus four small helpers they share. No table, no column, no policy and no client change.
 - **Who calls them:** only the service role. `submit-gc-trade-portal` (P2b) turns a link into its company and then calls the kind's verb with that company first.
-- **Tested:** on a local Postgres 15, with B1's own table definitions. The migration applied twice. The scenario's 21 refusals and every write came out as below.
+- **Tested:** on a local Postgres 15, with B1's own table definitions. The migration applied twice. The scenario's 23 refusals and every write came out as below.
+- **Reviewed:** the lead approved its half on 2026-10-08. Helper 2 approved the Board-table parts with two fixes, both now in the SQL below:
+  - `gc_trade_remove_person` locks the company before the person. That is the order `gc_trade_set_gets` takes, so the two cannot deadlock.
+  - A schedule-of-values line without a number answers `badRequest` instead of a raw cast error.
+  - The same check now covers a quote's days that are not a whole number.
 
 ## The company check
 
@@ -44,7 +48,7 @@ Each refusal is `RAISE EXCEPTION '<key>' USING ERRCODE = 'P0001', DETAIL = '<pla
 | `notOnTrade` | A question from a company not asked on the trade | `ask_question` |
 | `questionsClosed` | On or after the closing day (three days before our bid is due) | `ask_question` |
 | `questionNeeded`, `tooLong` | An empty question, or one over 2,000 characters | `ask_question` |
-| `badRequest` | A shape the page never sends | `set_lang`, `submit_quote`, `answer_lines` |
+| `badRequest` | A shape the page never sends: an unknown language, an amount on the schedule of values that is not a number, days that are not a whole number | `set_lang`, `submit_quote`, `answer_lines` |
 
 ## The twelve verbs
 
@@ -225,6 +229,8 @@ DECLARE
   v_person public.gc_company_people%ROWTYPE;
   v_main text[];
 BEGIN
+  -- The company first, then the person: the order gc_trade_set_gets takes, so the two never deadlock.
+  SELECT contact_gets INTO v_main FROM public.gc_companies WHERE id = p_company_id FOR UPDATE;
   SELECT * INTO v_person FROM public.gc_company_people WHERE id = p_person_id AND removed_at IS NULL FOR UPDATE;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001', DETAIL = 'No person with that id on the emails.';
@@ -233,7 +239,6 @@ BEGIN
     RAISE EXCEPTION 'notYours' USING ERRCODE = 'P0001', DETAIL = 'That person is another company''s.';
   END IF;
   UPDATE public.gc_company_people SET removed_at = now() WHERE id = v_person.id;
-  SELECT contact_gets INTO v_main FROM public.gc_companies WHERE id = p_company_id FOR UPDATE;
   -- Null: the main contact already gets every kind.
   IF v_main IS NOT NULL THEN
     UPDATE public.gc_companies
@@ -379,15 +384,20 @@ BEGIN
   THEN
     RAISE EXCEPTION 'answerEach' USING ERRCODE = 'P0001', DETAIL = 'Say for each line whether it is in the number or left out.';
   END IF;
-  v_good := CASE WHEN jsonb_typeof(q->'goodForDays') = 'number' THEN (q->>'goodForDays')::integer END;
-  IF v_good IS NOT NULL AND v_good <= 0 THEN
-    RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'The days a quote holds are more than zero.';
+  IF jsonb_typeof(q->'goodForDays') = 'number' THEN
+    IF (q->>'goodForDays')::numeric <> trunc((q->>'goodForDays')::numeric) OR (q->>'goodForDays')::numeric NOT BETWEEN 1 AND 3650 THEN
+      RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'The days a quote holds are a whole number more than zero.';
+    END IF;
+    v_good := (q->>'goodForDays')::integer;
   END IF;
   IF jsonb_typeof(coalesce(q->'alternates', '[]'::jsonb)) <> 'array'
     OR (v_sov IS NOT NULL AND jsonb_typeof(v_sov) NOT IN ('array', 'null'))
     OR (v_exclusions IS NOT NULL AND jsonb_typeof(v_exclusions) NOT IN ('array', 'null'))
   THEN
     RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'The quote''s parts are not in the shape the portal sends.';
+  END IF;
+  IF jsonb_typeof(v_sov) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements(v_sov) l WHERE jsonb_typeof(l->'amount') IS DISTINCT FROM 'number') THEN
+    RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'Each line of the schedule of values has an amount.';
   END IF;
   IF jsonb_typeof(v_sov) = 'array' AND jsonb_array_length(v_sov) > 0
     AND (SELECT coalesce(sum((l->>'amount')::numeric), 0) FROM jsonb_array_elements(v_sov) l) <> v_amount
@@ -643,4 +653,5 @@ The scenario is in the Portal lane's scratchpad (`p2a/scenario.sql`). Every line
 - people: `everyKindNeedsSomeone`, `pickAKind` and `emailNeeded`, a person added with the unknown kind dropped, the removal handing pay back, and the main contact narrowed while another person covers the rest;
 - questions: `notOnTrade` and `projectLost`, sheets cleaned to `{E-101}`, and `questionsClosed` on the closing day;
 - Got it kept on its first day, `badRequest` for a third language, and a pass dated the office's day with `youPassed` after it;
-- `authenticated` and `anon` refused.
+- `authenticated` and `anon` refused;
+- after the review, a schedule-of-values amount that is not a number and 30.5 days, each answering `badRequest`.
