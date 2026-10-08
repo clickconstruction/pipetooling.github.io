@@ -1,0 +1,26 @@
+{
+ "about": "G-130 (to-dos/gc-mode/mockups/G-130.md): the schedule's days, calendar, links, spare days and pushes moved word for word from schedule.ts and gantt.ts into network.ts on main. Both sides are main: run it on the PR's branch with main before it as the ref, node to-dos/gc-mode/scripts/lift-same.cjs to-dos/gc-mode/scripts/g130.lift.json origin/main. Commit 2 then changes scheduleFloat's one line on purpose (duration = workingDays).",
+ "spikeDir": "src/lib/gc/schedule",
+ "mainBase": "src/lib/gc/schedule",
+ "pin": {
+  "known": {
+   "dayNumber": "exported now: schedule.ts reads it",
+   "isoOf": "exported now: schedule.ts reads it",
+   "waitOrder": "exported now: schedule.ts reads it, and a later caller does not write a second one",
+   "lineOf": "exported now: schedule.ts reads it in four more places",
+   "weekdayOf": "exported now: the chart's axis reads it"
+  }
+ },
+ "files": [
+  {
+   "from": "schedule",
+   "to": "network.ts",
+   "moves": ["dayNumber", "daysBetween", "isoOf", "lagOf", "wouldLoop", "waitOrder", "scheduleFloat", "lineOf", "activityLabel", "activityDone", "PushedAfter", "pushAfter", "pushedAfterWords"]
+  },
+  {
+   "from": "gantt",
+   "to": "network.ts",
+   "moves": ["iso", "weekdayOf", "nthWeekday", "holidaysOf", "holidayOn", "isWeekend", "isWorkingDay", "workingDays", "holidaysIn"]
+  }
+ ]
+}

@@ -417,8 +417,9 @@ G-75):
 
 They are pure functions with tests today, in `src/lib/gcMode/`. They move to `src/lib/gc/schedule/`
 unchanged, and the prototype imports them from there, so there is one copy. The tests that pass
-today pass there unchanged. Putting the chart's math and the spare days and pushes in one folder is
-what G-130 asks for.
+today pass there unchanged. G-130 put the chart's day math in one file on main, `network.ts`
+(v2.4962): the calendar, the links, the spare days and the pushes. `schedule.ts` and `gantt.ts`
+re-export it.
 
 - **The schedule and its measures**:
   - `gcBuildingSchedule` (31 tests): the items, plan to date, pushes, the projected finish, work
@@ -444,18 +445,26 @@ The kernels read the prototype's shapes, and they keep their arguments:
 
 - **27 of the 39 take the whole state** (`GcState`) for today, the companies and the templates.
   `GcState` is small: today, customers, projects, companies, the log and four optional lists.
-- **A mapper builds it from the rows**, `scheduleStateFromRows`. It takes the job from New
-  project's mapper (`src/lib/gc/projectRows.ts`) and fills in its schedule fields (`schedule`,
-  `rough`, `waits`, `scheduleSends`, `whatIf`, `crewCounts`). It adds the job's customer, its
-  companies, the templates, today and an empty log. So no kernel changes when the data becomes
-  real.
+- **A mapper lays the schedule over the board's job** (the schedule's PR 6a, v2.4956):
+  `withScheduleRows` in `schedule/rows.ts`. The job is the one the board's mapper drew
+  (`boardProjectFromView` in `src/lib/gc/boardRows.ts`), in the board's state
+  (`boardStateFromRows`): one project mapper, never a second. The mapper fills in the job's schedule
+  fields (`schedule`, `rough`, `waits`, `scheduleSends`, `whatIf`, `crewCounts`) and sets the
+  templates on the state. `loadSchedule` in `src/lib/gc/scheduleIo.ts` reads the rows. So no kernel
+  changes when the data becomes real.
+- **What a press sends is built from the kernels' records** (the schedule's PR 6b, v2.4961):
+  `schedule/writes.ts` gives the bars as the kernel left them, the move with its kind's own keys, a
+  draft with row keys for its inspections and the job's own work, and the plain writes' rows.
+  `scheduleIo.ts` has one function per press, each returning the job read back. Its test checks that
+  every key PR 5's functions read is a key some press sends.
 - **A kernel that reads across jobs** gets every GC project the person may see. The board row's
   counts (G-146) and a trade's bench read that way.
 - **One id.** A line's bar takes its scope line's id (the schedule's PR 5, call 6), so a line's
   `lineId`, its scope line's id and its bar's id are one. An inspection's or an added bar's `lineId`
   is the bar's own id.
-- **It gets its own test**, against a row set built from the fixture's Fair Oaks D. The mapped job
-  must equal the fixture's.
+- **It gets its own test**, against a row set built from the test state's Fair Oaks D given one of
+  every record through the kernels (`rows.direct.test.ts`). The mapped job must equal it, field for
+  field.
 
 ## Writing it: the RPCs, so a press is all or nothing
 
@@ -635,9 +644,11 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
 5. **Migration: the RPCs** in the tables above, with their tests in SQL. Each plan write refuses a
    stale version, a move with no reason, and a finish before its start. *Check:* the migration doc
    runs two moves on one version, and the second is refused with the first's words.
-6. **The mapper and the reads and writes**: `scheduleStateFromRows` with its test against Fair
-   Oaks D, and the schedule's io beside `gcIo.ts`, every RPC behind one function the screen calls.
-   *Check:* the mapper's test, and a schedule drawn through the RPC reads back equal.
+6. **The mapper and the reads and writes**, in two (`mockups/schedule-pr6.md`): 6a, `withScheduleRows`
+   laying the schedule over the board's job, with its round trip against Fair Oaks D, and
+   `loadSchedule` beside `gcIo.ts`; 6b, what each press sends (`writes.ts`) and one io function per
+   press. *Check:* the round trip, the payloads' tests, and a schedule drawn through the RPC reads back
+   equal.
 7. **The Schedule tab on real data, read only**, on the dev-only page at `/gc`: the chart, the
    list, the paper, the export and the opened bar. *Check:* draw a real project's first draft; its
    bars, links and finish match the prototype's on the same trades.
