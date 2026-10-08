@@ -5,6 +5,7 @@
 import { paperSentWords } from './paperSend'
 import type { GcProject, GcState, Partner, TradePackage } from './types'
 import { daysUntil, money, shortDate } from './words'
+import { retainageHeldNow } from './building'
 
 export type DocStatus = 'ok' | 'soon' | 'missing' | 'info'
 
@@ -297,4 +298,31 @@ export function partnerPaper(state: GcState, partner: Partner, key: string): Com
     }
   }
   return null
+}
+
+/** The work a trade has with us and where its money stands: what About leads with. */
+export interface PartnerWork {
+  jobs: { project: GcProject; pkg: TradePackage; price: number; signed: boolean }[]
+  underContract: number
+  paid: number
+  /** Approved, not paid yet. */
+  approved: number
+  /** Retainage we hold on their draws. */
+  held: number
+}
+
+export function partnerWork(state: GcState, partner: Partner): PartnerWork {
+  const jobs = awardedPackages(state, partner.id).map(({ project, pkg }) => ({ project, pkg, price: pkg.sow?.price ?? 0, signed: pkg.sow?.status === 'signed' }))
+  let paid = 0
+  let approved = 0
+  let held = 0
+  for (const { pkg } of jobs) {
+    if (!pkg.sow) continue
+    for (const d of pkg.sow.draws) {
+      if (d.status === 'paid') paid += d.net
+      if (d.status === 'approved') approved += d.net
+    }
+    held += retainageHeldNow(pkg.sow)
+  }
+  return { jobs, underContract: jobs.reduce((t, j) => t + j.price, 0), paid, approved, held }
 }

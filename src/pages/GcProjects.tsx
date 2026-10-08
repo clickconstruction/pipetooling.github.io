@@ -28,6 +28,8 @@ import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTra
 import { GcTradePortals } from '../components/gc/GcTradePortals'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
+import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
+import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
@@ -54,6 +56,7 @@ import {
   saveScopeBookLine,
   saveScopeSet,
   setGcCompanyCoverage,
+  setGcCompanyLanguage,
   vetGcCompany,
   type GcPickerCustomer,
   type GcTeamMember,
@@ -163,6 +166,10 @@ export default function GcProjects() {
   // The Ask window (the Board's B4-a): a job's trade, with these companies ticked. Unset: everyone in range.
   const [asking, setAsking] = useState<{ projectId: string; packageId: string; tick?: string[] } | null>(null)
   const openAsk = (projectId: string, packageId: string, tick?: string[]) => setAsking({ projectId, packageId, ...(tick ? { tick } : {}) })
+  // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for a dev.
+  const [companyId, setCompanyId] = useState<string | null>(null)
+  const companyOpener: CompanyOpener | null = role === 'dev' && board ? { openPartner: setCompanyId } : null
+  const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
       await addGcCompany(draft)
@@ -323,7 +330,7 @@ export default function GcProjects() {
     void work.then(() => load()).catch((e) => showToast(formatErrorMessage(e, failed), 'error'))
   }
 
-  return (
+  const page = (
     <div style={{ padding: '1rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <span data-tour="gc-mode-switch" style={{ display: 'inline-flex' }}>
@@ -533,6 +540,23 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+      {openCompany && board && (
+        <GcCompanyWindow
+          key={openCompany.id}
+          state={board}
+          partner={openCompany}
+          lang={langs[openCompany.id] ?? 'en'}
+          onLanguage={async (lang) => {
+            await setGcCompanyLanguage(openCompany.id, lang)
+            await refreshBoard()
+          }}
+          onClose={() => setCompanyId(null)}
+          onOpenProject={(projectId) => {
+            setCompanyId(null)
+            openProjectCard(projectId)
+          }}
+        />
+      )}
       {asking && board && (
         <GcAskCompanies
           key={`${asking.projectId}:${asking.packageId}`}
@@ -659,4 +683,6 @@ export default function GcProjects() {
       )}
     </div>
   )
+  // A company's name opens its window wherever it shows (the Board's B3-c), for a dev.
+  return <GcCompanyOpenerContext.Provider value={companyOpener}>{page}</GcCompanyOpenerContext.Provider>
 }

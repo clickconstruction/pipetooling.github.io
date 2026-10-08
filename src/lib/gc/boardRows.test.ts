@@ -77,6 +77,23 @@ describe('the board read from its rows', () => {
     expect(story(noted).nudgedOn).toBe(story(base).nudgedOn)
   })
 
+  it('a company carries the people it named and the emails its main contact gets', () => {
+    const base = rows()
+    const named = rows({
+      companies: base.companies.map((c) => (c.id === 'lonestar' ? { ...c, contact_gets: ['quotes', 'job', 'kudos'] } : c)),
+      people: [
+        { id: 'pp1', company_id: 'lonestar', name: 'Ana Ruiz', email: 'ana@lonestar.test', role: 'Bookkeeper', gets: ['pay', 'contracts'] },
+        { id: 'pp2', company_id: 'hillside', name: 'Bo Park', email: '', role: '', gets: [] },
+      ],
+    })
+    const [lonestar, hillside] = boardStateFromRows(named).partners
+    expect(lonestar!.contactGets).toEqual(['quotes', 'job'])
+    expect(lonestar!.people).toEqual([{ id: 'pp1', name: 'Ana Ruiz', email: 'ana@lonestar.test', role: 'Bookkeeper', gets: ['contracts', 'pay'] }])
+    expect(hillside!.people?.map((p) => p.name)).toEqual(['Bo Park'])
+    expect(hillside!.contactGets).toBeUndefined()
+    expect(boardStateFromRows(base).partners[0]!.people).toBeUndefined()
+  })
+
   it('a promise with the day it moved from', () => {
     expect(boardStateFromRows(rows()).tradePromises).toEqual([
       { id: 'tp1', partnerId: 'lonestar', kind: 'insurance', what: 'the renewed insurance certificate', by: '2026-10-12', madeOn: '2026-10-06', from: 'office', moved: [{ by: '2026-10-09', on: '2026-10-07' }] },
