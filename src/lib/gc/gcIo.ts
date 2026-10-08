@@ -16,6 +16,8 @@ import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './pro
 import type { DeclineReason, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
+import type { BillingRows, ContractLineRow, OwnerTermsRow } from './billCustomer'
+import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
 export interface GcPickerCustomer {
@@ -401,6 +403,35 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
     if (rows) rows.acceptance = acceptance
   }
   return out
+}
+
+/**
+ * Everything our money screens read beside the board, for these projects (Owner Billing's O6a): the terms
+ * with the customer, the price as signed, our bills as they went (O5a), the property owners' names, and each
+ * customer's usual days to pay from the app's own pay speeds.
+ */
+export async function loadGcBillingRows(projectIds: string[]): Promise<BillingRows> {
+  if (projectIds.length === 0) return { terms: [], contract: [], billing: new Map(), names: {}, payDays: {} }
+  const [terms, contract, billing, speeds] = await Promise.all([
+    supabase
+      .from('gc_projects')
+      .select('project_id, owner_retainage_pct, owner_retainage_step_at_pct, owner_retainage_step_to_pct, owner_retainage_step_way, owner_pay_days, billing_job_id, property_owner_customer_id')
+      .in('project_id', projectIds),
+    supabase.from('gc_owner_contract_lines').select('project_id, line, package_id, worth').in('project_id', projectIds),
+    loadGcOwnerBillingRows(projectIds),
+    supabase.rpc('get_billed_customer_pay_speeds'),
+  ])
+  const termRows: OwnerTermsRow[] = taken(terms, 'load the terms with the customers')
+  const owners = [...new Set(termRows.map((t) => t.property_owner_customer_id).filter((id): id is string => id !== null))]
+  const names: Record<string, string> = {}
+  if (owners.length > 0) {
+    const named: { id: string; name: string }[] = taken(await supabase.from('customers').select('id, name').in('id', owners), "load the property owners' names")
+    for (const c of named) names[c.id] = c.name
+  }
+  const payDays: Record<string, number> = {}
+  for (const [id, stat] of Object.entries(parsePaySpeedsRpc(taken(speeds, 'load how fast customers pay'))?.customers ?? {})) payDays[id] = Math.round(stat.medianDays)
+  const contractRows: ContractLineRow[] = taken(contract, 'load the prices as signed')
+  return { terms: termRows, contract: contractRows, billing, names, payDays }
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */

@@ -22,6 +22,8 @@ import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
+import { GcMoney } from '../components/gc/GcMoney'
+import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
 import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
@@ -73,6 +75,7 @@ import {
   vetGcCompany,
   type GcPickerCustomer,
   type GcTeamMember,
+  loadGcBillingRows,
 } from '../lib/gc/gcIo'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
@@ -172,7 +175,7 @@ export default function GcProjects() {
   }, [role, loaded, today])
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
-  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals'>('board')
+  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals' | 'money'>('board')
   const refreshBoard = async () => {
     if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today))
   }
@@ -239,7 +242,7 @@ export default function GcProjects() {
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
   const toCall = board ? followUpsToCall(board) : 0
-  const devPill = (view: 'board' | 'partners' | 'followUp' | 'portals', label: string) => {
+  const devPill = (view: 'board' | 'partners' | 'followUp' | 'portals' | 'money', label: string) => {
     const on = devView === view
     return (
       <button
@@ -343,6 +346,28 @@ export default function GcProjects() {
       .finally(() => setChangeBusy(null))
   }
 
+  // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
+  // the board's projects and their change orders. Read only.
+  const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
+  const [moneyProblem, setMoneyProblem] = useState<string | null>(null)
+  const ourIds = useMemo(() => (board ? board.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building').map((p) => p.id) : []), [board])
+  useEffect(() => {
+    if (devView !== 'money' || !board) return
+    let live = true
+    setMoneyProblem(null)
+    loadGcBillingRows(ourIds)
+      .then((rows) => {
+        if (live) setMoneyRows(rows)
+      })
+      .catch((e) => {
+        if (live) setMoneyProblem(formatErrorMessage(e, 'The money did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [devView, board, ourIds])
+  const moneyState = useMemo(() => (boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null), [boardWithChanges, moneyRows, ourIds])
+
   if (authLoading) return null
   if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
 
@@ -431,15 +456,16 @@ export default function GcProjects() {
       {role === 'dev' && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'portals' ? 'Trade portals' : 'Follow up'}</h2>
-            <Chip tone="grey" title="Only a dev sees the board, Trade partners, Follow up and Trade portals while they are built. Everyone else sees the projects below.">
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'portals' ? 'Trade portals' : devView === 'money' ? 'Money' : 'Follow up'}</h2>
+            <Chip tone="grey" title="Only a dev sees the board, Trade partners, Follow up, Trade portals and Money while they are built. Everyone else sees the projects below.">
               Devs only
             </Chip>
-            <div role="group" aria-label="Project Board, Trade partners, Follow up or Trade portals" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <div role="group" aria-label="Project Board, Trade partners, Follow up, Trade portals or Money" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
               {devPill('portals', 'Trade portals')}
+              {devPill('money', 'Money')}
             </div>
           </div>
           {board ? (
@@ -455,6 +481,14 @@ export default function GcProjects() {
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
             ) : devView === 'portals' ? (
               <GcTradePortals state={board} />
+            ) : devView === 'money' ? (
+              moneyState ? (
+                <GcMoney state={moneyState} />
+              ) : moneyProblem ? (
+                <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{moneyProblem}</div>
+              ) : (
+                <div style={{ fontSize: '0.875rem' }}>Loading the money…</div>
+              )
             ) : (
               <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} />
             )
