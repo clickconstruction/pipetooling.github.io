@@ -153,7 +153,7 @@ export function waitOrder(activities: ScheduleActivity[]): ScheduleActivity[] {
  * after everything it waits on finishes, whichever is later.
  */
 export function scheduleFloat(activities: ScheduleActivity[]): Map<string, number> {
-  const duration = (a: ScheduleActivity) => daysBetween(a.start, a.finish) + 1
+  const duration = (a: ScheduleActivity) => workingDays(a.start, a.finish)
   const order = waitOrder(activities)
   const earlyFinish = new Map<string, number>()
   for (const a of order) {
