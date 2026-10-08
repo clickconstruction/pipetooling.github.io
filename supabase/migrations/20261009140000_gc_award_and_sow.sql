@@ -94,9 +94,11 @@ CREATE TABLE IF NOT EXISTS public.gc_sow_lines (
   label text NOT NULL,
   amount numeric NOT NULL
     CONSTRAINT gc_sow_lines_amount_not_negative CHECK (amount >= 0),
-  -- The kernels' SovLine.id: the scope item, or the change order that added the line.
-  scope_item_id uuid REFERENCES public.gc_scope_items(id) ON DELETE RESTRICT,
-  change_order_id uuid REFERENCES public.gc_change_orders(id) ON DELETE RESTRICT,
+  -- The kernels' SovLine.id: the scope item, or the change order that added the line. One on a statement
+  -- of work is not deleted; the check waits for the end of the transaction, so a whole project still goes
+  -- by cascade (as Owner Billing's lines, 20261008010000).
+  scope_item_id uuid REFERENCES public.gc_scope_items(id) DEFERRABLE INITIALLY DEFERRED,
+  change_order_id uuid REFERENCES public.gc_change_orders(id) DEFERRABLE INITIALLY DEFERRED,
   CONSTRAINT gc_sow_lines_one_source CHECK ((scope_item_id IS NULL) <> (change_order_id IS NULL)),
   CONSTRAINT gc_sow_lines_scope_once UNIQUE (sow_id, scope_item_id)
 );

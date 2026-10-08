@@ -166,14 +166,21 @@ SELECT gat.refused('our own trade', $q$UPDATE public.gc_invites SET package_id =
 -- of work's key does (23503).
 SELECT gat.refused_code('an awarded ask cannot be deleted', $q$DELETE FROM public.gc_invites WHERE id = '00000000-0000-0000-0000-000000000621'$q$, '23503,23514');
 SELECT gat.refused_code('an award needs its day', $q$UPDATE public.gc_trade_packages SET awarded_on = NULL WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$, '23514');
+-- A scope item on a statement of work is still kept. Its check waits for the end of the transaction, so
+-- the bed asks for it at once (SET CONSTRAINTS … IMMEDIATE) inside the refusal's subtransaction.
+SELECT gat.refused_code('a scope item on a statement of work cannot be deleted', $q$DELETE FROM public.gc_scope_items WHERE id = '00000000-0000-0000-0000-0000000006e1';
+  SET CONSTRAINTS public.gc_sow_lines_scope_item_id_fkey IMMEDIATE$q$, '23503');
+SET CONSTRAINTS public.gc_sow_lines_scope_item_id_fkey DEFERRED;
 SELECT gat.same('a signed statement of work can be consented to', (
   SELECT pg_get_constraintdef(oid) LIKE '%''gc_sow''%' FROM pg_constraint WHERE conname = 'esign_consents_record_type_check')::text, 'true');
 SELECT gat.same('our number''s old columns are gone', (
   SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gc_projects' AND column_name IN ('general_conditions', 'contingency_pct', 'fee_pct')), '0');
 
 -- 4 · The sweep of the test rows (call 4) deletes an awarded project in one statement: its trades, asks,
--- quotes, award, statement of work and lines all go by cascade, and no key refuses it.
+-- quotes, award, statement of work and lines all go by cascade, and no key refuses it, neither during the
+-- statement nor at the end of the transaction (the deferred checks are run here, as a commit would).
 DELETE FROM public.projects WHERE id = '00000000-0000-0000-0000-0000000006a1';
+SET CONSTRAINTS ALL IMMEDIATE;
 SELECT gat.same('an awarded project deletes whole', (
   SELECT (SELECT count(*) FROM public.gc_trade_packages WHERE project_id = '00000000-0000-0000-0000-0000000006a1') || ' '
       || (SELECT count(*) FROM public.gc_invites WHERE id IN ('00000000-0000-0000-0000-000000000621', '00000000-0000-0000-0000-000000000622', '00000000-0000-0000-0000-000000000623', '00000000-0000-0000-0000-000000000624', '00000000-0000-0000-0000-000000000626')) || ' '

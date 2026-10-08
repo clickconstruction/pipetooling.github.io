@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { plainWordsFailures } from '../plainWords'
 import { leveledTotal } from './bids'
 import { boardStateFromRows, type BoardRows } from './boardRows'
 import { clinicBoardRows } from './boardTestRows'
@@ -117,6 +118,14 @@ describe('gc_award holds to the kernels (B6-a, call G)', () => {
   it.each(bedLines('refused'))('the refusal of %s is canAward’s words', (name, words) => {
     expect(BED).toContain(`\n  '${words}');`)
     expect(kernels(name as keyof typeof ASK).why).toBe(words)
+  })
+
+  it('every refusal gc_award says in the bed is in plain words', () => {
+    // gc_award's own sentences (who may award, our own trade, a lost project, no quote, awarded twice)
+    // have no kernel twin, so the plain-words rules hold them here, with the bed's real names in them.
+    const words = [...BED.matchAll(/gat\.refused\('[^']*', \$q\$[\s\S]*?\$q\$,\s*'((?:[^']|'')*)'\);/g)].map((m) => m[1]!.replace(/''/g, "'"))
+    expect(words.length).toBeGreaterThanOrEqual(8)
+    for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 
   it('a cover on a Known exclusion does not count, by its folded name, and a unit price is not a cover', () => {
