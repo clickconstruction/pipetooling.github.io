@@ -20,7 +20,7 @@ Each row shows when the email arrives, who gets it and the From line. The row sh
 
 The chips at the top pick a role. The roles are Dev, Leader, Assistant, Controller, Estimator, Primary, Superintendent, Helper and Subcontractor. The tab shows every email that role can receive. You can pick **A person** instead and type a name. Then the rows become what that person actually gets.
 
-Some streams, the kinds of email, go to a list kept on **Emails & reports**. Those streams are Paid job, Ready to bill, Signed agreements, Portal requests and Job reports. For those, the tab reads the list. For the rest, the role decides, the same way the sender does.
+Some streams, the kinds of email, go to a list kept on **Emails & reports**. Those cards are *Paid in Full notifications*, *Ready to Bill notifications*, *Signed agreements*, *Portal requests* and the *Job report digest*. For those, the tab reads the list. For the rest, the role decides, the same way the sender does.
 
 :::example A controller's morning
 Crew day · Money waiting · Payment forecast — then, during the day, Payment recorded and Check returned as they happen; Weekly money movement on Monday; the account man's ask on Wednesday.
@@ -28,19 +28,14 @@ Crew day · Money waiting · Payment forecast — then, during the day, Payment 
 
 ## What each row can show
 
-The count line under the toolbar says where things stand. The line says how many of the 25 render live and how many can show the real one. The line also says how many are still built on the server. Every row wears one of three chips:
+The count line under the toolbar reads *26 emails · 26 render live*. Every row wears {{chip:green|renders live}}. The row uses the same email builder the sender runs, fed the sample company. You open the row and the email is in the frame.
 
-- {{chip:green|renders live}} means the row uses the same email builder the sender runs, fed the sample company. You open the row and the email is in the frame. The four template emails read the live rows on **Email templates**. The four are the invitation, sign-in, workflow notices and the task reminder's words. So an edit on Email templates shows here the moment you refresh.
-- {{chip:yellow|shows the real one}} marks the digests whose server function has a preview mode. Those digests are Crew day, Money waiting, Payment forecast and Billed awaiting. You open the row and press {{button:outline|Show the real one}}. The function builds today's email over live rows, for your eyes only. {{button:outline|Email me the real one}} sends that same email to you.
-- {{chip:gray|next release}} means the email is built inside its server function, straight from the database. So nothing renders yet. Each of these emails is lifted into its own builder in turn. The row says which function.
-
-A lifted digest, one moved into its own builder, still keeps its real-one buttons under its sample.
-
-You toggle **Only what doesn't render yet** to see just those.
+- Three template emails read the live rows on **Email templates & testing**. They are the invitation, the sign-in link and the workflow stage notice. So an edit there shows here the moment you refresh. The task reminder's words are fixed in the app.
+- Four digests can also show the real one. They are Crew day, Money waiting, Payment forecast and Billed awaiting payment. Under the sample, {{button:outline|Show the real one — today’s, over live rows, for your eyes only}} builds today's email. {{button:outline|Email me the real one}} sends that same email to you.
 
 ## Changing who gets one
 
-Nothing on this tab edits recipients or wording. Each row's **Change who gets it →** lands on the stream's card on **Emails & reports**. For the template emails, it lands on **Email templates**. The change shows here on the next refresh.
+Nothing on this tab edits recipients or wording. Most streams have a card on **Emails & reports**. A row's **Change who gets it →** lands on that card. Other rows open the top of Emails & reports. *Contract for signature* opens **Contracts & terms**. The template emails open **Email templates & testing**. The change shows here on the next refresh.
 
 ## The promise behind the count
 
