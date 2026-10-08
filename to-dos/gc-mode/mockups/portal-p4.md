@@ -185,3 +185,5 @@ The mapper (`tradePortalState.ts`) then fills `pkg.awardedInviteId`, `pkg.sow`, 
 5. **The Needs you line is the Board's B2b**, reading P4b's two lifted kernels.
 6. **No files until P5a**: a photo is a typed Drive link, and a change request carries none.
 7. **The award and the statement of work join the slice** in whichever of P2c and P4b is cut first.
+8. **A change request never becomes a statement of work line on its own.** Its change order does: the customer signs, U6 sends the change to the trade (`gc_change_order_trade_sends.sow_line_id`), and the line's source is `gc_sow_lines.change_order_id`. So `gc_sow_lines` keeps its two sources, and P4 adds no column there (Helper 2, 2026-10-08).
+9. **"Signed" is `gc_sows.status = 'signed'`**, never a row that merely exists. A drafted, sent or cancelled one does not count. `notAwarded` reads `gc_sows.company_id` with `gc_trade_packages.awarded_invite_id`, which `gc_award` writes together (Helper 2).
