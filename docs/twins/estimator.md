@@ -77,11 +77,14 @@ Un-priced rows show a dash; the coverage chip (`3/3 ✓`) tells you when everyth
 priced. Guides: `price-a-bid-with-the-workbench`, `price-a-bid-by-margin`,
 `read-a-bid-lines-margin-breakdown`.
 
-**D. Send the letter** — `/bids?tab=cover-letter` (New). Check what's in the letter (base
-packets add up; alternates are offered instead, listed Add/Deduct under the amount), then
-**Mark sent** — it stamps the send date and value; never type those by hand. Multi-GC
-bids: tabs pick whose letter, each GC gets only their packets. Guides:
-`try-the-new-cover-letter-layout`, `send-a-bid-pricing-package`.
+**D. Send the letter** — `/bids?tab=cover-letter`, the cover letter studio. Check what's in
+the letter: one base packet heads it at its ★ price; two or more base packets are options,
+Option 1's ★ is the headline, and each keeps its own price (they are never added
+together); alternates are offered instead, listed Add/Deduct under the amount. Then
+**Mark sent** — it stamps the send date, and on the bid's own GC's letter the bid value;
+never type those by hand. Multi-GC bids: tabs pick whose letter, each GC gets only their
+packets. Guides: `try-the-new-cover-letter-layout` (titled *use the cover letter studio*),
+`send-a-bid-pricing-package`.
 
 **E. One project, several GCs** — the same estimate offered to competing builders. Each GC
 has a **packet** (own counts/prices/letter/send/answer). Add GCs from the Send-to strip;
