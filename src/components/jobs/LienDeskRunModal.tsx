@@ -8,6 +8,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
+import { runMailing } from '../../lib/jobs/lienRunPaper'
 import { RUN_SEND_METHODS, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -145,7 +146,11 @@ export default function LienDeskRunModal({
   const payCodes = shown.reduce((s, n) => s + ((partsOf(n) ?? [{ jobId: n.jobId }]).reduce((t, x) => t + (payByJob[x.jobId]?.rows.filter((r) => r.payable).length ?? 0), 0)), 0)
   const problems = useMemo(() => shown.map((n) => runNoticeProblems(n)), [shown])
   const blocked = problems.some((p) => p.length > 0)
-  const envelopes = useMemo(() => runEnvelopes(shown), [shown])
+  // The run on paper (v2.4971): an envelope with no mailing address or nothing to claim is held — listed, numbered after
+  // the ones that go out, never printed. The window lists them in the paper's order so the numbers agree.
+  const mailing = useMemo(() => runMailing(runEnvelopes(shown)), [shown])
+  const envelopes = mailing.all
+  const heldWhy = useMemo(() => new Map(mailing.held.map((h) => [h.env.key, h.why])), [mailing])
   const shared = envelopes.length < runCopies(shown)
   // Read a copy before it prints (v2.4621): one entry per copy in packet order, its pages the ones the packet stacks.
   const previewEntries = useMemo<LienRunPreviewEntry[]>(
@@ -176,19 +181,6 @@ export default function LienDeskRunModal({
     setNotices((prev) => prev.map((n) => (inside.has(n.itemId) ? { ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: on } : r)) } : n)))
   }
 
-  const printPacket = () => {
-    // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
-    const packetJobIds = shown.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
-    const filing = { kind: 'lien_notice_packet', title: shown.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${shown.length} notices`, jobIds: packetJobIds }
-    if (!printAndFile(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob), filing)) {
-      showToast('Popup blocked — allow popups to print the packet.', 'error')
-      return
-    }
-    // Printed is a state (v2.4119): the desk shows these items in their own pile until the mailing is recorded. Best-effort.
-    const itemIds = shown.flatMap((n) => (partsOf(n) ?? [{ itemId: n.itemId }]).map((p) => p.itemId))
-    setPrintedAt(new Date().toISOString())
-    void Promise.resolve(onPrinted?.(itemIds)).catch(() => undefined)
-  }
   // One item at a time (v2.4853, the owner's ask): a copy or an envelope prints and is filed on its own. A notice is
   // stamped printed only once every copy of it has printed this sitting, so a half-printed notice never reads as in the mail.
   const [printedCopies, setPrintedCopies] = useState<ReadonlySet<string>>(() => new Set())
@@ -201,6 +193,18 @@ export default function LienDeskRunModal({
     const done = noticesFullyPrinted(notices, next).filter((n) => !before.has(n.itemId)).map((n) => n.itemId)
     if (done.length) void Promise.resolve(onPrinted?.(done)).catch(() => undefined)
     if (noticesFullyPrinted(notices, next).length === notices.length && notices.length > 0) setPrintedAt((v) => v ?? new Date().toISOString())
+  }
+  const printPacket = () => {
+    // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
+    const packetJobIds = shown.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
+    const filing = { kind: 'lien_notice_packet', title: shown.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${shown.length} notices`, jobIds: packetJobIds }
+    if (!printAndFile(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob), filing)) {
+      showToast('Popup blocked — allow popups to print the packet.', 'error')
+      return
+    }
+    // Printed is a state (v2.4119): the desk shows these items in their own pile until the mailing is recorded. Best-effort.
+    // Only the copies inside the envelopes that printed count (v2.4971): a notice whose other envelope is held stays half-printed.
+    notePrinted(mailing.mailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
   }
   const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
     const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
@@ -221,7 +225,7 @@ export default function LienDeskRunModal({
   }
   // The envelope faces are addresses, not a paper anyone reads: the packet is what is filed.
   const printEnvelopes = () => {
-    if (!openHtmlPrintWindow(runEnvelopeFacesHtml(envelopes, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
+    if (!openHtmlPrintWindow(runEnvelopeFacesHtml(mailing.mailed, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
   }
   // Back from the post office (v2.4119): the envelopes with a number record now; the rest stay printed.
   const split = useMemo(() => runRecordSplit(shown), [shown])
@@ -282,7 +286,7 @@ export default function LienDeskRunModal({
             </div>
             {explainerOpen ? (
               <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-                One packet with every approved notice: a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order. The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+                One packet with every approved notice: a checklist sheet listing the {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back — no mailing address, or nothing to claim — and listed in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
               </p>
             ) : null}
           </div>
@@ -343,6 +347,11 @@ export default function LienDeskRunModal({
                         <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Envelope {env.n} · {env.label}</span>{' '}
                         {env.name || <span style={{ color: 'var(--text-red-600)' }}>— {env.label.toLowerCase()} missing</span>}
                       </div>
+                      {heldWhy.has(env.key) ? (
+                        <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem', fontWeight: 600 }} data-testid={`run-held-${env.n}`}>
+                          Held · {heldWhy.get(env.key)}
+                        </div>
+                      ) : null}
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
                         {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}
                         {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
@@ -440,7 +449,7 @@ export default function LienDeskRunModal({
             Envelope faces
           </button>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
-            {printedAt ? 'Print it again' : 'Print the packet'} · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
+            {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}
           </button>
           <span className="lienRunFootHint" style={{ fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
             {blocked ? 'Fix the recipients marked in red before recording.' : split.partial ? `${split.waiting.length} ${split.waiting.length === 1 ? 'envelope has' : 'envelopes have'} no number yet — ${split.waiting.length === 1 ? 'it stays' : 'they stay'} in the mail pile.` : printedAt ? 'Type each envelope’s number; a number can also be added later from the Sent row.' : 'Tracking numbers can be typed now, or added later from the Sent row.'}
