@@ -6,73 +6,11 @@
  */
 import { addDays } from '../building'
 import { SCHEDULE_STAGES, lineStage } from './draft'
+import { daysBetween, holidayOn, holidaysIn, isWeekend, weekdayOf, workingDays } from './network'
 import type { MilestoneRow, ScheduleItem } from './schedule'
-import { daysBetween } from './schedule'
 
-function iso(y: number, m: number, d: number): string {
-  return new Date(Date.UTC(y, m - 1, d)).toISOString().slice(0, 10)
-}
-
-function weekdayOf(on: string): number {
-  const [y, m, d] = on.split('-').map(Number)
-  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()
-}
-
-/** The nth weekday of a month (1 = first), or the last one with n = -1. Sunday is 0. */
-function nthWeekday(y: number, m: number, weekday: number, n: number): string {
-  if (n > 0) {
-    const first = weekdayOf(iso(y, m, 1))
-    return iso(y, m, 1 + ((weekday - first + 7) % 7) + (n - 1) * 7)
-  }
-  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate()
-  const last = weekdayOf(iso(y, m, lastDay))
-  return iso(y, m, lastDay - ((last - weekday + 7) % 7))
-}
-
-/**
- * The holidays the chart marks. They are working days like any other (the owner, 2026-10-05); the
- * mark is so work planned on one is seen. My list of six, not the owner's; change it here.
- */
-export function holidaysOf(year: number): { on: string; name: string }[] {
-  return [
-    { on: iso(year, 1, 1), name: "New Year's Day" },
-    { on: nthWeekday(year, 5, 1, -1), name: 'Memorial Day' },
-    { on: iso(year, 7, 4), name: 'Independence Day' },
-    { on: nthWeekday(year, 9, 1, 1), name: 'Labor Day' },
-    { on: nthWeekday(year, 11, 4, 4), name: 'Thanksgiving' },
-    { on: iso(year, 12, 25), name: 'Christmas Day' },
-  ]
-}
-
-/** The holiday's name on a day, or null. */
-export function holidayOn(on: string): string | null {
-  return holidaysOf(Number(on.slice(0, 4))).find((h) => h.on === on)?.name ?? null
-}
-
-export function isWeekend(on: string): boolean {
-  const d = weekdayOf(on)
-  return d === 0 || d === 6
-}
-
-/** Every day is a working day (the owner, 2026-10-05: "anyone can work 365 days a year"). Kept as the one place that says so. */
-export function isWorkingDay(_on: string): boolean {
-  return true
-}
-
-/** Days from start to finish, both counted: every day is worked. Zero when finish is before start. */
-export function workingDays(start: string, finish: string): number {
-  return finish < start ? 0 : daysBetween(start, finish) + 1
-}
-
-/** The holidays inside a stretch of days, by name: work planned on one is worth a word. */
-export function holidaysIn(start: string, finish: string): string[] {
-  const names: string[] = []
-  for (let d = start; d <= finish; d = addDays(d, 1)) {
-    const name = holidayOn(d)
-    if (name) names.push(name)
-  }
-  return names
-}
+// The calendar lives in `network.ts` (G-130); the chart's readers keep importing it from here.
+export { holidayOn, holidaysIn, holidaysOf, isWeekend, isWorkingDay, workingDays } from './network'
 
 // ---------------------------------------------------------------------------------------------
 // Each bar's standing
