@@ -6,6 +6,7 @@ import {
   isArchivedRosterRef,
   isPayRosterRow,
   NO_ARCHIVED_ROSTER,
+  personIdByName,
   payRosterNames,
   type RosterPerson,
 } from './rosterPeople'
@@ -177,5 +178,29 @@ describe('who is archived, id first (punch list #29, item 3)', () => {
   it('carries the archived names as they were, and knows no one before the read lands', () => {
     expect([...roster.names].sort()).toEqual(['Dana Whitfield', 'Pat Moore'])
     expect(isArchivedRosterRef(NO_ARCHIVED_ROSTER, { name: 'Pat Moore', person_id: 'p-dana', user_id: 'u-pat' })).toBe(false)
+  })
+})
+
+describe('personIdByName (the Offsets board groups by name)', () => {
+  it('keys by the trimmed name without case, and keeps the one id its rows carry', () => {
+    const ids = personIdByName([
+      { name: 'Trace ', person_id: 'p-trace' },
+      { name: 'trace', person_id: null },
+      { name: 'Abraham', person_id: null },
+    ])
+    expect(ids.get('trace')).toBe('p-trace')
+    expect(ids.get('abraham')).toBeNull()
+  })
+
+  it('two ids under one name are two people: no id, so the name decides', () => {
+    const ids = personIdByName([
+      { name: 'Jordan Lee', person_id: 'p-jordan-1' },
+      { name: 'Jordan Lee', person_id: 'p-jordan-2' },
+    ])
+    expect(ids.get('jordan lee')).toBeNull()
+  })
+
+  it('a blank name is not a key', () => {
+    expect(personIdByName([{ name: '  ', person_id: 'p-x' }]).size).toBe(0)
   })
 })
