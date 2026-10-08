@@ -2,7 +2,7 @@
 name: "The schedule's PR 7: the Schedule tab on real data, read only"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 7, and Docs each PR touches; GANTT_FEATURES.md G-13 (one company), G-19 (the list on a phone), G-21 (Print or PDF), G-136 (Export)
 branch: the plan on spike/schedule-pr7-plan (from origin/spike/gc-mode at dcc6d5118); the code from origin/main once 6b (#5009) merges
-status: plan 2026-10-08 by Helper 1 at the lead's ask. Nothing is built. It waits for the lead's go on the six calls.
+status: plan 2026-10-08 by Helper 1 at the lead's ask; approved the same day at all six picks, cut in three (7a, 7b, 7c; When it is cut). Nothing is built yet.
 ---
 
 # The schedule's PR 7: the Schedule tab on real data, read only
@@ -105,10 +105,10 @@ on its own: each reads what `loadSchedule` laid over the board.
    meet and the look-ahead, lifted read only from the root. *My pick:* now. They are read only, and
    they say whether the job is on time, which is the first thing a tester asks. *The other way:* they
    wait for PR 8.
-5. **The call list (G-115) waits for a PR 7b.** Its kernel `gcCallList.ts` is 784 lines and
+5. **The call list (G-115) waits for its own PR, 7c.** Its kernel `gcCallList.ts` is 784 lines and
    spike-only, and it brings `GcCallList`, `PeopleRows` and `theirWork` with it. The window holds
-   the chart's company (`company`, `onCompany`, G-13) from the start, so 7b plugs in without touching
-   `GcGantt`. *My pick:* 7b after PR 7. *The other way:* all in PR 7, about 1,200 lines more.
+   the chart's company (`company`, `onCompany`, G-13) from the start, so 7c plugs in without touching
+   `GcGantt`. *My pick:* 7c after 7b. *The other way:* all in PR 7, about 1,200 lines more.
 6. **`lift-same.cjs` reads a `.tsx`.** Today it adds `.ts` to each `from`. It needs one line on the
    spike's script so the components' lift is checked like the kernels'. `lift-extract.cjs` stays as
    it is: the components are placed by a script of their own. *My pick:* so; it is Helper
@@ -200,12 +200,20 @@ The rows it draws stay with the test project's others, for the owner's call 4.
 
 ## When it is cut
 
-From `origin/main` once 6b (#5009) merges, since the draw imports `drawSchedule`. G-130 (#5008)
-touches none of these files. The version is claimed at the cut. One PR of about 3,500 lines. About
-2,700 of them are lifted word for word and checked by script: 2,200 of components and kernels, 500 of
-tests. If the lead would rather review it
-smaller, the lifts go first as 7a with no caller, then the window as 7b, and the call list becomes
-7c.
+From `origin/main`, in order after 6b (#5009) merges, since 7b's draw imports `drawSchedule`. G-130
+(#5008) touches none of these files. About 3,500 lines in all, about 2,700 of them lifted word for word
+and checked by script: 2,200 of components and kernels, 500 of tests. The lead's word: three PRs, each
+claimed at its cut, so the queue clears faster and 7a's review is the script's.
+- **7a, the lifts with no caller**: the components, the measures, `chartHolds` and `downloadTextFile`
+  with their tests, `Chip`'s `small` and `gcBuildingCss.ts`. Cut after 6b merges, so the two never go
+  DIRTY on each other.
+- **7b, the window**: `GcScheduleWindow` with its body, the bar card, *Draw a first draft*, the gate
+  and the docs. Cut after 7a merges.
+- **7c, the call list** (G-115): `gcCallList.ts`, `GcCallList`, `PeopleRows` and `theirWork`.
+
+The one-line change to `lift-same.cjs` (call 6) rides the lane's `spike/schedule-follow`, with the
+lead's nod while Helper 7 is away. 7a's configs are pinned in its follow-up, so `--all` proves its
+lines.
 
 ## Is this the best we can do?
 
@@ -221,4 +229,5 @@ smaller, the lifts go first as 7a with no caller, then the window as 7b, and the
 ## Status
 
 Plan 2026-10-08 by Helper 1 at the lead's ask, from `origin/spike/gc-mode` at dcc6d5118 and
-`origin/main` at 4a39557ca (6a merged). 6b is #5009 and G-130 is #5008, both armed. Nothing is built.
+`origin/main` at 4a39557ca (6a merged). 6b is #5009 and G-130 is #5008, both armed. Approved the same day at all six picks, and cut in three:
+7a, 7b and 7c (*When it is cut*). Nothing is built yet.
