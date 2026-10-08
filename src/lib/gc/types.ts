@@ -899,10 +899,14 @@ export interface ChangeOrder {
   packageId: string | null
   /** What the work costs us. Negative: a credit, work coming out. */
   cost: number
+  /** What it adds to the owner's price: the cost plus our fee on it, unless the office typed another. */
+  price: number
   status: 'draft' | 'sent' | 'signed' | 'declined'
   sentOn: string | null
   /** The day the owner signed or declined it. */
   answeredOn: string | null
+  /** Percent of its work done, for the owner's bill. */
+  pctDone: number
   /**
    * The trade's side (Building lane): the change sent to the company on that trade as an amendment
    * to its statement of work. Once they sign, it is a line of their statement of work (`sovLineId`).
