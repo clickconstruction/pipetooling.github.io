@@ -2,7 +2,7 @@
  * Move this payment — a customer payment to the right job (v2.3576, PR 3 of the payment
  * move/remove train; the sub-sheet twin is `SubLaborPaymentMoveRemoveModals`). Search the
  * destination the way Reassign costs does (`search_jobs_ledger`), read both jobs' paid and
- * open before and after, give a reason (seeded *wrong job*), then one RPC —
+ * open before and after, give a reason (*wrong job* unless one is typed), then one RPC —
  * `move_jobs_ledger_payment` — re-points the live row and writes the trace event.
  *
  * v2.4803: a check Stripe holds as paid (our out-of-band mark) moves through the same window.
@@ -25,7 +25,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/format'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import { planJobPaymentMove } from '../../lib/jobs/jobPaymentMove'
+import { PAYMENT_MOVE_DEFAULT_REASON, paymentMoveReason, planJobPaymentMove } from '../../lib/jobs/jobPaymentMove'
 import {
   heldLandingWrite,
   heldMoveBill,
@@ -92,7 +92,7 @@ export function JobPaymentMoveModal({
   const [searching, setSearching] = useState(false)
   const [dest, setDest] = useState<Destination | null>(null)
   const [landing, setLanding] = useState<HeldLanding | null>(null)
-  const [reason, setReason] = useState('wrong job')
+  const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
   /** A held-check step after the credit note failed: what is done and what is left by hand. */
   const [stopped, setStopped] = useState<string | null>(null)
@@ -107,7 +107,7 @@ export function JobPaymentMoveModal({
     setCandidates([])
     setDest(null)
     setLanding(null)
-    setReason('wrong job')
+    setReason('')
     setBusy(false)
     setStopped(null)
   }, [open, payment?.id])
@@ -190,7 +190,7 @@ export function JobPaymentMoveModal({
     if (!payment || !dest || !fromJob || !heldBill) return
     const fromLabel = jobLabel(fromJob).split(' · ')[0] ?? 'this job'
     const toLabel = jobLabel(dest).split(' · ')[0] ?? 'that job'
-    const why = stripeHeldMoveReason(toLabel, reason)
+    const why = stripeHeldMoveReason(toLabel, paymentMoveReason(reason))
     const amount = Number(payment.amount ?? 0)
     const paidOnYmd = payment.paid_on ? String(payment.paid_on).slice(0, 10) : null
     const paymentType = (payment.payment_type ?? '').trim()
@@ -312,7 +312,7 @@ export function JobPaymentMoveModal({
 
       // 4. The grey line on both jobs — the office's reason alone; the line names the job itself.
       const { error: evErr } = await db.from('jobs_ledger_payment_events').insert(
-        heldMoveEventRow({ snapshot, fromJobId: fromJob.id, toJobId: dest.id, landedPaymentId, reason, actorUserId: authUser?.id ?? null, actorName: profileName }),
+        heldMoveEventRow({ snapshot, fromJobId: fromJob.id, toJobId: dest.id, landedPaymentId, reason: paymentMoveReason(reason), actorUserId: authUser?.id ?? null, actorName: profileName }),
       )
       if (closeError) {
         setStopped(stripeHeldMoveStoppedWords('close', { ...stopArgs, message: closeError }))
@@ -338,7 +338,7 @@ export function JobPaymentMoveModal({
     }
     setBusy(true)
     try {
-      const { data, error } = await db.rpc('move_jobs_ledger_payment', { p_payment_id: payment.id, p_to_job_id: dest.id, p_reason: reason.trim() || null })
+      const { data, error } = await db.rpc('move_jobs_ledger_payment', { p_payment_id: payment.id, p_to_job_id: dest.id, p_reason: paymentMoveReason(reason) })
       if (error) throw error
       const payload = (data ?? {}) as { error?: string; ok?: boolean; warning?: string }
       if (payload.error) {
@@ -466,7 +466,7 @@ export function JobPaymentMoveModal({
         ) : null}
         <div>
           <div style={label}>Why</div>
-          <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} aria-label="Reason" style={{ ...input, marginTop: 4 }} />
+          <input type="text" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={PAYMENT_MOVE_DEFAULT_REASON} aria-label="Reason" style={{ ...input, marginTop: 4 }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button type="button" onClick={onClose} disabled={busy} style={ghost}>Cancel</button>

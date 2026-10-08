@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText, planJobPaymentMove } from './jobPaymentMove'
+import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText, paymentMoveReason, planJobPaymentMove } from './jobPaymentMove'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PaymentRow } from './jobFormTypes'
 
@@ -46,5 +46,15 @@ describe('jobPaymentTraceLines', () => {
     expect(jobPaymentTraceLines([ev()], 'j922', label, money)).toEqual([{ id: 'e1', direction: 'in', text: '$2400.00 moved here from J880 · Reliant · Taunya · wrong job' }])
     expect(jobPaymentTraceLines([ev({ reason: null, actor_name: null })], 'j880', label, money)[0]!.text).toBe('$2400.00 moved → J922 · Michael Palmer')
     expect(jobPaymentTraceLines([ev()], 'j000', label, money)).toEqual([])
+  })
+})
+
+describe('paymentMoveReason (v2.4895)', () => {
+  it('records what was typed, else wrong job — never the default with the typing run onto it', () => {
+    expect(paymentMoveReason('customer paid twice')).toBe('customer paid twice')
+    expect(paymentMoveReason('  duplicate  ')).toBe('duplicate')
+    expect(paymentMoveReason('')).toBe('wrong job')
+    expect(paymentMoveReason('   ')).toBe('wrong job')
+    expect(paymentMoveReason(null)).toBe('wrong job')
   })
 })

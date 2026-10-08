@@ -779,6 +779,7 @@ export default function JobFormModal({
     autosaveTeamIdsRef,
     identityFieldsRef,
     hydratedPaymentIdsRef,
+    writtenPaymentIds,
     persistedDiscountSnapshotRef,
     persistedPicturesLinkRef,
     persistedCustomerPhoneRef,
@@ -1034,6 +1035,7 @@ export default function JobFormModal({
     jobTotalWithRidersDollars,
     billingAutosave,
     hydratedPaymentIdsRef,
+    writtenPaymentIds,
     paymentsRereadFromDb,
     onSavedRef,
   })
