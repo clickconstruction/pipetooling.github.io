@@ -6,11 +6,12 @@ type: Architecture Map / Decomposition
 purpose: Step-0 map for the sub-decomposition of src/components/people/PeopleReviewTab.tsx (4,167 lines) per PAGE_DECOMPOSITION_PLAYBOOK.md — an already-extracted People tab that kept growing — plus its extracted popup document builder and the Team Summary drilldown bodies. Inventories every region (state, memos, effects, loaders, tables/RPCs, sub-components, coupling, test coverage) so extraction can proceed without re-reading the whole file.
 covers:
   - src/components/people/PeopleReviewTab.tsx
+  - src/components/people/review/PeopleReviewPersonPanel.tsx
   - src/lib/peopleDocuments/buildTeamSummaryHtml.ts
   - src/components/people/teamSummary/drilldowns.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-06
+last_updated: 2026-10-08
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheets with `npm run map -- <file>`.
@@ -19,7 +20,7 @@ last_updated: 2026-10-06
 
 [`src/components/people/PeopleReviewTab.tsx`](../src/components/people/PeopleReviewTab.tsx) is the **Review** tab of the People page — a dev-only analytics surface with three layers: the **Team Summary** (one row per pay-roster person: hours, overhead hours/labor, field hours, gross/net revenue, profit after overhead, per-hour rates; each cell opens a drilldown from [`teamSummary/drilldowns.tsx`](../src/components/people/teamSummary/drilldowns.tsx)), shown either as the **Ranked view** (default since v2.2678: verdict strip, hygiene strip, ranked bars, math drawer) or the **Table** (`TeamSummaryInline`); and a **per-person panel** (headline card, Jobs Worked rolled up per job with per-day detail grids, Hours and Pay, Reports Filed, Tasks Completed/outstanding) that opens when a name is clicked or arrives through the Vectors → Review URL door.
 
-It was extracted from `People.tsx` as one unit (see [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) §review), grew to 5,267 lines, dropped to 3,777 after the popup builder moved out (v2.1305), and has **regrown to 4,167 lines** (36 commits in 90 days) through the ranked view, the earned convention, Wheels, card-charge and tag cost lines, the URL door and the roster view. One default-exported component `PeopleReviewTab` (178–4167, 3,990 lines; render 2397–4166, 1,770 lines) plus five module helpers: `throwIfQueryError` (99–106), `paged` (117–122), `laborRowJobId` (133–135), `fetchJobStatusesByIds` (138–152), `signedCurrency` (154–156).
+It was extracted from `People.tsx` as one unit (see [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) §review), grew to 5,267 lines, dropped to 3,777 after the popup builder moved out (v2.1305), and has **regrown to 4,167 lines** (36 commits in 90 days) through the ranked view, the earned convention, Wheels, card-charge and tag cost lines, the URL door and the roster view; v2.4914 moved the per-person panel to `review/PeopleReviewPersonPanel.tsx`, leaving 856. One default-exported component `PeopleReviewTab` (178–4167, 3,990 lines; render 2397–4166, 1,770 lines) plus five module helpers: `throwIfQueryError` (99–106), `paged` (117–122), `laborRowJobId` (133–135), `fetchJobStatusesByIds` (138–152), `signedCurrency` (154–156).
 
 **Hook census (fact sheet @ a05cef4c4):** 32 `useState` · 0 `useReducer` · 7 `useEffect` · 14 `useMemo` · 3 `useCallback` · 7 `useRef` (`reviewDoorRef` 221, `reviewReqIdRef` 240, `teamSummaryReqIdRef` 361, `teamSummaryPriorReqIdRef` 391, `reviewOfficeLikeReqIdRef` 398, `showPeopleForReviewRef` 685, `reviewOverheadRatesRef` 692) · 5 custom hooks (`useToastContext` 196, `useAuth` 197, `useLedgerPrefixMap` 198, `usePendingHoursApprovalsNudge` 392, `useCategoryTags` 395) · 51 local imports. Tables: `jobs_ledger`, `clock_sessions`, `jobs_ledger_invoices`, `people`, `people_pay_config`, `people_labor_job_assignees`, `people_labor_jobs`, `people_crew_jobs`, `people_hours`, `checklist_instances`, `app_settings`, `people_labor_job_items`, `jobs_ledger_materials`, `mercury_transaction_job_allocations`, `people_crew_bids`, `mercury_transactions`. RPCs: `list_reports_with_job_info`, `list_tally_parts_with_po`, `get_jobs_ledger_by_ids[_paid_only]`, `get_invoice_amounts_for_jobs`, `get_bids_by_ids`. Edge functions: none.
 

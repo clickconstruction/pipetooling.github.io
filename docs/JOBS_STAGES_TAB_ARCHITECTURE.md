@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-10-06
+last_updated: 2026-10-08
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -193,6 +193,7 @@ None of the three v2.3530 dialogs has a render test.
 | 4689 / 4695 | `aiaG702StagesJob` / `hazmatFeeJob` | `AiaG702G703Modal` / `HazmatFeeModal` | hazmat created → `loadJobs` + `loadHazmatFeeJobIds` |
 | 4703 / 4725 | `markPaidJob` / `markPaidInvoice` | `BilledPaymentConfirmationModal` ×2 | `stripeModeForBillingFromRole`; invoice mode also reloads promises |
 | 4740 / 4751 / 4766 / 4774 | send-back invoice / job / simple / collections | the four `Stages…Modal`s (v2.3535–3536) | handlers in cluster L |
+| (4932 at HEAD) | `uncollectibleConfirm` (`{ job, direction: 'mark' \| 'unmark' }`) | `StagesUncollectibleConfirmModal` (v2.4792; `firmWarning` from `uncollectibleFirmWarning` over `legalMatters`, v2.4794) | mark: reason required → `setJobUncollectible`, then `mark-stripe-invoice-uncollectible` per Stripe bill; unmark is *Put back* |
 | 4784 | `quickAssignJob` | lazy `QuickAssignSheet` (177) in `Suspense` | scheduled → targeted `fetchStagesUpcomingScheduleForJobs([id])`, no `loadJobs` |
 | 4807 | `scheduleModalJob` | `ScheduleJobModal` (keyed by job id) | assignees from `users` |
 | 4825 | `manageJobPeople` | `ManageJobPeopleModal` | the only team-member writer on this surface; changed → `loadJobs` |

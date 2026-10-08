@@ -71,10 +71,9 @@ architect, and its price so far with the card behind it. Its switch opens **Trad
 `approve-a-company-new-to-us`): each trade's companies and the projects short of quotes, **Add a company**, and the
 **New to us** box to approve or decline a company, and **Follow up** (guide `follow-up-on-a-quote-from-a-trade-partner`):
 every company we wait on for a quote, the ones to call first at the top, with Log a contact and **Will not do it** /
-**Cannot do it**. A company's name opens its window, whose **Their portal** (guide `share-a-trade-partner-its-portal`) is its portal link,
+**Cannot do it**. A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language, and **Their portal** (guide `share-a-trade-partner-its-portal`), its portal link,
 made, copied, remade or turned off, and whether they opened it (a dev's only, until the trade wave). Each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, saves the asks and, for a dev, emails each company its invitation.
-A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language and its portal link.
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
 **Our number** on a project's card (guide `set-our-number-and-send-our-bid`) adds our costs and fee to the trades for the money team; **We sent our bid**, **We won this** and **We lost this** sit on the project's head.
 **Bid tabs** on a project's card (guide `share-a-bid-tab-with-the-trades`) share each trade's quotes, low to high, with the companies that quoted once our bid is in.
