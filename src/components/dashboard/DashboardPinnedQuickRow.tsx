@@ -45,6 +45,9 @@ import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenc
 import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
+import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { canOpenGcProjects } from '../../lib/gc/access'
+import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
@@ -500,6 +503,9 @@ export function DashboardPinnedQuickRow({
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
   // Price requests PR 4 (v2.3573): the same audience as the robot card — the people who price bids.
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
+  // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
+  const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
+  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
@@ -578,6 +584,8 @@ export function DashboardPinnedQuickRow({
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
     priceRequestsLate,
+    gcFollowUpEnabled,
+    gcFollowUp,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
     legalReviewEnabled,
@@ -779,6 +787,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'price-requests-late') {
               // Land on the bid's Pricing tab — the desk lists every request with Nudge; the table on Edit bid has the paste box.
               navigate(priceRequestsLate ? `/bids?tab=pricing&bidId=${priceRequestsLate.first.bidId}` : '/bids?tab=pricing')
+            } else if (item.key === 'gc-follow-up') {
+              navigate(GC_FOLLOW_UP_HREF)
             } else if (item.key === 'price-matrix-ready') {
               // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
               navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')

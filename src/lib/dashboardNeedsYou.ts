@@ -41,6 +41,7 @@ import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
+import type { GcFollowUpNeeds } from './gc/followUpNeeds'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -112,6 +113,7 @@ export type NeedsYouItem = {
     | 'customer-waiting'
     | 'price-matrix-ready'
     | 'price-requests-late'
+    | 'gc-follow-up'
     | 'robot-backlog'
     | 'test-reports-ready'
     | 'legal-review'
@@ -205,6 +207,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'price-matrix-ready': 40,
   // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
   'price-requests-late': 40,
+  // Revenue chasing tier: a trade partner's quote we need for our own bid (GC mode, Follow up).
+  'gc-follow-up': 40,
   'robot-backlog': 60,
   'legal-review': 40,
   'legal-firm-activity': 20,
@@ -548,6 +552,12 @@ export type NeedsYouInputs = {
     count: number
     first: { bidId: string; bidLabel: string; project: string | null; house: string; daysLate: number }
   } | null
+  /**
+   * GC mode's Follow up (v2.4941): the trade partners' asks to call about a quote, the same count as
+   * the Follow up pill on /gc — `useGcFollowUpNeeds` over `lib/gc/followUpNeeds.ts`. The GC office team.
+   */
+  gcFollowUpEnabled?: boolean
+  gcFollowUp?: GcFollowUpNeeds | null
   /**
    * The robots' backlog (v2.3287, dev only): bids that want a shadow and
    * price matrices waiting on the pricer, from `buildRobotBacklog` — the same
@@ -1518,6 +1528,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: 'The bid cannot be priced on time without them. Nudge an app-sent request, call a hand-sent one, or paste the quote link on the row when it lands.',
       figure: String(count),
       actionLabel: 'Open Price requests',
+    })
+  }
+
+  if (inputs.gcFollowUpEnabled && inputs.gcFollowUp && inputs.gcFollowUp.count > 0) {
+    const f = inputs.gcFollowUp
+    items.push({
+      key: 'gc-follow-up',
+      severity: f.late ? 'red' : 'amber',
+      kicker: 'GC projects',
+      title: f.title,
+      detail: f.detail,
+      figure: String(f.count),
+      actionLabel: 'Follow up',
     })
   }
 

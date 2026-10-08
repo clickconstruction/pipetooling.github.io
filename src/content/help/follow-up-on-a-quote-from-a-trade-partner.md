@@ -14,6 +14,8 @@ The office and estimators see Follow up.
 1. Open [GC projects](/gc).
 2. Press {{button:outline|Follow up}} at the top of the board. The number on the button counts the companies to call.
 
+The Dashboard's **Needs you** shows the same count on a **GC projects** line. Press {{button:outline|Follow up}} on that line to come straight here.
+
 Each card is one company on one job. The chip on the card names the job, the trade and the day our bid is due.
 
 :::example A card at the top of Follow up
