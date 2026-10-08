@@ -44,7 +44,7 @@ import {
   type PortalLang,
   type TradePackage,
 } from '../../lib/gcMode/gcModel'
-import { BidTabTable } from './GcBidTabs'
+import { BidTabTable } from './GcBidTabs.proto'
 import { GcBuildingPayAppDoor } from './GcBuildingPayApp'
 import { Btn, Chip, input } from './gcUi'
 import { GcPortalBackCharges } from './GcPortalBackCharges'

@@ -15,7 +15,7 @@ import { GcBuildingScheduleBlock, GcBuildingScheduleTab } from '../components/gc
 import { GcBuildingLogTab } from '../components/gc/GcBuildingLog'
 import { GcBuildingSubmittalsTab } from '../components/gc/GcBuildingSubmittals'
 import { GcBuildingRfisTab } from '../components/gc/GcBuildingRfis'
-import { GcBidTabsTab } from '../components/gc/GcBidTabs'
+import { GcBidTabsTab } from '../components/gc/GcBidTabs.proto'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow.proto'
 import { GcCompanyOpenerContext, type CompanyOpener, type CompanyTab } from '../components/gc/gcCompanyOpener.proto'

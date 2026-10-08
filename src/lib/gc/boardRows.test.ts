@@ -58,6 +58,13 @@ describe('the board read from its rows', () => {
     expect(boardStateFromRows(unread).projects[0]!.generalConditions).toBe(0)
   })
 
+  it('a trade carries its shared bid tab and the companies that opened it', () => {
+    const s = boardStateFromRows(rows({ bidTabs: [{ package_id: 'k1', shared_on: '2026-10-08', show_names: true }], bidTabViews: [{ package_id: 'k1', company_id: 'hillside', seen_on: '2026-10-08' }] }))
+    const [site, concrete] = s.projects[0]!.packages
+    expect(site!.bidTab).toEqual({ sharedOn: '2026-10-08', showNames: true, seenBy: ['hillside'] })
+    expect(concrete!.bidTab).toBeNull()
+  })
+
   it('a company: its counts from its asks, its vetting, its drive from a point when the app has one', () => {
     const s = boardStateFromRows(rows())
     const [lonestar, hillside] = s.partners
