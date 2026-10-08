@@ -9,7 +9,7 @@ The **Bids → Cover Letter** tab is a two-pane studio, with your controls in nu
 
 ## One letter per GC
 
-The studio writes **one letter per GC**. A GC is the general contractor you bid to. The letter holds each of that GC's packets at its ★ base price. The letter also adds any price you offered that GC as an alternate. The earlier scenario-bundling letter and its Old / New pills retired in September 2026.
+The studio writes **one letter per GC**. A GC is the general contractor you bid to. The letter holds each of that GC's packets at its ★ base price. The letter also adds any price you offered that GC as an alternate, a choice instead of the base. The earlier scenario-bundling letter and its Old / New pills retired in September 2026.
 
 ## The two steps
 
