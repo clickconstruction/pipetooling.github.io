@@ -3,8 +3,9 @@
  * The Dispatch hub's modes (the SCHEDULE_DISPATCH map's step 6), on the hook: every way into a
  * mode, from every other mode; every way out; Escape; the ?placeJob= arm; and each writer the
  * page keeps (the add-block window, the tabs, the week arrows, the picker's pick, the new-job
- * path) through the intents it calls. The expectations are literal, gaps a to f named, so a row
- * changed in `lib/scheduleDispatch/hubModes.ts` fails here as well as in its table test.
+ * path) through the intents it calls. The expectations are literal, gaps d to f named (a to c
+ * fixed in v2.4989), so a row changed in `lib/scheduleDispatch/hubModes.ts` fails here as well as
+ * in its table test.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
@@ -266,7 +267,7 @@ describe('Escape', () => {
 })
 
 describe('the ?placeJob= arm', () => {
-  it('waits for the board, then arms the placing strip, ending placement and multi-cell but not linked copy (gap a)', () => {
+  it('waits for the board, then arms the placing strip and ends linked copy (gap a, fixed v2.4989)', () => {
     url = new URLSearchParams(`week=${WEEK}`)
     const { result, rerender } = mount()
     act(() => ENTER.linkedCopy(result.current))
@@ -275,7 +276,15 @@ describe('the ?placeJob= arm', () => {
     expect(result.current.hubAssignJobPlacement).toBeNull()
     rerender({ ...input, searchParams: url, hubLoading: false })
     expect(result.current.hubAssignJobPlacement).toEqual({ jobId: 'job-9' })
-    expect(on(result.current).sort()).toEqual(['assignPlacement', 'linkedCopy'])
+    expect(on(result.current)).toEqual(['assignPlacement'])
+  })
+
+  it('shuts the picker when Back or Forward lands on a placing link (gap a, fixed v2.4989)', () => {
+    const { result, rerender } = mount()
+    act(() => ENTER.picker(result.current))
+    url = new URLSearchParams(`week=${WEEK}&placeJob=job-9`)
+    rerender({ ...input, searchParams: url })
+    expect(on(result.current)).toEqual(['assignPlacement'])
   })
 
   it('arms once per job and week, and again after the week arrows forget it', () => {
@@ -307,11 +316,11 @@ describe('the ?placeJob= arm', () => {
 describe('the writers the page keeps, through the hook', () => {
   /** What each leaves on, of a mode that was on before it (literal; gaps b, c and d named). */
   const PAGE_WRITERS: Record<string, { run: (m: Modes) => void; keeps: Mode[]; turnsOn?: Mode }> = {
-    'openAddBlock (gap b: linked copy stays)': { run: (m) => m.leaveModesFor('openAddBlock'), keeps: ['linkedCopy'] },
+    'openAddBlock (gap b fixed: linked copy ends too)': { run: (m) => m.leaveModesFor('openAddBlock'), keeps: [] },
     closeAdd: { run: (m) => m.leaveModesFor('closeAddBlock'), keeps: [...MODES] },
     onHubAssignJobCellPick: { run: (m) => m.leaveModesFor('assignCellPick'), keeps: ['placement', 'linkedCopy', 'multiCell', 'picker'] },
     onCreateNewJobFromHubJobPicker: { run: (m) => m.leaveModesFor('newJob'), keeps: ['linkedCopy', 'assignPlacement', 'multiCell'] },
-    'setHubTab, Jobs or Day (gap c: linked copy and the picker stay)': { run: (m) => m.leaveModesFor('tabAway'), keeps: ['linkedCopy', 'picker'] },
+    'setHubTab, Jobs or Day (gap c fixed: linked copy and the picker end too)': { run: (m) => m.leaveModesFor('tabAway'), keeps: [] },
     'shiftWeek and goThisWeek (gap d: multi-cell waits for the new week)': { run: (m) => m.leaveModesFor('weekNav'), keeps: ['multiCell', 'picker'] },
     'the picker’s pick (pickJobToPlace)': { run: (m) => m.pickJobToPlace('job-8'), keeps: ['linkedCopy', 'multiCell'], turnsOn: 'assignPlacement' },
     'the new job with no cell (placeNewJob)': { run: (m) => m.placeNewJob('job-9'), keeps: ['placement', 'linkedCopy', 'multiCell', 'picker'], turnsOn: 'assignPlacement' },
@@ -330,13 +339,16 @@ describe('the writers the page keeps, through the hook', () => {
     }
   }
 
-  it('closeAdd and the tabs take ?placeJob= off the URL; openAddBlock leaves it (gap b); closeAdd shuts the window', () => {
+  it('openAddBlock, closeAdd and the tabs take ?placeJob= off the URL (gap b fixed); closeAdd shuts the window', () => {
     url = new URLSearchParams(`week=${WEEK}&placeJob=job-9`)
     const { result } = mount({ searchParams: url })
     act(() => result.current.leaveModesFor('openAddBlock'))
-    expect(url.get('placeJob')).toBe('job-9')
+    expect(url.get('placeJob')).toBeNull()
     expect(input.closeAddBlockWindow).not.toHaveBeenCalled()
-    act(() => result.current.leaveModesFor('closeAddBlock'))
+
+    url = new URLSearchParams(`week=${WEEK}&placeJob=job-9`)
+    const add = mount({ searchParams: url })
+    act(() => add.result.current.leaveModesFor('closeAddBlock'))
     expect(url.get('placeJob')).toBeNull()
     expect(input.closeAddBlockWindow).toHaveBeenCalledTimes(1)
 
