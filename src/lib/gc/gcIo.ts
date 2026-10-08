@@ -203,6 +203,17 @@ export async function sendQuestionToArchitect(questionId: string): Promise<{ to:
   return { to: (r.data as { to: string }).to }
 }
 
+/**
+ * The companies an answer was emailed to (P3-b): added to the question's `answer_sent_to`, each once, so their
+ * portals show it. The office team writes the row under its policy, as it marks a question sent.
+ */
+export async function addAnswerSentTo(questionId: string, companyIds: string[]): Promise<void> {
+  if (companyIds.length === 0) return
+  const row = taken(await supabase.from('gc_plan_questions').select('answer_sent_to').eq('id', questionId).single(), 'read who has the answer') as { answer_sent_to: string[] | null } | null
+  const next = [...new Set([...(row?.answer_sent_to ?? []), ...companyIds])]
+  taken(await supabase.from('gc_plan_questions').update({ answer_sent_to: next }).eq('id', questionId).select('id').single(), 'record who has the answer')
+}
+
 /** The question went to the architect some other way (by phone, in a meeting): the office marks it sent. */
 export async function markQuestionSent(questionId: string, on: string): Promise<void> {
   taken(await supabase.from('gc_plan_questions').update({ sent_to_architect_on: on }).eq('id', questionId).select('id').single(), 'mark the question sent')

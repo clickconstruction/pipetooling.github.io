@@ -27,7 +27,7 @@ import { gcTradePortalSample } from '../../../supabase/functions/_shared/gcTrade
 import { GC_COMPANY } from './company'
 import { inviteMessage, mailRecipients, portalMailGroup, type PortalMessage } from './portal'
 import { PORTAL_SPANISH_ON, portalString } from './portalI18n'
-import { GC_TRADE_EMAIL_REFUSALS, gcTradeEmailRefusal, inviteEmailLines, readTradeEmailAnswer, tradeMailLang } from './tradeEmail'
+import { answerEmail, answerEmailKey, answerRecipients, answerSentWords, GC_TRADE_EMAIL_REFUSALS, gcTradeEmailRefusal, inviteEmailLines, readTradeEmailAnswer, tradeMailLang } from './tradeEmail'
 import { stageOf, tradePortalState } from './tradePortalState'
 import type { GcState, Partner } from './types'
 
@@ -302,5 +302,74 @@ describe('the office’s side', () => {
       { title: 'Known exclusions. Leave these out, someone else does them:', items: ['Permits and fees (the owner does it)'] },
     ])
     expect(parseTradeEmail(good({ lines })).ok).toBe(true)
+  })
+})
+
+describe('an answer about the plans (P3-b)', () => {
+  const stateWith = (stage: string, over: { lostOn?: string | null; awardedInviteId?: string | null } = {}): GcState =>
+    ({
+      projects: [
+        {
+          id: PROJECT,
+          stage,
+          lostOn: over.lostOn ?? null,
+          packages: [
+            {
+              id: 'elec',
+              awardedInviteId: over.awardedInviteId ?? null,
+              invites: [
+                { id: 'i1', partnerId: 'c1', status: 'opened' },
+                { id: 'i2', partnerId: 'c2', status: 'declined' },
+                { id: 'i3', partnerId: 'c3', status: 'invited' },
+                { id: 'i4', partnerId: 'c1', status: 'bid' },
+              ],
+            },
+            { id: 'plumb', awardedInviteId: null, invites: [{ id: 'i5', partnerId: 'c4', status: 'opened' }] },
+          ],
+        },
+      ],
+      partners: [
+        { id: 'c1', company: 'Pecan Valley Electric' },
+        { id: 'c2', company: 'Hill Country Power' },
+        { id: 'c3', company: 'Sample Electric Co.' },
+        { id: 'c4', company: 'Guadalupe Plumbing' },
+      ],
+    }) as unknown as GcState
+
+  it('goes to every company still asked on the trade while we bid, each once, never one that passed', () => {
+    expect(answerRecipients(stateWith('pursuing'), PROJECT, 'elec')).toEqual([
+      { companyId: 'c1', company: 'Pecan Valley Electric' },
+      { companyId: 'c3', company: 'Sample Electric Co.' },
+    ])
+  })
+
+  it('goes only to the company we awarded once the job is ours, and to nobody before the award', () => {
+    expect(answerRecipients(stateWith('buyout'), PROJECT, 'elec')).toEqual([])
+    expect(answerRecipients(stateWith('building', { awardedInviteId: 'i3' }), PROJECT, 'elec')).toEqual([{ companyId: 'c3', company: 'Sample Electric Co.' }])
+  })
+
+  it('goes to nobody on a bid we lost, for a question about the job as a whole, or with no company record', () => {
+    expect(answerRecipients(stateWith('pursuing', { lostOn: '2026-10-07' }), PROJECT, 'elec')).toEqual([])
+    expect(answerRecipients(stateWith('pursuing'), PROJECT, null)).toEqual([])
+    expect(answerRecipients(null, PROJECT, 'elec')).toEqual([])
+    expect(answerRecipients(stateWith('pursuing'), 'another', 'elec')).toEqual([])
+  })
+
+  it('says what it is about, the question and the answer, and the set that carried it', () => {
+    const a = { project: 'Fair Oaks Clinic', trade: 'Electrical', question: ' Is the panel a 400 A? ', answer: 'Yes, 400 A.', setLabel: null }
+    expect(answerEmail(a, 'en')).toEqual({
+      subject: 'An answer about the Electrical plans on Fair Oaks Clinic',
+      lines: ['A question about the Electrical plans on Fair Oaks Clinic has an answer.', 'The question: Is the panel a 400 A?', 'The answer: Yes, 400 A.'],
+    })
+    expect(answerEmail({ ...a, setLabel: 'Addendum 1' }, 'en').lines.slice(-1)).toEqual(['It is part of Addendum 1.'])
+    expect(answerEmail(a, 'es').subject).toBe('Una respuesta sobre los planos de Electrical en Fair Oaks Clinic')
+    expect(parseTradeEmail(good({ kind: 'answer', key: answerEmailKey('q1'), ...answerEmail(a, 'en') })).ok).toBe(true)
+    expect(answerEmailKey('q1')).toBe('q1:answer')
+  })
+
+  it('tells the office who has it and who it did not reach, in its words', () => {
+    expect(answerSentWords(['Pecan Valley Electric', 'Sample Electric Co.'], [])).toEqual({ done: 'The answer went to Pecan Valley Electric and Sample Electric Co.', problem: null })
+    expect(answerSentWords(['Hill Country Power'], []).done).toBe('The answer went to Hill Country Power.')
+    expect(answerSentWords([], [{ company: 'Hill Country Power', key: 'noEmail' }])).toEqual({ done: null, problem: `Hill Country Power: ${GC_TRADE_EMAIL_REFUSALS.noEmail}` })
   })
 })

@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenGcProjects, canSeeGcMoney } from '../lib/gc/access'
+import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from '../lib/gc/access'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
@@ -20,12 +20,14 @@ import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
-import { GcQuestionsWindow } from '../components/gc/GcQuestions'
+import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
 import { GcMoney } from '../components/gc/GcMoney'
 import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
-import { openQuestions } from '../lib/gc/questions'
+import { openQuestions, type PlanQuestionView } from '../lib/gc/questions'
+import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
+import { emailTheAnswer } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
@@ -443,6 +445,41 @@ export default function GcProjects() {
     setParams(next, { replace: true })
     setQuestionProblem(null)
   }
+  /**
+   * Who hears an answer by email (the Portal lane's P3-b): the companies on the question's trade from the board's
+   * company record, which only a dev loads. Without it the answer is recorded and carried, and no email goes.
+   */
+  const answerReach: AnswerReach | null =
+    board && questionsProject
+      ? {
+          canSend: canSendGcTradeEmail(role),
+          recipients: (packageId) => answerRecipients(board, questionsProject.id, packageId),
+          companyName: (id) => board.partners.find((p) => p.id === id)?.company ?? null,
+        }
+      : null
+  /** An answer to each company ticked, in its language; the window reloads either way, and names any it did not reach. */
+  const emailAnswer = async (questionId: string, answer: string, to: string[]) => {
+    const project = questionsProject
+    if (!project || to.length === 0) return
+    const q: PlanQuestionView | undefined = project.questions.find((x) => x.id === questionId)
+    const trade = project.trades.find((t) => t.id === q?.packageId)?.trade ?? 'the job'
+    const setLabel = q?.inSetId ? (project.planSets.find((s) => s.id === q.inSetId)?.label ?? null) : null
+    const r = await emailTheAnswer({
+      projectId: project.id,
+      questionId,
+      to: to.map((companyId) => ({ companyId, company: answerReach?.companyName(companyId) ?? 'A company', lang: tradeMailLang(langs[companyId]) })),
+      email: (lang) => answerEmail({ project: project.name, trade, question: q?.text ?? '', answer, setLabel }, lang),
+    })
+    const words = answerSentWords(
+      r.sent.map((x) => x.company),
+      r.refused,
+    )
+    if (words.done) showToast(words.done, 'success')
+    if (words.problem) {
+      await load()
+      throw new Error(words.problem)
+    }
+  }
   /** A question write: run it, reload, and say the problem in the window if there is one. */
   const questionWrite = (id: string | null, work: Promise<unknown>, failed: string) => {
     setQuestionBusy(id ?? 'new')
@@ -779,6 +816,7 @@ export default function GcProjects() {
           today={today}
           busy={questionBusy}
           problem={questionProblem}
+          answerReach={answerReach}
           onClose={() => setQuestionsWindow(null)}
           writes={{
             onRecord: (q) => questionWrite(null, recordQuestion({ projectId: questionsProject.id, ...q }), 'The question was not recorded.'),
@@ -789,7 +827,16 @@ export default function GcProjects() {
                 'The question was not sent.',
               ),
             onMarkSent: (id) => questionWrite(id, markQuestionSent(id, today), 'The question was not marked sent.'),
-            onAnswer: (id, answer) => questionWrite(id, answerQuestion(id, answer), 'The answer was not recorded.'),
+            onAnswer: (id, answer, to) =>
+              questionWrite(
+                id,
+                answerQuestion(id, answer).then(() => emailAnswer(id, answer, to)),
+                to.length > 0 ? 'The answer was not sent.' : 'The answer was not recorded.',
+              ),
+            onSendAnswer: (id, to) => {
+              const answer = questionsProject.questions.find((x) => x.id === id)?.answer ?? ''
+              questionWrite(id, emailAnswer(id, answer, to), 'The answer was not sent.')
+            },
           }}
         />
       )}

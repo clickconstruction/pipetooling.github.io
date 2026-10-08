@@ -39,7 +39,7 @@ export interface GcProjectRows {
   sets: { id: string; rev: number; label: string; kind: string; issued_on: string; note: string; checked_by_user_id: string | null; drive_url: string; drive_access: string | null; drive_checked_on: string | null }[]
   setItems: { id: string; set_id: string; position: number; kind: string; number: string; title: string; change: string; was_title: string | null; discipline: string | null; page: number | null }[]
   /** The questions about the plans (step 8). Missing on a row set read before they existed. */
-  questions?: { id: string; package_id: string | null; asked_by_name: string; text: string; sheets: string[]; asked_on: string; sent_to_architect_on: string | null; answered_on: string | null; answer: string; in_set_id: string | null }[]
+  questions?: { id: string; package_id: string | null; asked_by_name: string; text: string; sheets: string[]; asked_on: string; sent_to_architect_on: string | null; answered_on: string | null; answer: string; in_set_id: string | null; company_id?: string | null; answer_sent_to?: string[] }[]
 }
 
 /** One set of plans as the kernels read it: the sheets and sections as they stood after it. */
@@ -235,6 +235,8 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
         answeredOn: x.answered_on,
         answer: x.answer,
         inSetId: x.in_set_id,
+        companyId: x.company_id ?? null,
+        answerSentTo: x.answer_sent_to ?? [],
       })),
     // The scope book's names for the same rows.
     packages: trades.map((t) => ({
