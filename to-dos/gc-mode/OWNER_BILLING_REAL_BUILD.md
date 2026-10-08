@@ -617,6 +617,18 @@ and the controller sees. It could be better three ways:
 
 ## Status
 
+**2026-10-08.**
+- **O1 is live.** #4851 is applied and verified, Status in #4877.
+- **O2a (#4858) is merged.** Its spike follow-up was written by Helper 7.
+- **O3 (#4948, v2.4915, migration `20261008110000`) is live.** It is applied and verified (Status PR #4954), with types in #4953. It made no second mapper: the Board's `boardProjectFromView` is main's one, the lead's ruling.
+- **O2b (#4956, v2.4922) is armed.** It brings the rest of the kernels; `timeExtension.ts` and `lateFinish.ts` live at `src/lib/gc/`.
+- **O3-ui is built and walked on prod.** It is the Change orders window on `/gc` for a dev, cut once #4956 and #4953 merge.
+- **O4a waits on the owner's billing-only answer** (`mockups/billing-only-job.md`). O5's plan is next (`mockups/owner-billing-o5.md`).
+
+**Test rows on prod (call 13):**
+- "GC test project, delete me" (`ef8905d1-…`) is at `building`, with `started_on` 2026-10-05. It was set for O3-ui's walk with the lead's OK, and left there for Building's U3 check.
+- Its change order 1, "Test change, delete me: add a slab thickening at grid C, per S-102", is signed at 40%. The keep-what-went trigger refuses a plain delete; the project's own delete removes it by cascade.
+
 **2026-10-07, evening.**
 - **O1** is clickconstruction/pipetooling.github.io#4851 (v2.4831 after the queue's renumber;
   migration `20261008010000_gc_owner_billing_tables`), reviewed by the lead and armed. Its push
