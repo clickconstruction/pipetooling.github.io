@@ -7,26 +7,19 @@ import {
   hoursTabSectionHeaderGap,
 } from './peopleHoursTabShared'
 import type { PeopleHoursTeam } from './PeopleHoursTeams'
+import type { PeopleHoursTeamsApi } from '../../hooks/usePeopleHoursTeams'
 import { WeekdayCostTable } from './WeekdayCostTable'
 
 export interface PeopleHoursDueSummariesProps {
   open: boolean
   onToggle: () => void
-  teamsFiltered: PeopleHoursTeam[]
-  teamPeriodStart: string
-  teamPeriodEnd: string
-  getCostForPersonDateTeams: (personName: string, workDate: string) => number
+  /** The teams, their period and a day's cost, as `usePeopleHoursTeams` returns them (#46 row 6, v2.4953). */
+  teams: Pick<PeopleHoursTeamsApi, 'teamsFiltered' | 'teamPeriodStart' | 'teamPeriodEnd' | 'getCostForPersonDateTeams'>
 }
 
 /** Per-team due totals with a weekday-cost drilldown. (The tag-based "Due by Trade" view retired with the cost matrix.) */
-export function PeopleHoursDueSummaries({
-  open,
-  onToggle,
-  teamsFiltered,
-  teamPeriodStart,
-  teamPeriodEnd,
-  getCostForPersonDateTeams,
-}: PeopleHoursDueSummariesProps) {
+export function PeopleHoursDueSummaries({ open, onToggle, teams }: PeopleHoursDueSummariesProps) {
+  const { teamsFiltered, teamPeriodStart, teamPeriodEnd, getCostForPersonDateTeams } = teams
   const [teamLedgerModalTeam, setTeamLedgerModalTeam] = useState<PeopleHoursTeam | null>(null)
 
   return (
