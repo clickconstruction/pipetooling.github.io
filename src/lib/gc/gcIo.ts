@@ -11,6 +11,7 @@ import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
 import type { BoardRows } from './boardRows'
+import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { DeclineReason, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
@@ -424,4 +425,40 @@ export async function askGcCompanies(packageId: string, companyIds: string[], by
       .select('id'),
     'note that the emails wait',
   )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O3-ui: change orders to the customer (migration 20261008110000). The steps and the
+// words are checked in the database's own functions; these only carry the press there.
+// ---------------------------------------------------------------------------------------------
+
+/** Every change order on these projects, as their rows hold them. */
+export async function loadGcChangeOrders(projectIds: string[]): Promise<ChangeOrderRow[]> {
+  if (projectIds.length === 0) return []
+  return taken(await supabase.from('gc_change_orders').select('*').in('project_id', projectIds).order('number'), 'load the change orders')
+}
+
+/** A new change order, as a draft, with the next number on the project. */
+export async function draftChangeOrder(projectId: string, draft: ChangeOrderDraft): Promise<string> {
+  return taken(await supabase.rpc('gc_draft_change_order', { p_project_id: projectId, p_draft: draft as unknown as Json }), 'draft the change order')
+}
+
+/** A draft goes to the customer for their signature on a day. */
+export async function sendChangeOrder(changeOrderId: string, on: string): Promise<void> {
+  taken(await supabase.rpc('gc_send_change_order', { p_id: changeOrderId, p_on: on }), 'send the change order')
+}
+
+/** The customer's answer to a sent change order, as the office records it from their signed copy. */
+export async function answerChangeOrder(changeOrderId: string, signed: boolean, on: string): Promise<void> {
+  taken(await supabase.rpc('gc_answer_change_order', { p_id: changeOrderId, p_signed: signed, p_on: on, p_how: 'office' }), 'record their answer')
+}
+
+/** How much of a signed change order's work is done, for the customer's bill. */
+export async function setChangeOrderPct(changeOrderId: string, pct: number): Promise<void> {
+  taken(await supabase.from('gc_change_orders').update({ pct_done: pct }).eq('id', changeOrderId).select('id').single(), 'set the percent done')
+}
+
+/** A draft taken off: one that went to the customer stays (the database refuses it). */
+export async function deleteChangeOrderDraft(changeOrderId: string): Promise<void> {
+  taken(await supabase.from('gc_change_orders').delete().eq('id', changeOrderId).select('id').single(), 'delete the draft')
 }

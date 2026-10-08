@@ -208,6 +208,9 @@ One issue of a GC project's plans (`gc_plan_sets`, rev 0 first). The first set i
 ### Scope line · scope book · scope set
 A **scope line** is one piece of work a trade's quote says yes or no to (`gc_scope_items`), with the sheets and sections it reads from. The **scope book** is every scope line we keep, by trade: read from our GC projects' scopes and the usual lines, plus the office's saved lines, edits and merges. A **scope set** is a named list of one trade's lines, saved to start the next project from.
 
+### Change order (GC mode, to the customer)
+A change to our contract with the customer on a GC job we won (`gc_change_orders`): what changed and why (the customer asked, a field condition or a plan revision), whose work, what it costs us, what it adds to their price (the cost plus the job's fee unless the office types another; a credit is below zero), and the days it adds. It is numbered on the job and goes from a draft, to sent, to signed or declined; once sent it keeps what it said. A signed one raises the customer's price, adds its days to the contract time, and bills as a line of its own. A **time extension** is a change order with no price that asks for the days the customer's schedule moves cost (G-141). Dev only while it is built: **Change orders** on a won job's card on [GC projects](/gc) (guide `change-our-contract-with-the-customer`).
+
 ### Job–Project Link
 Optional association between a Job (billing) and a Project (multi-phase work). Jobs can optionally belong to a project; not all jobs need projects. When linked, the job owner must match the project owner (enforced by trigger). When editing a job and linking it to a project, the job's owner is automatically updated to the project owner.
 

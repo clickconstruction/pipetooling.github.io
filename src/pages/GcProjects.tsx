@@ -20,6 +20,8 @@ import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow } from '../components/gc/GcQuestions'
+import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
+import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
 import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
@@ -34,6 +36,12 @@ import type { PortalLang } from '../lib/gc/portalI18n'
 import {
   addGcCompany,
   askGcCompanies,
+  answerChangeOrder,
+  deleteChangeOrderDraft,
+  draftChangeOrder,
+  loadGcChangeOrders,
+  sendChangeOrder,
+  setChangeOrderPct,
   checkDriveAccess,
   createGcProject,
   declineGcAsk,
@@ -265,6 +273,38 @@ export default function GcProjects() {
     return () => window.clearTimeout(t)
   }, [loaded, focusId])
 
+  // Change orders to the customer (Owner Billing's O3-ui): read beside the board for a dev, laid over
+  // the board's projects (boardProjectFromView maps the rest), and opened at `changes=<projectId>`.
+  const changesProjectId = params.get('changes')
+  const [changeOrderRows, setChangeOrderRows] = useState<ChangeOrderRow[]>([])
+  const [changeBusy, setChangeBusy] = useState<string | null>(null)
+  const [changeProblem, setChangeProblem] = useState<string | null>(null)
+  const loadChangeOrders = useCallback(async () => {
+    if (!board) return
+    setChangeOrderRows(await loadGcChangeOrders(board.projects.map((p) => p.id)))
+  }, [board])
+  useEffect(() => {
+    void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
+  }, [loadChangeOrders])
+  const boardWithChanges = useMemo(() => (board ? withChangeOrders(board, changeOrderRows) : null), [board, changeOrderRows])
+  const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
+  const setChangesWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('changes', projectId)
+    else next.delete('changes')
+    setParams(next, { replace: true })
+    setChangeProblem(null)
+  }
+  /** A change order write: run it, read the change orders again, and say the problem in the window if there is one. */
+  const changeWrite = (id: string, work: Promise<unknown>, failed: string) => {
+    setChangeBusy(id)
+    setChangeProblem(null)
+    void work
+      .then(() => loadChangeOrders())
+      .catch((e) => setChangeProblem(formatErrorMessage(e, failed)))
+      .finally(() => setChangeBusy(null))
+  }
+
   if (authLoading) return null
   if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
 
@@ -413,6 +453,14 @@ export default function GcProjects() {
                   A new set of plans came in
                 </Btn>
               )}
+              {boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+                <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
+                  {(() => {
+                    const count = changeOrderRows.filter((r) => r.project_id === p.id).length
+                    return count > 0 ? `Change orders · ${count}` : 'Change orders'
+                  })()}
+                </Btn>
+              )}
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
@@ -546,6 +594,24 @@ export default function GcProjects() {
             await refreshBoard()
           }}
           onClose={() => setAsking(null)}
+        />
+      )}
+
+      {changesProject && boardWithChanges && (
+        <GcChangeOrdersWindow
+          state={boardWithChanges}
+          project={changesProject}
+          today={today}
+          busy={changeBusy}
+          problem={changeProblem}
+          onClose={() => setChangesWindow(null)}
+          writes={{
+            onDraft: (draft) => changeWrite('new', draftChangeOrder(changesProject.id, draft), 'The change order was not drafted.'),
+            onSend: (id) => changeWrite(id, sendChangeOrder(id, today), 'The change order was not marked sent.'),
+            onAnswer: (id, signed, on) => changeWrite(id, answerChangeOrder(id, signed, on), 'Their answer was not recorded.'),
+            onSetPct: (id, pct) => changeWrite(id, setChangeOrderPct(id, pct), 'The percent done was not saved.'),
+            onDelete: (id) => changeWrite(id, deleteChangeOrderDraft(id), 'The draft was not deleted.'),
+          }}
         />
       )}
 
