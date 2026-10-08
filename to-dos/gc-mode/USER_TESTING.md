@@ -98,6 +98,31 @@ and add it to the next evening's note.
 >
 > Found something odd or confusing? Reply to this note. Say what you pressed and what you saw. We log each reply and tell you when it is fixed.
 
+### Door 2 day: the Board opens
+
+Drafted by Helper 6 on 2026-10-08, to send the evening door 2 is live (`mockups/door-2-board.md`).
+129 words without the links; every line passes `plainWordsFailures`. The Ask window line holds until
+the Portal's emails (P3) are live. On that evening it reads *The Ask window emails each company it
+asks.* instead.
+
+> GC projects now shows the Project Board above the list of projects. It puts every GC project in its stage, with the days left before our bid is due.
+>
+> New today, with a guide for each:
+>
+> - Read the board: https://clicktooling.com/g/see-where-every-gc-project-stands/
+> - Add a trade partner: https://clicktooling.com/g/add-a-trade-partner/
+> - Approve a company that is new to us: https://clicktooling.com/g/approve-a-company-new-to-us/
+> - Ask companies to quote a trade: https://clicktooling.com/g/ask-trade-partners-for-a-quote/
+> - Follow up on a quote: https://clicktooling.com/g/follow-up-on-a-quote-from-a-trade-partner/
+> - Open a company's window: https://clicktooling.com/g/look-up-a-trade-partner/
+> - Compare quotes and carry one: https://clicktooling.com/g/compare-quotes-and-carry-one/
+>
+> For now the Ask window saves each ask but emails nobody. Call or email the company yourself.
+>
+> Leave the project named "GC test project, delete me" alone. We use it for our own checks.
+>
+> Found something odd or confusing? Reply to this note. Say what you pressed and what you saw.
+
 ## The morning triage
 
 Each morning Helper 7 reads every *New* row, names a lane and a helper for each, sets it *Routed*,
