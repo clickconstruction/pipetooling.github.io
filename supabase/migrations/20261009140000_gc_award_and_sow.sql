@@ -29,9 +29,10 @@ ALTER TABLE public.gc_trade_packages
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'gc_trade_packages_awarded_on_this_trade' AND conrelid = 'public.gc_trade_packages'::regclass) THEN
-    -- An ask on this trade. An awarded ask cannot be deleted: its statement of work points at it too.
+    -- An ask on this trade, let go with the ask as B5's carry is. A project's or a trade's delete takes the
+    -- award with it; the awarded ask alone is still kept, by the award's day and the statement of work's key.
     ALTER TABLE public.gc_trade_packages ADD CONSTRAINT gc_trade_packages_awarded_on_this_trade
-      FOREIGN KEY (awarded_invite_id, id) REFERENCES public.gc_invites (id, package_id) ON DELETE RESTRICT;
+      FOREIGN KEY (awarded_invite_id, id) REFERENCES public.gc_invites (id, package_id) ON DELETE SET NULL (awarded_invite_id);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'gc_trade_packages_awarded_with_day' AND conrelid = 'public.gc_trade_packages'::regclass) THEN
     ALTER TABLE public.gc_trade_packages ADD CONSTRAINT gc_trade_packages_awarded_with_day
@@ -79,8 +80,8 @@ CREATE TABLE IF NOT EXISTS public.gc_sows (
   created_by uuid DEFAULT auth.uid() REFERENCES public.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   -- The ask awarded: an ask of this company, on this trade.
-  CONSTRAINT gc_sows_ask_of_company FOREIGN KEY (invite_id, company_id) REFERENCES public.gc_invites (id, company_id) ON DELETE RESTRICT,
-  CONSTRAINT gc_sows_ask_on_trade FOREIGN KEY (invite_id, package_id) REFERENCES public.gc_invites (id, package_id) ON DELETE RESTRICT
+  CONSTRAINT gc_sows_ask_of_company FOREIGN KEY (invite_id, company_id) REFERENCES public.gc_invites (id, company_id),
+  CONSTRAINT gc_sows_ask_on_trade FOREIGN KEY (invite_id, package_id) REFERENCES public.gc_invites (id, package_id)
 );
 
 COMMENT ON TABLE public.gc_sows IS
@@ -247,7 +248,8 @@ BEGIN
   WHERE id = v_ask.package_id;
 
   -- sowFromBid: the price, retainage 10, the newest plan set, their own schedule of values and what they
-  -- will not do, then one line per scope item, the price split evenly in hundreds with the rest on the last.
+  -- will not do (a unit price only when there is one, as sowExcluded), then one line per scope item, the
+  -- price split evenly in hundreds with the rest on the last.
   SELECT q.sov, q.exclusions INTO v_quote
   FROM public.gc_quotes q WHERE q.invite_id = p_invite_id ORDER BY q.created_at DESC, q.id DESC LIMIT 1;
   SELECT coalesce(max(s.rev), 0) INTO v_rev FROM public.gc_plan_sets s WHERE s.project_id = v_ask.project_id;
@@ -256,7 +258,7 @@ BEGIN
              SELECT k.by FROM public.gc_scope_exclusions k
              WHERE k.package_id = v_ask.package_id AND public.gc_exclusion_key(k.label) = public.gc_exclusion_key(e ->> 'name')
              ORDER BY k.position, k.created_at LIMIT 1
-           )) || CASE WHEN e ? 'unitPrice' THEN jsonb_build_object('unitPrice', e -> 'unitPrice') ELSE '{}'::jsonb END
+           )) || CASE WHEN coalesce(e -> 'unitPrice', 'null'::jsonb) <> 'null'::jsonb THEN jsonb_build_object('unitPrice', e -> 'unitPrice') ELSE '{}'::jsonb END
            ORDER BY ord) END
   INTO v_excluded
   FROM jsonb_array_elements(coalesce(v_quote.exclusions, '[]'::jsonb)) WITH ORDINALITY AS x(e, ord);

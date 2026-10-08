@@ -56,12 +56,13 @@ INSERT INTO public.gc_invites (id, package_id, company_id, status, plugs, exclus
   ('00000000-0000-0000-0000-000000000626', '00000000-0000-0000-0000-0000000006b2', '00000000-0000-0000-0000-000000000611', 'invited', '{}', '{}', '{}');
 
 -- The quotes. Lonestar's older $58,000 is replaced by $52,000, which leaves paving out, offers two
--- alternates and names three exclusions (one with a unit price) and its own schedule of values.
+-- alternates and names three exclusions (one with a unit price, one with a null one, as a quote typed
+-- in by the office may hold) and its own schedule of values.
 INSERT INTO public.gc_quotes (invite_id, amount, based_on_rev, includes, alternates, exclusions, sov, source, created_at) VALUES
   ('00000000-0000-0000-0000-000000000621', 58000, 0, '{"00000000-0000-0000-0000-0000000006e1": "yes", "00000000-0000-0000-0000-0000000006e2": "yes"}', '[]', NULL, NULL, 'trade', TIMESTAMPTZ '2026-10-03 10:00Z'),
   ('00000000-0000-0000-0000-000000000621', 52000, 1, '{"00000000-0000-0000-0000-0000000006e1": "yes", "00000000-0000-0000-0000-0000000006e2": "no"}',
      '[{"label": "Thicker base", "amount": 3000}, {"label": "Night work", "amount": 4000}]',
-     '[{"name": "Dewatering"}, {"name": "Permits and fees"}, {"name": "Rock", "unitPrice": {"amount": 38, "unit": "cy"}}]',
+     '[{"name": "Dewatering", "unitPrice": null}, {"name": "Permits and fees"}, {"name": "Rock", "unitPrice": {"amount": 38, "unit": "cy"}}]',
      '[{"label": "Mobilize", "amount": 5000}, {"label": "Grading", "amount": 47000}]', 'trade', TIMESTAMPTZ '2026-10-05 10:00Z'),
   ('00000000-0000-0000-0000-000000000622', 60000, 1, '{"00000000-0000-0000-0000-0000000006e1": "yes", "00000000-0000-0000-0000-0000000006e2": "yes"}', '[]', NULL, NULL, 'trade', TIMESTAMPTZ '2026-10-06 10:00Z'),
   ('00000000-0000-0000-0000-000000000623', 61200, 1, '{"00000000-0000-0000-0000-0000000006e3": "yes"}', '[]', NULL, NULL, 'office', TIMESTAMPTZ '2026-10-06 11:00Z'),
@@ -87,12 +88,13 @@ BEGIN
   RAISE EXCEPTION '% was allowed', label;
 END $$;
 -- A statement the database itself refuses, by its SQLSTATE (which constraint fires first is the planner's).
+-- `want` may list more than one, comma separated, when two keys can each refuse it first.
 CREATE FUNCTION gat.refused_code(label text, stmt text, want text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   BEGIN
     EXECUTE stmt;
   EXCEPTION WHEN OTHERS THEN
-    IF SQLSTATE IS DISTINCT FROM want THEN RAISE EXCEPTION '% was refused as % (%), not %', label, SQLSTATE, SQLERRM, want; END IF;
+    IF NOT (SQLSTATE = ANY (string_to_array(want, ','))) THEN RAISE EXCEPTION '% was refused as % (%), not %', label, SQLSTATE, SQLERRM, want; END IF;
     RAISE NOTICE 'ok: %', label;
     RETURN;
   END;
@@ -160,12 +162,22 @@ SELECT gat.refused('a trade awarded twice', $q$SELECT public.gc_award('00000000-
 RESET ROLE;
 SELECT gat.refused('our own trade', $q$UPDATE public.gc_invites SET package_id = '00000000-0000-0000-0000-0000000006b3' WHERE id = '00000000-0000-0000-0000-000000000626';
   SELECT public.gc_award('00000000-0000-0000-0000-000000000626')$q$, 'We do Plumbing ourselves, so it is not awarded.');
-SELECT gat.refused_code('an awarded ask cannot be deleted', $q$DELETE FROM public.gc_invites WHERE id = '00000000-0000-0000-0000-000000000621'$q$, '23503');
+-- The award lets go of its ask (SET NULL), so the award's day can refuse first (23514); else the statement
+-- of work's key does (23503).
+SELECT gat.refused_code('an awarded ask cannot be deleted', $q$DELETE FROM public.gc_invites WHERE id = '00000000-0000-0000-0000-000000000621'$q$, '23503,23514');
 SELECT gat.refused_code('an award needs its day', $q$UPDATE public.gc_trade_packages SET awarded_on = NULL WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$, '23514');
 SELECT gat.same('a signed statement of work can be consented to', (
   SELECT pg_get_constraintdef(oid) LIKE '%''gc_sow''%' FROM pg_constraint WHERE conname = 'esign_consents_record_type_check')::text, 'true');
 SELECT gat.same('our number''s old columns are gone', (
   SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gc_projects' AND column_name IN ('general_conditions', 'contingency_pct', 'fee_pct')), '0');
+
+-- 4 · The sweep of the test rows (call 4) deletes an awarded project in one statement: its trades, asks,
+-- quotes, award, statement of work and lines all go by cascade, and no key refuses it.
+DELETE FROM public.projects WHERE id = '00000000-0000-0000-0000-0000000006a1';
+SELECT gat.same('an awarded project deletes whole', (
+  SELECT (SELECT count(*) FROM public.gc_trade_packages WHERE project_id = '00000000-0000-0000-0000-0000000006a1') || ' '
+      || (SELECT count(*) FROM public.gc_invites WHERE id IN ('00000000-0000-0000-0000-000000000621', '00000000-0000-0000-0000-000000000622', '00000000-0000-0000-0000-000000000623', '00000000-0000-0000-0000-000000000624', '00000000-0000-0000-0000-000000000626')) || ' '
+      || (SELECT count(*) FROM public.gc_sows) || ' ' || (SELECT count(*) FROM public.gc_sow_lines)), '0 0 0 0');
 
 DO $$ BEGIN RAISE NOTICE 'gc_award PASSED'; END $$;
 ROLLBACK;
