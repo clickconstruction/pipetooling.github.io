@@ -66,4 +66,9 @@ Not expected. If needed, rerun the four `CREATE OR REPLACE` bodies from `2026100
 
 ## Status
 
-Cut 2026-10-08 by the Board lane (Helper 2) at the lead's word. Push it after merge with the next batch (with O3).
+- Cut 2026-10-08 by the Board lane (Helper 2) at the lead's word. Merged as #4951.
+- **Applied to prod on 2026-10-08** by the lead with `supabase db push`. The migration drift check then read 794 of 794, and the types were unchanged.
+- **Verified the same day**, read only, through the management API's query endpoint:
+  - **The six defaults** read `app_today()`: `gc_company_contacts.contacted_on`, `gc_company_vetting_forms.sent_on`, `gc_invites.invited_on`, `gc_quotes.submitted_on`, `gc_trade_promise_moves.moved_on` and `gc_trade_promises.made_on`. No `gc_` column default reads `current_date`.
+  - **The four functions** (`gc_vet_company`, `gc_keep_promise`, `gc_keep_promises`, `gc_office_decline`) read `app_today = true` and `utc = false`.
+- The evening row named above keeps `invited_on = 2026-10-08`, as written before the fix.
