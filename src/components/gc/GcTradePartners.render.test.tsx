@@ -75,6 +75,18 @@ describe('GcTradePartners', () => {
     await waitFor(() => expect(within(roofing).queryByLabelText('Company name')).toBeNull())
   })
 
+  it('opens the Ask window from a trade short of quotes, and from the assistants’ ask', () => {
+    const onAsk = vi.fn()
+    const base = clinicBoardRows()
+    const withConcrete = clinicBoardRows({
+      companies: [...base.companies, { ...base.companies[0]!, id: 'alamo', name: 'Alamo Concrete', trades: ['Concrete'], address: '9 Main St, Boerne' }],
+    })
+    render(<GcTradePartners state={boardStateFromRows(withConcrete)} writes={writes()} onOpenProject={() => undefined} onAsk={onAsk} />)
+    const card = document.getElementById('gc-bench-concrete')?.parentElement as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Ask the 1 we have not asked' }))
+    expect(onAsk).toHaveBeenCalledWith('p1', 'k2')
+  })
+
   it('changes where a company drives from, and Escape puts it back', async () => {
     const w = writes()
     render(<GcTradePartners state={boardStateFromRows(clinicBoardRows())} writes={w} onOpenProject={() => undefined} />)

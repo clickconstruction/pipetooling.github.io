@@ -405,3 +405,23 @@ export async function logGcAskContact(line: { companyId: string; inviteId: strin
 export async function declineGcAsk(inviteId: string, why: 'wont' | 'cant', reason: DeclineReason, note: string): Promise<void> {
   taken(await supabase.rpc('gc_office_decline', { p_invite_id: inviteId, p_why: why, p_reason: reason, p_note: note }), 'take them off the ask')
 }
+
+/** The line each new ask carries until the Portal's emails are in (P3): the office's own note, not a contact with the company. */
+export const ASK_NOT_SENT_NOTE = 'Asked to quote. The invitation email goes out once the portal can send it.'
+
+/**
+ * Ask companies to quote a trade (the Board's B4-a): `gc_invite_companies` records each ask, skipping a
+ * company already asked, then each new ask gets a note that its email waits. Nothing is emailed yet.
+ */
+export async function askGcCompanies(packageId: string, companyIds: string[], byName: string, on: string): Promise<void> {
+  const made = taken(await supabase.rpc('gc_invite_companies', { p_package_id: packageId, p_company_ids: companyIds }), 'ask the companies') ?? []
+  if (made.length === 0) return
+  const asks = taken(await supabase.from('gc_invites').select('id, company_id').in('id', made), 'read the new asks')
+  taken(
+    await supabase
+      .from('gc_company_contacts')
+      .insert(asks.map((a) => ({ company_id: a.company_id, invite_id: a.id, contacted_on: on, by_name: byName, how: 'note', note: ASK_NOT_SENT_NOTE })))
+      .select('id'),
+    'note that the emails wait',
+  )
+}

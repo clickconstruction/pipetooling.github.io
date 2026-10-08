@@ -73,4 +73,4 @@ Each project card below the board lists its trades. For a dev, each trade also l
 
 ## What comes next
 
-Asking a company for a quote from the app comes in a later step. So does a list to work through every call in one sitting.
+To ask more companies, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). A list to work through every call in one sitting comes in a later step.
