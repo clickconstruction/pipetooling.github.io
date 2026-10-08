@@ -5,9 +5,10 @@ The Lien desk claims what is billed. The owner (2026-10-08, job 922): *"I can't 
 ## What it does
 
 - `CREATE OR REPLACE FUNCTION public.lien_billed_open(p_job_id uuid, p_status text, p_revenue numeric, p_payments_made numeric) RETURNS numeric` — `LANGUAGE sql STABLE`, the bill-truth rule of `supabase/functions/_shared/billTruth.ts` in SQL:
-  - the job has `jobs_ledger_invoices` rows with `status = 'billed'` → `SUM(GREATEST(0, amount − the payments tied to that invoice))`;
-  - else `p_status = 'billed'` (a job billed as one shell) → `GREATEST(0, revenue − payments_made)`;
+  - the job has `jobs_ledger_invoices` rows with `status IN ('billed', 'paid')` (a bill has gone out) → `SUM(GREATEST(0, amount − the payments tied to that invoice))` over the `billed` ones, the paid ones nothing;
+  - else `p_status = 'billed'` (a job billed as one shell, no bill ever sent) → `GREATEST(0, revenue − payments_made)`;
   - else `0`.
+  One reading differs from bill truth on purpose: a billed job whose sent bills are all paid owes 0 here, never a shell row of its unbilled remainder (`openBillRowsForJob` draws that row for the Bill tab) — that remainder is work not yet billed, and a notice never claims it (job 922 on 2026-10-08: two bills paid, $1,000 unbilled, claim 0 and the *Nothing billed* gate).
   Granted to `authenticated, service_role`; commented.
 - `CREATE OR REPLACE` of the three desk readers from `20261007190000_lien_desk_skips_uncollectible.sql`, bodies verbatim, one line each: the `jobs` CTE's `open_balance` is `public.lien_billed_open(j.id, j.status, j.revenue, j.payments_made)`:
   - `list_lien_notice_months(p_within_days)`

@@ -4,9 +4,12 @@ SET lock_timeout = '3s';
 -- Every lien reader took the job's whole balance — price minus payments — as the money at stake and as the
 -- notice's claim, so a job billed in stages claimed the stages not yet billed (job 922: a $5,000 job, two
 -- $2,000 bills sent, the notice claimed $5,000 while its pay page enclosed $4,000). `lien_billed_open` is
--- the bill-truth rule the Bill tab already uses (supabase/functions/_shared/billTruth.ts): the sent bills
--- (status 'billed') each net of the payments tied to them, clamped at zero; a job billed as one shell (status
--- 'billed', no invoice rows) is price minus payments as before; anything else is 0. The three desk readers
+-- the bill-truth rule the Bill tab already uses (supabase/functions/_shared/billTruth.ts) with one lien-only
+-- reading: once any bill has gone out (status 'billed' or 'paid'), the money is the billed ones each net of the
+-- payments tied to them, clamped at zero, and the paid ones nothing; a job billed as one shell (status 'billed',
+-- no bill ever sent) is price minus payments as before; anything else is 0. Bill truth draws a shell row for a
+-- billed job whose sent bills are all paid (its unbilled remainder); the lien rule does not — that remainder is
+-- work not yet billed, and a notice never claims it. The three desk readers
 -- below take it as open_balance. Their row filters are unchanged (a job with money on it still lists), so a
 -- billed job whose sent bills are paid off reads 0 and the desk asks for the rest to be billed first.
 
@@ -17,7 +20,7 @@ STABLE
 SET search_path = public
 AS $$
   SELECT CASE
-           WHEN EXISTS (SELECT 1 FROM public.jobs_ledger_invoices i WHERE i.job_id = p_job_id AND i.status = 'billed')
+           WHEN EXISTS (SELECT 1 FROM public.jobs_ledger_invoices i WHERE i.job_id = p_job_id AND i.status IN ('billed', 'paid'))
              THEN COALESCE((
                SELECT SUM(GREATEST(0, COALESCE(i.amount, 0) - COALESCE((SELECT SUM(p.amount) FROM public.jobs_ledger_payments p WHERE p.invoice_id = i.id), 0)))
                FROM public.jobs_ledger_invoices i
@@ -29,7 +32,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.lien_billed_open(uuid, text, numeric, numeric) IS
-  'Lien money (v2.4969): what the job''s sent bills still owe — each billed invoice net of the payments tied to it, clamped at 0; a job billed as one shell (status billed, no invoice rows) is revenue − payments_made; else 0. The bill-truth rule of _shared/billTruth.ts in SQL. The lien readers take it as open_balance, so a notice never claims work not yet billed.';
+  'Lien money (v2.4969): what the job''s sent bills still owe — once any bill has gone out (status billed or paid), each billed invoice net of the payments tied to it, clamped at 0, the paid ones nothing; a job billed as one shell (status billed, no bill ever sent) is revenue − payments_made; else 0. Bill truth''s rule (_shared/billTruth.ts) in SQL, except that a billed job whose sent bills are all paid owes 0 here, never a shell of its unbilled remainder. The lien readers take it as open_balance, so a notice never claims work not yet billed.';
 
 GRANT EXECUTE ON FUNCTION public.lien_billed_open(uuid, text, numeric, numeric) TO authenticated, service_role;
 
