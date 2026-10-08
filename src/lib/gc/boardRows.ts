@@ -348,12 +348,17 @@ function vettingOf(c: CompanyRow, names: Record<string, string>, form: VettingFo
 }
 
 /** A company as the kernels read it. Its counts come from its asks; its papers wait for B6. */
-export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people'>): Partner {
+export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people'> & { contacts?: ContactRow[] }): Partner {
   const asks = invites.filter((i) => i.company_id === c.id)
   const quoted = new Set(quotes.map((q) => q.invite_id))
   const basePoint = pointOf(rows as BoardRows, c.address)
   const vetting = vettingOf(c, rows.userNames ?? {}, rows.vettingForms?.find((f) => f.company_id === c.id))
   const people = (rows.people ?? []).filter((p) => p.company_id === c.id).map((p) => ({ id: p.id, name: p.name, email: p.email, role: p.role, gets: mailGroups(p.gets) }))
+  // The company's own call log, newest first (`Partner.contacts`, the schedule's call list reads it): its lines on no ask. An ask's are on `Invite.contacts`.
+  const own = (rows.contacts ?? [])
+    .filter((x) => x.company_id === c.id && x.invite_id === null)
+    .sort((a, b) => b.contacted_on.localeCompare(a.contacted_on) || b.created_at.localeCompare(a.created_at))
+    .map((x) => ({ on: x.contacted_on, by: x.by_name, note: x.note }))
   return {
     id: c.id,
     company: c.name,
@@ -369,6 +374,8 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     w9: false,
     invited: asks.length,
     bids: asks.filter((i) => quoted.has(i.id)).length,
+    // B6-a-ii counts the awards.
+    won: 0,
     promisesMade: 0,
     promisesKept: 0,
     ...(c.address ? { address: c.address } : {}),
@@ -377,6 +384,7 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     ...(c.phone ? { phone: c.phone } : {}),
     ...(c.email ? { email: c.email } : {}),
     ...(people.length ? { people } : {}),
+    ...(own.length ? { contacts: own } : {}),
     ...(c.contact_gets ? { contactGets: mailGroups(c.contact_gets) } : {}),
   }
 }
@@ -522,7 +530,8 @@ export function boardStateFromRows(rows: BoardRows): GcState {
     list.push(inviteFromRows(i, rows.quotes, rows.contacts))
     invitesByPackage.set(i.package_id, list)
   }
-  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', payDays: null, portalOn: false, retainagePct: null, address: '' }))
+  // Phone, email and the call log come with the schedule's 7c-ii, which reads them for the call list's Call.
+  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', phone: '', email: '', payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [] }))
   return {
     today: rows.today,
     customers,
