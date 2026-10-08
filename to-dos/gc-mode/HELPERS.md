@@ -42,7 +42,9 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
   reason, so `node to-dos/gc-mode/scripts/lift-same.cjs --all` stays green and shows only new drift.
 - Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc`.
   Lint: `npx eslint <your files>`. Typecheck: `npm run typecheck` in the background; it takes 10 to
-  25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push.
+  25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push. It checks
+  main's `src/lib/gc` in its own program (`tsconfig.gc-main.json`, without `gcMainShapes.ts`); an app file
+  that folder newly imports goes in that file's list, and tsc names it (TS6307).
 
 ## The way each piece is done
 

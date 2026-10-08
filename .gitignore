@@ -47,3 +47,6 @@ docs/runbooks/supabase-inspect-snapshot/
 e2e/.auth/
 playwright-report/
 test-results/
+
+# GC spike: tsc -b writes main GC lib declarations here (tsconfig.gc-main.json)
+/.tsc-out/

@@ -1,0 +1,36 @@
+// The spike only (GC mode, 2026-10-08): main's own GC folder, checked as main checks it. On the spike main's
+// shapes are the spike's whole ones (src/lib/gcMode/gcMainShapes.ts), and a main mapper that builds main's trimmed
+// shapes from rows (boardRows.ts, tradePortalState.ts) cannot fill them. So src/lib/gc and the app files it imports are
+// their own program here, without gcMainShapes, and the spike (tsconfig.json) reads their declarations, widened.
+// A file src/lib/gc newly imports from the app goes in this list; tsc -b names it (TS6307).
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": ".tsc-out/gc-main",
+    "tsBuildInfoFile": ".tsc-out/gc-main/tsconfig.gc-main.tsbuildinfo"
+  },
+  "include": [
+    "src/lib/gc",
+    "src/vite-env.d.ts",
+    "src/components/SpotlightTour.tsx",
+    "src/hooks/useAuth.ts",
+    "src/lib/bids/bidContactInfo.ts",
+    "src/lib/errorClassTelemetry.ts",
+    "src/lib/navClickTelemetry.ts",
+    "src/lib/networkErrorMessage.ts",
+    "src/lib/plainWords.ts",
+    "src/lib/refusedWrite.ts",
+    "src/lib/spotlightTourPlacement.ts",
+    "src/lib/supabase.ts",
+    "src/lib/supabaseRowCapTripwire.ts",
+    "src/lib/unsavedWork.ts",
+    "src/types/database.ts",
+    "src/utils/errorHandling.ts",
+    "supabase/functions/_shared/gcTradePortalSlice.ts"
+  ],
+  "exclude": []
+}

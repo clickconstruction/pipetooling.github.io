@@ -3,6 +3,8 @@
  * here. Main's `src/lib/gc/types.ts` keeps only the fields main's kernels read; on the spike each of
  * those shapes extends its spike namesake, so a record main's kernels hand back (a company, a project,
  * a trade, a change order, a day's log, a customer) keeps every field the prototype's screens read. Main never sees this file.
+ * Main's own folder is checked without it (`tsconfig.gc-main.json`): a main mapper builds main's trimmed shapes from rows,
+ * which the whole ones would refuse; the spike reads that folder's declarations, widened here.
  */
 import type * as Spike from './gcTypes'
 

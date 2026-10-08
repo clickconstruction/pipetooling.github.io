@@ -20,7 +20,8 @@
     "paths": { "@/*": ["src/*"] }
   },
   "include": ["src"],
-  // The spike only (GC mode, after the real build's PR 1a): main's GC tests and test data are main's to check.
-  // On the spike main's shapes are the spike's whole ones (src/lib/gcMode/gcMainShapes.ts), which they do not fill.
-  "exclude": ["src/lib/gc/**/*.test.ts", "src/lib/gc/schedule/testState.ts"]
+  // The spike only (GC mode): main's GC folder is its own program (tsconfig.gc-main.json), checked against main's
+  // shapes; the spike reads its declarations with main's shapes widened to the spike's (src/lib/gcMode/gcMainShapes.ts).
+  "exclude": ["src/lib/gc"],
+  "references": [{ "path": "./tsconfig.gc-main.json" }]
 }
