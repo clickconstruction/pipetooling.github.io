@@ -166,7 +166,7 @@ function compare(config, mainFile, spikeFile) {
 
 /** Main and the spike for a config: its pin, unless a spike ref is given (then main is on disk, as before pins). */
 function sides(config, spikeRefArg) {
-  if (config.pin && !spikeRefArg) {
+  if (config.pin?.main && config.pin?.spike && !spikeRefArg) {
     return { mainFile: (rel) => atRef(config.pin.main, rel), spikeFile: (rel) => atRef(config.pin.spike, rel) ?? parse(rel, ''), title: `main at ${short(config.pin.main)}, the spike at ${short(config.pin.spike)} (pinned)` }
   }
   const spikeRef = spikeRefArg ?? 'origin/spike/gc-mode'
@@ -189,7 +189,7 @@ if (args[0] === '--all') {
       console.log(`${f}: superseded, ${config.superseded}`)
       continue
     }
-    if (!config.pin) {
+    if (!config.pin?.main || !config.pin?.spike) {
       console.log(`${f}: not pinned (its lift has not merged, or its follow-up has not pinned it)`)
       continue
     }

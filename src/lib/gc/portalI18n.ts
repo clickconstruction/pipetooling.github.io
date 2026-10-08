@@ -550,6 +550,9 @@ const S = {
   mPlansOut: { en: '{label} for {project} is out. {note}', es: 'Ya salió {label} de {project}. {note}' },
   mPlansChanges: { en: 'It changes {trades}. Open it, then confirm your quote or change it.', es: 'Cambia {trades}. Ábralo y luego confirme su cotización o cámbiela.' },
   mPlansNoChange: { en: 'It does not change {trades}. Open it so you price on the newest set.', es: 'No cambia {trades}. Ábralo para cotizar con el juego más reciente.' },
+  // A new set's email, beside the lines above: the lines of the quote it touches and the lines it adds (New project's step 7).
+  mPlansYourLines: { en: 'It touches these lines of your quote: {list}.', es: 'Toca estas partidas de su cotización: {list}.' },
+  mPlansAddsLines: { en: 'It adds these lines to {trade}: {list}.', es: 'Agrega estas partidas a {trade}: {list}.' },
   mMsaSubject: { en: 'Your master agreement with {gc}', es: 'Su contrato maestro con {gc}' },
   mMsaHere: { en: 'Here is our master agreement. You sign it once, and it covers every job you do for us.', es: 'Aquí está nuestro contrato maestro. Se firma una sola vez y cubre todos los trabajos que haga para nosotros.' },
   mMsaAfter: { en: 'After that, each job is a short statement of work.', es: 'Después, cada trabajo es una orden de trabajo corta.' },
