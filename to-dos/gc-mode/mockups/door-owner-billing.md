@@ -76,6 +76,8 @@ Door 1's `_team` policy lets the whole office team write them today. Reading the
 - *The other way:* move them to their own table, as B5 moved our number. That costs O5a's loader, O6a's read and O4a a second read each. It is worth it only if the owner wants the office not to see the retainage, which nothing asks.
 
 ```sql
+-- Our terms with the customer, O1's nine columns, are the money team's to change; the rest of the row stays door 1's.
+-- The service role passes (auth.uid() IS NULL): gc-drive-access writes drive_folder_url as the service role.
 CREATE OR REPLACE FUNCTION public.gc_projects_owner_terms_guard() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.gc_money_team() AND (
@@ -96,7 +98,12 @@ DROP TRIGGER IF EXISTS gc_projects_owner_terms_guard ON public.gc_projects;
 CREATE TRIGGER gc_projects_owner_terms_guard BEFORE UPDATE ON public.gc_projects FOR EACH ROW EXECUTE FUNCTION public.gc_projects_owner_terms_guard();
 ```
 
-`gc_projects` is door 1's table, so this guard is agreed with Helper 6. It touches one row-level trigger and no policy. An insert is not guarded, since New project writes the defaults.
+`gc_projects` is door 1's table. Helper 6 agreed the guard as written (2026-10-08), with these points:
+- **Exactly O1's nine columns.** B1's day columns (`our_bid_sent_on`, `permit_on`, `start_date`, `owner_contract_sent_on`, `started_on`, `started_anyway_*`) are the office's Get started and outcome steps, so they stay unguarded.
+- **Not `general_conditions`, `contingency_pct` or `fee_pct`.** B5-a moved them to `gc_project_money`, and B6-a drops them from `gc_projects`. A plpgsql trigger naming a dropped column fails every UPDATE on the row ("record new has no field"), which would stop New project, the outcome strip and the Drive check. The drop is their fix.
+- **The service role passes** (`auth.uid()` is null), which gc-drive-access needs.
+- It touches one row-level trigger and no policy, so door 2's `src/lib/gc/doors.ts` keeps `gc_projects` as `office`.
+- An insert is not guarded, since New project writes the defaults.
 
 **B. Get started's "the contract is signed" (the Board's B6, Helper 2).** B6 calls `gc_sign_owner_contract`, which writes the contract's lines. After this door, only the money team can sign: an estimator's press would be refused by the policy.
 - *My default:* that is right. Signing fixes the price by line, which is our number. B6 shows **Mark the contract signed** to `canSeeGcMoney`, and the office sees "Waiting on the contract with the customer".
@@ -177,7 +184,7 @@ It runs on Helper 2's B5-a harness, `to-dos/gc-mode/scripts/pg/b5matrix.mjs`, as
 | Who | Reads change orders | `gc_draft_change_order` | Reads pay applications | `gc_sign_owner_contract` | Updates `owner_retainage_pct` (call A) |
 |---|---|---|---|---|---|
 | dev, master_technician, controller | rows | wrote | rows | wrote | wrote |
-| assistant, estimator | 0 | refused by the policy | 0 | refused by the policy | refused by the guard |
+| assistant, estimator | 0 | refused by the policy | 0 | refused by the policy | refused by the guard; door 1's `size_note` still writes |
 | superintendent, primary, subcontractor, helpers | 0 | refused | 0 | refused | refused (door 1's policy) |
 | controller (training mode) | rows | refused (training mode) | rows | refused | refused |
 | estimator (digital twin) | 0 | refused by the fence | 0 | refused | refused |
@@ -208,8 +215,9 @@ The doc keeps the table as it came out, with each refusal's words.
 **Files:**
 - The migration and `docs/migrations/<stamp>_gc_owner_billing_money_team.md`: what opens, the calls as taken, the matrix as it came out, the four steps, and the rollback (re-create the seven `_dev` policies and drop the guard).
 - `src/pages/GcProjects.tsx` and the windows' own gates: `role === 'dev'` becomes `canSeeGcMoney(role)` wherever Owner Billing draws.
+- `src/lib/gc/doors.ts` (door 2's): the seven O1 tables move from `dev` to `money`. `doors.test.ts` fails until they do, on purpose.
 - **Docs:**
-  - `docs/ACCESS_CONTROL.md`: the GC projects section gains the Owner Billing door, with the seven tables, the functions, the guard, the money team, and what the office sees of it (nothing until call C's view);
+  - `docs/ACCESS_CONTROL.md`: the GC projects section gains the Owner Billing door, with the seven tables, the functions, the money team, and what the office sees of it (nothing until call C's view). The guard's sentence goes in door 1's paragraph, where it says who writes `gc_projects`, so the doc keeps one place;
   - `docs/twins/APP_DIRECTORY.md` and `PROJECT_DOCUMENTATION.md` §20.
 - **The guides,** each with `roles: dev, master_technician, controller` and its "Only a dev sees …" sentence rewritten:
   - `change-our-contract-with-the-customer`;
