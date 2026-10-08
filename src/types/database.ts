@@ -81,6 +81,65 @@ export type Database = {
         }
         Relationships: []
       }
+      ar_unbanked_check_cases: {
+        Row: {
+          amount: number
+          closed_at: string | null
+          closed_by: string | null
+          closed_note: string | null
+          closed_reason: string | null
+          deposited_mercury_transaction_id: string | null
+          id: string
+          job_id: string | null
+          notified_at: string | null
+          opened_at: string
+          paid_on: string | null
+          payment_id: string
+          payment_type: string | null
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_note?: string | null
+          closed_reason?: string | null
+          deposited_mercury_transaction_id?: string | null
+          id?: string
+          job_id?: string | null
+          notified_at?: string | null
+          opened_at?: string
+          paid_on?: string | null
+          payment_id: string
+          payment_type?: string | null
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          closed_at?: string | null
+          closed_by?: string | null
+          closed_note?: string | null
+          closed_reason?: string | null
+          deposited_mercury_transaction_id?: string | null
+          id?: string
+          job_id?: string | null
+          notified_at?: string | null
+          opened_at?: string
+          paid_on?: string | null
+          payment_id?: string
+          payment_type?: string | null
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ar_unbanked_check_cases_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assembly_types: {
         Row: {
           category: string | null
@@ -27897,6 +27956,7 @@ export type Database = {
         Args: { p_mercury_transaction_id: string }
         Returns: Json
       }
+      ar_check_payment_type: { Args: { p: string }; Returns: boolean }
       ar_deposit_booking: {
         Args: { p_mercury_transaction_id: string }
         Returns: Json
@@ -28167,6 +28227,10 @@ export type Database = {
           p_reason: string
           p_replaced_by?: string
         }
+        Returns: Json
+      }
+      close_ar_unbanked_check_case: {
+        Args: { p_case_id: string; p_note?: string; p_reason: string }
         Returns: Json
       }
       close_out_ar_deposit: {
@@ -30608,6 +30672,10 @@ export type Database = {
         Returns: string
       }
       open_ar_rejected_check_cases: { Args: never; Returns: Json }
+      open_ar_unbanked_check_cases: {
+        Args: { p_days?: number; p_floor?: string; p_quiet?: boolean }
+        Returns: Json
+      }
       partner_job_cost_buckets: { Args: { p_job_id: string }; Returns: Json }
       partner_job_costing_payload: {
         Args: { p_job_id: string; p_partnership_id: string }
@@ -30807,6 +30875,10 @@ export type Database = {
       }
       reopen_ar_return_case: {
         Args: { p_mercury_transaction_id: string }
+        Returns: Json
+      }
+      reopen_ar_unbanked_check_case: {
+        Args: { p_case_id: string }
         Returns: Json
       }
       replace_estimate_catalog_payload: {
