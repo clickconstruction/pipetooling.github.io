@@ -159,6 +159,7 @@ describe('a change order’s trade side', () => {
     reason: 'owner',
     schedule: 'none',
     packageId: 'fsteel',
+    cost: 18400,
     status: 'signed',
     sentOn: '2026-09-20',
     answeredOn: '2026-09-22',
