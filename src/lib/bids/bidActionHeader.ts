@@ -32,6 +32,8 @@ export const BID_ACTIONS = {
   bookFill: 'book-fill',
   /** twin-mcp's paste_counts: a robot's rows and their book assignments. */
   robotPaste: 'robot-paste',
+  /** History's Put back (PR 4): set by `put_back_bid_change` itself on its one write, never sent by the client. */
+  putBack: 'put-back',
 } as const
 
 export type BidAction = (typeof BID_ACTIONS)[keyof typeof BID_ACTIONS]

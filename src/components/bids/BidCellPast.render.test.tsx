@@ -16,7 +16,7 @@ const historyRow: BidHistoryRow = {
   label: 'Lav-1', changedBy: 'u-ann', changedByName: 'Ann', changedAt: '2026-10-08T15:00:00.000Z', action: null, byApp: null,
 }
 const loadHistory = vi.fn(async (_bidId: string) => [historyRow])
-vi.mock('../../lib/bids/loadBidHistory', () => ({ loadBidHistory: (id: string) => loadHistory(id) }))
+vi.mock('../../lib/bids/loadBidHistory', () => ({ loadBidHistory: (id: string) => loadHistory(id), putBackBidChange: vi.fn() }))
 
 import { BidCellPast } from './BidCellPast'
 import { BidHistoryDoor } from './BidHistoryDoor'

@@ -246,6 +246,8 @@ export type BidHistoryLine = {
   bidNumber: string | null
   /** True for a row the archive holds (removed before the ledger, or by an older path). */
   fromArchive: boolean
+  /** An update's line: the column it is about (what Put back writes). */
+  column?: string
 }
 
 const STAMP_COLUMNS = new Set(['id', 'bid_id', 'bid_version_id', 'count_row_id', 'cost_estimate_id', 'created_at', 'updated_at', 'sequence_order', 'sort_order', 'labor_row_id', 'parked_at'])
@@ -265,9 +267,10 @@ export function bidHistoryLines(row: BidHistoryRow): BidHistoryLine[] {
   const key = `${row.source}-${row.id ?? row.archiveId}`
   const { shown, others } = bidHistoryShownColumns(row)
   if (row.op === 'update') {
-    const lines = shown.map((c) => ({
+    const lines: BidHistoryLine[] = shown.map((c) => ({
       ...base,
       key: `${key}-${c}`,
+      column: c,
       subject,
       detail: `${bidHistoryColumnName(c)} · ${bidHistoryValueWords(c, row.oldValues?.[c])} → ${bidHistoryValueWords(c, row.newValues?.[c])}`,
     }))
@@ -405,6 +408,12 @@ export function bidHistoryCaption(rows: ReadonlyArray<BidHistoryRow>): string {
       return `Took back ${noun('cost_estimate_labor_rows', labor('insert') || labor('delete'))} set aside before`
     case 'labor-use-parked':
       return 'Used set-aside hours on a fixture'
+    case 'put-back': {
+      // History's Put back (PR 4): one value per press, so the caption names it.
+      if (rows.length > 1) return `Put back ${rows.length} values`
+      const col = first.changed.find((c) => !STAMP_COLUMNS.has(c))
+      return `Put back ${first.table === 'bids' ? 'Bid' : first.label?.trim() || 'a value'}${col ? ` ${bidHistoryColumnName(col)}` : ''}`
+    }
   }
   const ops = new Set(rows.map((r) => r.op))
   const tables = new Set(rows.map((r) => r.table))

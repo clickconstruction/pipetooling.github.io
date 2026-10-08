@@ -104,6 +104,7 @@ describe('bidHistoryLines', () => {
   it('a price changed', () => {
     const [l] = bidHistoryLines(row({ table: 'bid_count_row_custom_prices', op: 'update', changed: ['unit_price'], oldValues: { unit_price: 9800 }, newValues: { unit_price: 10300 } }))
     expect(`${l!.subject} · ${l!.detail}`).toBe('Lav-1 · price · $9,800 → $10,300')
+    expect(l!.column).toBe('unit_price')
   })
   it('a row added or removed, with its lead value', () => {
     expect(bidHistoryLines(row({}))[0]!.detail).toBe('added · count 4')
@@ -185,6 +186,12 @@ describe('bidHistoryCaption', () => {
     expect(bidHistoryCaption([row({ table: 'cost_estimate_labor_rows', op: 'insert', action: 'labor-take-back', byApp: true })])).toBe('Took back 1 labor row set aside before')
     expect(bidHistoryCaption([row({ action: 'labor-sync', byApp: true })])).toBe('Labor matched to the counts')
     expect(bidHistoryCaption([row({ op: 'delete', action: 'counts-clear-all' }), row({ op: 'delete', action: 'counts-clear-all' })])).toBe('Cleared all counts (2 count rows)')
+  })
+  it('a put back names the value, by its tag', () => {
+    const p = () => row({ table: 'bid_count_row_custom_prices', op: 'update', changed: ['unit_price'], action: 'put-back', byApp: false })
+    expect(bidHistoryCaption([p()])).toBe('Put back Lav-1 price')
+    expect(bidHistoryCaption([row({ table: 'bids', op: 'update', label: null, changed: ['bid_value'], action: 'put-back', byApp: false })])).toBe('Put back Bid value')
+    expect(bidHistoryCaption([p(), p()])).toBe('Put back 2 values')
   })
   it('rows added on one table', () => {
     expect(bidHistoryCaption([row({}), row({})])).toBe('Added 2 count rows')

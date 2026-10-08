@@ -71,6 +71,7 @@ import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabK
 import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLensCaption, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
 import { BidCellHistoryProvider } from '../hooks/useBidHistoryCells'
+import { BID_HISTORY_PUT_BACK_EVENT, type BidHistoryPutBackDetail } from '../lib/bids/bidHistoryPutBack'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -574,6 +575,24 @@ export default function Bids() {
     loadBids,
   })
 
+
+  // Bid history Put back (punch list #73, PR 4): a value put back from the History window reads the
+  // open bid again: its counts, takeoff lines and labor (refreshAfterCountsChange), its prices, and
+  // the bid itself for an Edit Bid value. The latest handler sits in a ref so one listener serves.
+  const onBidPutBackRef = useRef<(d: BidHistoryPutBackDetail) => void>(() => {})
+  onBidPutBackRef.current = (d) => {
+    if (d.table === 'bids') void loadBids()
+    if (selectedBidForCounts?.id === d.bidId) refreshAfterCountsChange()
+    if (selectedBidForPricing?.id === d.bidId) void Promise.all([loadBidPricingAssignments(d.bidId, selectedPricingVersionId), loadPricingDataForBid(d.bidId)])
+  }
+  useEffect(() => {
+    const hear = (e: Event) => {
+      const d = (e as CustomEvent<BidHistoryPutBackDetail>).detail
+      if (d?.bidId) onBidPutBackRef.current(d)
+    }
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    return () => window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+  }, [])
 
   // Cover Letter tab
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})

@@ -31198,6 +31198,10 @@ export type Database = {
         Args: { p_estimate_id: string; p_room_id: string }
         Returns: undefined
       }
+      put_back_bid_change: {
+        Args: { p_change_id: number; p_column?: string }
+        Returns: Json
+      }
       put_back_lost_dispute_bill: { Args: { p_case_id: string }; Returns: Json }
       recompute_bid_due: { Args: { p_bid_id: string }; Returns: undefined }
       recompute_jobs_ledger_thread_note_stats: {
