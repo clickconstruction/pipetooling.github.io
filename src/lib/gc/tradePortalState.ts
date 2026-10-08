@@ -73,6 +73,8 @@ function bidOf(q: Row): SubBid {
     ...(Array.isArray(q.alternates) && q.alternates.length > 0 ? { alternates: q.alternates as SubBid['alternates'] } : {}),
     ...(str(q.quote_file) ? { quoteFile: str(q.quote_file) } : {}),
     ...(Array.isArray(q.exclusions) ? { exclusions: q.exclusions as SubBid['exclusions'] } : {}),
+    // Their own schedule of values (P2b-ii): the quote form starts from it.
+    ...(Array.isArray(q.sov) && q.sov.length > 0 ? { sov: q.sov as SubBid['sov'] } : {}),
   }
 }
 

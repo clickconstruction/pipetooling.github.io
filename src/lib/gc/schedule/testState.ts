@@ -1152,6 +1152,12 @@ const DATA: GcState = {
                 includes: { 'felec-1': 'yes', 'felec-2': 'yes', 'felec-3': 'yes', 'felec-4': 'yes', 'felec-5': 'yes' },
                 plugs: {},
                 note: '',
+                sov: [
+                  { label: 'Underground and gear', amount: 70000 },
+                  { label: 'Rough-in', amount: 98000 },
+                  { label: 'Trim', amount: 56000 },
+                  { label: 'Site lighting', amount: 24000 },
+                ],
               },
               seenRev: 0,
             },

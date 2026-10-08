@@ -69,9 +69,11 @@ describe('GcTradePortal', () => {
     expect(questions.getByText('Copper, as the panel schedules say.')).toBeTruthy()
     const ask = block('Electrical · invitation to quote')
     expect(ask.getByText('Panels and feeders')).toBeTruthy()
-    expect(ask.getByText(/Permits and fees/)).toBeTruthy()
-    expect(ask.getByText(/email your quote or your question to Avery Lin \(avery@example.com\)/)).toBeTruthy()
-    expect(ask.queryByRole('button')).toBeNull()
+    // The known exclusion, said with who does it (the form's own exclusion ticks name it again).
+    expect(ask.getByText('Permits and fees (the owner does it)')).toBeTruthy()
+    expect(ask.getByText('Have your own quote file? Email it to Avery Lin (avery@example.com).')).toBeTruthy()
+    // The presses (P2b-ii) are in GcTradePortal.presses.render.test.tsx.
+    expect(ask.getByRole('button', { name: 'Pass on this one' })).toBeTruthy()
     expect(block('Who to call').getByText('Avery Lin')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '← Everything with Click' }))
     expect(await screen.findByText('Hello, Dana Ortiz.')).toBeTruthy()

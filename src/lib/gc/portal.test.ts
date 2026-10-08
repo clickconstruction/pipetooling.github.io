@@ -1,7 +1,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { onSite } from './buildingLog'
-import { alternateWords, bidGoodUntil, openChangeRequests, portalChangeRequests, portalContacts, portalExclusionWords, portalLeavesOut, portalLink, portalLookAhead, portalOnSite, portalPlanNews, portalWeeks } from './portal'
+import { alternateWords, bidGoodUntil, openChangeRequests, portalChangeRequests, portalContacts, portalExclusionWords, portalLeavesOut, portalLink, portalLookAhead, portalOnSite, portalPlanNews, portalSovCheck, portalSovStart, portalWeeks } from './portal'
 import { pWeekday } from './portalI18n'
 import { initialGcState } from './schedule/testState'
 import type { GcState } from './types'
@@ -226,5 +226,23 @@ describe('your weeks across every job (owner, 2026-10-05)', () => {
     expect(portalWeeks(two, 'coolbreeze', 'es')[0]?.overlaps[0]).toBe(
       'Su trabajo en Fair Oaks Shops, Building D y Fair Oaks Shops, Building E se cruza del lun 28 sep al vie 2 oct. Avísele a Click si una sola cuadrilla no puede con todo.',
     )
+  })
+})
+
+describe('the trade’s own schedule of values', () => {
+  it('starts with the three stages, in the portal’s language', () => {
+    expect(portalSovStart()).toEqual(['Rough-in', 'Top out', 'Trim'])
+    expect(portalSovStart('es')).toEqual(['Obra negra', 'Antes de cerrar muros', 'Acabados'])
+  })
+
+  it('sends none when nothing is typed, and says how far off the lines are', () => {
+    expect(portalSovCheck([{ label: 'Rough-in', amount: 0 }], 100_000).state).toBe('empty')
+    expect(portalSovCheck([{ label: 'Rough-in', amount: 40_000 }, { label: 'Trim', amount: 50_000 }], 100_000)).toMatchObject({
+      state: 'short',
+      words: 'Your lines add up to $90,000. That is $10,000 short.',
+    })
+    expect(portalSovCheck([{ label: 'Rough-in', amount: 60_000 }, { label: 'Trim', amount: 50_000 }], 100_000).state).toBe('over')
+    const ok = portalSovCheck([{ label: ' Rough-in ', amount: 60_000 }, { label: 'Trim', amount: 40_000 }, { label: '', amount: 5 }], 100_000)
+    expect(ok).toMatchObject({ state: 'ok', lines: [{ label: 'Rough-in', amount: 60_000 }, { label: 'Trim', amount: 40_000 }] })
   })
 })

@@ -416,7 +416,7 @@ export function customerJourneys(): Journey[] {
           label: 'GC mode: a trade partner\'s portal',
           sublabel: 'GC projects → Trade portals → Copy link (devs only for now)',
           when: 'From the first ask to quote',
-          customerCan: 'See every ask to quote, its plans, its scope lines, the questions it may read, who to call and the emails we sent.',
+          customerCan: 'See every ask to quote with its plans and scope lines, then send a quote, give a quote day, pass, ask about the plans and pick who gets our emails.',
           guide: 'share-a-trade-partner-its-portal',
           reflects: ['The company\'s asks, plans and questions on GC projects', 'Who gets our emails at the company'],
           render: { kind: 'page', path: TRADE_PORTAL_SAMPLE_PATH },

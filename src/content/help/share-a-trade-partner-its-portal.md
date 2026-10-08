@@ -7,7 +7,7 @@ order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
 
-Only a dev makes links while the portal is built. The portal reads only for now. Sending a quote from it comes later.
+Only a dev makes links while the portal is built.
 
 ## What the company sees
 
@@ -19,7 +19,15 @@ The link opens on the company's home. The home shows:
 
 A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
 
-The page tells the company to email its quote or question to our project manager for now.
+From its portal the company can:
+
+- Give the day its quote will come, or pass on the ask.
+- Send its quote, and change it later.
+- Answer a line of its quote we could not read.
+- Ask about the plans until questions close.
+- Choose who at the company gets our emails.
+
+Its own quote file still goes by email to our project manager. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal) shows where each thing lands.
 
 ## Make the link
 

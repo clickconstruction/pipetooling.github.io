@@ -943,8 +943,8 @@ const S = {
   navPortal: { en: 'Your portal', es: 'Su portal' },
   navMessages: { en: 'Messages from {gc}', es: 'Mensajes de {gc}' },
   plansNotShared: { en: 'The link to these plans is not ready yet. Ask {gc} for it.', es: 'El enlace a estos planos todavía no está listo. Pídaselo a {gc}.' },
-  replyByEmail: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {name}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {name}.' },
-  replyByEmailGc: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {gc}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {gc}.' },
+  replyByEmail: { en: 'Have your own quote file? Email it to {name}.', es: '¿Tiene el archivo de su cotización? Envíelo por correo a {name}.' },
+  replyByEmailGc: { en: 'Have your own quote file? Email it to {gc}.', es: '¿Tiene el archivo de su cotización? Envíelo por correo a {gc}.' },
   sentTo: { en: 'To {names}', es: 'Para {names}' },
 
   // What a press says when it is refused (P2b-i, submit-gc-trade-portal's keys)
@@ -969,6 +969,8 @@ const S = {
   errPickAKind: { en: 'Pick at least one kind of email.', es: 'Elija al menos un tipo de correo.' },
   errQuestionNeeded: { en: 'Type your question first.', es: 'Primero escriba su pregunta.' },
   errTooLong: { en: 'That is too long. Make it shorter.', es: 'Es demasiado largo. Hágalo más corto.' },
+  previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
+  quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

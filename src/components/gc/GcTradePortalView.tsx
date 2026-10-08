@@ -1,13 +1,16 @@
 import { useRef, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
-import { mailRecipients, PORTAL_MAIL_GROUPS, portalAsks } from '../../lib/gc/portal'
-import { pt, pWeekday, type PortalKey, type PortalLang } from '../../lib/gc/portalI18n'
+import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
+import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
 import { askChips, askWhen, pastWords, portalHomeGroups, type SentMessage } from '../../lib/gc/tradePortalPage'
-import type { GcState, Partner, PortalMailGroup } from '../../lib/gc/types'
+import type { PortalAsk } from '../../lib/gc/portal'
+import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
-import { Chip } from './gcUi'
+import { Btn, Chip } from './gcUi'
 import { GcTradePortalProject } from './GcTradePortalProject'
 import { PortalLangContext, usePortalLang } from './gcTradePortalLang'
+import { usePortalPress, usePress } from './gcTradePortalPress'
+import { GcTradePortalPeople } from './GcTradePortalPeople'
 import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
 
 /**
@@ -18,8 +21,6 @@ import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
  */
 
 const GC = GC_COMPANY.shortName
-
-const GROUP_WORDS: Record<PortalMailGroup, PortalKey> = { quotes: 'grpQuotes', job: 'grpJob', contracts: 'grpContracts', pay: 'grpPay' }
 
 export function GcTradePortalView({
   state,
@@ -112,12 +113,17 @@ export function GcTradePortalView({
 function Home({ state, partner, onOpenProject }: { state: GcState; partner: Partner; onOpenProject: (id: string) => void }) {
   const { lang, t } = usePortalLang()
   const { jobs, bidding, past } = portalHomeGroups(portalAsks(state, partner.id))
+  const press = usePortalPress()
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
-      <div>
-        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t('hello', { name: partner.contact || partner.company })}</div>
-        <div style={{ fontSize: '0.85rem', color: MUTED }}>{t('homeIntro', { company: partner.company, gc: GC_COMPANY.name })}</div>
-      </div>
+      {press && portalFirstVisit(state, partner.id) ? (
+        <Welcome partner={partner} firstAsk={bidding[0]} />
+      ) : (
+        <div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t('hello', { name: partner.contact || partner.company })}</div>
+          <div style={{ fontSize: '0.85rem', color: MUTED }}>{t('homeIntro', { company: partner.company, gc: GC_COMPANY.name })}</div>
+        </div>
+      )}
       {jobs.length > 0 && (
         <PortalBlock title={`${t('yourJobs')} · ${jobs.length}`}>
           <div style={{ display: 'grid' }}>
@@ -156,7 +162,7 @@ function Home({ state, partner, onOpenProject }: { state: GcState; partner: Part
           </div>
         )}
       </PortalBlock>
-      <People partner={partner} />
+      <GcTradePortalPeople partner={partner} />
       {past.length > 0 && (
         <PortalBlock title={t('before')}>
           <div style={{ display: 'grid' }}>
@@ -174,23 +180,33 @@ function Home({ state, partner, onOpenProject }: { state: GcState; partner: Part
   )
 }
 
-/** Who at the company gets which emails, read only until the presses come. */
-function People({ partner }: { partner: Partner }) {
+/** The first time a company opens its link: who we are, what this page is, and the three things to know (the spike's Welcome). */
+function Welcome({ partner, firstAsk }: { partner: Partner; firstAsk: PortalAsk | undefined }) {
   const { t } = usePortalLang()
+  const { busy, problem, run } = usePress()
+  const name = partner.contact.split(' ')[0] || partner.company
   return (
-    <PortalBlock title={t('pplTitle')}>
-      <div style={{ display: 'grid', gap: '0.35rem', fontSize: '0.88rem' }}>
-        {PORTAL_MAIL_GROUPS.map((g) => (
-          <div key={g}>
-            <strong>{t(GROUP_WORDS[g])}</strong>{' '}
-            <span style={{ color: MUTED }}>
-              ·{' '}
-              {mailRecipients(partner, g)
-                .map((r) => (r.main ? `${r.name} (${t('pplMain')})` : r.name))
-                .join(', ')}
-            </span>
-          </div>
-        ))}
+    <PortalBlock title={t('welcomeTitle')}>
+      <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem', lineHeight: 1.45 }}>
+        <div style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t('welcomeName', { name })}</div>
+        <div>
+          {firstAsk
+            ? t('welcomeAsked', { gc: GC_COMPANY.name, company: partner.company, trade: firstAsk.pkg.trade, project: firstAsk.project.name })
+            : t('welcomeAdded', { gc: GC_COMPANY.name, company: partner.company })}{' '}
+          {t('welcomeWhere')}
+        </div>
+        <div>{t('welcomeHolds')}</div>
+        <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.25rem' }}>
+          <li>{t('welcome1')}</li>
+          <li>{t('welcome2')}</li>
+          <li>{t('welcome3')}</li>
+        </ol>
+        {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</div>}
+        <div>
+          <Btn kind="primary" disabled={busy} onClick={() => void run('got_it')}>
+            {t('gotIt')}
+          </Btn>
+        </div>
       </div>
     </PortalBlock>
   )
