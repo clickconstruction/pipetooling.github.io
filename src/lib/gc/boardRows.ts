@@ -66,6 +66,8 @@ export interface InviteRow {
   plugs: Record<string, number> | null
   exclusion_covers: Record<string, number> | null
   taken_alternates: string[] | null
+  /** The revision the partner last opened on the portal; null until they open it. */
+  seen_rev?: number | null
 }
 
 /** `gc_quotes`: a quote on an ask; the newest counts. */
@@ -215,6 +217,7 @@ export function inviteFromRows(invite: InviteRow, quotes: QuoteRow[], contacts: 
     partnerId: invite.company_id,
     status: INVITE_STATUSES.includes(invite.status as InviteStatus) ? (invite.status as InviteStatus) : 'invited',
     invitedOn: invite.invited_on,
+    seenRev: invite.seen_rev ?? null,
     bid: quoteOf(invite, quotes),
     ...(chased ? { nudgedOn: chased } : {}),
     ...(invite.declined_why === 'wont' || invite.declined_why === 'cant' ? { declinedWhy: invite.declined_why } : {}),
