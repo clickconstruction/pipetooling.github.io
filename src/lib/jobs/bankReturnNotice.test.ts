@@ -103,6 +103,39 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
     })
   })
 
+  it('a check typed in by hand that never reached the bank (v2.4902): no deposit in ten days, the job reads paid, deposit it or link it', () => {
+    const drf: BankReturnNoticeInput = {
+      ...take5,
+      counterparty: 'DRF',
+      amount: 250,
+      reason: '',
+      postedYmd: null,
+      jobs: [],
+      situation: 'unbanked',
+      recorded: { jobId: 'job-777', jobLabel: 'J777 DRF pool house', amount: 250, paidYmd: '2026-08-19' },
+      caseId: 'case-drf',
+    }
+    expect(bankReturnNoticeLine(drf)).toBe("No deposit has come in for DRF's $250 check.")
+    expect(bankReturnNoticeSentences(drf)).toEqual([
+      'It was recorded as paid on J777 DRF pool house on Aug 19.',
+      'No deposit has been linked to it in 10 days.',
+      'J777 still reads paid.',
+      'Find the check and deposit it.',
+      'If it went in with other checks, link it to that deposit in Accounts Receivable.',
+    ])
+    expect(bankReturnNoticeSubject(drf)).toBe('A check was never deposited · DRF · $250')
+    expect(bankReturnNoticeLinks(drf)).toEqual([
+      { label: 'Open it in Accounts Receivable', path: '/accounts-receivable?check=case-drf' },
+      { label: 'Open J777 DRF pool house', path: bankReturnPaymentsPath('job-777') },
+    ])
+    expect(buildBankReturnNoticePush(drf, 'case-drf')).toEqual({
+      title: 'A check was never deposited · $250',
+      body: 'DRF. J777 DRF pool house still reads paid.',
+      url: '/accounts-receivable?check=case-drf',
+      tag: 'bank-return-case-drf',
+    })
+  })
+
   it('never on a job but recorded by hand (Peter Garza): says where it reads paid', () => {
     const garza: BankReturnNoticeInput = {
       ...take5,

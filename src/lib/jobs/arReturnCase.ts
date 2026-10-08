@@ -2,7 +2,7 @@
  * A check that came back, as Accounts Receivable shows it (v2.4325, punch list #76 PR 3).
  *
  * The case rows come from `list_ar_return_cases` (20261001230000): the deposit, the
- * bank's reason, the source (bank · hand · rejected), the payments still carrying it,
+ * bank's reason, the source (bank · hand · rejected · unbanked, v2.4902), the payments still carrying it,
  * the job it was on last, a hand-recorded payment it matches, the newest promise made
  * after it came back. The trail rows (`list_ar_deposit_trails`) add who applied it and
  * when. This kernel turns one case into what the list row and the pane say:
@@ -17,8 +17,9 @@
  * Every sentence follows src/lib/plainWords.ts. Pure; tested in arReturnCase.test.ts.
  */
 import type { ArReturnCaseRow } from '../../../supabase/functions/_shared/bankReturnedDeposits'
-import { appCalendarYmd } from '../../../supabase/functions/_shared/bankReturnedDeposits'
+import { AR_UNBANKED_CHECK_DAYS, appCalendarYmd } from '../../../supabase/functions/_shared/bankReturnedDeposits'
 import type { ArDepositTrailRow } from './arDepositTrail'
+import { ymdAddDays } from '../../utils/dateUtils'
 
 export type { ArReturnCaseRow }
 
@@ -40,7 +41,8 @@ export type ArReturnCaseView = {
   id: string
   payer: string
   amount: number
-  source: 'bank' | 'hand' | 'rejected'
+  /** unbanked (v2.4902): a check typed in by hand that never reached the bank; its id is the case's own. */
+  source: 'bank' | 'hand' | 'rejected' | 'unbanked'
   chip: { text: string; tone: 'red' | 'amber' }
   rowLine: string
   story: ArCaseStoryLine[]
@@ -53,7 +55,7 @@ export type ArReturnCaseView = {
   watch: string | null
   /** A hand mark the bank never confirmed. */
   handNote: string | null
-  /** The recorded payment a rejected check matches, for Take the $600 off #1040. */
+  /** The recorded payment a rejected check matches (or the unbanked check itself), for Take the $600 off #1040. */
   recorded: { paymentId: string; jobId: string; label: string; amount: number } | null
   /** Bills the check paid, for the replacement's allocation lines: invoice id → dollars. */
   billsItPaid: Array<{ invoiceId: string | null; jobId: string; amount: number }>
@@ -167,7 +169,8 @@ export function arReturnCaseView(args: {
   todayYmd: string
 }): ArReturnCaseView {
   const { row, trail, todayYmd } = args
-  const source: ArReturnCaseView['source'] = row.source === 'rejected' ? 'rejected' : row.source === 'hand' ? 'hand' : 'bank'
+  const source: ArReturnCaseView['source'] =
+    row.source === 'rejected' ? 'rejected' : row.source === 'unbanked' ? 'unbanked' : row.source === 'hand' ? 'hand' : 'bank'
   const payer = asText(row.counterparty_name) || 'The customer'
   const amount = Math.abs(Number(row.amount) || 0)
   const reason = asText(row.bank_reason)
@@ -180,7 +183,9 @@ export function arReturnCaseView(args: {
   const chip =
     source === 'rejected'
       ? { text: 'never reached the bank', tone: 'amber' as const }
-      : { text: reason && source === 'bank' ? `came back · ${reason}` : 'came back', tone: 'red' as const }
+      : source === 'unbanked'
+        ? { text: 'never deposited', tone: 'amber' as const }
+        : { text: reason && source === 'bank' ? `came back · ${reason}` : 'came back', tone: 'red' as const }
 
   // The story, oldest first.
   const story: ArCaseStoryLine[] = []
@@ -206,7 +211,12 @@ export function arReturnCaseView(args: {
     if (recYmd) story.push({ ymd: recYmd, day: day(recYmd), text: `${arCaseMoney(Number(rec.amount) || 0)} was recorded as paid on ${arCaseJobLabel(rec)}. No deposit is linked to it.` })
   }
   if (cameBackYmd) {
-    if (source === 'rejected') story.push({ ymd: cameBackYmd, day: day(cameBackYmd), text: 'Mercury could not take this check in. It never posted.', tone: 'bad' })
+    if (source === 'unbanked') {
+      // Dated when the ten days ran out, not when the sweep noticed (the backfill opened old ones on one day).
+      const typed = asText(rec?.paid_on).slice(0, 10)
+      const dueYmd = /^\d{4}-\d{2}-\d{2}$/.test(typed) ? ymdAddDays(typed, AR_UNBANKED_CHECK_DAYS) : cameBackYmd
+      story.push({ ymd: dueYmd, day: day(dueYmd), text: `${AR_UNBANKED_CHECK_DAYS} days on, no deposit had come in for it.`, tone: 'bad' })
+    } else if (source === 'rejected') story.push({ ymd: cameBackYmd, day: day(cameBackYmd), text: 'Mercury could not take this check in. It never posted.', tone: 'bad' })
     else if (source === 'hand') story.push({ ymd: cameBackYmd, day: day(cameBackYmd), text: 'It was marked returned by hand.', tone: 'bad' })
     else story.push({ ymd: cameBackYmd, day: day(cameBackYmd), text: `The bank sent it back.${reason ? ` ${reason}.` : ''}`, tone: 'bad' })
   }
@@ -250,7 +260,7 @@ export function arReturnCaseView(args: {
       tone: 'red',
     }
     rowLine = `still on ${takeOff.jobs.map((j) => j.label.split(' ')[0]).join(', ')}`
-  } else if (source === 'rejected' && rec) {
+  } else if ((source === 'rejected' || source === 'unbanked') && rec) {
     const left = owed(rec)
     stake = {
       text: left <= 0.005 ? `${jobShort(rec)} reads paid in full. The money is not in the bank.` : `${jobShort(rec)} counts ${arCaseMoney(Number(rec.amount) || 0)} that is not in the bank.`,
@@ -258,7 +268,11 @@ export function arReturnCaseView(args: {
       jobId: rec.job_id,
       tone: 'amber',
     }
-    rowLine = `never posted · ${jobShort(rec)} reads paid`
+    const typedYmd = asText(rec.paid_on).slice(0, 10)
+    rowLine =
+      source === 'unbanked'
+        ? `typed in ${shortSlash(typedYmd, todayYmd)} · no deposit · ${jobShort(rec)} reads paid`
+        : `never posted · ${jobShort(rec)} reads paid`
     promiseJob = { jobId: rec.job_id, label: arCaseJobLabel(rec) }
   } else if (last) {
     const left = owed(last)
@@ -291,6 +305,8 @@ export function arReturnCaseView(args: {
     next = { kind: 'take_off', sentence: takeOff.jobs.length === 1 ? 'Take it off the job it paid.' : `Take it off the ${takeOff.jobs.length} jobs it paid.` }
   } else if (source === 'rejected') {
     next = { kind: 'deposit_again', sentence: 'Find the check and deposit it again.' }
+  } else if (source === 'unbanked') {
+    next = { kind: 'deposit_again', sentence: 'Find the check and deposit it. If it went in with other checks, link this payment to that deposit.' }
   } else if (promiseYmd) {
     next = { kind: 'new_check', sentence: `Waiting for the new check. ${asText(promise?.said_by) || 'They'} said ${day(promiseYmd)}.` }
   } else if (stopped) {
@@ -299,8 +315,9 @@ export function arReturnCaseView(args: {
     next = { kind: 'new_check', sentence: `Get a new check from ${payer}.${daysOpen > 0 ? ` It has been ${daysOpen} day${daysOpen === 1 ? '' : 's'}.` : ''}` }
   }
 
+  // An unbanked check is already on its bill: the deposit is linked to the payment, not used as a new check.
   const watch =
-    next.kind === 'take_off'
+    next.kind === 'take_off' || source === 'unbanked'
       ? null
       : `When a ${arCaseMoney(amount)} deposit from ${payer} lands, it shows here to pick.`
 
@@ -325,7 +342,7 @@ export function arReturnCaseView(args: {
     takeOff,
     watch,
     handNote,
-    recorded: rec && source === 'rejected' ? { paymentId: rec.payment_id, jobId: rec.job_id, label: arCaseJobLabel(rec), amount: Math.abs(Number(rec.amount) || 0) } : null,
+    recorded: rec && (source === 'rejected' || source === 'unbanked') ? { paymentId: rec.payment_id, jobId: rec.job_id, label: arCaseJobLabel(rec), amount: Math.abs(Number(rec.amount) || 0) } : null,
     billsItPaid,
     daysOpen,
     cameBackYmd,
@@ -350,7 +367,9 @@ export type ArReplacementDeposit = {
  * The deposit that looks like the new check: untouched, the same amount to the
  * cent, from the same payer, posted after the check came back. Oldest first.
  */
-export function arReplacementFor(view: Pick<ArReturnCaseView, 'id' | 'payer' | 'amount' | 'cameBackYmd'>, deposits: ReadonlyArray<ArReplacementDeposit>): ArReplacementDeposit | null {
+export function arReplacementFor(view: Pick<ArReturnCaseView, 'id' | 'payer' | 'amount' | 'cameBackYmd'> & { source?: ArReturnCaseView['source'] }, deposits: ReadonlyArray<ArReplacementDeposit>): ArReplacementDeposit | null {
+  // A check that was never deposited has no new check to wait for (v2.4902).
+  if (view.source === 'unbanked') return null
   const key = arPayerKey(view.payer)
   if (!key) return null
   const cents = Math.round(view.amount * 100)

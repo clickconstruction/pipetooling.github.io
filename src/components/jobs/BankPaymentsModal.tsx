@@ -1984,7 +1984,11 @@ export default function BankPaymentsModal({
     setCaseBusy('close')
     setCaseError(null)
     try {
-      const res = await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null, p_replaced_by: null })
+      // A check typed in by hand that never reached the bank (v2.4902) has its own case table.
+      const res =
+        selectedCaseView.source === 'unbanked'
+          ? await runCaseRpc('close_ar_unbanked_check_case', { p_case_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null })
+          : await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null, p_replaced_by: null })
       if (!res.ok) {
         setCaseError(res.message)
         return

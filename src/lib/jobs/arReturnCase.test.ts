@@ -114,6 +114,38 @@ describe('arReturnCaseView — the case as the pane says it', () => {
     expect(v.recorded).toEqual({ paymentId: 'p9', jobId: 'job-1040', label: '#1040 Iannotti PRV', amount: 600 })
   })
 
+  it('a check typed in by hand that never reached the bank (v2.4902): the story, the stake, deposit it, no new check to wait for', () => {
+    const row: ArReturnCaseRow = {
+      ...base,
+      mercury_transaction_id: 'case-drf',
+      counterparty_name: 'DRF',
+      amount: 250,
+      kind: 'Check',
+      posted_at: null,
+      failed_at: null,
+      bank_reason: null,
+      source: 'unbanked',
+      opened_at: '2026-09-29T15:17:00Z',
+      last_job: null,
+      recorded_payment: { payment_id: 'p-drf', job_id: 'job-777', job_number: '777', job_name: 'DRF pool house', amount: 250, paid_on: '2026-09-19', job_revenue: 250, job_payments_made: 250 },
+    }
+    const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
+    expect(v.source).toBe('unbanked')
+    expect(v.chip).toEqual({ text: 'never deposited', tone: 'amber' })
+    expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual([
+      'Sep 19 $250 was recorded as paid on #777 DRF pool house. No deposit is linked to it.',
+      'Sep 29 10 days on, no deposit had come in for it.',
+    ])
+    expect(v.stake?.text).toBe('#777 reads paid in full. The money is not in the bank.')
+    expect(v.next).toEqual({ kind: 'deposit_again', sentence: 'Find the check and deposit it. If it went in with other checks, link this payment to that deposit.' })
+    expect(v.rowLine).toBe('typed in 9/19 · no deposit · #777 reads paid')
+    expect(v.recorded).toEqual({ paymentId: 'p-drf', jobId: 'job-777', label: '#777 DRF pool house', amount: 250 })
+    expect(v.watch).toBeNull()
+    expect(v.takeOff).toBeNull()
+    // A deposit from DRF for $250 is not a new check for it: the payment is linked to its deposit instead.
+    expect(arReplacementFor(v, [{ mercury_transaction_id: 'tx-new', counterparty_name: 'DRF', amount: 250, posted_at: '2026-09-30T15:00:00Z', remaining_available: 250 }])).toBeNull()
+  })
+
   it('Peter Garza: an old return nobody linked, the job it reads paid on, the year in the dates', () => {
     const row: ArReturnCaseRow = {
       ...base,
@@ -222,6 +254,18 @@ describe('the words are plain', () => {
     const views = [
       arReturnCaseView({ row: base, trail: spTrail, todayYmd: TODAY }),
       arReturnCaseView({ row: { ...base, bank_reason: 'Stop payment', last_job: null }, trail: [], todayYmd: TODAY }),
+      arReturnCaseView({
+        row: {
+          ...base,
+          source: 'unbanked',
+          posted_at: null,
+          failed_at: null,
+          last_job: null,
+          recorded_payment: { payment_id: 'p-drf', job_id: 'job-777', job_number: '777', job_name: 'DRF pool house', amount: 250, paid_on: '2026-09-19', job_revenue: 500, job_payments_made: 250 },
+        },
+        trail: [],
+        todayYmd: TODAY,
+      }),
     ]
     for (const v of views) {
       const text = [v.next.sentence, v.stake?.text, v.stake?.detail, v.watch, v.handNote, ...v.story.map((s) => s.text)].filter(Boolean).join(' ')

@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, take it off, stop payment case
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -168,6 +168,10 @@ A check that came back cannot pay a bill. Its pane has no bills to pick and Appl
 ### A check that never reached the bank
 
 Mercury can refuse a check before it posts. It reads *There was an issue with this transaction*. Most of these are simply deposited again. Sometimes one is not, and a payment for the same amount was recorded by hand. After five days the app opens a case for it. The case reads *never reached the bank* and names the job that still reads paid. Deposit the check again and the case closes on its own. If it was paid another way, say so in the case. If it will not be paid, take the payment off the job from the case.
+
+### A check that was never deposited
+
+A check typed in by hand reads paid on its job the moment you save it. Sometimes the check never goes in. Ten days after it was typed in with no deposit linked, the app opens a case. The case reads *never deposited* and names the job that still reads paid. Find the check and deposit it. If it went in with other checks, link the payment to that deposit. Either way the case closes on its own. If it was paid another way, say so in the case. If it will not be paid, take the payment off the job from the case.
 
 ### You don't have to go looking
 

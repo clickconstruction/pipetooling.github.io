@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { CHECK_CLEAR_DAYS } from './checkClearing'
 import {
   BANK_RETURN_REASON_PHRASES,
   isBankReturnReason,
@@ -13,7 +14,7 @@ import {
   mercuryBankReturnFromRaw,
   summarizeBankReturnedPayments,
 } from './bankReturnedDeposits'
-import { arReturnCaseSituation, noticeInputFromCase, type ArReturnCaseRow } from '../../../supabase/functions/_shared/bankReturnedDeposits'
+import { AR_UNBANKED_CHECK_DAYS, arReturnCaseSituation, noticeInputFromCase, type ArReturnCaseRow } from '../../../supabase/functions/_shared/bankReturnedDeposits'
 
 describe('mercuryBankReturn', () => {
   it('is a return only when the deposit posted, then failed, and was money in', () => {
@@ -134,6 +135,13 @@ describe('v2.4320: a check can come back before it posts', () => {
   it('without a kind, an unposted failure stays out', () => {
     expect(mercuryBankReturn({ status: 'failed', posted_at: null, amount: 2700, failureReason: 'Insufficient funds' })).toBeNull()
   })
+  it('v2.4902: the unbanked sweep waits AR_UNBANKED_CHECK_DAYS by default, and that is not CHECK_CLEAR_DAYS', () => {
+    const sql = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261008100000_ar_unbanked_check_cases.sql'), 'utf8')
+    const m = /FUNCTION public\.open_ar_unbanked_check_cases\(\s*p_days integer DEFAULT (\d+)/.exec(sql)
+    expect(Number(m?.[1])).toBe(AR_UNBANKED_CHECK_DAYS)
+    expect(sql).toContain(`SELECT public.open_ar_unbanked_check_cases(${AR_UNBANKED_CHECK_DAYS}, '2026-07-01', true);`)
+    expect(AR_UNBANKED_CHECK_DAYS).not.toBe(CHECK_CLEAR_DAYS)
+  })
   it('the SQL rule in the migration names the same phrases', () => {
     const sql = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261001230000_ar_returned_check_cases.sql'), 'utf8')
     const block = sql.slice(sql.indexOf('FUNCTION public.mercury_bank_return_reason'), sql.indexOf('$function$;', sql.indexOf('FUNCTION public.mercury_bank_return_reason')))
@@ -163,6 +171,9 @@ describe('v2.4320: a case row → the notice', () => {
     last_job: { job_id: 'job-650', job_number: '650', job_name: 'ATI Schertz — As per plans', removed_at: '2026-10-01T02:19:00Z', removed_by: 'Taunya' },
     recorded_payment: null,
   }
+  it('v2.4902: an unbanked case reads as unbanked, whatever else it carries', () => {
+    expect(arReturnCaseSituation({ source: 'unbanked', live_payments: [], last_job: null })).toBe('unbanked')
+  })
   it('off its job: the last job and the day it came off, on the company calendar (9:19 PM CT Sep 30 is Sep 30)', () => {
     const input = noticeInputFromCase(base, 'https://clicktooling.com')
     expect(input.situation).toBe('off_job')
