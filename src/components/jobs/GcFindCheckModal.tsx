@@ -178,7 +178,7 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
                   <div style={{ fontWeight: 600 }}>
                     {checkHeadline(c)}
                     {c.noNumber ? (
-                      <span title="Recorded without its number — add it on Edit Job → Payments received" style={{ marginLeft: '0.5rem', padding: '0.05rem 0.4rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                      <span title="Recorded without its number — add it on the payment, in the job’s Bill tab" style={{ marginLeft: '0.5rem', padding: '0.05rem 0.4rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
                         no number
                       </span>
                     ) : null}

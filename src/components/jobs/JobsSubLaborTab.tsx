@@ -398,7 +398,7 @@ export default function JobsSubLaborTab({
             <div style={{ fontSize: '1.35rem', fontWeight: 700 }}><AmountSmallCents value={payRun.tiles.queued} /></div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {payRun.tiles.queuedSheets} sheet{payRun.tiles.queuedSheets === 1 ? '' : 's'} · payable-after set
-              {!payRunDay ? <> · <span title="Settings → Sub portal → pay-run day">no pay-run day set</span></> : null}
+              {!payRunDay ? <> · <span title="Set in Settings → Jobs & billing → Sub portal · pay schedule">no pay-run day set</span></> : null}
             </div>
           </div>
           <div style={tileStyle('blocked')}>

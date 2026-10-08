@@ -583,7 +583,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         onToggle={() => toggleCard('paid')}
         title="Paid in Full notifications"
         cadence="event — job reaches Paid in Full"
-        manage="full manager → Jobs → Pipeline ⚙ Paid in Full notifications"
+        manage="full manager → Jobs → Pipeline, the Paid in Full header’s 🔔 Paid in Full notifications"
       >
         {data.paid_recipients.length === 0
           ? none
@@ -652,7 +652,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         onToggle={() => toggleCard('payment')}
         title="Payment received notifications"
         cadence="event — any payment on any job"
-        manage="full manager → Jobs → Pipeline ⚙ Paid notifications"
+        manage="full manager → Jobs → Pipeline, the Billed Awaiting Payment header’s 🔔 Paid notifications"
       >
         {data.payment_recipients.length === 0
           ? none
