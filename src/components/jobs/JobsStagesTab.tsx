@@ -32,6 +32,7 @@ import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPayment
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
+import { lienBilledOpen } from '../../lib/jobs/lienBilledOpen'
 import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
 import { usePropertyKinds } from '../../hooks/usePropertyKinds'
 import { useBilledMoneyData } from '../../hooks/useBilledMoneyData'
@@ -1013,7 +1014,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         : null
       return buildLienPayRunway({
         todayYmd,
-        openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
+        // What the sent bills owe (v2.4970), as the desk counts it — never the job's whole balance.
+        openBalance: lienBilledOpen(job, job.invoices ?? [], job.payments ?? []),
         lastWorkYmd: job.last_work_date ?? null,
         // The last day of work set by hand (v2.4676) counts first, as on the desk (v2.4830).
         handLastWorkYmd: job.lien_last_work_on ?? null,
