@@ -80,6 +80,7 @@ export function GcPriceCard({
   project,
   onOpen,
   onCompare,
+  moneyShown = true,
 }: {
   card: PriceCardHandle
   state: GcState
@@ -87,6 +88,8 @@ export function GcPriceCard({
   onOpen: () => void
   /** Opens Compare quotes on one trade (B5-b). Without it the trade lines have no button. */
   onCompare?: (packageId: string) => void
+  /** The reader is on the money team (B5-c). False: the trades alone, without our costs and fee. */
+  moneyShown?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const phone = useMatchMedia('(max-width: 720px)')
@@ -190,25 +193,29 @@ export function GcPriceCard({
         </div>
       ))}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.1rem 0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-strong)', fontVariantNumeric: 'tabular-nums' }}>
-        <span style={{ color: 'var(--text-muted)' }}>Trades with a number</span>
-        <span style={{ textAlign: 'right' }}>
-          {money(p.trades)}
-          <PlusUnknown words={proposalUncostedWords(project)} />
-        </span>
-        <span style={{ color: 'var(--text-muted)' }}>General conditions</span>
-        <span style={{ textAlign: 'right' }}>{money(p.generalConditions)}</span>
-        <span style={{ color: 'var(--text-muted)' }}>
-          Contingency {p.contingencyPct}% and fee {p.feePct}%
-        </span>
-        <span style={{ textAlign: 'right' }}>{money(p.markups)}</span>
-        <strong>Price so far</strong>
+        {moneyShown && (
+          <>
+            <span style={{ color: 'var(--text-muted)' }}>Trades with a number</span>
+            <span style={{ textAlign: 'right' }}>
+              {money(p.trades)}
+              <PlusUnknown words={proposalUncostedWords(project)} />
+            </span>
+            <span style={{ color: 'var(--text-muted)' }}>General conditions</span>
+            <span style={{ textAlign: 'right' }}>{money(p.generalConditions)}</span>
+            <span style={{ color: 'var(--text-muted)' }}>
+              Contingency {p.contingencyPct}% and fee {p.feePct}%
+            </span>
+            <span style={{ textAlign: 'right' }}>{money(p.markups)}</span>
+          </>
+        )}
+        <strong>{moneyShown ? 'Price so far' : 'Trades so far'}</strong>
         <strong style={{ textAlign: 'right' }}>
           {money(p.soFar)}
           <PlusUnknown words={proposalUncostedWords(project)} />
         </strong>
         {p.holes > 0 && (
           <>
-            <span style={{ color: 'var(--text-muted)' }}>The {days(p.holes)} with no number, estimated, with contingency and fee</span>
+            <span style={{ color: 'var(--text-muted)' }}>The {days(p.holes)} with no number, estimated{moneyShown ? ', with contingency and fee' : ''}</span>
             <span style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{money(Math.round(p.likely - p.soFar))}</span>
             <strong>About, once every trade is in</strong>
             <strong style={{ textAlign: 'right' }}>{money(Math.round(p.likely))}</strong>

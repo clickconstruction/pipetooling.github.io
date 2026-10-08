@@ -23,9 +23,13 @@ export interface GcProjectRows {
     property_owner_customer_id: string | null
     architect_customer_id: string | null
     project_manager_user_id: string | null
-    general_conditions: number | string
-    contingency_pct: number | string
-    fee_pct: number | string
+    /**
+     * Our number's three inputs moved to `gc_project_money` (B5, v2.4923), which only the money team reads.
+     * Nothing reads these columns since B5-c (v2.4930); B6-a drops them.
+     */
+    general_conditions?: number | string
+    contingency_pct?: number | string
+    fee_pct?: number | string
     drive_folder_url: string
     lost_on: string | null
   }
@@ -89,9 +93,6 @@ export interface GcProjectView extends ScopeBookProject {
   propertyOwnerId: string | null
   architectId: string | null
   projectManagerUserId: string | null
-  generalConditions: number
-  contingencyPct: number
-  feePct: number
   driveFolderUrl: string
   lostOn: string | null
   /** The sheets and sections as they stand after the newest set. */
@@ -214,9 +215,6 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
     propertyOwnerId: rows.gc.property_owner_customer_id,
     architectId: rows.gc.architect_customer_id,
     projectManagerUserId: rows.gc.project_manager_user_id,
-    generalConditions: num(rows.gc.general_conditions),
-    contingencyPct: num(rows.gc.contingency_pct),
-    feePct: num(rows.gc.fee_pct),
     driveFolderUrl: rows.gc.drive_folder_url,
     lostOn: rows.gc.lost_on,
     sheets: foldItems(sets, rows.setItems, 'sheet', newest),

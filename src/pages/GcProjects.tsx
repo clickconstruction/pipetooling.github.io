@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenGcProjects } from '../lib/gc/access'
+import { canOpenGcProjects, canSeeGcMoney } from '../lib/gc/access'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
@@ -31,6 +31,8 @@ import { GcTradePortals } from '../components/gc/GcTradePortals'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
+import { GcOurNumber } from '../components/gc/GcOurNumber'
+import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
@@ -39,6 +41,7 @@ import type { PortalLang } from '../lib/gc/portalI18n'
 import {
   addGcCompany,
   askGcCompanies,
+  bringGcBack,
   carryGcTrade,
   answerChangeOrder,
   deleteChangeOrderDraft,
@@ -62,12 +65,16 @@ import {
   loadScopeBookStore,
   logGcAskContact,
   makeDriveFolders,
+  markGcBidSent,
+  markGcLost,
+  markGcWon,
   mergeScopeBookLines,
   saveScopeBookLine,
   saveScopeSet,
   setGcAskExclusionCovers,
   setGcAskPlugs,
   setGcAskTakenAlternates,
+  setGcProjectMoney,
   setGcCompanyCoverage,
   setGcCompanyLanguage,
   vetGcCompany,
@@ -150,14 +157,17 @@ export default function GcProjects() {
   const [boardProblem, setBoardProblem] = useState<string | null>(null)
   // Each company's language, for the invitation the Ask window draws (the kernels' company carries none yet).
   const [langs, setLangs] = useState<Record<string, PortalLang>>({})
+  // Our number (B5-c): the money team reads it; anyone else sees each price as the trades alone.
+  const [moneyShown, setMoneyShown] = useState(false)
   const takeRows = (rows: BoardRows) => {
     setBoard(boardStateFromRows(rows))
+    setMoneyShown(rows.moneyShown ?? false)
     setLangs(Object.fromEntries(rows.companies.map((c) => [c.id, c.lang === 'es' ? 'es' : 'en'])))
   }
   useEffect(() => {
     if (role !== 'dev' || !loaded || loaded.projects.length === 0) return
     let live = true
-    loadGcBoardRows(loaded.projects, today)
+    loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) })
       .then((rows) => {
         if (!live) return
         takeRows(rows)
@@ -174,7 +184,7 @@ export default function GcProjects() {
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals'>('board')
   const refreshBoard = async () => {
-    if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today))
+    if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) }))
   }
   // What a trade carries sits on the trade (`gc_trade_packages`), which only the projects' load reads.
   // A new `loaded` reloads the board too (the effect above).
@@ -205,6 +215,31 @@ export default function GcProjects() {
       await reloadProjects()
     },
   }
+  // Our number (the Board's B5-c), opened on a project's card for the money team; its inputs reload the board.
+  const [numberOpen, setNumberOpen] = useState<string | null>(null)
+  const saveMoney = async (projectId: string, values: { generalConditions: number; contingencyPct: number; feePct: number }) => {
+    await setGcProjectMoney(projectId, values)
+    await refreshBoard()
+  }
+  // How a bid ends (B5-c): each writes gc_projects, so the projects load again and the board after them.
+  const outcomeWrites = (projectId: string): OutcomeWrites => ({
+    bidSent: async () => {
+      await markGcBidSent(projectId)
+      await reloadProjects()
+    },
+    won: async () => {
+      await markGcWon(projectId)
+      await reloadProjects()
+    },
+    lost: async (why, wonBy, note) => {
+      await markGcLost(projectId, why, wonBy, note)
+      await reloadProjects()
+    },
+    bringBack: async () => {
+      await bringGcBack(projectId)
+      await reloadProjects()
+    },
+  })
   // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for a dev.
   const [companyId, setCompanyId] = useState<string | null>(null)
   const companyOpener: CompanyOpener | null = role === 'dev' && board ? { openPartner: setCompanyId } : null
@@ -449,6 +484,7 @@ export default function GcProjects() {
                 onOpen={openProjectCard}
                 onPlans={(id) => setPlansWindow(id)}
                 onCompare={(projectId, packageId) => setComparing({ projectId, packageId })}
+                moneyShown={moneyShown}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
               />
             ) : devView === 'partners' ? (
@@ -474,6 +510,9 @@ export default function GcProjects() {
         const tour = (anchor: string) => (cardIndex === 0 ? anchor : undefined)
         const gaps = scopeGaps(p.trades.map((t) => ({ trade: t.trade, scope: t.scope.map((s) => s.label), excludes: t.excludes })))
         const newest = p.planSets[p.planSets.length - 1]
+        // The board's reading of this project, for a dev while it is built (B5-c's outcome and Our number).
+        const boardProject = role === 'dev' ? board?.projects.find((x) => x.id === p.id) : undefined
+        const showNumber = boardProject && canSeeGcMoney(role)
         return (
           <div key={p.id} data-gc-project={p.id} data-tour={tour('gc-project-card')} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', display: 'grid', gap: '0.6rem', background: 'var(--surface)' }}>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -503,7 +542,14 @@ export default function GcProjects() {
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
+              {showNumber && (
+                <Btn kind="quiet" onClick={() => setNumberOpen(numberOpen === p.id ? null : p.id)}>
+                  {numberOpen === p.id ? 'Hide our number' : 'Our number'}
+                </Btn>
+              )}
             </div>
+            {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
+            {showNumber && board && numberOpen === p.id && <GcOurNumber state={board} project={boardProject} onSave={(values) => saveMoney(p.id, values)} />}
             <div style={{ fontSize: '0.85rem' }}>
               {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
               {newest ? `, newest ${newest.label} of ${newest.issuedOn}` : ''}. {p.sheets.length} {p.sheets.length === 1 ? 'sheet' : 'sheets'}

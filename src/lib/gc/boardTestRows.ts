@@ -1,8 +1,8 @@
 /**
  * Test data only: the app never reads it. A small GC project as `gc_create_project` writes it, with
  * two sitework companies asked (one quoted, one promised a day that passed), a call log and a
- * promise, as the company record's tables hold them (B1). The board's mapper test and its render
- * test read it.
+ * promise, as the company record's tables hold them (B1), and our number's inputs (B5). The board's
+ * mapper test and its render test read it.
  */
 import type { BoardRows } from './boardRows'
 import { gcProjectFromRows, type GcProjectRows } from './projectRows'
@@ -11,7 +11,7 @@ import { gcProjectFromRows, type GcProjectRows } from './projectRows'
 export function clinicProjectRows(): GcProjectRows {
   return {
     project: { id: 'p1', name: 'Hill Country Clinic', address: '12 Oak St, Boerne', customer_id: 'c1', plans_link: null },
-    gc: { stage: 'bidding', bid_due: '2026-10-20', sq_ft: '6800', size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: 'c2', project_manager_user_id: null, general_conditions: '12000', contingency_pct: 3, fee_pct: '8', drive_folder_url: '', lost_on: null },
+    gc: { stage: 'bidding', bid_due: '2026-10-20', sq_ft: '6800', size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: 'c2', project_manager_user_id: null, drive_folder_url: '', lost_on: null },
     packages: [
       { id: 'k1', trade: 'Sitework', position: 0, budget: 60000, ours: false, own_bid_id: null },
       { id: 'k2', trade: 'Concrete', position: 1, budget: '84000', ours: false, own_bid_id: null },
@@ -57,6 +57,9 @@ export function clinicBoardRows(over: Partial<BoardRows> = {}): BoardRows {
     ],
     promises: [{ id: 'tp1', company_id: 'lonestar', kind: 'insurance', project_id: null, package_id: null, what: 'the renewed insurance certificate', due_on: '2026-10-12', made_on: '2026-10-06', source: 'office', kept_on: null }],
     promiseMoves: [{ promise_id: 'tp1', was_due_on: '2026-10-09', moved_on: '2026-10-07', created_at: '2026-10-07T12:00:00Z' }],
+    // Our number's inputs, as the money team reads them (B5-c).
+    money: [{ project_id: 'p1', general_conditions: '12000', contingency_pct: 3, fee_pct: '8' }],
+    moneyShown: true,
     ...over,
   }
 }

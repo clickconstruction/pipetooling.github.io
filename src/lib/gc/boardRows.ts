@@ -158,6 +158,14 @@ export interface VettingFormRow {
   sent_on: string
 }
 
+/** `gc_project_money` (B5): our number's three inputs on a project. Only the money team reads a row. */
+export interface ProjectMoneyRow {
+  project_id: string
+  general_conditions: number | string
+  contingency_pct: number | string
+  fee_pct: number | string
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -179,6 +187,13 @@ export interface BoardRows {
   people?: PersonRow[]
   /** Points from the app's geocoded addresses, by the address as written. Missing: the towns stand in. */
   points?: Record<string, { lat: number; lng: number }>
+  /**
+   * Our number's inputs (B5-c), one row per project. Someone outside the money team reads none, so
+   * each project's general conditions, contingency and fee read 0. Missing: none read.
+   */
+  money?: ProjectMoneyRow[]
+  /** True when the reader is on the money team: the screens show the price. Missing or false: the trades alone. */
+  moneyShown?: boolean
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -340,6 +355,8 @@ export function promiseFromRows(p: PromiseRow, moves: PromiseMoveRow[]): TradePr
 /** One project as the board's kernels read it. */
 export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invitesByPackage: Map<string, Invite[]>): GcProject {
   const dates = rows.boardDates[view.id]
+  // Our number's inputs (B5-c): none for someone outside the money team, so they read 0.
+  const money = rows.money?.find((m) => m.project_id === view.id)
   const name = (id: string | null) => (id ? (rows.customers.find((c) => c.id === id)?.name ?? '') : '')
   const lostWhy = LOST_WHYS.includes(dates?.lost_why as GcLostWhy) ? (dates?.lost_why as GcLostWhy) : null
   const point = pointOf(rows, view.address)
@@ -393,9 +410,9 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     sizeNote: view.sizeNote,
     planSets: view.planSets.map((s) => ({ rev: s.rev, label: s.label, issuedOn: s.issuedOn, touches: [] })),
     packages,
-    generalConditions: view.generalConditions,
-    contingencyPct: view.contingencyPct,
-    feePct: view.feePct,
+    generalConditions: num(money?.general_conditions),
+    contingencyPct: num(money?.contingency_pct),
+    feePct: num(money?.fee_pct),
     lostOn: view.lostOn,
     lostWhy,
     wonBy: dates?.won_by ?? null,
