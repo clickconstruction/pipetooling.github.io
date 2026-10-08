@@ -6,6 +6,8 @@ type: Architecture Map / Decomposition
 purpose: Step-0 map for the DashboardMyTimeDayEditorModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md, adapted from tabs to modal regions like JOB_FORM_MODAL_ARCHITECTURE.md) — inventory what every region of the shared clock-day editor touches (state, handlers, supabase tables/RPCs, sub-components, coupling, test coverage) so extraction can proceed without re-deriving the strategy. Sections: Overview, Parent contract, Master summary table, The shared substrate, Modal lifecycle and edit-window gating, The save engine, Stage-A pure-logic inventory, Per-region dossiers, Test coverage, Preserve-quirks list, Recommended extraction order.
 covers:
   - src/components/DashboardMyTimeDayEditorModal.tsx
+  - src/components/my-time-day-editor/useMyTimeDaySessions.ts
+  - src/components/my-time-day-editor/MyTimeDayTimelineBody.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 last_updated: 2026-10-08
@@ -13,7 +15,7 @@ last_updated: 2026-10-08
 
 ## Overview
 
-> **Every line range in this map is as of `a05cef4c4`** (3,981 lines); since v2.4021 the file is 2,414 lines — the eight module-scope kernels left for `src/lib/` in v2.3905, the Not-coming-in and discard confirms in v2.3919, the NCNS flow in v2.3932, the reject confirm in v2.3946, the label and salary hooks in v2.3967 and the save ladder in v2.4021, so every range below is approximate: search the symbol. Ranges rot with each commit — search the symbol named beside the range, and regenerate the facts with `npm run map -- src/components/DashboardMyTimeDayEditorModal.tsx` before trusting a number.
+> **Every line range in this map is as of `a05cef4c4`** (3,981 lines); since v2.4021 the file is 2,414 lines — the eight module-scope kernels left for `src/lib/` in v2.3905, the Not-coming-in and discard confirms in v2.3919, the NCNS flow in v2.3932, the reject confirm in v2.3946, the label and salary hooks in v2.3967 and the save ladder in v2.4021; 1,496 since v2.4964 (the session engine became `useMyTimeDaySessions` in v2.4949, the timeline body `MyTimeDayTimelineBody` in v2.4951), so every range below is approximate: search the symbol. Ranges rot with each commit — search the symbol named beside the range, and regenerate the facts with `npm run map -- src/components/DashboardMyTimeDayEditorModal.tsx` before trusting a number.
 
 [`src/components/DashboardMyTimeDayEditorModal.tsx`](../src/components/DashboardMyTimeDayEditorModal.tsx) is a **3,981-line** file: one exported component `DashboardMyTimeDayEditorModal` (330–3981, render 2589–3980) plus 9 module-scope functions and 3 types (108–328; one function, `formatDurationMs`, since v2.3905). Hook census at `a05cef4c4`: **39 `useState`, 17 effects, 19 `useMemo`, 42 `useCallback`, 16 `useRef`, 4 custom hooks** (`useToastContext`, `useConfirmDialog`, `useLedgerPrefixMap`, `useMyTimeCompactMergeMedia`); since v2.3967: 26 `useState`, 10 effects, 15 `useMemo`, 37 `useCallback`, 13 `useRef`, 6 custom hooks (`useMyTimeNcnsFlow` holds 8 state values and 2 effects, `useMyTimeSalaryPrefetch` 3 and 3, `useMyTimeJobBidLabels` 2 and 2). It is the shared **clock-day editor**: one person + one `work_date`, rendering that day's `clock_sessions` as a split/merge/assign timeline. **12 files import it, with 13 mounts** — see [Parent contract](#parent-contract).
 
@@ -67,7 +69,7 @@ The Team Summary drilldowns (`people/teamSummary/drilldowns.tsx`, `TeamSummaryIn
 | # | Region | Anchor symbol | Lines (a05cef4c4) | Status | Owned state | Coupling | Risk | Tests | Recommended action |
 |---|---|---|---|---|---|---|---|---|---|
 | 0 | Shell + edit-window gating | `saveableRange`, `priorWeekAck`, overlay (z 1200), header, branch ladder, dual footers | 355–378, 1509–1563, 2573–2775, 3022–3131, 3134–3214 | shell | 2 (`priorWeekAck`, `layoutMode`) + 2 effects | — | — | none (no render smoke mounts the modal) | **Stays** — this is the parent |
-| 1 | Session data engine | `fetchedSessions`, `sessionsFetchNonce`, `sortedSessions`, `sessionClusters`, `nowTick` | 396–402, 564–711, 827–831, 1008–1146 | inline | 8 + 4 effects | **maximum** — every region reads it | high | kernels tested (`myTimeDayTimeline*`, 45 cases); fetch/effects tested since v2.4949 | The shared substrate; `useMyTimeDaySessions` hook **kept in the shell**, late |
+| 1 | Session data engine | `fetchedSessions`, `sessionsFetchNonce`, `sortedSessions`, `sessionClusters`, `nowTick` | 396–402, 564–711, 827–831, 1008–1146 | extracted (v2.4949, `useMyTimeDaySessions`, kept in the shell) | 8 + 4 effects | **maximum** — every region reads it | high | kernels tested (`myTimeDayTimeline*`, 45 cases); fetch/effects tested since v2.4949 | **done v2.4949** — `useMyTimeDaySessions`, kept in the shell and destructured |
 | 2 | Salary prefetch + empty-day hints | `useMyTimeSalaryPrefetch` (one call in the shell, after `resolvedSessions`), `emptyDayLine` | the shell keeps the hook call, `bumpSessionsFetchNonce` and the two reads in the render | **extracted v2.3967** | 0 in the shell (3 + 2 refs + 3 effects in the hook) | low (tells the shell to bump `sessionsFetchNonce`) | low | `myTimeSalaryPrefetch.test.ts` (14), `MyTimeEditorHooks.render.test.tsx` (13 of 20), `resolveCalendarWorkday` (11); `salaryScheduleSync` untested | Done |
 | 3 | Job/bid label loader | `useMyTimeJobBidLabels` (one call in the shell, after the NCNS hook) | the shell keeps the hook call | **extracted v2.3967** | 0 in the shell (2 + 2 refs + 2 effects in the hook) | low (outputs 2 memos) | low | `myTimeJobBidLabels.test.ts` (9), `MyTimeEditorHooks.render.test.tsx` (7 of 20), `formatJobLedgerSummaryLine` in `ledgerDisplayPrefixes.test.ts` | Done |
 | 4 | Split-editor state + gesture engine | `splitByCluster`, `patchCluster`, `startDrag`, `handleStripPointerDown` | 1148–1247, 1354–1375, 1564–1672, 1790–2015 | inline | 3 + 13 refs + 4 effects | **high** (save engine + both cluster renderers read it) | high | reducer/snap/finalize/repair kernels and the strip-Y→ms geometry (v2.3911) tested; pointer plumbing untested | `useMyTimeSplitEditor` + `useMyTimeBoundaryGestures` hooks, shell keeps outputs; do late |
@@ -172,7 +174,7 @@ Constants that move with their consumers: `STRIP_TAP_MOVE_THRESHOLD_PX` (114), `
 - **Handlers:** the day-fetch effect (625–682; skips when `sessionsProp` supplied, `!inSaveableRange`, or no subject; re-runs on `sessionsFetchNonce`), `fetchDaySessionsForEditor` (689–705; same query as a callable, used by the NCNS pre-close sweep).
 - **Supabase:** `clock_sessions` SELECT (`user_id` + `work_date`, `rejected_at IS NULL`, `revoked_at IS NULL`; columns incl. `origin`, `salary_segment_index`, `quick_add_minutes` — list duplicated at 660/696), `users` SELECT name.
 - **Tests:** `normalizeDayEditorSession`, clustering, overlap, `buildDayTimeline`, `daySpanMs` in `myTimeDayTimeline.test.ts`; the effects in `useMyTimeDaySessions.render.test.tsx` since v2.4949 (the read and its skips, the sign-in wait, a stale read dropped, the refetch signal, the title's name, the 15 s clock).
-- **Extraction:** `useMyTimeDaySessions` hook returning the whole bundle, **kept in the shell** and destructured (playbook rule 4). Do this only after the leaf regions are out — every region's props come from here.
+- **Extraction:** ~~`useMyTimeDaySessions` hook returning the whole bundle, **kept in the shell** and destructured (playbook rule 4)~~ **done v2.4949**.
 
 ### 2. Salary-schedule prefetch + empty-day hints
 
@@ -258,7 +260,7 @@ Documented in [The save engine](#the-save-engine--payroll-path). Additional piec
 
 - **Location:** 2811–3018, the `myTimeDayTimelineScroll` div: `timelineItems.map` (2831) renders gap strips ("Off clock · Nh", flex-scaled by duration), per-cluster overlap warning banners (`hasPairwiseClockIntervalOverlap` with `CLOCK_OVERLAP_WARNING_EPS_MS`, 2863–2867), then `MyTimeDayClusterVisual` (2891) or `MyTimeDayClusterForm` (2937) (both **extracted**) with the ~30-prop bundle (33 Visual / 30 Form) (split, labels, gesture callbacks, assign/merge/punch-action callbacks, `showApplyScheduleProportions`, dividers via `getNextSessionClusterInTimeline`); the "+ Add session" tail (2984–3017). The compact-layout toggle row sits just above (≤2810).
 - **Owned state:** none — pure composition over regions 1/4/6/8.
-- **Extraction:** leave last; once regions 4/6 have hook seams this collapses naturally into a `MyTimeDayTimelineBody` taking the two hook outputs.
+- **Extraction:** **done v2.4951**: `MyTimeDayTimelineBody`.
 
 ---
 

@@ -1030,7 +1030,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### submit-gc-trade-portal
 
-**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, and asking about the plans. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The presses on the page come with P2b-ii.
+**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, and asking about the plans. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The page's presses post to it since v2.4935 (P2b-ii, `gcTradePortalPress.ts`).
 
 **Endpoint**: `POST /functions/v1/submit-gc-trade-portal` with `{ token, kind, website?, ...fields }` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. **Response**: `{ ok: true, value? }` or `{ error: key }`.
 
@@ -1063,7 +1063,7 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
-**Doors**: a write needs a link. Links are made only by a dev until the portal's door (`mint_gc_trade_portal_link`), so no real trade writes before then. The office's preview (`?preview=1`) posts nothing; the page holds it (P2b-ii).
+**Doors**: a write needs a link. Links are made only by a dev until the portal's door (`mint_gc_trade_portal_link`), so no real trade writes before then. The office's preview (`?preview=1`) posts nothing; the page holds it.
 
 **Status**: deployed 2026-10-08 after #4960 merged, with `gc-trade-portal` redeployed on the shared link rule (edge drift 141 of 141). Probed on prod with the request shape above, writing nothing:
 - `{token: "sample", kind: "set_lang", lang: "en"}` answered `200 {ok: true, sample: true}`;
@@ -1103,7 +1103,7 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_trade_email`.
 
-**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). New project's step 7 (a set's plans) and the Ask window (`invite`, `nudge`) come next.
+**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). The Ask window sends kind `invite` (v2.4939, `askEmail.ts`), and a new set of plans sends kind `plans` to each company asked to quote (v2.4940, New project's step 7: `setEmail.ts`, `sendSetEmails` in `gcIo.ts`, key `<projectId>:plans:<rev>`, recorded in `gc_plan_set_sends`). `nudge` comes next.
 
 ---
 
@@ -4393,7 +4393,7 @@ interface Body {
 
 ### pay-link
 
-**Purpose**: What a scanned **pay code** opens (punch list #35, **v2.3754**). A QR code printed on paper — the lien notice's pay page, a printout from View bill — cannot carry Stripe's hosted-invoice link, because Stripe expires that link 30 days after the due date (see `refresh-stripe-invoice-links`). It carries `https://clicktooling.com/pay/<jobs_ledger_invoices.id>` instead, and the page there ([`src/pages/PayLink.tsx`](../src/pages/PayLink.tsx)) calls this function: the row is looked up, the invoice is retrieved from Stripe **in the row's own mode** (`stripe_mode`; NULL = live), and the answer carries Stripe's *current* link, the invoice number, the job's name, the cents still owed and the state — `open`, `paid` (with the day, in the company's calendar) or `void`. When Stripe's link differs from the stored one the row's `hosted_invoice_url` is replaced (the rule `get-stripe-invoice-details` and `customer-portal` follow, v2.3590), so a scan also refreshes the link every other reader hands out. Stripe unreachable or no key for the mode → the stored link and the row's own status (`status` / `stripe_invoice_status`, the webhook's), never an error page for a customer holding a phone. One structured line per open: `{"event":"pay_link_open","id","state","mode","stripe":"answered|skipped","refreshed"}`.
+**Purpose**: What a scanned **pay code** opens (punch list #35, **v2.3754**). A QR code printed on paper — the lien notice's pay page, a printout from View bill, the final demand letter (one per open Stripe bill, v2.4849) — cannot carry Stripe's hosted-invoice link, because Stripe expires that link 30 days after the due date (see `refresh-stripe-invoice-links`). It carries `https://clicktooling.com/pay/<jobs_ledger_invoices.id>` instead, and the page there ([`src/pages/PayLink.tsx`](../src/pages/PayLink.tsx)) calls this function: the row is looked up, the invoice is retrieved from Stripe **in the row's own mode** (`stripe_mode`; NULL = live), and the answer carries Stripe's *current* link, the invoice number, the job's name, the cents still owed and the state — `open`, `paid` (with the day, in the company's calendar) or `void`. When Stripe's link differs from the stored one the row's `hosted_invoice_url` is replaced (the rule `get-stripe-invoice-details` and `customer-portal` follow, v2.3590), so a scan also refreshes the link every other reader hands out. Stripe unreachable or no key for the mode → the stored link and the row's own status (`status` / `stripe_invoice_status`, the webhook's), never an error page for a customer holding a phone. One structured line per open: `{"event":"pay_link_open","id","state","mode","stripe":"answered|skipped","refreshed"}`.
 
 **Request**: `GET /functions/v1/pay-link?id=<uuid>`. No auth (`verify_jwt = false`): the id is the capability, exactly as Stripe's own hosted link is — a UUID, never guessed; anything that is not one is a 400 before the database is touched. A row that is not a billed or paid Stripe invoice (a draft, a paper bill) is a 404 `{ error: "not_found" }`. **Rate limit**: 60 opens a minute per client address and 600 across the isolate, in memory (best effort) → 429.
 
