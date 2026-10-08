@@ -219,6 +219,34 @@ describe('buildAiaPreview', () => {
     expect(held(out, AIA_G702_SHEET, 'H42')).toBe(17568)
   })
 
+  it('takes a row\'s own retainage where one is given (GC mode\'s step), and the totals and the file follow', async () => {
+    const own = [1000, null, 1800]
+    const { math } = buildAiaPreview(SIX_HEADER, SIX, { rowRetainage: own })
+    expect(math.rows.map((r) => r.retainage)).toEqual([1000, 1440, 1800, 0, 480, 320])
+    expect(math.line.retainage).toBe(5040)
+    expect(math.currentPaymentDue).toBe(17568 + 6752 - 5040)
+
+    const out = await loadWorkbook(await fillAiaG702G703Workbook(templateArrayBuffer(), SIX_HEADER, SIX, { rowRetainage: own }))
+    expect(out.getWorksheet(AIA_G703_SHEET)!.getCell('K13').value).toBe(1000)
+    expect(held(out, AIA_G703_SHEET, 'K14')).toBe(1440)
+    expect(held(out, AIA_G703_SHEET, 'K49')).toBe(5040)
+    expect(held(out, AIA_G702_SHEET, 'H42')).toBe(17568 + 6752 - 5040)
+  })
+
+  it('keeps the template\'s own words without the GC form: to the owner, certified by the construction manager', async () => {
+    const plain = await loadWorkbook(await fillAiaG702G703Workbook(templateArrayBuffer(), SIX_HEADER, SIX))
+    const g702 = plain.getWorksheet(AIA_G702_SHEET)!
+    expect(g702.getCell('A5').value).toBe('TO OWNER:')
+    expect(g702.getCell('J44').value).toBe('CONSTRUCTION MGR:')
+    expect(g702.getCell('N8').value).toBeNull()
+    const gc = await loadWorkbook(
+      await fillAiaG702G703Workbook(templateArrayBuffer(), SIX_HEADER, SIX, { gcForm: { to: 'TO CUSTOMER:', certifier: 'ARCHITECT:', projectOwner: 'Hill Country Holdings', notaryState: 'Texas' } }),
+    )
+    const gc702 = gc.getWorksheet(AIA_G702_SHEET)!
+    expect([gc702.getCell('A5').value, gc702.getCell('J44').value, gc702.getCell('L8').value, gc702.getCell('N8').value]).toEqual(['TO CUSTOMER:', 'ARCHITECT:', 'PROJECT OWNER:', 'Hill Country Holdings'])
+    expect(String(gc702.getCell('J26').value)).toMatch(/^State of: Texas/)
+  })
+
   it('prints labor and material on their own rows without moving a total', async () => {
     const whole = buildAiaPreview(SIX_HEADER, SIX).math
     const { math } = buildAiaPreview(SIX_HEADER, SIX, { splitLaborMaterial: true })
