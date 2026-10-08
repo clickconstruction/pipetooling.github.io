@@ -15,6 +15,7 @@
  *
  * Pure: no IO, no clock but the `now` passed in.
  */
+import { SUPABASE_PAGE_SIZE } from '../supabasePaging'
 import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../../utils/dateUtils'
 
 export type BidHistoryOp = 'insert' | 'update' | 'delete'
@@ -288,6 +289,9 @@ export function bidHistoryLines(row: BidHistoryRow): BidHistoryLine[] {
 // ---------------------------------------------------------------------------
 
 export const BID_HISTORY_BURST_MS = 5000
+
+/** One page of a bid's history: PostgREST answers at most 1,000 rows a read (`SUPABASE_PAGE_SIZE`), so the window reads a page at a time. */
+export const BID_HISTORY_PAGE = SUPABASE_PAGE_SIZE
 
 export type BidHistoryAction = {
   key: string
