@@ -58,7 +58,7 @@ The head also carries an **Other direct** tile. It adds up equipment, permits, s
 
 Under the tiles sits the **Crew rate** card. The **company rate** is the last 90 days of recorded field wages from People times the burden factor. Burden is what an hour costs beyond the wage itself. The wages are every closed clock session on a job, wage-priced. So it reads like *company $35.76/h = $29.80 avg recorded field wage (90 d, 3,120 h) × 1.20 burden*. A bid with no rate of its own is costed at the company rate. The Labor $ tile, the "rate set" chip and the bottom line all read it. Press {{button:blue|save it on the bid}} to write that number onto the bid. Then Pricing and the printed documents read the same rate. Type your own in the rate box to override it. The chip reads {{chip:blue|$35.00/h override}} and *use company rate* clears it.
 
-Two facts sit beside the rate and are never added to the bid's cost. **Overhead / field hour** is the same lens A the Overhead tab shows. **Bid labor recorded** is the hours clocked on this bid. They already sit in the overhead pool. The old *Estimators Time* box is gone for the same reason. Bid labor is recorded, not invented.
+Two facts sit near the rate and are never added to the bid's cost. **Overhead / field hour** is a tile in the row above. It is the last 90 days of overhead divided by the field hours worked in those days. It matches the *A · per field hour* card on People → Overhead. Only a dev or a leader approved for pay opens that page. The Crew rate line reads *bid labor recorded*, with the hours and dollars clocked on this bid. Both already sit in the overhead pool. The old *Estimators Time* box is gone for the same reason. Bid labor is recorded, not invented.
 
 ## The bottom line
 

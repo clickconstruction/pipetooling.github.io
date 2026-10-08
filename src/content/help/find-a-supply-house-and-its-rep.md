@@ -7,7 +7,7 @@ keywords: supply house, supply houses, directory, rep, reps, contact, vendor, ph
 
 The Directory on Materials → Supply houses lists every supply house the company deals with. It says who to talk to there and what we already know about each one.
 
-It is one list for the whole company. A rep is the person you call at that house. A rep one person adds is the rep everyone else sees. Estimators see the directory on its own. The office sees it above **Accounts payable**.
+It is one list for the whole company. A rep is a contact person who works at that house. A rep one person adds is the rep everyone else sees. Estimators see the directory on its own. The office sees it above **Accounts payable**.
 
 ## Find a house
 
@@ -56,4 +56,4 @@ See [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account) f
 
 ## What the Directory is not
 
-Invoices, aging and balances owed live in **Accounts payable**. Aging is how long each invoice has waited. Only the office sees it, right below the Directory on its tab. The Directory never shows a dollar figure. An estimator's Supply houses tab has none.
+Invoices, aging and balances owed live in **Accounts payable**. Aging is how far past its due date each unpaid invoice is. Only the office sees it, right below the Directory on its tab. The Directory never shows a dollar figure. An estimator's Supply houses tab has none.

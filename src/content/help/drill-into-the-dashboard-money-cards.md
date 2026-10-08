@@ -77,7 +77,7 @@ Next to the sort buttons sits the **aging strip**. It is three colored totals li
 
 ## The Overhead card (devs and pay-approved leaders)
 
-A fourth card, **Overhead**, sits beside the money cards for devs and pay-approved leaders. It reads the same way as its neighbors. The headline is the 90-day burn per day. Burn is the money the office spends. The thin bar shows what the pool is made of: office labor, bid labor and office parts. The small line under it is the trend against the prior 30 days. The three lenses sit in one row: {{button:outline|A $14.39/hr}} {{button:outline|B 11.8%}} {{button:outline|C $0.50/$1}}. Tap any lens, or the headline, for the same math window People → Overhead opens. {{button:outline|Open tab ›}} goes to the full tab.
+A fourth card, **Overhead**, sits beside the money cards for devs and pay-approved leaders. It reads the same way as its neighbors. The headline is the 90-day burn per day. Burn is what running the office costs, the spending no job pays for. The thin bar shows what the pool is made of: office labor, bid labor and office parts. The small line under it is the trend against the prior 30 days. The three lenses sit in one row: {{button:outline|A $14.39/hr}} {{button:outline|B 11.8%}} {{button:outline|C $0.50/$1}}. Tap any lens, or the headline, for the same math window People → Overhead opens. {{button:outline|Open tab ›}} goes to the full tab.
 
 It loads once the card scrolls into view. It remembers the numbers for an hour. So it never slows the Dashboard down.
 

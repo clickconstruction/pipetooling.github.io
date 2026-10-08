@@ -24,7 +24,7 @@ Open it from the email with {{button:blue|Read and sign}}. Or open your portal p
 A W-9 needs one or the other, not both. Type the digits and the dashes are added for you. As soon as you leave the box the number shows as dots, and it is kept **only inside the signed form** — nowhere else in the app.
 :::
 
-**Rarely needed** hides lines most people leave blank. Exempt-payee codes and account numbers are examples. Open it only if the office asked you to.
+**Show rarely-needed lines** shows lines most people leave blank. **Hide rarely-needed lines** tucks them away again. Exempt-payee codes and account numbers are examples. Open it only if the office asked you to.
 
 ## Sign and submit
 
@@ -36,4 +36,4 @@ The signed form appears on your portal page under **Your paperwork on file**. No
 
 ## A shaded part of the form
 
-Some forms have a part the office fills after you. On the I-9, that is Section 2. That part is shaded and labelled **This part is completed by the office**. You are never asked about it, and the lens skips it.
+Some forms have a part the office fills after you. On the I-9, that is Section 2. That part is shaded and labelled **This part is completed by the office**. That part has no boxes for you. The panel under the page never stops on it, and **Next ›** goes straight past it.

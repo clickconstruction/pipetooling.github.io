@@ -78,7 +78,7 @@ You confirm, and the draft opens in Estimates, prefilled from the form and linke
 
 An accepted change order's money needs to land on a job. On the accepted row or the detail page, you tap {{button:outline|Apply to job}}:
 
-- **Add to an existing job**: the usual case. You search for the job. Any job you can open will do. Since v2.2967 the job no longer has to have been created by the same person. The preview shows exactly what will happen. The preview shows how many lines join the job's Specific Work. The preview also shows the job total before → after, moved by the **net change**. Credits subtract. You tap **Apply to job** and the job's activity feed gets a note. The note reads *"Change order #52 applied: +$2,450.00 — …"*, so the office sees the change in Pipeline and Job Detail.
+- **Add to an existing job**: the usual case. You search for the job. Any job the search finds will do. It does not have to be a job you made. The preview shows exactly what will happen. The preview shows how many lines join the job's Specific Work. The preview also shows the job total before → after, moved by the **net change**. Credits subtract. You tap **Apply to job** and the job's activity feed gets a note. The note reads *"Change order #52 applied: +$2,450.00 — …"*, so the office sees the change in Pipeline and Job Detail.
 - **Create a new job**: for change-order work you want billed on its own job number. This choice works exactly like creating a job from an estimate. The lines carry over as Specific Work.
 - ***Link only (no cost change)***: the quiet escape hatch for jobs already billed or tracked elsewhere. This choice connects the change order to the job without touching its numbers.
 
