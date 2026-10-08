@@ -11,7 +11,7 @@ export type ArReturnCasePaneProps = {
   canApply: boolean
   /** A To match deposit that looks like the new check, when there is one. */
   replacement: ArReplacementDeposit | null
-  busy: 'take_off' | 'close' | 'recorded' | 'unmark' | null
+  busy: 'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | null
   error: string | null
   onTakeOff: () => void
   onTheySaid: () => void
@@ -19,6 +19,8 @@ export type ArReturnCasePaneProps = {
   onClose: (reason: ArCaseCloseReason, note: string) => void
   onTakeRecordedOff: () => void
   onNotBounced: () => void
+  /** v2.4950: a lost card dispute's one press. */
+  onPutBack?: () => void
   onOpenJob?: (jobId: string) => void
   /** Narrow layout: the list is behind this. */
   onBack?: () => void
@@ -50,15 +52,20 @@ const box = (tone: 'red' | 'amber' | 'blue' | 'green') =>
  * deposit pane: what happened, what it costs, and one next step — take it off every
  * job it paid (read back first), get a new check (They said…), or deposit a rejected
  * check again. The new check is offered when it lands. More holds the rest.
+ *
+ * v2.4950: a card dispute or a failed bank debit on a Stripe bill shows here too, with a link to
+ * it in Stripe. A lost dispute's one step is Put the bill back, read back first.
  */
 export function ArReturnCasePane(props: ArReturnCasePaneProps) {
   const { view, todayYmd, canApply, replacement, busy } = props
   const [confirmingTakeOff, setConfirmingTakeOff] = useState(false)
+  const [confirmingPutBack, setConfirmingPutBack] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [closing, setClosing] = useState<ArCaseCloseReason | null>(null)
   const [note, setNote] = useState('')
   useEffect(() => {
     setConfirmingTakeOff(false)
+    setConfirmingPutBack(false)
     setMoreOpen(false)
     setClosing(null)
     setNote('')
@@ -177,6 +184,54 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
           </div>
         ) : null}
 
+        {(view.next.kind === 'answer_dispute' || view.next.kind === 'new_payment') && (view.stripe || (canApply && view.promiseJob)) ? (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {view.stripe ? (
+              <a data-testid="ar-return-case-stripe" href={view.stripe.url} target="_blank" rel="noreferrer" style={{ ...btn(view.next.kind === 'answer_dispute'), textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                {view.stripe.label}
+              </a>
+            ) : null}
+            {canApply && view.promiseJob ? (
+              <button type="button" data-testid="ar-return-case-they-said" onClick={props.onTheySaid} style={btn(view.next.kind === 'new_payment')}>
+                They said…
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {view.next.kind === 'put_back' && view.putBack && canApply && props.onPutBack ? (
+          confirmingPutBack ? (
+            <div data-testid="ar-return-case-putback-readback" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ padding: '0.5rem 0.75rem', fontWeight: 600, borderBottom: '1px solid var(--border)' }}>What changes</div>
+              {view.putBack.words.map((w) => (
+                <div key={w} style={{ padding: '0.4rem 0.75rem' }}>
+                  {w}
+                </div>
+              ))}
+              <div style={{ padding: '0.4rem 0.75rem', color: 'var(--text-700)' }}>The job's history keeps the removal and who did it.</div>
+              <div style={{ display: 'flex', gap: '0.5rem', padding: '0 0.75rem 0.75rem', flexWrap: 'wrap' }}>
+                <button type="button" data-testid="ar-return-case-putback-confirm" disabled={busy != null} onClick={props.onPutBack} style={{ ...btn(true, true), opacity: busy != null ? 0.5 : 1, cursor: busy != null ? 'not-allowed' : 'pointer' }}>
+                  {busy === 'put_back' ? 'Putting it back…' : 'Put the bill back'}
+                </button>
+                <button type="button" onClick={() => setConfirmingPutBack(false)} disabled={busy != null} style={btn(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button type="button" data-testid="ar-return-case-putback" onClick={() => setConfirmingPutBack(true)} style={btn(true, true)}>
+                Put the bill back
+              </button>
+              {view.stripe ? (
+                <a href={view.stripe.url} target="_blank" rel="noreferrer" style={{ ...btn(false), textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                  {view.stripe.label}
+                </a>
+              ) : null}
+            </div>
+          )
+        ) : null}
+
         {view.next.kind === 'deposit_again' && canApply && view.recorded ? (
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button type="button" onClick={() => setClosing('settled_other_way')} style={btn(false)}>
@@ -244,7 +299,11 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
       <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
         {view.source === 'unbanked'
           ? 'The case closes when the payment is linked to its deposit, when it comes off the job, or under More.'
-          : `${AR_CAME_BACK_SENTENCE} The case closes when the new check is on the bill, or under More.`}
+          : view.source === 'stripe_dispute'
+            ? 'The case closes when Stripe decides for us, when the bill is put back, or under More.'
+            : view.source === 'stripe_debit'
+              ? 'The case closes when the bill is paid or voided, or under More.'
+              : `${AR_CAME_BACK_SENTENCE} The case closes when the new check is on the bill, or under More.`}
       </div>
     </div>
   )

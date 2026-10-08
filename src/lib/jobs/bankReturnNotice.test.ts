@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  arCaseNoticeClaim,
+  arCaseNoticeDue,
   bankReturnNoticeLine,
   bankReturnNoticeLinks,
   bankReturnNoticeSentences,
@@ -9,8 +11,11 @@ import {
   buildBankReturnNoticePush,
   jobLabelForBankReturn,
   mercuryBankReturn,
+  noticeInputFromCase,
+  type ArReturnCaseRow,
   type BankReturnNoticeInput,
 } from '../../../supabase/functions/_shared/bankReturnedDeposits'
+import { helpGuidePlainWordsFailures } from '../plainWords'
 import * as app from './bankReturnedDeposits'
 
 const take5: BankReturnNoticeInput = {
@@ -192,5 +197,116 @@ describe('the office notice for a returned deposit (v2.3804)', () => {
     ])
     expect(buildBankReturnNoticePush({ ...take5, jobs: [] }, 'tx-2').url).toBe('/accounts-receivable')
     expect(bankReturnPaymentsPath('a b')).toBe('/jobs?tab=stages&edit=a%20b&editFocus=payments')
+  })
+})
+
+describe('the notice for a card dispute or a failed bank debit on a Stripe bill (v2.4950)', () => {
+  const stripeRow = (over: Partial<ArReturnCaseRow> = {}, sc: Partial<NonNullable<ArReturnCaseRow['stripe_case']>> = {}): ArReturnCaseRow => ({
+    mercury_transaction_id: 'case-1',
+    counterparty_name: 'Heron Construction',
+    amount: 500,
+    kind: 'card',
+    posted_at: null,
+    failed_at: '2026-10-08T15:00:00Z',
+    bank_reason: 'fraudulent',
+    source: 'stripe_dispute',
+    opened_at: '2026-10-08T15:00:05Z',
+    closed_at: null,
+    closed_reason: null,
+    closed_note: null,
+    closed_by: null,
+    replaced_by_mercury_transaction_id: null,
+    notified_at: null,
+    live_payments: [],
+    last_job: null,
+    recorded_payment: { payment_id: 'pay-1', job_id: 'job-878', job_number: '878', job_name: 'Take 5 Seguin', amount: 500, paid_on: '2026-09-24' },
+    promise: null,
+    ...over,
+    stripe_case: {
+      kind: 'dispute',
+      object_id: 'dp_1',
+      mode: 'test',
+      status: 'needs_response',
+      due_by: '2026-10-20T05:00:00Z',
+      lost_at: null,
+      lost_notified_at: null,
+      amount: 500,
+      invoice_id: 'inv-1',
+      invoice_sequence_order: 1,
+      invoice_status: 'paid',
+      job_id: 'job-878',
+      job_number: '878',
+      job_name: 'Take 5 Seguin',
+      payment_live: true,
+      ...sc,
+    },
+  })
+  const plain = (lines: string[]) => expect(helpGuidePlainWordsFailures(`---\ntitle: x\n---\n${lines.join(' ')}\n`)).toEqual([])
+
+  it('a dispute: who, how much, the bill, their reason, the money held, the job that reads paid, the day to answer by', () => {
+    const input = noticeInputFromCase(stripeRow(), 'https://clicktooling.com')
+    expect(input.situation).toBe('stripe_dispute')
+    expect(bankReturnNoticeLine(input)).toBe('Heron Construction disputed a $500 card payment.')
+    const sentences = bankReturnNoticeSentences(input)
+    expect(sentences).toEqual([
+      'It was for bill 2 on J878 Take 5 Seguin.',
+      'They say they did not make the payment.',
+      'Stripe took the money back while the dispute runs.',
+      'J878 still reads paid.',
+      'Answer it in Stripe by Oct 20.',
+    ])
+    plain(sentences)
+    expect(bankReturnNoticeSubject(input)).toBe('A card payment was disputed · Heron Construction · $500')
+    expect(bankReturnNoticeLinks(input)).toEqual([
+      { label: 'Open it in Accounts Receivable', path: '/accounts-receivable?check=case-1' },
+      { label: 'Open J878 Take 5 Seguin', path: bankReturnPaymentsPath('job-878') },
+    ])
+    expect(buildBankReturnNoticePush(input, 'case-1')).toMatchObject({ title: 'A card payment was disputed · $500', body: 'Heron Construction. J878 Take 5 Seguin still reads paid.', url: '/accounts-receivable?check=case-1' })
+  })
+
+  it('lost: Stripe keeps the money, the job still reads paid, put the bill back', () => {
+    const input = noticeInputFromCase(stripeRow({ notified_at: '2026-10-08T15:01:00Z' }, { status: 'lost', lost_at: '2026-11-02T15:00:00Z' }), 'https://clicktooling.com')
+    expect(input.situation).toBe('stripe_dispute_lost')
+    expect(bankReturnNoticeLine(input)).toBe('Heron Construction won the dispute over a $500 card payment.')
+    const sentences = bankReturnNoticeSentences(input)
+    expect(sentences).toEqual(['It was for bill 2 on J878 Take 5 Seguin.', 'Stripe keeps the money.', 'J878 still reads paid.', 'Put the bill back in Accounts Receivable. Then bill it again.'])
+    plain(sentences)
+    expect(bankReturnNoticeSubject(input)).toBe('A card dispute was lost · Heron Construction · $500')
+  })
+
+  it('a failed bank debit: the bill is still open, Stripe\'s words, ask for another payment', () => {
+    const input = noticeInputFromCase(
+      stripeRow({ source: 'stripe_debit', kind: 'bank debit', bank_reason: 'The customer\'s account has insufficient funds.', recorded_payment: null }, { kind: 'debit_failed', object_id: 'pi_1', status: 'failed', due_by: null, invoice_status: 'billed', payment_live: false }),
+      'https://clicktooling.com',
+    )
+    expect(input.situation).toBe('stripe_debit')
+    expect(bankReturnNoticeLine(input)).toBe('A $500 bank payment from Heron Construction did not go through.')
+    const sentences = bankReturnNoticeSentences(input)
+    expect(sentences).toEqual([
+      'It was for bill 2 on J878 Take 5 Seguin.',
+      'Stripe says: The customer\'s account has insufficient funds.',
+      'The bill is still open. Heron Construction may think it is paid.',
+      'Ask Heron Construction for another payment.',
+    ])
+    plain(sentences)
+    expect(buildBankReturnNoticePush(input, 'case-1')).toMatchObject({ title: 'A bank payment did not go through · $500', body: 'Heron Construction. Bill 2 on J878 Take 5 Seguin is still open.' })
+  })
+
+  it('told once when it opens, and a dispute once more when it is lost; the claim is the case row\'s own', () => {
+    const opened = stripeRow()
+    expect(arCaseNoticeDue(opened)).toBe(true)
+    expect(arCaseNoticeClaim(opened)).toEqual({ table: 'ar_stripe_cases', column: 'notified_at' })
+    const told = stripeRow({ notified_at: '2026-10-08T15:01:00Z' })
+    expect(arCaseNoticeDue(told)).toBe(false)
+    const lost = stripeRow({ notified_at: '2026-10-08T15:01:00Z' }, { lost_at: '2026-11-02T15:00:00Z' })
+    expect(arCaseNoticeDue(lost)).toBe(true)
+    expect(arCaseNoticeClaim(lost)).toEqual({ table: 'ar_stripe_cases', column: 'lost_notified_at' })
+    expect(arCaseNoticeDue(stripeRow({ notified_at: '2026-10-08T15:01:00Z' }, { lost_at: '2026-11-02T15:00:00Z', lost_notified_at: '2026-11-02T15:01:00Z' }))).toBe(false)
+    // Opened already lost: the one notice is the lost one, and it fills both columns.
+    expect(arCaseNoticeClaim(stripeRow({}, { lost_at: '2026-11-02T15:00:00Z' }))).toEqual({ table: 'ar_stripe_cases', column: 'lost_notified_at' })
+    // The checks keep their own claims.
+    expect(arCaseNoticeClaim({ ...opened, source: 'unbanked' })).toEqual({ table: 'ar_unbanked_check_cases', column: 'notified_at' })
+    expect(arCaseNoticeClaim({ ...opened, source: 'bank', stripe_case: null })).toEqual({ table: 'mercury_bank_return_notices' })
+    expect(arCaseNoticeDue({ ...opened, source: 'bank', stripe_case: null, notified_at: '2026-10-01T00:00:00Z' })).toBe(false)
   })
 })
