@@ -42,6 +42,7 @@
     "src/utils/dateUtils.ts",
     "src/utils/errorHandling.ts",
     "supabase/functions/_shared/customerSample.ts",
+    "supabase/functions/_shared/gcTradeEmail.ts",
     "supabase/functions/_shared/gcTradeLink.ts",
     "supabase/functions/_shared/gcTradePortalSample.ts",
     "supabase/functions/_shared/gcTradePortalSlice.ts",
