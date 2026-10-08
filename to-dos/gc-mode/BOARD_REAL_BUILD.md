@@ -583,6 +583,15 @@ before B6 is cut, and the standalone `gc_sows` alternative stays open until then
   - `boardRows.ts` maps the company record, the asks, quotes, call log and promises to the kernels' shapes.
   - `GcBoard.tsx` draws the stages, the strip, the rows and a read-only price card, dev only above door 1's list.
   - The guide is `see-where-every-gc-project-stands`.
+- **B3-a** is clickconstruction/pipetooling.github.io#4919 (v2.4889), armed.
+- **B3-b** is clickconstruction/pipetooling.github.io#4928 (v2.4896), a draft stacked on #4919 and armed once #4919 merges. It is Trade partners, dev only behind a Project Board | Trade partners switch on `/gc`.
+  - The New to us box approves, approves up to an amount, or declines through `gc_vet_company`.
+  - Each trade's card has its companies and the projects short of quotes. **Add a company** goes through `gc_add_company`, and the address and miles are a plain update.
+  - The guides are `add-a-trade-partner` and `approve-a-company-new-to-us`.
+  - The company window's About, with language and people, moves to **B3-c**, after #4857 lands the Portal's `contactGets`. B4 comes before it, at the lead's word.
+- **Test rows on prod (rule 5), kept for P1b's link mint and B4's Ask check, swept at call 13:**
+  - `gc_companies` `ff11d0fb-269e-44de-b92a-e7256c180f67`, "GC test trade company, delete me". It does Concrete, its contact is "Test contact" at gc-test-trade@example.com, and it drives from 200 Main St, Boerne, up to 50 miles.
+  - It was added through B3-b's Add a company as a dev on 2026-10-08. It was approved up to $50,000 with a note, then its miles were changed from 60 to 50. Each step was read back from the table.
 - **Left for B2b:** the call list and counts, a customer's activity, documents and money, and By customer.
 - **Moved to B5:** `gcStale`.
 - **Moved to B6:** `gcTheirSov`, at the Portal's ask.
