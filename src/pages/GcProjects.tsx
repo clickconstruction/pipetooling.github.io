@@ -25,7 +25,7 @@ import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
 import { GcMoney } from '../components/gc/GcMoney'
 import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
-import { openQuestions, type PlanQuestionView } from '../lib/gc/questions'
+import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
 import { emailTheAnswer } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
@@ -45,6 +45,7 @@ import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcC
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
+import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient, type SetEmailResult } from '../lib/gc/setEmail'
 import {
   addGcCompany,
   askGcCompanies,
@@ -86,6 +87,8 @@ import {
   setGcCompanyCoverage,
   setGcCompanyLanguage,
   vetGcCompany,
+  loadSetEmailParties,
+  sendSetEmails,
   type GcPickerCustomer,
   type GcTeamMember,
   loadGcBillingRows,
@@ -144,6 +147,36 @@ export default function GcProjects() {
   const [questionProblem, setQuestionProblem] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [issueProblem, setIssueProblem] = useState<string | null>(null)
+  /** Step 7: who was asked on the project in the new-plans window, read when it opens. */
+  const [setParties, setSetParties] = useState<{ invites: SetEmailInvite[]; companies: SetEmailCompany[] } | null>(null)
+  /** Step 7: a set that is on, while some of its emails did not go out. */
+  const [pendingSends, setPendingSends] = useState<{
+    setId: string
+    projectId: string
+    set: { label: string; project: string; note: string; sheets: string[]; quoteDueOn: string | null }
+    recipients: SetEmailRecipient[]
+    results: SetEmailResult[]
+  } | null>(null)
+  // A report belongs to the window it was made in: a window on another project, or none, starts clean.
+  useEffect(() => {
+    setPendingSends(null)
+    setSetParties(null)
+  }, [setProjectId])
+  useEffect(() => {
+    const packageIds = setProjectId ? (loaded?.projects.find((p) => p.id === setProjectId)?.trades.map((t) => t.id) ?? []) : []
+    if (packageIds.length === 0) return
+    let live = true
+    void loadSetEmailParties(packageIds)
+      .then((parties) => {
+        if (live) setSetParties(parties)
+      })
+      .catch(() => {
+        // Not readable for this role yet (the Board's tables are dev only until door 2): nobody hears.
+      })
+    return () => {
+      live = false
+    }
+  }, [setProjectId, loaded])
 
   const load = useCallback(async () => {
     try {
@@ -849,8 +882,28 @@ export default function GcProjects() {
           today={today}
           issuing={issuing}
           problem={issueProblem}
+          parties={setParties}
+          canSend={canSendGcTradeEmail(role)}
+          sendReport={pendingSends ? { summary: setEmailSummary(pendingSends.results), failed: pendingSends.results.filter((r) => r.outcome === 'failed').length } : null}
+          onRetrySends={() => {
+            if (!pendingSends) return
+            const again = pendingSends.recipients.filter((r) => pendingSends.results.some((x) => x.companyId === r.companyId && x.outcome === 'failed'))
+            setIssuing(true)
+            void sendSetEmails({ setId: pendingSends.setId, projectId: pendingSends.projectId, set: pendingSends.set, recipients: again })
+              .then((retried) => {
+                const results = pendingSends.results.map((r) => retried.find((x) => x.companyId === r.companyId) ?? r)
+                if (results.some((r) => r.outcome === 'failed')) setPendingSends({ ...pendingSends, results })
+                else {
+                  setPendingSends(null)
+                  setSetWindow(null)
+                  showToast(setEmailSummary(results), 'success')
+                }
+              })
+              .catch((e) => showToast(formatErrorMessage(e, 'The emails did not go out.'), 'error'))
+              .finally(() => setIssuing(false))
+          }}
           onClose={() => setSetWindow(null)}
-          onIssue={(draft) => {
+          onIssue={(draft, emailTo) => {
             setIssuing(true)
             setIssueProblem(null)
             void (async () => {
@@ -864,10 +917,18 @@ export default function GcProjects() {
                   drive = { url: drive.url, access: null, checkedOn: null }
                 }
               }
-              await issuePlanSet({ ...draft, ...(drive ? { drive } : {}) })
+              const setId = await issuePlanSet({ ...draft, ...(drive ? { drive } : {}) })
+              // Step 7: the set is on; now each company asked on the job hears, once.
+              let results: SetEmailResult[] = []
+              const set = { label: draft.label, project: setProject.name, note: draft.note, sheets: draft.sheets, quoteDueOn: questionsCloseOn(setProject) }
+              if (emailTo.length > 0) results = await sendSetEmails({ setId, projectId: setProject.id, set, recipients: emailTo })
               await load()
+              if (results.some((r) => r.outcome === 'failed')) {
+                setPendingSends({ setId, projectId: setProject.id, set, recipients: emailTo, results })
+                return
+              }
               setSetWindow(null)
-              showToast(`${draft.label} is on ${setProject.name}.`, 'success')
+              showToast(`${draft.label} is on ${setProject.name}.${results.length > 0 ? ` ${setEmailSummary(results)}` : ''}`, 'success')
             })()
               .catch((e) => setIssueProblem(formatErrorMessage(e, 'The set was not put on the project.')))
               .finally(() => setIssuing(false))
