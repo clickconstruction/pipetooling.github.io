@@ -3,7 +3,7 @@ import type { User } from '@supabase/supabase-js'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
-import { isPayRosterRow, type PayRosterIndex } from '../../lib/people/rosterPeople'
+import { isArchivedRosterRef, isPayRosterRow, type ArchivedRoster, type PayRosterIndex } from '../../lib/people/rosterPeople'
 import { parseReviewDoor, reviewDoorPersonIndex } from '../../lib/people/reviewDoor'
 import { computeReviewDateRange, reviewPeriodLabel, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
 import { buildTeamSummaryCacheKey } from '../../lib/people/teamSummaryCacheKey'
@@ -44,7 +44,8 @@ import { PeopleReviewMathDrawer } from './review/PeopleReviewMathDrawer'
 
 export type PeopleReviewTabProps = {
   payConfig: Record<string, PayConfigRow>
-  archivedUserNames: ReadonlySet<string>
+  /** Who is archived (`buildArchivedRoster`): a pay row's `person_id` decides before its name (#29 item 3, v2.4910). */
+  archived: ArchivedRoster
   /** People spine (v2.3698): the roster view's verdict per pay row on top of the archived names; null = no verdict. */
   payRoster: PayRosterIndex | null
   authUser: User | null
@@ -64,7 +65,7 @@ export type PeopleReviewTabProps = {
 
 export default function PeopleReviewTab({
   payConfig,
-  archivedUserNames,
+  archived,
   payRoster,
   authUser,
   isDev,
@@ -180,12 +181,12 @@ export default function PeopleReviewTab({
   const showPeopleForReview = useMemo(
     () =>
       [...Object.keys(payConfig)]
-        .filter((n) => !archivedUserNames.has(n.trim()))
+        .filter((n) => !isArchivedRosterRef(archived, { name: n, person_id: payConfig[n]?.person_id ?? null }))
         // v2.3698: plus the roster view's verdict — not a twin, not a sample, neither half archived.
         .filter((n) => isPayRosterRow(payRoster, { person_name: n, person_id: payConfig[n]?.person_id ?? null }))
         .filter((n) => !externalOnlyPayConfigNamesLower.has(n.trim().toLowerCase()))
         .sort((a, b) => a.localeCompare(b)),
-    [payConfig, archivedUserNames, payRoster, externalOnlyPayConfigNamesLower]
+    [payConfig, archived, payRoster, externalOnlyPayConfigNamesLower]
   )
   useEffect(() => {
     const door = reviewDoorRef.current
