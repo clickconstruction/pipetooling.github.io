@@ -110,12 +110,15 @@ on its own: each reads what `loadSchedule` laid over the board.
    the chart's company (`company`, `onCompany`, G-13) from the start, so 7b plugs in without touching
    `GcGantt`. *My pick:* 7b after PR 7. *The other way:* all in PR 7, about 1,200 lines more.
 6. **`lift-same.cjs` reads a `.tsx`.** Today it adds `.ts` to each `from`. It needs one line on the
-   spike's script so the components' lift is checked like the kernels'. *My pick:* so; it is Helper
+   spike's script so the components' lift is checked like the kernels'. `lift-extract.cjs` stays as
+   it is: the components are placed by a script of their own. *My pick:* so; it is Helper
    7's script, for their nod. *The other way:* the components are diffed by hand in the PR body.
 
 ## What lifts, and the check that it is word for word
 
-Two configs on the spike, run with `lift-extract.cjs` to place them and `lift-same.cjs` to check them:
+Two configs on the spike, each checked with `lift-same.cjs`. The kernels are placed with
+`lift-extract.cjs`. It reads only `.ts`, so the components are placed by a script that moves each
+declaration by name with its comment and re-points the imports, as G-130's move was made:
 - `schedule-pr7.lift.json`, for the kernels. `gcChartHolds` goes to `schedule/chartHolds.ts` with
   `gcChartHolds.test.ts`, and `gcDownloadFile` to `downloadFile.ts`.
 - `schedule-pr7-ui.lift.json`, for the components (`spikeDir` and `mainBase` both
