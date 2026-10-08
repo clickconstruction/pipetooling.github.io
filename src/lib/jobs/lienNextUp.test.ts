@@ -3,7 +3,7 @@ import type { LienDeskEntry, LienDeskPile } from './lienDesk'
 import type { LienAffidavitEntry, LienAffidavitPile } from './lienDeskAffidavits'
 import type { LienRetainageEntry, LienRetainagePile } from './lienDeskRetainage'
 import type { LetterTwoStatus } from './lienLetterTwo'
-import { buildLienNextUp, groupLienNextUp, type LienNextUpInput } from './lienNextUp'
+import { buildLienNextUp, groupLienNextUp, lienPrintedDaysWords, type LienNextUpInput } from './lienNextUp'
 
 const TODAY = '2026-10-05'
 
@@ -169,5 +169,41 @@ describe('buildLienNextUp — the late notice (v2.4708)', () => {
     const rows = build({ notices: [closedOnly()], affidavits: [affidavit('j1', 'needs_property', { deadline: '2026-09-15', daysLeft: -20, severity: 'red', gates: gates(false, false) })] })
     expect(rows.find((r) => r.kind === 'notice')!.action).toBe('note_missed')
     expect(rows.find((r) => r.kind === 'affidavit')!.action).toBe('fix_property')
+  })
+})
+
+describe('buildLienNextUp — the printed run is one row (punch list #101)', () => {
+  const printedItem = (at: string) => ({ id: `i-${at}`, status: 'approved', printed_at: at }) as unknown as LienDeskEntry['item']
+  it('two or more printed notices fold into one run row, dated by the earliest, naming its jobs in order', () => {
+    const rows = build({
+      notices: [
+        notice('j1', 'printed', { item: printedItem('2026-10-07T16:00:00Z'), earliestDeadline: '2026-11-15', daysLeft: 41, severity: 'quiet' }),
+        notice('j2', 'printed', { item: printedItem('2026-10-07T17:00:00Z'), earliestDeadline: '2026-10-15', daysLeft: 5, severity: 'red' }),
+        notice('j3', 'printed', { item: printedItem('2026-10-07T18:00:00Z'), earliestDeadline: null, daysLeft: null }),
+        notice('j4', 'ready'),
+      ],
+    })
+    expect(rows.map((r) => r.key).sort()).toEqual(['notice:j4', 'run:printed'])
+    const run = rows.find((r) => r.key === 'run:printed')!
+    expect([run.kind, run.jobId, run.gcId, run.title, run.dueOn, run.daysLeft, run.severity, run.group]).toEqual(['notice', null, null, '3 notices printed Oct 7', '2026-10-15', 5, 'red', 'now'])
+    expect(run.sub).toBe('Mailed? Type each envelope’s number. Not mailing them? Take the run back.')
+    expect([run.action, run.button]).toEqual(['record_mailing', 'Record the mailing'])
+    expect(run.target).toEqual({ open: 'run', gcId: null })
+    expect(run.secondary).toEqual({ words: 'Take back…', target: { open: 'run', gcId: null, takeBack: true } })
+    expect(run.jobs).toEqual([
+      { jobId: 'j2', title: 'Job j2', dueOn: '2026-10-15' },
+      { jobId: 'j1', title: 'Job j1', dueOn: '2026-11-15' },
+      { jobId: 'j3', title: 'Job j3', dueOn: null },
+    ])
+  })
+  it('one printed notice keeps its own row; a role that cannot act gets no buttons', () => {
+    expect(one({ notices: [notice('j1', 'printed')] }).action).toBe('add_tracking')
+    const run = one({ notices: [notice('j1', 'printed'), notice('j2', 'printed')], role: 'estimator' })
+    expect([run.button, run.secondary]).toEqual([null, null])
+  })
+  it('the printed days: one, a span, or none', () => {
+    expect(lienPrintedDaysWords(['2026-10-07T16:00:00Z', '2026-10-07T20:00:00Z'])).toBe('printed Oct 7')
+    expect(lienPrintedDaysWords(['2026-10-08T16:00:00Z', null, '2026-10-07T16:00:00Z'])).toBe('printed Oct 7 to Oct 8')
+    expect(lienPrintedDaysWords([null])).toBe('printed')
   })
 })

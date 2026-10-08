@@ -410,6 +410,8 @@ export default function LienDeskModal({
   const [kindBusy, setKindBusy] = useState(false)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
+  // The run row's Take back… (punch list #101) opens the run on its confirm.
+  const [runTakeBack, setRunTakeBack] = useState(false)
   // Share where the liens stand (v2.4311): the title bar's panel; the numbers are read each time it opens.
   const [shareOpen, setShareOpen] = useState(false)
   useEffect(() => {
@@ -646,7 +648,18 @@ export default function LienDeskModal({
     const at = paperRows.findIndex((r) => r.key === paperFilledFrom.key)
     if (at >= 0) setPaperOpen((cur) => (cur == null || cur === at ? cur : at))
   }, [paperRows, paperFilledFrom])
-  const nextUpRowsFound = useMemo(() => (finding ? nextUpRows.filter((r) => lienFindMatch(r.jobId ? findFactsFor(r.jobId, r.gcId, [r.title, r.sub]) : { shown: [r.title, r.sub], hidden: [] }, findWords).ok) : nextUpRows), [nextUpRows, finding, findWords, findFactsFor])
+  // A run row (punch list #101) is found by any job inside it.
+  const nextUpRowsFound = useMemo(
+    () =>
+      finding
+        ? nextUpRows.filter(
+            (r) =>
+              lienFindMatch(r.jobId ? findFactsFor(r.jobId, r.gcId, [r.title, r.sub]) : { shown: [r.title, r.sub], hidden: [] }, findWords).ok ||
+              (r.jobs ?? []).some((j) => lienFindMatch(findFactsFor(j.jobId, null, [j.title]), findWords).ok),
+          )
+        : nextUpRows,
+    [nextUpRows, finding, findWords, findFactsFor],
+  )
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -750,6 +763,7 @@ export default function LienDeskModal({
     const t = row.target
     setMobileListShown(false)
     if (t.open === 'run') {
+      setRunTakeBack(Boolean(t.takeBack))
       setRunOpen(true)
     } else if (t.open === 'lien_window') {
       ;(onOpenLienAffidavit ?? onOpenLienInstruments)(t.jobId)
@@ -3196,7 +3210,7 @@ export default function LienDeskModal({
           {kind === 'next' ? (
             <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
@@ -3342,7 +3356,11 @@ export default function LienDeskModal({
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}
-          onClose={() => setRunOpen(false)}
+          onClose={() => {
+            setRunOpen(false)
+            setRunTakeBack(false)
+          }}
+          openOnTakeBack={runTakeBack}
           onRecorded={onChanged}
         />
       ) : null}

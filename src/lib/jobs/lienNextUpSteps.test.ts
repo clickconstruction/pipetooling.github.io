@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienNextUpRow } from './lienNextUp'
-import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, lienStepTiles } from './lienNextUpSteps'
+import { countLienSteps, lienLaddersShown, lienStepCard, lienStepOfRow, lienStepTiles, lienRunRungWords } from './lienNextUpSteps'
 
 const row = (over: Partial<LienNextUpRow>): LienNextUpRow => ({
   key: 'notice:j1', kind: 'notice', jobId: 'j1', gcId: 'gc1', title: '650 · ATI Schertz', sub: 'Notice to draft', dueOn: '2026-10-15', daysLeft: 10, severity: 'amber', group: 'coming', action: 'draft', button: 'Draft notice', target: { open: 'notices', jobId: 'j1', pile: 'to_draft' },
@@ -99,5 +99,19 @@ describe('lienStepTiles (v2.4881)', () => {
     expect(lienStepTiles({ ladder: 'notice', step: 2 }, 'notice', false)![1]!.who).toBe('you')
     expect(lienStepTiles({ ladder: 'affidavit', step: 4 }, 'affidavit', false)!.map((t) => t.label)).toEqual(['Property', 'Drafted', 'Approve', 'File'])
     expect(lienStepTiles(null, 'notice', true)).toBeNull()
+  })
+})
+
+describe('the printed run on the ladder (punch list #101)', () => {
+  it('stands on step 4, and its card says it printed and asks whether it was mailed', () => {
+    const r = { key: 'run:printed', kind: 'notice', jobId: null, gcId: null, title: '19 notices printed Oct 7', sub: '', dueOn: '2026-10-15', daysLeft: 7, severity: 'red', group: 'now', action: 'record_mailing', button: 'Record the mailing', target: { open: 'run', gcId: null } } as const
+    expect(lienStepOfRow(r)).toEqual({ ladder: 'notice', step: 4 })
+    const card = lienStepCard({ ...r })
+    expect(card.items[3]).toEqual({ state: 'now', title: 'Record the mailing', detail: 'Printed Oct 7. Mailed? Type each envelope’s number in the run. Not mailing them? Take the run back.' })
+  })
+  it('the run rung says ready, printed, or both', () => {
+    expect(lienRunRungWords(3, 0)).toBe(' ready')
+    expect(lienRunRungWords(19, 19)).toBe(' printed')
+    expect(lienRunRungWords(22, 19)).toBe(' · 19 printed')
   })
 })
