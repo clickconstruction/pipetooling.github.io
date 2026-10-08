@@ -59,14 +59,14 @@ export function GcScheduleExport({ input, onClose }: { input: Omit<GanttExportIn
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Export the schedule"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 560, maxWidth: '100%', boxSizing: 'border-box', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.8rem', fontSize: '0.9rem' }}
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 560, maxWidth: '100%', boxSizing: 'border-box', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.8rem', fontSize: '0.9rem' }}
       >
         <div style={{ display: 'grid', gap: '0.15rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Export the schedule</h3>
