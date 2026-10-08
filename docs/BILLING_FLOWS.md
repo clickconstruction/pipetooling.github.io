@@ -283,7 +283,7 @@ Edit Job Bill tab — the payment lines under each bill and ③ Other money on t
 
 ## Billing-only jobs (v2.4958)
 
-`jobs_ledger.billing_only` marks a job that only carries bills: GC mode's billing job for a project we build (Owner Billing's O4a sets it). Its bills follow every rule on this page. The difference is the crew side:
+`jobs_ledger.billing_only` marks a job that only carries bills: GC mode's billing job for a project we build (Owner Billing's O4a sets it; see *GC mode: a project's billing job* below). Its bills follow every rule on this page. The difference is the crew side:
 - clock sessions, schedule blocks and crew members on it are refused by trigger;
 - `search_jobs_ledger` leaves it out unless a caller passes `include_billing_only` (the money and office searches);
 - My Schedule's **+ Add job** never lists it, and neither do the dispatch board, Job Tally's office list, `/map` or the follow-up queue (v2.4972);
@@ -291,6 +291,22 @@ Edit Job Bill tab — the payment lines under each bill and ③ Other money on t
 - the flag cannot be turned off.
 
 Its service type carries `service_types.billing_only`, which keeps it out of the crew, bid, materials and supply-house pickers (`pickableServiceTypes`, v2.4972). Migration `20261009130000_billing_only_jobs.sql`.
+
+## GC mode: a project's billing job (v2.4984)
+
+A GC project we build bills its customer through one Pipeline job, its **billing job** (`gc_projects.billing_job_id`), a billing-only job (above). Every bill on it uses this page's machinery as it is: the statement and **Pay**, Stripe, payments, promises, the chase list and the waiver train.
+
+- **Opened by the first pay application** (`gc_send_owner_pay_app`), never before:
+  - billing-only, `working`, named "<project> (GC)";
+  - for the project's customer, with no `project_id` (a superintendent's project would list it);
+  - the company owner as master, the next job number, and the billing-only "General contracting" service type, found by its flag.
+- **Revenue is kept at the contract**, the signed lines and every signed change order (`gc_owner_contract_now`), by every send and every certificate. `mark_invoice_paid` marks a job paid once payments reach its revenue, so a short revenue would close it early.
+- **A bill is made by the architect's certificate** (`gc_record_certificate`), for what they certified:
+  - inserted already `billed`, `billed_at` at noon Central on the certificate day, the next `sequence_order`;
+  - no bill-to columns: the payer comes from the job's customer when it sends (`billToParty.ts`);
+  - the pay application keeps its link (`gc_owner_pay_apps.invoice_id`) once, and a certificate of nothing makes no bill.
+- **Our record stays ours.** The pay application and its lines, with our fee and contingency as lines of their own, are on `gc_owner_pay_apps` and `gc_owner_pay_app_lines`, the money team's (dev, the leaders, the controller). The bill carries only the amount the customer owes.
+- Payments, promises and our unconditional waivers on these bills are O5c's, through the Pipeline's own RPCs on the billing job. Migration `20261009200000_gc_owner_pay_app_send.sql`.
 
 ## System of record (the 2026-08-24 policy)
 
