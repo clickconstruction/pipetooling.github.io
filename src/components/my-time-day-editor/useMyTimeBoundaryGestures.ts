@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   clampStripY,
   cloneSplitState,
+  clusterSharesClockSessionClusterRpcMetadata,
   clusterStripRangeMs,
   finalizeInnerBoundaryMsForCluster,
   internalRowJoinMs,
@@ -387,7 +388,11 @@ export function useMyTimeBoundaryGestures({
         const prevB = next.boundaries[idx - 1]!
         const nextB = next.boundaries[idx + 1]!
         const fin = finalizeInnerBoundaryMsForCluster(c, prevB, nextB, ms, nowTick)
-        if (fin !== ms) {
+        // A minute off a row join is still inside its 60 s snap: keep the press when the snap would put
+        // the boundary back where it started. Only rows that share metadata snap; a mixed cluster's
+        // finalize keeps each segment inside its row and stands.
+        const snapUndoesPress = fin === split.boundaries[idx] && clusterSharesClockSessionClusterRpcMetadata(c)
+        if (fin !== ms && !snapUndoesPress) {
           next = splitReducer(next, { type: 'drag', index: idx, ms: fin })
         }
       }

@@ -8,7 +8,7 @@ covers:
   - src/components/DashboardMyTimeDayEditorModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-07
+last_updated: 2026-10-08
 ---
 
 ## Overview
@@ -333,7 +333,7 @@ Re-ranked at a05cef4c4 — the order holds; what changed is that the lib-test ga
 4. ~~**Reject dialog** → `MyTimeRejectSessionDialog` (120 lines JSX only; handlers stay shell).~~ **done v2.3946** (−110 lines).
 5. ~~**Job/bid labels** → `useMyTimeJobBidLabels` (fully self-contained); **salary prefetch** → `useMyTimeSalaryPrefetch` (one shared write, the nonce) — independent vertical hooks.~~ **done v2.3967** (−206 lines, with the rules in `lib/myTimeJobBidLabels.ts` and `lib/myTimeSalaryPrefetch.ts`).
 6. ~~**Save-engine seam** → `persistDirtyChangesAsync` verbatim into `lib/myTimeDayPersist.ts` (explicit inputs, RPC trio injected in the `MyTimeClusterPersistRpcsForAssign` shape) — after step 1's tests exist. Highest risk; its own PR.~~ **done v2.4021** (−273 lines, 64 tests). Still to do: a parity test against `persistMyTimeClusterAndGetSegmentIds` before any convergence. Quirk 25 was fixed in v2.4023.
-7. ~~**Split editor + gestures** → `useMyTimeSplitEditor` (the store, the seed and tick effects, `patchCluster` and its merge guard, the inner-boundary drag and commit, and the merge-choice handlers of region 5) + `useMyTimeBoundaryGestures` (the drag and strip-tap refs and the pointer plumbing, writing the store only through the setters and refs the split hook hands out)~~ **done v2.4901** (−228 lines, 7 tests) and **v2.4908** (−331 lines, 10 tests). Found on the way: the Arrow keys cannot move a boundary on a row join (the finalize snaps it back within `ROW_JOIN_SNAP_MS`); pinned by a test, the fix ships apart.
+7. ~~**Split editor + gestures** → `useMyTimeSplitEditor` (the store, the seed and tick effects, `patchCluster` and its merge guard, the inner-boundary drag and commit, and the merge-choice handlers of region 5) + `useMyTimeBoundaryGestures` (the drag and strip-tap refs and the pointer plumbing, writing the store only through the setters and refs the split hook hands out)~~ **done v2.4901** (−228 lines, 7 tests) and **v2.4908** (−331 lines, 10 tests). Found on the way: the Arrow keys could not move a boundary on a row join (the finalize snapped it back within `ROW_JOIN_SNAP_MS`); **fixed v2.4944**, the nudge keeps its minute when the snap would undo it.
 8. **Session data engine** → `useMyTimeDaySessions` (shell keeps and destructures it); then the timeline body collapses into `MyTimeDayTimelineBody`.
 
 **What must stay in the parent (shell), permanently:** the props contract + edit-window gating (fence, prior-week ack, `clockTimesReadOnly` forks), `sessionsFetchNonce` ownership (or its `onSessionsInvalidated` successor), the `closeTopmostSubFlow` registry, `requestSave`/`requestDiscard` + the discard confirm state, `saving`/`error`, the `onSaved`/`onLinkedSessionsUpdated`/`onClose` plumbing, the layout-mode toggle, the sub-modal mounts opened from both cluster layouts (merge, assign, force clock-out, adjust times, add session), and both footers.

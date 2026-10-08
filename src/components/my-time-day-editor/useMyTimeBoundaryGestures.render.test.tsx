@@ -48,12 +48,12 @@ const NO_LABELS: Record<string, string> = {}
 
 type Props = { allowTimelineEdits?: boolean; saving?: boolean; layoutMode?: 'visual' | 'form' }
 
-function mount(initialProps: Props = {}) {
+function mount(initialProps: Props = {}, sessions: DayEditorSession[] = SESSIONS) {
   const showToast = vi.fn()
   const hook = renderHook(
     (p: Props) => {
       // Built the way DashboardMyTimeDayEditorModal builds them, the split store first.
-      const sortedSessions = SESSIONS
+      const sortedSessions = sessions
       const sessionsKey = useMemo(() => sortedSessions.map((s) => `${s.id}:${s.clocked_in_at}:${s.clocked_out_at}`).join('|'), [sortedSessions])
       const sessionClusters = useMemo(
         () => expandClustersSplitPairwiseOverlaps(groupTimeContiguousSessionClusters(sortedSessions), NOW),
@@ -240,13 +240,32 @@ describe('useMyTimeBoundaryGestures', () => {
     expect(result.current.splitByCluster['a|b']!.boundaries[1]).toBe(ms('16:00:00'))
   })
 
-  it('a nudge off a row join snaps straight back onto it, so the keys cannot move a join (today’s behaviour)', () => {
+  it('the Arrow keys move a boundary off a row join, and a step that ends within a minute of it lands on it', () => {
     const { result } = mount()
+    const at = () => result.current.splitByCluster['a|b']!.boundaries[1]
     act(() => result.current.setFocusedHandle({ clusterId: 'a|b', index: 1 }))
+    // Before v2.4944 the 60 s snap put it straight back on 16:00, so the keys could not move a join.
     act(() => result.current.handleStripKeyDown('a|b', key('ArrowUp')))
+    expect(at()).toBe(ms('15:59:00'))
+    act(() => result.current.handleStripKeyDown('a|b', key('ArrowUp')))
+    expect(at()).toBe(ms('15:58:00'))
+    act(() => result.current.handleStripKeyDown('a|b', key('ArrowDown'))) // 15:59 is a minute off the join
+    expect(at()).toBe(ms('16:00:00'))
     act(() => result.current.handleStripKeyDown('a|b', key('ArrowDown')))
-    act(() => result.current.handleStripKeyDown('a|b', key('ArrowDown')))
-    expect(result.current.splitByCluster['a|b']!.boundaries[1]).toBe(ms('16:00:00'))
+    expect(at()).toBe(ms('16:01:00'))
+  })
+
+  it('a mixed cluster’s seam still moves a minute each way', () => {
+    const salary = row('s', '14:00:00', '16:00:00', { origin: 'salary_schedule', salary_segment_index: 1 })
+    const punch = row('p', '16:00:00', '18:00:00')
+    const { result } = mount({}, [salary, punch])
+    const at = () => result.current.splitByCluster['s|p']!.boundaries[1]
+    act(() => result.current.setFocusedHandle({ clusterId: 's|p', index: 1 }))
+    act(() => result.current.handleStripKeyDown('s|p', key('ArrowUp')))
+    expect(at()).toBe(ms('15:59:00'))
+    act(() => result.current.handleStripKeyDown('s|p', key('ArrowDown')))
+    act(() => result.current.handleStripKeyDown('s|p', key('ArrowDown')))
+    expect(at()).toBe(ms('16:01:00'))
   })
 
   it('switching Visual and Form ends a drag where it got to, drops a tap and clears the focus', () => {
