@@ -46,6 +46,7 @@
     "test:pg:card-charges-window": "bash scripts/pgtest-card-charges-window.sh",
     "test:pg:bid-changes": "bash scripts/pgtest-bid-changes.sh",
     "test:pg:gc-schedule": "bash scripts/pgtest-gc-schedule.sh",
+    "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",

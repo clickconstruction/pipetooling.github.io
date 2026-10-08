@@ -83,12 +83,27 @@ export async function sendReturnCaseNotice(
     return { sent: false, reason: 'dry_run' }
   }
 
-  // Insert first: the row IS the decision to send. 23505 = the office already heard about this deposit.
-  const { error: ledgerErr } = await admin
-    .from('mercury_bank_return_notices')
-    .insert({ mercury_transaction_id: row.mercury_transaction_id, payment_ids: (row.live_payments ?? []).map((p) => p.payment_id) })
-  if (ledgerErr && isUniqueViolation(ledgerErr)) return { sent: false, reason: 'already_told' }
-  if (ledgerErr) throw ledgerErr
+  // Claim first: the claim IS the decision to send. A check typed in by hand that never reached the
+  // bank (v2.4902) has no deposit to key the ledger on, so its case row carries the claim: the update
+  // takes only while notified_at is empty. Every other case inserts into the deposit ledger, where
+  // 23505 = the office already heard about this deposit.
+  const unbanked = (row.source ?? '') === 'unbanked'
+  if (unbanked) {
+    const { data: claimed, error: claimErr } = await admin
+      .from('ar_unbanked_check_cases')
+      .update({ notified_at: new Date().toISOString() })
+      .eq('id', row.mercury_transaction_id)
+      .is('notified_at', null)
+      .select('id')
+    if (claimErr) throw claimErr
+    if (!claimed || claimed.length === 0) return { sent: false, reason: 'already_told' }
+  } else {
+    const { error: ledgerErr } = await admin
+      .from('mercury_bank_return_notices')
+      .insert({ mercury_transaction_id: row.mercury_transaction_id, payment_ids: (row.live_payments ?? []).map((p) => p.payment_id) })
+    if (ledgerErr && isUniqueViolation(ledgerErr)) return { sent: false, reason: 'already_told' }
+    if (ledgerErr) throw ledgerErr
+  }
 
   const recipients = await loadBankReturnRecipients(admin)
 
@@ -145,10 +160,12 @@ export async function sendReturnCaseNotice(
     }))
   if (history.length > 0) await admin.from('notification_history').insert(history)
 
-  await admin
-    .from('mercury_bank_return_notices')
-    .update({ recipient_count: recipients.length, emails_sent: emailsSent, pushes_sent: pushesSent })
-    .eq('mercury_transaction_id', row.mercury_transaction_id)
+  if (!unbanked) {
+    await admin
+      .from('mercury_bank_return_notices')
+      .update({ recipient_count: recipients.length, emails_sent: emailsSent, pushes_sent: pushesSent })
+      .eq('mercury_transaction_id', row.mercury_transaction_id)
+  }
   opts.log?.({
     event: 'bank_return_notified',
     tx: row.mercury_transaction_id,
