@@ -26,6 +26,8 @@ export interface BillCustomerWrites {
   onCertify: (number: number, amount: number, on: string, note: string) => void
   onSetRetainage: (pct: number, step: OwnerRetainageStep | null) => void
   onDownload: (which: number | 'draft', kind: 'xlsx' | 'pdf') => void
+  /** Make our conditional waiver on progress payment for a sent one (`LienReleaseModal` on the billing job). */
+  onWaiver: (number: number) => void
 }
 
 interface Props {
@@ -34,13 +36,15 @@ interface Props {
   project: GcProject
   today: string
   writes: BillCustomerWrites
-  /** What a write is working on: 'send', 'retainage', 'cert-<n>' or 'file'. */
+  /** The sent ones our conditional waiver already went with, by number. */
+  waived?: number[]
+  /** What a write is working on: 'send', 'retainage', 'cert-<n>', 'waiver-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcBillCustomerWindow({ state, project, today, writes, busy, problem, onClose }: Props) {
+export function GcBillCustomerWindow({ state, project, today, writes, waived = [], busy, problem, onClose }: Props) {
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const signed = project.ownerContractSignedOn !== null
@@ -103,7 +107,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, busy, prob
             <div style={{ display: 'grid', gap: '0.45rem' }}>
               <div style={{ fontWeight: 600 }}>Sent</div>
               {[...sent].reverse().map((app) => (
-                <SentRow key={app.number} app={app} today={today} writes={writes} busy={busy} />
+                <SentRow key={app.number} app={app} today={today} writes={writes} waived={waived.includes(app.number)} busy={busy} />
               ))}
             </div>
           )}
@@ -252,7 +256,7 @@ function Retainage({ state, project, sentAny, writes, busy }: { state: GcState; 
   )
 }
 
-function SentRow({ app, today, writes, busy }: { app: OwnerPayAppSent; today: string; writes: BillCustomerWrites; busy?: string | null }) {
+function SentRow({ app, today, writes, waived, busy }: { app: OwnerPayAppSent; today: string; writes: BillCustomerWrites; waived: boolean; busy?: string | null }) {
   const certified = appCertified(app)
   const asked = Math.round(app.due * 100) / 100
   const [amount, setAmount] = useState(String(asked))
@@ -277,6 +281,13 @@ function SentRow({ app, today, writes, busy }: { app: OwnerPayAppSent; today: st
           <Chip tone="amber">waiting on the architect</Chip>
         )}
         {certified !== null && certified < asked && app.certifiedNote && <span style={{ color: 'var(--text-muted)' }}>{app.certifiedNote}</span>}
+        {waived ? (
+          <Chip tone="green">our waiver went with it</Chip>
+        ) : (
+          <Btn kind="quiet" disabled={busy === `waiver-${app.number}`} onClick={() => writes.onWaiver(app.number)}>
+            Make our conditional waiver
+          </Btn>
+        )}
         <span style={{ flex: 1 }} />
         <Btn kind="quiet" disabled={busy === 'file'} onClick={() => writes.onDownload(app.number, 'xlsx')}>
           Excel

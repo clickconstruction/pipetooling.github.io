@@ -9,7 +9,7 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 installDomShims()
 
 /** Fair Oaks D with its made-up bills, the last one still waiting on the architect. */
-function setup(over: Partial<GcProject> = {}) {
+function setup(over: Partial<GcProject> = {}, waived: number[] = []) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
   const billing = fairOaks.ownerBilling!
@@ -21,8 +21,8 @@ function setup(over: Partial<GcProject> = {}) {
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn() }
-  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} onClose={() => undefined} />)
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn() }
+  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} onClose={() => undefined} />)
   return { writes, last }
 }
 
@@ -60,6 +60,15 @@ describe('GcBillCustomerWindow', () => {
     expect(screen.getByText('They will hold 5% until the work is half done, then 2.5% on the rest.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Save the retainage' }))
     expect(writes.onSetRetainage).toHaveBeenCalledWith(5, { atPct: 50, toPct: 2.5, way: 'after' })
+  })
+
+  it('makes our conditional waiver for a sent one, and says when it went', () => {
+    const { writes, last } = setup({}, [1, 2])
+    expect(screen.getAllByText('our waiver went with it')).toHaveLength(2)
+    const make = screen.getAllByRole('button', { name: 'Make our conditional waiver' })
+    expect(make).toHaveLength(last.number - 2)
+    fireEvent.click(make[0]!)
+    expect(writes.onWaiver).toHaveBeenCalledWith(last.number)
   })
 
   it('asks for the contract to be marked signed before the first bill', () => {

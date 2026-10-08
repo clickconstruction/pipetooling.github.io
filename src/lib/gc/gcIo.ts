@@ -522,6 +522,11 @@ export async function recordCertificate(payAppId: string, amount: number, on: st
   taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
 }
 
+/** Our conditional waiver, minted on the billing job, linked to the pay application it went with. Once only. */
+export async function linkPayAppWaiver(payAppId: string, releaseId: string): Promise<void> {
+  taken(await supabase.from('gc_owner_pay_apps').update({ conditional_waiver_id: releaseId }).eq('id', payAppId).select('id').single(), 'link the waiver')
+}
+
 /** The job's retainage and its step (null: held at one percent to the end). */
 export async function setOwnerRetainage(projectId: string, pct: number, step: OwnerRetainageStep | null): Promise<void> {
   taken(
