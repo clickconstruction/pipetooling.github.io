@@ -6,9 +6,12 @@
  * letter never prices per line), the inclusions/exclusions/terms text, and the Google Docs
  * letter link riding along.
  *
- * Option semantics mirror the letter's: ALL base sections merge into one "base" option (the
- * letter's proposed amount is the base sum); each alternate section is its own option, offered
- * in lieu of the base. Signing (Phase 2) freezes the chosen option onto the estimate rails.
+ * Option semantics mirror the letter's: the base sections it is handed merge into one "base"
+ * option; each alternate section is its own option, offered in lieu of the base. A letter with
+ * two or more base bids never reaches here as two bases: they are options the GC picks between
+ * (v2.4723), and the Cover Letter tab hands them over as Option 1 plus the others in lieu of it,
+ * each with its own total and version (`roomSectionsForPacket`, v2.4892). Signing (Phase 2)
+ * freezes the chosen option onto the estimate rails.
  */
 
 export type RoomFixtureRow = { fixture: string; count: number | string }

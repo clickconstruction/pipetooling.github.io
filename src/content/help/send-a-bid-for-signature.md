@@ -7,7 +7,7 @@ order: 95
 ---
 Every GC on a bid can have a **bid room**, one permanent link that always shows your current letter. The GC signs, or declines with a reason, right on that page.
 
-The letter shows the base bid and any offered alternates as choices. An alternate is another priced option the GC can pick. The letter shows your inclusions, exclusions and terms. The Google Docs letter rides along. You revise and **publish**, and their link never changes.
+The letter shows the base bid and any offered alternates as choices. An alternate is another priced option the GC can pick. A letter with two base bids, like To Plans and Value Engineered, shows each as its own option. Each keeps its own price, and the GC never sees the two added together. The letter shows your inclusions, exclusions and terms. The Google Docs letter rides along. You revise and **publish**, and their link never changes.
 
 ## Open the room
 

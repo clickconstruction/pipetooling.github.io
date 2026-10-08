@@ -9,7 +9,7 @@
  */
 
 import { agreedValueFromAcceptance, type OfferedAlternate } from './alternateAcceptance'
-import type { SamePageOption, SamePageSection } from './coverLetterSamePage'
+import { planSamePageLetter, type SamePageOption, type SamePagePlan, type SamePageSection } from './coverLetterSamePage'
 
 export type OptionVersion = {
   id: string
@@ -82,4 +82,21 @@ export function roomSectionsForLetterOptions(
   }
   for (const s of inLieu) out.push(sec(s.name, s, true))
   return out
+}
+
+/**
+ * The sections one GC's bid room offers (v2.4892). Two or more base bids are options the GC picks
+ * between, never a sum (v2.4723), so whenever the GC's letter holds two bases the room offers
+ * `roomSectionsForLetterOptions`, named by `labels` (the letter's own option labels), whatever the
+ * letter's layout; otherwise the letter's sections as they are, each carrying its version. Until
+ * v2.4892 the Cover Letter tab built the options only for a bid with no versions, which never has
+ * two bases, so a two-option letter's room folded both into one "Base bid" at their sum.
+ */
+export function roomSectionsForPacket(
+  sections: ReadonlyArray<SamePageSection>,
+  labels: (plan: SamePagePlan) => Parameters<typeof roomSectionsForLetterOptions>[2],
+): RoomOptionSection[] {
+  const plan = planSamePageLetter([...sections])
+  if (plan?.options) return roomSectionsForLetterOptions(plan.options, plan.alternates, labels(plan))
+  return sections.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows, bidVersionId: s.bidVersionId }))
 }
