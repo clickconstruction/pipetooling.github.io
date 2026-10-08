@@ -98,7 +98,15 @@ function cellText(key: AiaFieldKey, value: string | number): string {
   return KIND_BY_KEY[key] === 'percent' ? formatAiaPercent(value / 100) : formatAiaMoney(value)
 }
 
-export type AiaPreviewOptions = { splitLaborMaterial?: boolean }
+export type AiaPreviewOptions = {
+  splitLaborMaterial?: boolean
+  /**
+   * Each printed row's own retainage in dollars, by row, where it is not the sheet's one rate
+   * (H × C28): a retainage that steps down partway, on GC mode's pay application to its customer.
+   * Null or absent keeps the row's formula. The Pipeline's own window never passes it.
+   */
+  rowRetainage?: ReadonlyArray<number | null>
+}
 
 /**
  * The paper as the download will read: every mapped box, the G703's rows from the application's
@@ -116,12 +124,17 @@ export function buildAiaPreview(values: AiaFieldValues, lines: ReadonlyArray<Pay
   const retainagePct = num.g702_c28_retainage_percent / 100
   const materialPct = num.g702_c31_retainage_material_percent / 100
 
-  // G703 rows 13–46: H = E + F + G, I = H / D, J = D − H, K = H × G702!C28. Row 49 sums each column.
-  const rows: AiaPreviewRow[] = printRowsOf(lines, options.splitLaborMaterial === true).map((row) => ({
-    ...lineMath(row, retainagePct),
-    lineId: row.lineId,
-    part: row.part,
-  }))
+  // G703 rows 13–46: H = E + F + G, I = H / D, J = D − H, K = H × G702!C28 (or the row's own). Row
+  // 49 sums each column.
+  const rows: AiaPreviewRow[] = printRowsOf(lines, options.splitLaborMaterial === true).map((row, i) => {
+    const own = options.rowRetainage?.[i]
+    return {
+      ...lineMath(row, retainagePct),
+      ...(own !== undefined && own !== null ? { retainage: own } : {}),
+      lineId: row.lineId,
+      part: row.part,
+    }
+  })
   const sum = (pick: (r: AiaPreviewRow) => number) => round2(rows.reduce((t, r) => t + pick(r), 0))
   const scheduledValue = sum((r) => r.scheduledValue)
   const fromPrevious = sum((r) => r.fromPrevious)
