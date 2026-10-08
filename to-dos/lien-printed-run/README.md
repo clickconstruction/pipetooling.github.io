@@ -2,7 +2,7 @@
 name: "Lien desk: take back a printed run, and a Do now that reads as one job"
 number: 101
 group: ready
-status: the owner approved the mock-up 2026-10-08 (no leader needed to take back) · PR 1 built v2.4978 on claude/lien-run-take-back · PR 2 and PR 3 next
+status: the owner approved the mock-up 2026-10-08 (no leader needed to take back) · PR 1 built v2.4983 on claude/lien-run-take-back · PR 2 and PR 3 next
 summary: >
   The office printed a run of 19 notices, then changed the packet's layout before mailing.
   Printing stamps every notice as in the mail, and nothing takes a whole run back. PR 1 puts
