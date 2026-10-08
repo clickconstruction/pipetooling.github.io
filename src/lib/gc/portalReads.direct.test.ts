@@ -139,4 +139,14 @@ describe('the invitation (the Ask window’s preview)', () => {
     expect(m.scope).toEqual(['Service and gear', 'Panels and feeders', 'Lighting', 'Fire alarm', 'Site lighting'])
     expect(inviteMessage(boerne, elec, { ...invite, id: 'draft', invitedOn: '2026-10-02' }, partner(state, 'voltage'), 'en').key).toBe('draft:invite')
   })
+
+  it('says only what the project has of where and how big, and leaves the line out when it has neither', () => {
+    const boerne = project(state, 'boerne')
+    const elec = boerne.packages.find((k) => k.id === 'elec')!
+    const invite = elec.invites.find((i) => i.partnerId === 'voltage')!
+    const third = (p: GcProject) => inviteMessage(p, elec, invite, partner(state, 'voltage'), 'en').lines[2]
+    expect(third({ ...boerne, sizeNote: '' })).toBe('1420 River Rd, Boerne.')
+    expect(third({ ...boerne, address: ' ', sizeNote: 'shell, three bays' })).toBe('Shell, three bays.')
+    expect(third({ ...boerne, address: '', sizeNote: '' })).toBe('Your quote is due Mon Oct 5.')
+  })
 })
