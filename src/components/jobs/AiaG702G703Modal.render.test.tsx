@@ -603,6 +603,40 @@ describe('AiaG702G703Modal', () => {
     expect(flag.textContent).toContain('The GC has the Oct 2 workbook. Generate it again to send the change, or open it and put the amounts back.')
   })
 
+  it('in the form, names what moved since it went out and puts the amounts back, unsaved; Save keeps them (#92)', async () => {
+    setWide(true)
+    const went = payApplicationSnapshot(savedOne())
+    onJob = [savedOneChanged()]
+    sentOnJob = [workbook({ id: 'copy-1', sourceSnapshot: went as unknown as Record<string, unknown>, sentAt: '2026-10-02T15:12:00Z' })]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openSaved(1)
+    const note = await screen.findByTestId('aia-changed-after')
+    expect(note.textContent).toContain('Changed after it went out Oct 2.')
+    expect(note.textContent).toContain('Plumbing this period: $19,400.00 went out, $21,000.00 now.')
+    expect(note.textContent).toContain('payment due: $17,460.00 went out, $18,900.00 now.')
+    fireEvent.click(screen.getByRole('button', { name: 'Put the amounts back' }))
+    expect(await screen.findByText('The amounts are back as they went out Oct 2. Save to keep them.')).toBeTruthy()
+    // The form now says what the GC has, so there is nothing left to name; it is not saved until Save.
+    expect(screen.queryByTestId('aia-changed-after')).toBeNull()
+    expect(saveSpy).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalledTimes(1))
+    const [write, id] = saveSpy.mock.calls[0]!
+    expect(id).toBe(onJob[0]!.id)
+    expect(write.lines).toEqual([expect.objectContaining({ thisPeriod: 19400 })])
+    expect(write.current_payment_due).toBe(17460)
+  })
+
+  it('a form that matches the workbook shows no changed-after note (#92)', async () => {
+    setWide(true)
+    onJob = [savedOne()]
+    sentOnJob = [workbook({ id: 'copy-1', sourceSnapshot: payApplicationSnapshot(savedOne()) as unknown as Record<string, unknown>, sentAt: '2026-10-02T15:12:00Z' })]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={job} hcpForFilename="1023" />)
+    await openSaved(1)
+    await waitFor(() => expect(field('g702_n5_project').value).toBe('1'))
+    expect(screen.queryByTestId('aia-changed-after')).toBeNull()
+  })
+
   it('starts on a new application when asked to, and offers no Form / Preview switch on a narrow history', async () => {
     setWide(true)
     onJob = [savedOne()]
