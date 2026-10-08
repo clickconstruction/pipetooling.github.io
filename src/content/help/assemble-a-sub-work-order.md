@@ -17,7 +17,7 @@ A sub is a subcontractor. The **work order** says what they're doing, for how mu
 4. **Scope and terms**:
    - **Scope** starts with the trade's library defaults ticked. If the job has a bid, the bid's stages appear as lines to tick too. Type anything else for this job underneath, one per line. Whatever is ticked is what the sub signs, word for word.
    - **Price**: type the subcontract amount. If the job has a bid, the bid's sub-labor total shows as a hint. You can leave it blank and click {{button:outline|Save draft}}. The draft shows *Drafted · no price yet* on the board until someone fills it in.
-   - **Window, expiry, retainage, bond, special provisions** come next. Retainage is the part of the pay held back until the work is done. Then come the documents **attached by reference** and the sentences they **confirm at signing**.
+   - **Window, expiry, retainage, bond, special provisions** come next. Retainage is the part of the pay held back until the work is done. The bond is a bonding company's promise that the sub finishes the work and pays its suppliers. Then come the documents **attached by reference** and the sentences they **confirm at signing**.
 5. {{button:blue|Send for signature}} gives the order its number, like WO-977-01, then WO-977-02. It freezes the document. It notifies the sub. Their portal link opens the offer. When they sign, a **Sub Labor sheet is created for them from the agreed amount**. There is nothing to set up on the Sub Labor tab.
 
 :::example An assistant taking a job in

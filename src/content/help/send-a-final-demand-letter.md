@@ -75,7 +75,7 @@ A letter sent September 14 names September 28 as the pay-by day. It names Octobe
 
 ## What goes out with it
 
-The letter never goes alone. The **Enclosed** box lists its exhibits.
+The letter never goes alone. The **Enclosed** box lists its exhibits. An exhibit is a document sent behind the letter as proof, lettered A, B and so on.
 
 - **Exhibit A** is the invoice, and it always goes. It is the bill as the customer received it. A letter that covers several bills labels them A-1, A-2 and so on. Each one prints the invoice number and the due date the letter states.
 - **The signed agreement** goes next, when the job has one on file. Untick it to leave it out. With none on file, the row reads {{chip:gray|no contract}}.

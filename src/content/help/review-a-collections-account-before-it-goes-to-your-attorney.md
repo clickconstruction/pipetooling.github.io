@@ -16,11 +16,11 @@ An **account is the payer**. The payer is the GC, the general contractor, when o
 
 ## Read the top first
 
-The rail on the left lists accounts by **what Click would keep** if every dollar landed. That is the balance less the firm's third and a filing cost. Under the account name:
+The rail on the left lists accounts by **what Click would keep** if every dollar landed. That is the balance less the firm's share and a filing cost. Under the account name:
 
-- **Theory** is what an attorney could plead today. It reads {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}}, or {{chip:red|None yet}}. A sworn account means three things are true. The customer received the bill. A report or clock session with GPS places a crew on the property. And no dispute is on record. A lien is a legal claim on the property for unpaid work.
+- **Theory** is what an attorney could plead today. It reads {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}}, or {{chip:red|None yet}}. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid. The desk shows Sworn account when three things are true. The customer received the bill. A report or clock session with GPS places a crew on the property. And no dispute is on record. A lien is a legal claim on the property for unpaid work.
 - **Click keeps** is the balance after the firm's cut and costs, with a verdict. The verdict is worth it, marginal or not worth it.
-- **Against pursuing** lists facts on record that argue for writing it down instead. Writing it down means giving up the balance. Examples are a "no money" note, a dispute, broken promises, or a payer that is a name only.
+- **Against pursuing** lists facts on record that argue for writing it down instead. Writing it down means lowering a bill to an amount we agree to accept. Examples are a "no money" note, a dispute, broken promises, or a payer that is a name only.
 
 Then comes **Before this goes to an attorney**. {{chip:red|fix}} items are what an attorney asks for first. Those are no agreement and no sworn-account basis, no way to reach the payer, or no address. {{chip:yellow|note}} items are worth knowing. Those are no demand letter, a lien window still open, or an incomplete property record. They also include no field evidence, or never asked when they'd pay. A demand letter is the formal ask for payment. Most lines have a button that opens the surface that owns the record. That may be Contract desk, the job's Lien window, Edit customer, Edit job or Call mode. The desk refreshes when you come back.
 
@@ -33,7 +33,7 @@ The same tabs the firm will see:
 - **Paper** shows agreements per job with the sworn-account column, *Where each job stands*, demand letters and *The paper that went out*. *Where each job stands* shows each job's notice and affidavit dates, drawn from its approved hours, its filings and the property kind. *The paper that went out* lists each notice, affidavit and release. An affidavit is the sworn lien filing. The monthly notice applies when a GC pays.
 - **Their word** is one timeline of everything said. It holds contacts logged on the customer, payment promises and whether they were kept, collection calls, and the collections note. **Every entry goes to counsel** unless you hold it back. Counsel means the law firm. Held entries show struck through. The firm sees this tab as **Record of contact**.
 - **Evidence** shows field reports and clock sessions per job. It shows how many carry GPS, hours, first and last work day, and photo and Drive links. It also holds the **Documents for the firm**, described below.
-- **Fees & steps** shows what the office did, in order. It shows the exhibits the packet would carry, lettered A onward. Exhibits are the documents attached to the packet.
+- **Fees & steps** shows what the office did, in order. It shows the exhibits the packet would carry, lettered A onward. Exhibits are the records the packet offers as proof, one lettered group for each kind.
 
 Most section titles carry an ↗ door to where their data is edited.
 

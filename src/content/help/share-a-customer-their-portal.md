@@ -55,7 +55,7 @@ The owner's 🌐 window lists the same thing under **On <owner>'s jobs, billed t
 
 ### When a lien notice has gone to the owner
 
-A § 53.056 notice to the owner can be **recorded as sent**. The ways to record it are the run's *Record the run*, or *Already mailed? Record it…* on the Lien desk. Once the notice is recorded, the owner's portal shows it on its own. No switch is needed, since the owner already holds the paper.
+The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. A notice to the owner can be **recorded as sent**. The ways to record it are the run's *Record the run*, or *Already mailed? Record it…* on the Lien desk. Once the notice is recorded, the owner's portal shows it on its own. No switch is needed, since the owner already holds the paper.
 
 The notice shows as a card headed *Notice on your property · mailed Sep 25, 2026*. The card has these:
 
