@@ -73,3 +73,15 @@ Steps 3 to 5 run as a dev through the management API, in one transaction that ro
   - the billing-only guards and searches holding for the job the send opened;
   - the certificate, the bill's link and the waiver's link staying once written, a deleted bill clearing its link, and the project's delete taking its pay applications and lines while the billing job stays.
 - Before the cut, a local Postgres 15 run with stand-ins for the Pipeline tables (Helper 5; the mockup's *Checked on a local Postgres 15*).
+
+## Status
+
+**Applied to prod 2026-10-08 at 23:03 UTC** by the lead (GC MODE) from a clean checkout at main's tip (61a69da8c) with `scripts/db-push.sh`, in the evening batch; drift 808/808 after. The push noted the links-once trigger did not exist yet before creating it, as the idempotent `DROP TRIGGER IF EXISTS` says. Verified the same hour through the management API, every write rolled back:
+
+- Step 1: `General contracting` once, `billing_only` true.
+- Step 2: `gc_owner_pay_apps` has `invoice_id` and `conditional_waiver_id`, `gc_owner_interest_bills` has `invoice_id`, the trigger `gc_owner_pay_apps_links_once` is there, and `authenticated` may update `invoice_id` but not `due`.
+- Steps 3 and 4, as a dev on the test project: the contract signed at test numbers, pay application 1 sent, and the billing job read `billing_only` true, `working`, customer *GC Test Owner LLC*, `project_id` null, type *General contracting* and revenue equal to `gc_owner_contract_now`; the certificate made a bill reading `billed`, $4,500 (five trades at $900), `billed_at` 12:00 Central, and the pay application's `invoice_id` is that bill.
+- Step 5: a second certificate gave *The certificate on pay application 1 is recorded already.*; clearing `invoice_id` gave *Pay application 1 has its bill, so it keeps it.*
+- After the rollbacks: 0 pay applications, no billing job on the project, 0 billing-only jobs.
+
+The types PR follows (Helper 17), with the three null fields in `ownerBillingRows.test.ts`.
