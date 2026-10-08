@@ -22,6 +22,14 @@ import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
+import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
+import { billingStateFor, payAppSendPayload, type ContractLineRow, type OwnerTermsRow } from '../lib/gc/billCustomer'
+import { ownerPayApp, ownerPayAppForm, ownerPayAppParties } from '../lib/gc/ownerBilling'
+import type { OwnerBillingRows } from '../lib/gc/ownerBillingRows'
+import { downloadPayAppExcel, downloadPayAppPdf } from '../lib/gc/payAppFileWriters'
+import LienReleaseModal from '../components/jobs/LienReleaseModal'
+import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
+import type { JobWithDetails } from '../types/jobWithDetails'
 import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
@@ -65,6 +73,12 @@ import {
   vetGcCompany,
   type GcPickerCustomer,
   type GcTeamMember,
+  loadGcOwnerBillingRows,
+  loadGcOwnerTerms,
+  linkPayAppWaiver,
+  recordCertificate,
+  sendOwnerPayApp,
+  setOwnerRetainage,
 } from '../lib/gc/gcIo'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
@@ -305,6 +319,63 @@ export default function GcProjects() {
       .finally(() => setChangeBusy(null))
   }
 
+  // Bill the customer (Owner Billing's O4a): the project's terms, its price as signed and its bills, read when
+  // the window opens at `bill=<projectId>` and laid over the board's project with its change orders.
+  const billProjectId = params.get('bill')
+  const [billRows, setBillRows] = useState<{ terms: OwnerTermsRow | undefined; contract: ContractLineRow[]; names: Record<string, string>; billing: OwnerBillingRows | undefined } | null>(null)
+  const [billBusy, setBillBusy] = useState<string | null>(null)
+  const [billProblem, setBillProblem] = useState<string | null>(null)
+  const loadBill = useCallback(async () => {
+    if (!billProjectId) {
+      setBillRows(null)
+      return
+    }
+    const [terms, billing] = await Promise.all([loadGcOwnerTerms(billProjectId), loadGcOwnerBillingRows([billProjectId])])
+    setBillRows({ ...terms, billing: billing.get(billProjectId) })
+  }, [billProjectId])
+  useEffect(() => {
+    void loadBill().catch((e) => setBillProblem(formatErrorMessage(e, 'The bills did not load.')))
+  }, [loadBill])
+  const billState = useMemo(
+    () => (boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows.terms, billRows.contract, billRows.billing, billRows.names) : null),
+    [boardWithChanges, billProjectId, billRows],
+  )
+  const billProject = billProjectId ? (billState?.projects.find((p) => p.id === billProjectId) ?? null) : null
+  const setBillWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('bill', projectId)
+    else next.delete('bill')
+    setParams(next, { replace: true })
+    setBillProblem(null)
+  }
+  /** A Bill the customer press: run it, read the bills again when it wrote, and say the problem in the window. */
+  const billWrite = (id: string, work: () => Promise<unknown>, failed: string, reload = true) => {
+    setBillBusy(id)
+    setBillProblem(null)
+    void work()
+      .then(() => (reload ? loadBill() : undefined))
+      .catch((e) => setBillProblem(formatErrorMessage(e, failed)))
+      .finally(() => setBillBusy(null))
+  }
+  // Our conditional waiver with a sent pay application (O4a-4): the Pipeline's own waiver window on the
+  // billing job, filled in with what the bill asked and its bill day, since no bill exists until the certificate.
+  const [waiverFor, setWaiverFor] = useState<{ job: JobWithDetails; payAppId: string; ask: { amount: number; throughDate: string } } | null>(null)
+  const openWaiver = (number: number) => {
+    const row = billRows?.billing?.payApps.find((a) => a.number === number)
+    const jobId = billRows?.terms?.billing_job_id
+    if (!row || !jobId) return
+    billWrite(
+      `waiver-${number}`,
+      async () => {
+        const job = await fetchJobWithDetailsById(jobId)
+        if (!job) throw new Error('The billing job did not load.')
+        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to } })
+      },
+      'The waiver did not open.',
+      false,
+    )
+  }
+
   if (authLoading) return null
   if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
 
@@ -461,6 +532,11 @@ export default function GcProjects() {
                   })()}
                 </Btn>
               )}
+              {boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+                <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
+                  Bill the customer
+                </Btn>
+              )}
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
@@ -611,6 +687,50 @@ export default function GcProjects() {
             onAnswer: (id, signed, on) => changeWrite(id, answerChangeOrder(id, signed, on), 'Their answer was not recorded.'),
             onSetPct: (id, pct) => changeWrite(id, setChangeOrderPct(id, pct), 'The percent done was not saved.'),
             onDelete: (id) => changeWrite(id, deleteChangeOrderDraft(id), 'The draft was not deleted.'),
+          }}
+        />
+      )}
+
+      {/* The waiver window sits below ours (z 1100), so Bill the customer steps aside while it is open. */}
+      {billProject && billState && !waiverFor && (
+        <GcBillCustomerWindow
+          state={billState}
+          project={billProject}
+          today={today}
+          busy={billBusy}
+          problem={billProblem}
+          waived={(billRows?.billing?.payApps ?? []).filter((a) => a.conditional_waiver_id !== null).map((a) => a.number)}
+          onClose={() => setBillWindow(null)}
+          writes={{
+            onSend: () => billWrite('send', () => sendOwnerPayApp(billProject.id, payAppSendPayload(ownerPayApp(billState, billProject), today)), 'The pay application did not go.'),
+            onCertify: (number, amount, on, note) => {
+              const id = billRows?.billing?.payApps.find((a) => a.number === number)?.id
+              if (id) billWrite(`cert-${number}`, () => recordCertificate(id, amount, on, note), 'The certificate was not recorded.')
+            },
+            onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
+            onDownload: (which, kind) => {
+              const form = ownerPayAppForm(billState, billProject, which)
+              if (!form) return
+              const parties = ownerPayAppParties(billState, billProject, form)
+              billWrite('file', () => (kind === 'xlsx' ? downloadPayAppExcel : downloadPayAppPdf)(form.app, parties), 'The form did not download.', false)
+            },
+            onWaiver: openWaiver,
+          }}
+        />
+      )}
+
+      {waiverFor && (
+        <LienReleaseModal
+          open
+          job={waiverFor.job}
+          invoice={null}
+          invoiceIds={[]}
+          initialFormType="conditional_progress"
+          ask={waiverFor.ask}
+          signerNameFallback={(profileName ?? '').trim()}
+          onClose={() => setWaiverFor(null)}
+          onIssued={(releaseId) => {
+            if (releaseId) billWrite('waiver', () => linkPayAppWaiver(waiverFor.payAppId, releaseId), 'The waiver was made, but not linked to its pay application.')
           }}
         />
       )}

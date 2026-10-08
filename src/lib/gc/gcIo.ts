@@ -16,6 +16,8 @@ import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './pro
 import type { DeclineReason, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
+import type { ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
+import type { OwnerRetainageStep } from './types'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
 export interface GcPickerCustomer {
@@ -398,6 +400,66 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
     if (rows) rows.acceptance = acceptance
   }
   return out
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O4a: Bill the customer (migration gc_owner_pay_app_send). Sending and the certificate are
+// the database's own functions; the retainage is a plain update of the project's columns.
+// ---------------------------------------------------------------------------------------------
+
+/** One project's terms with the customer, its price as signed, and the property's owner by name. */
+export async function loadGcOwnerTerms(projectId: string): Promise<{ terms: OwnerTermsRow | undefined; contract: ContractLineRow[]; names: Record<string, string> }> {
+  const [terms, contract] = await Promise.all([
+    supabase
+      .from('gc_projects')
+      .select('project_id, owner_retainage_pct, owner_retainage_step_at_pct, owner_retainage_step_to_pct, owner_retainage_step_way, owner_pay_days, billing_job_id, property_owner_customer_id')
+      .eq('project_id', projectId)
+      .maybeSingle(),
+    supabase.from('gc_owner_contract_lines').select('project_id, line, package_id, worth').eq('project_id', projectId),
+  ])
+  const row = taken(terms, 'load the terms with the customer') ?? undefined
+  const names: Record<string, string> = {}
+  if (row?.property_owner_customer_id) {
+    const owner: { id: string; name: string } | null = taken(
+      await supabase.from('customers').select('id, name').eq('id', row.property_owner_customer_id).maybeSingle(),
+      "load the property's owner",
+    )
+    if (owner) names[owner.id] = owner.name
+  }
+  return { terms: row, contract: taken(contract, 'load the price as signed'), names }
+}
+
+/** Send the pay application: its record and lines go, and the first one opens the billing job. Its id comes back. */
+export async function sendOwnerPayApp(projectId: string, app: PayAppSend): Promise<string> {
+  return taken(await supabase.rpc('gc_send_owner_pay_app', { p_project_id: projectId, p_app: app as unknown as Json }), 'send the pay application')
+}
+
+/** The architect's certificate: the bill on the billing job is made for what they certified. */
+export async function recordCertificate(payAppId: string, amount: number, on: string, note: string): Promise<void> {
+  taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
+}
+
+/** Our conditional waiver, minted on the billing job, linked to the pay application it went with. Once only. */
+export async function linkPayAppWaiver(payAppId: string, releaseId: string): Promise<void> {
+  taken(await supabase.from('gc_owner_pay_apps').update({ conditional_waiver_id: releaseId }).eq('id', payAppId).select('id').single(), 'link the waiver')
+}
+
+/** The job's retainage and its step (null: held at one percent to the end). */
+export async function setOwnerRetainage(projectId: string, pct: number, step: OwnerRetainageStep | null): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_projects')
+      .update({
+        owner_retainage_pct: pct,
+        owner_retainage_step_at_pct: step?.atPct ?? null,
+        owner_retainage_step_to_pct: step?.toPct ?? null,
+        owner_retainage_step_way: step?.way ?? null,
+      })
+      .eq('project_id', projectId)
+      .select('project_id')
+      .single(),
+    'save the retainage',
+  )
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */

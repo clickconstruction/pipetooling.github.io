@@ -281,6 +281,22 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 
 Edit Job Bill tab — the payment lines under each bill and ③ Other money on the job (v2.4293; locked Stripe/Mercury rows, the payer from `mercury_transactions.counterparty_name`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets, Quickfill `BilledAwaitingPaymentSection` and the `useBilledTotal` headline (all three = `lib/billing/billTruth.ts` since v2.2862); `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
 
+## GC mode: a project's billing job (Owner Billing's O4a)
+
+A GC project we build bills its customer through one Pipeline job, its **billing job** (`gc_projects.billing_job_id`), so every bill uses this page's machinery as it is: the statement and **Pay**, Stripe, payments, promises, the chase list and the waiver train.
+
+- **Opened by the first pay application** (`gc_send_owner_pay_app`), never before:
+  - `billing_only` (kept off every crew screen, the billing-only job's guards), `working`;
+  - named "<project> (GC)", for the project's customer, with no `project_id`;
+  - the company owner as master, the "General contracting" service type and the next job number.
+- **Revenue is kept at the contract**, the signed lines and every signed change order (`gc_owner_contract_now`), by every send and every certificate. `mark_invoice_paid` marks a job paid once payments reach its revenue, so a short revenue would close it early.
+- **A bill is made by the architect's certificate** (`gc_record_certificate`), for what they certified:
+  - inserted already `billed`, `billed_at` at noon Central on the certificate day, the next `sequence_order`;
+  - no bill-to columns: the payer comes from the job's customer when it sends (`billToParty.ts`);
+  - the pay application keeps its link (`gc_owner_pay_apps.invoice_id`), once.
+- **Our record stays ours.** The pay application and its lines, with our fee and contingency as lines of their own, are on `gc_owner_pay_apps` and `gc_owner_pay_app_lines` (dev only, then the money team). The bill carries only the amount the customer owes.
+- Payments, promises and our unconditional waivers on these bills are O5c's, through the Pipeline's own RPCs on the billing job.
+
 ## System of record (the 2026-08-24 policy)
 
 The company migrated off HouseCall Pro; **this app is the system of record for all billing** — open money, bill dates, and payment dates. Written down after the Billing Truth Plan investigation (802 jobs, 5 measurable pay-speed samples) so the policy survives staff and sessions:

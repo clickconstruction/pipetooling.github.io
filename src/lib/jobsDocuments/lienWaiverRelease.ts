@@ -282,6 +282,12 @@ export type LienWaiverPrefillContext = {
   signerName: string
   /** v2.4285: his title from Settings → Jobs & billing → Physical invoice (Signs for the company); '' leaves the line off the page. */
   signerTitle?: string
+  /**
+   * GC mode's pay application to its customer (Owner Billing's O4a): what it asked and its bill day. Our
+   * conditional waiver goes with it before the architect certifies it, so before any bill exists, and these
+   * stand in for the bills' amount and day.
+   */
+  ask?: { amount: number; throughDate: string } | null
 }
 
 function sumAppliedToInvoice(job: JobWithDetails, invoiceId: string): number {
@@ -407,12 +413,13 @@ export function buildLienWaiverPrefill(formType: LienWaiverFormType, ctx: LienWa
   const address = (job.job_address ?? '').trim()
   const projectDescription = name && address ? `${name} — ${address}` : name || address
   const throughDate =
+    ctx.ask?.throughDate ??
     invoices.map((i) => calendarYmdInAppTzFromIso(i.billed_at ?? '') || calendarYmdInAppTzFromIso(i.created_at ?? '')).filter(Boolean).sort().pop() ??
     (ymdFromIso(job.last_work_date) || todayYmd())
   return {
     companyName: (issuer?.companyName ?? '').trim() || 'ClickConstruction LLC',
     checkFrom: (ownerName ?? '').trim() || (job.gcCustomer?.name ?? '').trim() || (job.customer_name ?? '').trim(),
-    amount: moneyInputStr(lienWaiverPrefillAmount(formType, job, invoices)),
+    amount: moneyInputStr(ctx.ask ? ctx.ask.amount : lienWaiverPrefillAmount(formType, job, invoices)),
     projectDescription,
     throughDate,
     signedDate: todayYmd(),

@@ -208,6 +208,9 @@ One issue of a GC project's plans (`gc_plan_sets`, rev 0 first). The first set i
 ### Scope line · scope book · scope set
 A **scope line** is one piece of work a trade's quote says yes or no to (`gc_scope_items`), with the sheets and sections it reads from. The **scope book** is every scope line we keep, by trade: read from our GC projects' scopes and the usual lines, plus the office's saved lines, edits and merges. A **scope set** is a named list of one trade's lines, saved to start the next project from.
 
+### Billing job (GC mode)
+The one Pipeline job (`jobs_ledger`) that carries a GC project's bills to its customer (`gc_projects.billing_job_id`). The first pay application opens it, billing-only so no crew sees it, and its revenue is kept at the contract. Each architect's certificate makes a bill on it for what they certified, which the customer pays through the Pipeline's own statement. Dev only while it is built: **Bill the customer** on a won job's card on [GC projects](/gc) (guide `bill-the-customer-on-a-gc-job`). See [BILLING_FLOWS.md](./BILLING_FLOWS.md) → GC mode.
+
 ### Change order (GC mode, to the customer)
 A change to our contract with the customer on a GC job we won (`gc_change_orders`): what changed and why (the customer asked, a field condition or a plan revision), whose work, what it costs us, what it adds to their price (the cost plus the job's fee unless the office types another; a credit is below zero), and the days it adds. It is numbered on the job and goes from a draft, to sent, to signed or declined; once sent it keeps what it said. A signed one raises the customer's price, adds its days to the contract time, and bills as a line of its own. A **time extension** is a change order with no price that asks for the days the customer's schedule moves cost (G-141). Dev only while it is built: **Change orders** on a won job's card on [GC projects](/gc) (guide `change-our-contract-with-the-customer`).
 
