@@ -2,7 +2,8 @@
 /**
  * The My Time day editor's money paths and ways out, on the real modal over a recording supabase
  * stub (the map's risk flags, `docs/MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md` → Test coverage):
- * Reject session writes the reject, then the `people_hours` resync, then re-reads the day; Save sends
+ * Reject session sends one `reject_clock_session` call (the reject and the `people_hours` resync in
+ * one transaction, v2.4964), or the old two requests while that function is missing; Save sends
  * the dirty clusters in one `save_my_time_day` call, asking first over approved time; Cancel, the
  * backdrop and Escape close the topmost thing first, ask before dropping edits, and hold while a save
  * is in flight. The clock is pinned (Date only) to a Thursday so the day sits in the current week.
@@ -29,6 +30,8 @@ const h = vi.hoisted(() => ({
   daySessions: [] as unknown[],
   updateError: null as null | { message: string; code: string },
   recomputeError: null as null | { message: string; code: string },
+  /** `reject_clock_session`: on the database, missing (before the push), or refusing. */
+  rejectRpc: 'present' as 'present' | 'missing' | { message: string; code: string },
   /** When set, `save_my_time_day` answers through it: a refusal, or a save held in flight. */
   save: null as null | (() => Promise<Result>),
 }))
@@ -66,6 +69,16 @@ vi.mock('../lib/supabase', () => ({
     rpc: (fn: string, args: Record<string, unknown>) => {
       h.rpcs.push({ fn, args })
       h.log.push(`rpc ${fn}`)
+      if (fn === 'reject_clock_session') {
+        if (h.rejectRpc === 'missing') {
+          return Promise.resolve({
+            data: null,
+            error: { code: 'PGRST202', message: 'Could not find the function public.reject_clock_session(p_session_id) in the schema cache' },
+            status: 404,
+          })
+        }
+        return Promise.resolve({ data: null, error: h.rejectRpc === 'present' ? null : h.rejectRpc })
+      }
       if (fn === 'recompute_people_hours_after_session_edit') {
         return Promise.resolve({ data: null, error: h.recomputeError })
       }
@@ -145,6 +158,7 @@ beforeEach(() => {
   h.daySessions = [MORNING, AFTERNOON]
   h.updateError = null
   h.recomputeError = null
+  h.rejectRpc = 'present'
   h.save = null
 })
 
@@ -153,22 +167,23 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('Reject session — the reject write and its people_hours resync', () => {
-  it('writes the reject, then resyncs people_hours, then re-reads the day', async () => {
+const openRejectAndConfirm = async (index = 0) => {
+  fireEvent.click(screen.getAllByRole('button', { name: 'Reject session' })[index]!)
+  const dialog = await screen.findByRole('alertdialog')
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Reject session' }))
+  return dialog
+}
+
+describe('Reject session — one request: the reject and its people_hours resync together', () => {
+  it('sends one reject_clock_session call, then re-reads the day', async () => {
     const m = mount()
     await loaded()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Reject session' })[0]!)
-    const dialog = await screen.findByRole('alertdialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject session' }))
+    await openRejectAndConfirm()
 
     await waitFor(() => expect(m.onLinkedSessionsUpdated).toHaveBeenCalledTimes(1))
-    expect(h.updates).toEqual([{ table: 'clock_sessions', values: { rejected_at: NOW, rejected_by: 'u-lead' }, id: 'a' }])
-    expect(h.rpcs.filter((r) => r.fn === 'recompute_people_hours_after_session_edit')).toEqual([
-      { fn: 'recompute_people_hours_after_session_edit', args: { p_session_id: 'a' } },
-    ])
-    await waitFor(() =>
-      expect(h.log).toEqual(['read day', 'update clock_sessions a', 'rpc recompute_people_hours_after_session_edit', 'read day']),
-    )
+    await waitFor(() => expect(h.log).toEqual(['read day', 'rpc reject_clock_session', 'read day']))
+    expect(h.rpcs.filter((r) => r.fn === 'reject_clock_session')).toEqual([{ fn: 'reject_clock_session', args: { p_session_id: 'a' } }])
+    expect(h.updates).toEqual([])
     expect(screen.queryByRole('alertdialog')).toBeNull()
     // The editor read the day itself, so nothing is handed to a parent to refresh.
     expect(m.onSaved).not.toHaveBeenCalled()
@@ -177,20 +192,55 @@ describe('Reject session — the reject write and its people_hours resync', () =
   it('on a parent’s sessions the parent is told to refresh instead of the day being re-read', async () => {
     const m = mount({ sessions: [MORNING, AFTERNOON] })
     await loaded()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Reject session' })[1]!)
-    fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Reject session' }))
+    await openRejectAndConfirm(1)
     await waitFor(() => expect(m.onSaved).toHaveBeenCalledTimes(1))
-    expect(h.log).toEqual(['update clock_sessions b', 'rpc recompute_people_hours_after_session_edit'])
+    expect(h.log).toEqual(['rpc reject_clock_session'])
+    expect(h.rpcs[0]!.args).toEqual({ p_session_id: 'b' })
     expect(m.onLinkedSessionsUpdated).toHaveBeenCalledTimes(1)
+  })
+
+  it('a refusal changes nothing: the dialog says why and stays open', async () => {
+    h.rejectRpc = { message: 'reject_clock_session: no clock session a that you can change', code: 'P0001' }
+    const m = mount()
+    await loaded()
+    const dialog = await openRejectAndConfirm()
+
+    expect((await within(dialog).findByRole('alert')).textContent).toContain('that you can change')
+    expect(h.log).toEqual(['read day', 'rpc reject_clock_session'])
+    expect(m.onLinkedSessionsUpdated).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog')).toBe(dialog)
+  })
+})
+
+describe('Reject session before the migration is pushed — the old two requests', () => {
+  beforeEach(() => {
+    h.rejectRpc = 'missing'
+  })
+
+  it('writes the reject, then resyncs people_hours, then re-reads the day', async () => {
+    const m = mount()
+    await loaded()
+    await openRejectAndConfirm()
+
+    await waitFor(() => expect(m.onLinkedSessionsUpdated).toHaveBeenCalledTimes(1))
+    expect(h.updates).toEqual([{ table: 'clock_sessions', values: { rejected_at: NOW, rejected_by: 'u-lead' }, id: 'a' }])
+    await waitFor(() =>
+      expect(h.log).toEqual([
+        'read day',
+        'rpc reject_clock_session',
+        'update clock_sessions a',
+        'rpc recompute_people_hours_after_session_edit',
+        'read day',
+      ]),
+    )
+    expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 
   it('a refused reject stops before the resync: the dialog says why and stays open', async () => {
     h.updateError = { message: 'new row violates row-level security policy for table "clock_sessions"', code: '42501' }
     const m = mount()
     await loaded()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Reject session' })[0]!)
-    const dialog = await screen.findByRole('alertdialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject session' }))
+    const dialog = await openRejectAndConfirm()
 
     expect((await within(dialog).findByRole('alert')).textContent).not.toBe('')
     expect(h.rpcs.filter((r) => r.fn === 'recompute_people_hours_after_session_edit')).toEqual([])
@@ -198,17 +248,19 @@ describe('Reject session — the reject write and its people_hours resync', () =
     expect(screen.getByRole('alertdialog')).toBe(dialog)
   })
 
-  it('a failed resync after the reject is written leaves the row rejected and says so in the dialog (today’s pairing)', async () => {
+  it('a failed resync after the reject is written still leaves the row rejected — the gap the push closes', async () => {
     h.recomputeError = { message: 'permission denied for function recompute_people_hours_after_session_edit', code: '42501' }
     const m = mount()
     await loaded()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Reject session' })[0]!)
-    const dialog = await screen.findByRole('alertdialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reject session' }))
+    const dialog = await openRejectAndConfirm()
 
     expect((await within(dialog).findByRole('alert')).textContent).not.toBe('')
-    // The reject is already written; the resync is not; nothing re-reads the day or tells the parent.
-    expect(h.log).toEqual(['read day', 'update clock_sessions a', 'rpc recompute_people_hours_after_session_edit'])
+    expect(h.log).toEqual([
+      'read day',
+      'rpc reject_clock_session',
+      'update clock_sessions a',
+      'rpc recompute_people_hours_after_session_edit',
+    ])
     expect(m.onLinkedSessionsUpdated).not.toHaveBeenCalled()
   })
 })

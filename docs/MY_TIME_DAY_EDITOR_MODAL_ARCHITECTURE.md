@@ -286,7 +286,7 @@ No test file mounts, mocks or names `DashboardMyTimeDayEditorModal` (`git grep` 
 | `myTimeDayEditorDirty.ts` | colocated | 22 | 6, 7 |
 | `ledgerDisplayPrefixes.ts` | colocated | `formatJobLedgerSummaryLine` only; `formatBidLedgerSummaryLine` untested | 3 |
 
-**Money math the map flagged, tested since v2.4960:** `confirmRejectSession`'s UPDATE + `people_hours` resync pairing (`DashboardMyTimeDayEditorModal.render.test.tsx`; a resync that fails after the reject is written leaves the row rejected and unresynced, pinned); the NCNS record, `runRecordNcns` before v2.3932 (`MyTimeNcnsFlow.render.test.tsx`, a thrown error added in v2.4960); the six own/leader RPC wrappers (`lib/clockSessionSplitRpcs.test.ts`).
+**Money math the map flagged, tested since v2.4960:** `confirmRejectSession`'s UPDATE + `people_hours` resync pairing (`DashboardMyTimeDayEditorModal.render.test.tsx`; one transaction since v2.4964 — `reject_clock_session`, migration 20261009170000 — with the old two requests kept as the fallback until that migration is pushed); the NCNS record, `runRecordNcns` before v2.3932 (`MyTimeNcnsFlow.render.test.tsx`, a thrown error added in v2.4960); the six own/leader RPC wrappers (`lib/clockSessionSplitRpcs.test.ts`).
 
 ---
 
