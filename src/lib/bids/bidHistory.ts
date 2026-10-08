@@ -307,6 +307,8 @@ export type BidHistoryAction = {
   endedAt: string
   rows: BidHistoryRow[]
   fromArchive: boolean
+  /** Its older rows are past the rows read so far (a full page that is one action): drawn marked, captioned from the rows read. */
+  continues?: boolean
 }
 
 const sameTag = (a: string | null, b: string | null) => (a ?? '') === (b ?? '')
@@ -367,6 +369,19 @@ export function groupBidHistory(rows: ReadonlyArray<BidHistoryRow>): BidHistoryA
       }
     })
     .reverse()
+}
+
+/**
+ * The actions a page-at-a-time read can draw (`groupBidHistory`'s, newest first). While a full page
+ * says older rows remain, its oldest action may go on past the page's edge (ZZ Test's removal of 80
+ * rows read 21 of them and was captioned *Removed Toilets and what hung on it*), so it waits for the
+ * older page. A page that is one action is drawn anyway, marked `continues`, so the window is never
+ * empty.
+ */
+export function bidHistoryWholeActions(actions: ReadonlyArray<BidHistoryAction>, olderRemain: boolean): BidHistoryAction[] {
+  if (!olderRemain) return [...actions]
+  if (actions.length === 1) return [{ ...actions[0]!, continues: true }]
+  return actions.slice(0, -1)
 }
 
 const NOUNS: Record<string, [string, string]> = {
