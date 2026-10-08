@@ -1,15 +1,15 @@
 ---
 title: see where you win and lose with a builder
 category: Office
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: builder review, bid map, GC, won, lost, hit rate, map, geography
 order: 72
 ---
-Every GC/Builder card on **Bids → Builder Review** tells you how the relationship is actually going. The card also tells you where.
+Every GC/Builder card on **Bids → Followup → By builder** tells you how the relationship is actually going. The card also tells you where.
 
 ## The card tells the score
 
-Each builder's card shows count chips for their bids: {{chip:green|4 won}} {{chip:red|7 lost}} {{chip:yellow|3 pending}}. No chips means no classified bids yet.
+Each builder's card shows count chips for their bids: {{chip:green|4 won}} {{chip:red|7 lost}} {{chip:yellow|3 pending}}. A hit rate chip and an open dollars chip sit beside them. The open chip counts unsent bids too.
 
 ## The Bid map shows the geography
 
@@ -25,5 +25,5 @@ A cluster of green in one part of town means that builder actually awards you th
 
 - The stage chips still work in focus mode. The chips are Unsent, Pending, Won, Started and Lost. You turn everything off but **Lost** to see only where you're losing.
 - Unsent bids are hidden by default in focus mode. You toggle **Unsent** on to include them. Unsent bids show as gray pins.
-- The **×** on the banner returns to the normal all-layers map.
+- The **×** on the banner returns to the normal map, with its usual layers. Lost bids, paid jobs and estimates start off there.
 - The focused view is a plain link, `/map?builder=…`. You copy it from the address bar to share it.
