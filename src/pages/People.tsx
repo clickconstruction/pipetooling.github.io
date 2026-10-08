@@ -524,14 +524,8 @@ export default function People() {
     rejectedClockSessions,
     activeClockSessions,
     pendingApprovalClockSessions,
-    activeClockSessionsFiltered,
-    pendingApprovalClockSessionsFiltered,
-    approvedClockSessionsFiltered,
-    rejectedClockSessionsFiltered,
     hoursClockSessionsSearch,
     setHoursClockSessionsSearch,
-    hoursClockSessionsSearching,
-    noClockSessionsMatchSearch,
     loadPeopleHours,
     loadPendingClockSessions,
     loadApprovedClockSessions,
@@ -541,7 +535,6 @@ export default function People() {
   } = usePeopleHoursData({
     canAccessHours,
     canAccessPay,
-    prefixMap,
     peopleRosterRef,
     authUser,
     hoursDaysCorrectRef,
@@ -2565,17 +2558,11 @@ export default function People() {
             canAccessPay={canAccessPay}
             authUserId={authUser?.id}
             activeClockSessions={activeClockSessions}
-            activeClockSessionsFiltered={activeClockSessionsFiltered}
             pendingApprovalClockSessions={pendingApprovalClockSessions}
-            pendingApprovalClockSessionsFiltered={pendingApprovalClockSessionsFiltered}
             approvedClockSessions={approvedClockSessions}
-            approvedClockSessionsFiltered={approvedClockSessionsFiltered}
             rejectedClockSessions={rejectedClockSessions}
-            rejectedClockSessionsFiltered={rejectedClockSessionsFiltered}
             hoursClockSessionsSearch={hoursClockSessionsSearch}
             setHoursClockSessionsSearch={setHoursClockSessionsSearch}
-            hoursClockSessionsSearching={hoursClockSessionsSearching}
-            noClockSessionsMatchSearch={noClockSessionsMatchSearch}
             showSalariedWorkdaysHoursButton={showSalariedWorkdaysHoursButton}
             onOpenSalariedWorkdays={() => setSalariedWorkdaysModalOpen(true)}
             prefixMap={prefixMap}

@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { resolvePersonIdFromRosterName } from '../lib/payPersonSubject'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
-import { clockSessionMatchesSearch } from '../lib/clockSessionSearch'
 import type { ClockSessionRow } from '../types/clockSessions'
 import type { Person } from './usePeopleRoster'
 
@@ -21,8 +20,6 @@ export interface PeopleHoursRealtimeCallbacks {
 export interface UsePeopleHoursDataDeps {
   canAccessHours: boolean
   canAccessPay: boolean
-  /** Ledger display-prefix map (3rd arg of clockSessionMatchesSearch) for the filtered selectors. */
-  prefixMap: Parameters<typeof clockSessionMatchesSearch>[2]
   /** Live roster ref (people) for person-id resolution in saveHours. */
   peopleRosterRef: React.MutableRefObject<Person[]>
   authUser: { id: string } | null
@@ -49,14 +46,9 @@ export interface UsePeopleHoursDataResult {
   rejectedClockSessions: ClockSessionRow[]
   activeClockSessions: ClockSessionRow[]
   pendingApprovalClockSessions: ClockSessionRow[]
-  activeClockSessionsFiltered: ClockSessionRow[]
-  pendingApprovalClockSessionsFiltered: ClockSessionRow[]
-  approvedClockSessionsFiltered: ClockSessionRow[]
-  rejectedClockSessionsFiltered: ClockSessionRow[]
+  /** The sessions section's search text. Its four filtered lists live in `PeopleHoursSessions`; the text stays here because the section unmounts while the tab loads (every week change). */
   hoursClockSessionsSearch: string
   setHoursClockSessionsSearch: React.Dispatch<React.SetStateAction<string>>
-  hoursClockSessionsSearching: boolean
-  noClockSessionsMatchSearch: boolean
   loadPeopleHours: (start: string, end: string) => Promise<void>
   loadPendingClockSessions: (start: string, end: string) => Promise<void>
   loadApprovedClockSessions: (start: string, end: string) => Promise<void>
@@ -67,7 +59,7 @@ export interface UsePeopleHoursDataResult {
 
 /**
  * Owns the People hours + clock-session data layer: `people_hours` + the pending/approved/rejected
- * `clock_sessions` queues, the search-filtered selectors, their range loaders, and the optimistic
+ * `clock_sessions` queues, the sessions search text, their range loaders, and the optimistic
  * `saveHours` writer. Extracted from People.tsx (PR1). The live Realtime subscription is added in PR2.
  * Stays in the parent: `hoursReviewed`, `hoursDaysCorrect` (passed in via ref), draft-payroll, and the
  * clock-session approve/reject/split mutators (which refresh via these loaders).
@@ -76,7 +68,6 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
   const {
     canAccessHours,
     canAccessPay,
-    prefixMap,
     peopleRosterRef,
     authUser,
     hoursDaysCorrectRef,
@@ -103,30 +94,6 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
   const [approvedClockSessions, setApprovedClockSessions] = useState<ClockSessionRow[]>([])
   const [rejectedClockSessions, setRejectedClockSessions] = useState<ClockSessionRow[]>([])
   const [hoursClockSessionsSearch, setHoursClockSessionsSearch] = useState('')
-  const activeClockSessionsFiltered = useMemo(
-    () => activeClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
-    [activeClockSessions, hoursClockSessionsSearch, prefixMap],
-  )
-  const pendingApprovalClockSessionsFiltered = useMemo(
-    () =>
-      pendingApprovalClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
-    [pendingApprovalClockSessions, hoursClockSessionsSearch, prefixMap],
-  )
-  const approvedClockSessionsFiltered = useMemo(
-    () => approvedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
-    [approvedClockSessions, hoursClockSessionsSearch, prefixMap],
-  )
-  const rejectedClockSessionsFiltered = useMemo(
-    () => rejectedClockSessions.filter((s) => clockSessionMatchesSearch(s, hoursClockSessionsSearch, prefixMap)),
-    [rejectedClockSessions, hoursClockSessionsSearch, prefixMap],
-  )
-  const hoursClockSessionsSearching = hoursClockSessionsSearch.trim().length > 0
-  const noClockSessionsMatchSearch =
-    hoursClockSessionsSearching &&
-    activeClockSessionsFiltered.length === 0 &&
-    pendingApprovalClockSessionsFiltered.length === 0 &&
-    approvedClockSessionsFiltered.length === 0 &&
-    rejectedClockSessionsFiltered.length === 0
 
   async function loadPeopleHours(start: string, end: string) {
     if (!canAccessHours && !canAccessPay) return
@@ -287,14 +254,8 @@ export function usePeopleHoursData(deps: UsePeopleHoursDataDeps): UsePeopleHours
     rejectedClockSessions,
     activeClockSessions,
     pendingApprovalClockSessions,
-    activeClockSessionsFiltered,
-    pendingApprovalClockSessionsFiltered,
-    approvedClockSessionsFiltered,
-    rejectedClockSessionsFiltered,
     hoursClockSessionsSearch,
     setHoursClockSessionsSearch,
-    hoursClockSessionsSearching,
-    noClockSessionsMatchSearch,
     loadPeopleHours,
     loadPendingClockSessions,
     loadApprovedClockSessions,
