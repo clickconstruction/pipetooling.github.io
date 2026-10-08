@@ -298,6 +298,11 @@ describe('JobsGcReviewModal', () => {
     fireEvent.click(within(groups[0]!).getByRole('button', { name: 'Show Sage Meadows’s bills' }))
     expect(within(screen.getAllByTestId('gc-review-other-row')[0]!).getByText(/651 · Palomino Trail/)).toBeTruthy()
     expect(screen.getByText('Total outstanding').textContent).toContain('$48,000.00')
+    // Find a check follows the switch (v2.4912): offered on a development, and it opens on the development.
+    fireEvent.click(within(screen.getAllByTestId('gc-review-other-row')[0]!).getByRole('button', { name: 'Share statement for Sage Meadows' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Find a check…' }))
+    expect(await screen.findByRole('dialog', { name: 'Find a check — Sage Meadows' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Close Find a check' }))
     // Back under By GC the track is there again.
     fireEvent.click(screen.getByRole('button', { name: 'By GC' }))
     expect(screen.getByRole('group', { name: 'Where this week stands' })).toBeTruthy()

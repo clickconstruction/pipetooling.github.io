@@ -429,7 +429,8 @@ export function JobsGcReviewModal({
   /** The call sheet: the worklist group it is open on. */
   const [callSheetGroupKey, setCallSheetGroupKey] = useState<string | null>(null)
   // Find a check (v2.4046): the GC whose payments are being looked up.
-  const [findCheckGroup, setFindCheckGroup] = useState<{ gcId: string; gcName: string } | null>(null)
+  // v2.4912: under By development the group's id is the development's ("follow the switch").
+  const [findCheckGroup, setFindCheckGroup] = useState<{ gcId: string; gcName: string; byDevelopment: boolean } | null>(null)
   /** The call sheet opened on an account man's answers from his link, to read and save. */
   const [callSheetFromLink, setCallSheetFromLink] = useState(false)
   /** Ask by link (punch list #49, step 7): the week's links with their answers; `wordAsksOn` is false until the database has the tables. */
@@ -1288,14 +1289,18 @@ export function JobsGcReviewModal({
                   >
                     {invoicePrintGroupKey === g.key ? 'Building invoices…' : 'Print unpaid invoices'}
                   </button>
-                  {!byDevelopment && g.gcId ? (
+                  {!g.isNoGc && g.gcId ? (
                     <button
                       type="button"
                       onClick={() => {
                         setShareMenuGroupKey(null)
-                        setFindCheckGroup({ gcId: g.gcId!, gcName: g.gcName })
+                        setFindCheckGroup({ gcId: g.gcId!, gcName: g.gcName, byDevelopment })
                       }}
-                      title={`Where one of ${g.gcName}'s checks sits now, and how it got there — by number, amount or day`}
+                      title={
+                        byDevelopment
+                          ? `Where a check paid on ${g.gcName}'s jobs sits now, and how it got there — by number, amount or day`
+                          : `Where one of ${g.gcName}'s checks sits now, and how it got there — by number, amount or day`
+                      }
                       style={gcShareMenuItemStyle}
                     >
                       Find a check…
@@ -2539,7 +2544,9 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
-      {findCheckGroup ? <GcFindCheckModal gcId={findCheckGroup.gcId} gcName={findCheckGroup.gcName} onClose={() => setFindCheckGroup(null)} /> : null}
+      {findCheckGroup ? (
+        <GcFindCheckModal gcId={findCheckGroup.gcId} gcName={findCheckGroup.gcName} byDevelopment={findCheckGroup.byDevelopment} onClose={() => setFindCheckGroup(null)} />
+      ) : null}
       {callSheetGroupKey && authUser?.id
         ? (() => {
             const g = worklist.groups.find((x) => x.key === callSheetGroupKey)

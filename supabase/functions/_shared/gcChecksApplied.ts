@@ -146,7 +146,8 @@ export type GcCheckJob = {
 }
 
 export type GcChecksReport = {
-  gcId: string
+  /** Null for a development's sheet (v2.4912). */
+  gcId: string | null
   sinceYmd: string | null
   /** Newest first; only checks received on or after `sinceYmd` when set. */
   checks: GcCheck[]
@@ -224,8 +225,13 @@ function invoiceLabelFor(bill: SentBill | undefined, sentCount: number, invoiceI
   return 'on the job, not tied to an invoice'
 }
 
-/** The GC pays this bill (or, with no bill, this job's bills by its rule). */
-function gcPays(gcId: string, job: ChecksJobIn, invoice: ChecksInvoiceIn | null): boolean {
+/**
+ * The GC pays this bill (or, with no bill, this job's bills by its rule). With no GC (v2.4912, a
+ * development's sheet) every bill on the jobs counts: the payer rule decides who pays it, not whether
+ * it is on the development's statement.
+ */
+function gcPays(gcId: string | null, job: ChecksJobIn, invoice: ChecksInvoiceIn | null): boolean {
+  if (gcId == null) return true
   const jobFields = { customer_id: job.customer_id ?? null, gc_customer_id: job.gc_customer_id ?? null, bill_to_party: job.bill_to_party ?? null }
   const party = effectiveInvoiceParty(jobFields, invoice ? { bill_to_party: invoice.bill_to_party ?? null, bill_to_email: invoice.bill_to_email ?? null } : null)
   return payerCustomerId(jobFields, party) === gcId
@@ -282,7 +288,8 @@ function foldKey(p: ChecksPaymentIn): string {
 const minYmd = (a: string | null, b: string | null): string | null => (a && b ? (a < b ? a : b) : (a ?? b))
 
 export function buildGcChecksReport(input: {
-  gcId: string
+  /** The GC whose payments these are; null for a development's jobs (every bill, whoever pays it). */
+  gcId: string | null
   jobs: readonly ChecksJobIn[]
   events?: readonly ChecksEventIn[]
   deposits?: readonly ChecksDepositIn[]

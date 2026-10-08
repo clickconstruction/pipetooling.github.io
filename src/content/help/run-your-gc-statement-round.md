@@ -69,6 +69,7 @@ Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which
 - **Before you type, the newest checks** show, often the one they are asking about.
 - **A check recorded without its number** wears a {{chip:yellow|no number}} chip. It is found by its amount or its day. You add the number on the payment, on the job window's **Bill** tab. The next search finds it by number.
 - A bill the owner pays on a GC's job is never counted as the GC's money.
+- **Grouped By Development**, a development's {{button:outline|Share}} has **Find a check…** too. It reads every payment on the development's jobs, whoever paid it. The owner's checks are on it as well as the GC's.
 - {{button:outline|🖨 Print the sheet}} prints *where your checks were applied* for the last twelve months. It lists every payment, where it sits now, and what moved. It lists what came in and is not yet on a bill. It shows where each job stands: billed, paid by, last applied and still open. Retainage held shows too when a job has any. Retainage is money the GC holds back until the end. The open total matches the statement. **show all** widens it to every payment on record. {{button:outline|CSV}} downloads the same rows, one per applied line. That is for a bookkeeper who reconciles in a spreadsheet.
 
 ## The word

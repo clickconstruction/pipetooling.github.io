@@ -152,6 +152,19 @@ describe('buildGcChecksReport', () => {
     ])
   })
 
+  it('with no GC (v2.4912, a development) every bill on the jobs counts, the owner\'s as well as the GC\'s', () => {
+    const split = job('split', {
+      customer_id: 'owner-1',
+      bill_to_party: 'customer',
+      invoices: [inv('s-1', 'split', 1, 1000, { bill_to_party: 'gc' }), inv('s-2', 'split', 2, 2000)],
+      payments: [pay('pa', 'split', 1000, { invoice_id: 's-1', reference_number: '100' }), pay('pb', 'split', 2000, { invoice_id: 's-2', reference_number: '200' })],
+    })
+    const r = buildGcChecksReport({ gcId: null, jobs: [split] })
+    expect(r.gcId).toBeNull()
+    expect(r.checks.map((c) => c.label).sort()).toEqual(['#100', '#200'])
+    expect(r.jobs.map((j) => [j.jobId, j.billCount, j.billed, j.stillOpen])).toEqual([['split', 2, 3000, 0]])
+  })
+
   it('carries the trail: a moved payment says where it was and until when', () => {
     const r = buildGcChecksReport({
       gcId: GC,
