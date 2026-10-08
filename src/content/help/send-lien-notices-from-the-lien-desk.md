@@ -133,7 +133,7 @@ Above the paper, one line says who gets it. The owner of record and the GC get i
 
 The bar at the bottom shows the notice's state on the left. Most often it says the notice goes to the leader, with {{button:blue|Send for approval ▸}}. While something blocks it, it says **Don't send yet**. Then it names the one thing to do first, such as entering the owner of record. {{button:blue|Go to gate 1 ▴}} takes you there. {{button:outline|Save draft}} sits on the right.
 
-- {{button:blue|Send for approval ▸}} sends it to the master. The words beside it say why it goes to him. There may be no standing rule yet. It may be our first notice to this GC. They may have promised a date, or he held this GC before.
+- {{button:blue|Send for approval ▸}} sends it to the master. His phone gets one line: the job, the money owed and the mail-by day. If his phone is not set up for notifications, the same line goes by email. The words beside it say why it goes to him. There may be no standing rule yet. It may be our first notice to this GC. They may have promised a date, or he held this GC before.
 - **A send rule starts with the second notice.** Even with a rule to send notices without asking, our first notice to a GC goes to the master. That first notice proves the owner, the addresses and the GC's copy on real mail. From the next month, the button reads {{button:blue|Put it in the run ▸}}, and nobody is asked.
 - {{button:outline|The leader said to send it…}} is for when he already told you in the truck. Type who said it and when, then pick phone, in person or text. It goes straight to Ready to send. He sees its job named under **Sent on your word** in the desk's title bar. On that notice's footer, **Not what I said** pulls it back while it has not gone out.
 

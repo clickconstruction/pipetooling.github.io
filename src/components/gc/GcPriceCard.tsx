@@ -1,21 +1,21 @@
-import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type KeyboardEvent, type ReactNode } from 'react'
-import type { PriceCardHandle } from './usePriceCard'
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { aboutMoney, isHole, money, priceStanding, type GcAction, type GcProject, type GcState, type TradeStanding, type TradeStandingRow } from '../../lib/gcMode/gcModel'
-import { Btn } from './gcUi'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { aboutMoney, isHole, priceStanding, type TradeStanding, type TradeStandingRow } from '../../lib/gc/priceStanding'
+import type { GcProject, GcState } from '../../lib/gc/types'
+import { money } from '../../lib/gc/words'
+import { Btn } from './gcUi'
+import type { PriceCardHandle } from './usePriceCard'
 
 /**
- * GC mode design spike: the card behind a bidding job's price on the Project Board (the owner's
- * pick B, 2026-10-04). The red coverage chip and the "so far, with holes" line open it: every trade
- * by what happens next, with the button to do it, and what the price comes to once every trade is
- * in. Hover or focus opens it, a click keeps it open, Escape or a click outside closes it. On a
- * phone it rises from the bottom. Kernel: `priceStanding` (gcPriceStanding.ts).
+ * GC mode, the real build (the Board's B3), from the design spike's `GcPriceCard.tsx`: the card
+ * behind a bidding job's price on the Project Board (the owner's pick B, 2026-10-04). The "so far,
+ * with holes" line opens it: every trade by what happens next, and what the price comes to once
+ * every trade is in. Hover or focus opens it, a click keeps it open, Escape or a click outside closes
+ * it. On a phone it rises from the bottom. Kernel: `priceStanding`. Read only here: carrying a quote,
+ * asking a company and following up come with the Board's B4 and B5, so each trade says what is next
+ * and the card's one button opens the project.
  */
-
-/** The project tabs the card can open. */
-export type PriceCardTab = 'packages' | 'number'
 
 const GROUPS: Record<TradeStanding, { words: string; dot: string }> = {
   pick: { words: 'Pick a quote to carry', dot: 'var(--text-red-700)' },
@@ -28,10 +28,7 @@ const GROUPS: Record<TradeStanding, { words: string; dot: string }> = {
   real: { words: 'A real number', dot: 'var(--text-green-700)' },
 }
 
-/**
- * Something on the row that opens the card: the chip or the price line. It keeps the row's own
- * click (which opens the project) from firing.
- */
+/** Something on the row that opens the card. It keeps the row's own click from firing. */
 export function GcPriceTrigger({ card, label, children, style }: { card: PriceCardHandle; label: string; children: ReactNode; style?: CSSProperties }) {
   const ref = useRef<HTMLSpanElement>(null)
   const open = card.anchor !== null && card.anchor === ref.current
@@ -76,26 +73,10 @@ export function GcPriceLikely({ state, project }: { state: GcState; project: GcP
 }
 
 /** The card itself, hung under the trigger that opened it; a sheet from the bottom on a phone. */
-export function GcPriceCard({
-  card,
-  state,
-  project,
-  dispatch,
-  onTab,
-  onFollowUp,
-}: {
-  card: PriceCardHandle
-  state: GcState
-  project: GcProject
-  dispatch: Dispatch<GcAction>
-  onTab: (tab: PriceCardTab) => void
-  onFollowUp: () => void
-}) {
+export function GcPriceCard({ card, state, project, onOpen }: { card: PriceCardHandle; state: GcState; project: GcProject; onOpen: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const phone = useMatchMedia('(max-width: 720px)')
   const [, redraw] = useState(0)
-  // The Follow up sheet on a company (the owner, 2026-10-04): it outlives the card, which closes as it opens.
-  const [sheetFor, setSheetFor] = useState<string | null>(null)
   const anchor = card.anchor
   useEffect(() => {
     if (!anchor) return
@@ -119,8 +100,7 @@ export function GcPriceCard({
       window.removeEventListener('resize', onMove)
     }
   }, [anchor, card])
-  const sheet = sheetFor ? <GcFollowUpSheet state={state} dispatch={dispatch} startPartnerId={sheetFor} onClose={() => setSheetFor(null)} /> : null
-  if (!anchor) return sheet
+  if (!anchor) return null
   const p = priceStanding(state, project)
   const rect = anchor.getBoundingClientRect()
   const width = Math.min(460, window.innerWidth - 24)
@@ -133,13 +113,9 @@ export function GcPriceCard({
         left: Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12)),
         ...(roomBelow >= 320 ? { top: below, maxHeight: roomBelow } : { bottom: window.innerHeight - rect.top + 6, maxHeight: rect.top - 18 }),
       }
-  const go = (fn: () => void) => () => {
-    fn()
-    card.close()
-  }
   const days = (n: number) => `${n} ${n === 1 ? 'trade' : 'trades'}`
   const groups = (Object.keys(GROUPS) as TradeStanding[]).filter((st) => p.counts[st] > 0)
-  const cardEl = createPortal(
+  return createPortal(
     <div
       ref={ref}
       role="dialog"
@@ -184,7 +160,7 @@ export function GcPriceCard({
           {p.rows
             .filter((r) => r.standing === st)
             .map((r, i) => (
-              <TradeLine key={r.pkg.id} row={r} first={i === 0} project={project} dispatch={dispatch} go={go} onTab={onTab} onFollowUp={onFollowUp} onSheet={setSheetFor} />
+              <TradeLine key={r.pkg.id} row={r} first={i === 0} />
             ))}
         </div>
       ))}
@@ -210,90 +186,24 @@ export function GcPriceCard({
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
         <span>{card.pinned ? 'Escape or a click outside closes this.' : 'Click the line to keep this open.'}</span>
-        <Btn kind="quiet" onClick={go(() => onTab('packages'))}>
-          Open Trades
+        <Btn
+          kind="quiet"
+          onClick={() => {
+            card.close()
+            onOpen()
+          }}
+        >
+          Open the project
         </Btn>
       </div>
     </div>,
     document.body,
   )
-  return (
-    <>
-      {sheet}
-      {cardEl}
-    </>
-  )
 }
 
-function TradeLine({
-  row,
-  first,
-  project,
-  dispatch,
-  go,
-  onTab,
-  onFollowUp,
-  onSheet,
-}: {
-  row: TradeStandingRow
-  first: boolean
-  project: GcProject
-  dispatch: Dispatch<GcAction>
-  go: (fn: () => void) => () => void
-  onTab: (tab: PriceCardTab) => void
-  onFollowUp: () => void
-  /** Open the Follow up sheet on a company. */
-  onSheet: (partnerId: string) => void
-}) {
-  const { pkg, standing, lowest } = row
-  const who = row.followUp
-  const carry = (carried: string) => dispatch({ type: 'carry', projectId: project.id, packageId: pkg.id, carried })
+function TradeLine({ row, first }: { row: TradeStandingRow; first: boolean }) {
+  const { pkg, standing } = row
   const amount = isHole(standing) ? row.estimate : row.carried
-  let actions: ReactNode = null
-  if (standing === 'pick' && lowest) {
-    actions = (
-      <>
-        <Btn kind="primary" onClick={() => carry(lowest.invite.id)}>
-          Carry {lowest.company}
-        </Btn>
-        <Btn kind="quiet" onClick={go(() => onTab('packages'))}>
-          Compare quotes
-        </Btn>
-      </>
-    )
-  } else if (standing === 'waiting') {
-    actions = (
-      <>
-        {who ? <Btn onClick={go(() => onSheet(who.partnerId))}>Follow up with {who.company}</Btn> : <Btn onClick={go(onFollowUp)}>Open Follow up</Btn>}
-        <Btn kind="quiet" onClick={go(() => onTab('packages'))}>
-          Ask someone else
-        </Btn>
-      </>
-    )
-  } else if (standing === 'notAsked') {
-    actions = (
-      <>
-        <Btn onClick={go(() => onTab('packages'))}>Who to ask</Btn>
-        <Btn kind="quiet" onClick={() => carry('plug')}>
-          Use our budget
-        </Btn>
-      </>
-    )
-  } else if (standing === 'ownBid') {
-    actions = <Btn onClick={go(() => onTab('packages'))}>Price our own bid</Btn>
-  } else if (standing === 'gap') {
-    actions = <Btn onClick={go(() => onTab('packages'))}>Set the cost in Compare quotes</Btn>
-  } else if (standing === 'ranOut') {
-    actions = who ? <Btn onClick={go(() => onSheet(who.partnerId))}>Follow up with {who.company}</Btn> : <Btn onClick={go(onFollowUp)}>Open Follow up</Btn>
-  } else if (standing === 'guess') {
-    actions = lowest ? (
-      <Btn kind="primary" onClick={() => carry(lowest.invite.id)}>
-        Carry {lowest.company}
-      </Btn>
-    ) : (
-      <Btn onClick={go(() => onTab('packages'))}>Ask for quotes</Btn>
-    )
-  }
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.1rem 0.75rem', padding: '0.35rem 0', borderTop: first ? 'none' : '1px solid var(--border)' }}>
       <span style={{ fontWeight: 600 }}>
@@ -304,7 +214,6 @@ function TradeLine({
         {amount === null ? '' : money(amount)}
       </span>
       {row.words && <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)' }}>{row.words}</span>}
-      {actions && <span style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>{actions}</span>}
     </div>
   )
 }

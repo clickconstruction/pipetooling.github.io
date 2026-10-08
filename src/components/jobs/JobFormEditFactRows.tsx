@@ -786,7 +786,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             <span>
               Show {shareOtherName} the bills they don’t pay
               <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                Starts the tick in Bill Customer on this job’s next bills; their statement lists each one with no Pay button and outside their balance. Bills already sent are not changed — use the 👁 chip on the Bill tab.
+                Starts the tick in Bill Customer on this job’s next bills; their statement lists each one with no Pay button and outside their balance. Bills already sent are not changed — use the bill row’s ⋯ on the Bill tab.
               </span>
             </span>
           </label>

@@ -7,7 +7,7 @@ keywords: company owner, master_user_id, one company, job owner, customer owner,
 
 ## One company, one account
 
-Since v2.2967 nobody owns a customer, project, job, estimate or prospect. Every office role sees every row.
+Nobody owns a customer, project, job, estimate or prospect. Every office role sees every row.
 
 That means leaders, assistants and controllers all see everything. Assistants are no longer adopted by a leader first. New rows are still filed under one account. That account is the **company owner account**. It is stored in the `master_user_id` column, kept for provenance, the record of where a row came from.
 

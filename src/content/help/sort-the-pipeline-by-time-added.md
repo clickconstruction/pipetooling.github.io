@@ -1,7 +1,7 @@
 ---
 title: sort the pipeline by when jobs were added
 category: Jobs & Scheduling
-roles: dev, master_technician, assistant, controller, primary
+roles: dev, master_technician, assistant, controller
 keywords: pipeline, sort, recently added, time added, job order, stages board, newest
 order: 46
 ---
@@ -11,7 +11,7 @@ The new order helps you find a job someone entered this morning.
 
 ## Switch the order
 
-1. On **Jobs → Pipeline**, open the **⋯** tools menu at the right end of the toolbar.
+1. On **Jobs → Pipeline**, open the **⋯** tools menu at the right end of the search box.
 2. Under **Sort**, pick **Most recently added**. Sections stay exactly where they are. Only the rows inside each section reorder, newest first.
 3. Each row now shows a small green {{chip:green|added Aug 18}} stamp beside its job number. So the order is easy to read at a glance.
 
@@ -23,4 +23,7 @@ A {{chip:blue|Sorted: time added ×}} chip sits beside the ⋯ button whenever t
 The choice is remembered on your device, so the board opens the way you left it. It never changes for anyone else.
 :::
 
-There is a third order, ***Percent complete (0 → 100)***. You reach it by clicking the **Progress & payment** column title. See *sort the pipeline by percent complete*. The percent order is a quick look and is never remembered.
+The **Sort** group holds four orders. Two more sit beside the ones above:
+
+- ***Next scheduled first*** puts the next booked visit first and finished rows last. The Working header's **⇅ Next first** button turns it on too. This order's chip reads *Sorted: next first ×*, and your device remembers it.
+- ***Percent complete (0 → 100)*** is in the menu, and clicking the **Progress & payment** column title switches to it too. See *sort the pipeline by percent complete*. The percent order is a quick look and is never remembered.

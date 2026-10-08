@@ -95,8 +95,18 @@ export type BankReturnNoticeJob = {
  *   never_on_job  nobody ever applied it
  *   rejected      Mercury could not take it in (it never posted) and a payment
  *                 recorded by hand matches it, so a job reads paid with no money
+ *   unbanked      (v2.4902) a payment typed in as a check has had no deposit linked to it
+ *                 for AR_UNBANKED_CHECK_DAYS, so a job reads paid on money the bank never saw
  */
-export type ArReturnCaseSituation = 'on_jobs' | 'off_job' | 'never_on_job' | 'rejected'
+export type ArReturnCaseSituation = 'on_jobs' | 'off_job' | 'never_on_job' | 'rejected' | 'unbanked'
+
+/**
+ * v2.4902: days after a check is typed in by hand before no deposit for it opens a case
+ * (punch list #76, piece 3). The SQL default of open_ar_unbanked_check_cases mirrors it; a
+ * test keeps them equal. Not CHECK_CLEAR_DAYS (7, src/lib/jobs/checkClearing.ts): that clock
+ * counts a deposited check clearing, this one a check that never got deposited.
+ */
+export const AR_UNBANKED_CHECK_DAYS = 10
 
 export type BankReturnNoticeInput = {
   /** Who the deposit came from — Mercury's counterparty, or "A" when it has none. */
@@ -115,7 +125,7 @@ export type BankReturnNoticeInput = {
   situation?: ArReturnCaseSituation
   /** off_job: the job it was on last, and the day it came off. */
   lastJob?: { jobId: string; jobLabel: string; offYmd: string | null } | null
-  /** rejected: the payment recorded by hand that matches it. */
+  /** rejected / unbanked: the payment recorded by hand (unbanked: the one with no deposit). */
   recorded?: { jobId: string; jobLabel: string; amount: number; paidYmd: string | null } | null
   /** rejected: the day Mercury refused it. */
   failedYmd?: string | null
@@ -175,6 +185,7 @@ export function bankReturnNoticeLine(input: Pick<BankReturnNoticeInput, 'counter
     const day = shortDate(input.failedYmd)
     return `Mercury could not take in ${who} ${moneyShort(input.amount)} check${day ? ` on ${day}` : ''}.`
   }
+  if (input.situation === 'unbanked') return `No deposit has come in for ${who} ${moneyShort(input.amount)} check.`
   return `The bank sent back ${who} ${moneyShort(input.amount)} check.`
 }
 
@@ -193,6 +204,18 @@ export function bankReturnNoticeSentences(input: BankReturnNoticeInput): string[
       out.push(`${moneyShort(rec.amount)} was recorded there${paid ? ` on ${paid}` : ''} with no deposit.`)
     }
     out.push('Find the check and deposit it again.')
+    return out
+  }
+  if (situation === 'unbanked') {
+    const rec = input.recorded
+    if (rec) {
+      const paid = shortDate(rec.paidYmd)
+      out.push(`It was recorded as paid on ${rec.jobLabel}${paid ? ` on ${paid}` : ''}.`)
+      out.push(`No deposit has been linked to it in ${AR_UNBANKED_CHECK_DAYS} days.`)
+      out.push(`${jobShort(rec.jobLabel)} still reads paid.`)
+    } else out.push(`No deposit has been linked to it in ${AR_UNBANKED_CHECK_DAYS} days.`)
+    out.push('Find the check and deposit it.')
+    out.push('If it went in with other checks, link it to that deposit in Accounts Receivable.')
     return out
   }
   if (reason) out.push(`The reason is ${reason}.`)
@@ -227,7 +250,9 @@ export function bankReturnNoticeSentences(input: BankReturnNoticeInput): string[
 
 export function bankReturnNoticeSubject(input: BankReturnNoticeInput): string {
   const who = input.counterparty.trim() || 'A customer'
-  return situationOf(input) === 'rejected'
+  const situation = situationOf(input)
+  if (situation === 'unbanked') return `A check was never deposited · ${who} · ${moneyShort(input.amount)}`
+  return situation === 'rejected'
     ? `A check never reached the bank · ${who} · ${moneyShort(input.amount)}`
     : `A check came back · ${who} · ${moneyShort(input.amount)}`
 }
@@ -237,7 +262,7 @@ export function bankReturnNoticeLinks(input: BankReturnNoticeInput): Array<{ lab
   const situation = situationOf(input)
   const theCase = { label: 'Open it in Accounts Receivable', path: bankReturnCasePath(input.caseId) }
   if (situation === 'on_jobs') return [theCase, ...input.jobs.map((j) => ({ label: `${j.jobLabel} · ${money(j.amount)}`, path: bankReturnPaymentsPath(j.jobId) }))]
-  if ((situation === 'rejected' || situation === 'never_on_job') && input.recorded) return [theCase, { label: `Open ${input.recorded.jobLabel}`, path: bankReturnPaymentsPath(input.recorded.jobId) }]
+  if ((situation === 'rejected' || situation === 'unbanked' || situation === 'never_on_job') && input.recorded) return [theCase, { label: `Open ${input.recorded.jobLabel}`, path: bankReturnPaymentsPath(input.recorded.jobId) }]
   return [theCase]
 }
 
@@ -267,12 +292,13 @@ export function buildBankReturnNoticePush(input: BankReturnNoticeInput, transact
   const first = input.jobs[0]
   let body: string
   if (situation === 'rejected') body = input.recorded ? `${who}. ${input.recorded.jobLabel} still reads paid.` : `${who}. It never posted.`
+  else if (situation === 'unbanked') body = input.recorded ? `${who}. ${input.recorded.jobLabel} still reads paid.` : `${who}. No deposit is linked to it.`
   else if (situation === 'on_jobs') body = `${who}${reason ? ` · ${reason}` : ''}. Still counted as paid on ${input.jobs.length === 1 && first ? first.jobLabel : `${input.jobs.length} jobs`}.`
   else if (situation === 'off_job') body = `${who}${reason ? ` · ${reason}` : ''}. It is on no job now.`
   else body = `${who}${reason ? ` · ${reason}` : ''}. It was never on a job.`
   const links = bankReturnNoticeLinks(input)
   return {
-    title: `${situation === 'rejected' ? 'A check never reached the bank' : 'A check came back'} · ${moneyShort(input.amount)}`,
+    title: `${situation === 'unbanked' ? 'A check was never deposited' : situation === 'rejected' ? 'A check never reached the bank' : 'A check came back'} · ${moneyShort(input.amount)}`,
     body,
     url: links[0]?.path ?? AR_RETURN_CASES_PATH,
     tag: `bank-return-${transactionId}`,
@@ -297,7 +323,7 @@ export type ArReturnCaseRow = {
   posted_at: string | null
   failed_at: string | null
   bank_reason: string | null
-  /** bank · hand · rejected */
+  /** bank · hand · rejected · unbanked (v2.4902: a check typed in by hand that never reached the bank; the case's own id rides in mercury_transaction_id) */
   source: string | null
   opened_at: string | null
   closed_at: string | null
@@ -320,7 +346,7 @@ export type ArReturnCaseRow = {
     }
   > | null
   last_job: (ArReturnCaseJobRef & { removed_at: string | null; removed_by: string | null }) | null
-  recorded_payment: (ArReturnCaseJobRef & { payment_id: string; amount: number | string | null; paid_on: string | null }) | null
+  recorded_payment: (ArReturnCaseJobRef & { payment_id: string; amount: number | string | null; paid_on: string | null; reference_number?: string | null }) | null
   /** The newest They said… on a job it touched, made after it came back. */
   promise?: { job_id: string; promised_date: string | null; said_by: string | null; created_at: string | null } | null
 }
@@ -340,6 +366,7 @@ export function arReturnCaseJobLabel(j: ArReturnCaseJobRef): string {
 /** Where the check sits now: on a job, off its last job, on none, or never reached the bank. */
 export function arReturnCaseSituation(row: Pick<ArReturnCaseRow, 'source' | 'live_payments' | 'last_job'>): ArReturnCaseSituation {
   if (asText(row.source) === 'rejected') return 'rejected'
+  if (asText(row.source) === 'unbanked') return 'unbanked'
   if ((row.live_payments ?? []).length > 0) return 'on_jobs'
   if (row.last_job) return 'off_job'
   return 'never_on_job'

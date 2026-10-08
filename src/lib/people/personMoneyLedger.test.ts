@@ -10,6 +10,7 @@ import {
   buildSettleUpBoard,
   buildWeeklyHistoryGroups,
   personSettleUp,
+  payStubNetById,
   priceUncoveredWeeks,
   type PayStubLike,
   type PersonOffsetLike,
@@ -215,6 +216,7 @@ describe('uncoveredApprovedWeeks (approved hours, no pay report)', () => {
 describe('settle-up math', () => {
   it('personSettleUp prices every side of the equation', () => {
     const s = personSettleUp({
+      netByStubId: new Map(),
       payStubs: [
         stub({ id: 's1', paid_at: null, gross_pay: 620.06 }),
         stub({ id: 's2', gross_pay: 500 }),
@@ -243,13 +245,14 @@ describe('settle-up math', () => {
   it('flags unpriced hours when no wage is known', () => {
     const weeks = priceUncoveredWeeks([{ weekStart: '2026-02-01', weekEnd: '2026-02-07', hours: 40 }], null)
     expect(weeks[0]?.estAmount).toBeNull()
-    const s = personSettleUp({ payStubs: [], stubPayments: [], offsets: [], pricedWeeks: weeks })
+    const s = personSettleUp({ payStubs: [], stubPayments: [], offsets: [], pricedWeeks: weeks, netByStubId: new Map() })
     expect(s.unreportedEst).toBeNull()
     expect(s.netMissingUnpricedHours).toBe(true)
     expect(s.net).toBe(0)
   })
   it('buildSettleUpBoard sorts action rows most-negative first and settled last', () => {
     const rows = buildSettleUpBoard({
+      netByStubId: new Map(),
       offsets: [
         offset({ id: 'a', person_name: 'Tristen', type: 'damage', amount: 6617.5 }),
         offset({ id: 'b', person_name: 'Zack', type: 'employee_credit', amount: 335.61 }),
@@ -270,6 +273,7 @@ describe('settle-up math', () => {
 describe('buildWeeklyHistoryGroups', () => {
   it('groups a report, its payments, and same-week offsets into one block', () => {
     const groups = buildWeeklyHistoryGroups({
+      netByStubId: new Map(),
       payStubs: [stub({ id: 's1', period_start: '2026-08-02', period_end: '2026-08-08', gross_pay: 300, hours_total: 10.2, paid_at: null })],
       stubPayments: [{ id: 'p1', pay_stub_id: 's1', amount: 127.48, paid_at: '2026-08-07T12:00:00Z', memo: 'cashapp' }],
       offsets: [offset({ id: 'a', occurred_date: '2026-08-07', type: 'employee_credit', amount: 172.52, description: 'weekly' })],
@@ -284,6 +288,7 @@ describe('buildWeeklyHistoryGroups', () => {
   })
   it('offset-only weeks stand alone; legacy paid reports show no remaining', () => {
     const groups = buildWeeklyHistoryGroups({
+      netByStubId: new Map(),
       payStubs: [stub({ id: 's1', period_start: '2026-07-26', period_end: '2026-08-01', gross_pay: 500 })],
       stubPayments: [],
       offsets: [offset({ id: 'a', occurred_date: '2025-10-20', type: 'damage', amount: 1800, description: 'Skid steer' })],
@@ -293,5 +298,40 @@ describe('buildWeeklyHistoryGroups', () => {
     expect(groups[0]?.remaining).toBe(0)
     expect(groups[1]?.reportGross).toBeNull()
     expect(groups[1]?.offsets[0]?.label).toBe('Skid steer')
+  })
+})
+
+// v2.4900: Settle up owed gross − paid while Payroll → Balances, Record payment and the database
+// (pay_report_net, which caps payments at net) owe net − paid. One report, two screens, two numbers.
+describe('Settle up owes net pay, as Balances does (v2.4900)', () => {
+  const report = (id: string, gross: number) => ({ id, person_name: 'Abraham', period_start: '2026-09-21', period_end: '2026-09-27', hours_total: 40, gross_pay: gross, paid_at: null })
+  const paid = (stubId: string, amount: number) => ({ id: `p-${stubId}`, pay_stub_id: stubId, amount, paid_at: '2026-09-30', memo: null })
+
+  it('a $1,000 report with a $200 Less line, paid $800, is paid in full', () => {
+    const stubs = [report('s1', 1000)]
+    const netByStubId = payStubNetById(stubs, { s1: [{ amount: 200 }] }, {})
+    expect(netByStubId.get('s1')).toBe(800)
+    const s = personSettleUp({ payStubs: stubs, stubPayments: [paid('s1', 800)], offsets: [], pricedWeeks: [], netByStubId })
+    // Before, gross − paid said $200 still owed — money the database will not let anyone pay.
+    expect(s.unpaidRemaining).toBe(0)
+    expect(s.unpaidCount).toBe(0)
+  })
+
+  it('a $1,000 report with a $150 Additional line, paid $1,000, still owes $150', () => {
+    const stubs = [report('s2', 1000)]
+    const netByStubId = payStubNetById(stubs, {}, { s2: [{ line_total: 150 }] })
+    const s = personSettleUp({ payStubs: stubs, stubPayments: [paid('s2', 1000)], offsets: [], pricedWeeks: [], netByStubId })
+    // Before, gross − paid said $0 — the Additional line we owe was missed.
+    expect(s.unpaidRemaining).toBe(150)
+    expect(s.unpaidCount).toBe(1)
+  })
+
+  it('the board and the weekly history read the same net', () => {
+    const stubs = [report('s1', 1000)]
+    const netByStubId = payStubNetById(stubs, { s1: [{ amount: 200 }] }, {})
+    const board = buildSettleUpBoard({ offsets: [], payStubs: stubs, stubPayments: [paid('s1', 800)], dayHours: [], wageForPerson: () => null, netByStubId })
+    expect(board[0]?.unpaidRemaining).toBe(0)
+    const weeks = buildWeeklyHistoryGroups({ payStubs: stubs, stubPayments: [paid('s1', 800)], offsets: [], netByStubId })
+    expect(weeks[0]?.remaining).toBe(0)
   })
 })

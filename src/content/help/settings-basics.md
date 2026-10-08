@@ -7,11 +7,11 @@ order: 2
 ---
 Settings is where you manage your own profile and notifications. On a desktop, its pages sit in a list down the left side.
 
-The list is grouped. **You** holds Your account and Your dashboard. **Company** holds settings named after the page they affect, for office roles. Then come **System** and **Help**. A search box sits on top. The last tabs you opened show as chips. A row of doors sits just under the search, on every tab. Doors are shortcut buttons. **Job Parts Tally** is there for everyone. **View as…** and **Punch list** are there for devs and leaders. On a phone, the same list is a dropdown.
+The list is grouped. **You** holds Your account and Your dashboard. **Company** holds settings named after the page they affect, for office roles. Then come **System** and **Help**. A search box sits on top. The last tabs you opened show as chips. A row of doors sits just under the search, on every tab. Doors are shortcut buttons. **Job Parts Tally** is there for everyone. **View as…** is there for devs. **Punch list** is there for devs and leaders. On a phone, the same list is a dropdown.
 
 The page opens on the tab you used last. Which tabs you see depends on your role. Every user gets the You group, plus **Activity logs**, **Guides** and **Release notes**. The list says when more tabs are for masters and devs.
 
-Here's the whole flow in 30 seconds. The recording shows the gear menu → Settings, then the sections this guide walks through:
+Here's the whole flow in 20 seconds. The recording shows the gear menu → Settings, then the sections this guide walks through:
 
 {{gif:settings-basics.gif|Gear menu → Settings → Your account (profile, push notifications) → Your dashboard (report notifications)}}
 
@@ -25,7 +25,7 @@ Name: `Mike Thompson` &nbsp;·&nbsp; Email: `mike@example.com` &nbsp;·&nbsp; Ph
 {{button:blue|Save}}
 :::
 
-If your name is managed by admins, the Name field is locked. The note reads "Name is managed by admins. Contact a leader or dev to change it."
+On a sub or helper account, the Name field is locked. The note reads "Name is managed by admins. Contact a master or dev to change it."
 
 ## Push notifications
 
@@ -38,9 +38,9 @@ Push notifications are how the app reaches you: dispatch alerts, report notifica
 1. Tap {{button:blue|Enable push notifications}}.
 2. When it shows {{chip:green|Enabled}}, you send a **Test notification**. You should see "If you see this, push notifications are working!"
 
-Recent notifications you've received are listed under the **Notifications** tab. So you can catch up on anything you dismissed. Devs also see "Most recent emails sent" there. That list shows every email the app has sent, with delivery status. In that list, rows from a recurring stream are clickable. Recurring streams are digests, Paid in Full, Billed reports and the like. You tap one and land on that stream's card in **Emails & reports**. The card is highlighted, so you can see who's subscribed.
+Recent notifications you've received are listed under the **Activity logs** tab, in the System group, as *Most recent push notifications*. So you can catch up on anything you dismissed. Devs also see "Most recent emails sent" there, 25 at a time. That list shows every email the app has sent, with delivery status. In that list, rows from a recurring stream are clickable. Recurring streams are digests, Paid in Full, Billed reports and the like. You tap one and land on that stream's card in **Emails & reports**. The card is highlighted, so you can see who's subscribed.
 
-On a phone, you use the **Add to Home Screen** helper. Then the app and its notifications behave like an app installed from the app store.
+On a phone, you add the app to your Home Screen from the browser's Share menu. Then the app and its notifications behave like an app installed from the app store.
 
 ## Report notifications
 

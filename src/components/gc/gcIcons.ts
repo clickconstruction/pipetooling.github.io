@@ -1,5 +1,5 @@
 /**
- * GC mode design spike: the Bid Board's own folder and plans glyphs (BID_BOARD_ICON_PATHS in
+ * GC mode, the real build (the Board's B3), from the design spike's `gcIcons.ts`: the Bid Board's own folder and plans glyphs (BID_BOARD_ICON_PATHS in
  * BidsBidBoardTab, Font Awesome 640 viewbox), copied so the Project Board's links read the same.
  * At wrap-up these move to one shared module both boards import.
  */

@@ -5,8 +5,8 @@
  *   2. (v2.2703) "today" taken from the UTC clock: `new Date().toISOString().slice(0, 10)` (and
  *      the substring/split spellings). That is tomorrow's date every evening after 7 PM Central.
  *      Use todayYmdInAppTz() from src/utils/dateUtils.ts or _shared/appTimeZone.ts.
- *      Lines that only stamp a download filename are skipped automatically (download/filename/
- *      .csv/.json/.xlsx on the line); anything else deliberate takes a `// tz-ok: <why>` waiver.
+ *      Download filename stamps are held to it too (v2.4891: an evening download was named for
+ *      tomorrow); anything deliberate takes a `// tz-ok: <why>` waiver.
  *   3. (v2.2703) end-of-day built as `<ymd> + 'T23:59:59Z'` — that is 7 PM Central. Use
  *      endOfYmdInAppTzMs() or compare civil dates.
  *   4. (v2.2703) CURRENT_DATE in a migration newer than 20260903190000 — the session zone is UTC;
@@ -52,7 +52,6 @@ for (const base of ['src', path.join('supabase', 'functions')]) {
 const UTC_TODAY_RE = /new Date\(\)\.toISOString\(\)\.(?:slice|substring)\(0, ?10\)|new Date\(\)\.toISOString\(\)\.split\(['"]T['"]\)\[0\]/
 const UTC_END_OF_DAY_RE = /(?:\$\{[^}]*\}|\+ ?['"])T23:59:59/
 const EN_CA_SOURCE_RE = /\.toLocaleDateString\(['"]en-CA['"]\)/
-const FILENAME_RE = /download|[Ff]ilename|\.csv|\.json|\.xlsx/
 const WAIVER_RE = /tz-ok:/
 const CURRENT_DATE_CUTOFF = '20260903190000'
 
@@ -67,7 +66,7 @@ for (const file of files) {
   if (/\.test\.tsx?$/.test(file)) continue
   txt.split('\n').forEach((line, i) => {
     if (WAIVER_RE.test(line)) return
-    if (UTC_TODAY_RE.test(line) && !FILENAME_RE.test(line)) utcToday.push(`${path.relative(ROOT, file)}:${i + 1}`)
+    if (UTC_TODAY_RE.test(line)) utcToday.push(`${path.relative(ROOT, file)}:${i + 1}`)
     if (UTC_END_OF_DAY_RE.test(line)) utcEndOfDay.push(`${path.relative(ROOT, file)}:${i + 1}`)
     if (EN_CA_SOURCE_RE.test(line)) enCaSource.push(`${path.relative(ROOT, file)}:${i + 1}`)
   })

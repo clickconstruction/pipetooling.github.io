@@ -39,5 +39,5 @@ With **Target** on, a solid dashed line marks the target margin and counts the j
 
 ## Watch-outs
 
-- Jobs with no revenue are left off and counted in the control row. So are jobs with no overhead share yet, while the day ledger is still loading.
+- Jobs with no revenue are left off and counted in the control row. So are jobs with no overhead share yet. Those jobs wait for the day ledger, the daily record of field hours and office costs, to load.
 - In-progress jobs use earned revenue. The window's hours earn the window's share of the contract. So a job that is 30% done with every hour in the window plots at 30% of its contract.

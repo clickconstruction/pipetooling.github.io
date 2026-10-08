@@ -10,9 +10,19 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import GcFindCheckModal from './GcFindCheckModal'
 import type { GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 
-const io = vi.hoisted(() => ({ fetch: vi.fn(), print: vi.fn((_html: string) => true) }))
-vi.mock('../../lib/jobs/gcChecksAppliedIo', () => ({ fetchGcChecksInputs: io.fetch }))
+const io = vi.hoisted(() => ({ fetch: vi.fn(), fetchDev: vi.fn(), print: vi.fn((_html: string) => true), filed: vi.fn() }))
+vi.mock('../../lib/jobs/gcChecksAppliedIo', () => ({ fetchGcChecksInputs: io.fetch, fetchDevelopmentChecksInputs: io.fetchDev }))
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: io.print }))
+vi.mock('../../lib/sent/sentCopiesIo', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../lib/sent/sentCopiesIo')>()
+  return {
+    ...actual,
+    printAndFile: (html: string, filing: Record<string, unknown>) => {
+      io.filed(filing)
+      return io.print(html)
+    },
+  }
+})
 vi.mock('../../lib/formatJobDetailModalDateYmd', () => ({ todayYmdChicago: () => '2026-09-28' }))
 
 const inputs: GcChecksInputs = {
@@ -122,6 +132,34 @@ describe('GcFindCheckModal', () => {
     expect(click).toHaveBeenCalledTimes(1)
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:sheet')
     click.mockRestore()
+  })
+
+  it('under By development (v2.4912): reads the development\'s jobs, counts the owner\'s bill too, and files the sheet under those jobs', async () => {
+    const owners = {
+      id: 'elm',
+      click_number: '1070',
+      job_name: 'Elm St',
+      job_address: '12 Elm St',
+      customer_id: 'owner',
+      gc_customer_id: 'gc-1',
+      bill_to_party: 'customer',
+      lien_retainage_held: null,
+      invoices: [{ id: 'elm-1', job_id: 'elm', sequence_order: 1, amount: 2500, status: 'paid', billed_at: '2026-09-02' }],
+      payments: [{ id: 'p9', job_id: 'elm', invoice_id: 'elm-1', amount: 2500, paid_on: '2026-09-20', payment_type: 'check', reference_number: '7001' }],
+    }
+    io.fetchDev.mockResolvedValue({ ...inputs, jobs: [...inputs.jobs, owners] })
+    io.fetch.mockClear()
+    io.filed.mockClear()
+    render(<GcFindCheckModal gcId="dev-sage" gcName="Sage Meadows" byDevelopment onClose={() => {}} />)
+    // Three checks: the GC's two and the owner's #7001, which a GC's own sheet leaves out.
+    expect(await screen.findByText('Newest 3 of 3')).toBeTruthy()
+    expect(io.fetchDev).toHaveBeenCalledWith('dev-sage')
+    expect(io.fetch).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Check number, amount or the day it was received'), { target: { value: '7001' } })
+    expect(screen.getByText(/Check #7001/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
+    expect(io.filed).toHaveBeenCalledWith(expect.objectContaining({ kind: 'gc_checks_applied', title: 'Checks applied for Sage Meadows', jobIds: ['oak', 'maple', 'elm'] }))
+    expect(io.filed.mock.calls[0]![0]).not.toHaveProperty('customerId')
   })
 
   it('says when the read failed', async () => {

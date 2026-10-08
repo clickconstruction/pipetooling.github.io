@@ -242,7 +242,9 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
       {props.error ? <div style={{ color: 'var(--text-red-700)' }}>{props.error}</div> : null}
 
       <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-        {AR_CAME_BACK_SENTENCE} The case closes when the new check is on the bill, or under More.
+        {view.source === 'unbanked'
+          ? 'The case closes when the payment is linked to its deposit, when it comes off the job, or under More.'
+          : `${AR_CAME_BACK_SENTENCE} The case closes when the new check is on the bill, or under More.`}
       </div>
     </div>
   )

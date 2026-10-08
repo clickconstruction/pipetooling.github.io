@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * GC mode design spike: who holds the price card open on a Project Board row (GcPriceCard.tsx):
+ * GC mode, the real build (the Board's B3), from the design spike's `usePriceCard.ts`: who holds the
+ * price card open on a Project Board row (GcPriceCard.tsx):
  * the trigger it hangs from, and whether a click pinned it. Hover opens it after a moment and
  * closes it a moment after the pointer leaves, so the pointer can cross into the card.
  */

@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { boardSectionElementId, type BoardSection } from '../../lib/gcMode/gcModel'
+import { boardSectionElementId, type BoardSection } from '../../lib/gc/boardGroups'
 import type { Tone } from './gcUi'
 
 /**
- * GC mode design spike: the board's stages, easy to find and to jump to (the owner, 2026-10-04:
+ * GC mode, the real build (the Board's B3), from the design spike's `GcBoardStages.tsx`: the board's
+ * stages, easy to find and to jump to (the owner, 2026-10-04:
  * "just like on jobs stages I would like to see a header and these stages better broken down with
  * more clear headers"). The strip at the top has a pill per section, numbered 1, 2, 3 for the three
  * stages, and stays in sight as the board scrolls; each section opens on a heading with a bar in
@@ -205,74 +206,6 @@ export function GcStageHeading({
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{blurb}</span>
       </div>
       {right && <span style={{ marginLeft: 'auto' }}>{right}</span>}
-    </div>
-  )
-}
-
-/** Inside a customer's section on By customer: a small heading for each stage they have jobs in. */
-export function GcStageSubheading({ item }: { item: StageStripItem }) {
-  const c = STAGE_COLORS[item.tone]
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 600, color: c.fg, margin: '0.15rem 0 -0.15rem' }}>
-      {item.number ? <NumberBadge n={item.number} tone={item.tone} size={18} /> : null}
-      {item.label}
-      <span style={{ color: 'var(--text-muted)' }}>({item.count})</span>
-    </div>
-  )
-}
-
-/** A customer's heading on By customer: the same band as a stage's, with their name, kind, contact and money. */
-export function GcCustomerHeading({
-  id,
-  name,
-  title,
-  onName,
-  count,
-  sub,
-  money,
-}: {
-  id: string
-  name: string
-  title: string
-  onName: () => void
-  count: number
-  /** "Developer · Elena Marchetti". */
-  sub: string
-  /** "bidding $977,823 · under contract $1,488,762 · owes us $288,879". */
-  money: string
-}) {
-  return (
-    <div
-      id={id}
-      style={{
-        scrollMarginTop: '3.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.25rem 0.75rem',
-        flexWrap: 'wrap',
-        padding: '0.55rem 0.75rem',
-        marginBottom: '0.5rem',
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderLeft: '5px solid var(--text-blue-500)',
-        borderRadius: 8,
-      }}
-    >
-      <div style={{ display: 'grid', gap: '0.05rem', minWidth: 0, flex: '1 1 16rem' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
-          <button
-            type="button"
-            onClick={onName}
-            title={title}
-            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textDecorationColor: 'var(--border-blue)', textUnderlineOffset: 3 }}
-          >
-            {name}
-          </button>{' '}
-          <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({count})</span>
-        </h3>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{sub}</span>
-      </div>
-      {money && <span style={{ marginLeft: 'auto', color: 'var(--text-600)', fontSize: '0.88rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{money}</span>}
     </div>
   )
 }

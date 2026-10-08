@@ -249,6 +249,9 @@ SELECT bct.same('set-aside labor rows: the sync is the app, Use for is a press',
   E'labor-sync true\nlabor-park true\nlabor-park true\nlabor-take-back true\nlabor-take-back true\nlabor-rename true\n' ||
   E'labor-park true\nlabor-park true\nlabor-use-parked false\nlabor-use-parked false');
 SELECT bct.same('set-aside labor rows: none left', (SELECT count(*)::text FROM public.cost_estimate_labor_rows_unmatched WHERE cost_estimate_id = '00000000-0000-0000-0000-00000000c731'), '0');
+SELECT bct.refused('set-aside labor rows: one per fixture on an estimate (v2.4903)',
+  $$INSERT INTO public.cost_estimate_labor_rows_unmatched (cost_estimate_id, fixture) VALUES ('00000000-0000-0000-0000-00000000c731', 'Twice'), ('00000000-0000-0000-0000-00000000c731', 'Twice')$$,
+  'duplicate key');
 UPDATE mark SET id = bct.last();
 
 -- 6 · SUMP removed: its row, and everything its delete took with it, each still named SUMP (the

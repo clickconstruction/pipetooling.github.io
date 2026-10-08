@@ -34,4 +34,4 @@ The 30-minute **sync** pulls new bank transactions into the books. It is a diffe
 
 ## Who can run it
 
-Anyone with Banking access can run it: dev, leader, assistant and controller.
+Anyone with Banking access can run it: dev, leader and controller.

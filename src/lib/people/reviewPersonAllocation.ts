@@ -264,10 +264,10 @@ export function buildReviewPersonAllocation(rows: ReviewPersonRows): ReviewPerso
     if (!jobId) continue
     const items = itemsByJob.get(r.id) ?? []
     const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
-    const rate = r.labor_rate ?? 0
-    const miles = Number(r.distance_miles) || 0
-    const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
-    const cost = hrs * rate + driveCost
+    // The job's own costing (v2.2686), as laborCostByJobId above: a line's direct $ and its rate
+    // override count. Hours × the sheet's rate dropped a direct-$ line, so the contributors window
+    // summed short of the job's total labor (JP1007, a $2,150 line with no hours; v2.4911).
+    const cost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
     const who = (r.assigned_to_name ?? '').trim() || '(Unassigned)'
     upsertContrib(jobId, who, hrs, cost, 0)
   }

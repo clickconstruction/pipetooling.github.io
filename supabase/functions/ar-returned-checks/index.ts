@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { loadOpenReturnCases, sendReturnCaseNotice } from '../_shared/arReturnCaseNotify.ts'
+import { AR_UNBANKED_CHECK_DAYS } from '../_shared/bankReturnedDeposits.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
 /**
@@ -11,9 +12,14 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
  * 1. `open_ar_rejected_check_cases()` — opens a case for a check Mercury could not
  *    take in when a payment recorded by hand matches it and it was not deposited
  *    again within 5 days; closes one once the check goes in again.
- * 2. Tells the office once about every open case it has not heard about — a bank
+ * 2. `open_ar_unbanked_check_cases(AR_UNBANKED_CHECK_DAYS)` (v2.4902) — opens a case
+ *    for a payment typed in as a check with no deposit linked after ten days, unless
+ *    an unused check deposit of at least its amount came in; closes one once its
+ *    payment gets a deposit or comes off the job.
+ * 3. Tells the office once about every open case it has not heard about — a bank
  *    return the Banking page's Sync stored (that path sends nothing itself), the
- *    rejected cases from step 1, anything the webhook's own notice missed.
+ *    rejected and unbanked cases from steps 1 and 2, anything the webhook's own
+ *    notice missed.
  *
  * Body: `{}`; `{ "dry_run": true }` opens nothing and sends nothing, and logs the
  * subject each case would get. Auth: `X-Cron-Secret` (or `cron_secret` in the body) =
@@ -59,7 +65,9 @@ serve(async (req) => {
     if (!dryRun) {
       const { data, error } = await admin.rpc('open_ar_rejected_check_cases')
       if (error) throw error
-      swept = data
+      const { data: unbanked, error: unbankedErr } = await admin.rpc('open_ar_unbanked_check_cases', { p_days: AR_UNBANKED_CHECK_DAYS })
+      if (unbankedErr) throw unbankedErr
+      swept = { rejected: data, unbanked }
     }
     const cases = await loadOpenReturnCases(admin)
     let told = 0

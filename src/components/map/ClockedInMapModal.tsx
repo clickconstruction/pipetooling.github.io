@@ -189,9 +189,11 @@ export type ClockedInMapModalProps = {
   onJobBidAssignError?: (msg: string) => void
   /** The strip's work date, for the Assign door's Dispatch quick-picks. */
   workDateYmd?: string
+  /** Whether the viewer may open /map (v2.4897): *Open the full map ›* shows only then, since the route bounces everyone else. */
+  canOpenFullMap: boolean
 }
 
-export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose, onOpenJob, onJobBidSaved, onJobBidAssignError, workDateYmd }: ClockedInMapModalProps) {
+export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose, onOpenJob, onJobBidSaved, onJobBidAssignError, workDateYmd, canOpenFullMap }: ClockedInMapModalProps) {
   const isMobile = useIsMobile()
   const navigate = useNavigate()
   const anchor = useOfficeAnchor(true)
@@ -490,11 +492,13 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
       ) : resolving && model.stops.length > 0 ? (
         <span>Placing the rest…</span>
       ) : null}
-      <span style={{ marginLeft: 'auto' }}>
-        <Link to="/map" onClick={onClose} style={{ color: 'var(--text-link)' }}>
-          Open the full map ›
-        </Link>
-      </span>
+      {canOpenFullMap ? (
+        <span style={{ marginLeft: 'auto' }}>
+          <Link to="/map" onClick={onClose} style={{ color: 'var(--text-link)' }}>
+            Open the full map ›
+          </Link>
+        </span>
+      ) : null}
     </div>
   )
 

@@ -78,6 +78,19 @@ const CASES = [
       { payment_id: 'p2', job_id: 'job-977', job_number: '977', job_name: 'Springtown', amount: 1482, invoice_id: 'i2', invoice_sequence_order: 1, invoice_status: 'paid' },
     ],
   }),
+  // v2.4902: a check typed in by hand that was never deposited; the case's own id stands in for the deposit.
+  caseRow({
+    mercury_transaction_id: 'case-unb',
+    counterparty_name: 'Done Right Foundation',
+    amount: 250,
+    kind: 'Check',
+    posted_at: null,
+    failed_at: null,
+    opened_at: '2026-08-29T22:17:00Z',
+    bank_reason: null,
+    source: 'unbanked',
+    recorded_payment: { payment_id: 'pay-066', job_id: 'job-066', job_number: '066', job_name: 'Venancio Diaz PRE', amount: 250, paid_on: '2026-08-19', job_revenue: 250, job_payments_made: 250 },
+  }),
 ]
 
 const TRAILS = [
@@ -120,7 +133,7 @@ vi.mock('../../lib/supabase', async () => {
     if (fn === 'list_ar_return_cases') return Promise.resolve({ data: CASES, error: null })
     if (fn === 'list_ar_deposit_trails') return Promise.resolve({ data: TRAILS, error: null })
     if (fn === 'list_ar_allocations_for_mercury_transaction') return Promise.resolve({ data: [], error: null })
-    if (['apply_mercury_bank_payment_allocations', 'close_ar_return_case', 'take_returned_check_off_jobs', 'set_mercury_transaction_ar_returned'].includes(fn)) {
+    if (['apply_mercury_bank_payment_allocations', 'close_ar_return_case', 'close_ar_unbanked_check_case', 'take_returned_check_off_jobs', 'set_mercury_transaction_ar_returned'].includes(fn)) {
       calls.rpc.push({ fn, args: rest[0] })
       if (fn === 'take_returned_check_off_jobs') return Promise.resolve({ data: { ok: true, removed: 2, jobs: [{}, {}] }, error: null })
       return Promise.resolve({ data: { ok: true }, error: null })
@@ -172,8 +185,8 @@ function caseRowFor(payer: RegExp): HTMLElement {
 describe('BankPaymentsModal · checks that came back are cases (render smoke)', () => {
   it('Came back sits on top of To match, and the header counts it', async () => {
     await open()
-    expect(screen.getByTestId('ar-came-back-group').textContent).toContain('Came back · 2')
-    expect(screen.getByTestId('ar-summary').textContent).toContain('2 came back')
+    expect(screen.getByTestId('ar-came-back-group').textContent).toContain('Came back · 3')
+    expect(screen.getByTestId('ar-summary').textContent).toContain('3 came back')
     expect(caseRowFor(/Southern Post/).textContent).toContain('off #878 since 9/24')
   })
 
@@ -238,6 +251,29 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     fireEvent.click(within(pane).getByTestId('ar-return-case-close-confirm'))
     await waitFor(() =>
       expect(calls.rpc).toEqual([{ fn: 'close_ar_return_case', args: { p_mercury_transaction_id: 'mtx-sp', p_reason: 'not_coming', p_note: 'Written off with the owner', p_replaced_by: null } }]),
+    )
+  })
+
+  it('a check typed in by hand that was never deposited: its own words, no new check offered, and More closes its own case (v2.4902)', async () => {
+    calls.rpc.length = 0
+    await open()
+    const row = caseRowFor(/Done Right/)
+    expect(row.textContent).toContain('never deposited')
+    fireEvent.click(row)
+    const pane = await screen.findByTestId('ar-return-case-pane')
+    expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('$250 was recorded as paid on #066 Venancio Diaz PRE. No deposit is linked to it.')
+    expect(within(pane).getByTestId('ar-return-case-story').textContent).toContain('10 days on, no deposit had come in for it.')
+    expect(within(pane).getByTestId('ar-return-case-stake').textContent).toContain('#066 reads paid in full. The money is not in the bank.')
+    // DRF's $250 deposit in To match is not a new check for it: the payment is linked to its deposit instead.
+    expect(within(pane).queryByTestId('ar-return-case-replacement')).toBeNull()
+    expect(within(pane).getByRole('button', { name: 'Take the $250 off #066' })).toBeTruthy()
+    expect(pane.textContent).toContain('The case closes when the payment is linked to its deposit')
+    fireEvent.click(within(pane).getByRole('button', { name: /More/ }))
+    fireEvent.click(within(pane).getByRole('menuitem', { name: 'Not coming…' }))
+    fireEvent.change(within(pane).getByLabelText('A note for the record'), { target: { value: 'Lost in the mail' } })
+    fireEvent.click(within(pane).getByTestId('ar-return-case-close-confirm'))
+    await waitFor(() =>
+      expect(calls.rpc).toEqual([{ fn: 'close_ar_unbanked_check_case', args: { p_case_id: 'case-unb', p_reason: 'not_coming', p_note: 'Lost in the mail' } }]),
     )
   })
 

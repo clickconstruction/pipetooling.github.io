@@ -35,6 +35,7 @@ const NOT_OUTSIDE: Readonly<Record<string, string>> = {
   'crew-day-email-dispatch': 'a digest to our own staff',
   'ct-roster-audit': 'an audit to our own staff',
   'gc-word-ask': 'a question to our own leader',
+  'notify-lien-approval': 'a lien notice waiting on our own leader',
   'invite-user': 'an account invitation, not a paper',
   'money-waiting-email-dispatch': 'a digest to our own staff',
   'paid-job-email': 'a notice to our own staff',

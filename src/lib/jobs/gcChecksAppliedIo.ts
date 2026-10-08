@@ -1,12 +1,12 @@
 /**
- * Reads for "Where the checks went" (v2.4046): one GC's jobs with their bills
+ * Reads for "Where the checks went" (v2.4046): one GC's jobs (or, v2.4912, a development's) with their bills
  * and payments, the payment-move ledger for those jobs, and the Mercury
  * deposits the payments were matched to. The kernel (`gcChecksApplied.ts`)
  * does the rest. Deposits are best-effort: a reader without banking access
  * gets no deposit dates and no unapplied remainders, never an error.
  */
 import { supabase } from '../supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { withSupabaseRetry, type SupabaseClientResult } from '../../utils/errorHandling'
 import type { ChecksDepositIn, ChecksEventIn, ChecksJobIn } from './gcChecksApplied'
 
 export type GcChecksInputs = { jobs: ChecksJobIn[]; events: ChecksEventIn[]; deposits: ChecksDepositIn[] }
@@ -20,10 +20,19 @@ type RawJob = Omit<ChecksJobIn, 'invoices' | 'payments'> & { invoices: ChecksJob
 
 /** The jobs this GC pays on: where it is the GC, or where it is the customer outright. */
 export async function fetchGcChecksInputs(gcId: string): Promise<GcChecksInputs> {
-  const rawJobs = await withSupabaseRetry(
-    () => supabase.from('jobs_ledger').select(JOBS_SELECT).or(`gc_customer_id.eq.${gcId},customer_id.eq.${gcId}`),
-    'where the checks went: jobs',
-  )
+  return fetchChecksInputsFor(() => supabase.from('jobs_ledger').select(JOBS_SELECT).or(`gc_customer_id.eq.${gcId},customer_id.eq.${gcId}`))
+}
+
+/**
+ * A development's jobs (v2.4912): GC Review grouped By development offers Find a check too, and the
+ * owner's call was "follow the switch". The kernel then counts every bill on them, whoever pays it.
+ */
+export async function fetchDevelopmentChecksInputs(developmentId: string): Promise<GcChecksInputs> {
+  return fetchChecksInputsFor(() => supabase.from('jobs_ledger').select(JOBS_SELECT).eq('development_id', developmentId))
+}
+
+async function fetchChecksInputsFor(readJobs: () => PromiseLike<SupabaseClientResult<unknown>>): Promise<GcChecksInputs> {
+  const rawJobs = await withSupabaseRetry(readJobs, 'where the checks went: jobs')
   const jobs: ChecksJobIn[] = ((rawJobs ?? []) as unknown as RawJob[]).map((j) => ({ ...j, invoices: j.invoices ?? [], payments: j.payments ?? [] }))
   const jobIds = jobs.map((j) => j.id)
   if (jobIds.length === 0) return { jobs, events: [], deposits: [] }

@@ -318,7 +318,9 @@ export function JobsStagesCommandBar({
             title={
               filters.sortMode === 'progress'
                 ? 'Rows are sorted by % complete (0 → 100) — tap to go back to job-number order'
-                : 'Rows are sorted by time added (newest first) — tap to go back to job-number order'
+                : filters.sortMode === 'next'
+                  ? 'Rows are sorted by the next scheduled visit, finished rows last — tap to go back to job-number order'
+                  : 'Rows are sorted by time added (newest first) — tap to go back to job-number order'
             }
             aria-label={`Sorted by ${STAGES_SORT_MODE_ACTIVE_CHIP_LABELS[filters.sortMode]} — tap to restore job-number order`}
             style={stagesActiveFilterChipStyle}

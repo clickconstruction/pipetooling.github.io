@@ -2476,7 +2476,7 @@ export default function SendRecordInvoiceModal({
           >
             <strong>Billing to {billToDisplayLabel(billToOverride)}</strong> — not the job customer
             {(jobRaw?.customer_name ?? '').trim() ? ` (${(jobRaw?.customer_name ?? '').trim()})` : ''}. Change or
-            remove this on Edit Job → Invoices → Bill to…
+            remove this on the job’s Bill tab → Bill to ▾
           </div>
         ) : payerParty === 'gc' ? (
           <div
@@ -2494,8 +2494,8 @@ export default function SendRecordInvoiceModal({
           >
             <strong>Billing {payerRecipient?.name || 'the GC'}</strong>, the GC on this job
             {(jobRaw?.customer_name ?? '').trim() ? ` — not ${(jobRaw?.customer_name ?? '').trim()}` : ''}.
-            {payerRecipient?.email ? '' : ' They have no billing email yet.'} Change this on Edit Job → Bills go to, or per
-            invoice with Bill to.
+            {payerRecipient?.email ? '' : ' They have no billing email yet.'} Change this on the job’s Edit tab → Bills go to, or per
+            bill with Bill to ▾ on the Bill tab.
           </div>
         ) : null}
 

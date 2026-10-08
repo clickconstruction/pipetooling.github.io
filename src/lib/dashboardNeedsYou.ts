@@ -1006,8 +1006,12 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         n === 1
           ? first.source === 'rejected'
             ? `${first.payer}'s ${money(first.amount)} check never reached the bank`
-            : `${first.payer}'s ${money(first.amount)} check came back`
-          : `${n} checks came back (${money(total)})`,
+            : first.source === 'unbanked'
+              ? `${first.payer}'s ${money(first.amount)} check was never deposited`
+              : `${first.payer}'s ${money(first.amount)} check came back`
+          : views.every((v) => v.source === 'unbanked')
+            ? `${n} checks were never deposited (${money(total)})`
+            : `${n} checks came back (${money(total)})`,
       detail: `${rows}${more}. Each one sits on top of To match in Accounts Receivable with its next step.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Open the check' : 'Open Accounts Receivable',

@@ -240,4 +240,10 @@ describe('aiaDownloadFilename', () => {
     expect(aiaDownloadFilename('1023', 'three / final')).toMatch(/^AIA-G702-G703-1023-\d{4}/)
     expect(aiaDownloadFilename('')).toMatch(/^AIA-G702-G703-job-\d{4}/)
   })
+
+  it('stamps the company\'s day, not the UTC clock\'s: 7:16 PM Central on Oct 7 is still Oct 7 (v2.4891)', () => {
+    expect(aiaDownloadFilename('1071', 1, new Date('2026-10-08T00:16:00Z'))).toBe('AIA-G702-G703-1071-app-1-2026-10-07.xlsx')
+    expect(aiaDownloadFilename('1071', 1, new Date('2026-10-07T15:00:00Z'))).toBe('AIA-G702-G703-1071-app-1-2026-10-07.xlsx')
+    expect(aiaDownloadFilename('1071', 1, new Date('2026-10-08T05:30:00Z'))).toBe('AIA-G702-G703-1071-app-1-2026-10-08.xlsx')
+  })
 })

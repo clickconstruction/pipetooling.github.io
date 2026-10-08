@@ -30,6 +30,7 @@ import { buildAiaPreview, formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { loadAiaPrefillFacts } from '../../lib/aiaG702G703PrefillIo'
 import {
   type PayApplicationForm,
+  type PayApplicationRow,
   type SavedPayApplication,
   carryForwardPayApplication,
   carryMismatch,
@@ -40,6 +41,7 @@ import {
   payApplicationWriteFromForm,
   previousPayApplication,
   retainageDropOffer,
+  savedPayApplicationFromRow,
   sortPayApplications,
   withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
@@ -56,7 +58,16 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { fileSentCopy, loadSentCopiesForJob } from '../../lib/sent/sentCopiesIo'
 import type { SentCopy } from '../../lib/sent/sentCopies'
-import { payApplicationDay, payApplicationHistory, payApplicationRestoreTakenWords, payApplicationSavedWords, payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
+import {
+  changedAfterWentOut,
+  parsePayApplicationSnapshot,
+  payApplicationDay,
+  payApplicationHistory,
+  payApplicationRestoreTakenWords,
+  payApplicationSavedWords,
+  payApplicationSnapshot,
+  withWentOutAmounts,
+} from '../../lib/aiaPayApplicationHistory'
 import AiaG702G703History from './AiaG702G703History'
 
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -276,6 +287,17 @@ export default function AiaG702G703Modal({
     [appForm, form.g702_n5_project, saved, openId],
   )
 
+  // The GC has the newest workbook that carries its figures (v2.4714). The form is read against it as it is typed,
+  // so the note names what moved since and goes once the amounts are back (#92).
+  const changedAfter = useMemo(() => {
+    if (!openApp || !job) return null
+    const wentOut = history.lines.find((l) => l.app.id === openApp.id)?.wentOut ?? []
+    if (wentOut.length === 0) return null
+    const w = payApplicationWriteFromForm(job.id, appForm)
+    if (!w.ok) return null
+    return changedAfterWentOut(savedPayApplicationFromRow({ ...w.row, id: openApp.id, updated_at: openApp.updatedAt } as PayApplicationRow), wentOut)
+  }, [openApp, job, history, appForm])
+
   const loadForm = useCallback((loaded: PayApplicationForm, withLink = '', withReason = '', withName = '') => {
     const next = fieldValuesToFormState(loaded.values)
     const nextLines = loaded.lines.map(lineToForm)
@@ -441,6 +463,18 @@ export default function AiaG702G703Modal({
     setLineForms(taken.lines.map(lineToForm))
     setPctDraft({})
     setCarryReason('')
+  }
+
+  /** Put the amounts back as the GC's workbook has them (#92): the form takes them, unsaved, and Save keeps them. */
+  const putAmountsBack = () => {
+    const snap = changedAfter ? parsePayApplicationSnapshot(changedAfter.copy.sourceSnapshot) : null
+    if (!changedAfter || !snap) return
+    const back = withWentOutAmounts(appForm, snap)
+    setForm(fieldValuesToFormState(back.values))
+    setLineForms(back.lines.map(lineToForm))
+    setPctDraft({})
+    const day = payApplicationDay(changedAfter.copy.sentAt)
+    showToast(`The amounts are back as they went out${day ? ` ${day}` : ''}. Save to keep them.`, 'success')
   }
 
   type SaveOutcome = { saved: SavedPayApplication } | { notSaved: string }
@@ -860,6 +894,51 @@ export default function AiaG702G703Modal({
                   }}
                 />
               </label>
+            </div>
+          ) : null}
+          {changedAfter ? (
+            <div
+              data-testid="aia-changed-after"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem',
+                marginBottom: '0.9rem',
+                padding: '0.6rem 0.7rem',
+                borderRadius: 4,
+                fontSize: '0.8125rem',
+                background: 'var(--bg-amber-100)',
+                color: 'var(--text-amber-900)',
+                border: '1px solid var(--border-amber)',
+              }}
+            >
+              <strong>Changed after it went out {payApplicationDay(changedAfter.copy.sentAt)}.</strong>
+              <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                {changedAfter.differences.map((d) => (
+                  <li key={d.label}>
+                    {d.label}: {formatAiaMoney(d.was)} went out, {formatAiaMoney(d.now)} now.
+                  </li>
+                ))}
+              </ul>
+              <span>The GC has the {payApplicationDay(changedAfter.copy.sentAt)} workbook. Generate it again to send the change, or put the amounts back and save.</span>
+              <div>
+                <button
+                  type="button"
+                  onClick={putAmountsBack}
+                  style={{
+                    padding: '0.25rem 0.7rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    border: '1px solid currentColor',
+                    background: 'none',
+                    color: 'inherit',
+                  }}
+                >
+                  Put the amounts back
+                </button>
+              </div>
             </div>
           ) : null}
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '0.9rem' }}>

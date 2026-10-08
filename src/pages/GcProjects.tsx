@@ -23,7 +23,11 @@ import { GcQuestionsWindow } from '../components/gc/GcQuestions'
 import { openQuestions } from '../lib/gc/questions'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
+import { GcBoard } from '../components/gc/GcBoard'
+import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
+import { boardStateFromRows } from '../lib/gc/boardRows'
 import {
+  addGcCompany,
   checkDriveAccess,
   createGcProject,
   editScopeBookLine,
@@ -34,12 +38,15 @@ import {
   recordQuestion,
   sendQuestionToArchitect,
   loadGcPickerCustomers,
+  loadGcBoardRows,
   loadGcProjects,
   loadScopeBookStore,
   makeDriveFolders,
   mergeScopeBookLines,
   saveScopeBookLine,
   saveScopeSet,
+  setGcCompanyCoverage,
+  vetGcCompany,
   type GcPickerCustomer,
   type GcTeamMember,
 } from '../lib/gc/gcIo'
@@ -47,7 +54,7 @@ import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
-import type { ScopeBookStore } from '../lib/gc/types'
+import type { GcState, ScopeBookStore } from '../lib/gc/types'
 import { gcFocusFromSearch } from '../lib/gc/links'
 
 interface Loaded {
@@ -112,6 +119,69 @@ export default function GcProjects() {
     if (!canOpenGcProjects(role)) return
     void load()
   }, [role, load])
+
+  // The Project Board (the Board's B3): a dev sees it above the projects while it is built; door 1's
+  // list stays for everyone until the board's own door opens it to the office.
+  const [board, setBoard] = useState<GcState | null>(null)
+  const [boardProblem, setBoardProblem] = useState<string | null>(null)
+  useEffect(() => {
+    if (role !== 'dev' || !loaded || loaded.projects.length === 0) return
+    let live = true
+    loadGcBoardRows(loaded.projects, today)
+      .then((rows) => {
+        if (!live) return
+        setBoard(boardStateFromRows(rows))
+        setBoardProblem(null)
+      })
+      .catch((e) => {
+        if (live) setBoardProblem(formatErrorMessage(e, 'The board did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [role, loaded, today])
+  const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // Trade partners (the Board's B3-b) sits beside the board for a dev: each write reads the rows again.
+  const [devView, setDevView] = useState<'board' | 'partners'>('board')
+  const refreshBoard = async () => {
+    if (loaded) setBoard(boardStateFromRows(await loadGcBoardRows(loaded.projects, today)))
+  }
+  const partnerWrites: TradePartnerWrites = {
+    addCompany: async (draft) => {
+      await addGcCompany(draft)
+      await refreshBoard()
+    },
+    vetCompany: async (companyId, status, limit, note) => {
+      await vetGcCompany(companyId, status, limit, note)
+      await refreshBoard()
+    },
+    setCoverage: async (companyId, address, maxMiles) => {
+      await setGcCompanyCoverage(companyId, address, maxMiles)
+      await refreshBoard()
+    },
+  }
+  const devPill = (view: 'board' | 'partners', label: string) => {
+    const on = devView === view
+    return (
+      <button
+        type="button"
+        aria-pressed={on}
+        onClick={() => setDevView(view)}
+        style={{
+          padding: '0.3rem 0.8rem',
+          borderRadius: 999,
+          border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+          background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+          color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+          fontWeight: on ? 600 : 400,
+          cursor: 'pointer',
+          fontSize: '0.85rem',
+        }}
+      >
+        {label}
+      </button>
+    )
+  }
 
   // The walk shows once the page has loaded, so a stop never points at a card still loading. Its
   // stops are read from the page after that render: an anchor not on it drops out unless the stop
@@ -247,6 +317,37 @@ export default function GcProjects() {
       </div>
 
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
+      {role === 'dev' && loaded && loaded.projects.length > 0 && (
+        <div style={{ display: 'grid', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : 'Trade partners'}</h2>
+            <Chip tone="grey" title="Only a dev sees the board and Trade partners while they are built. Everyone else sees the projects below.">
+              Devs only
+            </Chip>
+            <div role="group" aria-label="Project Board or Trade partners" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto' }}>
+              {devPill('board', 'Project Board')}
+              {devPill('partners', 'Trade partners')}
+            </div>
+          </div>
+          {board ? (
+            devView === 'board' ? (
+              <GcBoard
+                state={board}
+                onOpen={openProjectCard}
+                onPlans={(id) => setPlansWindow(id)}
+                folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
+              />
+            ) : (
+              <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
+            )
+          ) : boardProblem ? (
+            <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{boardProblem}</div>
+          ) : (
+            <div style={{ fontSize: '0.875rem' }}>Loading the board…</div>
+          )}
+          <h2 style={{ margin: '0.5rem 0 0', fontSize: '1.1rem' }}>Each project</h2>
+        </div>
+      )}
       {!loaded && !loadProblem && <div style={{ fontSize: '0.875rem' }}>Loading…</div>}
       {loaded && loaded.projects.length === 0 && <div style={{ fontSize: '0.875rem' }}>No GC project yet. Press New project when the first plans come in.</div>}
 

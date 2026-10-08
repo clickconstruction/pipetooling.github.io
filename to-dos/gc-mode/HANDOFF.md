@@ -269,6 +269,11 @@ uploads work through the "PipeTooling Jobs" Shared Drive since 2026-08-29
 
 ## Gotchas
 
+- **`.proto` names on the spike.** Main owns the real paths of components the real build ported
+  (New project's windows, and the Board's `GcBoardStages.tsx` and `GcPriceCard.tsx` since B3-a); the
+  spike's forks carry `.proto` in their names and the spike's pages import those. A main merge takes
+  main's file at the real path and a spike-only change goes in the `.proto` file.
+
 - **The golden test** (`src/lib/gcMode/gcModel.test.ts`) pins what the model says after each step
   of a scripted walk. It must pass without `-u`. A moved snapshot is a behavior change: only with
   the owner's OK, and the commit names which. Add steps only at the very end of `STEPS`; one

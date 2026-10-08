@@ -468,3 +468,45 @@ describe('buildReviewPersonAllocation — nothing read', () => {
     expect(JSON.stringify(input, (_k, v) => (v instanceof Set ? [...v] : v instanceof Map ? [...v] : v))).toBe(before)
   })
 })
+
+describe('buildReviewPersonAllocation — the contributors window adds up to the job (v2.4911)', () => {
+  // JP1007's shape, made-up names and amounts: a sub sheet with two assignees whose one line is a
+  // direct $ amount with no hours, beside a crew day. The job's total labor counts the line; the
+  // window's rows did not (hours × the sheet's rate is 0 × $50), so they summed short by the line.
+  const subSheet = sheet({ id: 'sub', labor_rate: 50, assigned_to_name: 'Bo | Cutting Co LLC' })
+  const lines = [item({ job_id: 'sub', count: 1, hrs_per_unit: 0, direct_labor_amount: 2150 })]
+  const d = buildReviewPersonAllocation(
+    rows({
+      ...oneCrewDay(8, 100),
+      allLaborRowsForCostAllTime: [subSheet],
+      laborItems: lines,
+      allLaborRows: [{ id: 'sub', job_number: subSheet.job_number, job_ledger_id: subSheet.job_ledger_id, job_date: subSheet.job_date }],
+      allLaborItems: lines,
+      crewJobsLedger: [job({ status: 'billed' })],
+    }),
+  )
+
+  it('the sheet’s row carries its direct $ line, costed as the job costs it', () => {
+    expect(d.laborByJobAndPerson['job-1']).toContainEqual({ personName: 'Bo | Cutting Co LLC', hours: 0, laborCost: 2150, subLaborCost: 2150, crewLaborCost: 0 })
+  })
+
+  it('the rows add up to the job’s total labor, so the window shows no gap', () => {
+    const rowsTotal = d.laborByJobAndPerson['job-1']!.reduce((sum, r) => sum + r.laborCost, 0)
+    expect(rowsTotal).toBe(d.crewJobs[0]!.totalLaborOnJob)
+    expect(rowsTotal).toBe(2150 + 8 * 30)
+  })
+
+  it('a sheet priced by hours: each line at its own rate when it has one, else the sheet’s (main used the sheet’s for every line)', () => {
+    const byHours = [item({ job_id: 'sub', count: 2, hrs_per_unit: 1.5 }), item({ job_id: 'sub', count: 1, hrs_per_unit: 1, labor_rate: 80 })]
+    const e = buildReviewPersonAllocation(
+      rows({
+        allLaborRowsForCostAllTime: [subSheet],
+        laborItems: byHours,
+        allLaborRows: [{ id: 'sub', job_number: subSheet.job_number, job_ledger_id: subSheet.job_ledger_id, job_date: subSheet.job_date }],
+        allLaborItems: byHours,
+        crewJobsLedger: [job({ status: 'billed' })],
+      }),
+    )
+    expect(e.laborByJobAndPerson['job-1']).toEqual([{ personName: 'Bo | Cutting Co LLC', hours: 4, laborCost: 3 * 50 + 80, subLaborCost: 3 * 50 + 80, crewLaborCost: 0 }])
+  })
+})

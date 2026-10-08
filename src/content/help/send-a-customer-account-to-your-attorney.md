@@ -24,7 +24,7 @@ On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|�
 
 An account is the **payer**. The payer is the GC when one pays, otherwise the customer. An account spans every Collections job that payer owes on. For each account, the desk says these at the top:
 
-- **Theory** is what an attorney could plead: {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}} or {{chip:red|None yet}}. The theory is the legal ground an attorney could sue on.
+- **Theory** is what an attorney could plead: {{chip:green|Signed contract}}, {{chip:yellow|Sworn account}}, {{chip:yellow|Lien only}} or {{chip:red|None yet}}. The theory is the legal ground an attorney could sue on. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid.
 - **Click keeps** is the balance less the firm's contingency and a filing cost. The contingency is the firm's share of what it recovers. Click keeps comes with a verdict: *worth it*, *marginal* or *not worth it*.
 - **Before this goes to an attorney** lists {{chip:red|fix}} items an attorney asks for first. The list also shows {{chip:yellow|note}} items worth knowing. Most items have a button to the surface that owns the record.
 
@@ -42,7 +42,7 @@ The contact email is a contact, not a subscription. The firm's own people decide
 
 ## 5. Mark it attorney-ready — that is the release
 
-Only a dev sees {{button:dark|⚖ Mark attorney ready…}}. The sheet says exactly what goes: jobs, balance, theory, exhibits, and how many entries are held back. The sheet names the handling person at the firm. The sheet lists who at the firm will hear. Each person's row starts with {{chip:red|Email now}}, {{chip:gray|In their digest}}, {{chip:yellow|Not confirmed}} or {{chip:gray|Not emailed}}. The sheet takes a note for the firm. The sheet warns when red gaps are still open. You can mark anyway, and the packet's cover sheet says so.
+Only a dev sees {{button:dark|⚖ Mark attorney ready…}}. The sheet says exactly what goes: jobs, balance, theory, exhibits, and how many entries are held back. Exhibits are the records the packet offers as proof, one lettered group for each kind. The sheet names the handling person at the firm. The sheet lists who at the firm will hear. Each person's row starts with {{chip:red|Email now}}, {{chip:gray|In their digest}}, {{chip:yellow|Not confirmed}} or {{chip:gray|Not emailed}}. The sheet takes a note for the firm. The sheet warns when red gaps are still open. You can mark anyway, and the packet's cover sheet says so.
 
 You confirm, and the account moves to **With the firm** on the desk's rail. The Pipeline row wears {{chip:yellow|⚖ new}}. Each job's Activity records the release. The matter appears on the firm's portal the moment they open it.
 
@@ -72,10 +72,10 @@ The firm never marks anything paid, edits a job, or emails the customer through 
 
 Closed matters sit under **Closed** on the desk's rail. So the history is one click away.
 
-## 6. Ask the firm
+## 9. Ask the firm
 
 On the desk's **Fees & steps** tab, {{button:outline|Ask the firm…}} sends counsel a question. Counsel means the firm's lawyers. Ask the firm can also ask for a **sign-off on one job**. Counsel's memo names the moment for it. That moment is when an owner wants to pay Click direct while the GC is silent. Counsel signs off per job before the office takes the check.
 
 The ask shows on the desk as {{chip:yellow|waiting on the firm}}, with **Withdraw**, until they answer. The answer is {{chip:green|signed off Oct 3}} or {{chip:red|not yet}}. The answer lands on your Needs You card as *The law firm has N things for you*. The card item clears when you acknowledge it.
 
-A sent § 53.056 notice on the Lien desk carries the same door on its footer: *Ask counsel to sign off…*. The door shows when the job's account is with the firm. The footer then reads *counsel signed off Oct 3 · take the owner's payment*. A sign-off moves no money. You still record the payment on the job.
+The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. A sent one on the Lien desk carries the same door on its footer: *Ask counsel to sign off…*. The door shows when the job's account is with the firm. The footer then reads *counsel signed off Oct 3 · take the owner's payment*. A sign-off moves no money. You still record the payment on the job.

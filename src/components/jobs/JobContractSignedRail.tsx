@@ -14,7 +14,7 @@ import type { EstimateRecordRow } from '../estimates/CustomerAcceptanceRecordBod
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { formatContractStamp, jobContractSigningUrl, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { formatContractSignedStamp, formatContractStamp, jobContractSigningUrl, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { abbreviateUa, signedDoors, signedHowLine, signedShareLine, type SignedSource } from '../../lib/jobs/contractSignedDoors'
 import { isGoogleDocsUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import { normalizeEstimateOptionsFromJson } from '../../lib/estimates/estimateOptions'
@@ -198,7 +198,7 @@ export default function JobContractSignedRail({ job, jobNumber, source, row, est
           <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>
             {doors.verb}
             {signerName ? ` by ${signerName}` : ''}
-            {signedAt ? ` · ${formatContractStamp(signedAt)}` : ''}
+            {signedAt ? ` · ${formatContractSignedStamp(signedAt)}` : ''}
           </div>
           <div style={{ fontSize: '0.76rem', opacity: 0.9 }}>
             {howLine}

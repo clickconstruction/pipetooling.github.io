@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import PeopleOffsetsTab from './PeopleOffsetsTab'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import type { ArchivedRoster } from '../../lib/people/rosterPeople'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -17,8 +18,8 @@ vi.mock('../../hooks/useAuth', async () => {
 
 const TABLE_ROWS: Record<string, unknown[]> = {
   person_offsets: [
-    { id: 'o1', person_name: 'Abraham', type: 'damage', amount: 425, description: 'Cracked windshield', occurred_date: '2026-08-12', pay_stub_id: null, created_at: null },
-    { id: 'o2', person_name: 'Trace', type: 'employee_credit', amount: 150, description: 'Referral bonus', occurred_date: '2026-07-30', pay_stub_id: null, created_at: null },
+    { id: 'o1', person_name: 'Abraham', person_id: 'p-abe', type: 'damage', amount: 425, description: 'Cracked windshield', occurred_date: '2026-08-12', pay_stub_id: null, created_at: null },
+    { id: 'o2', person_name: 'Trace', person_id: 'p-trace', type: 'employee_credit', amount: 150, description: 'Referral bonus', occurred_date: '2026-07-30', pay_stub_id: null, created_at: null },
     { id: 'o3', person_name: 'Malachi', type: 'backcharge', amount: 50, description: null, occurred_date: '2026-06-01', pay_stub_id: 'applied-stub', created_at: null },
   ],
   pay_stub_payments: [
@@ -55,6 +56,17 @@ const PAY_STUBS = [
   { id: 's1', person_name: 'Abraham', period_start: '2026-07-26', period_end: '2026-08-01', hours_total: 41.5, gross_pay: 1840, created_at: null, paid_at: null, paid_by: null, paid_note: null },
 ]
 
+// Who is archived, id first (#29 item 3): Trace's id is archived though no archived name is his;
+// Abraham shares a name with an archived account, but his own id is live, so he stays.
+const ARCHIVED: ArchivedRoster = {
+  byPersonId: new Map([
+    ['p-abe', false],
+    ['p-trace', true],
+  ]),
+  byUserId: new Map(),
+  names: new Set(['Abraham']),
+}
+
 async function findExact(want: string) {
   return screen.findAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === want)
 }
@@ -66,8 +78,10 @@ describe('PeopleOffsetsTab settle-up board', () => {
         people={[]}
         users={[]}
         payStubs={PAY_STUBS}
+        payStubDeductionsByStubId={{}}
+        payStubAdditionalByStubId={{}}
         loadPayStubs={() => Promise.resolve()}
-        archivedUserNames={new Set(['Trace'])}
+        archived={ARCHIVED}
       />,
     )
 
@@ -82,7 +96,7 @@ describe('PeopleOffsetsTab settle-up board', () => {
     expect((await findExact('settled')).length).toBeGreaterThan(0)
     const nameCells = screen.getAllByRole('row').map((r) => r.textContent ?? '')
     expect(nameCells[nameCells.length - 1]).toContain('Malachi')
-    // Trace is archived → folded into the collapsed Archived users section;
+    // Trace's id is archived → folded into the collapsed Archived users section;
     // his row is hidden until the section expands.
     expect(screen.queryByText('pay $150.00')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /Archived users \(1\)/ }))
@@ -112,5 +126,30 @@ describe('PeopleOffsetsTab settle-up board', () => {
     expect((await screen.findAllByText(/Week /)).length).toBeGreaterThan(0)
     expect(screen.getByText(/Paid Aug 5.*cashapp/)).toBeTruthy()
     expect(screen.getByText('$840.00 still owed')).toBeTruthy()
+  })
+
+  // v2.4900: a report's Less line lowers what it owes. $1,840 gross with a $840 Less line and $1,000 paid
+  // is paid in full — Balances and Record payment already read it so, and the database caps payments at net.
+  it('a report with a Less line owes its net: the same report with $840 taken off is paid in full', async () => {
+    renderWithProviders(
+      <PeopleOffsetsTab
+        people={[]}
+        users={[]}
+        payStubs={PAY_STUBS}
+        payStubDeductionsByStubId={{ s1: [{ amount: 840 }] }}
+        payStubAdditionalByStubId={{}}
+        loadPayStubs={() => Promise.resolve()}
+        archived={ARCHIVED}
+      />,
+    )
+    expect((await screen.findAllByText('Abraham')).length).toBeGreaterThan(0)
+    // Before, the Unpaid reports column read $840.00 (gross − paid) and the net read pay $415.00.
+    // Now nothing is owed on the report once the $1,000 payment loads, so only the $425 charge is left.
+    expect((await findExact('owes $425.00')).length).toBeGreaterThan(0)
+    expect(screen.queryAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === '$840.00')).toHaveLength(0)
+    expect(screen.queryAllByText((_, el) => el?.childElementCount === 0 && el?.textContent === 'pay $415.00')).toHaveLength(0)
+    fireEvent.click(screen.getAllByText('Abraham')[0]!)
+    expect(await screen.findByText('Needs action')).toBeTruthy()
+    expect(screen.queryByText('Partly paid')).toBeNull()
   })
 })

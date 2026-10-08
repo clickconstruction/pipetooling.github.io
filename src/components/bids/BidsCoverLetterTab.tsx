@@ -61,8 +61,8 @@ import type {
   BidVersion,
 } from '../../lib/bids/bidPricingEngineTypes'
 import { bundleSummary, letterTotal, sectionLabel, starredPricingIdForVersion } from '../../lib/bids/coverLetterVersionBundle'
-import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
-import { roomSectionsForLetterOptions } from '../../lib/bids/wonOption'
+import { COVER_LETTER_ALTS_HEADING_DEFAULT, COVER_LETTER_ALTS_LAYOUT_KEY, altSectionKey, buildAlternatesBlock, parseCoverLetterAltTexts, readCoverLetterAltsLayout, type CoverLetterAltTexts, type CoverLetterAltsLayout, type SamePageOption, type SamePagePlan, type SamePageSection, buildOptionsBlock, optionsAlternateCount } from '../../lib/bids/coverLetterSamePage'
+import { roomSectionsForPacket } from '../../lib/bids/wonOption'
 import { alternateIsPriced, buildAddAlternatesBlock, offeredAddAlternates, stampAddAlternateAmounts, type LetterTotalsByAlternate } from '../../lib/bids/coverLetterAddAlternates'
 import { letterDocument, letterRowsFor, letterSectionPlans, letterTotalsWithoutOffered, priceLetterSections, type LetterSection } from '../../lib/bids/coverLetterDocument'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
@@ -1240,6 +1240,16 @@ export function BidsCoverLetterTab({
         // Options (v2.4723): two or more base bids are proposals the GC picks between, so the bid's
         // value — Mark sent, the Bid Board, the best effort — is the lead option's ★, never the sum.
         const letterOptions = samePagePlan?.options ?? null
+        // The room a GC signs in (v2.4728, v2.4892): two or more base bids are options, each at its
+        // own total and version, never one base at their sum, in either layout. The letter's own
+        // option labels name them (Option 2 — Value Engineered · Alternate 1).
+        const roomOptionLabels = (gc: string) => (plan: SamePagePlan) => {
+          const block = buildOptionsBlock(plan, altTexts, formatCurrency, numberToWords, false, { gcName: gc, projectName: projectNameVal })
+          return {
+            option: (o: SamePageOption) => block?.items[o.n - 1]?.label ?? `Option ${o.n} — ${o.section.name}`,
+            alternate: (o: SamePageOption, _a: SamePageSection, j: number) => block?.items[o.n - 1]?.alternates[j]?.label ?? `Alternate ${j + 1}`,
+          }
+        }
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : letterOptions ? samePagePlan!.headlineRevenue : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
         // v2.4199: the best effort is the WHOLE — the headline (base) plus every offered alternate's
         // add-on — because the robot priced the alternate's rows too and is scored against it.
@@ -1593,22 +1603,7 @@ export function BidsCoverLetterTab({
                                 projectName={projectNameVal}
                                 projectAddress={projectAddressVal}
                                 serviceTypeName={serviceTypeName}
-                                sections={
-                                  letterOptions
-                                    // Options (v2.4728): every signable combination is a pickable proposal — Option 1, Option 1 with each
-                                    // of its alternates, each other option, each with its alternates — carrying its version so the
-                                    // signature records the option taken. The letter's own labels name them.
-                                    ? (() => {
-                                        const block = buildOptionsBlock(samePagePlan!, altTexts, formatCurrency, numberToWords, false, { gcName: letterCustomerName, projectName: projectNameVal })
-                                        return roomSectionsForLetterOptions(letterOptions, samePagePlan!.alternates, {
-                                          option: (o) => block?.items[o.n - 1]?.label ?? `Option ${o.n} — ${o.section.name}`,
-                                          alternate: (o, _a, j) => block?.items[o.n - 1]?.alternates[j]?.label ?? `Alternate ${j + 1}`,
-                                        })
-                                      })()
-                                    : bundlePricings.length > 0
-                                      ? bundlePricings.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))
-                                      : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]
-                                }
+                                sections={bundlePricings.length > 0 ? roomSectionsForPacket(pricedBundle, roomOptionLabels(letterCustomerName)) : [{ name: 'Base bid', isAlternate: false, revenueSum: headlineAmount, fixtureRows }]}
                                 addOns={roomAddOns}
                                 inclusions={inclusions}
                                 exclusions={roomExclusions}
@@ -1745,7 +1740,7 @@ export function BidsCoverLetterTab({
                                 projectName={projectNameVal}
                                 projectAddress={projectAddressVal}
                                 serviceTypeName={serviceTypeName}
-                                sections={gcSections.map((s) => ({ name: s.name, isAlternate: s.isAlternate, revenueSum: s.revenueSum, fixtureRows: s.fixtureRows }))}
+                                sections={roomSectionsForPacket(gcSections, roomOptionLabels(gcName))}
                                 addOns={roomAddOns}
                                 inclusions={inclusions}
                                 exclusions={roomExclusions}

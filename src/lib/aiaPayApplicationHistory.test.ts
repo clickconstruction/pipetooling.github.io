@@ -14,6 +14,7 @@ import {
   payApplicationSummaryWords,
   payApplicationWentOutWords,
   wasSavedAgain,
+  withWentOutAmounts,
 } from './aiaPayApplicationHistory'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type SavedPayApplication } from './aiaPayApplications'
 import type { SentCopy } from './sent/sentCopies'
@@ -198,6 +199,38 @@ describe('changed after it went out', () => {
     emptied.lines = [{ id: 'other', label: 'Gas', scheduledValue: 37745, labor: null, stage: null, fromPrevious: 0, thisPeriod: 0, stored: 0 }]
     const changed = changedAfterWentOut(emptied, [copy({ sourceSnapshot: went as unknown as Record<string, unknown> })])
     expect(changed?.differences.map((d) => d.label)).toEqual(['Gas, a new line, this period', 'Plumbing, a line taken off, this period', 'completed and stored', 'retainage held', 'payment due'])
+  })
+})
+
+describe('withWentOutAmounts (#92)', () => {
+  it('puts the amounts back as they went out, so nothing has moved: lines, retainage and previous certificates', () => {
+    const sent = app(2, 12078.4, 15098, 13588.2)
+    const went = payApplicationSnapshot(sent)
+    // Since it went out: this period lowered, a change order line added, retainage to 5%, previous certificates retyped.
+    const since = {
+      values: { ...sent.fields, g702_c28_retainage_percent: 5, g702_h40_less_previous_certificates: 14000 },
+      lines: [{ ...sent.lines[0]!, thisPeriod: 11323.5 }, { id: 'co-1', label: 'CO 1', scheduledValue: 500, labor: null, stage: null, fromPrevious: 0, thisPeriod: 500, stored: 0 }],
+      splitLaborMaterial: false,
+    }
+    const back = withWentOutAmounts(since, went)
+    expect(back.lines.map((l) => [l.id, l.label, l.fromPrevious, l.thisPeriod])).toEqual([['line-1', 'Plumbing', 15098, 12078.4]])
+    expect(back.values.g702_c28_retainage_percent).toBe(10)
+    expect(back.values.g702_h40_less_previous_certificates).toBe(13588.2)
+    expect(back.splitLaborMaterial).toBe(false)
+    const w = payApplicationWriteFromForm('job-892', back)
+    if (!w.ok) throw new Error(w.reason)
+    const asSaved = savedPayApplicationFromRow({ id: 'app-2', updated_at: '2026-09-02T15:00:00Z', ...w.row } as PayApplicationRow)
+    expect(changedAfterWentOut(asSaved, [copy({ sourceId: 'app-2', sourceSnapshot: went as unknown as Record<string, unknown> })])).toBeNull()
+  })
+
+  it('brings back a line taken off since, matched by label when its id changed, and drops previous certificates of zero', () => {
+    const sent = app(1, 15098, 0, 0)
+    const went = payApplicationSnapshot(sent)
+    const gone = withWentOutAmounts({ values: { ...sent.fields, g702_h40_less_previous_certificates: 500 }, lines: [] }, went)
+    expect(gone.lines).toEqual([expect.objectContaining({ id: 'line-1', label: 'Plumbing', scheduledValue: 37745, thisPeriod: 15098 })])
+    expect('g702_h40_less_previous_certificates' in gone.values).toBe(false)
+    const remade = withWentOutAmounts({ values: sent.fields, lines: [{ ...sent.lines[0]!, id: 'line-9', thisPeriod: 1, labor: 20000 }] }, went)
+    expect(remade.lines).toEqual([expect.objectContaining({ id: 'line-9', thisPeriod: 15098, labor: 20000 })])
   })
 })
 

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
 /**
- * GC mode design spike: the jump strip's two behaviors (the owner, 2026-10-04). Pressing a pill
+ * GC mode, the real build (the Board's B3), from the design spike's `useJumpStrip.ts`: the jump
+ * strip's two behaviors (the owner, 2026-10-04). Pressing a pill
  * scrolls its section's heading under the strip; scrolling lights the pill of the section in view.
  * The Project Board and Trade partners both use it.
  *

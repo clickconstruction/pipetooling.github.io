@@ -1,15 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { buildGcChecksReport, checkAppliedSentence, checkHeadline, checkMoveWords, findChecks, formatYmdLong, formatYmdShort, type GcCheck } from '../../lib/jobs/gcChecksApplied'
-import { fetchGcChecksInputs, type GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
+import { fetchDevelopmentChecksInputs, fetchGcChecksInputs, type GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
 import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName } from '../../lib/jobsDocuments/gcChecksAppliedReport'
 
 type Props = {
+  /** The GC, or under byDevelopment the development (GC Review's grouping fields hold either). */
   gcId: string
   gcName: string
+  /** v2.4912: GC Review grouped By development: the development's jobs, every bill whoever pays it. */
+  byDevelopment?: boolean
   onClose: () => void
 }
 
@@ -29,7 +32,7 @@ const headerButtonStyle = { font: 'inherit', fontSize: '0.75rem', fontWeight: 60
  * every payment, where it sits now, what moved, what is not yet on a bill,
  * and where each job stands.
  */
-export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
+export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, onClose }: Props) {
   const [inputs, setInputs] = useState<GcChecksInputs | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -42,7 +45,8 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
     let cancelled = false
     setInputs(null)
     setError(null)
-    fetchGcChecksInputs(gcId)
+    const read = byDevelopment ? fetchDevelopmentChecksInputs(gcId) : fetchGcChecksInputs(gcId)
+    read
       .then((r) => {
         if (!cancelled) setInputs(r)
       })
@@ -52,16 +56,18 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
     return () => {
       cancelled = true
     }
-  }, [gcId])
+  }, [gcId, byDevelopment])
 
-  // The search reads every payment on record; the sheet reads the period.
-  const report = useMemo(() => (inputs ? buildGcChecksReport({ gcId, ...inputs }) : null), [gcId, inputs])
-  const sheet = useMemo(() => (inputs ? buildGcChecksReport({ gcId, ...inputs, sinceYmd }) : null), [gcId, inputs, sinceYmd])
+  // The search reads every payment on record; the sheet reads the period. A development has no payer of its own.
+  const payerId = byDevelopment ? null : gcId
+  const report = useMemo(() => (inputs ? buildGcChecksReport({ gcId: payerId, ...inputs }) : null), [payerId, inputs])
+  const sheet = useMemo(() => (inputs ? buildGcChecksReport({ gcId: payerId, ...inputs, sinceYmd }) : null), [payerId, inputs, sinceYmd])
 
   function printSheet() {
     if (!sheet) return
-    // A print counts as a send (docs/SENT_COPIES.md): the checks sheet is filed under the GC.
-    const ok = printAndFile(buildGcChecksAppliedReportHtml(gcName, sheet, { asOfYmd: todayYmd }), { kind: 'gc_checks_applied', title: `Checks applied for ${gcName}`, recipientName: gcName, customerId: gcId })
+    // A print counts as a send (docs/SENT_COPIES.md): the checks sheet is filed under the GC, or a development's under its jobs.
+    const where = byDevelopment ? { jobIds: (inputs?.jobs ?? []).map((j) => j.id) } : { customerId: gcId }
+    const ok = printAndFile(buildGcChecksAppliedReportHtml(gcName, sheet, { asOfYmd: todayYmd }), { kind: 'gc_checks_applied', title: `Checks applied for ${gcName}`, recipientName: gcName, ...where })
     setNote(ok ? null : 'The browser blocked the print window — allow pop-ups for this site and try again.')
   }
 
@@ -160,9 +166,9 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
           {error ? (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{error}</p>
           ) : !report ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Reading {gcName}'s payments…</p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{byDevelopment ? `Reading the payments on ${gcName}'s jobs…` : `Reading ${gcName}'s payments…`}</p>
           ) : report.checks.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No payments from {gcName} on record.</p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{byDevelopment ? `No payments on ${gcName}'s jobs on record.` : `No payments from ${gcName} on record.`}</p>
           ) : (
             <>
               <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
@@ -178,7 +184,7 @@ export default function GcFindCheckModal({ gcId, gcName, onClose }: Props) {
                   <div style={{ fontWeight: 600 }}>
                     {checkHeadline(c)}
                     {c.noNumber ? (
-                      <span title="Recorded without its number — add it on Edit Job → Payments received" style={{ marginLeft: '0.5rem', padding: '0.05rem 0.4rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                      <span title="Recorded without its number — add it on the payment, in the job’s Bill tab" style={{ marginLeft: '0.5rem', padding: '0.05rem 0.4rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
                         no number
                       </span>
                     ) : null}

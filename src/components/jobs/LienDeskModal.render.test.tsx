@@ -71,9 +71,12 @@ const startTwoMock = vi.fn()
 const gcOkayMock = vi.fn()
 const ownerCallMock = vi.fn()
 const clearPrintedMock = vi.fn()
+const saveDraftMock = vi.fn(async () => 'it-new')
+const submitMock = vi.fn(async () => undefined)
+const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
+  return { ...actual, saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
 })
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
@@ -441,6 +444,19 @@ describe('LienDeskModal', () => {
     } finally {
       window.matchMedia = before
     }
+  })
+
+  it('Send for approval tells the leader after the write, with the mail-by day, and the toast says his phone has it (v2.4872)', async () => {
+    saveDraftMock.mockClear()
+    submitMock.mockClear()
+    tellLeaderMock.mockClear()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /Send for approval/ }))
+    await waitFor(() => expect(submitMock).toHaveBeenCalledTimes(1))
+    expect(submitMock.mock.calls[0]).toEqual(['it-new', { status: 'awaiting_approval', reason: 'first_notice' }])
+    await waitFor(() => expect(tellLeaderMock).toHaveBeenCalledWith('it-new', '2026-09-15'))
+    expect(await screen.findByText("Sent for approval. Malachi's phone has it.")).toBeTruthy()
   })
 
   it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', async () => {

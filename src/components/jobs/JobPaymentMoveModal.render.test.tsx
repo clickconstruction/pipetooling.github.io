@@ -4,7 +4,7 @@
  * Stripe holds as paid gets the four steps listed before the press.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 import { JobPaymentMoveModal } from './JobPaymentMoveModal'
 import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
@@ -43,6 +43,16 @@ describe('JobPaymentMoveModal', () => {
     expect(screen.getByTestId('held-move-intro').textContent).toContain('Stripe holds this payment as paid')
     expect(screen.getByTestId('held-move-steps').textContent).toContain('The $6,200.00 payment lands on the job you pick')
     expect(screen.getByTestId('held-move-steps').textContent).not.toContain('check')
+  })
+
+  it('the Why box starts empty with wrong job as its placeholder; what is typed is what it holds (v2.4895)', () => {
+    renderWithProviders(<JobPaymentMoveModal open payment={row({ invoice_id: 'inv-p' })} fromJob={job([plainBill])} onClose={() => {}} onMoved={() => {}} />)
+    // first paint
+    const why = screen.getByLabelText('Reason') as HTMLInputElement
+    expect(why.value).toBe('')
+    expect(why.placeholder).toBe('wrong job')
+    fireEvent.change(why, { target: { value: 'customer paid twice' } })
+    expect(why.value).toBe('customer paid twice')
   })
 
   it('an ordinary row keeps the one-RPC words and no step list', () => {

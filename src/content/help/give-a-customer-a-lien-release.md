@@ -72,7 +72,7 @@ Step 6 opens once he signs.
 
 ## Save the property's legal info once
 
-Open **Customers → Edit**. Under **Properties**, press **Edit** on an address or **+ Add property**. Each property has a **Property record** panel. It holds the county the paperwork files in. **Look up the property record** fills the county from the parcel or the map pin. A county from the city alone reads *guessed from the city — confirm it*. It holds the legal description, the lot as the county records name it. That comes from the county appraisal district. There's a direct **CAD ↗** link. CAD is the county appraisal district. It holds the residential or homestead classification. It holds the **owner of record with their mailing address**. That is where lien notices legally go, which is often not the job site.
+Open **Customers → Edit**. Under **Properties**, press **Edit** on an address or **+ Add property**. Each property has a **Property record** panel. It holds the county the paperwork files in. **Look up the property record** fills the county from the parcel or the map pin. A county from the city alone reads *guessed from the city — confirm it*. It holds the legal description, the lot, block and subdivision that county records use for the land. That comes from the county appraisal district. There's a direct **CAD ↗** link. CAD is the county appraisal district. It holds the residential or homestead classification. It holds the **owner of record with their mailing address**. That is where lien notices legally go, which is often not the job site.
 
 :::example Why bother?
 An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. Link a job to its property record from **Edit Job → Property record** or right in the Release of Lien window — the app suggests the match by address — and the owner of record, filing county, and legal description fill into the lien paperwork automatically. When none of the customer's saved properties is the job address (a builder entered as the customer only has its office on file), the row offers {{button:outline-blue|+ Add 628 Terrell Rd as a property on RMC- Dudley Mason}}: the property sheet opens with the job address, the lookup runs, and **Add property** saves it on the customer and links the job in one go.
@@ -90,7 +90,7 @@ The leader sees his own lane the same way. It is called **Awaiting your signatur
 
 ## Enclose one with a lien notice
 
-The Lien desk can put a conditional release in the envelope with a § 53.056 notice. A box above the paper reads **Enclose a conditional release**. It shows the claim beside it. It starts off. Tick it when the GC or the owner has asked for a release before they cut the check.
+The Lien desk can put a conditional release in the envelope with a § 53.056 notice. The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. A box above the paper reads **Enclose a conditional release**. It shows the claim beside it. It starts off. Tick it when the GC or the owner has asked for a release before they cut the check.
 
 The release is the app's own form, filled from the notice. The claim is the amount. The GC is the one the check comes from. The form is ***Conditional · progress*** when the claim is less than everything open on the job. It is ***Conditional · final*** when the claim is all of it.
 

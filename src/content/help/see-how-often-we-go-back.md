@@ -20,7 +20,7 @@ A return is a second job at the **same address**. The second job started soon af
 
 ## Callbacks or all returns
 
-**Count** decides which returns make the rate. {{chip:blue|unbilled returns}} is the default. The default keeps only returns that billed nothing: the warranty-shaped ones. A return still in progress is counted. The pairs table tags it {{chip:yellow|still open}}, since the return may yet be billed. The control row says how many. {{chip:blue|all returns}} adds billed second jobs at the same address. At a restaurant or a builder's site, that is usually repeat work, not rework. The control row says how many billed returns were set aside.
+**Count** decides which returns make the rate. {{chip:blue|unbilled returns}} is the default. The default keeps only returns that billed nothing: the warranty-shaped ones, which look like free fixes under our guarantee. A return still in progress is counted. The pairs table tags it {{chip:yellow|still open}}, since the return may yet be billed. The control row says how many. {{chip:blue|all returns}} adds billed second jobs at the same address. At a restaurant or a builder's site, that is usually repeat work, not rework. The control row says how many billed returns were set aside.
 
 ## The rate
 

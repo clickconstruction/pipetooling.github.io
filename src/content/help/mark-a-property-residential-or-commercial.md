@@ -6,7 +6,7 @@ keywords: residential, commercial, property kind, non-residential, badge, C, R, 
 ---
 You tap the small circle at the end of a job's address on Jobs → Pipeline. It says what kind of property the job is on.
 
-The answer lives on the customer's property record. The lien screens use the same fact. A lien is the legal claim on a property for unpaid work. A residential property's § 53.056 notice is due a month sooner. So setting it here sets it for every job at that address.
+The answer lives on the customer's property record. The lien screens use the same fact. A lien is the legal claim on a property for unpaid work. A residential property's § 53.056 notice is due a month sooner. The § 53.056 notice is the Texas form we send the owner and the GC for each unpaid month. So setting it here sets it for every job at that address.
 
 ## Reading the badge
 

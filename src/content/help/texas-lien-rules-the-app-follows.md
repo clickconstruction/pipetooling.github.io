@@ -236,7 +236,7 @@ Once paid, the customer is owed a release. It is conditional while a bill is unp
 
 The customer must be asked to pay, and the bill must then stay unpaid 30 days. A demand letter is that ask.
 
-**What it says.** Attorney's fees can be claimed on a claim for services, labor, materials, a sworn account or a contract. The claim must first be presented. Presented means the customer was asked to pay. Then it must stay unpaid for 30 days. There is no set form. A demand letter is presentment.
+**What it says.** Attorney's fees can be claimed on a claim for services, labor, materials, a sworn account or a contract. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid. The claim must first be presented. Presented means the customer was asked to pay. Then it must stay unpaid for 30 days. There is no set form. A demand letter is presentment.
 
 **What you do.** Send the demand letter from the Lien window. The letter carries a sentence and a date for the fee clock.
 
@@ -258,7 +258,7 @@ A sworn account lists each item with its name, its date and its charge, and allo
 
 **What it says.** A suit on an account needs a systematic, itemized record. The record gives the name, the date and the charge of each item. It allows all payments and credits. A suit on that record is a sworn account.
 
-**What you do.** Nothing by hand. Each invoice gets a statement of account. The invoice is enclosed as Exhibit A.
+**What you do.** Nothing by hand. Each invoice gets a statement of account. The invoice is enclosed as Exhibit A. An exhibit is a document sent behind the letter as proof, lettered A, B and so on.
 
 **Cite.** *Tex. R. Civ. P. 185*. The case is *Panditi v. Apostle, 180 S.W.3d 924 (Tex. App.—Dallas 2006)*.
 

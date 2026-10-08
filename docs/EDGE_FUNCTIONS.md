@@ -161,6 +161,7 @@ when_to_read:
    - [notify-dispatch-request](#notify-dispatch-request)
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
+   - [notify-lien-approval](#notify-lien-approval)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
    - [recurring-job-report-preview](#recurring-job-report-preview)
@@ -2561,6 +2562,38 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ---
 
+### notify-lien-approval
+
+**Purpose** (v2.4872): the leader's phone buzzes when the office sends a lien notice for his approval. The Lien desk's **Send for approval** calls it right after `submitLienDeskItem` lands the item in *Awaiting approval* (never after a standing rule approved or held it). Before this the pile count went up and nobody was told.
+
+**Endpoint**: `POST /functions/v1/notify-lien-approval`
+
+**Required Role**: any signed-in user, but only the item's **drafter** (`job_lien_desk_items.drafted_by`); anyone else gets 403. An item not awaiting approval returns 200 with nothing sent.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (the push), `RESEND_API_KEY` (the email when no device is registered), `APP_ORIGIN` (the email's link; defaults to the live site).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and the drafter with the service role.
+
+#### Request body
+
+```json
+{ "item_id": "<job_lien_desk_items.id>", "due_ymd": "2026-10-15" }
+```
+
+`due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 1, "email_sent": false, "leader_name": "Malachi Whites" }
+```
+
+`leader_name` is set when exactly one leader was told; the desk's toast reads *Sent for approval. Malachi's phone has it.* / *… has it by email.* / *… will see it on the Dashboard.*
+
+**Deploy**: `bash scripts/deploy-functions.sh notify-lien-approval dev-mcp` (the catalog lists it).
+
+---
+
 ### notify-dispatch-request
 
 **Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group). Since **v2.2880** the same function also carries the answer back: `mode: 'closed' | 'reopened'` pushes the **requester** (`from_user_id`) with the office's closing note and always logs them a `notification_history` row (journey-map Tier-2 #25 — "closing a field request tells the tech nothing").
@@ -4350,7 +4383,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### ar-returned-checks
 
-**Purpose**: The hourly sweep for checks that came back (**v2.4320**, punch list #76 PR 2). pg_cron (`ar-returned-checks-hourly`, minute 17 — migration `20261001230000`) calls it with `X-Cron-Secret`. First it runs **`open_ar_rejected_check_cases()`** (service role only): a check deposit Mercury could not take in (`failed`, never posted, not a bank reason — *"There was an issue with this transaction"*) becomes a case only when a payment recorded by hand matches it to the cent (paid within 3 days before to 10 days after) and no deposit from the same payer for the same amount followed within 30 days; it was refused more than 5 days ago and less than 90. The same call closes a rejected case as *replaced* once the check goes in again. Then it tells the office once about every open case not yet in `mercury_bank_return_notices` — a bank return the Banking page's Sync stored (`sync-mercury-transactions` sends nothing itself), the new rejected cases, anything the webhook missed — through the same `sendReturnCaseNotice` the webhook uses.
+**Purpose**: The hourly sweep for checks that came back (**v2.4320**, punch list #76 PR 2). pg_cron (`ar-returned-checks-hourly`, minute 17 — migration `20261001230000`) calls it with `X-Cron-Secret`. First it runs **`open_ar_rejected_check_cases()`** (service role only): a check deposit Mercury could not take in (`failed`, never posted, not a bank reason — *"There was an issue with this transaction"*) becomes a case only when a payment recorded by hand matches it to the cent (paid within 3 days before to 10 days after) and no deposit from the same payer for the same amount followed within 30 days; it was refused more than 5 days ago and less than 90. The same call closes a rejected case as *replaced* once the check goes in again. Next it runs **`open_ar_unbanked_check_cases(AR_UNBANKED_CHECK_DAYS)`** (**v2.4902**, migration `20261008100000`): a payment typed in as a check with no deposit linked after ten days opens an *unbanked* case, unless an unused check deposit of at least its amount came in since three days before. The same call closes one once its payment gets a deposit or comes off the job. Then it tells the office once about every open case not yet told — a bank return the Banking page's Sync stored (`sync-mercury-transactions` sends nothing itself), the new rejected and unbanked cases, anything the webhook missed — through the same `sendReturnCaseNotice` the webhook uses. The ledger is `mercury_bank_return_notices`; an unbanked case has no deposit to key it on, so it claims its own `notified_at` (*A check was never deposited · DRF · $250*).
 
 **Request**: `{}` from cron; `{ "dry_run": true }` opens nothing, sends nothing and logs each case's subject. Auth: `X-Cron-Secret` header (or `cron_secret` in the body) = `CRON_SECRET`; gateway `verify_jwt = false`.
 

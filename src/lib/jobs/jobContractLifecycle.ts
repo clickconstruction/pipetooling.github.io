@@ -5,7 +5,7 @@
  * modal, the history rows, and the audit line every signed rendering carries.
  */
 import type { Database } from '../../types/database'
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { esignAuditSuffix } from '../esignConsent'
 import { signedRecordId } from '../signedRecordId'
 import type { JobContractRenderInput } from './jobContractDocument'
@@ -94,6 +94,30 @@ export function formatContractStamp(iso: string | null | undefined): string | nu
   }).format(d)
 }
 
+/**
+ * A paper filed with its *Signed on* date keeps `signed_at` as that day at noon UTC
+ * (`fileSignedJobContract`): a day, not a moment. Read as a time it says 7:00 AM CT, which nobody
+ * recorded (v2.4876). Keyed on the stamp's shape, not on `paper_signed_on`: older paper rows carry
+ * a `paper_signed_on` beside a real `signed_at`, and those keep their time.
+ */
+export function isSignedOnDayMarker(iso: string | null | undefined): boolean {
+  return /T12:00:00(?:\.0+)?(?:Z|\+00(?::?00)?)$/.test(iso ?? '')
+}
+
+/** "Sep 30, 2026": the day of a stamp in the app's zone. */
+function formatContractDay(iso: string): string | null {
+  const ymd = calendarYmdInAppTzFromIso(iso)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+  if (!m) return null
+  return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12)))
+}
+
+/** When it was signed, as a banner reads it: the day alone for a *Signed on* day, else the stamp with its time (v2.4876). */
+export function formatContractSignedStamp(iso: string | null | undefined): string | null {
+  if (iso && isSignedOnDayMarker(iso)) return formatContractDay(iso)
+  return formatContractStamp(iso)
+}
+
 /** The one-line electronic-signature audit under every signed rendering. */
 export function jobContractSignatureAuditLine(row: {
   signed_at: string | null
@@ -106,7 +130,14 @@ export function jobContractSignatureAuditLine(row: {
   if (!row.signed_at) return null
   const stamp = formatContractStamp(row.signed_at)
   const who = (row.signer_printed_name ?? '').trim()
-  if (row.signer_mode === 'paper') return `Signed on paper${who ? ` by ${who}` : ''}${stamp ? ` · recorded ${stamp} CT` : ''}`
+  if (row.signer_mode === 'paper') {
+    // v2.4876: a *Signed on* day is the day they signed; a real stamp is when the office recorded it.
+    if (isSignedOnDayMarker(row.signed_at)) {
+      const day = formatContractDay(row.signed_at)
+      return `Signed on paper${who ? ` by ${who}` : ''}${day ? ` on ${day}` : ''}`
+    }
+    return `Signed on paper${who ? ` by ${who}` : ''}${stamp ? ` · recorded ${stamp} CT` : ''}`
+  }
   return `Signed electronically${who ? ` by ${who}` : ''} (${signedHowWord(row.signer_mode)})${stamp ? ` · ${stamp} CT` : ''}${
     row.signer_consented_at ? ` · consent recorded${esignAuditSuffix(row.esign_consent ?? null)}` : ''
   }`
@@ -169,8 +200,10 @@ export function jobContractSignatureBlocks(
   const paper = row.signer_mode === 'paper'
   const stamps = (at: string | null): Pick<SignatureBlock, 'recordId' | 'whenLabel'> => {
     if (!opts.record) return {}
-    const when = formatContractStamp(at)
-    return { recordId: signedRecordId('J', opts.record.jobNumber || '0', row.id), whenLabel: when ? `${when} CT` : null }
+    // v2.4876: a *Signed on* day prints as the day; only a real stamp carries a time.
+    const day = isSignedOnDayMarker(at)
+    const when = formatContractSignedStamp(at)
+    return { recordId: signedRecordId('J', opts.record.jobNumber || '0', row.id), whenLabel: when ? (day ? when : `${when} CT`) : null }
   }
   const frames = signerFrames(row)
   const block = (f: SignerFrame, imageUrl: string | null): SignatureBlock | null =>

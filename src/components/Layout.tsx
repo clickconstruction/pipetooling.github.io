@@ -859,7 +859,7 @@ export default function Layout() {
             textAlign: 'center',
           }}
         >
-          <strong>Training mode — read-only.</strong> Explore anything; clock in/out still works, but no other change will save until a dev turns this off.
+          <strong>Training mode — read-only.</strong> Explore anything; clock in/out still works, but no other change will save until a dev, a controller or a pay-approved leader turns this off.
         </div>
       )}
       {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}

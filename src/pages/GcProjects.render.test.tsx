@@ -5,6 +5,8 @@ import GcProjects from './GcProjects'
 import { renderSettled, settle } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
+import { loadGcBoardRows, loadGcProjects } from '../lib/gc/gcIo'
+import { clinicBoardRows } from '../lib/gc/boardTestRows'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -24,7 +26,8 @@ vi.mock('../lib/gc/gcIo', async () => {
   const none = () => Promise.resolve([])
   return {
     loadGcPickerCustomers: none,
-    loadGcProjects: none,
+    loadGcProjects: vi.fn(none),
+    loadGcBoardRows: vi.fn(),
     loadGcTeam: none,
     loadScopeBookStore: () => Promise.resolve(EMPTY_SCOPE_BOOK),
     answerQuestion: vi.fn(),
@@ -39,6 +42,9 @@ vi.mock('../lib/gc/gcIo', async () => {
     saveScopeBookLine: vi.fn(),
     saveScopeSet: vi.fn(),
     sendQuestionToArchitect: vi.fn(),
+    addGcCompany: vi.fn(),
+    vetGcCompany: vi.fn(),
+    setGcCompanyCoverage: vi.fn(),
   }
 })
 
@@ -77,3 +83,33 @@ describe('GcProjects: New here?', () => {
     expect(recordNavClick).toHaveBeenCalledWith(expect.any(String), 'dev', 'gc_new_here', 'opened?by=button&of=10')
   })
 })
+
+describe('GcProjects: the Project Board', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => window.localStorage.clear())
+
+  it('a dev sees the board above the projects, with each project still listed under it', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(screen.getByRole('heading', { name: 'Project Board' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Each project' })).toBeTruthy()
+    expect(document.querySelector('[data-gc-board-row="p1"]')).toBeTruthy()
+    expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
+  })
+
+  it('a dev switches to Trade partners, with the company new to us waiting at the top', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Trade partners' }))
+    expect(screen.getByRole('heading', { name: 'Trade partners' })).toBeTruthy()
+    expect(screen.getByRole('navigation', { name: 'Jump to a trade' })).toBeTruthy()
+    expect(document.querySelector('[data-gc-vet="hillside"]')).toBeTruthy()
+    expect(document.querySelector('[data-gc-board-row="p1"]')).toBeNull()
+    expect(document.querySelector('[data-gc-project="p1"]')).toBeTruthy()
+  })
+})
+
