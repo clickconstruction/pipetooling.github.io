@@ -29769,6 +29769,15 @@ export type Database = {
         Args: { p_entry_id: string; p_reason: string }
         Returns: Json
       }
+      lien_billed_open: {
+        Args: {
+          p_job_id: string
+          p_payments_made: number
+          p_revenue: number
+          p_status: string
+        }
+        Returns: number
+      }
       lien_fallback_month: { Args: { p_created_at: string }; Returns: string }
       lien_filing_deadline: {
         Args: { p_month: string; p_property_kind: string }
@@ -31288,6 +31297,10 @@ export type Database = {
       }
       refresh_jobs_ledger_last_work_date: {
         Args: { p_job_id: string }
+        Returns: undefined
+      }
+      reject_clock_session: {
+        Args: { p_session_id: string }
         Returns: undefined
       }
       remove_jobs_ledger_payment_and_reconcile: {
