@@ -391,6 +391,36 @@ Three ways it could be better:
    - That brings the chasing to the person, not the person to `/gc`. It is a small PR after the
      walk, Board-owned or mine as the lead says.
 
+## As built (2026-10-08, local, cuts after B5-c and B5-d)
+
+Built on `claude/gc-door-2-board`, on B5-b's branch.
+
+- **The lead's go:** call A goes to the owner at the default, and B and C at theirs. Better ways 1
+  and 2 are taken into the PR:
+  - **`gc_office_team()` names its five roles** in the same migration, the same answer as
+    `is_office_or_estimator()`. `access.test.ts` holds `GC_OFFICE_TEAM` to it, as it holds the money
+    team.
+  - **`src/lib/gc/doors.ts`** lists every GC table: 65, with its lane and door (office, money, or
+    dev with what opens it). `doors.test.ts` reads the migrations' final policies, including the
+    doors' `FOREACH` loops, and classifies each by its words. It fails when a table is missing, when
+    its policy says another door, or when a dev-only table names no opener. Trades mode's
+    `gc_statement_email_requests`, `gc_word_asks` and `gc_word_ask_answers` are listed apart.
+    Proven by breaking the list both ways.
+- **One correction to this plan:** compare and carry open with the board. B5's call C, approved,
+  keeps carry and plugs with the office team; only our markup is gated, through B5-c's
+  `canSeeGcMoney`. The *stays dev only* table above lists our number alone.
+- **`compare-quotes-and-carry-one`** joins the guides, seven in all.
+- **The role matrix** ran on Helper 2's harness with this migration applied twice. It is in the
+  migration doc, and it came out as planned:
+  - the five office roles read and write;
+  - the field roles see nothing;
+  - training accounts and twins are refused;
+  - `gc_quotes` is refused for everyone by privilege;
+  - portal links are a dev's, and `gc_project_money` is the money team's.
+- **Checks:** 1661 tests, including two new page cases (an estimator sees the board without Trade
+  portals; a dev keeps it), lint and theme. Typecheck's one error is B5-b's carry columns, waiting
+  on their types.
+
 ## Status
 
 Planned 2026-10-08 by Helper 6. Read from main:
