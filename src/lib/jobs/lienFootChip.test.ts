@@ -17,6 +17,11 @@ describe('the footer chip (v2.4855)', () => {
     expect(readyChip({ approval_mode: 'leader', approved_at: '2026-10-06T15:00:00Z' }, null, 'Offer 10% by Nov 15')).toEqual({ tone: 'green', words: 'Approved · Oct 6 · Offer 10% by Nov 15', title: 'Approved October 6, 2026 · Offer 10% by Nov 15 · in the run.' })
   })
 
+  it('ready after a take-back (punch list #101): the chip ends with the day, the hover says who and which print', () => {
+    const chip = readyChip({ approval_mode: 'leader', approved_at: '2026-10-06T15:00:00Z' }, null, null, null, { tail: 'taken back Oct 8', sentence: 'Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
+    expect(chip).toEqual({ tone: 'green', words: 'Approved · Oct 6 · taken back Oct 8', title: 'Approved October 6, 2026 · in the run. Printed Oct 7, taken back Oct 8 by Dana. Nothing was mailed.' })
+  })
+
   it('awaiting, printed and held say the day and the why', () => {
     expect(awaitingChip({ submitted_at: '2026-10-07T14:12:00Z' })).toEqual({ tone: 'blue', words: 'Waiting on the leader · since Oct 7', title: 'Waiting on the leader since October 7, 2026.' })
     expect(awaitingChip(null).words).toBe('Waiting on the leader')
