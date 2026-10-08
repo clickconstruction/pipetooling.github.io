@@ -2272,6 +2272,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-address-batch
 
+> **v2.4975 — only points in the lower 48 are kept**: the box of [geocode-one](#geocode-one) ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)) on OpenStreetMap's, Google's and the Census's answers and on the cache read. A refused point is a miss in `failures` with the reason in `detail`, never a row. **Redeploy after merge.**
+
 **Purpose**: Batch geocoding for the **Map** page and the Dashboard **Your jobs on a map** card (v2.3131 — every active app account; before that only **`dev`** / **`master_technician`** / **`assistant`** / **`estimator`**). Normalizes addresses, reads/writes **`public.address_geocodes`** via the user’s JWT (RLS), and for cache misses: **OpenStreetMap Nominatim** first, then **Google Geocoding API** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return coordinates (rate-limited **~1.1s** between *Nominatim* request rounds server-side). There is **no** extra inter-address delay before the Google attempt in the same row.
 
 **Endpoint**: `POST /functions/v1/geocode-address-batch`
@@ -2295,6 +2297,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### geocode-one
+
+> **v2.4975 — only points in the lower 48 are kept**: a point outside lat 24–50, lng −125 to −66 ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)) from OpenStreetMap, Google or the Census is a miss. It is not written to `address_geocodes`, it is logged with the raw answer, `detail` names it (*OpenStreetMap placed it outside the lower 48 (26.7813, 91.9274)*), and the next geocoder is asked. A cached point outside the box is not a cache hit: the address is asked again and a good answer replaces the row. **Redeploy after merge.**
 
 > **v2.4878 — every answer crashed**: v2.4783's `answer()` called itself, so any call that reached an answer recursed until the stack overflowed, and Deno sent a 500 with no CORS header (the browser shows a CORS error). It returns the 200 itself now. Cached addresses masked it: the job form and the Map page read `address_geocodes` directly. **Redeploy required.**
 
@@ -2330,6 +2334,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### property-lookup
+
+> **v2.4975 — the lower-48 box**: the cache rung reads a point outside lat 24–50, lng −125 to −66 as none, and Google's or the Census's answer outside the box is a miss, so no parcel is looked up under a point in another country ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)). **Redeploy after merge.**
 
 **Purpose**: One address in, the property's legal identity out (customer properties train, **v2.3004**). Geocodes the address (the **`address_geocodes`** cache → **Google** → **US Census**), then asks the **Texas statewide parcel roll** (TxGIO StratMap land parcels, fed by the county appraisal districts; public, no key) which parcel sits under the pin via an ArcGIS **`identify`**. Feeds the **Edit customer → Additional addresses → Property legal info** panel ([`CustomerPropertyRecordPanel.tsx`](../src/components/customers/CustomerPropertyRecordPanel.tsx)), which folds in the city→county table and builds the proposal client-side ([`txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) shared kernel).
 
@@ -2371,6 +2377,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### court-precinct-nightly
 
+> **v2.4975 — a cached point outside the lower 48 is no point**: step 1 drops a cached point outside lat 24–50, lng −125 to −66 ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)), so step 2 geocodes the address again and a good answer replaces the row. Google's or the Census's answer outside the box counts in `geocodeMisses`. The one property record this reached on 2026-10-08 was cached at 26.7813, 91.9274, in Assam, so it had no county and no court. **Redeploy after merge.**
+
 > **v2.4790 — the night places the unplaced**: before classifying, up to `GEOCODE_PER_NIGHT = 300` addresses with no point are geocoded (Google, else the Census) into `address_geocodes`; a record outside every area with no county takes the county the point sits in (`county_source = 'geocoder'`). The answer adds `geocoded`, `geocodeMisses`, `countyFilled`. **Redeploy required.** Since v2.4824 these lookups stop after `LOOKUP_BUDGET_MS = 75_000`: the run classifies with what it has and counts the rest in `lookupsDeferred` for the next run, so Classify now answers inside the gateway's timeout.
 
 > **v2.4778 — a record with no county takes the area's**: when the point falls in an area and the record's `county` is blank, the write adds `county` and `county_source = 'map'` (migration `20261007140000` admits the value). **Redeploy after the push.**
@@ -2380,6 +2388,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Auth**: `X-Cron-Secret` = `CRON_SECRET` (pg_cron `court-precinct-nightly`, 06:20 UTC, migration `20261007120000`), or a signed-in office user — the function checks `is_office_staff()` under the caller's JWT, which is how the Map page's **Classify now** calls it (`supabase.functions.invoke`). `verify_jwt = false` in `config.toml`. **Body**: `{ dry_run?: boolean }`. **Answer**: `{ ok, dryRun, areas, rows, placed, outside, onLine, noPoint, written, geocoded, geocodeMisses, countyFilled, lookupsDeferred }`. **Deploy**: `supabase functions deploy court-precinct-nightly` after the two migrations are pushed.
 
 ### owner-confirm-nightly
+
+> **v2.4975 — the lower-48 box**: the lookup reads a cached point outside lat 24–50, lng −125 to −66 as none and asks again, and Google's or the Census's answer outside the box is a miss ([`_shared/usPointBox.ts`](../supabase/functions/_shared/usPointBox.ts)). **Redeploy after merge.**
 
 **Purpose**: The nightly save-from-the-roll (owner of record PR 3, **v2.3450**; decision 5 — built as a switch, **off on day one**). When Settings → Jobs & billing → *Save owners from the appraisal roll automatically* (`app_settings.owner_auto_confirm_from_roll_v1` = 'true') is on, every row of **`list_jobs_owner_to_confirm()`** with **`has_owner` false** — a GC job (or a builder in the customer row) with approved hours whose property record names nobody — is grouped by property, looked up on the statewide parcel roll the way `property-lookup` does (the `address_geocodes` cache → Google → US Census, then the parcel under the pin via `_shared/txParcelIdentify.ts`), and the roll's answer is written **exactly as a person's Use would write it** (`_shared/ownerConfirmPlan.ts` — fill-blanks on a linked record, else one new `customer_addresses` row per home (customer, else GC) linking every job at the property) **except that `owner_confirmed_at` stays NULL**: the record reads *from the roll · unconfirmed*, the Lien desk drafts on it and shows the provenance, and *Record the run* refuses until a person presses **Confirm**. A row that already names an owner is never touched. Public owners are saved too — the desk reads them and refuses to draft (bond claim). Up to **40 properties** a night, earliest § 53.056 deadline first (the RPC's order); the rest wait for tomorrow. One summary line is logged per run (`owner-confirm-nightly: N ownerless jobs on M properties · k looked up · f found · …`).
 

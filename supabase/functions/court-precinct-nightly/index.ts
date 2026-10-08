@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { classifyCourtPoint, courtAreaFromRow, type CourtArea } from '../_shared/courtAreasClassify.ts'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeocode.ts'
+import { inUsPointBox } from '../_shared/usPointBox.ts'
 
 /**
  * Which court, step 4 (v2.4770): put every property record in its justice precinct
@@ -111,13 +112,14 @@ serve(async (req) => {
     const now = new Date().toISOString()
     const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
-    // 1 · every point the cache holds for these addresses.
+    // 1 · every point the cache holds for these addresses. One outside the lower 48 is a geocoder's wrong
+    // answer and reads as none, so step 2 asks again and a good answer replaces it (v2.4975).
     const point = new Map<string, { lat: number; lng: number; county?: string }>()
     const keysAll = [...new Set(rows.map((r) => normalizeKey(r.address ?? '')).filter(Boolean))]
     for (let i = 0; i < keysAll.length; i += BATCH) {
       const { data: geo } = await admin.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', keysAll.slice(i, i + BATCH))
       for (const g of (geo ?? []) as Array<{ address_normalized: string; lat: number | null; lng: number | null }>) {
-        if (g.lat != null && g.lng != null && Number.isFinite(g.lat) && Number.isFinite(g.lng)) point.set(g.address_normalized, { lat: g.lat, lng: g.lng })
+        if (g.lat != null && g.lng != null && inUsPointBox(g.lat, g.lng)) point.set(g.address_normalized, { lat: g.lat, lng: g.lng })
       }
     }
 

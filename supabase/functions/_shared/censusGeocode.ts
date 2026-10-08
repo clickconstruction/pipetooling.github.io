@@ -6,6 +6,8 @@
  * structured street address (street + city/state or ZIP) and declines rather
  * than guessing, so `not_found` here is common and non-fatal.
  */
+import { inUsPointBox, refusePointOutsideUs } from './usPointBox.ts'
+
 export type CensusGeocodeResult =
   | { ok: true; lat: number; lng: number }
   | { ok: false; error: 'not_found' | 'census_upstream'; detail?: string }
@@ -42,6 +44,8 @@ export async function geocodeWithCensus(address: string): Promise<CensusGeocodeR
     const lng = matches[0]?.coordinates?.x
     const lat = matches[0]?.coordinates?.y
     if (typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)) {
+      // Alaska, Hawaii and the territories are outside the box too: a miss here (v2.4975).
+      if (!inUsPointBox(lat, lng)) return { ok: false, error: 'not_found', detail: refusePointOutsideUs('census', trimmed, lat, lng, matches[0]) }
       return { ok: true, lat, lng }
     }
   }
