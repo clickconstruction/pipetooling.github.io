@@ -94,6 +94,7 @@ when_to_read:
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
    - [gc-plan-question-email](#gc-plan-question-email)
+   - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
    - [submit-gc-trade-portal](#submit-gc-trade-portal)
    - [gc-trade-email](#gc-trade-email)
@@ -1015,6 +1016,19 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_plan_question`.
 
 **Doors**: the GC projects page (`/gc`, the office and estimators since door 1, v2.4832), the questions window's **Email it to the architect** (`src/lib/gc/gcIo.ts`, `sendQuestionToArchitect`).
+
+
+---
+
+### gc-architect-email
+
+**Purpose**: GC mode's emails to the architect while we build (v2.5047, the Building lane's U4b, `to-dos/gc-mode/mockups/building-u4.md`). Kind `submittal`: a submittal's newest round goes to the project's architect, a customer row, at the email in its `contact_info`, with the file's Drive link, the trade and company that sent it, the trade's note and the day we need the answer (the first start of the work it holds less its lead days, else the office's day). The project manager, else the sender, is the Reply-To. The send is recorded through `gc_send_submittal_to_architect(id, email_send_log_id)`, called as the caller, so whose move it is is checked in the SQL once. Refuses, in the SQL's words, a submittal that is not ours to send (*Nothing has come in from the trade to send.*, *It went to the architect already.*, *It is approved already.*), a round with no Drive link (*Add the file’s Drive link first. The architect opens it from there.*), a project with no architect on record and an architect with no email. The Building lane's U5 adds the kind `rfi`.
+
+**Endpoint**: `POST /functions/v1/gc-architect-email` · **Auth**: staff JWT validated in-body; the submittal is read under the caller's own JWT, so the tables' policies decide who may send (a dev only until Building's door), never a training (`read_only`) account (*A training account cannot send email.*) or a digital twin (403); `verify_jwt = false`. **Body**: `{ kind: 'submittal', submittal_id }` → `{ success, to, sent_on }`. The words are built in `_shared/gcArchitectEmail.ts` (`buildGcSubmittalEmail`, shared with the sample on What customers see); the send goes from `COMPANY_EMAIL_FROM` and is filed as a sent copy (kind `gc_submittal`, the architect's customer id, source `gc_submittal_rounds`). If the record refuses after the email went, it answers *Sent, but not recorded* with the reason.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_submittal`.
+
+**Doors**: the dev-only GC projects page (`/gc`), the Submittals window's **Send to {architect}** (`src/lib/gc/submittalsIo.ts`, `sendSubmittalToArchitect`).
 
 
 ---

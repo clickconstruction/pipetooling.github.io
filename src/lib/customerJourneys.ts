@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'submittal-room-link'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'submittal-room-link'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certified', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'submittal-room-link']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certified', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'submittal-room-link']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -383,6 +383,16 @@ export function customerJourneys(): Journey[] {
           guide: 'ask-the-architect-about-the-plans',
           reflects: ['The project manager on the GC project (the Reply-To)', 'Sender name'],
           render: { kind: 'email', email: 'gc-plan-question' },
+        },
+        {
+          id: 'submittal-email',
+          label: 'Submittal for review',
+          sublabel: 'GC mode · GC projects → Submittals → Send to the architect',
+          when: 'While we build a GC job',
+          customerCan: 'Open the file a trade sent from its Drive link and answer by replying: approved, approved as noted, or revise with what to change.',
+          guide: 'send-a-trades-submittal-to-the-architect',
+          reflects: ['The project manager on the GC project (the Reply-To)', 'Sender name'],
+          render: { kind: 'email', email: 'gc-submittal' },
         },
         {
           id: 'gc-pay-app-email',

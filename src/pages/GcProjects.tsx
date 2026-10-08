@@ -28,6 +28,10 @@ import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows
 import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
 import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dailyLogRows'
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { GcSubmittalsWindow } from '../components/gc/GcSubmittalsWindow'
+import { submittalRoundExtras, tradeSpecSections, withSubmittals, type SubmittalTables } from '../lib/gc/submittalRows'
+import { addSubmittal, answerSubmittal, loadGcSubmittals, markSubmittalSent, sendSubmittalToArchitect, submittalCameIn } from '../lib/gc/submittalsIo'
+import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoneyMondayEmail'
@@ -567,6 +571,40 @@ export default function GcProjects() {
     }
   }
 
+  // The submittal register (Building's U4b): a dev's on a job being built, opened at `submittals=<projectId>`. It reads the
+  // job's register and its schedule when the window opens, so a submittal is needed by the first start of the work it
+  // holds. A press writes no gc_projects row, so only the register and the schedule are read again.
+  const submittalsProjectId = params.get('submittals')
+  const [submittalTables, setSubmittalTables] = useState<SubmittalTables>({ submittals: [], holds: [], rounds: [] })
+  const [submittalRead, setSubmittalRead] = useState<ScheduleRead | null>(null)
+  const [submittalBusy, setSubmittalBusy] = useState<string | null>(null)
+  const [submittalProblem, setSubmittalProblem] = useState<string | null>(null)
+  const loadSubmittals = useCallback(async () => {
+    if (!board || !canUseGcBuilding(role) || !submittalsProjectId) return
+    const tables = await loadGcSubmittals([submittalsProjectId])
+    setSubmittalTables(tables)
+    setSubmittalRead(await loadSchedule(withSubmittals(board, tables), submittalsProjectId))
+  }, [board, role, submittalsProjectId])
+  useEffect(() => {
+    void loadSubmittals().catch((e) => setSubmittalProblem(formatErrorMessage(e, 'The submittals did not load.')))
+  }, [loadSubmittals])
+  const setSubmittalsWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('submittals', projectId)
+    else next.delete('submittals')
+    setParams(next, { replace: true })
+    setSubmittalProblem(null)
+  }
+  /** A submittal press: run it, read the register again, and say the problem in the window if there is one. */
+  const submittalWrite = (id: string, work: Promise<unknown>, failed: string) => {
+    setSubmittalBusy(id)
+    setSubmittalProblem(null)
+    void work
+      .then(() => loadSubmittals())
+      .catch((e) => setSubmittalProblem(formatErrorMessage(e, failed)))
+      .finally(() => setSubmittalBusy(null))
+  }
+
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
   // the board's projects and their change orders. Read only.
   const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
@@ -985,6 +1023,12 @@ export default function GcProjects() {
                   })()}
                 </Btn>
               )}
+              {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
+              {canUseGcBuilding(role) && board && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
+                  Submittals
+                </Btn>
+              )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
                   Bill the customer
@@ -1232,6 +1276,31 @@ export default function GcProjects() {
           problem={logProblem}
           onSave={(log) => saveLog(logProject.id, log)}
           onClose={() => setLogWindow(null)}
+        />
+      )}
+
+      {canUseGcBuilding(role) && submittalsProjectId && submittalRead && (
+        <GcSubmittalsWindow
+          state={submittalRead.state}
+          project={submittalRead.project}
+          extras={submittalRoundExtras(submittalTables)}
+          sections={Object.fromEntries((loaded?.projects.find((x) => x.id === submittalsProjectId)?.trades ?? []).map((t) => [t.id, tradeSpecSections(t.scope)]))}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          busy={submittalBusy}
+          problem={submittalProblem}
+          onClose={() => setSubmittalsWindow(null)}
+          writes={{
+            onAdd: (draft) => submittalWrite('new', addSubmittal(draft), 'The submittal was not added.'),
+            onCameIn: (round) => submittalWrite(round.submittalId, submittalCameIn(round), 'The round was not recorded.'),
+            onSendToArchitect: (id) =>
+              submittalWrite(
+                id,
+                sendSubmittalToArchitect(id).then((r) => showToast(`Sent to ${r.to}.`, 'success')),
+                'The submittal was not sent.',
+              ),
+            onMarkSent: (id) => submittalWrite(id, markSubmittalSent(id), 'It was not marked sent.'),
+            onAnswer: (id, answer, note) => submittalWrite(id, answerSubmittal(id, answer, note), 'The answer was not recorded.'),
+          }}
         />
       )}
 
