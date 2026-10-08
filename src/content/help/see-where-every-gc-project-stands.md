@@ -5,14 +5,14 @@ roles: dev
 keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card
 order: 94
 ---
-The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. It also says what the price is so far.
+The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
 
-Only a dev sees the board while it is built. Everyone else sees the list of projects on [GC projects](/gc), and the board sits above that list for a dev.
+Only a dev sees the board while it is built. Everyone else sees the list of projects on [GC projects](/gc). For a dev, the board sits above that list.
 
 ## Jump to a stage
 
 1. Open [GC projects](/gc).
-2. Find the strip at the top of the board. It has a pill for each stage, with its count.
+2. Find the strip at the top of the board. The strip has a pill for each stage, with its count.
 3. Press a pill, such as {{chip:yellow|Bidding to the customer}}. The board scrolls to that stage.
 
 The pill of the stage on screen stays lit as you scroll. The three stages are numbered in the order a job goes through them. Closed and Lost come after them.
@@ -25,9 +25,9 @@ The pill of the stage on screen stays lit as you scroll. The three stages are nu
 
 Each row is one project.
 
-- **The block on the left** says the days left before our bid is due. It turns red inside a week and amber inside two.
+- **The block on the left** says the days left before our bid is due. The block turns red inside a week and amber inside two.
 - A job we won shows the days to its planned start instead.
-- **The name** is the project. Under it are the customer and the architect.
+- **The name** is the project. The customer and the architect are under the name.
 - **The price** on the right is the price so far. A trade with no number yet counts as nothing.
 
 Press anywhere on a row to go to that project's card below the board. Press the plans link on a row to open its plans.

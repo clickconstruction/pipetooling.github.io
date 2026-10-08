@@ -132,6 +132,17 @@ export interface BoardDatesRow {
   won_by: string | null
 }
 
+/** A company's vetting form (B1's `gc_company_vetting_forms`), as they wrote it. */
+export interface VettingFormRow {
+  company_id: string
+  license: string
+  insurance: string
+  years_in_business: number | null
+  reference_list: string
+  past_jobs: string
+  sent_on: string
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -147,6 +158,8 @@ export interface BoardRows {
   promiseMoves: PromiseMoveRow[]
   /** Who decided a vetting, by user id, for its words. */
   userNames?: Record<string, string>
+  /** The vetting forms that came in (B3-b). Missing: none read, so no company shows a form. */
+  vettingForms?: VettingFormRow[]
   /** Points from the app's geocoded addresses, by the address as written. Missing: the towns stand in. */
   points?: Record<string, { lat: number; lng: number }>
 }
@@ -227,7 +240,7 @@ export function inviteFromRows(invite: InviteRow, quotes: QuoteRow[], contacts: 
 }
 
 /** A company's vetting as the kernels read it. Null in the table: a company we know, approved. */
-function vettingOf(c: CompanyRow, names: Record<string, string>): PartnerVetting | undefined {
+function vettingOf(c: CompanyRow, names: Record<string, string>, form: VettingFormRow | undefined): PartnerVetting | undefined {
   if (c.vetting_status !== 'new' && c.vetting_status !== 'approved' && c.vetting_status !== 'declined') return undefined
   const limit = c.vetting_limit === null ? null : num(c.vetting_limit)
   return {
@@ -236,15 +249,16 @@ function vettingOf(c: CompanyRow, names: Record<string, string>): PartnerVetting
     ...(c.vetting_decided_on ? { decidedOn: c.vetting_decided_on } : {}),
     ...(c.vetting_decided_by ? { decidedBy: names[c.vetting_decided_by] ?? 'Someone on our team' } : {}),
     ...(c.vetting_note ? { note: c.vetting_note } : {}),
+    ...(form ? { form: { license: form.license, insurance: form.insurance, yearsInBusiness: form.years_in_business ?? 0, references: form.reference_list, pastJobs: form.past_jobs, sentOn: form.sent_on } } : {}),
   }
 }
 
 /** A company as the kernels read it. Its counts come from its asks; its papers wait for B6. */
-export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames'>): Partner {
+export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms'>): Partner {
   const asks = invites.filter((i) => i.company_id === c.id)
   const quoted = new Set(quotes.map((q) => q.invite_id))
   const basePoint = pointOf(rows as BoardRows, c.address)
-  const vetting = vettingOf(c, rows.userNames ?? {})
+  const vetting = vettingOf(c, rows.userNames ?? {}, rows.vettingForms?.find((f) => f.company_id === c.id))
   return {
     id: c.id,
     company: c.name,

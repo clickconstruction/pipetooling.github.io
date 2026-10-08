@@ -60,6 +60,15 @@ describe('the board read from its rows', () => {
     expect(travelFor(pointed, pointed.partners[0]!, pointed.projects[0]!).miles).toBe(35)
   })
 
+  it('a company new to us carries the form it sent, and who decided an approval reads by name', () => {
+    const form = { company_id: 'hillside', license: 'TX 4471', insurance: 'Lone Star Mutual', years_in_business: null, reference_list: 'Ana Ruiz', past_jobs: 'Two clinics', sent_on: '2026-10-04' }
+    const [, hillside] = boardStateFromRows(rows({ vettingForms: [form] })).partners
+    expect(hillside!.vetting).toEqual({ status: 'new', form: { license: 'TX 4471', insurance: 'Lone Star Mutual', yearsInBusiness: 0, references: 'Ana Ruiz', pastJobs: 'Two clinics', sentOn: '2026-10-04' } })
+    const decided = rows({ userNames: { u1: 'Rosa' } })
+    decided.companies[1] = { ...decided.companies[1]!, vetting_status: 'approved', vetting_limit: '150000', vetting_decided_on: '2026-10-07', vetting_decided_by: 'u1', vetting_note: 'Ana vouched.' }
+    expect(boardStateFromRows(decided).partners[1]!.vetting).toEqual({ status: 'approved', limit: 150000, decidedOn: '2026-10-07', decidedBy: 'Rosa', note: 'Ana vouched.' })
+  })
+
   it('a promise with the day it moved from', () => {
     expect(boardStateFromRows(rows()).tradePromises).toEqual([
       { id: 'tp1', partnerId: 'lonestar', kind: 'insurance', what: 'the renewed insurance certificate', by: '2026-10-12', madeOn: '2026-10-06', from: 'office', moved: [{ by: '2026-10-09', on: '2026-10-07' }] },
