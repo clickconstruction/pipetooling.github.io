@@ -910,13 +910,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
             ? `${first.payer}'s ${money(first.amount)} check never reached the bank`
             : first.source === 'unbanked'
               ? `${first.payer}'s ${money(first.amount)} check was never deposited`
-              : `${first.payer}'s ${money(first.amount)} check came back`
+              : first.source === 'stripe_dispute'
+                ? `${first.payer} disputed a ${money(first.amount)} card payment`
+                : first.source === 'stripe_debit'
+                  ? `${first.payer}'s ${money(first.amount)} bank payment did not go through`
+                  : `${first.payer}'s ${money(first.amount)} check came back`
           : views.every((v) => v.source === 'unbanked')
             ? `${n} checks were never deposited (${money(total)})`
-            : `${n} checks came back (${money(total)})`,
+            : views.some((v) => v.source === 'stripe_dispute' || v.source === 'stripe_debit')
+              ? `${n} payments came back (${money(total)})`
+              : `${n} checks came back (${money(total)})`,
       detail: `${rows}${more}. Each one sits on top of To match in Accounts Receivable with its next step.`,
       figure: String(n),
-      actionLabel: n === 1 ? 'Open the check' : 'Open Accounts Receivable',
+      actionLabel: n === 1 ? (first.source === 'stripe_dispute' || first.source === 'stripe_debit' ? 'Open the payment' : 'Open the check') : 'Open Accounts Receivable',
     })
   } else if (inputs.bankReturnedEnabled && inputs.bankReturned && inputs.bankReturned.count > 0) {
     const r = inputs.bankReturned

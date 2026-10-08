@@ -606,6 +606,13 @@ describe('buildNeedsYouItems', () => {
     const two = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({}), row({ mercury_transaction_id: 'tx2', counterparty_name: 'Southern Post', amount: 13680 })], todayYmd: '2026-10-01' }))
     expect(two[0]).toMatchObject({ title: '2 checks came back ($19,302)', actionLabel: 'Open Accounts Receivable' })
     expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [], todayYmd: '2026-10-01' }))).toEqual([])
+    // v2.4950: a card dispute and a failed bank debit on a Stripe bill ride the same card.
+    const stripeCase = (source: string, kind: string) => ({ kind, object_id: 'x', mode: 'test', status: null, due_by: null, lost_at: null, lost_notified_at: null, amount: 500, invoice_id: 'i', invoice_sequence_order: 0, invoice_status: 'paid', job_id: 'job-878', job_number: '878', job_name: 'Take 5', payment_live: source === 'stripe_dispute' })
+    const disputed = row({ counterparty_name: 'Heron Construction', amount: 500, source: 'stripe_dispute', last_job: null, stripe_case: stripeCase('stripe_dispute', 'dispute') })
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [disputed], todayYmd: '2026-10-01' }))[0]).toMatchObject({ title: 'Heron Construction disputed a $500 card payment', actionLabel: 'Open the payment' })
+    const debit = row({ counterparty_name: 'Heron Construction', amount: 500, source: 'stripe_debit', last_job: null, stripe_case: stripeCase('stripe_debit', 'debit_failed') })
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [debit], todayYmd: '2026-10-01' }))[0]?.title).toBe("Heron Construction's $500 bank payment did not go through")
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturnCases: [row({}), disputed], todayYmd: '2026-10-01' }))[0]?.title).toBe('2 payments came back ($6,122)')
   })
 
   it('returned-check shares the received-money tier with ar-deposits, above lien-unconditional', () => {

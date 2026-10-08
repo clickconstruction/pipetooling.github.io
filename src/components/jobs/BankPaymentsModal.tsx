@@ -77,6 +77,7 @@ import { buildArExactMatchSweep } from '../../lib/jobs/arExactMatchSweep'
 import { findExactBillCombos } from '../../lib/jobs/arPayerBillCombos'
 import { findRecordedPaymentCollisions } from '../../lib/jobs/arLinkCollision'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
+import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import { buildArTipOffer } from '../../lib/jobs/arTipOffer'
 import {
   AR_APPLIED_INCOME_SETTING_KEY,
@@ -415,7 +416,7 @@ export default function BankPaymentsModal({
     () => (selected && !selectedCaseView && !arDepositCameBack(selected) ? arCaseThisReplaces(selected, caseViews) : null),
     [selected, selectedCaseView, caseViews],
   )
-  const [caseBusy, setCaseBusy] = useState<'take_off' | 'close' | 'recorded' | 'unmark' | null>(null)
+  const [caseBusy, setCaseBusy] = useState<'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | null>(null)
   const [caseError, setCaseError] = useState<string | null>(null)
   const [theySaidJob, setTheySaidJob] = useState<{ jobId: string; label: string } | null>(null)
   /** Use it as the new check: the case the deposit being applied replaces; closed when the apply lands. */
@@ -1984,11 +1985,14 @@ export default function BankPaymentsModal({
     setCaseBusy('close')
     setCaseError(null)
     try {
-      // A check typed in by hand that never reached the bank (v2.4902) has its own case table.
+      // A check typed in by hand that never reached the bank (v2.4902) and a Stripe case (v2.4950) have their own case tables.
+      const source = selectedCaseView.source
       const res =
-        selectedCaseView.source === 'unbanked'
+        source === 'unbanked'
           ? await runCaseRpc('close_ar_unbanked_check_case', { p_case_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null })
-          : await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null, p_replaced_by: null })
+          : source === 'stripe_dispute' || source === 'stripe_debit'
+            ? await runCaseRpc('close_ar_stripe_case', { p_case_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null })
+            : await runCaseRpc('close_ar_return_case', { p_mercury_transaction_id: selectedCaseView.id, p_reason: reason, p_note: note.trim() || null, p_replaced_by: null })
       if (!res.ok) {
         setCaseError(res.message)
         return
@@ -2020,6 +2024,32 @@ export default function BankPaymentsModal({
         return
       }
       showToast(`${arCaseMoney(rec.amount)} is off ${rec.label.split(' ')[0]}. The job owes it again.`, 'success')
+      await afterCaseWrite(true)
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
+  /**
+   * v2.4950: a lost card dispute. The payment comes off the job, the bill goes back to be billed
+   * again, and the job moves to Ready to Bill when no billed line remains, as every send-back does.
+   */
+  async function putDisputedBillBack() {
+    if (!selectedCaseView || !canApply || selectedCaseView.next.kind !== 'put_back') return
+    const view = selectedCaseView
+    setCaseBusy('put_back')
+    setCaseError(null)
+    try {
+      const res = await runCaseRpc('put_back_lost_dispute_bill', { p_case_id: view.id })
+      if (!res.ok) {
+        setCaseError(res.message)
+        return
+      }
+      const jobId = typeof res.data?.job_id === 'string' ? res.data.job_id : null
+      const sync = jobId ? await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, jobId) : { ok: true as const }
+      const warning = typeof res.data?.warning === 'string' ? res.data.warning : !sync.ok ? sync.message : null
+      showToast(warning ? `The bill is back, but: ${warning}` : `${arCaseMoney(view.amount)} is off the job. Bill it again from Ready to Bill.`, warning ? 'error' : 'success')
+      setSelectedId(null)
       await afterCaseWrite(true)
     } finally {
       setCaseBusy(null)
@@ -2697,6 +2727,7 @@ export default function BankPaymentsModal({
                   onClose={(reason, note) => void closeCase(reason, note)}
                   onTakeRecordedOff={() => void takeRecordedPaymentOff()}
                   onNotBounced={() => void caseNotBounced()}
+                  onPutBack={() => void putDisputedBillBack()}
                   onOpenJob={onOpenEditJob}
                   onBack={narrow ? () => setMobilePane(false) : undefined}
                 />

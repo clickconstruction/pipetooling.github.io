@@ -12,6 +12,9 @@ import {
 import { parseOobPaymentMetadataFromStripe } from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 import { lienOfferWriteDown, type LienOfferRow } from '../_shared/lienPayOffer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { debitFailedCaseArgs, disputeCaseArgs, type StripeCaseArgs } from '../_shared/stripeArCase.ts'
+import { loadOpenReturnCases, sendReturnCaseNotice } from '../_shared/arReturnCaseNotify.ts'
+import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -259,6 +262,53 @@ async function handleStripeInvoicePaidEvent(
   return jsonOk({ received: true })
 }
 
+/**
+ * v2.4950 (punch list #76 piece 1): a card dispute or a failed bank debit becomes a case beside the checks
+ * that came back. `record_ar_stripe_case` opens it on the bill, or brings it up to date; the office is told
+ * once when it opens and once more when a dispute is lost (the hourly ar-returned-checks catches a miss).
+ * Never throws: a case that cannot be recorded is a warning line and a 200, as every other path here.
+ */
+async function recordStripeCase(admin: SupabaseClient, args: StripeCaseArgs, eventForLog: Pick<Stripe.Event, 'id' | 'type'>): Promise<Response> {
+  const { data, error } = await admin.rpc('record_ar_stripe_case', args)
+  if (error) {
+    webhookLog('error', eventForLog, 'record_ar_stripe_case failed', error)
+    return jsonOk({ received: true, applied: false, reason: 'case_rpc_failed' })
+  }
+  const result = (data ?? {}) as { case_id?: string; opened?: boolean; lost_now?: boolean; closed?: boolean; skipped?: string }
+  if (result.skipped) return jsonOk({ received: true, skipped: result.skipped })
+  if (result.case_id && (result.opened || result.lost_now)) {
+    try {
+      const row = (await loadOpenReturnCases(admin)).find((r) => r.mercury_transaction_id === result.case_id)
+      const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+      if (row) await sendReturnCaseNotice(admin, row, { appOrigin, sendEmail: sendEmailViaResend })
+    } catch (e) {
+      webhookLog('warn', eventForLog, 'case notice failed (the hourly sweep sends it)', e)
+    }
+  }
+  return jsonOk({ received: true, case_id: result.case_id ?? null, opened: !!result.opened, lost_now: !!result.lost_now, closed: !!result.closed })
+}
+
+/** charge.dispute.*: the bill is the one the disputed charge paid, read from the charge in the event's mode. */
+async function handleStripeDisputeEvent(admin: SupabaseClient, dispute: Stripe.Dispute, eventForLog: Pick<Stripe.Event, 'id' | 'type'>, eventMode: StripeBillingMode): Promise<Response> {
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id
+  const key = stripeApiKeyForMode(eventMode)
+  if (!chargeId || !key) {
+    webhookLog('warn', eventForLog, `dispute: no charge or no ${eventMode} API key`)
+    return jsonOk({ received: true, applied: false, reason: 'dispute_unreadable' })
+  }
+  let invoiceId: string | null = null
+  try {
+    const charge = await new Stripe(key, { apiVersion: '2024-06-20' }).charges.retrieve(chargeId)
+    invoiceId = typeof charge.invoice === 'string' ? charge.invoice : charge.invoice?.id ?? null
+  } catch (e) {
+    webhookLog('warn', eventForLog, 'dispute: retrieve charge failed', e)
+    return jsonOk({ received: true, applied: false, reason: 'charge_retrieve_failed' })
+  }
+  const args = disputeCaseArgs(dispute, eventMode, invoiceId)
+  if (!args) return jsonOk({ received: true, skipped: 'no invoice on the charge' })
+  return await recordStripeCase(admin, args, eventForLog)
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -369,6 +419,14 @@ serve(async (req) => {
       if (stripeInvId && st) {
         await syncJobsLedgerStripeInvoiceStatus(admin, stripeInvId, st, eventForLog, eventMode)
       }
+    } else if (event.type.startsWith('charge.dispute.')) {
+      // created · updated · closed · funds_withdrawn · funds_reinstated: each carries the dispute's status now.
+      return await handleStripeDisputeEvent(admin, event.data.object as Stripe.Dispute, eventForLog, eventMode)
+    } else if (event.type === 'payment_intent.payment_failed') {
+      // A bank debit (ACH) that failed on a bill; a card fails on the pay page in front of the customer.
+      const args = debitFailedCaseArgs(event.data.object as Stripe.PaymentIntent, eventMode, event.created)
+      if (!args) return jsonOk({ received: true, skipped: 'not a bank debit on a bill' })
+      return await recordStripeCase(admin, args, eventForLog)
     } else if (event.type === 'credit_note.created') {
       const cn = event.data.object as Stripe.CreditNote
       const invRef = cn.invoice
