@@ -187,3 +187,11 @@ The mapper (`tradePortalState.ts`) then fills `pkg.awardedInviteId`, `pkg.sow`, 
 7. **The award and the statement of work join the slice** in whichever of P2c and P4b is cut first.
 8. **A change request never becomes a statement of work line on its own.** Its change order does: the customer signs, U6 sends the change to the trade (`gc_change_order_trade_sends.sow_line_id`), and the line's source is `gc_sow_lines.change_order_id`. So `gc_sow_lines` keeps its two sources, and P4 adds no column there (Helper 2, 2026-10-08).
 9. **"Signed" is `gc_sows.status = 'signed'`**, never a row that merely exists. A drafted, sent or cancelled one does not count. `notAwarded` reads `gc_sows.company_id` with `gc_trade_packages.awarded_invite_id`, which `gc_award` writes together (Helper 2).
+10. **Owner Billing's two verbs** (Helper 5, 2026-10-08, its O3b, after P4a's types):
+    - `gc_draft_change_order_from_request(p_request_id uuid, p_draft jsonb)` takes O3's draft shape: description, cost, price, days, schedule and planSetId.
+      - The window prefills cost and days from the request, and price with `changeOrderPrice`. The office can type over any of them, and the client sends the price it shows.
+      - The reason and the trade come from the request. A draft that names another trade or reason is refused.
+      - In one transaction it locks the request, refuses one already drafted or turned down, calls `gc_draft_change_order`, and writes `change_order_id`.
+    - `gc_turn_down_change_request(p_request_id, p_note)` refuses a blank note and the same two states.
+    - `change_order_id`'s FK is set null, so deleting a draft frees the request to be drafted again.
+    - After Owner Billing's door, `gc_change_orders` is the money team's. So drafting from a request, and by Helper 5's default turning one down, needs the money team even once the trade wave opens this table to the office to read.
