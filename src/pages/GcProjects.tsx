@@ -174,7 +174,7 @@ export default function GcProjects() {
     setLangs(Object.fromEntries(rows.companies.map((c) => [c.id, c.lang === 'es' ? 'es' : 'en'])))
   }
   useEffect(() => {
-    if (role !== 'dev' || !loaded || loaded.projects.length === 0) return
+    if (!canOpenGcProjects(role) || !loaded || loaded.projects.length === 0) return
     let live = true
     loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) })
       .then((rows) => {
@@ -255,9 +255,9 @@ export default function GcProjects() {
       await reloadProjects()
     },
   })
-  // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for a dev.
+  // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for the GC office (door 2).
   const [companyId, setCompanyId] = useState<string | null>(null)
-  const companyOpener: CompanyOpener | null = role === 'dev' && board ? { openPartner: setCompanyId } : null
+  const companyOpener: CompanyOpener | null = canOpenGcProjects(role) && board ? { openPartner: setCompanyId } : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
@@ -368,9 +368,10 @@ export default function GcProjects() {
   const [changeBusy, setChangeBusy] = useState<string | null>(null)
   const [changeProblem, setChangeProblem] = useState<string | null>(null)
   const loadChangeOrders = useCallback(async () => {
-    if (!board) return
+    // Change orders stay a dev's until Owner Billing's door (door 2 opened the board, not them).
+    if (!board || role !== 'dev') return
     setChangeOrderRows(await loadGcChangeOrders(board.projects.map((p) => p.id)))
-  }, [board])
+  }, [board, role])
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
@@ -399,7 +400,7 @@ export default function GcProjects() {
   const [moneyProblem, setMoneyProblem] = useState<string | null>(null)
   const ourIds = useMemo(() => (board ? board.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building').map((p) => p.id) : []), [board])
   useEffect(() => {
-    if (devView !== 'money' || !board) return
+    if (devView !== 'money' || !board || role !== 'dev') return
     let live = true
     setMoneyProblem(null)
     loadGcBillingRows(ourIds)
@@ -412,7 +413,7 @@ export default function GcProjects() {
     return () => {
       live = false
     }
-  }, [devView, board, ourIds])
+  }, [devView, board, ourIds, role])
   const moneyState = useMemo(() => (boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null), [boardWithChanges, moneyRows, ourIds])
 
   if (authLoading) return null
@@ -535,19 +536,18 @@ export default function GcProjects() {
       </div>
 
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
-      {role === 'dev' && loaded && loaded.projects.length > 0 && (
+      {/* Door 2: the Board for the GC office. Trade portals stays a dev's until the trade wave. */}
+      {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'portals' ? 'Trade portals' : devView === 'money' ? 'Money' : 'Follow up'}</h2>
-            <Chip tone="grey" title="Only a dev sees the board, Trade partners, Follow up, Trade portals and Money while they are built. Everyone else sees the projects below.">
-              Devs only
-            </Chip>
-            <div role="group" aria-label="Project Board, Trade partners, Follow up, Trade portals or Money" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'portals' && role === 'dev' ? 'Trade portals' : devView === 'money' && role === 'dev' ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={role === 'dev' ? 'Project Board, Trade partners, Follow up, Trade portals or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
-              {devPill('portals', 'Trade portals')}
-              {devPill('money', 'Money')}
+              {/* Door 2: Trade portals waits for the trade wave, and Money for Owner Billing's door. */}
+              {role === 'dev' && devPill('portals', 'Trade portals')}
+              {role === 'dev' && devPill('money', 'Money')}
             </div>
           </div>
           {board ? (
@@ -562,9 +562,9 @@ export default function GcProjects() {
               />
             ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
-            ) : devView === 'portals' ? (
+            ) : devView === 'portals' && role === 'dev' ? (
               <GcTradePortals state={board} />
-            ) : devView === 'money' ? (
+            ) : devView === 'money' && role === 'dev' ? (
               moneyState ? (
                 <GcMoney state={moneyState} />
               ) : moneyProblem ? (
@@ -591,8 +591,9 @@ export default function GcProjects() {
         const tour = (anchor: string) => (cardIndex === 0 ? anchor : undefined)
         const gaps = scopeGaps(p.trades.map((t) => ({ trade: t.trade, scope: t.scope.map((s) => s.label), excludes: t.excludes })))
         const newest = p.planSets[p.planSets.length - 1]
-        // The board's reading of this project, for a dev while it is built (B5-c's outcome and Our number).
-        const boardProject = role === 'dev' ? board?.projects.find((x) => x.id === p.id) : undefined
+        // The board's reading of this project, for the GC office since door 2 (B5-c's outcome strip, B5-d's bid
+        // tabs); Our number stays the money team's.
+        const boardProject = canOpenGcProjects(role) ? board?.projects.find((x) => x.id === p.id) : undefined
         const showNumber = boardProject && canSeeGcMoney(role)
         const tabs = boardProject ? boardProject.packages.filter(packageHasTab).length : 0
         return (
@@ -613,7 +614,7 @@ export default function GcProjects() {
                   A new set of plans came in
                 </Btn>
               )}
-              {boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+              {role === 'dev' && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
                   {(() => {
                     const count = changeOrderRows.filter((r) => r.project_id === p.id).length
@@ -728,7 +729,7 @@ export default function GcProjects() {
                     ))}
                   </ul>
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
+                  {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
               ))}
             </div>
@@ -765,7 +766,8 @@ export default function GcProjects() {
             await refreshBoard()
           }}
           onClose={() => setCompanyId(null)}
-          portal={<GcTheirPortal companyId={openCompany.id} />}
+          // Their portal stays a dev's until the trade wave: its links' table is dev only (door 2).
+          portal={role === 'dev' ? <GcTheirPortal companyId={openCompany.id} /> : undefined}
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)
@@ -791,7 +793,7 @@ export default function GcProjects() {
         />
       )}
 
-      {changesProject && boardWithChanges && (
+      {role === 'dev' && changesProject && boardWithChanges && (
         <GcChangeOrdersWindow
           state={boardWithChanges}
           project={changesProject}

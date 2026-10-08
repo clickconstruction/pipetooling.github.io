@@ -1,13 +1,13 @@
 ---
 title: set our number and send our bid
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, our number, price, general conditions, contingency, fee, markup, sent our bid, won, lost, buyout, bring it back, trades so far
 order: 99
 ---
 Our number is the price we give the customer for a GC project. That price is the trades we carry, plus our general conditions, contingency and fee. You set those three on the project's card, then mark the bid sent, won or lost.
 
-Only a dev sees this while it is built.
+The owner, the leaders and the controller set our number. The office and estimators mark the bid sent, won or lost.
 
 ## Open our number
 
