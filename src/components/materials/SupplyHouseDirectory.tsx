@@ -139,7 +139,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
   }, [])
 
   const loadTrades = useCallback(async () => {
-    const { data: types } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
+    const { data: types } = await supabase.from('service_types').select('id, name').eq('billing_only', false).order('sequence_order', { ascending: true })
     setTradeTypes(((types ?? []) as TradeType[]))
     // The link table arrives with the v2.3173 push; until then there are simply no tags.
     const { data: links, error } = await supabase.from('supply_house_service_types' as never).select('supply_house_id, service_type_id')

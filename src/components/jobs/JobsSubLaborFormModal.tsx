@@ -431,7 +431,7 @@ function JobsSubLaborFormModalInner(
   const laborModalOfficeTeamShown = filterLaborCrewNames(laborModalOfficeTeamAll, laborCrewSearchLower)
 
   async function loadServiceTypes() {
-    const { data, error } = await supabase.from('service_types' as any).select('*').order('sequence_order', { ascending: true })
+    const { data, error } = await supabase.from('service_types' as any).select('*').eq('billing_only', false).order('sequence_order', { ascending: true })
     if (error) {
       setError(`Failed to load service types: ${error.message}`)
       return

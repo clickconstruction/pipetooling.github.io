@@ -74,7 +74,7 @@ export default function Duplicates() {
     Promise.all([
       asResult(loadWholePartsCatalog<MaterialPart>(supabase)),
       supabase.from('part_types').select('id, name, service_type_id'),
-      supabase.from('service_types').select('id, name'),
+      supabase.from('service_types').select('id, name').eq('billing_only', false),
       asResult(
         loadWholePartPricesCatalog<{ part_id: string; price: number; supply_houses: { name: string } | null }>(
           supabase,

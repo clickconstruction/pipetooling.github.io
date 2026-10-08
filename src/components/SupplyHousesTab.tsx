@@ -341,7 +341,7 @@ export function SupplyHousesTab({
   }
 
   async function loadFirstServiceType() {
-    const { data } = await supabase.from('service_types').select('id').order('sequence_order', { ascending: true }).limit(1)
+    const { data } = await supabase.from('service_types').select('id').eq('billing_only', false).order('sequence_order', { ascending: true }).limit(1)
     const first = (data as { id: string }[] | null)?.[0]
     setFirstServiceTypeId(first?.id ?? null)
   }
