@@ -176,7 +176,7 @@ Each row ends with its fact.
 - **Where this notice is**. The next step and its days.
 - **The four gates**. How many are clear.
 - **Supply houses**. The houses and their money. This row shows only when the job bought from a house.
-- **Months on this job**. The months and the claim.
+- **Months on this job**. The months, the claim and how many bills are behind it.
 - **In the envelope**. The pages in the envelope.
 
 :::example the rows halfway down a job
@@ -208,7 +208,13 @@ After the gates come the months with the claim and the line that says who gets t
 
 While the notice is a draft, the four yellow values are boxes in the preview's side list. Type there, and both the page and the desk change as you go. {{button:blue|Save draft}} in the preview keeps them. Once the notice has gone for approval, the boxes are read only. Pull it back to a draft to change the wording.
 
-**The claim, set by hand.** The notice claims the job's unpaid balance. When a bill is in dispute, press **Correct the claim ›** in the claim box. Type what the notice should claim, and type why. The reason is required. Tick whether it carries to later notices and the affidavit. The line under the box shows the difference from the balance. The rest stays on the books for Collections, and the app's balance never changes.
+**The claim is what is billed.** The notice claims what the job's sent bills still owe. It never claims the job's price. Work not billed yet is not claimed until it is billed. Under the claim box, **The bills behind the claim** lists each sent bill. Each line shows what was billed, what is paid and what is still owed. The owed column adds up to the claim. A last line in amber names the part of the job no sent bill carries.
+
+- Press {{button:outline|Bill it from here ›}} on that line to bill it without leaving the desk. The Bill Customer window opens over the desk. Bill only work that is done.
+- When the bill goes, the desk reads the job again. The claim, the row and the pay page fill in by themselves.
+- A job with money on it but nothing owed on its sent bills gets a fifth gate, **Nothing billed**. It holds the send until the work is billed. The gate carries the same door.
+
+**The claim, set by hand.** The notice claims what the sent bills still owe. When a bill is in dispute, press **Correct the claim ›** in the claim box. Type what the notice should claim, and type why. The reason is required. Tick whether it carries to later notices and the affidavit. The line under the box shows the difference from the balance. The rest stays on the books for Collections, and the app's balance never changes.
 
 - A typed claim shows in yellow in the preview. The card says {{chip:yellow|set by hand}} with who and why, and so does the leader's card.
 - A carried correction is an amount off the balance, not a fixed figure. Each later notice shows a strip naming whose correction it carries. Press {{button:outline|Still true}} or {{button:outline|Clear it}}. Nothing goes out on a standing rule until someone has looked.

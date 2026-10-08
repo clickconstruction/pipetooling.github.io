@@ -180,6 +180,7 @@ export default function LienDeskAffidavitPane({
         customerName: job?.customer_name,
         revenue: Number(job?.revenue ?? 0),
         paymentsMade: Number(job?.payments_made ?? 0),
+        openBalance: entry.openBalance,
         claimAmountOff: correction?.amountOff,
         lastMonth: entry.lastMonth,
         noticesRecorded: entry.gates.find((g) => g.key === 'notice')?.ok ?? false,
