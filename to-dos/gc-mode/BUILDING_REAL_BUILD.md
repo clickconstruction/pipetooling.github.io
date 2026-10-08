@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Building: the real build plan"
 parent: to-dos/gc-mode/README.md (punch list #81) · HANDOFF.md (The real build, in order, step 9) · PLAN_2026-10-07.md (Helper 4's row)
-status: first draft 2026-10-07 by Helper 4 at the lead's ask, for the lead's review and then the owner's · the seams with the Board (Helper 2), the Portal (Helper 3) and Owner Billing (Helper 5) agreed with each the same evening · nothing touches the database until the lead's go
+status: first draft 2026-10-07 by Helper 4 at the lead's ask, for the lead's review and then the owner's · the seams with the Board (Helper 2), the Portal (Helper 3) and Owner Billing (Helper 5) agreed with each the same evening · the lane is Helper 14's since 2026-10-08 (U4 is Helper 18's) · U1, U2 and U3a are on main, Status below
 summary: >
   How Building moves from the prototype (made-up data on branch spike/gc-mode) into the real app: the
   daily log, the punch list, submittals, questions during construction (RFIs), the trades' draws and
@@ -9,7 +9,7 @@ summary: >
   What moves and what stays, the decisions with a default each, the tables, what the app already has,
   the kernels that move with their tests, the writes, and the PRs in order with a Check each.
 size: L (15 tables in two migrations, 1 column, about 20 database functions, 2 new edge functions, 8 PRs and a door)
-blocker: the lead's go. U1 needs only main. U3 needs B1's started_on. U5's change order needs O1. U6 needs B6 (the statement of work), P5 (the trade's pay application) and O1. U7 needs O2 (the late finish).
+blocker: U3b and U4 need the Board's B6 (signed statements of work and the award). U6 needs B6, P5 (the trade's pay application) and O1. O1 and O2's late finish are on main.
 ---
 
 # GC mode, Building: the real build plan
@@ -105,8 +105,10 @@ Each has a default the plan is written to. The owner changes any of them by sayi
    - **The trades and the customer** have no policy. They reach their slice only through their
      portals' functions.
 5. **The trades' writes are Building's SQL functions** (agreed with the Portal, Helper 3). Each is
-   `gc_trade_<verb>(p_company_id uuid, …)`, `SECURITY DEFINER` with a pinned `search_path`, revoked
-   from `PUBLIC`, `anon` and `authenticated`, and granted to `service_role` only. It checks the row is
+   `gc_trade_<verb>(p_company_id uuid, …)`, `SECURITY INVOKER` with a pinned `search_path`, as the
+   Portal's P2a verbs settled, revoked from `PUBLIC`, `anon` and `authenticated` and granted to
+   `service_role` only. A refusal raises a key the portal says in the company's language, with its
+   reason as the DETAIL. It checks the row is
    on a package that company was awarded, checks what the reducer checks, and writes. The Portal's
    submit function resolves the link to its company, rate-limits, and calls it. It never takes a
    company from the body. Building's migration ships the function. The Portal's next PR adds the
@@ -304,7 +306,9 @@ main, so the keys are the merged ones. The shape:
 - **The company record** (B1), **the statement of work** (B6), **change orders** (O1) and
   **back-charges** (P4): decision 3.
 - **The page**: New project's dev-only page at `/gc` (`src/pages/GcProjects.tsx`) and its io,
-  `src/lib/gc/gcIo.ts`. Building's io is `src/lib/gc/buildingIo.ts` beside it.
+  `src/lib/gc/gcIo.ts`. Building's io is a rows file and an io file per record beside it
+  (`dailyLogRows.ts` and `dailyLogIo.ts` first, U3a-ii; then `submittalRows.ts` and `submittalsIo.ts`,
+  U4), each laid over the Board's `boardProjectFromView` on the page, as `withChangeOrders` is.
 - **The team**: `users` and their roles, `project_superintendents`,
   `gc_projects.project_manager_user_id`.
 - **Drive**: `gc-drive-access` (`make_folders`, `check`), `_shared/driveUpload.ts`, the "PipeTooling
@@ -342,7 +346,7 @@ The price card's 7 are the Board's lift.
 | `gcBuilding` | `building.ts` (adds to it) | 43 of 45: the pay application's math, sent back, our crew's work, closeout, the trade's side of change orders (`changeOrderTradePct`, which O2 reads) | `tradePayAppParties` (O2's `PayAppParties`, and our company's address, call 12) and `drawOnTheirSov` (`stageReached`, with B6's statement of work): U6 |
 | `gcBuildingPromises` | `buildingPromises.ts` | 9 of 10 (`START_ASK_DAYS`, `firstOnSite`, `startsToPromise`, `papersOwed`, `papersOwedWords`) | `buildingPromisesKeptBy` reads the reducer's actions: it stays, and its rules become SQL (decision 9) |
 | `gcBuildingWeekly` | `buildingWeekly.ts` | 10 of 11 | `weeklyReport` reads O2's `lateFinish`: U7 |
-| `gcFollowUpSheet` | `followUpSheet.ts` (adds to it) | 9 of 13 (`smsHref`, `mailHref`, `telHref`, `followUpCount`, the types) | `followUpPeople` (B2's follow-ups and promises), `followUpDraft` (P1's `portalLink`), and the two that build the reducer's actions: U2b |
+| `gcFollowUpSheet` | `followUpSheet.ts` (adds to it) | 9 of 13 (`smsHref`, `mailHref`, `telHref`, `followUpCount`, the types) | `followUpDraft` (P1's `portalLink`) and the two that build the reducer's actions: U2b. `followUpPeople`, with its private `lastAsk` and `cap`, goes with the schedule's 7c-i |
 | `gcPriceStanding` | `priceStanding.ts` | | the Board's B2 lifts all 7: they read only `gcBids` |
 
 Small helpers go under their lanes' files, as the schedule's 1b did: `money` joins `words.ts`, and
@@ -367,15 +371,18 @@ missed, its six submittals, its four RFIs, its punch list and the trades' statem
 their draws. The spike's tests keep passing against main's copy after the follow-up, and the golden
 test keeps passing without `-u`.
 
-**U2b** lifts the four from `gcFollowUpSheet` the day B2's and P1's kernels are on main, in the
-same way. The Board's B2b waits on U2 the other way: its `partnerWork` reads `retainageHeldNow`, its
+**U2b** lifts the last three from `gcFollowUpSheet`, `followUpDraft` and the two that build the
+reducer's actions, the day P1's kernels are on main, in the same way. The schedule's 7c-i lifts
+`followUpPeople` with its private `lastAsk` and `cap` (Helper 11, 2026-10-08). If `followUpDraft`
+needs them, U2b exports them from `followUpSheet.ts` and never copies them. The Board's B2b waits on U2 the other way: its `partnerWork` reads `retainageHeldNow`, its
 `partnerActivity` reads `buildingActivity`, and its own promise rules read closeout and the punch
 list.
 
-**The mapper.** `buildingFromRows` fills the job that New project's mapper (`projectRows.ts`) and
-the schedule's (`scheduleStateFromRows`, its PR 6) build: `dailyLogs`, `punch`, `submittals`,
-`rfis` and `weeklyReports`, and from U6 each package's `sow` with its lines, reports and draws. It
-gets its own test against Fair Oaks D's rows. So no kernel changes when the data becomes real.
+**The mapper.** There is one project mapper, the Board's `boardProjectFromView` (`PLAN_2026-10-07.md`).
+Each Building record lays its rows over the job it builds: `withDailyLogs` lays `dailyLogs` (U3a-ii,
+`dailyLogRows.ts`), and `punch`, `submittals`, `rfis` and `weeklyReports` follow the same way, then from
+U6 each package's `sow` with its lines, reports and draws. Each overlay gets its own test, so no kernel
+changes when the data becomes real.
 
 ## Writing it
 
@@ -410,8 +417,8 @@ with the kernel, as the prototype does, and the RPC checks what the reducer refu
 back, pay, approve the retainage, accept the work, send a signed change to the trade, and close the
 job. Each pays or holds money, so each is an RPC under the money roles' policy.
 
-**The reads.** `src/lib/gc/buildingIo.ts` reads a project's Building rows in one round of queries and
-hands them to the mapper; the screens call the kernels. The portal's read function returns one
+**The reads.** Each record's io file (`dailyLogIo.ts`, then `submittalsIo.ts` and the rest) reads its
+rows in one select and hands them to its overlay; the screens call the kernels. The portal's read function returns one
 company's slice of the same rows, built in `supabase/functions/_shared/`, with a test that the slice
 never carries our price to the customer, our budget or another company's name (the Portal's rule).
 
@@ -426,7 +433,7 @@ Building's kernels other lanes read, once they are on main (U2):
 | `changeOrderTradePct` | Owner Billing's O2 (`changeOrderPct`), by way 3 until U2 lands |
 | `drawPayDays`, `drawsToPay` | Owner Billing (the forecast), from U6 |
 | `buildingActivity` | The Board (a company's Activity) |
-| `partnerReach`, `telHref`, `followUpPeople`, `followUpDraft` | The Board (U2b) |
+| `partnerReach`, `telHref`, `followUpPeople`, `followUpDraft` | The Board (U2b; `followUpPeople` with the schedule's 7c-i) |
 | `retainageHeldNow`, `tradeCloseout`, `punchItems`, `buildingActivity` | The Board's B2b (`partnerWork`, `partnerActivity`, its promise rules) |
 | The Friday report's subject and body | Owner Billing (Their messages), from U7 |
 | `onSite`, `onSiteWords`, `isWorkday` | The schedule (on main since its 1b) |
@@ -451,7 +458,11 @@ function. One Building migration a day. *Check* is how the reviewer sees it work
    `gc_trade_punch_fixed`; `buildingIo.ts` and the mapper with its test; the Daily log window (the
    week at a glance, **Write** for a missed day, today's log started from yesterday's) and the
    punch list per trade, opened from the project's row on `/gc` as the questions window is, and
-   becoming tabs once the Board's project page (B3) has its tab row. *Check:* on the test project,
+   becoming tabs once the Board's project page (B3) has its tab row. *As cut (2026-10-08):* U3a-i the
+   press (#5003, v2.4957, migration `20261009120000`), U3a-ii the Daily log window (#5051, v2.4988),
+   and U3b after the Board's B6: the press's `logTrades` rule, the start promises a crew on site keeps
+   (`gc_keep_promises`, which needs the award's company), a missing temperature refused instead of
+   saved as 0, the date words "Oct 5", and the punch list's presses and window. *Check:* on the test project,
    started, write today's log with two trades and a delay, catch up a missed day, and see it read
    back. Add a punch item, mark it fixed through the trade's function as the service role, send it
    back, and see it counted.
@@ -580,4 +591,9 @@ and checked against `main` at 70854eb04. The seams were agreed the same evening:
 - **Owner Billing** (Helper 5): `gc_change_orders`; the RFI keeps the change order's link; the
   trade's side of a change is U6's; O2 lifts `payAppFile.ts`'s pure half and O4 its writers.
 
-Nothing is built. It waits on the lead's review, then the owner's word on the calls above.
+**2026-10-08, Helper 14 (the lane after Helper 4):** U1 (#4848) and U2 are on main and prod. U3a-i,
+the daily log's press (`gc_save_daily_log`, #5003, v2.4957, migration `20261009120000`), merged at
+21:22 UTC and was applied and verified by the lead (steps 1, 2 and 4; step 3, the live log, waits on
+Grace's yes in the lane's chat); its types are #5039. U3a-ii, the Daily log window for a dev (#5051,
+v2.4988), merged at 00:15 UTC on 2026-10-09, rebuilt on main over `boardProjectFromView`, since the
+old machine's branch never reached origin. Next: U3b after the Board's B6, and U4 (Helper 18's, submittals) after B6-a.
