@@ -32,8 +32,10 @@ Its own quote file still goes by email to our project manager. [See what a trade
 ## Make the link
 
 1. Open [GC projects](/gc).
-2. Press {{button:outline|Trade portals}} at the top of the board.
-3. Find the company and press {{button:blue|Make the link}}.
+2. Press the company's name wherever it shows, such as on Trade partners. Its window opens.
+3. Find **Their portal** at the bottom and press {{button:blue|Make the link}}.
+
+The first email GC mode sends the company makes its link too.
 
 The status reads {{chip:yellow|not opened yet}} until the company opens it.
 
@@ -43,8 +45,12 @@ The status reads {{chip:yellow|not opened yet}} until the company opens it.
 
 ## Send it
 
+Every email GC mode sends the company carries its link. [Email a trade partner from GC mode](/help/email-a-trade-partner-from-gc-mode) says which emails go out.
+
+To send it another way, such as by text:
+
 1. Press {{button:blue|Copy link}}.
-2. Paste the link into the email that asks them to quote.
+2. Paste it into your message.
 
 One link holds every project, so send the same link each time.
 

@@ -132,12 +132,13 @@ describe('GcProjects: the Project Board', () => {
     expect(screen.queryByText('Devs only')).toBeNull()
   })
 
-  it('door 2: a dev still has Trade portals, until the trade wave', async () => {
+  it('a dev has the board, Trade partners, Follow up and Money, and no Trade portals: each link is in its company window', async () => {
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('button', { name: 'Trade portals' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
   })
 
   it('a dev sees the board above the projects, with each project still listed under it', async () => {
