@@ -114,13 +114,13 @@ No render smoke exists for `PeopleReviewTab`, `TeamSummaryInline` or `drilldowns
 
 - **Render location:** `renderLaborRow` 2968–3309 with `{expanded && …}` 3072–3306; `renderCrewRow` 3310–3651 with 3414–3648 — both inside the tbody IIFE, called from the per-job group rows (3726–3728). Each grid: per-hr mirrors, Gross chain, Costs chain, Parts/Subs, Net chain, Method A/B/C rows (3213–3302 / 3555–3644) with long tooltips.
 - **State:** none beyond `reviewJobExpandedKey` (`labor-${id}` / `crew-${job_id}-${work_date}`).
-- **Extraction:** one `ReviewJobExpandedDetail` taking the row, `personName`, `prefixMap`, rates. Diff the copies first (`address` vs `job_address`, number-label resolution); low risk.
+- **Extraction:** ~~one `ReviewJobExpandedDetail` taking the row, `personName`, `prefixMap`, rates~~ **done v2.4909** ([`review/ReviewJobExpandedDetail.tsx`](../src/components/people/review/ReviewJobExpandedDetail.tsx), 6 render cases). The diff found the two grids byte-identical; the copies differ only in the row heads (`address` vs `job_address`, the number label, the `job_id` guard on the Labor and Profit cells), which stay in the tab. `signedCurrency` and `stripAddressZipState` moved to [`review/reviewFormat.ts`](../src/components/people/review/reviewFormat.ts).
 
 ### G. Labor/Profit contributors modal
 
 - **Render location:** 4038–4163 on `reviewLaborBreakdownContext !== null`; rows = `reviewLaborByJobAndPerson[ctx.jobId]`, "(you)" highlight, totals footer, mismatch footnote when `|sumOfRows − totalLaborOnJob| > 1` (4155). Since v2.4911 a sub sheet's row is costed as the job costs it (`laborJobSubCost`: a line's direct $ and rate override count), so the rows add up to the job's total; before, a direct-$ line with no hours (JP1007's $2,150) showed as "—" and the footnote fired. A sheet with several assignees is still one row under all the names; whether it splits is on the owner's list.
 - **State:** `reviewLaborBreakdownContext` 373 (`ReviewLaborBreakdownContext` 363–372: `mode`, `jobId`, `jobName`, `jobAddress`, `jobNumberLabel`, `totalLaborOnJob`, `revenueBeforeOverhead`, `userPersonName`); openers at 3009, 3043, 3351, 3385; closers 4049, 4066; **also reset to null by E's loader** (`loadReviewDataCore` 1043). That reset, plus `reviewLaborByJobAndPerson` (E-owned, read only here), means the context state moves with E's panel in Stage B, not into the modal.
-- **Extraction:** `ReviewLaborBreakdownModal({ ctx, rows, onClose })`; rides with F.
+- **Extraction:** ~~`ReviewLaborBreakdownModal({ ctx, rows, onClose })`; rides with F~~ **done v2.4909** with F ([`review/ReviewLaborBreakdownModal.tsx`](../src/components/people/review/ReviewLaborBreakdownModal.tsx) with its `ReviewLaborBreakdownContext` type, 5 render cases); the context state stays in the tab.
 
 ### H. Ranked view (v2.2678)
 
@@ -234,8 +234,8 @@ Done: ~~`buildTeamSummaryHtml`~~ (v2.1305), ~~`reviewDateRange`~~ (v2.2688), ~~`
 3. ~~**`loadTeamReviewUnion` → `lib/people/`**~~ — **done**: its four helpers first (`lib/people/reviewLoaderQueries.ts`, v2.3944, 4,091 → 4,034 lines), then the loader with `users` as its last parameter (v2.3955, 4,034 → 3,610 lines; two callers; 15 tests over a mocked client — windows, the paid-only switch, a hand-built week, overhead buckets, the Wheels fuel exclusion, a failed read).
 4. **`useReviewOverheadRates` hook** (A) — ~~the hook, consumers unchanged~~ **done v2.3974** (the scan verbatim in `lib/people/loadReviewOverheadRates.ts`, 17 tests; 3,610 → 3,337 lines); the parity check is done (2026-09-27, the figures agree — region A); left: adopting `loadOverheadPoolSnapshot`, which is the owner's call on the two bad-read differences, not a math question.
 5. **Stage A: `reviewPersonAllocation` kernel + tests** (E, 1261–1751) — the largest untested money math. ~~First the loader whole to `lib/people/loadReviewPersonData.ts`~~ **done v2.3981** (verbatim, 16 tests over a mocked client that pin each row's money and the person's share; 3,337 → 2,584 lines); then ~~the pure kernel~~ **done v2.4011** (`reviewPersonAllocation.ts`, 31 tests; the loader is 264 lines of reads); left: decide the fuel divergence in a separate fix PR, and the drive-cost / item-hours expressions the kernel still repeats four times each.
-6. **`ReviewJobExpandedDetail`** (F) — dedupe the twin 235-line grids.
-7. **`ReviewLaborBreakdownModal`** (G) — rides with 6.
+6. ~~**`ReviewJobExpandedDetail`** (F) — dedupe the twin 235-line grids~~ — **done v2.4909** (the grids were byte-identical; one component draws both; 2,584 → 1,981 lines with step 7).
+7. ~~**`ReviewLaborBreakdownModal`** (G) — rides with 6~~ — **done v2.4909**, in the same PR.
 8. **`PeopleReviewPersonPanel`** (E, Stage B) — panel state and the thin `loadReviewDataCore` move (the read is already in `lib/people`); `personName`, `tsRow`, `reviewView` are props.
 9. **`useTeamSummaryData` hook** (C) — last; absorbs rows/loading/error, the auto-refresh effect and the cache; bridge refs as inputs.
 
