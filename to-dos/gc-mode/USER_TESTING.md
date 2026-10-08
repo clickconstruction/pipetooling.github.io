@@ -4,14 +4,15 @@ parent: to-dos/gc-mode/PLAN_2026-10-07.md
 status: started 2026-10-07 by Helper 7 at the lead's ask · empty until the first door opens (door 1, New project, day 1)
 summary: >
   Every note a tester gives about GC mode on prod lands here, with the day it came, the lane it
-  belongs to and where it stands. Each morning Helper 7 routes the night's new notes to a helper by
+  belongs to and where it stands. Each morning Helper 17 routes the night's new notes to a helper by
   name and sends the lead the list; the lead decides what jumps the queue.
 ---
 
 # GC mode: what the testers tell us
 
-**How a note gets here:** a tester tells Grace or the lead, and one of them relays it to Helper 7,
-who adds the row. The tester never writes this file.
+**How a note gets here:** a tester tells Grace or the lead. Grace passes it to the lead, and the lead
+sends it to Helper 16, who adds the row on a spike branch the lead merges. The tester never writes
+this file.
 
 ## What the app records: New here?
 
@@ -52,7 +53,16 @@ can act on, for example "4 of 6 left at stop 4".
   what). *Not sure* until the morning triage names one.
 - **Note**: what the tester said, as close to their words as the relay allows, and the page it was on.
 - **State**: one of the states below.
-- **Helper**: who has it, by name (Helper 1 to Helper 7), from the morning triage on.
+- **Helper**: who has it, by name, from the morning triage on. The GC crew is Helper 11 to Helper 18,
+  one lane each:
+  - Helper 11: Schedule
+  - Helper 12: Board
+  - Helper 13: Portal
+  - Helper 14: Building
+  - Helper 15: Owner Billing
+  - Helper 16: New project and doors
+  - Helper 17: release and spike keeper, and the morning triage
+  - Helper 18: Building's second hands
 
 ## The states
 
@@ -130,7 +140,7 @@ window emails each company it asks.*
 
 ## The morning triage
 
-Each morning Helper 7 reads every *New* row, names a lane and a helper for each, sets it *Routed*,
+Each morning Helper 17 reads every *New* row, names a lane and a helper for each, sets it *Routed*,
 and sends the lead one list: the helper, the rows, and any that look like the owner's call. A note
 that blocks a tester from going on is at the top of the list.
 
