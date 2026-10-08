@@ -30,6 +30,7 @@
     "src/lib/unsavedWork.ts",
     "src/types/database.ts",
     "src/utils/errorHandling.ts",
+    "supabase/functions/_shared/gcTradePortalSample.ts",
     "supabase/functions/_shared/gcTradePortalSlice.ts"
   ],
   "exclude": []
