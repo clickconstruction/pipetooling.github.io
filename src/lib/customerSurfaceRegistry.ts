@@ -56,6 +56,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
   { kind: 'route', ref: '/sub', audience: 'sub', steps: [S('sub-portal')] },
   { kind: 'route', ref: '/s/:slug', audience: 'sub', steps: [S('sub-portal')] },
+  { kind: 'route', ref: '/t/:token', audience: 'sub', steps: [S('gc-trade-portal')] },
   { kind: 'route', ref: '/contract/accept', audience: 'sub', steps: [S('sub-contract'), S('sub-contract-signed')] },
   { kind: 'route', ref: '/q/:token', audience: 'house', steps: [HS('quote-page'), HS('quote-submitted')] },
   { kind: 'route', ref: '/legal', audience: 'firm', steps: [F('firm-portal')] },

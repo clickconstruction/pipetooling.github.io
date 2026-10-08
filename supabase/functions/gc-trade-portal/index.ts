@@ -5,6 +5,7 @@ import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { tradePortalSlice, type TradePortalRows } from '../_shared/gcTradePortalSlice.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { gcTradePortalSample } from '../_shared/gcTradePortalSample.ts'
+import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 
 /**
  * GC mode, the trade partner portal's read (P1b-ii, to-dos/gc-mode/PORTAL_REAL_BUILD.md): resolves a
@@ -28,20 +29,6 @@ const corsHeaders = {
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-}
-
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-type Link = { company_id: string; revoked_at: string | null }
-
-async function resolveLink(admin: SupabaseClient, token: string): Promise<Link | null> {
-  let { data } = await admin.from('gc_trade_portal_links').select('company_id, revoked_at').eq('token', token).maybeSingle()
-  if (!data) data = (await admin.from('gc_trade_portal_links').select('company_id, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()).data
-  const link = data as Link | null
-  return link && !link.revoked_at ? link : null
 }
 
 type R = Record<string, unknown>
@@ -110,7 +97,11 @@ serve(async (req) => {
     if (token.length < 16 || token.length > 128) return jsonResponse({ error: 'badRequest' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
-    const link = await resolveLink(admin, token)
+    // One rule for the read and the writes (`_shared/gcTradeLink.ts`): the raw token, then its hash; off is no link.
+    const link = await resolveTradeLink(token, async (column, value) => {
+      const { data } = await admin.from('gc_trade_portal_links').select('company_id, revoked_at').eq(column, value).maybeSingle()
+      return data as TradeLinkRow | null
+    })
     if (!link) return jsonResponse({ error: 'linkOff' }, 404)
 
     // Who looked: outside counts; a signed-in teammate or the office's preview is stamped, never counted.

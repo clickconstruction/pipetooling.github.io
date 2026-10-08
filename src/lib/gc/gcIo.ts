@@ -14,6 +14,7 @@ import type { BoardRows } from './boardRows'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { DeclineReason, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
+import type { OwnerBillingRows } from './ownerBillingRows'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
 export interface GcPickerCustomer {
@@ -360,6 +361,42 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string):
     userNames: Object.fromEntries(taken(users, 'load our team').map((u) => [u.id, u.name ?? ''])),
     vettingForms: taken(forms, 'load the vetting forms'),
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O5a: our bills to the customer, as their rows hold them, for ownerBillingFromRows.
+// ---------------------------------------------------------------------------------------------
+
+/** Each project's billing rows (pay applications and their lines, reminders, interest bills, the acceptance), by project id. */
+export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<string, OwnerBillingRows>> {
+  const out = new Map<string, OwnerBillingRows>(projectIds.map((id) => [id, { payApps: [], lines: [], reminders: [], interestBills: [], acceptance: null }]))
+  if (projectIds.length === 0) return out
+  const [payApps, interestBills, acceptances] = await Promise.all([
+    supabase.from('gc_owner_pay_apps').select('*').in('project_id', projectIds).order('number'),
+    supabase.from('gc_owner_interest_bills').select('*').in('project_id', projectIds).order('number'),
+    supabase.from('gc_owner_acceptances').select('*').in('project_id', projectIds),
+  ])
+  const appRows = taken(payApps, 'load the pay applications')
+  const appIds = appRows.map((a) => a.id)
+  const [lines, reminders] = await Promise.all([
+    appIds.length ? supabase.from('gc_owner_pay_app_lines').select('*').in('pay_app_id', appIds).order('position') : Promise.resolve({ data: [], error: null }),
+    appIds.length ? supabase.from('gc_owner_pay_reminders').select('*').in('pay_app_id', appIds).order('created_at') : Promise.resolve({ data: [], error: null }),
+  ])
+  const lineRows = taken(lines, 'load the pay application lines')
+  const reminderRows = taken(reminders, 'load the reminders to pay')
+  for (const app of appRows) {
+    const rows = out.get(app.project_id)
+    if (!rows) continue
+    rows.payApps.push(app)
+    rows.lines.push(...lineRows.filter((l) => l.pay_app_id === app.id))
+    rows.reminders.push(...reminderRows.filter((r) => r.pay_app_id === app.id))
+  }
+  for (const bill of taken(interestBills, 'load the interest bills')) out.get(bill.project_id)?.interestBills.push(bill)
+  for (const acceptance of taken(acceptances, 'load the acceptances')) {
+    const rows = out.get(acceptance.project_id)
+    if (rows) rows.acceptance = acceptance
+  }
+  return out
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */

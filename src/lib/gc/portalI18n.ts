@@ -7,6 +7,18 @@ import { shortDate, weekdayDate } from './words'
 
 export type PortalLang = 'en' | 'es'
 
+/**
+ * The portal's Spanish is built whole and held until a native speaker reads it (PORTAL_REAL_BUILD.md, decision 8, the
+ * owner's call 9). Until then a company kept as Spanish reads English, and its language stays on its record for the day
+ * this turns on. Turning it on is this one line, with the reader's name in the PR's fragment.
+ */
+export const PORTAL_SPANISH_ON = false
+
+/** The language the portal shows a company: its own once Spanish is on, English until then. */
+export function portalShownLang(lang: PortalLang): PortalLang {
+  return PORTAL_SPANISH_ON ? lang : 'en'
+}
+
 const MONTHS_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 const WEEKDAYS_ES = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
@@ -919,6 +931,44 @@ const S = {
   crewSaidNone: { en: 'You said nobody.', es: 'Dijo que nadie.' },
   crewChange: { en: 'Change it', es: 'Cambiarlo' },
   crewWhole: { en: 'A whole number, 0 to 50.', es: 'Un número entero, de 0 a 50.' },
+
+  // The real page at /t/<link> (P1b): opening it, a link that no longer works, and reading before the presses come
+  portalOpening: { en: 'Opening your portal…', es: 'Abriendo su portal…' },
+  linkOff: { en: 'This link is no longer active. Ask {gc} for your new link.', es: 'Este enlace ya no está activo. Pídale a {gc} su nuevo enlace.' },
+  linkBad: { en: 'This link is not complete. Open the exact link {gc} sent you.', es: 'Este enlace está incompleto. Abra el enlace exacto que {gc} le envió.' },
+  linkFailed: { en: 'Your portal did not open. Try again in a minute.', es: 'Su portal no se abrió. Inténtelo de nuevo en un minuto.' },
+  tryAgain: { en: 'Try again', es: 'Intentar de nuevo' },
+  samplePortal: { en: 'A sample portal. The company and its jobs are made up.', es: 'Un portal de muestra. La empresa y sus trabajos son inventados.' },
+  officePreview: { en: 'The office preview. This visit is not counted.', es: 'Vista previa de la oficina. Esta visita no se cuenta.' },
+  navPortal: { en: 'Your portal', es: 'Su portal' },
+  navMessages: { en: 'Messages from {gc}', es: 'Mensajes de {gc}' },
+  plansNotShared: { en: 'The link to these plans is not ready yet. Ask {gc} for it.', es: 'El enlace a estos planos todavía no está listo. Pídaselo a {gc}.' },
+  replyByEmail: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {name}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {name}.' },
+  replyByEmailGc: { en: 'Quoting from this page comes soon. Until then, email your quote or your question to {gc}.', es: 'Pronto podrá cotizar desde esta página. Mientras tanto, envíe su cotización o su pregunta por correo a {gc}.' },
+  sentTo: { en: 'To {names}', es: 'Para {names}' },
+
+  // What a press says when it is refused (P2b-i, submit-gc-trade-portal's keys)
+  errBadRequest: { en: 'That did not go through. Reload the page and try again.', es: 'No se pudo enviar. Vuelva a cargar la página e inténtelo de nuevo.' },
+  errSpanishHeld: { en: 'Spanish is not ready yet. The portal stays in English for now.', es: 'El español todavía no está listo. Por ahora el portal sigue en inglés.' },
+  errTooMany: { en: 'That is a lot at once. Give us an hour, or call our office.', es: 'Es mucho a la vez. Espere una hora o llame a nuestra oficina.' },
+  errFailed: { en: 'That did not save. Try again in a minute.', es: 'No se guardó. Inténtelo de nuevo en un minuto.' },
+  errNotFound: { en: 'That is not on your portal any more. Reload the page.', es: 'Eso ya no está en su portal. Vuelva a cargar la página.' },
+  errNotYours: { en: 'That belongs to another company. Reload the page.', es: 'Eso pertenece a otra empresa. Vuelva a cargar la página.' },
+  errProjectLost: { en: '{gc} did not win this project, so nothing more is needed on it.', es: '{gc} no ganó este proyecto, así que no se necesita nada más.' },
+  errYouPassed: { en: 'You passed on this one. Call us if you want back in.', es: 'Usted no cotizó este. Llámenos si quiere volver a participar.' },
+  errAlreadyQuoted: { en: 'Your quote is already in. Change it if you need to.', es: 'Su cotización ya llegó. Cámbiela si lo necesita.' },
+  errNoQuote: { en: 'Send your quote first.', es: 'Primero envíe su cotización.' },
+  errNothingToAnswer: { en: 'Nothing on your quote is waiting for an answer.', es: 'Nada de su cotización está esperando respuesta.' },
+  errDayPassed: { en: 'Pick today or a day after it.', es: 'Elija hoy o un día posterior.' },
+  errNotOnTrade: { en: 'Only a company asked to quote this trade can ask about it.', es: 'Solo una empresa invitada a cotizar esta especialidad puede preguntar sobre ella.' },
+  errQuestionsClosed: { en: 'Questions are closed for this project.', es: 'Las preguntas de este proyecto ya están cerradas.' },
+  errEveryKind: { en: 'Every kind of email needs someone to get it.', es: 'Cada tipo de correo necesita a alguien que lo reciba.' },
+  errAmountNeeded: { en: 'Type the amount of your quote.', es: 'Escriba el monto de su cotización.' },
+  errNameNeeded: { en: 'Type the person’s name.', es: 'Escriba el nombre de la persona.' },
+  errEmailNeeded: { en: 'Type an email address that works.', es: 'Escriba un correo que funcione.' },
+  errPickAKind: { en: 'Pick at least one kind of email.', es: 'Elija al menos un tipo de correo.' },
+  errQuestionNeeded: { en: 'Type your question first.', es: 'Primero escriba su pregunta.' },
+  errTooLong: { en: 'That is too long. Make it shorter.', es: 'Es demasiado largo. Hágalo más corto.' },
 } satisfies Record<string, Record<PortalLang, string>>
 
 export type PortalKey = keyof typeof S

@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { supabase } from './lib/supabase'
@@ -47,6 +47,8 @@ const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
 const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
+// GC mode's trade partner portal (P1b-ii-b): public, and loaded only when a company opens its link.
+const GcTradePortal = lazy(() => import('./pages/GcTradePortal'))
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
@@ -235,6 +237,14 @@ function AppContent() {
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
         <Route path="/ask" element={<GcWordAsk />} />
+        <Route
+          path="/t/:token"
+          element={
+            <Suspense fallback={null}>
+              <GcTradePortal />
+            </Suspense>
+          }
+        />
         <Route path="/legal/confirm" element={<LegalConfirm />} />
         <Route
           path="/estimate/customer-accept-preview/:id"
