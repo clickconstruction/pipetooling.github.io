@@ -112,6 +112,7 @@ A plan's own status line (top of the file) is the one place its progress is reco
 
 | Plan | Purpose | Status |
 |---|---|---|
+| [`PUNCHLIST_HANDOFF_2026-10-08.md`](./PUNCHLIST_HANDOFF_2026-10-08.md) | The punch-list lead's hand-off of 2026-10-07/08: the owed pushes and deploys in order, open PRs, where every card stands, the owner questions filed, the gotchas. | handed off 2026-10-08 |
 | [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Umbrella plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live test gate. | in progress (`twins/HANDOFF.md` runs the program) |
 | [`DIGITAL_TWINS_PLAN.md`](./DIGITAL_TWINS_PLAN.md) | Role-impersonating agent accounts: per-role briefs, app directory, twin identity in the schema, write fence. | in progress |
 | [`RFI_LOOP_PLAN.md`](./RFI_LOOP_PLAN.md) | Cross-app RFI loop: persisted `bids_rfis` queue, CT canvas flags, the internal question lane, ct-bridge auto-pull. | in progress (status log inside) |
@@ -141,4 +142,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-10-05
+last_updated: 2026-10-08
