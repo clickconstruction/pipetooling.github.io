@@ -38,6 +38,7 @@ CREATE TABLE public.clock_sessions (
   notes text DEFAULT '' NOT NULL,
   job_ledger_id uuid,
   rejected_at timestamptz,
+  rejected_by uuid,
   revoked_at timestamptz,
   bid_id uuid,
   origin text DEFAULT 'user_punch' NOT NULL,

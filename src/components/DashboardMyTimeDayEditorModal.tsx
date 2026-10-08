@@ -48,8 +48,7 @@ import {
 } from './my-time-day-editor/MyTimeMergeSegmentsModal'
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import { supabase } from '../lib/supabase'
-import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, DatabaseError } from '../utils/errorHandling'
 import {
   APP_CALENDAR_TZ,
   denverCalendarDayKey,
@@ -79,6 +78,7 @@ import { useMyTimeSalaryPrefetch } from './my-time-day-editor/useMyTimeSalaryPre
 import { useMyTimeSplitEditor } from './my-time-day-editor/useMyTimeSplitEditor'
 import { useMyTimeBoundaryGestures } from './my-time-day-editor/useMyTimeBoundaryGestures'
 import { useMyTimeDaySessions } from './my-time-day-editor/useMyTimeDaySessions'
+import { rejectClockSession } from '../lib/rejectClockSession'
 import { MyTimeDayTimelineBody } from './my-time-day-editor/MyTimeDayTimelineBody'
 import { formatDurationMs } from './my-time-day-editor/myTimeDayEditorDatetime'
 import {
@@ -355,24 +355,9 @@ export function DashboardMyTimeDayEditorModal({
       setRejectSessionBusyId(session.id)
       setRejectSessionError(null)
       try {
-        await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .update({
-                rejected_at: new Date().toISOString(),
-                rejected_by: authUserId ?? null,
-              })
-              .eq('id', session.id),
-          'reject clock session from my time day editor',
-        )
-        // people_hours is maintained incrementally (approve +duration / reject -duration); a raw
-        // rejected_at update bypasses that, freezing the day's payroll hours. Resync from the
-        // remaining approved sessions server-side — the same RPC the Adjust-times save path uses.
-        await withSupabaseRetry(
-          async () => supabase.rpc('recompute_people_hours_after_session_edit', { p_session_id: session.id }),
-          'recompute people_hours after reject',
-        )
+        // The reject and the people_hours resync in one transaction (v2.4964); the old two
+        // requests until the migration is pushed.
+        await rejectClockSession(session.id, authUserId ?? null)
         setRejectSessionConfirm(null)
         setSessionsFetchNonce((n) => n + 1)
         onLinkedSessionsUpdated?.()
