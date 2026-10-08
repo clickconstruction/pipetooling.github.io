@@ -12,6 +12,7 @@ on:
       - 'scripts/pgtest-gc-schedule.sh'
       - 'supabase/migrations/*bid_changes*'
       - 'supabase/migrations/*labor_rows_unmatched*'
+      - 'supabase/migrations/*list_bid_history*'
       - 'supabase/tests/bid_changes/**'
       - 'scripts/pgtest-bid-changes.sh'
       - 'supabase/migrations/*ar_unbanked_check*'

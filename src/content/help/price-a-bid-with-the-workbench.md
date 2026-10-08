@@ -2,7 +2,7 @@
 title: price a bid with the Workbench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: pricing, workbench, fixtures, pipe, fittings, line feet, counts, what the bid is made of, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating, bids like this, this size, this GC, win or lose on price, history
+keywords: history, what changed, who changed it, pricing, workbench, fixtures, pipe, fittings, line feet, counts, what the bid is made of, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating, bids like this, this size, this GC, win or lose on price, history
 order: 94
 ---
 The Bids → Pricing tab has two layouts. You switch them with the Old and New pills on the selected bid.
@@ -94,3 +94,9 @@ Fixtures 65% of revenue at 57% margin, pipe 22% at 28%: the fixtures are carryin
 ## "My version is gone!" — it isn't
 
 Landing on Pricing first **loads** the bid's packets and prices. You may land there from the board's price-tag jump, say. You will see a brief shimmer over the Send-to strip and the Workbench while that happens. Your versions, prices, and previews are exactly where you left them. The page just has not finished fetching yet. If the connection drops mid-load, Pricing says *"Couldn't load this bid's packets and prices"*. It offers {{button:gray|Retry}}. Nothing was deleted.
+
+## See what changed on a bid
+
+Every bid tab has a {{button:gray|History}} button beside the bid's name. Press it to see what changed on the bid, who changed it, and when. The newest change sits at the top, under its day. One import of many rows reads as one line, like *Imported 23 rows from CountTooling*. Press *Show the 23 rows* to see each one.
+
+Pick a tab to see only its changes, or a person to see only theirs. Type in the search box to find a fixture or a value. A bid adopted into this one shows its changes too, marked with its own number. History starts the day it was switched on, so older changes are not there. The window only reads for now. Putting an old value back comes later.

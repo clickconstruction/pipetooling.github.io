@@ -406,5 +406,51 @@ SELECT bct.same('the request tag: a press, the app, a bad tag, no tag',
 RESET ROLE;
 UPDATE mark SET id = bct.last();
 
+-- 17 · The reader (PR 2, 20261009060000): list_bid_history runs under the caller's own policies.
+--      A bid adopted into B494 comes with it, each row carrying its bid number (the owner,
+--      2026-10-08). A removal the ledger never saw (from before its push) sits in the delete
+--      archive: a dev reads it in the history, an estimator does not (the archive stays dev-only).
+--      Someone who cannot read the bid reads nothing.
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
+SET LOCAL ROLE authenticated;
+INSERT INTO public.bids (id, created_by, account_manager_id, service_type_id, project_name, bid_number)
+VALUES ('00000000-0000-0000-0000-00000000c7d2', '00000000-0000-0000-0000-00000000c7e1', '00000000-0000-0000-0000-00000000c7e3',
+        '00000000-0000-0000-0000-00000000c7a1', 'History: the adopted bid', 'B377');
+INSERT INTO public.bids_count_rows (bid_id, fixture, count, sequence_order)
+VALUES ('00000000-0000-0000-0000-00000000c7d2', 'Adopted WC', 1, 1);
+RESET ROLE;
+UPDATE public.bids SET adopted_into_bid_id = '00000000-0000-0000-0000-00000000c7d1' WHERE id = '00000000-0000-0000-0000-00000000c7d2';
+INSERT INTO public.deleted_records_archive (table_name, record_id, group_key, row_data, deleted_at)
+VALUES ('bids_count_rows', '00000000-0000-0000-0000-00000000c7f9', '00000000-0000-0000-0000-00000000c7d1',
+        jsonb_build_object('id', '00000000-0000-0000-0000-00000000c7f9', 'bid_id', '00000000-0000-0000-0000-00000000c7d1', 'fixture', 'Old SUMP', 'count', 2),
+        now() - interval '20 days');
+SET LOCAL ROLE authenticated;
+SELECT bct.same('the reader: B494''s rows and the adopted bid''s, the adopted ones with its number',
+  (SELECT (count(*) FILTER (WHERE bid_id = '00000000-0000-0000-0000-00000000c7d1'))::text || ' ' ||
+          (count(*) FILTER (WHERE bid_id = '00000000-0000-0000-0000-00000000c7d2' AND bid_number = 'B377' AND label = 'Adopted WC'))::text || ' ' ||
+          (count(*) FILTER (WHERE bid_id NOT IN ('00000000-0000-0000-0000-00000000c7d1', '00000000-0000-0000-0000-00000000c7d2')))::text
+     FROM public.list_bid_history('00000000-0000-0000-0000-00000000c7d1')),
+  (SELECT count(*)::text FROM public.bid_changes WHERE bid_id = '00000000-0000-0000-0000-00000000c7d1') || ' 1 0');
+SELECT bct.same('the reader: newest first',
+  (SELECT bool_and(ok)::text FROM (SELECT changed_at >= lead(changed_at) OVER (ORDER BY ordinality) OR lead(changed_at) OVER (ORDER BY ordinality) IS NULL AS ok
+     FROM public.list_bid_history('00000000-0000-0000-0000-00000000c7d1') WITH ORDINALITY) t),
+  'true');
+SELECT bct.same('the reader: an estimator gets no archive row',
+  (SELECT count(*)::text FROM public.list_bid_history('00000000-0000-0000-0000-00000000c7d1') WHERE source = 'archive'), '0');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e5","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e5', true);
+SELECT bct.same('the reader: a dev gets the removal the ledger never saw, named, and no archive copy of what the ledger holds',
+  (SELECT string_agg(source || ' ' || op || ' ' || COALESCE(label, '-'), ', ') FROM public.list_bid_history('00000000-0000-0000-0000-00000000c7d1') WHERE source = 'archive'),
+  'archive delete Old SUMP');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e4","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e4', true);
+SELECT bct.same('the reader: someone who cannot read the bid reads nothing',
+  (SELECT count(*)::text FROM public.list_bid_history('00000000-0000-0000-0000-00000000c7d1')), '0');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
+RESET ROLE;
+UPDATE mark SET id = bct.last();
+
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;
