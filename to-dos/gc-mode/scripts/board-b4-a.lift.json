@@ -1,0 +1,37 @@
+{
+  "about": "The Board's B4-a (to-dos/gc-mode/BOARD_REAL_BUILD.md, B4): the Ask window's choices and where the trade stands, lifted to src/lib/gc/askCompanies.ts, with the spike's `find` appended to lookups.ts. askDraft stays: it runs the reducer, and main previews the invitation through the Portal's inviteMessage (P1b-i). Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b4-a.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "pin": {
+    "about": "main's side is pinned at the lift's merge by its follow-up",
+    "known": {
+      "askChoices": "main shows no address for a contact the record has none for, where the prototype made one up through partnerReach (the lead, 2026-10-08: never a made-up address on real rows); one line, the rest word for word"
+    }
+  },
+  "existing": {
+    "src/lib/gcMode/gcPortal.ts#mailRecipients": "portal.ts",
+    "src/lib/gcMode/gcFollowUpSheet.ts#partnerReach": "followUpSheet.ts",
+    "src/lib/gcMode/gcTypes.ts#Partner": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts"
+  },
+  "files": [
+    {
+      "from": "gcAskCompanies",
+      "to": "askCompanies.ts",
+      "moves": [
+        "AskChoice",
+        "askChoices",
+        "askStanding"
+      ],
+      "header": "/**\n * GC mode, the real build, the Board's B4: the Ask window's choices and where the trade stands, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcAskCompanies.ts`). `askDraft` stays on the spike: main previews the invitation through the Portal's `inviteMessage`.\n */"
+    },
+    {
+      "from": "gcReducerHelpers",
+      "to": "lookups.ts",
+      "append": true,
+      "moves": [
+        "find"
+      ]
+    }
+  ]
+}
