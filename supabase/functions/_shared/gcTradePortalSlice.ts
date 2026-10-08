@@ -28,6 +28,8 @@ export interface TradePortalRows {
   setItems: Row[]
   questions: Row[]
   messages: Row[]
+  /** The sets New project's set email sent this company, and whether each changed its trade (gc_plan_set_sends). */
+  setSends: Row[]
 }
 
 export type SliceRow = Record<string, unknown>
@@ -47,6 +49,7 @@ export interface TradePortalSlice {
   setItems: SliceRow[]
   questions: SliceRow[]
   messages: SliceRow[]
+  setSends: SliceRow[]
 }
 
 /** The fields that pass, table by table. Anything not named here never leaves the server. */
@@ -58,7 +61,7 @@ export const TRADE_PORTAL_FIELDS = {
   contacts: ['id', 'invite_id', 'contacted_on', 'how', 'promised_by'],
   promises: ['id', 'kind', 'project_id', 'package_id', 'what', 'due_on', 'made_on', 'source', 'kept_on'],
   project: ['id', 'name', 'address'],
-  gc: ['project_id', 'stage', 'bid_due', 'lost_on', 'lost_why'],
+  gc: ['project_id', 'stage', 'bid_due', 'size_note', 'lost_on', 'lost_why'],
   team: ['role', 'name', 'phone', 'email'],
   packages: ['id', 'project_id', 'trade', 'position'],
   scopeItems: ['id', 'package_id', 'position', 'label', 'sheets', 'specs', 'added_in_set_id'],
@@ -67,6 +70,7 @@ export const TRADE_PORTAL_FIELDS = {
   setItems: ['id', 'set_id', 'position', 'kind', 'number', 'title', 'change', 'was_title', 'discipline', 'page'],
   questions: ['id', 'project_id', 'package_id', 'text', 'sheets', 'asked_on', 'answered_on', 'answer', 'in_set_id'],
   messages: ['id', 'project_id', 'kind', 'mail_group', 'lang', 'subject', 'lines', 'to_names', 'sent_on'],
+  setSends: ['set_id', 'touched'],
 } as const satisfies Record<string, readonly string[]>
 
 function pick(row: Row, fields: readonly string[]): SliceRow {
@@ -121,5 +125,6 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Trad
       .filter((q) => projectIds.has(idOf(q, 'project_id')) && (ownQuestion(q) || (q.answered_on && sentTo(q))))
       .map((q) => ({ ...pick(q, TRADE_PORTAL_FIELDS.questions), mine: ownQuestion(q) })),
     messages: rows.messages.filter((m) => idOf(m, 'company_id') === companyId).map((m) => pick(m, TRADE_PORTAL_FIELDS.messages)),
+    setSends: rows.setSends.filter((s) => idOf(s, 'company_id') === companyId && setIds.has(idOf(s, 'set_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.setSends)),
   }
 }

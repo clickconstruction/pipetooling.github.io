@@ -97,6 +97,11 @@ function rows(): TradePortalRows {
       { id: 'm1', company_id: ME, project_id: 'proj-1', kind: 'invite', mail_group: 'quotes', msg_key: 'proj-1:invite:pkg-elec', lang: 'en', subject: 'Quote Electrical on Fair Oaks Shops', lines: ['Hello Dana,'], to_names: ['Dana Whitfield'], sent_on: '2026-09-28', sent_by: 'u-office', email_send_log_id: 'log-1' },
       { id: 'm2', company_id: THEM, project_id: 'proj-1', kind: 'invite', mail_group: 'quotes', msg_key: 'x', lang: 'en', subject: NEVER.otherMessage, lines: [], to_names: [NEVER.otherCompanyName], sent_on: '2026-09-28' },
     ],
+    setSends: [
+      { set_id: 'set-0', company_id: ME, touched: true, email_send_log_id: 'log-2' },
+      { set_id: 'set-0', company_id: THEM, touched: false, email_send_log_id: 'log-3' },
+      { set_id: 'set-x', company_id: ME, touched: true },
+    ],
   }
 }
 
@@ -140,6 +145,10 @@ describe('what a company reads about itself', () => {
       ['qu-mine', true],
       ['qu-them-answered', false],
     ])
+  })
+
+  it('reads which sets changed its trade, on its own projects only', () => {
+    expect(slice.setSends).toEqual([{ set_id: 'set-0', touched: true }])
   })
 
   it('reads its people still on its emails, and the messages we sent it', () => {
