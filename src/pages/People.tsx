@@ -411,26 +411,8 @@ export default function People() {
   const hoursDaysCorrectRef = useRef(hoursDaysCorrect)
   hoursDaysCorrectRef.current = hoursDaysCorrect
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
-  const {
-    setTeams,
-    teamsFiltered,
-    teamPeriodStart,
-    setTeamPeriodStart,
-    teamPeriodEnd,
-    setTeamPeriodEnd,
-    showMaxHoursTeams,
-    setShowMaxHoursTeams,
-    teamToDelete,
-    setTeamToDelete,
-    teamDeletingId,
-    loadTeams,
-    addTeam,
-    updateTeamName,
-    addTeamMember,
-    removeTeamMember,
-    deleteTeam,
-    getCostForPersonDateTeams,
-  } = usePeopleHoursTeams({ canAccessPay, setError, archived: archivedRoster, payConfig, getCostForPersonDate })
+  const hoursTeams = usePeopleHoursTeams({ canAccessPay, setError, archived: archivedRoster, payConfig, getCostForPersonDate })
+  const { loadTeams } = hoursTeams
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -2614,33 +2596,14 @@ export default function People() {
             <PeopleHoursDueSummaries
               open={hoursTabSectionsOpen.dueSummaries}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, dueSummaries: !p.dueSummaries }))}
-              teamsFiltered={teamsFiltered}
-              teamPeriodStart={teamPeriodStart}
-              teamPeriodEnd={teamPeriodEnd}
-              getCostForPersonDateTeams={getCostForPersonDateTeams}
+              teams={hoursTeams}
             />
             <PeopleHoursTeams
               open={hoursTabSectionsOpen.teams}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, teams: !p.teams }))}
               canAccessPay={canAccessPay}
-              teamPeriodStart={teamPeriodStart}
-              setTeamPeriodStart={setTeamPeriodStart}
-              teamPeriodEnd={teamPeriodEnd}
-              setTeamPeriodEnd={setTeamPeriodEnd}
-              teamsFiltered={teamsFiltered}
-              setTeams={setTeams}
               showPeopleForMatrix={showPeopleForMatrix}
-              showMaxHoursTeams={showMaxHoursTeams}
-              setShowMaxHoursTeams={setShowMaxHoursTeams}
-              addTeam={addTeam}
-              updateTeamName={updateTeamName}
-              addTeamMember={addTeamMember}
-              removeTeamMember={removeTeamMember}
-              deleteTeam={deleteTeam}
-              teamToDelete={teamToDelete}
-              setTeamToDelete={setTeamToDelete}
-              teamDeletingId={teamDeletingId}
-              getCostForPersonDateTeams={getCostForPersonDateTeams}
+              teams={hoursTeams}
             />
             {canAccessPay && (
               <PeopleMergeDuplicatesBanner duplicates={mergeDuplicates} mergingPersonName={mergingPersonName} onMerge={handleMergeDuplicate} />
