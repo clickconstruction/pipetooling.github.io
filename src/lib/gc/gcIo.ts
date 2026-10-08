@@ -10,6 +10,7 @@ import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorH
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
+import type { BoardRows } from './boardRows'
 import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
@@ -304,4 +305,55 @@ export async function checkDriveAccess(url: string, at?: { projectId: string; re
   if (problem) throw new Error(problem)
   const d = r.data as { access: 'anyone' | 'restricted' | null; seen: boolean; note: string | null; checked_on: string }
   return { access: d.access, seen: d.seen, note: d.note, checkedOn: d.checked_on }
+}
+
+/**
+ * The Board's read (B3): the rows behind the Project Board on top of the projects already loaded,
+ * the Board's dates on each project, the customers and architects they name, and the company record
+ * (B1): the companies, their asks with the quotes and the call log, and the promises. The board's
+ * mapper (`boardStateFromRows`) turns them into the kernels' shapes.
+ */
+export async function loadGcBoardRows(projects: GcProjectView[], today: string): Promise<BoardRows> {
+  const ids = projects.map((p) => p.id)
+  const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
+  const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
+  const none = Promise.resolve({ data: [], error: null })
+  const [dates, customers, companies, invites, promises] = await Promise.all([
+    ids.length
+      ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by').in('project_id', ids)
+      : none,
+    named.length ? supabase.from('customers').select('id, name').in('id', named) : none,
+    supabase
+      .from('gc_companies')
+      .select('id, name, trades, contact_name, phone, email, address, max_miles, license, lang, vetting_status, vetting_limit, vetting_decided_on, vetting_decided_by, vetting_note')
+      .order('name'),
+    packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
+    supabase.from('gc_trade_promises').select('*'),
+  ])
+  const dateRows = taken(dates, 'load the board’s dates')
+  const inviteRows = taken(invites, 'load the asks')
+  const promiseRows = taken(promises, 'load the promises')
+  const companyRows = taken(companies, 'load the trade partners')
+  const inviteIds = inviteRows.map((i) => i.id)
+  const promiseIds = promiseRows.map((p) => p.id)
+  const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
+  const [quotes, contacts, moves, users] = await Promise.all([
+    inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
+    supabase.from('gc_company_contacts').select('*'),
+    promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
+    deciders.length ? supabase.from('users').select('id, name').in('id', deciders) : none,
+  ])
+  return {
+    today,
+    projects,
+    boardDates: Object.fromEntries(dateRows.map((d) => [d.project_id, d])),
+    customers: taken(customers, 'load the customers'),
+    companies: companyRows,
+    invites: inviteRows as BoardRows['invites'],
+    quotes: taken(quotes, 'load the quotes') as BoardRows['quotes'],
+    contacts: taken(contacts, 'load the call log'),
+    promises: promiseRows,
+    promiseMoves: taken(moves, 'load the promises’ earlier days'),
+    userNames: Object.fromEntries(taken(users, 'load our team').map((u) => [u.id, u.name ?? ''])),
+  }
 }
