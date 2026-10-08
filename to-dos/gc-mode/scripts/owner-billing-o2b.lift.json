@@ -164,5 +164,10 @@
       "to": "ownerBilling.test.ts",
       "header": "/**\n * The tests of `gcOwnerBilling.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (Owner Billing's O2a and O2b). The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer stay on the spike, where they run against these kernels.\n */"
     }
-  ]
+  ],
+  "pin": {
+    "main": "8c78f386a5bfaf479a152adce6afd2a89bffdf4f",
+    "spike": "031d75a690db8d10280bf21db281124d392923a8",
+    "about": "#4956 merged; the spike before its follow-up (main merged in)"
+  }
 }

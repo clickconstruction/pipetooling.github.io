@@ -34,5 +34,10 @@
   ],
   "existing": {
     "src/lib/gcMode/gcTypes.ts#ChangeOrderReason": "types.ts"
+  },
+  "pin": {
+    "main": "5d76c02fa7ad5b1eb7fd46faf3fd9af55f3db732",
+    "spike": "031d75a690db8d10280bf21db281124d392923a8",
+    "about": "#4948 merged (types only, no kernel moved, so no re-export); the spike before its follow-up, which is O2b's"
   }
 }
