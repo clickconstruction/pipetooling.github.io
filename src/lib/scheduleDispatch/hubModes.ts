@@ -5,9 +5,10 @@
  * changes a mode, one column per flag. `on` is the row's own flag (the hook sets it), `end` is
  * what the row ends, and `keep` is what it leaves alone.
  *
- * The rule is the page's as it stood before the move, gaps included. The six known gaps are
- * named on their rows (a to f, `to-dos/dispatch-residuals.md`); fixing one is a change to its row
- * here and the same flip in `hubModes.test.ts`.
+ * The rule is the page's as it stood before the move, gaps included, but for a to c: the three
+ * that left two strips on screen were fixed in v2.4989. Gaps d to f, the owner's calls, are named
+ * on their rows (`to-dos/dispatch-residuals.md`); changing one is a change to its row here and
+ * the same flip in `hubModes.test.ts`.
  */
 
 /** The columns. The first five are the modes; the rest travel with them. */
@@ -69,8 +70,8 @@ const RULE = {
   newJob:            [ E,        E,       _,         _,              _,        E,     _,           E,          _,       _,            _ ],
   /** That job saved with no cell to put it on: the placing strip. */
   newJobToPlace:     [ _,        _,       _,         O,              _,        _,     _,           _,          _,       _,            _ ],
-  /** `?placeJob=` arms the placing strip. Gap a: linked copy and the picker stay on. */
-  urlArm:            [ E,        E,       _,         O,              E,        _,     _,           _,          _,       _,            O ],
+  /** `?placeJob=` arms the placing strip and ends every other mode (gap a, fixed v2.4989: linked copy and the picker stayed on). */
+  urlArm:            [ E,        E,       E,         O,              E,        E,     _,           _,          _,       _,            O ],
   /** A block's + button opens or shuts its menu. */
   togglePlusMenu:    [ _,        O,       _,         _,              _,        _,     _,           _,          _,       _,            _ ],
   // Leaving a mode
@@ -97,12 +98,12 @@ const RULE = {
   /** Esc in multi-cell. Gap f: only its own mode. */
   escapeMultiCell:   [ _,        _,       _,         _,              E,        _,     _,           _,          _,       _,            _ ],
   // The page around the modes
-  /** The add-block window opens (`openAddBlock`). Gap b: linked copy and the param stay. */
-  openAddBlock:      [ E,        E,       _,         E,              E,        E,     E,           E,          O,       _,            _ ],
+  /** The add-block window opens (`openAddBlock`), ending linked copy and the param too (gap b, fixed v2.4989). */
+  openAddBlock:      [ E,        E,       E,         E,              E,        E,     E,           E,          O,       E,            _ ],
   /** The add-block window shuts (`closeAdd`). */
   closeAddBlock:     [ _,        _,       _,         _,              _,        _,     _,           _,          E,       E,            _ ],
-  /** The Jobs or Day tab (`setHubTab`). Gap c: linked copy and the picker stay. */
-  tabAway:           [ E,        E,       _,         E,              E,        _,     _,           _,          _,       E,            _ ],
+  /** The Jobs or Day tab (`setHubTab`), ending linked copy and the picker too (gap c, fixed v2.4989). */
+  tabAway:           [ E,        E,       E,         E,              E,        E,     _,           _,          _,       E,            _ ],
   /** The week arrows or This week (`shiftWeek`, `goThisWeek`); the new URL they write drops the param. Gap d: multi-cell waits for `weekChanged`. */
   weekNav:           [ E,        E,       E,         E,              _,        _,     _,           _,          _,       _,            E ],
   /** The week in the URL changed. */

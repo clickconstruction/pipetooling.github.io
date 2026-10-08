@@ -1,9 +1,9 @@
 /**
  * The Dispatch hub's mode rule, read off the page: every entry × every flag, literally, then the
  * exclusion rule over the five modes with every exception named. The rule is the page's as it
- * stood before `useScheduleDispatchHubModes` took it over, gaps a to f included
- * (`to-dos/dispatch-residuals.md`); a fix flips its row here and in `hubModes.ts`, and drops its
- * line from the exceptions below.
+ * stood before `useScheduleDispatchHubModes` took it over, but for gaps a to c, fixed in v2.4989;
+ * d to f are still on it (`to-dos/dispatch-residuals.md`). A change flips its row here and in
+ * `hubModes.ts`, and drops its line from the exceptions below.
  */
 import { describe, expect, it } from 'vitest'
 import {
@@ -33,7 +33,7 @@ const EXPECTED: Record<HubModeEntry, readonly HubModeCell[]> = {
   pickJobToPlace:    [ E,        E,       _,         O,              _,        E,     E,           _,          _,       _,            _ ],
   newJob:            [ E,        E,       _,         _,              _,        E,     _,           E,          _,       _,            _ ],
   newJobToPlace:     [ _,        _,       _,         O,              _,        _,     _,           _,          _,       _,            _ ],
-  urlArm:            [ E,        E,       _,         O,              E,        _,     _,           _,          _,       _,            O ],
+  urlArm:            [ E,        E,       E,         O,              E,        E,     _,           _,          _,       _,            O ],
   togglePlusMenu:    [ _,        O,       _,         _,              _,        _,     _,           _,          _,       _,            _ ],
   cancelPlacement:   [ E,        E,       _,         _,              _,        _,     _,           _,          _,       _,            _ ],
   placementDone:     [ E,        _,       _,         _,              _,        _,     _,           _,          _,       _,            _ ],
@@ -46,9 +46,9 @@ const EXPECTED: Record<HubModeEntry, readonly HubModeCell[]> = {
   escapePlacement:   [ E,        E,       _,         E,              _,        _,     _,           E,          _,       E,            _ ],
   escapeLinkedCopy:  [ _,        _,       E,         _,              _,        _,     _,           _,          _,       _,            _ ],
   escapeMultiCell:   [ _,        _,       _,         _,              E,        _,     _,           _,          _,       _,            _ ],
-  openAddBlock:      [ E,        E,       _,         E,              E,        E,     E,           E,          O,       _,            _ ],
+  openAddBlock:      [ E,        E,       E,         E,              E,        E,     E,           E,          O,       E,            _ ],
   closeAddBlock:     [ _,        _,       _,         _,              _,        _,     _,           _,          E,       E,            _ ],
-  tabAway:           [ E,        E,       _,         E,              E,        _,     _,           _,          _,       E,            _ ],
+  tabAway:           [ E,        E,       E,         E,              E,        E,     _,           _,          _,       E,            _ ],
   weekNav:           [ E,        E,       E,         E,              _,        _,     _,           _,          _,       _,            E ],
   weekChanged:       [ _,        _,       _,         _,              E,        _,     _,           _,          _,       _,            _ ],
   urlIdle:           [ _,        _,       _,         _,              _,        _,     _,           _,          _,       _,            E ],
@@ -75,11 +75,6 @@ const KEPT_ON: Record<string, string> = {
   'newJobToPlace keeps linkedCopy': 'continues openToolbarPicker, which ended it',
   'newJobToPlace keeps multiCell': 'continues openToolbarPicker, which ended it',
   'newJobToPlace keeps picker': 'continues newJob, which ended it',
-  'urlArm keeps linkedCopy': 'gap a',
-  'urlArm keeps picker': 'gap a',
-  'openAddBlock keeps linkedCopy': 'gap b',
-  'tabAway keeps linkedCopy': 'gap c',
-  'tabAway keeps picker': 'gap c',
   'weekNav keeps multiCell': 'gap d: weekChanged ends it once the new week renders',
   'weekNav keeps picker': 'covered: the picker window sits over the week arrows',
 }
@@ -114,10 +109,13 @@ describe('the exclusion rule over the five modes', () => {
     expect(found.sort()).toEqual(Object.keys(KEPT_ON).sort())
   })
 
-  it('gaps a, b and c leave a second mode on, the bugs that show two strips at once', () => {
-    expect(hubModeRow('urlArm').linkedCopy).toBe('keep')
-    expect(hubModeRow('openAddBlock').linkedCopy).toBe('keep')
-    expect(hubModeRow('tabAway').linkedCopy).toBe('keep')
+  it('gaps a, b and c are fixed (v2.4989): the arm, the add-block window and the tabs end linked copy', () => {
+    expect(hubModeRow('urlArm').linkedCopy).toBe('end')
+    expect(hubModeRow('urlArm').picker).toBe('end')
+    expect(hubModeRow('openAddBlock').linkedCopy).toBe('end')
+    expect(hubModeRow('openAddBlock').placeJobParam).toBe('end')
+    expect(hubModeRow('tabAway').linkedCopy).toBe('end')
+    expect(hubModeRow('tabAway').picker).toBe('end')
   })
 
   it('Esc ends the mode it is pressed in; placement’s also ends the placing strip, its cell and the param (gap f)', () => {
