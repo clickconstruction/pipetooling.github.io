@@ -22,6 +22,7 @@ export interface GcTableDoor {
 const SCHEDULE_OPENS = 'the schedule’s PR 10, its team door (SCHEDULE_REAL_BUILD.md)'
 const BUILDING_OPENS = 'Building’s door, when a job is being built (BUILDING_REAL_BUILD.md)'
 const PORTAL_OPENS = 'the trade wave, when the Portal lane says the portal is ready (PORTAL_REAL_BUILD.md)'
+const AWARD_OPENS = 'award’s door: estimators, the leaders and dev, the owner’s call W (mockups/board-b6.md)'
 
 const office = (lane: GcTableDoor['lane']): GcTableDoor => ({ lane, door: 'office' })
 const dev = (lane: GcTableDoor['lane'], opens: string): GcTableDoor => ({ lane, door: 'dev', opens })
@@ -53,6 +54,9 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_bid_tabs: office('Board'),
   gc_bid_tab_views: office('Board'),
   gc_project_money: { lane: 'Board', door: 'money' },
+  // Award and the statement of work (B6-a): a contract with the trade, dev only until call W.
+  gc_sows: dev('Board', AWARD_OPENS),
+  gc_sow_lines: dev('Board', AWARD_OPENS),
 
   // The trade's portal.
   gc_trade_portal_links: dev('Portal', PORTAL_OPENS),
