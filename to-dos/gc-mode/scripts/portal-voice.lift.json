@@ -1,0 +1,29 @@
+{
+  "about": "The Portal lane's words PR (v2.4904): the Spanish voice's pure parts, one word for each thing and the words kept out, lifted to src/lib/gc so main tests every portal string against them. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-voice.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcSpanishVoice",
+      "to": "spanishVoice.ts",
+      "moves": [
+        "SpanishTerm",
+        "TU_MARKERS",
+        "SPANISH_TERMS",
+        "spanishPlain",
+        "saysWord",
+        "offWords"
+      ],
+      "header": "/**\n * GC mode, the real build: the trade portal's Spanish voice, one word for each thing a trade reads about, the words the voice review\n * retired and the words kept out, moved word for word from the GC mode prototype (branch spike/gc-mode, `gcSpanishVoice.ts`)\n * by the Portal lane. The prototype's corpus, which plays its reducer, stays there; main scans its own portal words.\n */"
+    }
+  ],
+  "types": [],
+  "existing": {},
+  "tests": [
+    {
+      "from": "gcSpanishVoice.test.ts",
+      "to": "spanishVoice.test.ts",
+      "header": "/**\n * The tests of `gcSpanishVoice.test.ts` on branch spike/gc-mode that read only these kernels, moved word for word. The ones that read\n * the prototype's corpus stay there; `spanishVoice.direct.test.ts` scans main's portal words.\n */"
+    }
+  ]
+}
