@@ -539,7 +539,10 @@ export function MercuryTransactionAllocationsModal({
                 p_for_user_id: tallyActAsUserId,
                 search_text: q,
               })
-            : supabase.rpc(rpcName, { search_text: q }),
+            : rpcName === 'search_jobs_ledger'
+              ? // A bank line can pay a GC job's bill, so the office's search finds its billing job.
+                supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true })
+              : supabase.rpc(rpcName, { search_text: q }),
         'mercury allocations job search',
       )
         .then((data) => {
