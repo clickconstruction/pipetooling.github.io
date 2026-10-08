@@ -28579,8 +28579,26 @@ export type Database = {
         }[]
       }
       gc_add_company: { Args: { company: Json }; Returns: string }
+      gc_answer_change_order: {
+        Args: { p_how?: string; p_id: string; p_on: string; p_signed: boolean }
+        Returns: undefined
+      }
       gc_answer_question: { Args: { q: Json }; Returns: string }
       gc_create_project: { Args: { draft: Json }; Returns: string }
+      gc_draft_change_order: {
+        Args: { p_draft: Json; p_project_id: string }
+        Returns: string
+      }
+      gc_draft_time_extension: {
+        Args: {
+          p_days: number
+          p_description: string
+          p_move_ids: string[]
+          p_project_id: string
+          p_reason: string
+        }
+        Returns: string
+      }
       gc_invite_companies: {
         Args: { p_company_ids: string[]; p_package_id: string }
         Returns: string[]
@@ -28769,6 +28787,10 @@ export type Database = {
           p_words: string
         }
         Returns: number
+      }
+      gc_send_change_order: {
+        Args: { p_id: string; p_on: string }
+        Returns: undefined
       }
       gc_sign_owner_contract: {
         Args: { p_project_id: string; p_signed_on: string; p_worth?: Json }
