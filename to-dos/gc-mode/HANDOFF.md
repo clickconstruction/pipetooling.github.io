@@ -1,7 +1,7 @@
 ---
 name: "GC mode: pick it up here"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: handed off 2026-10-05 by the Board lane at the owner's ask · the prototype is done (the Gantt's last rows 2026-10-06; PUNCHLIST.md is closed) · the owner said "the shape is settled" on 2026-10-06 and the real build started from `main` · **paused 2026-10-07 at the owner's word** with New project built but step 7 and the schedule through its PR 3 · start at *Pick up the real build*
+status: handed off 2026-10-05 by the Board lane at the owner's ask · the prototype is done (the Gantt's last rows 2026-10-06; PUNCHLIST.md is closed) · the owner said "the shape is settled" on 2026-10-06 and the real build started from `main` · **handed off again 2026-10-08 ~19:00 UTC** with doors 1, 2 and Owner Billing live, the trade portal real, the schedule through 6b · start at *Handoff, evening 2026-10-08* in `PLAN_2026-10-07.md` → Status, which names every open PR, the evening migration batch and the two yeses waiting on Grace
 summary: >
   What is left in GC mode and where to start, for someone new. The prototype plays the whole loop
   on made-up data (branch spike/gc-mode, page /bids/gc). Left: a short list of the owner's calls,
