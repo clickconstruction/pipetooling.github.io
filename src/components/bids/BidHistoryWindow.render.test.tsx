@@ -134,20 +134,30 @@ describe('BidHistoryWindow', () => {
     }
   })
 
-  it('a bid past one page (1,001 changes) shows the first 1,000, then the rest on Show older changes', async () => {
+  it('a bid past one page (1,001 changes) shows the first page but its oldest action, then the rest on Show older changes', async () => {
     // One change a minute, so each is its own action; newest first, as the read returns them.
     const many = Array.from({ length: 1001 }, (_, i) => row({ changedAt: at(-60 * i), action: null, byApp: null, label: `Fixture ${i + 1}`, newValues: { fixture: `Fixture ${i + 1}`, count: 1 } }))
     const load = vi.fn(async (_id: string, from: number) => many.slice(from, from + 1000))
     const d = await open(load)
-    expect(within(d).getByText(/^1,000 changes so far by 1 author\./)).toBeTruthy()
+    // The page's oldest action may go on past its edge, so it waits for the older page.
+    expect(within(d).getByText(/^999 changes so far by 1 author\./)).toBeTruthy()
     expect(within(d).getByText(/Older changes are not shown yet/)).toBeTruthy()
+    expect(within(d).queryByText('Added Fixture 1000')).toBeNull()
     expect(within(d).queryByText('Added Fixture 1001')).toBeNull()
     fireEvent.click(within(d).getByRole('button', { name: 'Show older changes' }))
     await settle()
     expect(load).toHaveBeenLastCalledWith('bid-1', 1000)
     expect(within(d).getByText(/^1,001 changes by 1 author\./)).toBeTruthy()
+    expect(within(d).getByText('Added Fixture 1000')).toBeTruthy()
     expect(within(d).getByText('Added Fixture 1001')).toBeTruthy()
     expect(within(d).queryByRole('button', { name: 'Show older changes' })).toBeNull()
+  })
+
+  it('a full page that is one action is drawn, marked as going on in older changes', async () => {
+    const one = Array.from({ length: 1000 }, (_, i) => row({ changedAt: at(-i * 0.001), label: `Fixture ${i + 1}` }))
+    const d = await open(async () => one)
+    expect(within(d).getByText(/^1 change so far by 1 author\./)).toBeTruthy()
+    expect(within(d).getByText(/continues in older changes/)).toBeTruthy()
   })
 
   it('a bid with nothing yet says so', async () => {

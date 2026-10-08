@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   BID_HISTORY_DEFAULT_BID_COLUMNS,
+  BID_HISTORY_PAGE,
   bidHistoryAuthors,
   bidHistoryByDay,
   bidHistoryCaption,
@@ -11,6 +12,7 @@ import {
   bidHistoryTabOf,
   bidHistoryValueWords,
   bidHistoryWho,
+  bidHistoryWholeActions,
   filterBidHistory,
   groupBidHistory,
   type BidHistoryRow,
@@ -142,6 +144,50 @@ describe('groupBidHistory — actions, not rows', () => {
     expect(a!.caption).toBe('Imported 23 rows from CountTooling')
     expect(a!.bidNumber).toBe('B377')
     expect(a!.who).toBe('Ann')
+  })
+})
+
+describe('bidHistoryWholeActions — the action at a page’s edge', () => {
+  // ZZ Test's case: a removal of 8 count rows and the 72 rows that hung on them, then 979 single
+  // changes, one a minute. Newest first, as the read returns them: the first page holds the 979 and
+  // the removal's newest 21 rows; the older page holds its other 59.
+  const removal = Array.from({ length: 80 }, (_, i) =>
+    row({
+      source: 'archive', id: null, archiveId: `a-${i}`, op: 'delete', changedAt: at(i * 0.01),
+      ...(i % 10 === 0 ? { label: `Fixture ${i / 10 + 1}` } : { table: 'bids_takeoff_rough_part_lines', label: 'P-trap' }),
+    }))
+  const singles = Array.from({ length: 979 }, (_, k) =>
+    row({ op: 'update', changed: ['count'], oldValues: { count: 1 }, newValues: { count: 2 }, changedAt: at(60 * (k + 1)), changedBy: 'u-ben', changedByName: 'Ben' }))
+  const read = [...removal, ...singles].sort((a, b) => b.changedAt.localeCompare(a.changedAt))
+  const firstPage = read.slice(0, BID_HISTORY_PAGE)
+  const olderPage = read.slice(BID_HISTORY_PAGE)
+
+  it('a full page holds back its oldest action: it may go on past the edge, so it is not captioned as whole', () => {
+    const cut = groupBidHistory(firstPage)
+    expect(cut[cut.length - 1]!.rows).toHaveLength(21)
+    const drawn = bidHistoryWholeActions(cut, true)
+    expect(drawn).toHaveLength(979)
+    expect(drawn.some((a) => a.fromArchive || a.caption.startsWith('Removed'))).toBe(false)
+  })
+
+  it('the older page makes it whole, captioned from all its rows', () => {
+    const whole = bidHistoryWholeActions(groupBidHistory([...firstPage, ...olderPage]), false)
+    expect(whole).toHaveLength(980)
+    expect(whole[979]!.rows).toHaveLength(80)
+    expect(whole[979]!.caption).toBe('Removed 8 count rows and what hung on them')
+    expect(whole.some((a) => a.continues)).toBe(false)
+  })
+
+  it('a full page that is one action is drawn, marked as going on', () => {
+    const big = Array.from({ length: BID_HISTORY_PAGE }, (_, i) => row({ action: 'counts-import', byApp: false, changedAt: at(-i * 0.001) }))
+    const drawn = bidHistoryWholeActions(groupBidHistory(big), true)
+    expect(drawn).toHaveLength(1)
+    expect(drawn[0]!.continues).toBe(true)
+  })
+
+  it('a last page holds nothing back', () => {
+    const actions = groupBidHistory([row({ changedAt: at(0) }), row({ changedAt: at(60) })])
+    expect(bidHistoryWholeActions(actions, false)).toEqual(actions)
   })
 })
 

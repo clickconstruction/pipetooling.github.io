@@ -8,6 +8,7 @@ import {
   bidHistoryLines,
   bidHistoryTabOf,
   bidHistoryTime,
+  bidHistoryWholeActions,
   filterBidHistory,
   groupBidHistory,
   type BidHistoryAction,
@@ -157,7 +158,8 @@ export function BidHistoryWindow({
     }
   }
 
-  const actions = useMemo(() => groupBidHistory(rows ?? []), [rows])
+  // While older rows remain, the action cut at the page's edge waits for them (bidHistoryWholeActions).
+  const actions = useMemo(() => bidHistoryWholeActions(groupBidHistory(rows ?? []), more), [rows, more])
   const shown = useMemo(() => filterBidHistory(actions, { tab, whoId, search }), [actions, tab, whoId, search])
   const days = useMemo(() => bidHistoryByDay(shown, now()), [shown, now])
   const authors = useMemo(() => bidHistoryAuthors(actions), [actions])
@@ -188,6 +190,7 @@ export function BidHistoryWindow({
           {a.who} · {tabLabel(a.tab)}
           {otherBids.size > 0 ? ` · ${a.bidNumber ?? 'this bid'}` : ''}
           {a.fromArchive ? ' · from the delete archive' : ''}
+          {a.continues ? ' · continues in older changes' : ''}
         </div>
         {lines.length > 1 ? (
           <button
