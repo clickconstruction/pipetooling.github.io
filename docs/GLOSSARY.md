@@ -996,6 +996,11 @@ Template library mapping fixture types to labor hours per stage. Standardizes la
 
 **Fields**: fixture_type_id (FK to fixture_types), rough_in_hrs, top_out_hrs, trim_set_hrs, alias_names, `unit` / `kind`, and the provenance (v2.3596): `origin` (robot · human), `robot_*_hrs` (the robot's own numbers, kept under a human override), `set_by` / `set_at` / `set_note` — read as the *Hours from* chip (robot · human · override · learned · calibrated) by `lib/bids/laborEntryProvenance.ts`. A version may carry an estimator's calibration proposal (`proposed_multiplier / proposed_by / proposed_at / proposed_note`) until a leader confirms it.
 
+### Hours not on the counts (set-aside labor rows)
+The box under the Labor tab's grid (v2.4864, bid history PR 0b). Labor rows follow the count sheet by fixture name and belong to the bid, while count rows belong to a version, so a version switch, a re-import that renames a fixture or a removed fixture leaves a labor row no counted fixture claims. The Labor sync sets such a row aside instead of deleting it: out of every total, listed with its hours, **Use for <fixture>** puts them on a counted row, **Remove** lets it go, and counting the fixture again takes it back by itself.
+
+**Database**: `cost_estimate_labor_rows_unmatched` · kernel `lib/bids/laborSyncPlan.ts`
+
 ### Price Book
 Template library mapping fixture types to pricing per stage. Used for margin analysis.
 

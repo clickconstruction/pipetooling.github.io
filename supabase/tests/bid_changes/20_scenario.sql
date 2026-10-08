@@ -77,8 +77,8 @@ GRANT ALL ON mark, start, ids TO authenticated;
 INSERT INTO mark SELECT bct.last();
 INSERT INTO start SELECT bct.last();
 
--- The trigger is on the seventeen tables, and on bids only for the columns the ledger keeps.
-SELECT bct.same('a trigger on each of the seventeen tables',
+-- The trigger is on the eighteen tables, and on bids only for the columns the ledger keeps.
+SELECT bct.same('a trigger on each of the eighteen tables',
   (SELECT string_agg(c.relname, ',' ORDER BY c.relname) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid WHERE t.tgname = 'record_bid_change' AND NOT t.tgisinternal),
   (SELECT string_agg(x, ',' ORDER BY x) FROM unnest(public.bid_changes_tables()) AS x));
 SELECT bct.same('the bids trigger fires for the kept columns only',
@@ -212,6 +212,45 @@ SELECT bct.same('equipment, other, subcontractor, waste: twelve rows, all under 
   '12 0');
 UPDATE mark SET id = bct.last();
 
+-- 5c · Set-aside labor rows (PR 0b, 20261008071000): the Labor sync's park and take-back, a rename,
+--      and the band's Use for, each named by its fixture, under the bid, tagged as the client sends
+--      them: the sync's own steps read as the app's, Use for as a press. Nothing is left set aside,
+--      so case 8 removes the cost estimate as before.
+SELECT set_config('request.headers', '{"x-bid-action":"labor-sync"}', true);
+INSERT INTO public.cost_estimate_labor_rows (cost_estimate_id, fixture, count, rough_in_hrs_per_unit, sequence_order)
+VALUES ('00000000-0000-0000-0000-00000000c731', 'Floor drain', 2, 3, 2);
+SELECT set_config('request.headers', '{"x-bid-action":"labor-park"}', true);
+INSERT INTO public.cost_estimate_labor_rows_unmatched (cost_estimate_id, fixture, count, rough_in_hrs_per_unit, labor_row_id)
+  SELECT cost_estimate_id, fixture, count, rough_in_hrs_per_unit, id FROM public.cost_estimate_labor_rows WHERE fixture = 'Floor drain';
+DELETE FROM public.cost_estimate_labor_rows WHERE fixture = 'Floor drain';
+SELECT set_config('request.headers', '{"x-bid-action":"labor-take-back"}', true);
+INSERT INTO public.cost_estimate_labor_rows (cost_estimate_id, fixture, count, rough_in_hrs_per_unit, sequence_order)
+  SELECT cost_estimate_id, fixture, count, rough_in_hrs_per_unit, 2 FROM public.cost_estimate_labor_rows_unmatched WHERE fixture = 'Floor drain';
+DELETE FROM public.cost_estimate_labor_rows_unmatched WHERE fixture = 'Floor drain';
+SELECT set_config('request.headers', '{"x-bid-action":"labor-rename"}', true);
+UPDATE public.cost_estimate_labor_rows SET fixture = 'FLOOR DRAIN' WHERE fixture = 'Floor drain';
+SELECT set_config('request.headers', '{"x-bid-action":"labor-park"}', true);
+INSERT INTO public.cost_estimate_labor_rows_unmatched (cost_estimate_id, fixture, count, rough_in_hrs_per_unit, labor_row_id)
+  SELECT cost_estimate_id, fixture, count, rough_in_hrs_per_unit, id FROM public.cost_estimate_labor_rows WHERE fixture = 'FLOOR DRAIN';
+DELETE FROM public.cost_estimate_labor_rows WHERE fixture = 'FLOOR DRAIN';
+SELECT set_config('request.headers', '{"x-bid-action":"labor-use-parked"}', true);
+UPDATE public.cost_estimate_labor_rows SET rough_in_hrs_per_unit = (SELECT rough_in_hrs_per_unit FROM public.cost_estimate_labor_rows_unmatched WHERE fixture = 'FLOOR DRAIN')
+ WHERE cost_estimate_id = '00000000-0000-0000-0000-00000000c731' AND fixture = 'Lav-1';
+DELETE FROM public.cost_estimate_labor_rows_unmatched WHERE fixture = 'FLOOR DRAIN';
+SELECT set_config('request.headers', '', true);
+SELECT bct.same('set-aside labor rows: parked, taken back, renamed, used, each named under the bid',
+  bct.log('00000000-0000-0000-0000-00000000c7d1', (SELECT id FROM mark)),
+  E'cost_estimate_labor_rows insert Floor drain\ncost_estimate_labor_rows_unmatched insert Floor drain\ncost_estimate_labor_rows delete Floor drain\n' ||
+  E'cost_estimate_labor_rows insert Floor drain\ncost_estimate_labor_rows_unmatched delete Floor drain\ncost_estimate_labor_rows update FLOOR DRAIN fixture\n' ||
+  E'cost_estimate_labor_rows_unmatched insert FLOOR DRAIN\ncost_estimate_labor_rows delete FLOOR DRAIN\n' ||
+  E'cost_estimate_labor_rows update Lav-1 rough_in_hrs_per_unit\ncost_estimate_labor_rows_unmatched delete FLOOR DRAIN');
+SELECT bct.same('set-aside labor rows: the sync is the app, Use for is a press',
+  (SELECT string_agg(COALESCE(action, '-') || ' ' || COALESCE(by_app::text, '-'), E'\n' ORDER BY id) FROM bct.rows_after((SELECT id FROM mark))),
+  E'labor-sync true\nlabor-park true\nlabor-park true\nlabor-take-back true\nlabor-take-back true\nlabor-rename true\n' ||
+  E'labor-park true\nlabor-park true\nlabor-use-parked false\nlabor-use-parked false');
+SELECT bct.same('set-aside labor rows: none left', (SELECT count(*)::text FROM public.cost_estimate_labor_rows_unmatched WHERE cost_estimate_id = '00000000-0000-0000-0000-00000000c731'), '0');
+UPDATE mark SET id = bct.last();
+
 -- 6 · SUMP removed: its row, and everything its delete took with it, each still named SUMP (the
 -- archive's snapshot of the count row) and in Base. The quoted cost goes too: v2.4413 gave
 -- bid_count_row_custom_costs its count-row key (ON DELETE CASCADE), so its row is named with its house.
@@ -338,7 +377,7 @@ UPDATE public.bids SET notes = 'Set by a job' WHERE id = '00000000-0000-0000-000
 SELECT bct.same('no person: no author', (SELECT COALESCE(changed_by::text, 'none') FROM bct.rows_after((SELECT id FROM mark))), 'none');
 
 -- 15 · Every table the trigger is on recorded at least one row in this scenario.
-SELECT bct.same('every one of the seventeen tables recorded something',
+SELECT bct.same('every one of the eighteen tables recorded something',
   (SELECT COALESCE(string_agg(t, ', ' ORDER BY t), '(none missing)') FROM unnest(public.bid_changes_tables()) AS t
     WHERE NOT EXISTS (SELECT 1 FROM bct.rows_after((SELECT id FROM start)) c WHERE c.table_name = t)),
   '(none missing)');

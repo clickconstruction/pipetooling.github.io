@@ -22,6 +22,7 @@ const ARCHIVE_TABLE_LABELS: Record<string, string> = {
   job_parts_tally_transactions: 'parts tally transactions',
   bids: 'bid',
   bid_line_items: 'bid line items',
+  cost_estimate_labor_rows_unmatched: 'set-aside labor hours',
   clock_sessions: 'clock sessions',
   customers: 'customer',
   customer_contacts: 'customer contacts',

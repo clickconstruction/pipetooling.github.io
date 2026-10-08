@@ -19,6 +19,7 @@ import {
 } from '../../lib/bids/laborCellSaveState'
 import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { BidsLaborNewView } from './BidsLaborNewView'
+import { BidsLaborUnmatchedBand } from './BidsLaborUnmatchedBand'
 import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
 import { useLaborBookCalibration } from '../../hooks/useLaborBookCalibration'
@@ -56,6 +57,7 @@ import type { BidCountRow } from '../../types/bids'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
+  CostEstimateUnmatchedLaborRow,
   CostEstimateEquipmentRow,
   CostEstimatePermitRow,
   CostEstimateSubcontractorRow,
@@ -98,6 +100,10 @@ type BidsLaborTabProps = {
   costEstimate: CostEstimate | null
   costEstimateLaborRows: CostEstimateLaborRow[]
   setCostEstimateLaborRows: Dispatch<SetStateAction<CostEstimateLaborRow[]>>
+  /** Rows the load sync set aside because no counted fixture claims them (bid history PR 0b); the band under the hours lists them. */
+  costEstimateUnmatchedLaborRows?: CostEstimateUnmatchedLaborRow[]
+  onUseUnmatchedLaborRow?: (parkedId: string, laborRowId: string) => Promise<boolean>
+  onRemoveUnmatchedLaborRow?: (parkedId: string) => Promise<boolean>
   costEstimateCountRows: BidCountRow[]
   /** v2.4202: each count row's takeoff materials (rough model) — the alternate card's Materials row. */
   costEstimateFixtureMaterials?: Record<string, number>
@@ -177,6 +183,9 @@ export function BidsLaborTab({
   costEstimate,
   costEstimateLaborRows,
   setCostEstimateLaborRows,
+  costEstimateUnmatchedLaborRows = [],
+  onUseUnmatchedLaborRow,
+  onRemoveUnmatchedLaborRow,
   costEstimateCountRows,
   costEstimateFixtureMaterials,
   panel,
@@ -853,6 +862,14 @@ export function BidsLaborTab({
                     rowDomId={laborRowDomId}
                     rowJumpFlashDomId={rowJumpFlashDomId}
                   />
+                {onUseUnmatchedLaborRow && onRemoveUnmatchedLaborRow ? (
+                  <BidsLaborUnmatchedBand
+                    rows={costEstimateUnmatchedLaborRows}
+                    laborRows={costEstimateLaborRows}
+                    onUse={onUseUnmatchedLaborRow}
+                    onRemove={onRemoveUnmatchedLaborRow}
+                  />
+                ) : null}
                 {/* v2.4453: the rate and the print buttons wrap, so on a phone the buttons drop below the
                     rate. On one line they pushed the page 66 px sideways. */}
                 <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>

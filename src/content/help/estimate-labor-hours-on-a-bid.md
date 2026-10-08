@@ -2,7 +2,7 @@
 title: estimate labor hours on a bid
 category: Bids & Estimating
 roles: dev, master_technician, estimator, assistant
-keywords: jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, robot default, one book, hours from, override, reset to robot, learned, calibrated, propose, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
+keywords: hours not on the counts, set aside, use for, version switch, renamed fixture, jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, robot default, one book, hours from, override, reset to robot, learned, calibrated, propose, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
 ---
 Bids → Labor turns a bid's count sheet into hours. The view is the one that learns.
 
@@ -88,6 +88,18 @@ In the **Labor book** panel, an entry's form has two fields beside the hours. **
 
 :::example 2" waste, once
 Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · RI 4 / TO 0 / TS 0 · Additional names `ft of 2IN WASTE`. On the next bid, `ft of 2IN WASTE ×729.5` lands in the grid at 29.2 hours with the chip *book · by alias · per 100 ft*.
+:::
+
+## When a fixture leaves the counts
+
+Labor rows follow the count sheet by name. A fixture can leave this version's counts. You may switch versions, re-import with new names or remove a row. The fixture's labor row is not deleted any more. The row moves to a box under the grid called **Hours not on the counts**. Hours in that box count in no total.
+
+Each row in the box shows its hours and the day it was set aside. Pick a counted fixture in **Use for…** and press {{button:blue|Use for WC}}. The set-aside hours land on that row. {{button:gray|Remove}} lets the row go.
+
+Count the fixture again and its hours come back by themselves. Switch back to a version that has the fixture and the hours return too. A name that changed only in capitals, spaces or a `[Group]` prefix keeps its row and its hours.
+
+:::example A version without the floor drain
+Floor drain carries typed hours on Version 1. Version 2 has no floor drain. Open Labor on Version 2 and the floor drain waits in **Hours not on the counts**. Switch back to Version 1 and it is in the grid again with the same hours.
 :::
 
 ## Under the grid
