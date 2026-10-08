@@ -8738,6 +8738,78 @@ export type Database = {
           },
         ]
       }
+      gc_bid_tab_views: {
+        Row: {
+          company_id: string
+          package_id: string
+          seen_on: string
+        }
+        Insert: {
+          company_id: string
+          package_id: string
+          seen_on?: string
+        }
+        Update: {
+          company_id?: string
+          package_id?: string
+          seen_on?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_bid_tab_views_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_bid_tab_views_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_bid_tabs"
+            referencedColumns: ["package_id"]
+          },
+        ]
+      }
+      gc_bid_tabs: {
+        Row: {
+          created_at: string
+          package_id: string
+          shared_by: string | null
+          shared_on: string
+          show_names: boolean
+        }
+        Insert: {
+          created_at?: string
+          package_id: string
+          shared_by?: string | null
+          shared_on?: string
+          show_names?: boolean
+        }
+        Update: {
+          created_at?: string
+          package_id?: string
+          shared_by?: string | null
+          shared_on?: string
+          show_names?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_bid_tabs_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: true
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_bid_tabs_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_change_orders: {
         Row: {
           answered_how: string | null
@@ -9871,6 +9943,48 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_project_money: {
+        Row: {
+          contingency_pct: number
+          fee_pct: number
+          general_conditions: number
+          project_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          contingency_pct?: number
+          fee_pct?: number
+          general_conditions?: number
+          project_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          contingency_pct?: number
+          fee_pct?: number
+          general_conditions?: number
+          project_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_project_money_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_project_money_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -12484,6 +12598,8 @@ export type Database = {
       gc_trade_packages: {
         Row: {
           budget: number
+          carried_invite_id: string | null
+          carry_budget: boolean
           created_at: string
           id: string
           ours: boolean
@@ -12494,6 +12610,8 @@ export type Database = {
         }
         Insert: {
           budget?: number
+          carried_invite_id?: string | null
+          carry_budget?: boolean
           created_at?: string
           id?: string
           ours?: boolean
@@ -12504,6 +12622,8 @@ export type Database = {
         }
         Update: {
           budget?: number
+          carried_invite_id?: string | null
+          carry_budget?: boolean
           created_at?: string
           id?: string
           ours?: boolean
@@ -12513,6 +12633,13 @@ export type Database = {
           trade?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "gc_trade_packages_carried_on_this_trade"
+            columns: ["carried_invite_id", "id"]
+            isOneToOne: false
+            referencedRelation: "gc_invites"
+            referencedColumns: ["id", "package_id"]
+          },
           {
             foreignKeyName: "gc_trade_packages_own_bid_id_fkey"
             columns: ["own_bid_id"]
@@ -28584,6 +28711,7 @@ export type Database = {
         Returns: undefined
       }
       gc_answer_question: { Args: { q: Json }; Returns: string }
+      gc_bring_back: { Args: { p_project_id: string }; Returns: undefined }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_draft_change_order: {
         Args: { p_draft: Json; p_project_id: string }
@@ -28618,6 +28746,18 @@ export type Database = {
         }
         Returns: string
       }
+      gc_mark_bid_sent: { Args: { p_project_id: string }; Returns: undefined }
+      gc_mark_lost: {
+        Args: {
+          p_note?: string
+          p_project_id: string
+          p_why: string
+          p_won_by?: string
+        }
+        Returns: undefined
+      }
+      gc_mark_won: { Args: { p_project_id: string }; Returns: undefined }
+      gc_money_team: { Args: never; Returns: boolean }
       gc_office_decline: {
         Args: {
           p_invite_id: string
@@ -28795,6 +28935,117 @@ export type Database = {
       gc_sign_owner_contract: {
         Args: { p_project_id: string; p_signed_on: string; p_worth?: Json }
         Returns: undefined
+      }
+      gc_trade_add_person: {
+        Args: {
+          p_company_id: string
+          p_email: string
+          p_gets: string[]
+          p_name: string
+          p_role: string
+        }
+        Returns: string
+      }
+      gc_trade_answer_lines: {
+        Args: { p_answers: Json; p_company_id: string; p_invite_id: string }
+        Returns: string
+      }
+      gc_trade_ask: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: {
+          company_id: string
+          created_at: string
+          decline_note: string
+          decline_reason: string | null
+          declined_on: string | null
+          declined_why: string | null
+          exclusion_covers: Json
+          id: string
+          invited_by: string | null
+          invited_on: string
+          package_id: string
+          plugs: Json
+          seen_rev: number | null
+          status: string
+          taken_alternates: string[]
+        }
+        SetofOptions: {
+          from: "*"
+          to: "gc_invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      gc_trade_ask_question: {
+        Args: {
+          p_company_id: string
+          p_package_id: string
+          p_sheets: string[]
+          p_text: string
+        }
+        Returns: string
+      }
+      gc_trade_confirm_quote: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: string
+      }
+      gc_trade_current_rev: { Args: { p_package_id: string }; Returns: number }
+      gc_trade_decline: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: undefined
+      }
+      gc_trade_got_it: { Args: { p_company_id: string }; Returns: string }
+      gc_trade_mail_groups: { Args: { p_groups: string[] }; Returns: string[] }
+      gc_trade_newest_quote: {
+        Args: { p_invite_id: string }
+        Returns: {
+          alternates: Json
+          amount: number
+          based_on_rev: number
+          created_at: string
+          created_by: string | null
+          exclusions: Json | null
+          exclusions_answered: string[] | null
+          good_for_days: number | null
+          id: string
+          includes: Json
+          invite_id: string
+          note: string
+          quote_file: string
+          source: string
+          sov: Json | null
+          submitted_on: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "gc_quotes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      gc_trade_open_plans: {
+        Args: { p_company_id: string; p_invite_id: string }
+        Returns: number
+      }
+      gc_trade_quote_day: {
+        Args: { p_by: string; p_company_id: string; p_invite_id: string }
+        Returns: string
+      }
+      gc_trade_remove_person: {
+        Args: { p_company_id: string; p_person_id: string }
+        Returns: undefined
+      }
+      gc_trade_set_gets: {
+        Args: { p_company_id: string; p_gets: string[]; p_person_id: string }
+        Returns: undefined
+      }
+      gc_trade_set_lang: {
+        Args: { p_company_id: string; p_lang: string }
+        Returns: undefined
+      }
+      gc_trade_submit_quote: {
+        Args: { p_company_id: string; p_invite_id: string; q: Json }
+        Returns: string
       }
       gc_vet_company: {
         Args: {
