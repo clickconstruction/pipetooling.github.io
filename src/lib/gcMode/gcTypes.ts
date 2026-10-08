@@ -3,12 +3,13 @@ import type { LookAheadReason, ProjectSchedule, ScheduleMilestone, ScheduleMoveR
 import type { CrewCount, ScheduleWait, WaitKind } from '../gc/schedule/types'
 import type { RoughSchedule, ScheduleImport, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
 import type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
-export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
-// The Building lane's U2 (#4860): its whole shapes are main's, word for word.
 import type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, WeatherSky, WeeklyReportSent } from '../gc/types'
-export type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, SubmittalRound, WeatherSky, WeeklyReportSent } from '../gc/types'
-// Owner Billing's O2a (#4858): its whole shapes are main's, word for word.
 import type { ChangeOrderReason, OwnerBilling, OwnerRetainageStep } from '../gc/types'
+import type { BidTab, PlanQuestion, Town } from '../gc/types'
+export type { BidTab, PlanQuestion, Town } from '../gc/types'
+
+export type { AskContact, DeclineReason, DeclineReasonNote, GcLostWhy, InviteStatus, PaperKind, PaperSend, PartnerVetting, PartnerVettingForm, ProjectContact, PromiseKind, TradePromise } from '../gc/types'
+export type { DrawPayApp, PunchItem, Rfi, RfiImpact, Submittal, SubmittalAnswer, SubmittalKind, SubmittalRound, WeatherSky, WeeklyReportSent } from '../gc/types'
 export type { ChangeOrderReason, OwnerBilling, OwnerInterestBill, OwnerPayAppSent, OwnerRetainageStep } from '../gc/types'
 
 export type { RoughSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow, ScheduleSend, ScheduleTemplate } from '../gc/schedule/types'
@@ -233,17 +234,6 @@ export interface Sow {
    */
   excluded?: { name: string; by: string | null; unitPrice?: { amount: number; unit: string } }[]
 }
-/**
- * The bid tab for one trade: every quote, low to high, given back to the companies that quoted.
- * It is the thanks for bidding: a company that sees where it stood keeps answering our asks.
- */
-export interface BidTab {
-  sharedOn: string
-  /** False: the other companies read "Another company". Each one always sees its own name. */
-  showNames: boolean
-  /** Partner ids that have opened it in their portal. */
-  seenBy: string[]
-}
 export interface TradePackage {
   id: string
   trade: string
@@ -280,12 +270,6 @@ export interface TradePackage {
   sow: Sow | null
   /** Work this trade's quote leaves out, and who does it instead. Missing: none said. */
   excludes?: ScopeExclusion[]
-}
-/** A place a company drives from, or a project sits in. The real build reads the app's geocoded addresses. */
-export interface Town {
-  name: string
-  lat: number
-  lng: number
 }
 export interface Partner {
   id: string
@@ -365,26 +349,6 @@ export interface CustomerSend {
   /** The day we asked them to sign by. */
   by: string
   note: string
-}
-/** A question a trade asked about the plans. The architect answers; every bidder on the trade gets it. */
-export interface PlanQuestion {
-  id: string
-  packageId: string
-  partnerId: string
-  text: string
-  askedOn: string
-  answeredOn: string | null
-  answer: string | null
-  /** The sheets the question is about. */
-  sheets?: string[]
-  /** The day we sent it to the architect. Missing: not sent yet. */
-  sentToArchitectOn?: string
-  /** Who got the answer, and when. */
-  answerSentTo?: { partnerId: string; on: string }[]
-  /** The plan set that carried the answer. */
-  inSetRev?: number
-  /** Asked at the pre-bid meeting, not by phone or email. */
-  atPreBid?: boolean
 }
 /**
  * One company, one record: the app's own customers. The same row can be the owner we build for,

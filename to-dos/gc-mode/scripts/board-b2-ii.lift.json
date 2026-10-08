@@ -2,6 +2,15 @@
   "about": "The Board's B2-ii (to-dos/gc-mode/BOARD_REAL_BUILD.md, B2): the map and the bench, the Ask window's choices, Get started's checklist, the rest of not ready, and the parts of the company file, the board's groups, customers that read only the Board, lifted to src/lib/gc on a spike that reads B2-i from main. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b2-ii.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
+  "pin": {
+    "main": "9c1dc5a1e1cffe3b6b9849a8e56a2e7b07b0707a",
+    "spike": "f529be02913d5ecb3396c35e0d1c6f6f972704c8",
+    "about": "#4885 merged; the spike before its follow-up",
+    "known": {
+      "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
+      "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same"
+    }
+  },
   "files": [
     {
       "from": "gcMap",
