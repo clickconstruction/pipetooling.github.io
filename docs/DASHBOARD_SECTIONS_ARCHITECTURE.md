@@ -459,13 +459,14 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | v2.4700 (after `mapped_at`) | `vehicle-records-missing` | `vehicleRecordGapsEnabled` (dev, assistant, controller; `useVehicleRecordGapsNudge` over `lib/vehicleRecordGaps.ts`; both hosts) | gray |
 | 1364–1419 | `submittal-lead-time`, `-sent-back`, `-unopened`, `-not-started` | `submittalsEnabled`, `submittalNudge` | red, red, blue, amber |
 | 1421–1456 | `price-matrix-ready`, `price-requests-late` | each `…Enabled` | amber when a pick waits to settle, else blue; amber |
+| v2.4941 (after `mapped_at`) | `gc-follow-up` | `gcFollowUpEnabled` (the GC office team, `canOpenGcProjects`; `useGcFollowUpNeeds` over `lib/gc/followUpNeeds.ts`; the Dashboard host only) | red when a promised day passed or an ask sat unopened past three days, else amber |
 | 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |
 | 1495–1521 | `robot-backlog` | `robotBacklogEnabled` | amber when stuck or a request is over a week old, else blue; snooze / dismiss secondaries |
 | 1523–1540 | `test-reports-ready` | `testReportsEnabled` | blue when one is ready, else gray |
 
 **Where the click goes** is not in this file: each host's `onAction` is an `if / else if` chain on `item.key` (`DashboardPinnedQuickRow` 715–841, `QuickfillNeedsYouSection` 183–234) and `onSecondary` beside it (842–858, 235–245).
 
-**Tests:** [`dashboardNeedsYou.test.ts`](../src/lib/dashboardNeedsYou.test.ts) — 1,224 lines, 82 `it` in 19 `describe`; `owner-records-signed` keeps its tests in its own file (`dashboardNeedsYou.ownerRecords.test.ts`, v2.4702) so they stay out of the shared file's tail. Three keys are named by no test in the repo: `contract-missing`, `contract-stale`, `test-reports-ready`. The card has a render smoke (8), the pinned row has one (3), `phoneOffice` 6, `tallyStaleGloss` 4. `QuickfillNeedsYouSection` has no test of its own.
+**Tests:** [`dashboardNeedsYou.test.ts`](../src/lib/dashboardNeedsYou.test.ts) — 1,224 lines, 82 `it` in 19 `describe`; `owner-records-signed` and `gc-follow-up` keep their tests in their own files (`dashboardNeedsYou.ownerRecords.test.ts`, v2.4702; `dashboardNeedsYou.gcFollowUp.test.ts`, v2.4941) so they stay out of the shared file's tail. Three keys are named by no test in the repo: `contract-missing`, `contract-stale`, `test-reports-ready`. The card has a render smoke (8), the pinned row has one (3), `phoneOffice` 6, `tallyStaleGloss` 4. `QuickfillNeedsYouSection` has no test of its own.
 
 **Hazards**
 

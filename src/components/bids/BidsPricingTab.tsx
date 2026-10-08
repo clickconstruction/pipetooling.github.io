@@ -37,6 +37,8 @@ import { useMarginBrush } from '../../hooks/useMarginBrush'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
 import { planBookEditBidOffer, planSiblingCarry, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidCellPast } from './BidCellPast'
+import { priceCellKeys } from '../../lib/bids/bidCellHistory'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
@@ -3414,6 +3416,8 @@ export function BidsPricingTab({
                                   ) : wbJustSaved[r.countRow.id] ? (
                                     <span style={{ marginLeft: '0.3rem', fontSize: '0.68rem', color: 'var(--text-green-700)', fontWeight: 700 }}>saved ✓</span>
                                   ) : null}
+                                  {/* Bid history (punch list #73, PR 3): the price's earlier values while Past values is on. */}
+                                  <BidCellPast keys={priceCellKeys(r.countRow.id, selectedPricingVersionId, r.countRow.fixture)} label={r.countRow.fixture} />
                                 </td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>{wbCellInput(r, 'revenue', '6.5rem')}</td>
                                 <td style={{ padding: '0.35rem 0.7rem', borderBottom: '1px solid var(--border)', textAlign: 'right' }}>

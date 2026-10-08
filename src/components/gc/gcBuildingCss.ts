@@ -1,6 +1,7 @@
 /**
- * GC mode design spike: the Building lane's layout for a phone (REMAINING, Building 2). Inline
- * styles cannot hold a media query, so the rows that change shape on a phone carry these classes.
+ * GC mode, the real build, the schedule's PR 7a: the rows that change shape on a phone, and the
+ * chart's two-line names. Moved word for word from the GC mode prototype (branch spike/gc-mode,
+ * `gcBuildingCss.ts`); the plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
  */
 import type { CSSProperties } from 'react'
 

@@ -23,6 +23,9 @@ TAG="supabase/migrations/20261007050000_bid_changes_action_tag.sql"
 # file that redefines the same function is re-run after it, and the chain ends as main does.
 TEXTS="supabase/migrations/20261007060000_bids_cover_letter_texts.sql"
 UNMATCHED="supabase/migrations/20261008071000_labor_rows_unmatched.sql"
+READER="supabase/migrations/20261009060000_list_bid_history.sql"
+CELLS="supabase/migrations/20261009090000_latest_bid_cell_history.sql"
+PUTBACK="supabase/migrations/20261009110000_put_back_bid_change.sql"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -39,7 +42,7 @@ for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 done
 # A second run of each must change nothing (and the triggers file must take no lock doing so).
-for f in "$LEDGER" "$TRIGGERS" "$TAG" "$TEXTS" "$UNMATCHED"; do
+for f in "$LEDGER" "$TRIGGERS" "$TAG" "$TEXTS" "$UNMATCHED" "$READER" "$CELLS" "$PUTBACK"; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/bid_changes/20_scenario.sql 2>&1 || true)"

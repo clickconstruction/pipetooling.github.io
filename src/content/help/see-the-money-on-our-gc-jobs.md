@@ -1,13 +1,13 @@
 ---
 title: see the money on our GC jobs
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, controller
 keywords: gc mode, money, paid, owed, retainage, bill day, margin, cash, weeks, customer
 order: 100
 ---
 See every GC job that is ours on one screen. It shows what the customers paid us, what we paid the trades and who owes us.
 
-Only a dev sees it while it is built. Later the owner and the controller will see it too.
+The owner, the leaders and the controller see it.
 
 ## Open it
 

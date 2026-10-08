@@ -4,6 +4,7 @@ import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
+import { gcNoticeRowsWithBilledOpen } from '../lib/jobs/lienBilledOpen'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../lib/jobs/lienLetterTwo'
 import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
@@ -136,6 +137,8 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
             workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
           }
         }
+        // A billed job's money is what its sent bills owe (v2.4970), as the desk counts it; a job not billed yet keeps what it will bill.
+        const moneyRows = gcNoticeRowsWithBilledOpen(rows, new Map(jobs.map((j) => [j.id, { id: j.id, status: (j as { status?: string | null }).status ?? null, revenue: j.revenue, payments_made: j.payments_made }])), invoiceRows, paymentRows)
         for (const f of fixtureRows) workByJob[f.job_id]?.fixtures.push(f)
         for (const i of invoiceRows) workByJob[i.job_id]?.invoices.push(i)
         for (const p of paymentRows) workByJob[p.job_id]?.payments.push(p)
@@ -171,7 +174,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
         const gcsById: Record<string, LienDeskGc> = gc ? { [gc.id]: gc } : {}
-        const queue = buildLienDeskQueue(rows, items, gc ? { [gc.id]: policy } : {}, todayYmd)
+        const queue = buildLienDeskQueue(moneyRows, items, gc ? { [gc.id]: policy } : {}, todayYmd)
         // The claim set by hand per job (v2.3684): the run claims the corrected figure, as the desk does.
         const claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         for (const raw of (correctionRows ?? []) as unknown[]) {
@@ -183,7 +186,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         const desk: LienDeskData = {
           queue,
           summary: summarizeLienDeskForNeedsYou(queue),
-          rows,
+          rows: moneyRows,
           items,
           affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
           affidavitRows: [],
@@ -212,7 +215,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           const property = resolveLienProperty(address, ownerByJob[jobId] ?? null)
           return envelopeKey(lienPropertyOwnerDisplayName(property.owner), property.owner.mailingAddress)
         }
-        const folded = buildGcOnNotice(rows, items, ownerStateOf, todayYmd, (jobId) => claimCorrectionsByJob[jobId] ?? null, ownerKeyOf)
+        const folded = buildGcOnNotice(moneyRows, items, ownerStateOf, todayYmd, (jobId) => claimCorrectionsByJob[jobId] ?? null, ownerKeyOf)
         const ownerRowByJob: Record<string, OwnerToConfirmRow> = {}
         const ownerLineByJob: Record<string, string> = {}
         const countyByJob: Record<string, string> = {}
@@ -252,7 +255,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         setData({
           gc,
           gcTerms,
-          rows,
+          rows: moneyRows,
           jobs: folded.jobs,
           summary: folded.summary,
           desk,

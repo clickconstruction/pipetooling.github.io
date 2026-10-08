@@ -43,4 +43,70 @@ describe('GcNewPlansWindow', () => {
     expect(screen.getByText('Say who checked the set.')).toBeTruthy()
     expect((screen.getByRole('button', { name: /Issue Addendum 1/ }) as HTMLButtonElement).disabled).toBe(true)
   })
+
+  it('step 7: lists who hears the set, the company whose trade it changes first, and says how many it emails', () => {
+    const parties = {
+      invites: [
+        { id: 'v1', packageId: 'site', companyId: 'k-site', status: 'bid' as const },
+        { id: 'v2', packageId: 'elec', companyId: 'k-elec', status: 'opened' as const },
+        { id: 'v3', packageId: 'elec', companyId: 'k-no', status: 'declined' as const },
+      ],
+      companies: [
+        { id: 'k-site', name: 'Alamo Sitework', lang: 'en' as const },
+        { id: 'k-elec', name: 'Pecan Valley Electric', lang: 'es' as const },
+        { id: 'k-no', name: 'Said No Electric', lang: 'en' as const },
+      ],
+    }
+    render(<GcNewPlansWindow project={clinic} book={[]} team={[]} today="2026-10-06" onClose={() => undefined} onIssue={vi.fn()} parties={parties} canSend />)
+    fireEvent.change(screen.getByLabelText('What changed'), { target: { value: 'E-201: two more floor boxes.' } })
+    expect(screen.getByText('Who hears it')).toBeTruthy()
+    const names = screen.getAllByText(/Alamo Sitework|Pecan Valley Electric/).map((e) => e.textContent)
+    expect(names).toEqual(['Pecan Valley Electric', 'Alamo Sitework'])
+    expect(screen.queryByText('Said No Electric')).toBeNull()
+    expect(screen.getByText('it changes their trade')).toBeTruthy()
+    expect(screen.getByText('for their records')).toBeTruthy()
+    // Unticked until the owner names an inbox (call 3): nothing goes out unless a dev ticks it.
+    expect((screen.getByLabelText('Email them when the set goes on') as HTMLInputElement).checked).toBe(false)
+    expect(screen.getByText(/No email goes out\./)).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Email them when the set goes on'))
+    expect(screen.getByText(/It emails 2 companies\./)).toBeTruthy()
+  })
+
+  it('step 7: someone who cannot send yet sees who would hear it, and no email box', () => {
+    const parties = {
+      invites: [{ id: 'v1', packageId: 'site', companyId: 'k-site', status: 'bid' as const }],
+      companies: [{ id: 'k-site', name: 'Alamo Sitework', lang: 'en' as const }],
+    }
+    const onIssue = vi.fn()
+    render(<GcNewPlansWindow project={clinic} book={[]} team={[]} today="2026-10-06" onClose={() => undefined} onIssue={onIssue} parties={parties} />)
+    expect(screen.getByText('Alamo Sitework')).toBeTruthy()
+    expect(screen.getByText('Emails to the companies go out once the portal opens.')).toBeTruthy()
+    expect(screen.queryByLabelText('Email them when the set goes on')).toBeNull()
+    expect(screen.getByText(/No email goes out\./)).toBeTruthy()
+  })
+
+  it('step 7: with nobody asked on the job, nobody hears it', () => {
+    render(<GcNewPlansWindow project={clinic} book={[]} team={[]} today="2026-10-06" onClose={() => undefined} onIssue={vi.fn()} parties={{ invites: [], companies: [] }} />)
+    expect(screen.getByText('Nobody is asked on this job yet, so no email goes out.')).toBeTruthy()
+  })
+
+  it('step 7: when some emails did not go out, it says so and offers Try again', () => {
+    const onRetrySends = vi.fn()
+    render(
+      <GcNewPlansWindow
+        project={clinic}
+        book={[]}
+        team={[]}
+        today="2026-10-06"
+        onClose={() => undefined}
+        onIssue={vi.fn()}
+        sendReport={{ summary: 'Emailed 1 company. 1 did not go out. Press Try again.', failed: 1 }}
+        onRetrySends={onRetrySends}
+      />,
+    )
+    expect(screen.getByText('Emailed 1 company. 1 did not go out. Press Try again.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(onRetrySends).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole('button', { name: /Issue/ })).toBeNull()
+  })
 })

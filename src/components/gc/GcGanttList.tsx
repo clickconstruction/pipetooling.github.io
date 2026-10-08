@@ -1,13 +1,13 @@
 /**
- * GC mode design spike: the schedule as a list, the Gantt's Phase 5 (G-19, G-20). On a phone the
- * chart has no room for its weeks, so it opens as this: the stages of the job, the one running
- * today first, each a table of its bars with the dates, where each stands and a small bar in the
- * stage's span. It is a real table, so a screen reader reads it; anyone can switch to it.
+ * GC mode, the real build, the schedule's PR 7a: the schedule as a list, which a phone opens with
+ * (G-19, G-20). Moved word for word from the GC mode prototype (branch spike/gc-mode,
+ * `GcGanttList.tsx`); the plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
  */
 import { useState } from 'react'
-import { daysBetween, shortDate, weekdayDate } from '../../lib/gcMode/gcModel'
-import type { GanttBar, GanttGroup } from '../../lib/gcMode/gcGantt'
-import { customerBarWords } from '../../lib/gcMode/gcCustomerSchedule'
+import { daysBetween } from '../../lib/gc/schedule/schedule'
+import { shortDate, weekdayDate } from '../../lib/gc/words'
+import type { GanttBar, GanttGroup } from '../../lib/gc/schedule/gantt'
+import { customerBarWords } from '../../lib/gc/schedule/customerSchedule'
 import { Chip } from './gcUi'
 
 /** Saturated on purpose: the chart's status colors, the same in both themes. */

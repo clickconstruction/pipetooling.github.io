@@ -165,6 +165,19 @@ describe('buildGcChecksReport', () => {
     expect(r.jobs.map((j) => [j.jobId, j.billCount, j.billed, j.stillOpen])).toEqual([['split', 2, 3000, 0]])
   })
 
+  it('lists a check\'s lines and ties in the job table in reading order: Invoice 2 before Invoice 10 (v2.4947)', () => {
+    const many = (id: string) =>
+      job(id, {
+        invoices: Array.from({ length: 12 }, (_, i) => inv(`${id}-${i + 1}`, id, i + 1, 100)),
+        payments: Array.from({ length: 12 }, (_, i) => pay(`${id}-p${i + 1}`, id, 100, { invoice_id: `${id}-${i + 1}` })),
+      })
+    const r = buildGcChecksReport({ gcId: GC, jobs: [many('10'), many('9')] })
+    const lines = r.checks[0]!.lines
+    expect(lines.map((l) => l.jobLabel).filter((v, i, all) => all.indexOf(v) === i)).toEqual(['9 Main St · 9 Job 9', '10 Main St · 10 Job 10'])
+    expect(lines.filter((l) => l.jobLabel.startsWith('9 ')).map((l) => l.invoiceLabel)).toEqual(Array.from({ length: 12 }, (_, i) => `Invoice ${i + 1} of 12`))
+    expect(r.jobs.map((j) => j.jobLabel)).toEqual(['9 Main St · 9 Job 9', '10 Main St · 10 Job 10'])
+  })
+
   it('carries the trail: a moved payment says where it was and until when', () => {
     const r = buildGcChecksReport({
       gcId: GC,

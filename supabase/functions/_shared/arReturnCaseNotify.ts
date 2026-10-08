@@ -16,7 +16,7 @@
  */
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
-import { buildBankReturnNoticeEmail, buildBankReturnNoticePush, noticeInputFromCase, type ArReturnCaseRow } from './bankReturnedDeposits.ts'
+import { arCaseNoticeClaim, arCaseNoticeDue, buildBankReturnNoticeEmail, buildBankReturnNoticePush, noticeInputFromCase, type ArReturnCaseRow } from './bankReturnedDeposits.ts'
 import type { sendEmailViaResend } from './resendSendEmail.ts'
 import { REAL_ACCOUNT } from './realAccount.ts'
 
@@ -74,7 +74,7 @@ export async function sendReturnCaseNotice(
   row: ArReturnCaseRow,
   opts: { appOrigin: string; sendEmail: SendEmail; dryRun?: boolean; log?: (event: Record<string, unknown>) => void },
 ): Promise<CaseNoticeResult> {
-  if (row.notified_at) return { sent: false, reason: 'already_told' }
+  if (!arCaseNoticeDue(row)) return { sent: false, reason: 'already_told' }
   const input = noticeInputFromCase(row, opts.appOrigin)
   const mail = buildBankReturnNoticeEmail(input)
   const push = buildBankReturnNoticePush(input, row.mercury_transaction_id)
@@ -84,16 +84,19 @@ export async function sendReturnCaseNotice(
   }
 
   // Claim first: the claim IS the decision to send. A check typed in by hand that never reached the
-  // bank (v2.4902) has no deposit to key the ledger on, so its case row carries the claim: the update
-  // takes only while notified_at is empty. Every other case inserts into the deposit ledger, where
+  // bank (v2.4902) and a Stripe case (v2.4950) have no deposit to key the ledger on, so the case row
+  // carries the claim: the update takes only while its column is empty (a lost dispute's second
+  // notice fills lost_notified_at). Every other case inserts into the deposit ledger, where
   // 23505 = the office already heard about this deposit.
-  const unbanked = (row.source ?? '') === 'unbanked'
-  if (unbanked) {
+  const claim = arCaseNoticeClaim(row)
+  const caseRowClaim = claim.table !== 'mercury_bank_return_notices'
+  if (claim.table !== 'mercury_bank_return_notices') {
+    const now = new Date().toISOString()
     const { data: claimed, error: claimErr } = await admin
-      .from('ar_unbanked_check_cases')
-      .update({ notified_at: new Date().toISOString() })
+      .from(claim.table)
+      .update(claim.column === 'lost_notified_at' && !row.notified_at ? { lost_notified_at: now, notified_at: now } : { [claim.column]: now })
       .eq('id', row.mercury_transaction_id)
-      .is('notified_at', null)
+      .is(claim.column, null)
       .select('id')
     if (claimErr) throw claimErr
     if (!claimed || claimed.length === 0) return { sent: false, reason: 'already_told' }
@@ -160,7 +163,7 @@ export async function sendReturnCaseNotice(
     }))
   if (history.length > 0) await admin.from('notification_history').insert(history)
 
-  if (!unbanked) {
+  if (!caseRowClaim) {
     await admin
       .from('mercury_bank_return_notices')
       .update({ recipient_count: recipients.length, emails_sent: emailsSent, pushes_sent: pushesSent })

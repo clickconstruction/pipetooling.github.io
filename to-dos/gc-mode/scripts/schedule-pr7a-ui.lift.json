@@ -1,0 +1,36 @@
+{
+  "about": "The schedule's PR 7a (to-dos/gc-mode/mockups/schedule-pr7.md, cut in three; #5017, v2.4966): the chart, the Schedule tab's measures and Ask for the days, lifted to src/components/gc word for word with no caller yet. They were placed by the lane's own script (pr7a-lift.cjs: each declaration by name with its comment, the imports re-pointed to main), since lift-extract.cjs reads only .ts; lift-same.cjs reads a .tsx from since b4359b48d. `moves` lists what each entry placed (none of a whole file); lift-same reads the files themselves. The kernels are schedule-pr7a.lift.json. Not in LIFTS: no shape moved.",
+  "spikeDir": "src/components/gc",
+  "mainBase": "src/components/gc",
+  "pin": {
+    "main": "034f453f417703f79bc159fcd8365da6a5ffd3c6",
+    "spike": "b62bf900542d12e026ad21b24bc7bdf707890d34",
+    "about": "#5017 merged; the spike before its follow-up (spike/schedule-7a-follow)",
+    "known": {
+      "Measures": "exported now: the Schedule window (7b) draws it",
+      "LookAhead": "exported now: the Schedule window (7b) draws it",
+      "ScheduleWhy": "exported now: the Schedule window (7b) draws it",
+      "finishSentence": "exported now: the Schedule window (7b) words the paper's finish with it",
+      "GcGanttPrint": "the window starts below an iPhone's status bar: main's window-below-status-bar codemod, run on 7a's branch",
+      "GcScheduleExport": "the window starts below an iPhone's status bar: main's window-below-status-bar codemod, run on 7a's branch"
+    }
+  },
+  "files": [
+    { "from": "GcGantt.tsx", "to": "GcGantt.tsx" },
+    { "from": "GcGanttList.tsx", "to": "GcGanttList.tsx" },
+    { "from": "GcGanttPrint.tsx", "to": "GcGanttPrint.tsx" },
+    { "from": "GcScheduleExport.tsx", "to": "GcScheduleExport.tsx" },
+    { "from": "GcPeopleStrip.tsx", "to": "GcPeopleStrip.tsx" },
+    { "from": "GcPlaces.tsx", "to": "GcPlaces.tsx", "moves": ["GcCrowdedLane", "CrowdedCard", "AMBER"] },
+    { "from": "gcBuildingCss.ts", "to": "gcBuildingCss.ts" },
+    { "from": "GcAskForDays.tsx", "to": "GcAskForDays.tsx" },
+    { "from": "GcBuildingSchedule.tsx", "to": "GcScheduleMeasures.tsx", "moves": ["ScheduleWhy", "Measures", "finishSentence", "FinishMeasure", "Measure", "MARK_WORDS", "LookAhead", "InspectionChip"] },
+    { "from": "gcUi.tsx", "to": "gcUi.tsx", "append": true, "moves": ["Chip"] }
+  ],
+  "tests": [
+    { "from": "GcGantt.render.test.tsx", "to": "GcGantt.render.test.tsx" },
+    { "from": "GcGanttPrint.render.test.tsx", "to": "GcGanttPrint.render.test.tsx" },
+    { "from": "GcScheduleExport.render.test.tsx", "to": "GcScheduleExport.render.test.tsx" },
+    { "from": "GcPlaces.render.test.tsx", "to": "GcPlaces.render.test.tsx" }
+  ]
+}

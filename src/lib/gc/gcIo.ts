@@ -10,14 +10,27 @@ import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorH
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
+import { inviteAsks, type AskOutcome, type NewAsk } from './askEmail'
 import type { BoardRows } from './boardRows'
+import type { TradeEmailAnswer } from './tradeEmail'
 import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
-import { gcProjectFromRows, type GcProjectRows, type GcProjectView } from './projectRows'
+import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectView } from './projectRows'
 import type { DeclineReason, GcLostWhy, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
 import type { BillingRows, ContractLineRow, OwnerTermsRow } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
+import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
+import { sendGcTradeEmail } from './tradeEmailIo'
+import {
+  setEmailKey,
+  setEmailWords,
+  setSendRows,
+  type SetEmailCompany,
+  type SetEmailInvite,
+  type SetEmailRecipient,
+  type SetEmailResult,
+} from './setEmail'
 
 /** A customer as the window's pickers list it: the name, what kind of customer, one way to reach them. */
 export interface GcPickerCustomer {
@@ -135,21 +148,7 @@ export async function loadGcProjects(): Promise<GcProjectView[]> {
       exclusions: exclusionRows.filter((x) => mineIds.has(x.package_id)),
       sets: mySets,
       setItems: setItemRows.filter((i) => mySetIds.has(i.set_id)),
-      questions: questionRows
-        .filter((q) => q.project_id === gc.project_id)
-        .map((q) => ({
-          id: q.id,
-          package_id: q.package_id,
-          // The column lands with 20261007150000; a types file from before it reads it as absent.
-          asked_by_name: (q as { asked_by_name?: string | null }).asked_by_name ?? '',
-          text: q.text,
-          sheets: q.sheets ?? [],
-          asked_on: q.asked_on,
-          sent_to_architect_on: q.sent_to_architect_on,
-          answered_on: q.answered_on,
-          answer: q.answer ?? '',
-          in_set_id: q.in_set_id,
-        })),
+      questions: questionRows.filter((q) => q.project_id === gc.project_id).map(questionRowOf),
     }
     out.push(gcProjectFromRows(rows))
   }
@@ -182,6 +181,56 @@ export async function issuePlanSet(draft: IssuePlanSetDraft): Promise<string> {
   return id
 }
 
+// --- The set email (step 7) ---
+
+/**
+ * Who was asked on the project's trades, and each company's name and language: the Board's
+ * `gc_invites` and `gc_companies` (B1). Their policies are dev only until door 2, so for anyone
+ * else this reads nobody and no email goes out.
+ */
+export async function loadSetEmailParties(packageIds: string[]): Promise<{ invites: SetEmailInvite[]; companies: SetEmailCompany[] }> {
+  if (packageIds.length === 0) return { invites: [], companies: [] }
+  const invites = taken(await supabase.from('gc_invites').select('id, package_id, company_id, status').in('package_id', packageIds), 'load who was asked') ?? []
+  const ids = [...new Set(invites.map((i) => i.company_id))]
+  const companies = ids.length > 0 ? (taken(await supabase.from('gc_companies').select('id, name, lang').in('id', ids), 'load the companies') ?? []) : []
+  return {
+    invites: invites.map((i) => ({ id: i.id, packageId: i.package_id, companyId: i.company_id, status: i.status as SetEmailInvite['status'] })),
+    companies: companies.map((c) => ({ id: c.id, name: c.name, lang: c.lang === 'es' ? 'es' : 'en' })),
+  }
+}
+
+/**
+ * Email a set to each company, all at once, through the Portal lane's `gc-trade-email` (kind
+ * `plans`, one company a call, the same key for every company so a retry sends nothing twice),
+ * then record each one that went in `gc_plan_set_sends`. A company with no email on file is
+ * skipped, and a failed send is reported, never thrown: the set is already on the project.
+ */
+export async function sendSetEmails(input: {
+  setId: string
+  projectId: string
+  set: { label: string; project: string; note: string; sheets: string[]; quoteDueOn?: string | null }
+  recipients: SetEmailRecipient[]
+}): Promise<SetEmailResult[]> {
+  const setRow = taken(await supabase.from('gc_plan_sets').select('rev').eq('id', input.setId).single(), 'read the set') as { rev: number }
+  const key = setEmailKey(input.projectId, setRow.rev)
+  const results = await Promise.all(
+    input.recipients.map(async (r): Promise<SetEmailResult> => {
+      const lang = tradeMailLang(r.lang)
+      const words = setEmailWords(lang, input.set, r)
+      const answer = await sendGcTradeEmail({ companyId: r.companyId, kind: 'plans', key, projectId: input.projectId, lang, subject: words.subject, lines: words.lines })
+      if (!answer.ok) {
+        // Nobody at the company has an email for it: skipped, as the sender's own refusal says (call them).
+        if (answer.key === 'noEmail') return { companyId: r.companyId, outcome: 'no email' }
+        return { companyId: r.companyId, outcome: 'failed', error: gcTradeEmailRefusal(answer.key) }
+      }
+      return { companyId: r.companyId, outcome: 'sent', messageId: answer.messageId, emailSendLogId: answer.emailSendLogId, to: answer.to, already: answer.already }
+    }),
+  )
+  const rows = setSendRows(input.setId, input.recipients, results)
+  if (rows.length > 0) taken(await supabase.from('gc_plan_set_sends').upsert(rows, { onConflict: 'set_id,company_id' }).select('id'), 'record who got the set')
+  return results
+}
+
 // --- Questions about the plans (step 8) ---
 
 /** The office records a question a company asked by phone or email. The new question's id comes back. */
@@ -201,6 +250,17 @@ export async function sendQuestionToArchitect(questionId: string): Promise<{ to:
   const problem = await fnProblem(r, 'The question was not sent.')
   if (problem) throw new Error(problem)
   return { to: (r.data as { to: string }).to }
+}
+
+/**
+ * The companies an answer was emailed to (P3-b): added to the question's `answer_sent_to`, each once, so their
+ * portals show it. The office team writes the row under its policy, as it marks a question sent.
+ */
+export async function addAnswerSentTo(questionId: string, companyIds: string[]): Promise<void> {
+  if (companyIds.length === 0) return
+  const row = taken(await supabase.from('gc_plan_questions').select('answer_sent_to').eq('id', questionId).single(), 'read who has the answer') as { answer_sent_to: string[] | null } | null
+  const next = [...new Set([...(row?.answer_sent_to ?? []), ...companyIds])]
+  taken(await supabase.from('gc_plan_questions').update({ answer_sent_to: next }).eq('id', questionId).select('id').single(), 'record who has the answer')
 }
 
 /** The question went to the architect some other way (by phone, in a meeting): the office marks it sent. */
@@ -491,24 +551,36 @@ export async function declineGcAsk(inviteId: string, why: 'wont' | 'cant', reaso
   taken(await supabase.rpc('gc_office_decline', { p_invite_id: inviteId, p_why: why, p_reason: reason, p_note: note }), 'take them off the ask')
 }
 
-/** The line each new ask carries until the Portal's emails are in (P3): the office's own note, not a contact with the company. */
-export const ASK_NOT_SENT_NOTE = 'Asked to quote. The invitation email goes out once the portal can send it.'
-
 /**
  * Ask companies to quote a trade (the Board's B4-a): `gc_invite_companies` records each ask, skipping a
- * company already asked, then each new ask gets a note that its email waits. Nothing is emailed yet.
+ * company already asked. With `send` (a dev, `canSendGcTradeEmail`), each new ask's invitation goes out through
+ * `gc-trade-email` and the ask reads *Invitation emailed.* or the refusal's words; without it each ask carries
+ * a note that a dev sends the email (`inviteAsks`, askEmail.ts).
  */
-export async function askGcCompanies(packageId: string, companyIds: string[], byName: string, on: string): Promise<void> {
+export async function askGcCompanies(
+  packageId: string,
+  companyIds: string[],
+  byName: string,
+  on: string,
+  send: ((ask: NewAsk) => Promise<TradeEmailAnswer>) | null = null,
+): Promise<AskOutcome[]> {
   const made = taken(await supabase.rpc('gc_invite_companies', { p_package_id: packageId, p_company_ids: companyIds }), 'ask the companies') ?? []
-  if (made.length === 0) return
-  const asks = taken(await supabase.from('gc_invites').select('id, company_id').in('id', made), 'read the new asks')
-  taken(
-    await supabase
-      .from('gc_company_contacts')
-      .insert(asks.map((a) => ({ company_id: a.company_id, invite_id: a.id, contacted_on: on, by_name: byName, how: 'note', note: ASK_NOT_SENT_NOTE })))
-      .select('id'),
-    'note that the emails wait',
+  if (made.length === 0) return []
+  const rows = taken(await supabase.from('gc_invites').select('id, company_id').in('id', made), 'read the new asks')
+  const { outcomes, lines } = await inviteAsks(
+    rows.map((r) => ({ inviteId: r.id, companyId: r.company_id })),
+    send,
   )
+  if (lines.length > 0) {
+    taken(
+      await supabase
+        .from('gc_company_contacts')
+        .insert(lines.map((l) => ({ company_id: l.companyId, invite_id: l.inviteId, contacted_on: on, by_name: byName, how: l.how, note: l.note })))
+        .select('id'),
+      'note what each ask came to',
+    )
+  }
+  return outcomes
 }
 
 /** The company's language (the Board's B3-c): its portal opens in it and our emails to it go out in it. */

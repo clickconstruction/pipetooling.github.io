@@ -288,3 +288,106 @@ describe('v2.4328: the payer remembers', () => {
     expect(arPayerCameBackNote('Peter Garza', [c('g', 'Peter Garza', '2025-11-11T15:00:00Z')], '2026-10-01')).toBe('1 came back · Nov 2025')
   })
 })
+
+describe('arReturnCaseView — a card dispute or a failed bank debit on a Stripe bill (v2.4950)', () => {
+  const dispute = (sc: Partial<NonNullable<ArReturnCaseRow['stripe_case']>> = {}, over: Partial<ArReturnCaseRow> = {}): ArReturnCaseRow => ({
+    ...base,
+    mercury_transaction_id: 'case-dp1',
+    counterparty_name: 'Heron Construction',
+    amount: 500,
+    kind: 'card',
+    posted_at: null,
+    failed_at: '2026-09-28T15:00:00Z',
+    bank_reason: 'fraudulent',
+    source: 'stripe_dispute',
+    opened_at: '2026-09-28T15:00:05Z',
+    last_job: null,
+    recorded_payment: { payment_id: 'pay-1', job_id: 'job-878', job_number: '878', job_name: 'Take 5- Seguin', amount: 500, paid_on: '2026-09-24' },
+    ...over,
+    stripe_case: {
+      kind: 'dispute',
+      object_id: 'dp_1',
+      mode: 'test',
+      status: 'needs_response',
+      due_by: '2026-10-09T05:00:00Z',
+      lost_at: null,
+      lost_notified_at: null,
+      amount: 500,
+      invoice_id: 'inv-1',
+      invoice_sequence_order: 0,
+      invoice_status: 'paid',
+      job_id: 'job-878',
+      job_number: '878',
+      job_name: 'Take 5- Seguin',
+      payment_live: true,
+      ...sc,
+    },
+  })
+
+  it('open: paid by card, disputed with their reason, the job reads paid, answer it in Stripe by the due day', () => {
+    const v = arReturnCaseView({ row: dispute(), trail: [], todayYmd: TODAY })
+    expect(v.source).toBe('stripe_dispute')
+    expect(v.chip).toEqual({ text: 'card disputed', tone: 'red' })
+    expect(v.story.map((s) => `${s.day} ${s.text}`)).toEqual([
+      'Sep 24 $500 was paid by card on bill 1 of #878.',
+      'Sep 28 Heron Construction disputed it. They say they did not make the payment.',
+    ])
+    expect(v.stake).toEqual({ text: '#878 reads paid. Stripe holds the $500 while the dispute runs.', detail: null, jobId: 'job-878', tone: 'red' })
+    expect(v.next).toEqual({ kind: 'answer_dispute', sentence: 'Answer the dispute in Stripe by Oct 9.' })
+    expect(v.rowLine).toBe('card disputed · bill 1 on #878 · answer by 10/9')
+    expect(v.stripe).toEqual({ url: 'https://dashboard.stripe.com/test/disputes/dp_1', label: 'Open the dispute in Stripe' })
+    expect(v.promiseJob).toEqual({ jobId: 'job-878', label: '#878 Take 5- Seguin' })
+    expect(v.putBack).toBeNull()
+    expect(v.takeOff).toBeNull()
+    expect(v.recorded).toBeNull()
+    expect(v.watch).toBeNull()
+    expect(v.daysOpen).toBe(3)
+  })
+
+  it('lost: the money is gone, put the bill back, read back first', () => {
+    const v = arReturnCaseView({ row: dispute({ status: 'lost', lost_at: '2026-09-30T16:00:00Z' }), trail: [], todayYmd: TODAY })
+    expect(v.chip).toEqual({ text: 'dispute lost', tone: 'red' })
+    expect(v.story[v.story.length - 1]?.text).toBe('They won the dispute. Stripe keeps the money.')
+    expect(v.stake).toEqual({ text: '#878 reads paid. The $500 is gone.', detail: 'Put the bill back and it is billed again.', jobId: 'job-878', tone: 'red' })
+    expect(v.next).toEqual({ kind: 'put_back', sentence: 'The money is gone. Put the bill back, then bill Heron Construction again.' })
+    expect(v.rowLine).toBe('dispute lost · #878 reads paid')
+    expect(v.putBack).toEqual({
+      words: ['$500 comes off bill 1 on #878.', 'The bill goes back to be billed again, with a new Stripe bill.', '#878 owes the $500 again.'],
+      jobId: 'job-878',
+    })
+  })
+
+  it('lost with the payment already off the job: nothing to put back', () => {
+    expect(arReturnCaseView({ row: dispute({ lost_at: '2026-09-30T16:00:00Z', payment_live: false }), trail: [], todayYmd: TODAY }).putBack).toBeNull()
+  })
+
+  it('a failed bank debit: the bill is still open, Stripe\'s words, ask for another payment', () => {
+    const row = dispute(
+      { kind: 'debit_failed', object_id: 'pi_1', mode: 'live', status: 'failed', due_by: null, invoice_sequence_order: 2, invoice_status: 'billed', payment_live: false },
+      { source: 'stripe_debit', kind: 'bank debit', bank_reason: "The customer's account has insufficient funds.", recorded_payment: null },
+    )
+    const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
+    expect(v.source).toBe('stripe_debit')
+    expect(v.chip).toEqual({ text: 'bank payment failed', tone: 'amber' })
+    expect(v.story.map((s) => s.text)).toEqual(['A $500 bank payment on bill 3 of #878 did not go through.'])
+    expect(v.stake).toEqual({ text: 'Bill 3 on #878 is still open.', detail: "Stripe says: The customer's account has insufficient funds.", jobId: 'job-878', tone: 'amber' })
+    expect(v.next).toEqual({ kind: 'new_payment', sentence: 'Ask Heron Construction for another payment.' })
+    expect(v.rowLine).toBe('bank debit failed · bill 3 on #878')
+    expect(v.stripe).toEqual({ url: 'https://dashboard.stripe.com/payments/pi_1', label: 'Open the payment in Stripe' })
+  })
+
+  it('a promise after the dispute joins the story; no deposit is offered as its replacement', () => {
+    const v = arReturnCaseView({ row: dispute({}, { promise: { job_id: 'job-878', promised_date: '2026-10-05', said_by: 'Malachi', created_at: '2026-09-29T15:00:00Z' } }), trail: [], todayYmd: TODAY })
+    expect(v.story.map((s) => s.text)).toContain('Malachi said they pay by Oct 5.')
+    expect(arReplacementFor(v, [{ mercury_transaction_id: 'd1', counterparty_name: 'Heron Construction', amount: 500, posted_at: '2026-09-30T15:00:00Z', remaining_available: 500 }])).toBeNull()
+  })
+
+  it('every sentence follows the plain-words rules', () => {
+    const rows = [dispute(), dispute({ lost_at: '2026-09-30T16:00:00Z' }), dispute({ kind: 'debit_failed', object_id: 'pi_1', status: 'failed' }, { source: 'stripe_debit', bank_reason: 'Insufficient funds.', recorded_payment: null })]
+    for (const row of rows) {
+      const v = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
+      const text = [v.next.sentence, v.stake?.text, v.stake?.detail, ...v.story.map((s) => s.text), ...(v.putBack?.words ?? [])].filter(Boolean).join(' ')
+      expect(helpGuidePlainWordsFailures(`---\ntitle: x\n---\n${text}\n`)).toEqual([])
+    }
+  })
+})

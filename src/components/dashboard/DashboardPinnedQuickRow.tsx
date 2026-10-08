@@ -39,13 +39,16 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
-import { useGcBackCharges, useGcChangeRequests, useGcFollowUpNeeds, useGcScheduleMoves, useGcStaleSchedules } from '../../hooks/useGcFollowUpNeeds'
+import { useGcBackCharges, useGcChangeRequests, useGcScheduleMoves, useGcStaleSchedules } from '../../hooks/useGcFollowUpNeeds.proto'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
+import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { canOpenGcProjects } from '../../lib/gc/access'
+import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
@@ -484,14 +487,14 @@ export function DashboardPinnedQuickRow({
   // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
   const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
-  // GC mode design spike (the owner, 2026-10-04): GC Follow up on an assistant's Needs you.
-  const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
-  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
-  const gcChangeRequests = useGcChangeRequests(gcFollowUpEnabled)
-  const gcBackCharges = useGcBackCharges(gcFollowUpEnabled)
-  const gcStaleSchedules = useGcStaleSchedules(gcFollowUpEnabled)
+  // GC mode design spike (the owner, 2026-10-04): the prototype's GC lines on an assistant's Needs you.
+  // Follow up's own line is main's now (v2.4941, below); these four read the prototype until their lanes build them.
+  const gcProtoNeedsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || isAssistantLike(role))
+  const gcChangeRequests = useGcChangeRequests(gcProtoNeedsEnabled)
+  const gcBackCharges = useGcBackCharges(gcProtoNeedsEnabled)
+  const gcStaleSchedules = useGcStaleSchedules(gcProtoNeedsEnabled)
   // What waits on us on the jobs' schedules (the counts): its own line, out of the people count.
-  const gcScheduleMoves = useGcScheduleMoves(gcFollowUpEnabled)
+  const gcScheduleMoves = useGcScheduleMoves(gcProtoNeedsEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
@@ -509,6 +512,9 @@ export function DashboardPinnedQuickRow({
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
   // Price requests PR 4 (v2.3573): the same audience as the robot card — the people who price bids.
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
+  // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
+  const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
+  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
@@ -575,8 +581,6 @@ export function DashboardPinnedQuickRow({
     contractNudge,
     unpricedWorkOrdersEnabled,
     unpricedWorkOrders,
-    gcFollowUpEnabled,
-    gcFollowUp,
     gcChangeRequests,
     gcBackCharges,
     gcStaleSchedules,
@@ -593,6 +597,8 @@ export function DashboardPinnedQuickRow({
     priceMatrixReady,
     priceRequestsLateEnabled: priceMatrixEnabled,
     priceRequestsLate,
+    gcFollowUpEnabled,
+    gcFollowUp,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
     legalReviewEnabled,
@@ -760,8 +766,6 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages&contract=sent')
             } else if (item.key === 'work-orders-unpriced') {
               navigate('/jobs?tab=subs&wof=drafts')
-            } else if (item.key === 'gc-follow-up') {
-              navigate('/bids/gc?tab=followup')
             } else if (item.key === 'gc-change-requests') {
               navigate(`/bids/gc?project=${encodeURIComponent(gcChangeRequests?.projectId ?? '')}&ptab=owner`)
             } else if (item.key === 'gc-stale-schedules') {
@@ -804,6 +808,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'price-requests-late') {
               // Land on the bid's Pricing tab — the desk lists every request with Nudge; the table on Edit bid has the paste box.
               navigate(priceRequestsLate ? `/bids?tab=pricing&bidId=${priceRequestsLate.first.bidId}` : '/bids?tab=pricing')
+            } else if (item.key === 'gc-follow-up') {
+              navigate(GC_FOLLOW_UP_HREF)
             } else if (item.key === 'price-matrix-ready') {
               // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
               navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')

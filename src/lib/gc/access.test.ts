@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
-import { GC_MONEY_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from './access'
+import { GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from './access'
 
 describe('canOpenGcProjects', () => {
   it('opens for the office and estimators, as gc_office_team() does', () => {
@@ -19,23 +19,29 @@ describe('canOpenGcProjects', () => {
     expect(canOpenGcProjects(null)).toBe(false)
     expect(canOpenGcProjects(undefined)).toBe(false)
   })
+
+  it('names the same roles as the database’s gc_office_team(), so the two copies cannot drift (door 2)', () => {
+    expect([...GC_OFFICE_TEAM].sort()).toEqual(teamInSql('gc_office_team').sort())
+  })
 })
 
-/** The roles in the newest migration's `gc_money_team()`: the database's copy of who sees our number. */
-function moneyTeamInSql(): string[] {
+/** The roles the newest migration that defines `fn` names in it: the database's copy of a GC team. */
+function teamInSql(fn: 'gc_money_team' | 'gc_office_team'): string[] {
   const dir = join(process.cwd(), 'supabase', 'migrations')
+  const head = `FUNCTION public.${fn}()`
   const newest = readdirSync(dir)
     .filter((f) => f.endsWith('.sql'))
     .sort()
     .reverse()
     .map((f) => readFileSync(join(dir, f), 'utf8'))
-    .find((sql) => sql.includes('FUNCTION public.gc_money_team()'))
-  if (!newest) throw new Error('no migration defines gc_money_team()')
-  const body = newest.slice(newest.indexOf('FUNCTION public.gc_money_team()'))
-  const roles = /role IN \(([^)]*)\)/.exec(body)?.[1]
-  if (!roles) throw new Error('gc_money_team() names no roles')
+    .find((sql) => sql.includes(head))
+  if (!newest) throw new Error(`no migration defines ${fn}()`)
+  const body = newest.slice(newest.indexOf(head))
+  const roles = /role IN \(([^)]*)\)/.exec(body.slice(0, body.indexOf('$$;')))?.[1]
+  if (!roles) throw new Error(`${fn}() names no roles`)
   return roles.split(',').map((r) => r.trim().replace(/^'|'$/g, ''))
 }
+const moneyTeamInSql = () => teamInSql('gc_money_team')
 
 describe('canSeeGcMoney', () => {
   it('shows our number to dev, the leaders and the controller, as gc_money_team() does', () => {

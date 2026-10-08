@@ -1,13 +1,13 @@
 ---
 title: change our contract with the customer on a GC job
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, controller
 keywords: gc mode, change order, customer, contract, signed, declined, credit, days, price, fee, percent done
 order: 98
 ---
 When the work on a GC job changes, write a change order and send it to the customer to sign. A signed one changes their price.
 
-A change order is for a job we won. Each one gets the next number on the job. Once it goes to the customer, it keeps what it said. Only a dev sees the window while it is built.
+A change order is for a job we won. Each one gets the next number on the job. Once it goes to the customer, it keeps what it said. The owner, the leaders and the controller see the window.
 
 ## Write one
 

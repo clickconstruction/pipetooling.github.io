@@ -1,52 +1,29 @@
 /**
- * GC mode design spike: the schedule as a Gantt, Phase 1 (the owner, 2026-10-05: "start with phase
- * 1 … make this look great and be very informative"; `to-dos/gc-mode/GANTT_PLAN.md`, mock-up
- * `gantt-mockup.html`). A chart you can read at a glance: the links drawn, the chain that sets the
- * finish in red, held work striped, the plan at Start under a bar that moved, weekends and
- * holidays marked (both are worked), with zoom, three ways to group, groups that fold, and filters whose counts are the
- * summary. It draws; `gcGantt.ts` works everything out. Pressing a bar opens it in the tab's editor.
+ * GC mode, the real build, the schedule's PR 7a: the schedule as a Gantt: the links, the chain that
+ * sets the finish, held work, the plan at Start, weekends and holidays, zoom, groups and filters.
+ * It draws; `schedule/gantt.ts` works everything out. Moved word for word from the GC mode
+ * prototype (branch spike/gc-mode, `GcGantt.tsx`); the plan is
+ * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
-import { addDays, daysBetween, plannedPct, shortDate, weekdayDate, type MilestoneRow, type ScheduleItem } from '../../lib/gcMode/gcModel'
-import {
-  NO_FILTERS,
-  TIGHT_SPARE_DAYS,
-  ZOOM_PX,
-  ganttAxis,
-  ganttBars,
-  ganttCompanies,
-  ganttCounts,
-  ganttFilter,
-  ganttGroups,
-  ganttLinks,
-  ganttListGroups,
-  ganttNeighbors,
-  linkPath,
-  rowsInView,
-  lastFinishDay,
-  spareTail,
-  type GanttRowEntry,
-  type GanttBar,
-  type GanttFilters,
-  type GanttGroup,
-  type GanttGroupBy,
-  type GanttHold,
-  type GanttZoom,
-} from '../../lib/gcMode/gcGantt'
-import { waitKind, type WaitRow } from '../../lib/gcMode/gcScheduleWaits'
-import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gcMode/gcDaysLost'
-import { actualWords } from '../../lib/gcMode/gcActualDates'
-import { movedParts, partSpans, partStanding, type PartSpan } from '../../lib/gcMode/gcSplitBars'
+import { addDays } from '../../lib/gc/building'
+import { daysBetween, plannedPct, type MilestoneRow, type ScheduleItem } from '../../lib/gc/schedule/schedule'
+import { shortDate, weekdayDate } from '../../lib/gc/words'
+import { NO_FILTERS, TIGHT_SPARE_DAYS, ZOOM_PX, ganttAxis, ganttBars, ganttCompanies, ganttCounts, ganttFilter, ganttGroups, ganttLinks, ganttListGroups, ganttNeighbors, linkPath, rowsInView, lastFinishDay, spareTail, type GanttRowEntry, type GanttBar, type GanttFilters, type GanttGroup, type GanttGroupBy, type GanttHold, type GanttZoom } from '../../lib/gc/schedule/gantt'
+import { waitKind, type WaitRow } from '../../lib/gc/schedule/waits'
+import { lostDayTitle, lostDaysWords, type LostDay } from '../../lib/gc/schedule/daysLost'
+import { actualWords } from '../../lib/gc/schedule/actualDates'
+import { movedParts, partSpans, partStanding, type PartSpan } from '../../lib/gc/schedule/splitBars'
 import { Chip } from './gcUi'
 import { twoLines } from './gcBuildingCss'
 import { GcGanttList } from './GcGanttList'
 import { GcPeopleStrip } from './GcPeopleStrip'
 import { GcCrowdedLane } from './GcPlaces'
-import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gcMode/gcPlaces'
-import type { PeopleWeek } from '../../lib/gcMode/gcPeopleOnSite'
+import { TRADES_IN_ONE_PLACE, crowdedPlaces, type CrowdedWeek } from '../../lib/gc/schedule/places'
+import type { PeopleWeek } from '../../lib/gc/schedule/peopleOnSite'
 import { GcGanttPrint } from './GcGanttPrint'
 import { GcScheduleExport } from './GcScheduleExport'
-import type { GanttPrintJob } from '../../lib/gcMode/gcGanttPrint'
+import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
 
 const HEAD_H = 46
 const MS_H = 40

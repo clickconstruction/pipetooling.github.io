@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, banking label, rule match, reopen, bounced check, returned check, insufficient funds, stop payment, nsf, came back, new check, rejected check, never reached the bank, never deposited, take it off, stop payment case, chargeback, card dispute, dispute lost, put the bill back, failed bank payment, ach
 ---
 Money that lands in the bank is not done yet. Each deposit still has to be applied to the bill it pays. Then the job shows paid and nobody chases the money. You do that in **Accounts Receivable**. Open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -172,6 +172,14 @@ Mercury can refuse a check before it posts. It reads *There was an issue with th
 ### A check that was never deposited
 
 A check typed in by hand reads paid on its job the moment you save it. Sometimes the check never goes in. Ten days after it was typed in with no deposit linked, the app opens a case. The case reads *never deposited* and names the job that still reads paid. Find the check and deposit it. If it went in with other checks, link the payment to that deposit. Either way the case closes on its own. If it was paid another way, say so in the case. If it will not be paid, take the payment off the job from the case.
+
+### A card payment disputed, or a bank payment that failed
+
+A customer who paid a Stripe bill by card can dispute the charge with their bank. Stripe takes the money back while the dispute runs. The bill still reads paid. The app opens a case the moment Stripe says so. It reads *card disputed* and names the bill and their reason. Press {{button:blue|Open the dispute in Stripe}} and answer it there before the day the case names. When Stripe decides for us, the case closes on its own.
+
+If the customer wins, the case reads *dispute lost*. The money is gone, and the job still reads paid. Press {{button:red|Put the bill back}}. It shows what changes before anything moves. The payment comes off the job, and the job's history keeps who did it. The bill goes back to Ready to Bill. Bill the customer again from there, with a new Stripe bill.
+
+A bank payment through Stripe can fail days after the customer pressed Pay. The case reads *bank payment failed*. The bill is still open, but the customer may think it is paid. Ask them for another payment, and press **They said…** when they give a day. The case closes when the bill is paid or voided.
 
 ### You don't have to go looking
 

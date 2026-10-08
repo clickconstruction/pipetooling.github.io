@@ -22,6 +22,8 @@ import { parseCountsImportText } from '../../lib/bids/parseCountsImportText'
 import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidCellPast } from './BidCellPast'
+import { countCellKeys } from '../../lib/bids/bidCellHistory'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
@@ -1063,6 +1065,8 @@ export function BidsCountsTab({
                       {COUNT_UNITS.map((u) => <option key={u} value={u}>{COUNT_UNIT_LABEL[u]}</option>)}
                     </select>
                   </div>
+                  {/* Bid history (punch list #73, PR 3): the count's earlier values while Past values is on. */}
+                  <BidCellPast keys={countCellKeys(r.id, r.bid_version_id, r.fixture)} label={r.fixture} />
                 </td>
                 <td style={sheetCell}>{sheetEditCell(r, 'fixture', r.fixture, { ariaLabel: `Fixture name for ${r.fixture}` })}</td>
                 {showGroupTag ? (

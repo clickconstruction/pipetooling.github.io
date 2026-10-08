@@ -281,6 +281,16 @@ Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-enter
 
 Edit Job Bill tab — the payment lines under each bill and ③ Other money on the job (v2.4293; locked Stripe/Mercury rows, the payer from `mercury_transactions.counterparty_name`); Dashboard billing pipeline Applied/Open; `useDashboardFinancials` AR buckets, Quickfill `BilledAwaitingPaymentSection` and the `useBilledTotal` headline (all three = `lib/billing/billTruth.ts` since v2.2862); `HostedStripeBillPanel` paid-at fallback; Job Summary charges timeline (`src/lib/jobChargesTimeline.ts`); physical-invoice payment history; the job activity feed.
 
+## Billing-only jobs (v2.4958)
+
+`jobs_ledger.billing_only` marks a job that only carries bills: GC mode's billing job for a project we build (Owner Billing's O4a sets it). Its bills follow every rule on this page. The difference is the crew side:
+- clock sessions, schedule blocks and crew members on it are refused by trigger;
+- `search_jobs_ledger` leaves it out unless a caller passes `include_billing_only` (the money and office searches);
+- My Schedule's **+ Add job** never lists it;
+- the flag cannot be turned off.
+
+Its service type carries `service_types.billing_only` and stays out of the pickers. Migration `20261009130000_billing_only_jobs.sql`.
+
 ## System of record (the 2026-08-24 policy)
 
 The company migrated off HouseCall Pro; **this app is the system of record for all billing** — open money, bill dates, and payment dates. Written down after the Billing Truth Plan investigation (802 jobs, 5 measurable pay-speed samples) so the policy survives staff and sessions:

@@ -3,23 +3,34 @@
  * Render smoke for Find a check: the newest checks show before anything is
  * typed, a number or an amount finds the check and reads out where it sits
  * and how it got there, a miss says what else to try, and the sheet prints
- * or downloads for the period.
+ * (a PDF since v2.4913) or downloads for the period.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import GcFindCheckModal from './GcFindCheckModal'
 import type { GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 
-const io = vi.hoisted(() => ({ fetch: vi.fn(), fetchDev: vi.fn(), print: vi.fn((_html: string) => true), filed: vi.fn() }))
+const io = vi.hoisted(() => ({
+  fetch: vi.fn(),
+  fetchDev: vi.fn(),
+  /** What the PDF was built from: the name, the report, the day. */
+  pdf: vi.fn(async (..._args: unknown[]) => new Blob(['%PDF'], { type: 'application/pdf' })),
+  built: vi.fn(),
+  filed: vi.fn(),
+  how: vi.fn((): 'opened' | 'blocked' | 'failed' => 'opened'),
+}))
 vi.mock('../../lib/jobs/gcChecksAppliedIo', () => ({ fetchGcChecksInputs: io.fetch, fetchDevelopmentChecksInputs: io.fetchDev }))
-vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlPrintWindow: io.print }))
+vi.mock('../../lib/jobsDocuments/gcChecksAppliedPdf', () => ({ gcChecksSheetPdfBlob: io.pdf }))
 vi.mock('../../lib/sent/sentCopiesIo', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/sent/sentCopiesIo')>()
   return {
     ...actual,
-    printAndFile: (html: string, filing: Record<string, unknown>) => {
+    printPdfAndFile: async (build: () => Promise<{ blob: Blob; fileName: string }>, filing: Record<string, unknown>) => {
+      const how = io.how()
+      if (how !== 'opened') return how
+      io.built(await build())
       io.filed(filing)
-      return io.print(html)
+      return how
     },
   }
 })
@@ -107,21 +118,32 @@ describe('GcFindCheckModal', () => {
         },
       ],
     })
-    io.print.mockClear()
+    io.pdf.mockClear()
+    io.built.mockClear()
+    io.filed.mockClear()
     render(<GcFindCheckModal gcId="gc-1" gcName="Structura Builders" onClose={() => {}} />)
     expect(await screen.findByText(/The sheet: 2 payments since Sep 28, 2025/)).toBeTruthy()
 
+    // The sheet is a PDF (v2.4913): built from the period's report, named for the GC and the day, filed under the GC.
     fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
-    expect(io.print).toHaveBeenCalledTimes(1)
-    const html = io.print.mock.calls[0]![0]
-    expect(html).toContain('Structura Builders — where your checks were applied')
-    expect(html).toContain('Since Sep 28, 2025 · as of Sep 28, 2026')
-    expect(html).toContain('1 earlier payment is not on this sheet')
+    await waitFor(() => expect(io.filed).toHaveBeenCalledTimes(1))
+    expect(io.pdf.mock.calls[0]![0]).toBe('Structura Builders')
+    expect(io.pdf.mock.calls[0]![1]).toMatchObject({ sinceYmd: '2025-09-28', earlierCount: 1 })
+    expect(io.pdf.mock.calls[0]![2]).toEqual({ asOfYmd: '2026-09-28' })
+    expect(io.built.mock.calls[0]![0]).toMatchObject({ fileName: 'checks-applied_Structura-Builders_2026-09-28.pdf' })
+    expect(io.filed).toHaveBeenCalledWith(expect.objectContaining({ kind: 'gc_checks_applied', title: 'Checks applied for Structura Builders', customerId: 'gc-1' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'show all 3' }))
     expect(screen.getByText(/The sheet: 3 payments on record/)).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
-    expect(io.print.mock.calls[1]![0]).toContain('Every payment on record')
+    fireEvent.click(await screen.findByRole('button', { name: '🖨 Print the sheet' }))
+    await waitFor(() => expect(io.pdf).toHaveBeenCalledTimes(2))
+    expect(io.pdf.mock.calls[1]![1]).toMatchObject({ sinceYmd: null, earlierCount: 0 })
+
+    // A refused tab builds nothing and says how to allow it.
+    io.how.mockReturnValueOnce('blocked')
+    fireEvent.click(await screen.findByRole('button', { name: '🖨 Print the sheet' }))
+    expect(await screen.findByText(/The browser blocked the new tab/)).toBeTruthy()
+    expect(io.pdf).toHaveBeenCalledTimes(2)
 
     const createObjectURL = vi.fn(() => 'blob:sheet')
     const revokeObjectURL = vi.fn()
@@ -158,7 +180,7 @@ describe('GcFindCheckModal', () => {
     fireEvent.change(screen.getByLabelText('Check number, amount or the day it was received'), { target: { value: '7001' } })
     expect(screen.getByText(/Check #7001/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '🖨 Print the sheet' }))
-    expect(io.filed).toHaveBeenCalledWith(expect.objectContaining({ kind: 'gc_checks_applied', title: 'Checks applied for Sage Meadows', jobIds: ['oak', 'maple', 'elm'] }))
+    await waitFor(() => expect(io.filed).toHaveBeenCalledWith(expect.objectContaining({ kind: 'gc_checks_applied', title: 'Checks applied for Sage Meadows', jobIds: ['oak', 'maple', 'elm'] })))
     expect(io.filed.mock.calls[0]![0]).not.toHaveProperty('customerId')
   })
 

@@ -324,6 +324,8 @@ export type LienAffidavitJobFacts = {
   paymentsMade: number
   /** The claim set by hand (v2.3682): dollars off the unpaid balance the affidavit swears to. */
   claimAmountOff?: number
+  /** What the sent bills still owe (v2.4969, the desk's open_balance). Given, the sworn unpaid amount is this less the correction; absent, revenue − paymentsMade as before. */
+  openBalance?: number
   /** 'YYYY-MM' — the last month worked; the affidavit swears the work span. */
   lastMonth: string
   noticesRecorded: boolean
@@ -334,7 +336,7 @@ export type LienAffidavitJobFacts = {
 }
 
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
-  const unpaid = Math.max(0, f.revenue - f.paymentsMade - (f.claimAmountOff ?? 0))
+  const unpaid = Math.max(0, (f.openBalance ?? f.revenue - f.paymentsMade) - (f.claimAmountOff ?? 0))
   const monthEnd = /^\d{4}-\d{2}$/.test(f.lastMonth) ? `${f.lastMonth}-28` : ''
   return {
     county: f.county,

@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import type { PeopleHoursTeamsApi } from '../../hooks/usePeopleHoursTeams'
 import {
   getDaysInRange,
   HOURS_TAB_SECTION_CHEVRON,
@@ -21,49 +21,31 @@ export interface PeopleHoursTeamsProps {
   open: boolean
   onToggle: () => void
   canAccessPay: boolean
-  teamPeriodStart: string
-  setTeamPeriodStart: (v: string) => void
-  teamPeriodEnd: string
-  setTeamPeriodEnd: (v: string) => void
-  teamsFiltered: PeopleHoursTeam[]
-  setTeams: Dispatch<SetStateAction<PeopleHoursTeam[]>>
   showPeopleForMatrix: string[]
-  showMaxHoursTeams: boolean
-  setShowMaxHoursTeams: (v: boolean) => void
-  addTeam: () => void
-  updateTeamName: (teamId: string, name: string) => void
-  addTeamMember: (teamId: string, personName: string) => void
-  removeTeamMember: (teamId: string, personName: string) => void
-  deleteTeam: (teamId: string) => void
-  teamToDelete: { id: string; name: string } | null
-  setTeamToDelete: (v: { id: string; name: string } | null) => void
-  teamDeletingId: string | null
-  getCostForPersonDateTeams: (personName: string, workDate: string) => number
+  /** Everything the section reads and writes, as `usePeopleHoursTeams` returns it (#46 row 6, v2.4953). */
+  teams: PeopleHoursTeamsApi
 }
 
-export function PeopleHoursTeams({
-  open,
-  onToggle,
-  canAccessPay,
-  teamPeriodStart,
-  setTeamPeriodStart,
-  teamPeriodEnd,
-  setTeamPeriodEnd,
-  teamsFiltered,
-  setTeams,
-  showPeopleForMatrix,
-  showMaxHoursTeams,
-  setShowMaxHoursTeams,
-  addTeam,
-  updateTeamName,
-  addTeamMember,
-  removeTeamMember,
-  deleteTeam,
-  teamToDelete,
-  setTeamToDelete,
-  teamDeletingId,
-  getCostForPersonDateTeams,
-}: PeopleHoursTeamsProps) {
+export function PeopleHoursTeams({ open, onToggle, canAccessPay, showPeopleForMatrix, teams }: PeopleHoursTeamsProps) {
+  const {
+    teamPeriodStart,
+    setTeamPeriodStart,
+    teamPeriodEnd,
+    setTeamPeriodEnd,
+    teamsFiltered,
+    setTeams,
+    showMaxHoursTeams,
+    setShowMaxHoursTeams,
+    addTeam,
+    updateTeamName,
+    addTeamMember,
+    removeTeamMember,
+    deleteTeam,
+    teamToDelete,
+    setTeamToDelete,
+    teamDeletingId,
+    getCostForPersonDateTeams,
+  } = teams
   return (
     <>
       <section id="people-hours-teams" style={HOURS_TAB_SECTION_SHELL}>

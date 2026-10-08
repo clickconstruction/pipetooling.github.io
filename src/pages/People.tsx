@@ -66,7 +66,6 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { buildPayStubHtml, openPayStubWindow } from '../lib/peopleDocuments/buildPayStubHtml'
 import { PayStubViewModal } from '../components/pay/PayStubViewModal'
-import { withSupabaseRetry } from '../utils/errorHandling'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
 import { useCrewJobMap } from '../hooks/useCrewJobMap'
 import { usePayConfig } from '../hooks/usePayConfig'
@@ -99,6 +98,8 @@ import { summarizeStubDayBreakdown } from '../lib/officeJobRateSplit'
 import { generatePayStubRecord, type GeneratePayStubResult } from '../lib/pay/generatePayStub'
 import { fetchPayReportInputs } from '../lib/pay/payReportInputs'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
+import { usePeopleMergeDuplicates } from '../hooks/usePeopleMergeDuplicates'
+import PeopleMergeDuplicatesBanner from '../components/people/PeopleMergeDuplicatesBanner'
 import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -123,13 +124,8 @@ import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
-import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
-import {
-  buildJobBidLabelMapsFromClockRows,
-  collectPeopleHoursDaySessionsForScale,
-  scaleClosedSessionsToTargetHours,
-  toDayEditorSession,
-} from '../lib/peopleHoursProportionalScale'
+import { usePeopleHoursManualDraftEditor } from '../hooks/usePeopleHoursManualDraftEditor'
+import { PeopleHoursManualDraftEditor } from '../components/people/PeopleHoursManualDraftEditor'
 import { useTypedStamps } from '../hooks/useTypedStamps'
 import { needsSecondLook, typedStampsVersion } from '../lib/clock/typedHours'
 import {
@@ -150,7 +146,6 @@ import { PersonDeskPage } from '../components/personDesk/PersonDeskPage'
 import { useOptionalPersonDesk } from '../contexts/PersonDeskContext'
 import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovalsNudge'
-import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 /** The People page is the one caller that needs the App Activity gate resolved. */
@@ -350,8 +345,6 @@ export default function People() {
     peopleRosterRef,
     usersRef,
   })
-  const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
-  const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   /** Hire (v2.3701): the one form for a new person, opened from People → Users. */
   const [hireOpen, setHireOpen] = useState(false)
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
@@ -362,9 +355,8 @@ export default function People() {
     }
   }, [activeTab])
   const [reviewHoursModalOpen, setReviewHoursModalOpen] = useState(false)
-  /** Who is archived (#29): by id for the Hours grid, Teams (v2.4862), Offsets (v2.4865) and Contracts (v2.4867), by name for Review. */
+  /** Who is archived (#29), by the row's id first, then its name: the Hours grid, Teams (v2.4862), Offsets (v2.4865), Contracts (v2.4867) and Review (v2.4910). */
   const [archivedRoster, setArchivedRoster] = useState<ArchivedRoster>(NO_ARCHIVED_ROSTER)
-  const archivedUserNames = archivedRoster.names
   /** People spine (v2.3698): the roster view's verdict per pay row — who is a person. Null until loaded (no verdict). */
   const [payRoster, setPayRoster] = useState<PayRosterIndex | null>(null)
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
@@ -398,40 +390,13 @@ export default function People() {
   } | null>(null)
   // Bumped after a My-Time save so the Payroll ledger's upcoming-payroll data refetches.
   const [ledgerUpcomingRefreshTick, setLedgerUpcomingRefreshTick] = useState(0)
-  const [hoursManualDraftEditor, setHoursManualDraftEditor] = useState<{
-    subjectUserId: string
-    subjectDisplayName: string
-    dateStr: string
-    draftSessions: DayEditorSession[]
-    personName: string
-    jobLabels?: Record<string, string>
-    bidLabels?: Record<string, string>
-  } | null>(null)
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
   /** Live mirror of hoursDaysCorrect so usePeopleHoursData.saveHours can guard against locked days. */
   const hoursDaysCorrectRef = useRef(hoursDaysCorrect)
   hoursDaysCorrectRef.current = hoursDaysCorrect
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
-  const {
-    setTeams,
-    teamsFiltered,
-    teamPeriodStart,
-    setTeamPeriodStart,
-    teamPeriodEnd,
-    setTeamPeriodEnd,
-    showMaxHoursTeams,
-    setShowMaxHoursTeams,
-    teamToDelete,
-    setTeamToDelete,
-    teamDeletingId,
-    loadTeams,
-    addTeam,
-    updateTeamName,
-    addTeamMember,
-    removeTeamMember,
-    deleteTeam,
-    getCostForPersonDateTeams,
-  } = usePeopleHoursTeams({ canAccessPay, setError, archived: archivedRoster, payConfig, getCostForPersonDate })
+  const hoursTeams = usePeopleHoursTeams({ canAccessPay, setError, archived: archivedRoster, payConfig, getCostForPersonDate })
+  const { loadTeams } = hoursTeams
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -543,14 +508,8 @@ export default function People() {
     rejectedClockSessions,
     activeClockSessions,
     pendingApprovalClockSessions,
-    activeClockSessionsFiltered,
-    pendingApprovalClockSessionsFiltered,
-    approvedClockSessionsFiltered,
-    rejectedClockSessionsFiltered,
     hoursClockSessionsSearch,
     setHoursClockSessionsSearch,
-    hoursClockSessionsSearching,
-    noClockSessionsMatchSearch,
     loadPeopleHours,
     loadPendingClockSessions,
     loadApprovedClockSessions,
@@ -560,7 +519,6 @@ export default function People() {
   } = usePeopleHoursData({
     canAccessHours,
     canAccessPay,
-    prefixMap,
     peopleRosterRef,
     authUser,
     hoursDaysCorrectRef,
@@ -572,6 +530,28 @@ export default function People() {
     isDocVisible,
     peopleHoursClockRealtimeInFilter,
     realtimeCallbacksRef,
+  })
+  const { hoursManualDraftEditor, setHoursManualDraftEditor, openManualHoursDraftFromBlur } = usePeopleHoursManualDraftEditor({
+    users,
+    pendingClockSessions,
+    approvedClockSessions,
+    prefixMap,
+    saveHours,
+    showToast,
+    setHoursMyTimeEditor,
+  })
+  const { mergeDuplicates, mergingPersonName, handleMergeDuplicate, dropMergeDuplicate } = usePeopleMergeDuplicates({
+    enabled: activeTab === 'hours' && canAccessPay,
+    people,
+    users,
+    payConfig,
+    setError,
+    loadPayConfig,
+    afterMerge: () => {
+      if (activeTab === 'hours') {
+        loadPeopleHours(hoursDateStart, hoursDateEnd)
+      }
+    },
   })
   const {
     crewJobsByDatePerson,
@@ -1019,7 +999,7 @@ export default function People() {
           people.map((p) => ({ id: p.id, name: p.name, email: p.email })),
         )
         await loadPayConfig()
-        setMergeDuplicates((prev) => prev.filter((x) => x.personName !== invitedDup.personName))
+        dropMergeDuplicate(invitedDup.personName)
       } catch (mergeErr) {
         setError(mergeErr instanceof Error ? mergeErr.message : 'Merge failed')
       }
@@ -1031,35 +1011,6 @@ export default function People() {
     const p = inviteConfirm
     setInviteConfirm(null)
     inviteAsUser(p)
-  }
-
-  async function handleMergeDuplicate(dup: { personName: string; userDisplayName: string; email: string }) {
-    setMergingPersonName(dup.personName)
-    setError(null)
-    let userId: string | undefined
-    if (dup.email?.trim()) {
-      userId = users.find((u) => u.email?.toLowerCase() === dup.email?.toLowerCase())?.id
-    } else {
-      userId = users.find((u) => u.name?.trim() === dup.personName)?.id ?? users.find((u) => u.name?.trim() === dup.userDisplayName)?.id
-    }
-    try {
-      await mergePersonIntoUser(
-        dup.personName,
-        dup.userDisplayName,
-        payConfig,
-        userId,
-        people.map((p) => ({ id: p.id, name: p.name, email: p.email })),
-      )
-      await loadPayConfig()
-      setMergeDuplicates((prev) => prev.filter((x) => x.personName !== dup.personName))
-      if (activeTab === 'hours') {
-        loadPeopleHours(hoursDateStart, hoursDateEnd)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Merge failed')
-    } finally {
-      setMergingPersonName(null)
-    }
   }
 
   // v2.3702: the Users tab's Pay lens edits the pay-config map, which only the Hours / Payroll / Review
@@ -1223,15 +1174,6 @@ export default function People() {
   async function printPayStub(stub: PayStubRow) {
     openPayStubWindow(await buildPayStubViewHtml(stub), true)
   }
-
-  useEffect(() => {
-    if (activeTab === 'hours' && canAccessPay && Object.keys(payConfig).length > 0) {
-      const dups = findPersonUserDuplicates(people, users, payConfig)
-      setMergeDuplicates(dups)
-    } else {
-      setMergeDuplicates([])
-    }
-  }, [activeTab, payConfig, people, users])
 
   async function loadHoursDisplayOrder() {
     if (!canAccessHours && !canAccessPay) return
@@ -1483,65 +1425,6 @@ export default function People() {
       snap.periodStart <= snap.periodEnd
     ) {
       void loadDraftPayrollPendingApprovalsRef.current(snap.periodStart, snap.periodEnd)
-    }
-  }
-
-  /** Hours matrix blur: open My Time — proportional scale of existing closed sessions, else single draft. Open session → fetch modal + toast. */
-  function openManualHoursDraftFromBlur(personName: string, workDate: string, hoursDecimal: number) {
-    const u = users.find((x) => (x.name ?? '').trim() === personName.trim())
-    if (!u?.id) {
-      showToast(
-        'No user account matches this roster name — hours saved to the grid only. Link the name to open My Time next time.',
-        'error',
-      )
-      void saveHours(personName, workDate, hoursDecimal)
-      return
-    }
-    const dayRows = collectPeopleHoursDaySessionsForScale(
-      pendingClockSessions,
-      approvedClockSessions,
-      u.id,
-      workDate,
-    )
-    if (dayRows.some((r) => !r.clocked_out_at)) {
-      showToast(
-        'Close open clock sessions before scaling hours from the grid. Edit time is open with live sessions.',
-        'info',
-      )
-      setHoursMyTimeEditor({
-        subjectUserId: u.id,
-        subjectDisplayName: u.name?.trim() ?? personName,
-        dateStr: workDate,
-      })
-      return
-    }
-    try {
-      const mapped = dayRows.map(toDayEditorSession)
-      mapped.sort((a, b) => new Date(a.clocked_in_at).getTime() - new Date(b.clocked_in_at).getTime())
-      const scaled = scaleClosedSessionsToTargetHours(mapped, hoursDecimal)
-      if (scaled != null && scaled.length > 0) {
-        const { jobLabels, bidLabels } = buildJobBidLabelMapsFromClockRows(dayRows, prefixMap)
-        setHoursManualDraftEditor({
-          subjectUserId: u.id,
-          subjectDisplayName: u.name?.trim() ?? personName,
-          dateStr: workDate,
-          draftSessions: scaled,
-          personName,
-          jobLabels,
-          bidLabels,
-        })
-      } else {
-        const draft = buildPeopleHoursManualDraftSession(workDate, hoursDecimal)
-        setHoursManualDraftEditor({
-          subjectUserId: u.id,
-          subjectDisplayName: u.name?.trim() ?? personName,
-          dateStr: workDate,
-          draftSessions: [draft],
-          personName,
-        })
-      }
-    } catch {
-      showToast('Could not build draft session for that date.', 'error')
     }
   }
 
@@ -2609,17 +2492,11 @@ export default function People() {
             canAccessPay={canAccessPay}
             authUserId={authUser?.id}
             activeClockSessions={activeClockSessions}
-            activeClockSessionsFiltered={activeClockSessionsFiltered}
             pendingApprovalClockSessions={pendingApprovalClockSessions}
-            pendingApprovalClockSessionsFiltered={pendingApprovalClockSessionsFiltered}
             approvedClockSessions={approvedClockSessions}
-            approvedClockSessionsFiltered={approvedClockSessionsFiltered}
             rejectedClockSessions={rejectedClockSessions}
-            rejectedClockSessionsFiltered={rejectedClockSessionsFiltered}
             hoursClockSessionsSearch={hoursClockSessionsSearch}
             setHoursClockSessionsSearch={setHoursClockSessionsSearch}
-            hoursClockSessionsSearching={hoursClockSessionsSearching}
-            noClockSessionsMatchSearch={noClockSessionsMatchSearch}
             showSalariedWorkdaysHoursButton={showSalariedWorkdaysHoursButton}
             onOpenSalariedWorkdays={() => setSalariedWorkdaysModalOpen(true)}
             prefixMap={prefixMap}
@@ -2640,55 +2517,17 @@ export default function People() {
             <PeopleHoursDueSummaries
               open={hoursTabSectionsOpen.dueSummaries}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, dueSummaries: !p.dueSummaries }))}
-              teamsFiltered={teamsFiltered}
-              teamPeriodStart={teamPeriodStart}
-              teamPeriodEnd={teamPeriodEnd}
-              getCostForPersonDateTeams={getCostForPersonDateTeams}
+              teams={hoursTeams}
             />
             <PeopleHoursTeams
               open={hoursTabSectionsOpen.teams}
               onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, teams: !p.teams }))}
               canAccessPay={canAccessPay}
-              teamPeriodStart={teamPeriodStart}
-              setTeamPeriodStart={setTeamPeriodStart}
-              teamPeriodEnd={teamPeriodEnd}
-              setTeamPeriodEnd={setTeamPeriodEnd}
-              teamsFiltered={teamsFiltered}
-              setTeams={setTeams}
               showPeopleForMatrix={showPeopleForMatrix}
-              showMaxHoursTeams={showMaxHoursTeams}
-              setShowMaxHoursTeams={setShowMaxHoursTeams}
-              addTeam={addTeam}
-              updateTeamName={updateTeamName}
-              addTeamMember={addTeamMember}
-              removeTeamMember={removeTeamMember}
-              deleteTeam={deleteTeam}
-              teamToDelete={teamToDelete}
-              setTeamToDelete={setTeamToDelete}
-              teamDeletingId={teamDeletingId}
-              getCostForPersonDateTeams={getCostForPersonDateTeams}
+              teams={hoursTeams}
             />
-            {canAccessPay && mergeDuplicates.length > 0 && (
-            <section style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 4 }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontWeight: 600, color: 'var(--text-amber-800)' }}>
-                Found {mergeDuplicates.length} duplicate{mergeDuplicates.length !== 1 ? 's' : ''}: person name vs user. Merge to consolidate.
-              </p>
-              <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
-                {mergeDuplicates.map((dup) => (
-                  <li key={dup.personName} style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>{dup.personName} → {dup.userDisplayName}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleMergeDuplicate(dup)}
-                      disabled={mergingPersonName === dup.personName}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer' }}
-                    >
-                      {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            {canAccessPay && (
+              <PeopleMergeDuplicatesBanner duplicates={mergeDuplicates} mergingPersonName={mergingPersonName} onMerge={handleMergeDuplicate} />
             )}
             </>
           </div>
@@ -2778,7 +2617,7 @@ export default function People() {
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}
-          archivedUserNames={archivedUserNames}
+          archived={archivedRoster}
           payRoster={payRoster}
           authUser={authUser}
           isDev={isDev}
@@ -3097,104 +2936,13 @@ export default function People() {
         />
       )}
 
-      {hoursManualDraftEditor && (
-        <DashboardMyTimeDayEditorModal
-          dateStr={hoursManualDraftEditor.dateStr}
-          sessions={hoursManualDraftEditor.draftSessions}
-          subjectUserId={hoursManualDraftEditor.subjectUserId}
-          subjectDisplayName={hoursManualDraftEditor.subjectDisplayName}
-          jobLabels={hoursManualDraftEditor.jobLabels ?? {}}
-          bidLabels={hoursManualDraftEditor.bidLabels ?? {}}
-          peopleHoursGridProportionalSeed={hoursManualDraftEditor.draftSessions.some(
-            (s) => !isDraftPeopleHoursSessionId(s.id),
-          )}
-          allowNcnsFromMyTime={false}
-          onClose={() => setHoursManualDraftEditor(null)}
-          onSaved={() => {
-            setHoursManualDraftEditor((prev) => {
-              if (prev) {
-                const snap = {
-                  personName: prev.personName,
-                  dateStr: prev.dateStr,
-                  subjectUserId: prev.subjectUserId,
-                  draftSessions: prev.draftSessions,
-                }
-                void (async () => {
-                  // Draft-only path: clear manual row so max(0, pending clock) shows new session until approve.
-                  // Real sessions (e.g. proportional scale): sync people_hours to sum of approved closed sessions only;
-                  // pending stays out of people_hours — getHoursGridDisplayHours uses max(ph, pending sum).
-                  const hadOnlyDraft = snap.draftSessions.every((s) => isDraftPeopleHoursSessionId(s.id))
-                  if (hadOnlyDraft) {
-                    await saveHours(snap.personName, snap.dateStr, 0)
-                  } else {
-                    try {
-                      const data = await withSupabaseRetry(
-                        async () =>
-                          supabase
-                            .from('clock_sessions')
-                            .select('clocked_in_at, clocked_out_at, approved_at')
-                            .eq('user_id', snap.subjectUserId)
-                            .eq('work_date', snap.dateStr)
-                            .is('rejected_at', null)
-                            .is('revoked_at', null),
-                        'people hours sync after My Time manual blur save',
-                      )
-                      let approvedSum = 0
-                      for (const row of data ?? []) {
-                        const r = row as {
-                          clocked_in_at: string
-                          clocked_out_at: string | null
-                          approved_at: string | null
-                        }
-                        if (!r.clocked_out_at || !r.approved_at) continue
-                        const h =
-                          (new Date(r.clocked_out_at).getTime() - new Date(r.clocked_in_at).getTime()) /
-                          3_600_000
-                        approvedSum += Math.max(0, h)
-                      }
-                      await saveHours(snap.personName, snap.dateStr, approvedSum)
-                    } catch {
-                      await saveHours(snap.personName, snap.dateStr, 0)
-                    }
-                  }
-                  loadAllClockSessionsRef.current?.()
-                  loadPeopleHoursRef.current?.()
-                })()
-              } else {
-                loadAllClockSessionsRef.current?.()
-                loadPeopleHoursRef.current?.()
-              }
-              return null
-            })
-          }}
-          onLinkedSessionsUpdated={() => {
-            loadAllClockSessionsRef.current?.()
-            loadPeopleHoursRef.current?.()
-          }}
-          onPatchSeededSessionsJobBid={({ sessionId, job_ledger_id, bid_id }) => {
-            setHoursManualDraftEditor((prev) => {
-              if (!prev) return prev
-              return {
-                ...prev,
-                draftSessions: prev.draftSessions.map((s) =>
-                  s.id === sessionId ? { ...s, job_ledger_id, bid_id } : s,
-                ),
-              }
-            })
-          }}
-          onPatchSeededSessionsTimes={({ sessionId, clocked_in_at, clocked_out_at, work_date }) => {
-            setHoursManualDraftEditor((prev) => {
-              if (!prev) return prev
-              return {
-                ...prev,
-                draftSessions: prev.draftSessions.map((s) =>
-                  s.id === sessionId ? { ...s, clocked_in_at, clocked_out_at, work_date } : s,
-                ),
-              }
-            })
-          }}
-        />
-      )}
+      <PeopleHoursManualDraftEditor
+        hoursManualDraftEditor={hoursManualDraftEditor}
+        setHoursManualDraftEditor={setHoursManualDraftEditor}
+        saveHours={saveHours}
+        loadAllClockSessionsRef={loadAllClockSessionsRef}
+        loadPeopleHoursRef={loadPeopleHoursRef}
+      />
 
       {payStubViewModal && (
         <PayStubViewModal

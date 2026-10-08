@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { loadOpenReturnCases, sendReturnCaseNotice } from '../_shared/arReturnCaseNotify.ts'
-import { AR_UNBANKED_CHECK_DAYS } from '../_shared/bankReturnedDeposits.ts'
+import { AR_UNBANKED_CHECK_DAYS, arCaseNoticeDue } from '../_shared/bankReturnedDeposits.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
 /**
@@ -19,7 +19,8 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
  * 3. Tells the office once about every open case it has not heard about — a bank
  *    return the Banking page's Sync stored (that path sends nothing itself), the
  *    rejected and unbanked cases from steps 1 and 2, anything the webhook's own
- *    notice missed.
+ *    notice missed — the Mercury webhook's, or stripe-webhook's for a card dispute or a
+ *    failed bank debit (v2.4950), which is told again when the customer wins the dispute.
  *
  * Body: `{}`; `{ "dry_run": true }` opens nothing and sends nothing, and logs the
  * subject each case would get. Auth: `X-Cron-Secret` (or `cron_secret` in the body) =
@@ -73,7 +74,7 @@ serve(async (req) => {
     let told = 0
     let failed = 0
     for (const row of cases) {
-      if (row.notified_at) continue
+      if (!arCaseNoticeDue(row)) continue
       try {
         const res = await sendReturnCaseNotice(admin, row, { appOrigin, sendEmail: sendEmailViaResend, dryRun, log })
         if (res.sent) told += 1

@@ -1,15 +1,15 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the schedule's Gantt, Phase 1 (the owner, 2026-10-05; `to-dos/gc-mode/GANTT_PLAN.md`):
- * a bar for every activity not folded away, the links drawn, the filters with their counts, three
- * ways to group, and a press on a bar opens it.
+ * GC mode, the real build, the schedule's PR 7a: the chart's render tests, every one of them. Moved
+ * word for word from the GC mode prototype (branch spike/gc-mode, `GcGantt.render.test.tsx`); the
+ * plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcGantt } from './GcGantt'
-import { initialGcState } from '../../lib/gcMode/gcFixture'
-import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
-import { daysBetween, weekdayDate } from '../../lib/gcMode/gcModel'
+import { initialGcState } from '../../lib/gc/schedule/testState'
+import { scheduleMeasures, daysBetween } from '../../lib/gc/schedule/schedule'
+import { weekdayDate } from '../../lib/gc/words'
 
 afterEach(cleanup)
 

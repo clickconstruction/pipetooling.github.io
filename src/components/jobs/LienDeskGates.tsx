@@ -79,7 +79,7 @@ export default function LienDeskGates({
         </span>
       </div>
       )}
-      <div className="lienGatesGrid">
+      <div className="lienGatesGrid" data-count={gates.length}>
         {gates.map((g) => {
           const detail = details[g.key]
           const isActive = active === g.key

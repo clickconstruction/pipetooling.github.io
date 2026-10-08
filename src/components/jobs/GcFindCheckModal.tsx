@@ -4,8 +4,9 @@ import { buildGcChecksReport, checkAppliedSentence, checkHeadline, checkMoveWord
 import { fetchDevelopmentChecksInputs, fetchGcChecksInputs, type GcChecksInputs } from '../../lib/jobs/gcChecksAppliedIo'
 import { addDaysYmd } from '../../lib/emailSchedule/emailScheduleWeek'
 import { todayYmdChicago } from '../../lib/formatJobDetailModalDateYmd'
-import { printAndFile } from '../../lib/sent/sentCopiesIo'
-import { buildGcChecksAppliedCsv, buildGcChecksAppliedReportHtml, gcChecksCsvFileName } from '../../lib/jobsDocuments/gcChecksAppliedReport'
+import { printPdfAndFile } from '../../lib/sent/sentCopiesIo'
+import { buildGcChecksAppliedCsv, gcChecksCsvFileName, gcChecksPdfFileName } from '../../lib/jobsDocuments/gcChecksAppliedReport'
+import { gcChecksSheetPdfBlob } from '../../lib/jobsDocuments/gcChecksAppliedPdf'
 
 type Props = {
   /** The GC, or under byDevelopment the development (GC Review's grouping fields hold either). */
@@ -28,7 +29,7 @@ const headerButtonStyle = { font: 'inherit', fontSize: '0.75rem', fontWeight: 60
  * phone — "what did you put #48211 against?" Type the number, the amount or
  * the day; the answer is the check's current home, one line per job, then
  * the moves that got it there. Before anything is typed, the newest checks.
- * The sheet (v2.4050) prints or downloads the same facts for the period —
+ * The sheet (v2.4050; a PDF since v2.4913) prints or downloads the same facts for the period —
  * every payment, where it sits now, what moved, what is not yet on a bill,
  * and where each job stands.
  */
@@ -38,6 +39,7 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
   const [query, setQuery] = useState('')
   const [everything, setEverything] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  const [pdfBusy, setPdfBusy] = useState(false)
   const todayYmd = useMemo(() => todayYmdChicago(), [])
   const sinceYmd = everything ? null : addDaysYmd(todayYmd, -SHEET_DAYS)
 
@@ -63,12 +65,18 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
   const report = useMemo(() => (inputs ? buildGcChecksReport({ gcId: payerId, ...inputs }) : null), [payerId, inputs])
   const sheet = useMemo(() => (inputs ? buildGcChecksReport({ gcId: payerId, ...inputs, sinceYmd }) : null), [payerId, inputs, sinceYmd])
 
-  function printSheet() {
-    if (!sheet) return
+  async function printSheet() {
+    if (!sheet || pdfBusy) return
     // A print counts as a send (docs/SENT_COPIES.md): the checks sheet is filed under the GC, or a development's under its jobs.
     const where = byDevelopment ? { jobIds: (inputs?.jobs ?? []).map((j) => j.id) } : { customerId: gcId }
-    const ok = printAndFile(buildGcChecksAppliedReportHtml(gcName, sheet, { asOfYmd: todayYmd }), { kind: 'gc_checks_applied', title: `Checks applied for ${gcName}`, recipientName: gcName, ...where })
-    setNote(ok ? null : 'The browser blocked the print window — allow pop-ups for this site and try again.')
+    setPdfBusy(true)
+    const how = await printPdfAndFile(
+      async () => ({ blob: await gcChecksSheetPdfBlob(gcName, sheet, { asOfYmd: todayYmd }), fileName: gcChecksPdfFileName(gcName, todayYmd) }),
+      { kind: 'gc_checks_applied', title: `Checks applied for ${gcName}`, recipientName: gcName, ...where },
+      `Building the checks sheet for ${gcName}…`,
+    )
+    setPdfBusy(false)
+    setNote(how === 'blocked' ? 'The browser blocked the new tab — allow pop-ups for this site and try again.' : how === 'failed' ? 'Could not build the sheet. Try again.' : null)
   }
 
   function downloadCsv() {
@@ -151,8 +159,8 @@ export default function GcFindCheckModal({ gcId, gcName, byDevelopment = false, 
                   </>
                 ) : null}
               </span>
-              <button type="button" onClick={printSheet} title="Print the sheet — every payment in the period, where it sits now, what moved, what is not yet on a bill, and where each job stands" style={headerButtonStyle}>
-                🖨 Print the sheet
+              <button type="button" onClick={() => void printSheet()} disabled={pdfBusy} title="Print the sheet — a PDF of every payment in the period, where it sits now, what moved, what is not yet on a bill, and where each job stands" style={{ ...headerButtonStyle, cursor: pdfBusy ? 'wait' : 'pointer' }}>
+                {pdfBusy ? 'Building the sheet…' : '🖨 Print the sheet'}
               </button>
               <button type="button" onClick={downloadCsv} title="The same rows as a CSV, one per applied line, for the bookkeeper's spreadsheet" style={headerButtonStyle}>
                 CSV

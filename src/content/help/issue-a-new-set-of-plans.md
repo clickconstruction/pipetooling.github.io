@@ -31,8 +31,14 @@ The sheets and sections are read from the notes. Each one shows as changed, new,
 
 A line that read only from sheets the set takes out is left with nothing to read. Pick what it reads now, or leave it as it is.
 
+## Who hears it
+
+**Who hears it** lists each company asked to quote on this job. A company that said no is left out. One that quotes two trades is listed once. The ones whose trade the set changes come first, marked {{chip:yellow|it changes their trade}}. The others read {{chip:gray|for their records}}.
+
+Each company gets one email when the set goes on. The email says what came in and the sheets it names. If the set changes a company's trade, the email asks the company to confirm its quote or change it. Tick **Email them when the set goes on** to tell them. For now the box starts unticked, so a set goes on without telling anyone. Until the portal opens to the trades, only a dev sends these emails. Everyone else sees the list and **Emails to the companies go out once the portal opens.**
+
 ## Put it on the project
 
 1. Press {{button:blue|Issue}}.
 
-The set, its sheets and sections, the trades it brings and the lines it adds go on the project together. The link's sharing is checked first. No email goes out yet. Telling the trades comes with the company record.
+The set, its sheets and sections, the trades it brings and the lines it adds go on the project together. The link's sharing is checked first. Then each company in **Who hears it** gets its email. A company with no email on file is skipped. If an email does not go out, the window stays open. Press {{button:blue|Try again}}. A company already sent this set is never sent it twice.

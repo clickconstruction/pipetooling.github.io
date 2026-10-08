@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenGcProjects, canSeeGcMoney } from '../lib/gc/access'
+import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from '../lib/gc/access'
+import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
 import { recordNavClick } from '../lib/navClickTelemetry'
@@ -20,17 +21,18 @@ import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
-import { GcQuestionsWindow } from '../components/gc/GcQuestions'
+import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
 import { GcMoney } from '../components/gc/GcMoney'
 import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
-import { openQuestions } from '../lib/gc/questions'
+import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
+import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
+import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
-import { GcTradePortals } from '../components/gc/GcTradePortals'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
@@ -43,6 +45,7 @@ import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcC
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
+import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient, type SetEmailResult } from '../lib/gc/setEmail'
 import {
   addGcCompany,
   askGcCompanies,
@@ -84,6 +87,8 @@ import {
   setGcCompanyCoverage,
   setGcCompanyLanguage,
   vetGcCompany,
+  loadSetEmailParties,
+  sendSetEmails,
   type GcPickerCustomer,
   type GcTeamMember,
   loadGcBillingRows,
@@ -93,7 +98,7 @@ import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBoo
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { GcState, ScopeBookStore } from '../lib/gc/types'
-import { gcFocusFromSearch } from '../lib/gc/links'
+import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
   customers: GcPickerCustomer[]
@@ -142,6 +147,36 @@ export default function GcProjects() {
   const [questionProblem, setQuestionProblem] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
   const [issueProblem, setIssueProblem] = useState<string | null>(null)
+  /** Step 7: who was asked on the project in the new-plans window, read when it opens. */
+  const [setParties, setSetParties] = useState<{ invites: SetEmailInvite[]; companies: SetEmailCompany[] } | null>(null)
+  /** Step 7: a set that is on, while some of its emails did not go out. */
+  const [pendingSends, setPendingSends] = useState<{
+    setId: string
+    projectId: string
+    set: { label: string; project: string; note: string; sheets: string[]; quoteDueOn: string | null }
+    recipients: SetEmailRecipient[]
+    results: SetEmailResult[]
+  } | null>(null)
+  // A report belongs to the window it was made in: a window on another project, or none, starts clean.
+  useEffect(() => {
+    setPendingSends(null)
+    setSetParties(null)
+  }, [setProjectId])
+  useEffect(() => {
+    const packageIds = setProjectId ? (loaded?.projects.find((p) => p.id === setProjectId)?.trades.map((t) => t.id) ?? []) : []
+    if (packageIds.length === 0) return
+    let live = true
+    void loadSetEmailParties(packageIds)
+      .then((parties) => {
+        if (live) setSetParties(parties)
+      })
+      .catch(() => {
+        // Not readable for this role yet (the Board's tables are dev only until door 2): nobody hears.
+      })
+    return () => {
+      live = false
+    }
+  }, [setProjectId, loaded])
 
   const load = useCallback(async () => {
     try {
@@ -172,7 +207,7 @@ export default function GcProjects() {
     setLangs(Object.fromEntries(rows.companies.map((c) => [c.id, c.lang === 'es' ? 'es' : 'en'])))
   }
   useEffect(() => {
-    if (role !== 'dev' || !loaded || loaded.projects.length === 0) return
+    if (!canOpenGcProjects(role) || !loaded || loaded.projects.length === 0) return
     let live = true
     loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) })
       .then((rows) => {
@@ -189,7 +224,8 @@ export default function GcProjects() {
   }, [role, loaded, today])
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
-  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'portals' | 'money'>('board')
+  // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
+  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'money'>(() => gcViewFromSearch(params))
   const refreshBoard = async () => {
     if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) }))
   }
@@ -253,9 +289,9 @@ export default function GcProjects() {
       await reloadProjects()
     },
   })
-  // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for a dev.
+  // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for the GC office (door 2).
   const [companyId, setCompanyId] = useState<string | null>(null)
-  const companyOpener: CompanyOpener | null = role === 'dev' && board ? { openPartner: setCompanyId } : null
+  const companyOpener: CompanyOpener | null = canOpenGcProjects(role) && board ? { openPartner: setCompanyId } : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
@@ -287,7 +323,7 @@ export default function GcProjects() {
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
   const toCall = board ? followUpsToCall(board) : 0
-  const devPill = (view: 'board' | 'partners' | 'followUp' | 'portals' | 'money', label: string) => {
+  const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
     const on = devView === view
     return (
       <button
@@ -366,9 +402,10 @@ export default function GcProjects() {
   const [changeBusy, setChangeBusy] = useState<string | null>(null)
   const [changeProblem, setChangeProblem] = useState<string | null>(null)
   const loadChangeOrders = useCallback(async () => {
-    if (!board) return
+    // Change orders are the money team's (the Owner Billing door): nobody else reads them.
+    if (!board || !canSeeGcMoney(role)) return
     setChangeOrderRows(await loadGcChangeOrders(board.projects.map((p) => p.id)))
-  }, [board])
+  }, [board, role])
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
@@ -397,7 +434,7 @@ export default function GcProjects() {
   const [moneyProblem, setMoneyProblem] = useState<string | null>(null)
   const ourIds = useMemo(() => (board ? board.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building').map((p) => p.id) : []), [board])
   useEffect(() => {
-    if (devView !== 'money' || !board) return
+    if (devView !== 'money' || !board || !canSeeGcMoney(role)) return
     let live = true
     setMoneyProblem(null)
     loadGcBillingRows(ourIds)
@@ -410,7 +447,7 @@ export default function GcProjects() {
     return () => {
       live = false
     }
-  }, [devView, board, ourIds])
+  }, [devView, board, ourIds, role])
   const moneyState = useMemo(() => (boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null), [boardWithChanges, moneyRows, ourIds])
 
   if (authLoading) return null
@@ -442,6 +479,41 @@ export default function GcProjects() {
     else next.delete('questions')
     setParams(next, { replace: true })
     setQuestionProblem(null)
+  }
+  /**
+   * Who hears an answer by email (the Portal lane's P3-b): the companies on the question's trade from the board's
+   * company record, which only a dev loads. Without it the answer is recorded and carried, and no email goes.
+   */
+  const answerReach: AnswerReach | null =
+    board && questionsProject
+      ? {
+          canSend: canSendGcTradeEmail(role),
+          recipients: (packageId) => answerRecipients(board, questionsProject.id, packageId),
+          companyName: (id) => board.partners.find((p) => p.id === id)?.company ?? null,
+        }
+      : null
+  /** An answer to each company ticked, in its language; the window reloads either way, and names any it did not reach. */
+  const emailAnswer = async (questionId: string, answer: string, to: string[]) => {
+    const project = questionsProject
+    if (!project || to.length === 0) return
+    const q: PlanQuestionView | undefined = project.questions.find((x) => x.id === questionId)
+    const trade = project.trades.find((t) => t.id === q?.packageId)?.trade ?? 'the job'
+    const setLabel = q?.inSetId ? (project.planSets.find((s) => s.id === q.inSetId)?.label ?? null) : null
+    const r = await emailTheAnswer({
+      projectId: project.id,
+      questionId,
+      to: to.map((companyId) => ({ companyId, company: answerReach?.companyName(companyId) ?? 'A company', lang: tradeMailLang(langs[companyId]) })),
+      email: (lang) => answerEmail({ project: project.name, trade, question: q?.text ?? '', answer, setLabel }, lang),
+    })
+    const words = answerSentWords(
+      r.sent.map((x) => x.company),
+      r.refused,
+    )
+    if (words.done) showToast(words.done, 'success')
+    if (words.problem) {
+      await load()
+      throw new Error(words.problem)
+    }
   }
   /** A question write: run it, reload, and say the problem in the window if there is one. */
   const questionWrite = (id: string | null, work: Promise<unknown>, failed: string) => {
@@ -498,19 +570,17 @@ export default function GcProjects() {
       </div>
 
       {loadProblem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadProblem}</div>}
-      {role === 'dev' && loaded && loaded.projects.length > 0 && (
+      {/* Door 2: the Board for the GC office. Each company's portal link is in its window (Their portal), a dev's until the trade wave. */}
+      {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'portals' ? 'Trade portals' : devView === 'money' ? 'Money' : 'Follow up'}</h2>
-            <Chip tone="grey" title="Only a dev sees the board, Trade partners, Follow up, Trade portals and Money while they are built. Everyone else sees the projects below.">
-              Devs only
-            </Chip>
-            <div role="group" aria-label="Project Board, Trade partners, Follow up, Trade portals or Money" style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
-              {devPill('portals', 'Trade portals')}
-              {devPill('money', 'Money')}
+              {/* Money is the money team's (the Owner Billing door). */}
+              {canSeeGcMoney(role) && devPill('money', 'Money')}
             </div>
           </div>
           {board ? (
@@ -525,9 +595,7 @@ export default function GcProjects() {
               />
             ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
-            ) : devView === 'portals' ? (
-              <GcTradePortals state={board} />
-            ) : devView === 'money' ? (
+            ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <GcMoney state={moneyState} />
               ) : moneyProblem ? (
@@ -554,8 +622,9 @@ export default function GcProjects() {
         const tour = (anchor: string) => (cardIndex === 0 ? anchor : undefined)
         const gaps = scopeGaps(p.trades.map((t) => ({ trade: t.trade, scope: t.scope.map((s) => s.label), excludes: t.excludes })))
         const newest = p.planSets[p.planSets.length - 1]
-        // The board's reading of this project, for a dev while it is built (B5-c's outcome and Our number).
-        const boardProject = role === 'dev' ? board?.projects.find((x) => x.id === p.id) : undefined
+        // The board's reading of this project, for the GC office since door 2 (B5-c's outcome strip, B5-d's bid
+        // tabs); Our number stays the money team's.
+        const boardProject = canOpenGcProjects(role) ? board?.projects.find((x) => x.id === p.id) : undefined
         const showNumber = boardProject && canSeeGcMoney(role)
         const tabs = boardProject ? boardProject.packages.filter(packageHasTab).length : 0
         return (
@@ -576,7 +645,7 @@ export default function GcProjects() {
                   A new set of plans came in
                 </Btn>
               )}
-              {boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
                   {(() => {
                     const count = changeOrderRows.filter((r) => r.project_id === p.id).length
@@ -691,7 +760,7 @@ export default function GcProjects() {
                     ))}
                   </ul>
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
-                  {role === 'dev' && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
+                  {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
               ))}
             </div>
@@ -728,7 +797,8 @@ export default function GcProjects() {
             await refreshBoard()
           }}
           onClose={() => setCompanyId(null)}
-          portal={<GcTheirPortal companyId={openCompany.id} />}
+          // Their portal stays a dev's until the trade wave: its links' table is dev only (door 2).
+          portal={role === 'dev' ? <GcTheirPortal companyId={openCompany.id} /> : undefined}
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)
@@ -746,15 +816,24 @@ export default function GcProjects() {
           packageId={asking.packageId}
           {...(asking.tick ? { tick: asking.tick } : {})}
           langs={langs}
-          onAsk={async (companyIds) => {
-            await askGcCompanies(asking.packageId, companyIds, profileName ?? '', today)
+          emails={canSendGcTradeEmail(role)}
+          onAsk={async (companyIds, email) => {
+            // A dev's press with the window's tick on emails each new ask its invitation (P3's sender); otherwise the asks are saved.
+            const send = email && canSendGcTradeEmail(role)
+              ? async (ask: NewAsk) => {
+                  const req = inviteEmailRequest(board, asking.projectId, asking.packageId, ask, tradeMailLang(langs[ask.companyId]))
+                  return req ? sendGcTradeEmail(req) : { ok: false as const, key: 'notFound' as const, detail: null }
+                }
+              : null
+            const outcomes = await askGcCompanies(asking.packageId, companyIds, profileName ?? '', today, send)
             await refreshBoard()
+            return outcomes
           }}
           onClose={() => setAsking(null)}
         />
       )}
 
-      {changesProject && boardWithChanges && (
+      {canSeeGcMoney(role) && changesProject && boardWithChanges && (
         <GcChangeOrdersWindow
           state={boardWithChanges}
           project={changesProject}
@@ -779,6 +858,7 @@ export default function GcProjects() {
           today={today}
           busy={questionBusy}
           problem={questionProblem}
+          answerReach={answerReach}
           onClose={() => setQuestionsWindow(null)}
           writes={{
             onRecord: (q) => questionWrite(null, recordQuestion({ projectId: questionsProject.id, ...q }), 'The question was not recorded.'),
@@ -789,7 +869,16 @@ export default function GcProjects() {
                 'The question was not sent.',
               ),
             onMarkSent: (id) => questionWrite(id, markQuestionSent(id, today), 'The question was not marked sent.'),
-            onAnswer: (id, answer) => questionWrite(id, answerQuestion(id, answer), 'The answer was not recorded.'),
+            onAnswer: (id, answer, to) =>
+              questionWrite(
+                id,
+                answerQuestion(id, answer).then(() => emailAnswer(id, answer, to)),
+                to.length > 0 ? 'The answer was not sent.' : 'The answer was not recorded.',
+              ),
+            onSendAnswer: (id, to) => {
+              const answer = questionsProject.questions.find((x) => x.id === id)?.answer ?? ''
+              questionWrite(id, emailAnswer(id, answer, to), 'The answer was not sent.')
+            },
           }}
         />
       )}
@@ -802,8 +891,28 @@ export default function GcProjects() {
           today={today}
           issuing={issuing}
           problem={issueProblem}
+          parties={setParties}
+          canSend={canSendGcTradeEmail(role)}
+          sendReport={pendingSends ? { summary: setEmailSummary(pendingSends.results), failed: pendingSends.results.filter((r) => r.outcome === 'failed').length } : null}
+          onRetrySends={() => {
+            if (!pendingSends) return
+            const again = pendingSends.recipients.filter((r) => pendingSends.results.some((x) => x.companyId === r.companyId && x.outcome === 'failed'))
+            setIssuing(true)
+            void sendSetEmails({ setId: pendingSends.setId, projectId: pendingSends.projectId, set: pendingSends.set, recipients: again })
+              .then((retried) => {
+                const results = pendingSends.results.map((r) => retried.find((x) => x.companyId === r.companyId) ?? r)
+                if (results.some((r) => r.outcome === 'failed')) setPendingSends({ ...pendingSends, results })
+                else {
+                  setPendingSends(null)
+                  setSetWindow(null)
+                  showToast(setEmailSummary(results), 'success')
+                }
+              })
+              .catch((e) => showToast(formatErrorMessage(e, 'The emails did not go out.'), 'error'))
+              .finally(() => setIssuing(false))
+          }}
           onClose={() => setSetWindow(null)}
-          onIssue={(draft) => {
+          onIssue={(draft, emailTo) => {
             setIssuing(true)
             setIssueProblem(null)
             void (async () => {
@@ -817,10 +926,18 @@ export default function GcProjects() {
                   drive = { url: drive.url, access: null, checkedOn: null }
                 }
               }
-              await issuePlanSet({ ...draft, ...(drive ? { drive } : {}) })
+              const setId = await issuePlanSet({ ...draft, ...(drive ? { drive } : {}) })
+              // Step 7: the set is on; now each company asked on the job hears, once.
+              let results: SetEmailResult[] = []
+              const set = { label: draft.label, project: setProject.name, note: draft.note, sheets: draft.sheets, quoteDueOn: questionsCloseOn(setProject) }
+              if (emailTo.length > 0) results = await sendSetEmails({ setId, projectId: setProject.id, set, recipients: emailTo })
               await load()
+              if (results.some((r) => r.outcome === 'failed')) {
+                setPendingSends({ setId, projectId: setProject.id, set, recipients: emailTo, results })
+                return
+              }
               setSetWindow(null)
-              showToast(`${draft.label} is on ${setProject.name}.`, 'success')
+              showToast(`${draft.label} is on ${setProject.name}.${results.length > 0 ? ` ${setEmailSummary(results)}` : ''}`, 'success')
             })()
               .catch((e) => setIssueProblem(formatErrorMessage(e, 'The set was not put on the project.')))
               .finally(() => setIssuing(false))
