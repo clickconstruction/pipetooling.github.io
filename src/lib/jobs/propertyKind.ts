@@ -12,16 +12,16 @@ export function normalizePropertyKind(raw: string | null | undefined): PropertyK
   return raw === 'residential' || raw === 'non_residential' ? raw : ''
 }
 
-/** The lien screens say "commercial"; the customer's property sheet says "Non-residential". */
+/** Every screen says "commercial" (the owner's call of 2026-10-09): the lien screens in lower case, the property sheet and Edit Job capitalized. */
 export function propertyKindWords(kind: PropertyKind, voice: 'lien' | 'sheet' = 'lien'): string {
   if (kind === 'residential') return voice === 'lien' ? 'residential' : 'Residential'
-  if (kind === 'non_residential') return voice === 'lien' ? 'commercial' : 'Non-residential'
+  if (kind === 'non_residential') return voice === 'lien' ? 'commercial' : 'Commercial'
   return voice === 'lien' ? 'kind unknown' : 'kind not set'
 }
 
 export const PROPERTY_KIND_OPTIONS: ReadonlyArray<{ kind: Exclude<PropertyKind, ''>; lien: string; sheet: string }> = [
   { kind: 'residential', lien: 'Residential', sheet: 'Residential' },
-  { kind: 'non_residential', lien: 'Commercial', sheet: 'Non-residential' },
+  { kind: 'non_residential', lien: 'Commercial', sheet: 'Commercial' },
 ]
 
 /** What a pick writes: a non-residential property cannot be a homestead. */

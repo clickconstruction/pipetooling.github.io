@@ -3,9 +3,10 @@ import { PROPERTY_KIND_OPTIONS, type PropertyKind } from '../../lib/jobs/propert
 
 /**
  * Residential | Commercial — the property's kind as a two-part switch (v2.3667).
- * Amber while unanswered, the picked half filled once it is. `voice` picks each
- * screen's own word: the lien screens say "Commercial", the property sheet and
- * Edit Job say "Non-residential". Picking the pressed half again clears it only
+ * Amber while unanswered, the picked half filled once it is. Every screen says
+ * "Commercial" (the owner's call of 2026-10-09; the property sheet and Edit Job
+ * said "Non-residential" until then); `voice` still picks each screen's case and
+ * its words for an unset kind. Picking the pressed half again clears it only
  * where `allowClear` says the screen offers that.
  */
 type Props = {

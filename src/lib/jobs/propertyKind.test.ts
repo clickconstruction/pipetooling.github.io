@@ -8,7 +8,7 @@ describe('propertyKind', () => {
 
   it('speaks each screen’s word', () => {
     expect([propertyKindWords('residential'), propertyKindWords('non_residential'), propertyKindWords('')]).toEqual(['residential', 'commercial', 'kind unknown'])
-    expect([propertyKindWords('residential', 'sheet'), propertyKindWords('non_residential', 'sheet'), propertyKindWords('', 'sheet')]).toEqual(['Residential', 'Non-residential', 'kind not set'])
+    expect([propertyKindWords('residential', 'sheet'), propertyKindWords('non_residential', 'sheet'), propertyKindWords('', 'sheet')]).toEqual(['Residential', 'Commercial', 'kind not set'])
   })
 
   it('a non-residential pick clears the homestead; residential leaves it alone', () => {
