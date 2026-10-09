@@ -30,7 +30,7 @@ The row moves into the **Uncollectible** band at the bottom of Collections. A re
 - The job leaves the contract sweep. It also leaves the dev's count of Collections accounts awaiting review.
 - The bill's Stripe invoice is marked uncollectible too. The pay link stops asking.
 - Nothing is deleted and no bill is rewritten. The job's activity thread records who marked it, when and why.
-- The next time someone opens a new job for that customer, the job form shows a nudge. It asks whether to set the customer's payment terms to Deposit required.
+- The next time someone opens a new job for that customer, the job form shows a nudge. It asks whether to set the customer's payment terms to Deposit required. A GC counts too when the job billed the GC. Picking that GC on a new job or a new bid shows the same nudge.
 
 ## If the money turns up
 
