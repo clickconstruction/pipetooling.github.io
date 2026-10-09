@@ -8,8 +8,8 @@ import type { JobPaymentEvent } from '../lib/jobs/jobPaymentMove'
 const db = supabase as unknown as SupabaseClient
 
 /**
- * The move events touching one job (left it or arrived on it), newest first, with the other
- * job's number and name so the trace line can say where. Fail-soft: a client ahead of the
+ * The payment events touching one job (left it, arrived on it or were removed from it), newest
+ * first, with the other job's number and name so the trace line can say where. Fail-soft: a client ahead of the
  * migration reads no events and no error. `reload` after a move.
  */
 export function useJobPaymentTrace(jobId: string | null, refetchKey?: unknown): {
@@ -31,7 +31,7 @@ export function useJobPaymentTrace(jobId: string | null, refetchKey?: unknown): 
       try {
         const { data, error } = await db
           .from('jobs_ledger_payment_events')
-          .select('id, kind, payment_id, from_job_id, to_job_id, amount, paid_on, reason, actor_name, created_at')
+          .select('id, kind, payment_id, from_job_id, to_job_id, invoice_id, amount, paid_on, reason, actor_name, created_at')
           .or(`from_job_id.eq.${jobId},to_job_id.eq.${jobId}`)
           .order('created_at', { ascending: false })
           .limit(50)

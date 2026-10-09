@@ -128,7 +128,8 @@ export function JobFormPaymentsTable({
   requestCheckDidNotClear,
   requestApplyToStripe,
 }: JobFormPaymentsTableProps) {
-  // v2.3576: the grey trace lines under the list — what left this job and what arrived.
+  // v2.3576: the grey trace lines under the list — what left this job and what arrived;
+  // v2.5008: a payment moved here and later removed says so, indented under its arrival.
   const trace = useJobPaymentTrace(editing?.id ?? null, editing)
   const traceLines = editing ? jobPaymentTraceLines(trace.events, editing.id, trace.labelFor, (n) => `$${formatCurrency(n)}`) : []
   const actions: PaymentLineActions = {
@@ -437,8 +438,8 @@ export function JobFormPaymentsTable({
       {traceLines.length > 0 ? (
         <div style={{ margin: '0.35rem 0 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {traceLines.map((l) => (
-            <div key={l.id} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }} title="From the job's payment trace (jobs_ledger_payment_events)">
-              {l.direction === 'out' ? '↗ ' : '↙ '}{l.text}
+            <div key={l.id} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', paddingLeft: l.direction === 'removed' ? '1rem' : undefined }} title="From the job's payment trace (jobs_ledger_payment_events)">
+              {l.direction === 'out' ? '↗ ' : l.direction === 'in' ? '↙ ' : '✕ '}{l.text}
             </div>
           ))}
         </div>

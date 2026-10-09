@@ -14,7 +14,10 @@ import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 vi.mock('../../hooks/useAuth', async () => useAuthModuleMock())
-vi.mock('../../hooks/useJobPaymentTrace', () => ({ useJobPaymentTrace: () => ({ events: [], labelFor: () => null }) }))
+const trace = vi.hoisted(() => ({ events: [] as unknown[], labels: {} as Record<string, string> }))
+vi.mock('../../hooks/useJobPaymentTrace', () => ({
+  useJobPaymentTrace: () => ({ events: trace.events, labelFor: (id: string) => trace.labels[id] ?? 'another job', reload: () => {} }),
+}))
 
 function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
   return {
@@ -224,5 +227,25 @@ describe('JobFormPaymentsTable — Move to job… lives in the ⋯ menu (v2.3576
     renderTable([paymentRow({ id: 'draft-1', amount: 100 })], { persisted: new Set() })
     const draftMenu = openRowMenu('$100.00')
     expect(draftMenu.textContent).not.toContain('Move to job…')
+  })
+})
+
+describe('JobFormPaymentsTable — a payment moved here and later removed (v2.5008)', () => {
+  it("J907's shape: the removed line sits indented right under its moved-here line and never says unlinked", () => {
+    trace.labels = { j904: 'J904 · ZZ TEST held check A' }
+    trace.events = [
+      { id: 'r1', kind: 'removed', payment_id: 'p9', from_job_id: 'j907', to_job_id: null, invoice_id: null, amount: 1, paid_on: '2026-10-08', reason: 'unlinked', actor_name: 'Robert', created_at: '2026-10-08T15:05:00Z' },
+      { id: 'm1', kind: 'moved', payment_id: 'p9', from_job_id: 'j904', to_job_id: 'j907', invoice_id: null, amount: 1, paid_on: '2026-10-08', reason: 'wrong job', actor_name: 'Robert', created_at: '2026-10-08T15:00:00Z' },
+    ]
+    try {
+      renderTable([], { editing: { id: 'j907', invoices: [] } as unknown as JobWithDetails })
+      const lines = screen.getAllByTitle("From the job's payment trace (jobs_ledger_payment_events)")
+      expect(lines.map((l) => l.textContent)).toEqual(['↙ $1.00 moved here from J904 · ZZ TEST held check A · Robert · wrong job', '✕ $1.00 removed · Robert'])
+      expect(lines[0]!.style.paddingLeft).toBe('')
+      expect(lines[1]!.style.paddingLeft).toBe('1rem')
+    } finally {
+      trace.events = []
+      trace.labels = {}
+    }
   })
 })
