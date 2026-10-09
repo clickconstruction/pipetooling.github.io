@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { formatAiaDate } from '../../lib/aiaG702G703Template'
 import { formatAiaMoney } from '../../lib/aiaG702G703Preview'
 import { type SavedPayApplication, carryMismatch } from '../../lib/aiaPayApplications'
@@ -18,6 +18,7 @@ import {
 import type { SentCopy } from '../../lib/sent/sentCopies'
 import { openSentFile } from '../../lib/sent/sentCopiesIo'
 import { useToastContext } from '../../contexts/ToastContext'
+import { type AiaBillsOnJob, aiaBillOptions, aiaPaidLine, suggestAiaBill } from '../../lib/aiaPayApplicationBill'
 
 /**
  * The first frame of the AIA G702-G703 window on a job with saved applications (v2.4710):
@@ -25,6 +26,9 @@ import { useToastContext } from '../../contexts/ToastContext'
  * — who saved it and when, each workbook that went out — and the door to the next
  * application. Open on a line puts that application in the form; New application starts the
  * next one from the last saved; Put it back on a deleted line returns it to the job (#92).
+ * v2.5032 (the owner's call of 2026-10-09): each live line carries the bill it became, read the
+ * way the job window reads a bill (*Paid $13,588.20 · Aug 22*), or *Bill not yet tied* on a
+ * dashed edge with **Tie a bill…**, pre-filled by the bill whose amount is the payment due.
  */
 
 const eyebrow: CSSProperties = { fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }
@@ -34,6 +38,62 @@ const fileButton: CSSProperties = { border: 'none', background: 'transparent', p
 const summaryCell: CSSProperties = { display: 'flex', flexDirection: 'column', gap: '0.05rem', minWidth: 0 }
 const summaryKey: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }
 const summaryValue: CSSProperties = { fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--text-strong)' }
+
+/** The bill under a live application (v2.5032): the paid line, and the pick that ties or changes it. */
+function BillTie({ app, apps, bills, onTieBill }: { app: SavedPayApplication; apps: ReadonlyArray<SavedPayApplication>; bills: AiaBillsOnJob; onTieBill?: (app: SavedPayApplication, invoiceId: string | null) => Promise<boolean> }) {
+  const [picking, setPicking] = useState(false)
+  const [choice, setChoice] = useState('')
+  const [busy, setBusy] = useState(false)
+  const line = aiaPaidLine(app, bills)
+  const options = aiaBillOptions(bills, apps, app.id)
+  const suggested = app.invoiceId ? null : suggestAiaBill(app, options)
+  const untied = line.kind === 'untied'
+  const open = () => {
+    setChoice(app.invoiceId ?? suggested ?? '')
+    setPicking(true)
+  }
+  const tie = async () => {
+    if (!onTieBill) return
+    setBusy(true)
+    const done = await onTieBill(app, choice || null)
+    setBusy(false)
+    if (done) setPicking(false)
+  }
+  return (
+    <div data-testid="aia-history-bill" style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', ...(untied ? { border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.15rem 0.45rem', alignSelf: 'flex-start' } : {}) }}>
+        <span data-testid="aia-history-paid" style={{ fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', color: untied || line.kind === 'missing' ? 'var(--text-muted)' : line.kind === 'paid' ? 'var(--text-green-700)' : 'var(--text-700)', fontWeight: line.kind === 'paid' ? 600 : 400 }}>
+          {line.words}
+        </span>
+        {onTieBill && !picking ? (
+          <button type="button" onClick={open} style={fileButton} aria-label={untied ? `Tie a bill to application ${app.applicationNumber}` : `Change the bill for application ${app.applicationNumber}`}>
+            {untied ? 'Tie a bill…' : 'change'}
+          </button>
+        ) : null}
+      </div>
+      {picking ? (
+        <div data-testid="aia-history-bill-pick" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+          <select aria-label={`Bill for application ${app.applicationNumber}`} value={choice} onChange={(e) => setChoice(e.target.value)} style={{ fontSize: '0.8125rem', padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '100%' }}>
+            <option value="">No bill</option>
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={() => void tie()} disabled={busy || choice === (app.invoiceId ?? '')} style={quietButton}>
+            {busy ? 'Saving…' : choice ? 'Tie it' : 'Untie it'}
+          </button>
+          <button type="button" onClick={() => setPicking(false)} disabled={busy} style={quietButton}>
+            Cancel
+          </button>
+          {suggested && choice === suggested ? <span style={muted}>This bill is the payment due, to the cent.</span> : null}
+          {options.length === 0 ? <span style={muted}>No bill on this job yet.</span> : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 function Summary({ summary }: { summary: PayApplicationSummary }) {
   const pct = Math.round(summary.fractionComplete * 100)
@@ -80,6 +140,8 @@ export default function AiaG702G703History({
   onNew,
   onRestore,
   restoringId = null,
+  bills = null,
+  onTieBill,
 }: {
   history: PayApplicationHistory
   nextNumber: number
@@ -88,6 +150,10 @@ export default function AiaG702G703History({
   onRestore: (app: SavedPayApplication) => void
   /** The deleted application being put back, while the write is in flight. */
   restoringId?: string | null
+  /** v2.5032 · the job's bills and payments: each live line shows the bill it became. Absent: no bill line. */
+  bills?: AiaBillsOnJob | null
+  /** v2.5032 · tie an application to a bill, or untie it with null; true once saved. Absent: the line shows, the pick does not. */
+  onTieBill?: (app: SavedPayApplication, invoiceId: string | null) => Promise<boolean>
 }) {
   const { showToast } = useToastContext()
   const apps = history.lines.filter((l) => !l.deleted).map((l) => l.app)
@@ -180,6 +246,7 @@ export default function AiaG702G703History({
                     ⚠ {changedAfterWords(changed, payApplicationDay)}. The GC has the {payApplicationDay(changed.copy.sentAt)} workbook. Generate it again to send the change, or open it and put the amounts back.
                   </span>
                 ) : null}
+                {bills && app.invoiceId !== undefined ? <BillTie app={app} apps={apps} bills={bills} onTieBill={onTieBill} /> : null}
                 {mismatch ? (
                   <span data-testid="aia-history-flag" style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
                     ⚠ No longer matches application {mismatch.previousNumber}. {app.carryReason ? `Kept as it is: ${app.carryReason}` : 'No reason given yet.'}

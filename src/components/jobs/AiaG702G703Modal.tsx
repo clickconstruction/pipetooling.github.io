@@ -45,7 +45,8 @@ import {
   sortPayApplications,
   withCarriedAmounts,
 } from '../../lib/aiaPayApplications'
-import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadDeletedPayApplications, loadPayApplications, restorePayApplication, savePayApplication } from '../../lib/aiaPayApplicationsIo'
+import { PayApplicationLinesNotReady, PayApplicationNumberTaken, deletePayApplication, loadDeletedPayApplications, loadPayApplications, restorePayApplication, savePayApplication, tiePayApplicationBill } from '../../lib/aiaPayApplicationsIo'
+import { type AiaBillsOnJob, canTiePayApplication } from '../../lib/aiaPayApplicationBill'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { BID_STAGE_NAMES, type BidSchedule, crewOfferForLine, crewPercentByStage, scaleLinesToAmount, scheduleGap } from '../../lib/aiaBidSchedule'
 import { type AiaLineSourceKey, aiaLineSources } from '../../lib/aiaLineSources'
@@ -572,6 +573,25 @@ export default function AiaG702G703Modal({
     }
   }
 
+  // v2.5032 · the job's bills and payments for the history's bill line; a limited snapshot has none.
+  const billsOnJob = useMemo<AiaBillsOnJob | null>(
+    () => (job && 'fixtures' in job ? { bills: job.invoices ?? [], payments: job.payments ?? [], revenue: job.revenue, hcp: job.hcp_number } : null),
+    [job],
+  )
+
+  /** Tie an application to the bill it became, or untie it (v2.5032): only the bill moves, so the history does not read it as a save. */
+  const onTieBill = async (app: SavedPayApplication, invoiceId: string | null): Promise<boolean> => {
+    try {
+      await tiePayApplicationBill(app.id, invoiceId)
+      setSaved(await loadPayApplications(app.jobId).catch(() => saved.map((a) => (a.id === app.id ? { ...a, invoiceId } : a))))
+      showToast(invoiceId ? `Application ${app.applicationNumber} is tied to its bill.` : `Application ${app.applicationNumber} has no bill now.`, 'success')
+      return true
+    } catch (e) {
+      showToast(e instanceof Error && e.message ? e.message : 'The bill could not be tied.', 'error')
+      return false
+    }
+  }
+
   const onGenerate = async () => {
     if (!job) return
     setGenerating(true)
@@ -736,6 +756,8 @@ export default function AiaG702G703Modal({
               onNew={newFromHistory}
               onRestore={(app) => void onRestore(app)}
               restoringId={restoringId}
+              bills={billsOnJob}
+              onTieBill={canTiePayApplication(authRole) ? onTieBill : undefined}
             />
           </div>
         ) : null}

@@ -46,6 +46,9 @@ import {
   shouldBlockBillOnPaidJob,
 } from '../../../supabase/functions/_shared/paidJobBillGuard'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
+import { loadPayApplications, tiePayApplicationBill } from '../../lib/aiaPayApplicationsIo'
+import { aiaApplicationLabel, aiaApplicationsToTie, canTiePayApplication, suggestAiaApplication } from '../../lib/aiaPayApplicationBill'
+import type { SavedPayApplication } from '../../lib/aiaPayApplications'
 import { lienWaiverTickForBill } from '../../lib/jobsDocuments/lienWaiverRelease'
 import BillCustomerOwnerLine from './BillCustomerOwnerLine'
 import { BillCustomerReturnedChecksLine } from './BillCustomerReturnedChecksLine'
@@ -596,6 +599,44 @@ export default function SendRecordInvoiceModal({
   const jobWithPayer = jobRaw && payerParty === 'gc' ? applyPayerToJobBillingContext(jobRaw, payerRecipient) : jobRaw
   const jobWithBillTo = jobWithPayer ? applyBillToToJobBillingContext(jobWithPayer, billToOverride) : jobWithPayer
   const job = jobWithBillTo && emailOverride ? { ...jobWithBillTo, customer_email: emailOverride } : jobWithBillTo
+
+  // v2.5032 (the owner's call of 2026-10-09): on a job with saved pay applications, the office says
+  // which application this bill is; the match pre-picks it, and a successful send ties the two.
+  // Only the roles that can write `job_pay_applications` see the line.
+  const [payApps, setPayApps] = useState<SavedPayApplication[]>([])
+  const [tieAppId, setTieAppId] = useState('')
+  const [tieTouched, setTieTouched] = useState(false)
+  const payAppsJobId = open && canTiePayApplication(authRole) ? (jobRaw?.id ?? null) : null
+  useEffect(() => {
+    setPayApps([])
+    setTieAppId('')
+    setTieTouched(false)
+    if (!payAppsJobId) return
+    let alive = true
+    // Only applications read with their bill column: before its migration there is nothing to tie.
+    void loadPayApplications(payAppsJobId).then((list) => {
+      if (alive) setPayApps(list.filter((a) => a.invoiceId !== undefined))
+    })
+    return () => {
+      alive = false
+    }
+  }, [payAppsJobId])
+  const payAppsToTie = useMemo(() => aiaApplicationsToTie(payApps), [payApps])
+  const suggestedPayApp = useMemo(() => suggestAiaApplication(payApps, Number(billAmountStr), todayIsoDate()), [payApps, billAmountStr])
+  useEffect(() => {
+    if (!tieTouched) setTieAppId(suggestedPayApp ?? '')
+  }, [suggestedPayApp, tieTouched])
+
+  /** v2.5032 · tie the picked application to the bill just sent. A tie that fails says so and never undoes the send. */
+  async function tieAfterSend(invoiceId: string | null | undefined) {
+    const app = payApps.find((a) => a.id === tieAppId)
+    if (!app || !invoiceId) return
+    try {
+      await tiePayApplicationBill(app.id, invoiceId)
+    } catch (e) {
+      showToast(`The bill went. Tying it to pay application ${app.applicationNumber} did not: ${e instanceof Error && e.message ? e.message : 'tie it from the AIA window'}`, 'error')
+    }
+  }
   const jobId = job?.id ?? null
 
   // Bill Customer's billing target for kind:'job' (v2.2885, decision 17): what
@@ -1553,6 +1594,7 @@ export default function SendRecordInvoiceModal({
         }
       }
       recordBillCustomerCommitted('physical')
+      await tieAfterSend(invId)
       await onSuccess()
       if (waiverHandoff && job) onSentWantWaiver?.(job.id, invId)
       onClose()
@@ -1640,6 +1682,7 @@ export default function SendRecordInvoiceModal({
         return
       }
       recordBillCustomerCommitted('housecallpro')
+      await tieAfterSend(sentInvoiceId)
       await onSuccess()
       if (waiverHandoff && sentInvoiceId) onSentWantWaiver?.(job.id, sentInvoiceId)
       onClose()
@@ -1822,6 +1865,7 @@ export default function SendRecordInvoiceModal({
           invoice_preview: parseStripeInvoiceLinesSnapshot(body?.invoice_preview),
         })
       }
+      await tieAfterSend(invId)
       await onSuccess()
       if (waiverHandoff) onSentWantWaiver?.(job.id, invId)
     } catch (e) {
@@ -2511,6 +2555,31 @@ export default function SendRecordInvoiceModal({
           waiverAfterSend={waiverAfterSend}
           onWaiverAfterSendChange={setWaiverAfterSend}
         />
+
+        {payAppsToTie.length > 0 ? (
+          <div data-testid="bill-customer-pay-app" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.6rem', alignItems: 'center', margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+            <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              This bill is pay application
+              <select
+                aria-label="This bill is pay application"
+                value={tieAppId}
+                onChange={(e) => {
+                  setTieAppId(e.target.value)
+                  setTieTouched(true)
+                }}
+                style={{ fontSize: '0.8125rem', padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', maxWidth: '100%' }}
+              >
+                <option value="">none</option>
+                {payAppsToTie.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {aiaApplicationLabel(a)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {tieAppId && tieAppId === suggestedPayApp ? <span style={{ color: 'var(--text-muted)' }}>Its payment due is this amount, to the cent.</span> : null}
+          </div>
+        ) : null}
 
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
           <button type="button" onClick={() => setTab('stripe')} style={billCustomerTopTabButtonStyle(tab === 'stripe')}>

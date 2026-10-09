@@ -195,5 +195,45 @@ UPDATE public.job_pay_applications SET deleted_at = NULL WHERE deleted_at IS NOT
 SELECT bedt.ok('a restore clears the mark and who made it', (SELECT count(*) = 1 AND bool_and(deleted_at IS NULL AND deleted_by IS NULL) FROM public.job_pay_applications));
 RESET ROLE;
 
+-- 11 · The bill an application became (v2.5032): only invoice_id moves on a tie, so the saved stamps stay;
+--      a bill on another job is refused; one bill is one live application's; a figure save is still a save;
+--      a restore whose bill another live application took comes back untied; a deleted bill unties it.
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) VALUES
+  ('00000000-0000-0000-0000-00000000c003', '00000000-0000-0000-0000-0000000000a4', '00000000-0000-0000-0000-00000000a001', 'Bed Library');
+INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000b001', '00000000-0000-0000-0000-00000000c001', 17460, 1),
+  ('00000000-0000-0000-0000-00000000b002', '00000000-0000-0000-0000-00000000c001', 9000, 2),
+  ('00000000-0000-0000-0000-00000000b003', '00000000-0000-0000-0000-00000000c003', 500, 1);
+SELECT bedt.as_user('00000000-0000-0000-0000-0000000000a1');
+SET LOCAL ROLE authenticated;
+UPDATE public.job_pay_applications SET invoice_id = '00000000-0000-0000-0000-00000000b001' WHERE application_number = 1 AND deleted_at IS NULL;
+SELECT bedt.ok('a tie is not a save: the saved stamps stay the master''s', (SELECT invoice_id = '00000000-0000-0000-0000-00000000b001' AND updated_by = '00000000-0000-0000-0000-0000000000a4' FROM public.job_pay_applications WHERE application_number = 1 AND deleted_at IS NULL));
+DO $$
+BEGIN
+  BEGIN
+    UPDATE public.job_pay_applications SET invoice_id = '00000000-0000-0000-0000-00000000b003' WHERE application_number = 1 AND deleted_at IS NULL;
+    RAISE EXCEPTION 'FAILED: a bill on another job was tied';
+  EXCEPTION WHEN check_violation THEN RAISE NOTICE 'ok: a bill on another job is refused';
+  END;
+END $$;
+INSERT INTO public.job_pay_applications (job_id, application_number) VALUES ('00000000-0000-0000-0000-00000000c001', 2);
+DO $$
+BEGIN
+  BEGIN
+    UPDATE public.job_pay_applications SET invoice_id = '00000000-0000-0000-0000-00000000b001' WHERE application_number = 2;
+    RAISE EXCEPTION 'FAILED: one bill was tied to two live applications';
+  EXCEPTION WHEN unique_violation THEN RAISE NOTICE 'ok: one bill is one live application''s';
+  END;
+END $$;
+UPDATE public.job_pay_applications SET current_payment_due = 17000 WHERE application_number = 1 AND deleted_at IS NULL;
+SELECT bedt.ok('a figure save is a save, and keeps the tie', (SELECT updated_by = '00000000-0000-0000-0000-0000000000a1' AND invoice_id = '00000000-0000-0000-0000-00000000b001' FROM public.job_pay_applications WHERE application_number = 1 AND deleted_at IS NULL));
+UPDATE public.job_pay_applications SET deleted_at = now() WHERE application_number = 1 AND deleted_at IS NULL;
+UPDATE public.job_pay_applications SET invoice_id = '00000000-0000-0000-0000-00000000b001' WHERE application_number = 2;
+UPDATE public.job_pay_applications SET deleted_at = NULL WHERE application_number = 1 AND deleted_at IS NOT NULL;
+SELECT bedt.ok('a restore whose bill another live application took comes back untied', (SELECT invoice_id IS NULL FROM public.job_pay_applications WHERE application_number = 1 AND deleted_at IS NULL));
+RESET ROLE;
+DELETE FROM public.jobs_ledger_invoices WHERE id = '00000000-0000-0000-0000-00000000b001';
+SELECT bedt.ok('a deleted bill unties its application', (SELECT invoice_id IS NULL FROM public.job_pay_applications WHERE application_number = 2));
+
 SELECT 'pay_applications PASSED' AS result;
 ROLLBACK;
