@@ -96,9 +96,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   salaried-day and Field crew bullets, the "not on anyone's row" note, the red-day formula
   paragraph.
 
-### keep the overhead numbers accurate
+### ~~keep the overhead numbers accurate~~ — shipped v2.5080
 
-`understand-overhead-numbers` · 1,472 words · #4575
+`understand-overhead-numbers` · 1,472 words · #4575 · now the three steps and the task on top, and the new guide *read the Overhead tab* with the lens math, the pool chart and its days, and who makes up the pool (the table went with *Behind any cell*, the chart with the bar panel). Nothing cut.
 
 - **Opening:**
   1. If the amber maintenance strip shows, the rates read low. Fix what it names.
