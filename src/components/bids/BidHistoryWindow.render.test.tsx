@@ -2,8 +2,9 @@
 /**
  * Bid history, the window (punch list #73, PR 2): actions not rows, newest first under their day;
  * an action opens to its rows; filters by tab and person; the search; an adopted bid's actions
- * carry its number; a removed row from the archive says so; a failed read says so. The read is a
- * stand-in; made-up people and bids.
+ * carry its number; a removed row from the archive says so; a failed read says so. Put back for a
+ * value (PR 4) and a removed row (PR 5); Undo for a whole action (PR 6). The reads and writes are
+ * stand-ins; made-up people and bids.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
@@ -36,11 +37,24 @@ const rows: BidHistoryRow[] = [
 
 async function open(
   load: (id: string, from: number) => Promise<BidHistoryRow[]> = async () => rows,
-  putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>,
+  putBack?: (changeId: number, column: string | null) => Promise<BidPutBackResult>,
   loadRemoved: (bidId: string) => Promise<BidRemovedRow[]> = async () => [],
   restoreRemoved?: (archiveId: string) => Promise<BidRestoreResult>,
+  more: { canEdit?: boolean; removeAdded?: (table: string, ids: ReadonlyArray<string>) => Promise<number> } = {},
 ) {
-  renderWithProviders(<BidHistoryWindow bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }} onClose={vi.fn()} load={load} putBack={putBack} loadRemoved={loadRemoved} restoreRemoved={restoreRemoved} now={NOW} />)
+  renderWithProviders(
+    <BidHistoryWindow
+      bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }}
+      onClose={vi.fn()}
+      load={load}
+      putBack={putBack}
+      loadRemoved={loadRemoved}
+      restoreRemoved={restoreRemoved}
+      loadCanEdit={async () => more.canEdit ?? false}
+      removeAdded={more.removeAdded}
+      now={NOW}
+    />,
+  )
   await settle()
   return screen.getByRole('dialog')
 }
@@ -232,6 +246,79 @@ describe('BidHistoryWindow · a removed row put back (punch list #73 PR 5)', () 
     await settle()
     expect(restoreRemoved).toHaveBeenCalledWith('ar-old')
     expect(within(d).getByRole('alert').textContent).toBe('That row, or one like it, is already on the bid, so it cannot come back.')
+    expect(load).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('BidHistoryWindow · Undo a whole action (punch list #73 PR 6)', () => {
+  const T = (s: number) => new Date(Date.parse('2026-10-08T17:00:00.000Z') + s * 1000).toISOString()
+  // Ben brushed two prices; Ann imported two rows before that.
+  const brush = [
+    row({ changedAt: T(10), table: 'bid_count_row_custom_prices', recordId: 'p-a', op: 'update', changed: ['unit_price'], oldValues: { unit_price: 100 }, newValues: { unit_price: 110 }, label: 'Lav-1', action: 'price-brush', changedBy: 'u-ben', changedByName: 'Ben' }),
+    row({ changedAt: T(11), table: 'bid_count_row_custom_prices', recordId: 'p-b', op: 'update', changed: ['unit_price'], oldValues: { unit_price: 200 }, newValues: { unit_price: 220 }, label: 'WC-1', action: 'price-brush', changedBy: 'u-ben', changedByName: 'Ben' }),
+  ]
+  const imports = [
+    row({ changedAt: T(0), recordId: 'c-1', countRowId: 'c-1', label: 'Tub', newValues: { fixture: 'Tub', count: 1 } }),
+    row({ changedAt: T(1), recordId: 'c-2', countRowId: 'c-2', label: 'Shower', newValues: { fixture: 'Shower', count: 2 } }),
+  ]
+  const history = [...brush, ...imports]
+  const undoButtons = (d: HTMLElement) => within(d).queryAllByRole('button', { name: /^Undo / }).map((b) => b.getAttribute('aria-label'))
+
+  it('someone who can edit the bid gets Undo on each action of several changes', async () => {
+    const d = await open(async () => history, undefined, async () => [], undefined, { canEdit: true })
+    expect(undoButtons(d)).toEqual(['Undo Brushed 2 prices', 'Undo Imported 2 rows from CountTooling'])
+  })
+
+  it('someone who cannot edit it gets none', async () => {
+    const d = await open(async () => history)
+    expect(undoButtons(d)).toEqual([])
+  })
+
+  it('Undo puts back every change newest first, says so at the top, reads again, and tells the tabs', async () => {
+    const load = vi.fn(async () => history)
+    const order: string[] = []
+    const putBack = vi.fn(async (id: number, col: string | null): Promise<BidPutBackResult> => {
+      order.push(`${id}:${col}`)
+      return { table: 'bid_count_row_custom_prices', record_id: 'p', label: null, columns: ['unit_price'], before: {}, after: {} }
+    })
+    const heard = vi.fn()
+    const hear = (e: Event) => heard((e as CustomEvent).detail)
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    try {
+      const d = await open(load, putBack, async () => [], undefined, { canEdit: true })
+      fireEvent.click(within(d).getByRole('button', { name: 'Undo Brushed 2 prices' }))
+      await settle()
+      expect(order).toEqual([`${brush[1]!.id}:null`, `${brush[0]!.id}:null`])
+      expect(within(d).getByRole('status').textContent).toBe('“Brushed 2 prices” is undone.')
+      expect(load).toHaveBeenCalledTimes(2)
+      expect(heard).toHaveBeenCalledWith({ bidId: 'bid-1', table: 'bid_count_row_custom_prices' })
+    } finally {
+      window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    }
+  })
+
+  it('Undo of an import removes the rows it added and says where they went', async () => {
+    const removeAdded = vi.fn(async (_t: string, ids: ReadonlyArray<string>) => ids.length)
+    const d = await open(async () => history, undefined, async () => [], undefined, { canEdit: true, removeAdded })
+    fireEvent.click(within(d).getByRole('button', { name: 'Undo Imported 2 rows from CountTooling' }))
+    await settle()
+    expect(removeAdded).toHaveBeenCalledWith('bids_count_rows', ['c-2', 'c-1'])
+    expect(within(d).getByRole('status').textContent).toBe('“Imported 2 rows from CountTooling” is undone. The 2 rows it added are in the delete archive now. Each one\'s Put back brings it back.')
+  })
+
+  it('a later change on a row it added turns Undo off, and the line names it', async () => {
+    const later = row({ changedAt: T(600), table: 'bid_count_row_custom_prices', recordId: 'p-new', countRowId: 'c-1', label: 'Tub', action: null, byApp: null, changedBy: 'u-ben', changedByName: 'Ben' })
+    const d = await open(async () => [later, ...history], undefined, async () => [], undefined, { canEdit: true })
+    expect(undoButtons(d)).toEqual(['Undo Brushed 2 prices'])
+    expect(within(d).getByText('Undo is off. A later change hangs on rows it added: Tub price.')).toBeTruthy()
+  })
+
+  it('a refusal reads in the function’s words, and nothing is read again', async () => {
+    const load = vi.fn(async () => history)
+    const d = await open(load, async () => { throw new Error('You cannot change this bid, so nothing was put back.') }, async () => [], undefined, { canEdit: true })
+    fireEvent.click(within(d).getByRole('button', { name: 'Undo Brushed 2 prices' }))
+    await settle()
+    expect(within(d).getByRole('alert').textContent).toBe('Nothing was undone. WC-1: You cannot change this bid, so nothing was put back. 1 more step could not be undone.')
     expect(load).toHaveBeenCalledTimes(1)
   })
 })

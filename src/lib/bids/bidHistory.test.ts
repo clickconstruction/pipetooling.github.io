@@ -309,4 +309,14 @@ describe('bidHistoryCaption · PR 5', () => {
     expect(bidHistoryCaption([back('bids_count_rows', 'LAV-1'), back('bid_versions', 'Value engineered')])).toBe('Put back Value engineered and what hung on it')
     expect(bidHistoryCaption([row({ table: 'cost_estimate_labor_rows', op: 'insert', label: null, action: 'put-back', byApp: false })])).toBe('Put back a removed row')
   })
+
+  it('an Undo’s removal of the rows an action added says so, and an Undo of several kinds counts its changes', () => {
+    const gone = (table: string, label: string | null) => row({ table, op: 'delete', label, action: 'put-back', byApp: false })
+    expect(bidHistoryCaption([gone('bids_count_rows', 'Lav-1'), gone('bid_pricing_assignments', 'Lav-1'), gone('bids_count_rows', 'Lav-2')])).toBe('Removed 2 count rows with Undo')
+    expect(bidHistoryCaption([gone('bid_count_row_custom_prices', 'Lav-1')])).toBe('Removed Lav-1 with Undo')
+    expect(bidHistoryCaption([gone('bid_count_row_custom_prices', null), gone('bid_count_row_custom_prices', null)])).toBe('Removed 2 prices with Undo')
+    expect(bidHistoryCaption([gone('bid_count_row_custom_prices', null), gone('cost_estimate_labor_rows', null)])).toBe('Removed 2 rows with Undo')
+    const changed = row({ table: 'bid_count_row_custom_prices', op: 'update', changed: ['unit_price'], action: 'put-back', byApp: false })
+    expect(bidHistoryCaption([changed, gone('bids_count_rows', 'Lav-1'), row({ table: 'bids_count_rows', op: 'insert', label: 'SUMP', action: 'put-back', byApp: false })])).toBe('Put back 3 changes')
+  })
 })

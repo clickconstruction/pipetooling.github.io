@@ -397,9 +397,12 @@ const NOUNS: Record<string, [string, string]> = {
   bid_payment_schedule_rows: ['payment line', 'payment lines'],
   bid_versions: ['version', 'versions'],
 }
-const noun = (table: string, n: number) => {
+const noun = (table: string, n: number) => `${n} ${bidHistoryNoun(table, n)}`
+
+/** A table's rows in words, without the number: "count row", "prices". */
+export function bidHistoryNoun(table: string, n: number): string {
   const [one, many] = NOUNS[table] ?? ['row', 'rows']
-  return `${n} ${n === 1 ? one : many}`
+  return n === 1 ? one : many
 }
 
 /** An action's one line: from its tag when it has one, else from what its rows did. */
@@ -444,6 +447,15 @@ export function bidHistoryCaption(rows: ReadonlyArray<BidHistoryRow>): string {
         const name = head.label?.trim() || 'a removed row'
         return rows.length > 1 ? `Put back ${name} and what hung on it` : `Put back ${name}`
       }
+      // History's Undo (PR 6) takes back the rows an action added: removals tagged put-back, a
+      // count row's with what hung on it.
+      if (rows.every((r) => r.op === 'delete')) {
+        if (countRowDeletes.length) return `Removed ${noun('bids_count_rows', countRowDeletes.length)} with Undo`
+        if (rows.length === 1 && first.label?.trim()) return `Removed ${first.label.trim()} with Undo`
+        return new Set(rows.map((r) => r.table)).size === 1 ? `Removed ${noun(first.table, rows.length)} with Undo` : `Removed ${rows.length} rows with Undo`
+      }
+      // An Undo of an action that did several things at once.
+      if (new Set(rows.map((r) => r.op)).size > 1) return `Put back ${rows.length} changes`
       // History's Put back (PR 4): one value per press, so the caption names it.
       if (rows.length > 1) return `Put back ${rows.length} values`
       const col = first.changed.find((c) => !STAMP_COLUMNS.has(c))
