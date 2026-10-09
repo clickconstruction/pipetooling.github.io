@@ -2,8 +2,13 @@
  * GC mode, the real build: how to reach a company, moved word for word from the GC mode prototype (branch spike/gc-mode,
  * `gcFollowUpSheet.ts`) by the schedule's PR 1b, which reads it. The Building lane's lift (U2) adds the rest of `gcFollowUpSheet.ts` here.
  */
-import type { Partner, TradePromise } from './types'
+import type { GcState, Partner, TradePromise } from './types'
 import type { PortalLang } from './portalI18n'
+import { papersOwed } from './buildingPromises'
+import { askPromise, followUps } from './followUp'
+import { pDate, pWeekday } from './portalI18n'
+import { insuranceRenewalWords, insuranceRenewals, paperAsks, tradePromiseState, tradePromiseWords, tradePromisesOf } from './promises'
+import { daysUntil, shortDate, weekdayDate } from './words'
 
 export interface PartnerReach {
   /** "Greg Paulk". */
@@ -116,4 +121,187 @@ export function telHref(phone: string): string {
 /** How many people and things the sheet holds: the badge's count. */
 export function followUpCount(people: FollowPerson[]): number {
   return people.reduce((n, p) => n + p.items.filter((i) => i.due).length, 0)
+}
+
+function lastAsk(lines: { on: string; how: string; note: string }[] | undefined): string | null {
+  const l = lines?.[0]
+  return l ? `${shortDate(l.on)} · ${l.how}: ${l.note}` : null
+}
+
+function cap(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/**
+ * Everyone Follow up's badge counts, one person each, in the badge's order, with what else they
+ * owe. `also`: a company opened from its own card though the badge does not count it (one we are
+ * only waiting on, insurance not run out yet); it comes last, with those items too.
+ */
+export function followUpPeople(state: GcState, also?: string): FollowPerson[] {
+  const today = state.today
+  const byPartner = new Map<string, FollowItem[]>()
+  const order: string[] = []
+  const add = (partnerId: string, item: FollowItem) => {
+    if (!byPartner.has(partnerId)) {
+      byPartner.set(partnerId, [])
+      order.push(partnerId)
+    }
+    byPartner.get(partnerId)?.push(item)
+  }
+
+  // Quotes to chase: the Follow up cards, but not the ones only waiting on their word.
+  for (const f of followUps(state)) {
+    if (f.why === 'waiting' && f.partner.id !== also) continue
+    const trade = f.pkg.trade.toLowerCase()
+    const promise = askPromise(f.invite, today)
+    const sent = Math.max(0, daysUntil(today, f.invite.invitedOn))
+    const detail: Record<PortalLang, string> =
+      f.why === 'passed'
+        ? { en: `You'd said ${weekdayDate(promise?.by ?? null)}`, es: `Nos dijo el ${pWeekday('es', promise?.by ?? null)}` }
+        : f.why === 'today'
+          ? { en: "You'd said today", es: 'Nos dijo que hoy' }
+          : f.why === 'silent'
+            ? { en: `We sent you the plans ${sent} days ago`, es: `Le enviamos los planos hace ${sent} días` }
+            : f.why === 'waiting'
+              ? { en: `You'd said ${weekdayDate(promise?.by ?? null)}`, es: `Nos dijo el ${pWeekday('es', promise?.by ?? null)}` }
+              : { en: 'You have the plans', es: 'Ya tiene los planos' }
+    const ask: Record<PortalLang, string> =
+      f.why === 'passed'
+        ? { en: 'Could you send it today?', es: '¿La puede enviar hoy?' }
+        : f.why === 'today'
+          ? { en: 'Is it still on track?', es: '¿Sigue en pie para hoy?' }
+          : f.why === 'silent'
+            ? { en: 'Could you take a look this week?', es: '¿La puede revisar esta semana?' }
+            : f.why === 'waiting'
+              ? { en: 'Is it still on track?', es: '¿Sigue en pie?' }
+              : { en: 'When do you think you can send it?', es: '¿Para cuándo la puede enviar?' }
+    add(f.partner.id, {
+      key: `quote-${f.invite.id}`,
+      kind: 'quote',
+      label: `${f.pkg.trade} quote · ${f.project.name}`,
+      why: f.words,
+      tone: f.why === 'passed' || f.why === 'silent' ? 'red' : 'amber',
+      last: lastAsk(f.invite.contacts),
+      due: f.why !== 'waiting',
+      ask: { projectId: f.project.id, packageId: f.pkg.id, inviteId: f.invite.id },
+      ...(f.project.bidDue ? { bidDue: f.project.bidDue } : {}),
+      words: {
+        en: { about: `your ${trade} quote for ${f.project.name}`, detail: detail.en, ask: ask.en },
+        es: { about: `su cotización de ${f.pkg.trade} para ${f.project.name}`, detail: detail.es, ask: ask.es },
+      },
+    })
+  }
+
+  // Promises whose day came or passed (any lane's kind), then insurance that ran out with no new day.
+  for (const p of tradePromisesOf(state)) {
+    const st = tradePromiseState(p, today).state
+    if (st === 'kept' || st === 'late' || ((st === 'pending') && p.partnerId !== also)) continue
+    const project = p.projectId ? state.projects.find((x) => x.id === p.projectId) : undefined
+    add(p.partnerId, {
+      key: `promise-${p.id}`,
+      kind: 'promise',
+      label: `${cap(p.what)}${project ? ` · ${project.name}` : ''}`,
+      why: tradePromiseWords(p, today),
+      tone: st === 'passed' ? 'red' : 'amber',
+      last: null,
+      due: st !== 'pending',
+      promise: p,
+      ...(p.projectId ? { projectId: p.projectId } : {}),
+      ...(p.packageId ? { packageId: p.packageId } : {}),
+      words: {
+        en: { about: p.what, detail: st === 'today' ? "You'd said today" : `You'd said ${weekdayDate(p.by)}`, ask: st === 'pending' ? 'Is it still on track?' : 'Could you send it today?' },
+        es: { about: 'lo que quedó en enviarnos', detail: st === 'today' ? 'Nos dijo que hoy' : `Nos dijo el ${pWeekday('es', p.by)}`, ask: st === 'pending' ? '¿Sigue en pie?' : '¿Lo puede enviar hoy?' },
+      },
+    })
+  }
+  for (const r of insuranceRenewals(state)) {
+    if ((r.days > 0 || r.promise) && r.partner.id !== also) continue
+    if (r.promise && r.partner.id === also) continue
+    add(r.partner.id, {
+      key: `insurance-${r.partner.id}`,
+      kind: 'insurance',
+      label: 'Insurance certificate',
+      why: insuranceRenewalWords(r),
+      tone: r.days <= 0 ? 'red' : 'amber',
+      last: null,
+      due: r.days <= 0,
+      words: {
+        en: { about: 'your insurance certificate', detail: `The one we have ${r.days <= 0 ? 'ran out' : 'runs out'} ${shortDate(r.expires)}`, ask: 'Could you send the new one?' },
+        es: { about: 'su certificado de seguro', detail: `El que tenemos ${r.days <= 0 ? 'venció' : 'vence'} el ${pDate('es', r.expires)}`, ask: '¿Nos puede enviar el nuevo?' },
+      },
+    })
+  }
+
+  if (also && !byPartner.has(also) && state.partners.some((x) => x.id === also)) {
+    byPartner.set(also, [])
+    order.push(also)
+  }
+
+  // What else each of them owes: a waiver on a paid draw, a W-9, a statement of work to sign.
+  const papers = paperAsks(state)
+  return order.flatMap((partnerId) => {
+    const partner = state.partners.find((x) => x.id === partnerId)
+    if (!partner) return []
+    const items = byPartner.get(partnerId) ?? []
+    const covered = new Set(items.flatMap((i) => (i.promise ? [`${i.promise.kind}-${i.promise.packageId ?? ''}`] : [])))
+    for (const project of state.projects) {
+      for (const pkg of project.packages) {
+        if (pkg.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId !== partnerId || covered.has(`closeout-${pkg.id}`)) continue
+        for (const d of papersOwed(project, pkg, today).waivers) {
+          items.push({
+            key: `waiver-${d.id}`,
+            kind: 'waiver',
+            label: `Unconditional waiver · draw ${d.number}, ${project.name}`,
+            why: `Draw ${d.number} is paid${d.paidOn ? ` ${shortDate(d.paidOn)}` : ''}. The waiver has not come.`,
+            tone: 'amber',
+            last: null,
+            due: false,
+            projectId: project.id,
+            packageId: pkg.id,
+            words: {
+              en: { about: `the unconditional waiver for draw ${d.number} on ${project.name}`, detail: `We paid draw ${d.number}${d.paidOn ? ` ${shortDate(d.paidOn)}` : ''}`, ask: 'Could you sign it in your portal?' },
+              es: { about: `la renuncia de gravamen incondicional del pago ${d.number} en ${project.name}`, detail: `Le pagamos el pago ${d.number}`, ask: '¿La puede firmar en su portal?' },
+            },
+          })
+        }
+      }
+    }
+    for (const paper of papers) {
+      if (paper.partner.id !== partnerId || paper.promise || covered.has(`${paper.kind}-${paper.packageId ?? ''}`)) continue
+      const project = paper.projectId ? state.projects.find((x) => x.id === paper.projectId) : undefined
+      const trade = project?.packages.find((k) => k.id === paper.packageId)?.trade ?? ''
+      items.push(
+        paper.kind === 'w9'
+          ? {
+              key: `w9-${partnerId}`,
+              kind: 'w9',
+              label: 'W-9',
+              why: paper.words,
+              tone: 'amber',
+              last: null,
+              due: false,
+              words: {
+                en: { about: 'a signed W-9', detail: 'We do not have one on file', ask: 'Could you sign it in your portal?' },
+                es: { about: 'un W-9 firmado', detail: 'No tenemos uno en el archivo', ask: '¿Lo puede firmar en su portal?' },
+              },
+            }
+          : {
+              key: `sow-${paper.packageId ?? ''}`,
+              kind: 'sow',
+              label: `${trade} statement of work · ${project?.name ?? ''}`,
+              why: paper.words,
+              tone: 'amber',
+              last: null,
+              due: false,
+              ...(paper.projectId ? { projectId: paper.projectId } : {}),
+              ...(paper.packageId ? { packageId: paper.packageId } : {}),
+              words: {
+                en: { about: `the ${trade.toLowerCase()} statement of work for ${project?.name ?? 'the job'}`, detail: 'It is waiting on your signature', ask: 'Could you sign it in your portal?' },
+                es: { about: `el contrato de trabajo de ${trade} para ${project?.name ?? 'la obra'}`, detail: 'Está esperando su firma', ask: '¿Lo puede firmar en su portal?' },
+              },
+            },
+      )
+    }
+    return [{ partner, reach: partnerReach(partner), items }]
+  })
 }

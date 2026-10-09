@@ -47,6 +47,8 @@ function partnerOf(slice: TradePortalSlice): Partner {
     w9: false,
     invited: slice.invites.length,
     bids: new Set(slice.quotes.map((q) => str(q.invite_id))).size,
+    // The Board's B6-a-ii counts the awards; the portal shows none of them.
+    won: 0,
     promisesMade: 0,
     promisesKept: 0,
     address: str(c.address),
