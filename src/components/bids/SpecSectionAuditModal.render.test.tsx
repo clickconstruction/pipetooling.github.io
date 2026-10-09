@@ -8,7 +8,8 @@
  * and "No code" each insert ONE exact rule at the audit priority and the name
  * moves to coded without the name list being re-read; a failed load offers
  * Retry; a refused save says why and leaves the name uncoded; an empty ledger
- * reads as nothing to pin.
+ * reads as nothing to pin. Since v2.5058 the Rules and Sections tabs show each rule's standing and each
+ * section's totals from the same load.
  *
  * fetchAllRows and withSupabaseRetry run for real over the table-aware stub.
  */
@@ -32,6 +33,7 @@ const db: {
   writeError: StubError | null
   rpcCalls: Array<{ name: string; from: number; to: number }>
   ruleReads: number
+  ruleOrders: string[]
   inserted: Record<string, unknown>[]
   updated: Array<{ patch: Record<string, unknown>; id: string }>
 } = {
@@ -42,6 +44,7 @@ const db: {
   writeError: null,
   rpcCalls: [],
   ruleReads: 0,
+  ruleOrders: [],
   inserted: [],
   updated: [],
 }
@@ -58,9 +61,19 @@ vi.mock('../../lib/supabase', () => ({
     from: (table: string) => {
       if (table === 'spec_section_match_rules') {
         return {
+          // The ledger loads sorted (priority, then age): select → order → order, then awaited.
           select: () => {
             db.ruleReads += 1
-            return Promise.resolve({ data: [...db.rules], error: null, status: 200 })
+            const result = Promise.resolve({ data: [...db.rules], error: null, status: 200 })
+            type Chain = { order: (col: string) => Chain; then: typeof result.then }
+            const chain: Chain = {
+              order: (col: string) => {
+                db.ruleOrders.push(col)
+                return chain
+              },
+              then: result.then.bind(result),
+            }
+            return chain
           },
           insert: (row: Record<string, unknown>) => {
             if (db.writeError) return Promise.resolve({ data: null, error: db.writeError })
@@ -107,6 +120,7 @@ beforeEach(() => {
   db.writeError = null
   db.rpcCalls = []
   db.ruleReads = 0
+  db.ruleOrders = []
   db.inserted = []
   db.updated = []
 })
@@ -298,5 +312,70 @@ describe('SpecSectionAuditModal', () => {
     expect(screen.getByRole('dialog').textContent).toContain('100%')
     expect(screen.queryByRole('button', { name: 'Pin it' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'No code' })).toBeNull()
+  })
+})
+
+describe('SpecSectionAuditModal tabs (v2.5058, the rules manager read side)', () => {
+  it('opens on Names; the Rules tab lists every section with its rules in deciding order and each rule\'s standing', async () => {
+    await mountLoaded()
+    expect(screen.getByRole('tab', { name: 'Names' }).getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(screen.getByRole('tab', { name: 'Rules' }))
+    const panel = screen.getByRole('tabpanel', { name: 'Rules' })
+
+    const closets = within(panel).getByRole('region', { name: '22 42 13 Commercial Water Closets' })
+    expect(within(closets).getByText('starts with WC-')).toBeTruthy()
+    expect(within(closets).getByText('Decides 1 name on 12 bids')).toBeTruthy()
+    expect(within(closets).getByText('order 100 · patterns')).toBeTruthy()
+
+    // A section no rule files names under still shows, and says so.
+    const sinks = within(panel).getByRole('region', { name: '22 42 16 Commercial Lavatories and Sinks' })
+    expect(within(sinks).getByText('No rule files names here yet.')).toBeTruthy()
+
+    // The deliberate no-code rules come last, with what they decide.
+    const noCode = within(panel).getByRole('region', { name: 'No code (deliberately)' })
+    expect(within(noCode).getByText('exactly DEMO')).toBeTruthy()
+    expect(within(noCode).getByText('Decides 1 name on 5 bids')).toBeTruthy()
+    expect(closets.compareDocumentPosition(noCode) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('a rule an earlier rule always beats says which rule gets its names first; one that catches nothing says so', async () => {
+    db.rules.push(
+      { id: 'rule-wc1-late', pattern: 'WC-1', match_kind: 'contains', section_code: '22 42 16', priority: 500 },
+      { id: 'rule-idle', pattern: 'ZZZ', match_kind: 'contains', section_code: '22 42 16', priority: 600 },
+    )
+    await mountLoaded()
+    fireEvent.click(screen.getByRole('tab', { name: 'Rules' }))
+    const sinks = within(screen.getByRole('tabpanel', { name: 'Rules' })).getByRole('region', { name: '22 42 16 Commercial Lavatories and Sinks' })
+    expect(within(sinks).getByText('Never decides: “starts with WC-” gets its names first')).toBeTruthy()
+    expect(within(sinks).getByText('Catches no name yet')).toBeTruthy()
+  })
+
+  it('Find narrows the Rules tab to matching rules or sections, and says when nothing matches', async () => {
+    await mountLoaded()
+    fireEvent.click(screen.getByRole('tab', { name: 'Rules' }))
+    const panel = screen.getByRole('tabpanel', { name: 'Rules' })
+    fireEvent.change(within(panel).getByRole('searchbox', { name: 'Find a rule or a section' }), { target: { value: 'demo' } })
+    expect(within(panel).getByText('exactly DEMO')).toBeTruthy()
+    expect(within(panel).queryByText('starts with WC-')).toBeNull()
+    fireEvent.change(within(panel).getByRole('searchbox', { name: 'Find a rule or a section' }), { target: { value: 'nothing like it' } })
+    expect(within(panel).getByText('No rule or section matches “nothing like it”.')).toBeTruthy()
+  })
+
+  it('the Sections tab totals each section\'s rules, names and bids, the no-code line last', async () => {
+    await mountLoaded()
+    fireEvent.click(screen.getByRole('tab', { name: 'Sections' }))
+    const rows = within(screen.getByRole('tabpanel', { name: 'Sections' })).getAllByRole('row').map((r) => r.textContent)
+    expect(rows).toEqual([
+      'SectionTitleRulesNamesBids',
+      '22 42 13Commercial Water Closets1112',
+      '22 42 16Commercial Lavatories and Sinks000',
+      '—No code (deliberately)115',
+    ])
+  })
+
+  it('the ledger is read sorted, priority then age, so equal orders decide the same way on every load', async () => {
+    await mountLoaded()
+    expect(db.ruleReads).toBe(1)
+    expect(db.ruleOrders).toEqual(['priority', 'created_at'])
   })
 })
