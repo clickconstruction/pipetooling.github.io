@@ -307,7 +307,7 @@ A GC project we build bills its customer through one Pipeline job, its **billing
   - the pay application keeps its link (`gc_owner_pay_apps.invoice_id`) once, and a certificate of nothing makes no bill.
 - **Our record stays ours.** The pay application and its lines, with our fee and contingency as lines of their own, are on `gc_owner_pay_apps` and `gc_owner_pay_app_lines`, the money team's (dev, the leaders, the controller). The bill carries only the amount the customer owes.
 - **Our conditional waiver** with each sent pay application is a `job_lien_releases` row on the billing job, made in `LienReleaseModal` with its `ask` (the pay application's amount and bill day, since no bill exists until the certificate) and linked once by `gc_owner_pay_apps.conditional_waiver_id` (v2.4996).
-- Payments, promises and our unconditional waivers on these bills are O5c's, through the Pipeline's own RPCs on the billing job. Migration `20261009200000_gc_owner_pay_app_send.sql`.
+- **Money in** (v2.4997): Bill the customer reads each bill's payments from `jobs_ledger_payments` by `invoice_id`, whichever door recorded them (the Billed list, Stripe, Mercury), and the billing job's live promises through `list_job_payment_promises`. A promise covers every bill open when it was made (decision 8). Its presses are the Pipeline's own: `mark_invoice_paid` on the app's day, and `add_job_payment_promise`. Our unconditional waiver for a payment is `LienReleaseModal` on the bill. A payment on the billing job that names no bill is shown as it is, never laid on a pay application. Migration `20261009200000_gc_owner_pay_app_send.sql`.
 
 ## System of record (the 2026-08-24 policy)
 

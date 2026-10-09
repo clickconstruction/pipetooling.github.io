@@ -2,11 +2,24 @@
  * Our bills to the customer read back from their rows (./ownerBillingRows.ts), round trip: Fair Oaks D's
  * made-up bills (the test state) are written out as rows the way O4a's send will insert them, read back,
  * and the kernels read the same off them. Payments and paid days are O5c's, so they are left out of the
- * comparison: every bill reads unpaid until the Pipeline's own payments are read.
+ * comparison: every bill reads unpaid until the Pipeline's own payments are read. Then money in on the billing
+ * job (O5c): each bill's payments, the day it was paid, and the promises that cover it.
  */
 import { describe, expect, it } from 'vitest'
 import { ownerAccount, ownerPayApp, ownerPayAppForm, ownerPayAppsSent, sentPayAppLines } from './ownerBilling'
-import { ownerBillingFromRows, payAppLineKey, type OwnerBillingRows, type OwnerPayAppLineRow } from './ownerBillingRows'
+import { appOpen, appPaid } from './ownerBilling'
+import {
+  billMoney,
+  ownerBillingFromRows,
+  payAppFromRows,
+  payAppLineKey,
+  promisesOnBill,
+  unbilledPayments,
+  type OwnerBillingMoney,
+  type OwnerBillingRows,
+  type OwnerPayAppLineRow,
+  type OwnerPayAppRow,
+} from './ownerBillingRows'
 import { initialGcState } from './schedule/testState'
 import type { GcProject, GcState, OwnerPayAppSent } from './types'
 
@@ -158,5 +171,101 @@ describe('our bills to the customer, read back from their rows', () => {
 
   it('reads nothing on a project with no bills yet', () => {
     expect(ownerBillingFromRows({ payApps: [], lines: [], reminders: [], interestBills: [], acceptance: null })).toBeNull()
+  })
+})
+
+describe('money in on the billing job (O5c)', () => {
+  const app = (over: Partial<OwnerPayAppRow> = {}): OwnerPayAppRow => ({
+    id: 'a1',
+    project_id: PROJECT,
+    number: 1,
+    final: false,
+    period_to: '2026-09-25',
+    sent_on: '2026-09-25',
+    sent_by: null,
+    retainage_pct: 10,
+    retainage_step_at_pct: null,
+    retainage_step_to_pct: null,
+    retainage_step_way: null,
+    retainage: 100,
+    work_to_date: 1000,
+    due: 900,
+    certified: 900,
+    certified_on: '2026-09-30',
+    certified_note: '',
+    certified_by: null,
+    invoice_id: 'inv-1',
+    conditional_waiver_id: null,
+    created_at: '2026-09-25T15:00:00Z',
+    ...over,
+  })
+  const money = (over: Partial<OwnerBillingMoney> = {}): OwnerBillingMoney => ({
+    bills: [{ id: 'inv-1', amount: 900, status: 'billed' }],
+    payments: [],
+    promises: [],
+    ...over,
+  })
+
+  it('reads a bill\'s payments oldest first, paid on the day the last of it came', () => {
+    const m = money({
+      bills: [{ id: 'inv-1', amount: 900, status: 'paid' }],
+      payments: [
+        { invoice_id: 'inv-1', amount: 600, paid_on: '2026-10-20' },
+        { invoice_id: 'inv-1', amount: 300, paid_on: '2026-10-05' },
+      ],
+    })
+    const read = payAppFromRows(app(), [], [], m)
+    expect([read.payments, read.paidOn]).toEqual([[{ on: '2026-10-05', amount: 300 }, { on: '2026-10-20', amount: 600 }], '2026-10-20'])
+    expect([appPaid(read), appOpen(read)]).toEqual([900, 0])
+  })
+
+  it('leaves the rest of a part payment open, and closes a written-down bill on its last payment\'s day', () => {
+    const part = payAppFromRows(app(), [], [], money({ payments: [{ invoice_id: 'inv-1', amount: 300, paid_on: '2026-10-05' }] }))
+    expect([part.paidOn, appPaid(part), appOpen(part)]).toEqual([null, 300, 600])
+    const writtenDown = billMoney(money({ bills: [{ id: 'inv-1', amount: 900, status: 'paid' }], payments: [{ invoice_id: 'inv-1', amount: 500, paid_on: '2026-10-08' }] }), 'inv-1')
+    expect(writtenDown.paidOn).toBe('2026-10-08')
+  })
+
+  it('lays each promise on every bill open when it was made, in the app\'s day, the customer\'s own as theirs', () => {
+    const m = money({
+      promises: [
+        { promisedYmd: '2026-11-05', createdAt: '2026-10-15T15:00:00Z', source: 'customer', note: ' Check is cut. ' },
+        { promisedYmd: '2026-10-30', createdAt: '2026-10-10T03:00:00Z', source: 'office', note: null },
+        { promisedYmd: '2026-10-01', createdAt: '2026-09-20T15:00:00Z', source: 'office', note: 'Before the bill' },
+      ],
+    })
+    expect(payAppFromRows(app(), [], [], m).promises).toEqual([
+      // 03:00 UTC on Oct 10 is the evening of Oct 9 in the app's day.
+      { by: '2026-10-30', madeOn: '2026-10-09', note: '', who: 'office' },
+      { by: '2026-11-05', madeOn: '2026-10-15', note: 'Check is cut.', who: 'owner' },
+    ])
+    // Paid on Oct 12: the promise made after it does not cover it.
+    expect(promisesOnBill(m, '2026-09-30', '2026-10-12').map((p) => p.by)).toEqual(['2026-10-30'])
+  })
+
+  it('reads no money on a pay application with no bill, and lists a payment that names no bill as it is', () => {
+    const m = money({ payments: [{ invoice_id: null, amount: 250, paid_on: '2026-10-03' }, { invoice_id: 'inv-1', amount: 100, paid_on: '2026-10-02' }] })
+    const waiting = payAppFromRows(app({ invoice_id: null, certified: null, certified_on: null }), [], [], m)
+    expect([waiting.payments, waiting.promises, waiting.paidOn]).toEqual([undefined, undefined, null])
+    expect(unbilledPayments(m)).toEqual([{ on: '2026-10-03', amount: 250 }])
+  })
+
+  it('adds up what they paid, and reads an interest bill\'s paid day off its bill the same way', () => {
+    const billing = ownerBillingFromRows({
+      payApps: [app(), app({ id: 'a2', number: 2, period_to: '2026-10-25', sent_on: '2026-10-25', invoice_id: 'inv-2', certified_on: '2026-10-28' })],
+      lines: [],
+      reminders: [],
+      interestBills: [{ id: 'i1', project_id: PROJECT, number: 1, sent_on: '2026-10-02', amount: 40, invoice_id: 'inv-9', created_by: null, created_at: '2026-10-02T15:00:00Z' }],
+      acceptance: null,
+      money: money({
+        bills: [{ id: 'inv-1', amount: 900, status: 'paid' }, { id: 'inv-2', amount: 900, status: 'billed' }, { id: 'inv-9', amount: 40, status: 'paid' }],
+        payments: [
+          { invoice_id: 'inv-1', amount: 900, paid_on: '2026-10-10' },
+          { invoice_id: 'inv-2', amount: 200, paid_on: '2026-10-30' },
+          { invoice_id: 'inv-9', amount: 40, paid_on: '2026-10-11' },
+        ],
+      }),
+    })!
+    expect([billing.paid, billing.payApps!.map((a) => a.paidOn), billing.interestBills![0]!.paidOn]).toEqual([1100, ['2026-10-10', null], '2026-10-11'])
   })
 })

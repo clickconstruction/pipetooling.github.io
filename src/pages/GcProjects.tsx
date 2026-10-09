@@ -34,6 +34,7 @@ import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, payAppSendPayload, type BillingRows } from '../lib/gc/billCustomer'
 import { ownerPayApp, ownerPayAppForm, ownerPayAppParties } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf } from '../lib/gc/payAppFileWriters'
+import { unbilledPayments } from '../lib/gc/ownerBillingRows'
 import LienReleaseModal from '../components/jobs/LienReleaseModal'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -105,6 +106,8 @@ import {
   linkPayAppWaiver,
   loadGcBillingRows,
   recordCertificate,
+  recordGcPayment,
+  recordGcPromise,
   sendOwnerPayApp,
   setOwnerRetainage,
 } from '../lib/gc/gcIo'
@@ -529,6 +532,21 @@ export default function GcProjects() {
     [boardWithChanges, billProjectId, billRows],
   )
   const billProject = billProjectId ? (billState?.projects.find((p) => p.id === billProjectId) ?? null) : null
+  // Money in on the billing job (O5c): each sent one's bill, our unconditional waivers naming it, and a payment that names no bill.
+  const billOwn = billProjectId ? billRows?.billing.get(billProjectId) : undefined
+  const billJobId = billRows?.terms.find((t) => t.project_id === billProjectId)?.billing_job_id ?? null
+  const billInvoiceOf = (number: number) => billOwn?.payApps.find((a) => a.number === number)?.invoice_id ?? null
+  const billUnconditional = useMemo(
+    () =>
+      Object.fromEntries(
+        (billOwn?.payApps ?? []).map((a) => [
+          a.number,
+          (billOwn?.money?.waivers ?? []).filter((w) => w.form_type.startsWith('unconditional') && a.invoice_id !== null && w.invoice_ids.includes(a.invoice_id)).length,
+        ]),
+      ),
+    [billOwn],
+  )
+  const billUnbilled = useMemo(() => unbilledPayments(billOwn?.money), [billOwn])
   const setBillWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('bill', projectId)
@@ -547,7 +565,15 @@ export default function GcProjects() {
   }
   // Our conditional waiver with a sent pay application (O4a-4): the Pipeline's own waiver window on the
   // billing job, filled in with what the bill asked and its bill day, since no bill exists until the certificate.
-  const [waiverFor, setWaiverFor] = useState<{ job: JobWithDetails; payAppId: string; ask: { amount: number; throughDate: string } } | null>(null)
+  const [waiverFor, setWaiverFor] = useState<{
+    job: JobWithDetails
+    payAppId: string
+    /** Our conditional waiver goes before the bill exists: what it asked and its bill day. */
+    ask: { amount: number; throughDate: string } | null
+    /** Our unconditional waiver (O5c) names the bill the payments came on. */
+    invoiceId: string | null
+    formType: 'conditional_progress' | 'unconditional_progress' | 'unconditional_final'
+  } | null>(null)
   const openWaiver = (number: number) => {
     if (!billProjectId) return
     const row = billRows?.billing.get(billProjectId)?.payApps.find((a) => a.number === number)
@@ -558,7 +584,23 @@ export default function GcProjects() {
       async () => {
         const job = await fetchJobWithDetailsById(jobId)
         if (!job) throw new Error('The billing job did not load.')
-        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to } })
+        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to }, invoiceId: null, formType: 'conditional_progress' })
+      },
+      'The waiver did not open.',
+      false,
+    )
+  }
+  // Our unconditional waiver for what they paid (O5c): the same window on the bill, the final form on the final pay application.
+  const openUnconditional = (number: number) => {
+    const row = billOwn?.payApps.find((a) => a.number === number)
+    if (!row?.invoice_id || !billJobId) return
+    const invoiceId = row.invoice_id
+    billWrite(
+      `unconditional-${number}`,
+      async () => {
+        const job = await fetchJobWithDetailsById(billJobId)
+        if (!job) throw new Error('The billing job did not load.')
+        setWaiverFor({ job, payAppId: row.id, ask: null, invoiceId, formType: row.final ? 'unconditional_final' : 'unconditional_progress' })
       },
       'The waiver did not open.',
       false,
@@ -1016,6 +1058,8 @@ export default function GcProjects() {
           busy={billBusy}
           problem={billProblem}
           waived={(billRows?.billing.get(billProject.id)?.payApps ?? []).filter((a) => a.conditional_waiver_id !== null).map((a) => a.number)}
+          unconditional={billUnconditional}
+          unbilled={billUnbilled}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: () => billWrite('send', () => sendOwnerPayApp(billProject.id, payAppSendPayload(ownerPayApp(billState, billProject), today)), 'The pay application did not go.'),
@@ -1031,6 +1075,18 @@ export default function GcProjects() {
               billWrite('file', () => (kind === 'xlsx' ? downloadPayAppExcel : downloadPayAppPdf)(form.app, parties), 'The form did not download.', false)
             },
             onWaiver: openWaiver,
+            onPaid: (number) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, null, today), 'The payment was not recorded.')
+            },
+            onPayPart: (number, amount) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, amount, today), 'The payment was not recorded.')
+            },
+            onPromise: (number, by, note, channel) => {
+              if (billJobId) billWrite(`promise-${number}`, () => recordGcPromise(billJobId, by, note, channel), 'When they said they will pay was not recorded.')
+            },
+            onUnconditional: openUnconditional,
           }}
         />
       )}
@@ -1039,14 +1095,17 @@ export default function GcProjects() {
         <LienReleaseModal
           open
           job={waiverFor.job}
-          invoice={null}
-          invoiceIds={[]}
-          initialFormType="conditional_progress"
+          invoice={waiverFor.invoiceId ? (waiverFor.job.invoices.find((i) => i.id === waiverFor.invoiceId) ?? null) : null}
+          invoiceIds={waiverFor.invoiceId ? [waiverFor.invoiceId] : []}
+          initialFormType={waiverFor.formType}
           ask={waiverFor.ask}
           signerNameFallback={(profileName ?? '').trim()}
           onClose={() => setWaiverFor(null)}
           onIssued={(releaseId) => {
-            if (releaseId) billWrite('waiver', () => linkPayAppWaiver(waiverFor.payAppId, releaseId), 'The waiver was made, but not linked to its pay application.')
+            // The conditional one links to its pay application once; an unconditional one names its bill, so the bills are read again.
+            if (waiverFor.ask) {
+              if (releaseId) billWrite('waiver', () => linkPayAppWaiver(waiverFor.payAppId, releaseId), 'The waiver was made, but not linked to its pay application.')
+            } else billWrite('waiver', () => Promise.resolve(), 'The bills did not load.')
           }}
         />
       )}

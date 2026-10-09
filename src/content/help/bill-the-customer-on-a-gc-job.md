@@ -32,6 +32,8 @@ The architect signs a certificate for what they approve. Record it when it comes
 
 The certificate makes the bill the customer pays. It shows on their statement with **Pay**. What the architect left out comes back on the next pay application.
 
+When they pay, [record what they paid](/help/record-what-a-gc-customer-paid).
+
 ## Send our conditional waiver
 
 Our conditional waiver goes with each pay application. It gives up our lien rights for the amount once they pay it.

@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcBillCustomerWindow } from './GcBillCustomer'
 import { initialGcState } from '../../lib/gc/schedule/testState'
-import type { GcProject } from '../../lib/gc/types'
+import type { GcProject, OwnerPayAppSent } from '../../lib/gc/types'
+import { money } from '../../lib/gc/words'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
 
-/** Fair Oaks D with its made-up bills, the last one still waiting on the architect. */
-function setup(over: Partial<GcProject> = {}, waived: number[] = []) {
+/** Fair Oaks D with its made-up bills, the last one still waiting on the architect unless `lastApp` says otherwise. */
+function setup(over: Partial<GcProject> = {}, waived: number[] = [], lastApp: Partial<OwnerPayAppSent> = {}, extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[] } = {}) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
   const billing = fairOaks.ownerBilling!
@@ -17,12 +18,12 @@ function setup(over: Partial<GcProject> = {}, waived: number[] = []) {
   const last = apps[apps.length - 1]!
   const project: GcProject = {
     ...fairOaks,
-    ownerBilling: { ...billing, payApps: [...apps.slice(0, -1), { ...last, certified: null, certifiedOn: null }] },
+    ownerBilling: { ...billing, payApps: [...apps.slice(0, -1), { ...last, certified: null, certifiedOn: null, ...lastApp }] },
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn() }
-  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} onClose={() => undefined} />)
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn() }
+  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} onClose={() => undefined} />)
   return { writes, last }
 }
 
@@ -75,5 +76,62 @@ describe('GcBillCustomerWindow', () => {
     setup({ ownerContractSignedOn: null })
     expect(screen.queryByRole('button', { name: /Send pay application/ })).toBeNull()
     expect(document.body.textContent).toContain('is not marked signed yet')
+  })
+  /** Fair Oaks D's last made-up bill, pay application 3. */
+  const lastSent = (): OwnerPayAppSent => {
+    const apps = initialGcState().projects.find((p) => p.id === 'fairoaksd')!.ownerBilling!.payApps!
+    return apps[apps.length - 1]!
+  }
+
+  // Pay application 3 certified as asked on Sep 28, part paid, and late on their Sep 29 word (the state's today is Oct 2).
+  const partPaid = (last: OwnerPayAppSent): Partial<OwnerPayAppSent> => ({
+    certified: last.due,
+    certifiedOn: '2026-09-28',
+    paidOn: null,
+    payments: [{ on: '2026-09-30', amount: 100000 }],
+    promises: [{ by: '2026-09-29', madeOn: '2026-09-28', note: 'Check is cut', who: 'office' }],
+  })
+
+  it('shows money in on a certified bill: what came, when it is due and late, and their word', () => {
+    const last = lastSent()
+    const { writes } = setup({}, [], partPaid(last))
+    const left = last.due - 100000
+    expect(screen.getByText(`paid ${money(100000)} of ${money(last.due)}`)).toBeTruthy()
+    expect(screen.getByText('late · promised Sep 29, 3 days ago')).toBeTruthy()
+    expect(document.body.textContent).toContain(`Pay application ${last.number} is 3 days late: ${money(left)} open.`)
+    expect(document.body.textContent).toContain('On Sep 28, they said Tue Sep 29: Check is cut.')
+    fireEvent.click(screen.getByRole('button', { name: `Mark paid ${money(left)}` }))
+    expect(writes.onPaid).toHaveBeenCalledWith(last.number)
+  })
+
+  it('records part of it, and when they said they will pay and how they told us', () => {
+    const last = lastSent()
+    const { writes } = setup({}, [], partPaid(last))
+    fireEvent.click(screen.getByRole('button', { name: 'They paid part…' }))
+    fireEvent.change(screen.getByLabelText(`What they paid on pay application ${last.number}`), { target: { value: '5000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record it' }))
+    expect(writes.onPayPart).toHaveBeenCalledWith(last.number, 5000)
+    fireEvent.click(screen.getByRole('button', { name: 'They said when…' }))
+    fireEvent.change(screen.getByLabelText(`The day they will pay pay application ${last.number}`), { target: { value: '2026-10-09' } })
+    fireEvent.change(screen.getByLabelText(`How they told us about pay application ${last.number}`), { target: { value: 'phone' } })
+    fireEvent.change(screen.getByLabelText(`What they said about pay application ${last.number}`), { target: { value: 'Elena, the controller' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record it' }))
+    expect(writes.onPromise).toHaveBeenCalledWith(last.number, '2026-10-09', 'Elena, the controller', 'phone')
+  })
+
+  it('makes our unconditional waiver for a payment, and says when it went', () => {
+    const last = lastSent()
+    const first = setup({}, [], partPaid(last))
+    fireEvent.click(screen.getByRole('button', { name: 'Make our unconditional waiver' }))
+    expect(first.writes.onUnconditional).toHaveBeenCalledWith(last.number)
+    cleanup()
+    setup({}, [], partPaid(last), { unconditional: { [last.number]: 1 } })
+    expect(screen.getByText('our unconditional waiver went')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Make our unconditional waiver' })).toBeNull()
+  })
+
+  it('names a payment on the billing job that names no bill, and lays it on none', () => {
+    setup({}, [], {}, { unbilled: [{ on: '2026-10-03', amount: 250 }] })
+    expect(document.body.textContent).toContain(`A payment of ${money(250)} on Oct 3 on the billing job names no bill.`)
   })
 })

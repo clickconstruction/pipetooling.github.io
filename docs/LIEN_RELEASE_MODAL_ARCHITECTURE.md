@@ -29,7 +29,7 @@ Props (165–185): `open`, `onClose`, `job: JobWithDetails | null`, `invoice` (t
 | `BillCustomerWaiverFollowUp` | 29 | no (`open` literal) | passed through | — | — |
 | `BillPaperworkCard` | 197 | while `showWaiver`; `open={windowOpen}` | the bill's | — | `load` |
 | `JobFormInvoiceList` (Edit Job's bill rows) | 1066 | while `editing` | `waiverFor` | — | — |
-| [`GcProjects`](../src/pages/GcProjects.tsx) (Bill the customer → *Make our conditional waiver*, Owner Billing's O4a-4) | 1039 | no (`open` literal under `waiverFor`) | `null`, `invoiceIds` `[]`, `ask` the pay application's | `conditional_progress` | `linkPayAppWaiver` with the minted id |
+| [`GcProjects`](../src/pages/GcProjects.tsx) (Bill the customer → *Make our conditional waiver*, Owner Billing's O4a-4; *Make our unconditional waiver*, O5c) | 1095 | no (`open` literal under `waiverFor`) | conditional: `null`, `invoiceIds` `[]`, `ask` the pay application's; unconditional: the bill, `invoiceIds` `[it]` | `conditional_progress`; `unconditional_progress` (`unconditional_final` on the final pay application) | conditional: `linkPayAppWaiver` with the minted id; unconditional: reads the bills again |
 
 `signerNameFallback` is `lienDeskSignerFor(job.master_user_id)` from the Pipeline and the session's `profileName` from the other six. The Pipeline's mount is a row of §6 *The modal tail* in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md); the Lien desk and its other neighbours are in [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md).
 
