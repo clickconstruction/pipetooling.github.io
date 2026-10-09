@@ -96,7 +96,7 @@ export function wordRecordPreview(input: { leaderName?: string | null; note: str
   const present = leaderPresent(input.channel)
   return {
     ready: `On ${words.slice(3)}`,
-    strip: `Sent on your word: ${input.jobLabel}`,
+    strip: lienFyiStrip([{ jobLabel: input.jobLabel, by: 'word' }]),
     row: [input.jobLabel, input.gcName ? `GC ${input.gcName}` : '', input.amountWords ?? '', words].filter(Boolean).join(' · '),
     record: present
       ? `Recorded by ${who}: ${he} was at the desk and said to send it. ${he} can pull it back with “Not what I said” while it has not gone out.`
@@ -108,4 +108,27 @@ export function wordRecordPreview(input: { leaderName?: string | null; note: str
 /** The note the row opens with: `Robert, Sep 24` when the leader is named, else `the leader, Sep 24`. */
 export function defaultWordNote(leaderName: string | null | undefined, todayWords: string): string {
   return `${leaderName?.trim() || 'the leader'}, ${todayWords}`
+}
+
+/** A notice that reached Ready to send, or went out, without the leader pressing Approve. */
+export type LienFyiSend = { jobLabel: string; by: 'word' | 'rule'; gcName?: string | null }
+
+/**
+ * The leader's FYI list in the desk's title bar (v2.5028; the owner's call of 2026-10-09). *Sent on your
+ * word* names the notices the office sent on his spoken word, and also the ones a GC's standing rule
+ * approved and sent ("Send notices without asking"), marked as that GC's rule — so the rule's promise,
+ * "you see each send in your FYI list", holds: `Sent on your word: 650 · by Loberg Contracting’s rule: 702, 715`.
+ * With no word sends the rule's part leads: `Sent by Loberg Contracting’s rule: 702`. '' when nothing went.
+ */
+export function lienFyiStrip(sends: readonly LienFyiSend[]): string {
+  const word = sends.filter((s) => s.by === 'word').map((s) => s.jobLabel)
+  const ruleByGc = new Map<string, string[]>()
+  for (const s of sends) {
+    if (s.by !== 'rule') continue
+    const gc = s.gcName?.trim() || 'the GC'
+    ruleByGc.set(gc, [...(ruleByGc.get(gc) ?? []), s.jobLabel])
+  }
+  const parts: string[] = word.length ? [`Sent on your word: ${word.join(', ')}`] : []
+  for (const [gc, labels] of ruleByGc) parts.push(`${parts.length ? 'by' : 'Sent by'} ${gc}’s rule: ${labels.join(', ')}`)
+  return parts.join(' · ')
 }

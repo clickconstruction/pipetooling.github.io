@@ -165,7 +165,7 @@ A skipped or missed month stays as a row in the **Months** grid. A month skipped
 On the **Affidavits** tab, the job's pane shows **Months the affidavit claims**. Each month reads {{chip:green|on the lien}}, {{chip:blue|window open}} or {{chip:yellow|unsecured}}. A month whose window closed unsent is named and left off the lien. Its share of the money is chased in Collections.
 
 :::example One call, one rule
-Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Loberg Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Loberg's months go to Ready to send by themselves. He still sees every send in his list. A live promise always comes back to him.
+Robert opens J650 under Awaiting approval. Loberg Contracting owes $33,500 on it. It is our first notice to them, and June closes tomorrow. He ticks **Send notices without asking** under the standing rule for Loberg Contracting. Then he presses {{button:green|Approve & next ▸}}. From now on, Loberg's months go to Ready to send by themselves. He still sees every send under **Sent on your word** in the desk's title bar. Each one reads *by Loberg Contracting’s rule*. A live promise always comes back to him.
 :::
 
 ## Reading the notice before it goes
