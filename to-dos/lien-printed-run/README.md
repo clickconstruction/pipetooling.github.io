@@ -2,17 +2,17 @@
 name: "Lien desk: take back a printed run, and a Do now that reads as one job"
 number: 101
 group: close
-status: the owner approved the mock-up 2026-10-08 (no leader needed to take back) · PR 1 built v2.4983 (#5044) · PR 2 built v2.4982 (#5047) · PR 3 built v2.4985 on claude/lien-only-you · delete this folder once all three merged and a week of use raises nothing
+status: the owner approved the mock-up 2026-10-08 (no leader needed to take back) · all three merged 2026-10-08, client only · PR 1 v2.4983 (#5044) · PR 2 v2.4982 (#5047) · PR 3 v2.4985 (#5049) · delete this folder once a week of use raises nothing
 summary: >
   The office printed a run of 19 notices, then changed the packet's layout before mailing.
   Printing stamps every notice as in the mail, and nothing takes a whole run back. PR 1 puts
   Take back… on the run window's printed step. PR 2 draws every printed notice as one run row
   on Do now, with the rail counting them. PR 3 puts the leader's approvals first, and the
   office sees them last under the leader's name.
-next: Merge the three PRs. Then use it for a week and delete this folder.
+next: Use it for a week from 2026-10-09, to 2026-10-16. If nothing comes up, delete this folder.
 size: S, M, S
-blocker: none
-opinion: build — PR 1 is a batch of the Back to ready the desk already has; PR 2 reuses the GC row's shape
+blocker: A week of use (to 2026-10-16).
+opinion: your call — all three are merged; a week of use is what is left
 mockup: to-dos/lien-printed-run/mockup.html
 ---
 
