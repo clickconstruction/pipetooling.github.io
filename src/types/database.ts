@@ -28941,6 +28941,7 @@ export type Database = {
         Returns: boolean
       }
       can_define_task_style_checklist_items: { Args: never; Returns: boolean }
+      can_edit_bid: { Args: { p_bid_id: string }; Returns: boolean }
       can_edit_checklist_tech_tree_structure_for_roadmap: {
         Args: { p_roadmap_id: string }
         Returns: boolean
@@ -30729,6 +30730,22 @@ export type Database = {
           supply_house_id: string
         }[]
       }
+      list_bid_removed_rows: {
+        Args: { p_bid_id: string }
+        Returns: {
+          archive_id: string
+          changed: string[]
+          changed_at: string
+          changed_by: string
+          changed_by_name: string
+          count_row_id: string
+          in_ledger: boolean
+          label: string
+          old_values: Json
+          record_id: string
+          table_name: string
+        }[]
+      }
       list_bulk_deletion_alerts: {
         Args: never
         Returns: {
@@ -32196,6 +32213,7 @@ export type Database = {
         Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string }
         Returns: Json
       }
+      restore_bid_removed_row: { Args: { p_archive_id: string }; Returns: Json }
       restore_deleted_records: {
         Args: { p_dry_run?: boolean; p_group_key: string }
         Returns: Json
