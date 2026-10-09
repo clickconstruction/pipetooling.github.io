@@ -2,7 +2,7 @@
 name: "Building U6: the trades' draws and pay applications"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 6; decisions 3, 4, 5, 9 and 12; The tables (U6); Writing it (the trades' writes, U6's office writes); the owner's calls, 5; PORTAL_REAL_BUILD.md (P5a, P5c, the 37 trade actions); mockups/portal-p2c.md
 branch: the plan on spike/building-u6-plan (from origin/spike/gc-mode at d4e4efca5); U6a from origin/main once this plan merges, pushed on its merge; U6b on U6a's types; U6c and U6d after
-status: plan 2026-10-09 by Helper 18 at the lead's ask. The read-back was approved the same day at all seven picks. U6a's SQL below ran green on main's real GC migration chain in PGlite (99 assertions; ten planted bugs each failed it; U4a's and U5a's scenarios still passed beside it). U6c's SQL follows in its own amendment. Nothing is cut or claimed.
+status: plan 2026-10-09 by Helper 18 at the lead's ask. The read-back was approved the same day at all seven picks. U6a's SQL below ran green on main's real GC migration chain in PGlite (99 assertions; ten planted bugs each failed it; U4a's and U5a's scenarios still passed beside it). U6c's SQL follows in its own amendment. Nothing is cut or claimed. Amendment 1, the same day: the comment on gc_sow_lines.change_order_id that says the kernels' line id (Helper 13), and seq on the draws and the reports, so the newest report and a resend's place never hang on the clock (a same-millisecond tie made the bed flaky once); the bed ran green three times after it.
 ---
 
 # Building U6: the trades' draws and pay applications
@@ -85,7 +85,7 @@ kernel's line 7 adds the charges back.
 |---|---|---|
 | `gc_draws` | `Draw`, `DrawPayApp`, `DrawSentBack` | One pay application on a statement of work: its number, day, status (requested, approved, paid, sent back), money, waiver, what was asked when approved for less, the day and note when sent back, the pay application's words, and its file and who of ours recorded it when it came by email |
 | `gc_draw_lines` | `Draw.lines`, `DrawSentBack.lines` | What a draw claims on each line: its percent, the stored dollars, and on one sent back the percent we see |
-| `gc_sow_line_reports` | `SovLine.pctReported` | A trade's report on a line, newest first, append only |
+| `gc_sow_line_reports` | `SovLine.pctReported` | A trade's report on a line, append only; the newest is the last made (`seq`) |
 | `gc_change_order_trade_sends` | `ChangeOrder.tradeChange` | A signed change order sent to its trade, the day the trade signed it, and the line it became |
 
 `SovLine.pctBilled` is the most an approved or paid draw took the line to, and `pctReported` the newest report.
@@ -231,8 +231,9 @@ CREATE TABLE IF NOT EXISTS public.gc_draws (
   file_name text,
   drive_url text,
   recorded_by uuid REFERENCES public.users(id) ON DELETE SET NULL,
-  -- The moment, not the transaction's: a resend sorts after the one sent back even in one transaction.
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- The order rows were made: a resend sorts after the one sent back, whatever the clock says.
+  seq bigint GENERATED ALWAYS AS IDENTITY,
   CONSTRAINT gc_draws_net_adds CHECK (net = gross - retainage),
   CONSTRAINT gc_draws_approved_dated CHECK ((status IN ('approved', 'paid')) = (approved_on IS NOT NULL)),
   CONSTRAINT gc_draws_paid_dated CHECK ((status = 'paid') = (paid_on IS NOT NULL)),
@@ -282,14 +283,15 @@ CREATE TABLE IF NOT EXISTS public.gc_sow_line_reports (
   -- Whose report it is: the company on the statement of work. Who of ours typed it in: null from the portal.
   company_id uuid NOT NULL REFERENCES public.gc_companies(id) ON DELETE RESTRICT,
   recorded_by uuid REFERENCES public.users(id) ON DELETE SET NULL,
-  -- The moment, so the newest of a day is the last one made.
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- The order rows were made: the newest report is the last one, whatever the clock says.
+  seq bigint GENERATED ALWAYS AS IDENTITY
 );
 
 COMMENT ON TABLE public.gc_sow_line_reports IS
   'GC mode (v2.NNNN, Building U6a): a trade''s percent done on a line of its statement of work (SovLine.pctReported is the newest), from gc_trade_sow_report, a pay application''s claim, or a credit signed in. Append only. Dev only while it is built.';
 
-CREATE INDEX IF NOT EXISTS gc_sow_line_reports_newest_idx ON public.gc_sow_line_reports (sow_line_id, reported_on DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS gc_sow_line_reports_newest_idx ON public.gc_sow_line_reports (sow_line_id, seq DESC);
 
 -- A signed change order sent to the trade it belongs to, as a change to its statement of work
 -- (ChangeOrder.tradeChange). Once the trade signs it, it is a line of their statement of work, for what the change
@@ -316,6 +318,11 @@ BEGIN
     ALTER TABLE public.gc_sow_lines ADD CONSTRAINT gc_sow_lines_credit_by_change_order CHECK (amount >= 0 OR change_order_id IS NOT NULL);
   END IF;
 END $$;
+
+-- The kernels' SovLine.id, said where the next reader looks (B6-a's own note named the change order): the scope item's
+-- id when the line has one, else the line's own id (gc_sow_line_of), never the change order's.
+COMMENT ON COLUMN public.gc_sow_lines.change_order_id IS
+  'GC mode (v2.NNNN, Building U6a): the signed change order this line came from (gc_trade_sign_change), for its cost to the trade, a credit when below none. The kernels'' SovLine.id is the scope item''s id when the line has one, else this line''s own id (gc_sow_line_of), never the change order''s.';
 
 -- The draw a back-charge came off (P4a's column, which waited for this table). Its check waits for the end of the
 -- transaction, as the draw's lines do.
@@ -563,7 +570,7 @@ BEGIN
   FROM jsonb_array_elements(v_money->'reported') r
   WHERE (r->>'pct')::numeric IS DISTINCT FROM (
     SELECT x.pct FROM public.gc_sow_line_reports x WHERE x.sow_line_id = (r->>'line')::uuid
-    ORDER BY x.reported_on DESC, x.created_at DESC LIMIT 1
+    ORDER BY x.seq DESC LIMIT 1
   );
   PERFORM public.gc_keep_promises(v_sow.company_id, 'payApp', v_project, p_package_id, public.app_today());
   RETURN v_id;
@@ -1114,7 +1121,7 @@ BEGIN
   FROM jsonb_array_elements(v_money->'reported') r
   WHERE (r->>'pct')::numeric IS DISTINCT FROM (
     SELECT x.pct FROM public.gc_sow_line_reports x WHERE x.sow_line_id = (r->>'line')::uuid
-    ORDER BY x.reported_on DESC, x.created_at DESC LIMIT 1
+    ORDER BY x.seq DESC LIMIT 1
   );
   PERFORM public.gc_keep_promises(p_company_id, 'payApp', v_project, p_package_id, public.app_today());
   RETURN v_id;
@@ -1448,13 +1455,13 @@ CREATE FUNCTION gbt.draws() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SE
       || coalesce((SELECT string_agg(l.label || ':' || trim_scale(dl.to_pct) || CASE WHEN dl.stored > 0 THEN '+' || trim_scale(dl.stored) ELSE '' END
                                        || coalesce('~' || trim_scale(dl.we_see), ''), ',' ORDER BY l.position)
                    FROM public.gc_draw_lines dl JOIN public.gc_sow_lines l ON l.id = dl.sow_line_id WHERE dl.draw_id = d.id), '-'),
-    E'\n' ORDER BY d.number, d.created_at)
+    E'\n' ORDER BY d.number, d.seq)
   FROM public.gc_draws d WHERE d.sow_id = '00000000-0000-0000-0000-000000009101' $$;
 -- Each Concrete line's newest report.
 CREATE FUNCTION gbt.reported() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT string_agg(l.label || ':' || coalesce(trim_scale(r.pct)::text, '-'), ',' ORDER BY l.position)
   FROM public.gc_sow_lines l
-  LEFT JOIN LATERAL (SELECT x.pct FROM public.gc_sow_line_reports x WHERE x.sow_line_id = l.id ORDER BY x.reported_on DESC, x.created_at DESC LIMIT 1) r ON true
+  LEFT JOIN LATERAL (SELECT x.pct FROM public.gc_sow_line_reports x WHERE x.sow_line_id = l.id ORDER BY x.seq DESC LIMIT 1) r ON true
   WHERE l.sow_id = '00000000-0000-0000-0000-000000009101' $$;
 GRANT USAGE ON SCHEMA gbt TO authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gbt TO authenticated, service_role;
@@ -1741,9 +1748,9 @@ GC mode, the real build, the Building lane's U6a: the trades' money (`to-dos/gc-
   - Its waiver is conditional with the ask and unconditional once paid. Approved for less, it keeps what they asked (`asked`).
   - A pay application that came by email keeps its file and who of ours recorded it. `final` is the retainage release, U6c's.
 - **`gc_draw_lines`**: what a draw claims on each line (`to_pct`, `stored`), and on one sent back the percent we see (`we_see`). A line's billed percent is the most an approved or paid draw took it to.
-- **`gc_sow_line_reports`**: a trade's report on a line, append only. The newest is `SovLine.pctReported`.
+- **`gc_sow_line_reports`**: a trade's report on a line, append only. The newest, the last made (`seq`), is `SovLine.pctReported`. `gc_draws` keeps `seq` too, so a resend sorts after the one sent back.
 - **`gc_change_order_trade_sends`**: a signed change order sent to its trade (`ChangeOrder.tradeChange`), the day the trade signed it, and the line it became.
-- **`gc_sow_lines`**: a change order's line may be a credit (`gc_sow_lines_credit_by_change_order` replaces `gc_sow_lines_amount_not_negative`).
+- **`gc_sow_lines`**: a change order's line may be a credit (`gc_sow_lines_credit_by_change_order` replaces `gc_sow_lines_amount_not_negative`). The comment on `change_order_id` says the kernels' line id: the scope item's when the line has one, else the line's own (`gc_sow_line_of`), never the change order's, which B6-a's own note named.
 - **`gc_back_charges.taken_draw_id`** gains its foreign key to `gc_draws`, and `authenticated` may update it with `taken_on`.
 - **The office's presses**, `SECURITY INVOKER`, revoked from `PUBLIC` and `anon` and granted to `authenticated`:
   - `gc_draw_came_in(p_package_id uuid, p jsonb)` records a pay application that came by email or on paper, by the trade's own rules, with its Drive link. Its claim is their report, and it keeps their pay application promise.
@@ -1972,4 +1979,4 @@ It waits for a signed statement of work there (call 6, P2c).
 
 ## Status
 
-Plan 2026-10-09 by Helper 18. U6a's SQL ran green in PGlite on main at 6186bb429. U6c's SQL follows in an amendment.
+Plan 2026-10-09 by Helper 18. U6a's SQL ran green in PGlite on main at 6186bb429. Amendment 1 the same day: the line-id comment and `seq` (above). U6c's SQL follows in an amendment.
