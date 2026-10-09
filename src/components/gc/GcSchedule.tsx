@@ -1,11 +1,12 @@
 /**
- * GC mode, the real build, the schedule's PR 7b: one job's schedule on real data, read only (the
- * plan is to-dos/gc-mode/mockups/schedule-pr7.md on branch spike/gc-mode). It reads the schedule's
- * own rows over the board's job (`loadSchedule`) and draws what the prototype's Schedule tab draws
- * to look at: the measures, the chart with its links, spare days and holds, the list on a phone,
- * Print or PDF, Export, and the bar pressed (`GcScheduleBar`). Nothing moves yet (the schedule's
- * PR 8). Its one press is Draw a first draft, closed while we bid and on a lost job. The window
- * frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors bring one.
+ * GC mode, the real build, the schedule's PR 7b: one job's schedule on real data (the plan is
+ * to-dos/gc-mode/mockups/schedule-pr7.md on branch spike/gc-mode). It reads the schedule's own rows
+ * over the board's job (`loadSchedule`) and draws what the prototype's Schedule tab draws: the
+ * measures, the chart with its links, spare days and holds, the list on a phone, Print or PDF,
+ * Export, and the bar pressed (`GcScheduleBar`). Its presses are Draw a first draft, closed while we
+ * bid and on a lost job, and for those who may move a bar, a move through Why it moved with Undo and
+ * Redo (PR 8a), and the bar's form and a part's own move (PR 8b). The window frames it
+ * (`GcScheduleWindow`); a project page mounts it unchanged the day the doors bring one.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
@@ -25,16 +26,18 @@ import { crowdedWeeks } from '../../lib/gc/schedule/places'
 import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gc/schedule/rough'
 import type { ScheduleRead } from '../../lib/gc/schedule/rows'
 import { planMove } from '../../lib/gc/schedule/moves'
+import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { draftRefusal, draftStart, draftWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { ScheduleActivity, ScheduleMove } from '../../lib/gc/schedule/types'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { waitRows } from '../../lib/gc/schedule/waits'
-import { drawSchedule, loadSchedule, redoScheduleMove, saveScheduleMove, undoScheduleMove } from '../../lib/gc/scheduleIo'
+import { drawSchedule, loadSchedule, redoScheduleMove, saveScheduleMove, setActualDates, undoScheduleMove } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
+import { GcActivityEditor } from './GcActivityEditor'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
@@ -106,6 +109,19 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
     },
     [read, projectId],
   )
+  /** The real days a bar ran (G-55, PR 8b): a record, so no version. A refusal comes back in words for the form. */
+  const keepActual = useCallback(
+    async (lineId: string, actualStart: string | null, actualFinish: string | null) => {
+      if (!read) return
+      try {
+        const next = await setActualDates(read.state, projectId, lineId, { actualStart, actualFinish })
+        if (next) setRead(next)
+      } catch (e) {
+        throw new Error(formatErrorMessage(e, 'The real days did not save.'))
+      }
+    },
+    [read, projectId],
+  )
   // Undo and Redo (G-40): replayed on the server from the move's own record, against the version read.
   const [replaying, setReplaying] = useState(false)
   const [replayRefused, setReplayRefused] = useState<ScheduleChange[] | null>(null)
@@ -147,6 +163,7 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
           canMove
             ? {
                 save: saveMove,
+                actual: keepActual,
                 reload: () => setReads((n) => n + 1),
                 undo: (move) => void replay('undo', move),
                 redo: (move) => void replay('redo', move),
@@ -172,6 +189,8 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
 /** What a person who may move a bar presses (PR 8a): a move with why, reading again after a refusal, Undo and Redo. */
 interface MovePresses {
   save: (move: ScheduleMove, activities: ScheduleActivity[], words: string) => Promise<void>
+  /** The real days (G-55, PR 8b). */
+  actual: (lineId: string, actualStart: string | null, actualFinish: string | null) => Promise<void>
   reload: () => void
   undo: (move: ScheduleMove) => void
   redo: (move: ScheduleMove) => void
@@ -182,7 +201,8 @@ interface MovePresses {
 
 /**
  * The schedule as read: the first draft's card while nothing is drawn, else the measures, the chart, the bar pressed
- * and the record of moves. With `moves`, a bar dragged, pulled at an end or linked opens Why it moved.
+ * and the record of moves. With `moves`, a bar dragged, pulled at an end or linked, a part dragged, or a change in the
+ * bar's form opens Why it moved.
  */
 function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read: ScheduleRead; by: string; drawing: boolean; drawProblem: string | null; onDraw: (start: string) => void; moves: MovePresses | null }) {
   const { state, project } = read
@@ -305,10 +325,30 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
                   const a = project.schedule?.activities.find((x) => x.lineId === to)
                   if (a) setPending({ lineId: to, start: a.start, finish: a.finish, after: a.after.filter((id) => id !== from) })
                 },
+                // A part of a split line dragged (G-39, PR 8b): its line's new span, and the part's days before and after.
+                onMovePart: (lineId: string, partId: string, start: string, finish: string) => {
+                  const a = project.schedule?.activities.find((x) => x.lineId === lineId)
+                  const move = a ? partMoveOf(a, partId, start, finish) : null
+                  if (move) setPending(move)
+                },
               }
             : {})}
         />
       </Card>
+      {/* The bar's form (PR 8b), for those who may move a bar: a change goes through Why it moved like a drag. */}
+      {pickedBar && moves && (
+        <GcActivityEditor
+          key={pickedBar.id}
+          project={project}
+          row={pickedBar.item}
+          rows={m.items}
+          started={Boolean(project.startedOn)}
+          today={state.today}
+          onSave={(start, finish, after, limits) => setPending({ lineId: pickedBar.id, start, finish, after, limits })}
+          onActual={(actualStart, actualFinish) => moves.actual(pickedBar.id, actualStart, actualFinish)}
+          onClose={() => setPicked(null)}
+        />
+      )}
       {pickedBar && <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} onClose={() => setPicked(null)} />}
       {moves ? (
         <GcMoveHistory project={project} onUndo={moves.undo} onRedo={moves.redo} busy={moves.busy} refused={moves.refused} problem={moves.problem} />

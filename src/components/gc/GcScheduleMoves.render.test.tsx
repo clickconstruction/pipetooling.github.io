@@ -9,6 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { addDays } from '../../lib/gc/building'
 import { moveRecord, planMove, undoMove } from '../../lib/gc/schedule/moves'
+import { partMoveOf, splitParts } from '../../lib/gc/schedule/splitBars'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
 import type { GcProject } from '../../lib/gc/types'
@@ -110,10 +111,10 @@ describe('the record of moves', () => {
     return { ...fairOaks, schedule: { ...schedule, activities: plan.activities, moves: [move, ...(schedule.moves ?? [])] } }
   }
 
-  it('starts empty, saying how a bar moves', () => {
+  it('starts empty, saying how a bar moves: dragged, or changed in its form (8b)', () => {
     const empty = { ...fairOaks, schedule: { ...fairOaks.schedule!, moves: [] } }
     render(<GcMoveHistory project={empty} />)
-    expect(screen.getByText('None yet. Drag a bar on the chart. Every move is kept here with who made it and why.')).toBeTruthy()
+    expect(screen.getByText('None yet. Drag a bar on the chart, or press one to change its dates. Every move is kept here with who made it and why.')).toBeTruthy()
   })
 
   it('lists a move with who, why and their words, and Undo sends that move', () => {
@@ -145,5 +146,28 @@ describe('the record of moves', () => {
     const alert = screen.getByRole('alert')
     expect(alert.textContent).toContain(SCHEDULE_CHANGED)
     expect(alert.textContent).toContain('Nothing was undone or put back. The chart shows the new dates now.')
+  })
+})
+
+describe('a part of a split line moved (PR 8b)', () => {
+  it('says the part’s days and what its line does, and saves the move with the parts’ days', async () => {
+    const made = splitParts(tpo, [{ name: 'East half', start: tpo.start, finish: '2026-09-30' }, { name: 'West half', start: '2026-10-01', finish: tpo.finish }], 50)
+    if (!('parts' in made)) throw new Error(made.problem)
+    const split = { ...fairOaks, schedule: { ...fairOaks.schedule!, activities: fairOaks.schedule!.activities.map((a) => (a.lineId === 'froof-1' ? { ...a, parts: made.parts } : a)) } }
+    const line = split.schedule.activities.find((a) => a.lineId === 'froof-1')!
+    const pending = partMoveOf(line, 'froof-1-p2', '2026-10-02', '2026-10-09')!
+    const onSave = vi.fn(() => Promise.resolve())
+    const onClose = vi.fn()
+    render(<GcMoveExplain state={s} project={split} pending={pending} by="Robert" today={s.today} onSave={onSave} onReload={vi.fn()} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Why it moved' })
+    expect(within(dialog).getByRole('heading').textContent).toBe('Move Roofing · TPO membrane, West half')
+    expect(dialog.querySelector('[data-gc-part-line]')?.textContent).toBe('TPO membrane keeps its dates, Sep 21 to Oct 9. Nothing after it moves.')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Weather' }))
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Rain on the west side.' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the move' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const [move, , words] = onSave.mock.calls[0]! as unknown as [{ parts?: { id: string } }, unknown, string]
+    expect(move.parts?.id).toBe('froof-1-p2')
+    expect(words).toBe('Roofing · TPO membrane, West half now runs Fri Oct 2 to Fri Oct 9. Robert: Rain on the west side.')
   })
 })

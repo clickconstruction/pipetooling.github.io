@@ -2,10 +2,10 @@
 title: move a bar on the schedule and say why
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, schedule, gantt, chart, move, bar, drag, why it moved, reason, link, push, undo, redo, the schedule changed
+keywords: gc mode, schedule, gantt, chart, move, bar, drag, why it moved, reason, link, push, undo, redo, the schedule changed, form, not before, must finish by, gap, real days, part, split
 order: 104
 ---
-Each GC project has a schedule. You move a bar by dragging it on the chart. The app asks why it moved before it saves. Every move stays on the schedule's record with who made it and why.
+Each GC project has a schedule. You move a bar by dragging it on the chart, or by changing it in its form. The app asks why it moved before it saves. Every move stays on the schedule's record with who made it and why.
 
 Only devs can move a bar for now. The rest of the office gets the Schedule window later.
 
@@ -32,6 +32,26 @@ While you drag, the chart shows what moves after the bar. The window says the sa
 3. Press {{button:blue|Save the move}}.
 
 Nothing saves without a reason and a sentence. The window names the bars the move pushes, and says what happens to the finish.
+
+## Change a bar in its form
+
+Press a bar on the chart. The bar's form opens under the chart.
+
+1. Change its **Starts** or **Finishes** day.
+2. Set **Not before** for a day it cannot start before, like a delivery.
+3. Set **Must finish by** for a day it has to be done.
+4. Tick what it waits on under **It waits on**. Type a gap in days after one, like cure time.
+5. Press {{button:blue|Save, and say why}}.
+
+The **Why it moved** window opens next, as it does for a drag. The form also shows what a slip of 5 or 10 days would do.
+
+## Keep the days it really ran
+
+The form has a **Really** line at the bottom. Type the day the work really started, and the day it finished. Then press **Keep the real days**. The real days save at once, with no reason asked.
+
+## Move one part of a split bar
+
+A split bar shows its parts on the chart. Drag one part to its new days. The **Why it moved** window says what the part does, and what the whole bar does.
 
 ## Link two bars
 
