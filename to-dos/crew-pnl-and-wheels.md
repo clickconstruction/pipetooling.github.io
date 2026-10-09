@@ -1,16 +1,16 @@
 ---
 name: "Crew P&L: wheels and the $50 default"
 number: 1
-group: gated
-status: not started, optional
+group: ready
+status: PR 3 approved by the owner 2026-10-09 (the decisions sitting); not started
 summary: >
   Vehicle rates on Crew P&L and Bids; the $50 sub-equivalent default; the backlog lines still
   true.
-next: Wheels PR 3 yes / no.
+next: Build Wheels PR 3 — the vehicle deal priced on Bids and Crew P&L, wear in the truck rate — from the plan below.
 size: S + S
-blocker: Optional, your call.
+blocker: None.
 ver: from v2.2735
-opinion: drop — vehicle rates on Crew P&L move numbers nobody has asked to see, and the $50 default already stands.
+opinion: build — the owner said yes on 2026-10-09; the $50 default stands until vehicle records exist.
 ---
 
 # Crew P&L: vehicle rates, the $50 sub-equivalent, and the backlog that is still true

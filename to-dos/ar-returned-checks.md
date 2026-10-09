@@ -1,7 +1,7 @@
 ---
 name: "Returned checks: the pieces left after the train"
 number: 76
-group: residual
+group: ready
 status: >
   The returned-check train shipped 2026-10-01 — v2.4313 (a check that came back cannot pay a bill) ·
   v2.4320 (the case opens itself, one notice per case) · v2.4325 (work the case in Accounts Receivable) ·
@@ -14,12 +14,13 @@ summary: >
   taken off every job in one press, closed when the new check lands. Four things were set aside
   on purpose and are kept here so they are not lost.
 next: >
-  (2) a returned-check fee line once the owner answers (a row in owner-decisions-pending.md).
+  (2) the owner said yes on 2026-10-09: a fee line at the Texas statutory cap — verify the cap with a cited
+  source first, then one PR (*Add the $N fee to bill 2* on the case).
   After v2.4950 merges: the push, the stripe-webhook and ar-returned-checks deploys, the four Stripe
   endpoint events (Grace), and one test-mode dispute on a ZZ TEST Stripe bill.
 size: S (2, after the owner's call and the fee amount)
-blocker: (2) is the owner's call, and Texas caps the fee (the amount is not verified here).
-opinion: leave (2) until the owner answers.
+blocker: The cap's source — Texas caps a returned-check processing fee by statute and the amount is not verified in the repo.
+opinion: build (2) once the cap is cited.
 mockup: not required — each piece copies the case and its words, which exist
 ---
 
