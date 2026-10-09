@@ -1,5 +1,5 @@
 /**
- * Division 22 rules manager kernel (v2.5054, PR 1 of the manager train — `to-dos/division-22-rules-manager.md`).
+ * Division 22 rules manager kernel (v2.5054, PR 1 of the manager train, v2.5054–v2.5063).
  *
  * The ledger (`spec_section_match_rules`) decides each fixture name by the first rule, in priority order, whose
  * pattern catches it (`classifySpecSection`). This kernel answers what a person managing that ledger needs before
