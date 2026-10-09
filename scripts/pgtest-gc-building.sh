@@ -22,6 +22,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 PRESSES=(
   supabase/migrations/*_gc_save_daily_log.sql
   supabase/migrations/*_gc_submittal_writes.sql
+  supabase/migrations/*_gc_rfi_writes.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

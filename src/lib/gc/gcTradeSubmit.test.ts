@@ -190,6 +190,8 @@ describe('the verb’s refusals', () => {
     // Building's U4a, gc_trade_submittal_send, listed ahead of it so the order the two land in does not matter.
     fileNeeded: 'P5',
     notYourMove: 'P5',
+    // Building's U5a, gc_trade_rfi_ask: a question on a job not being built.
+    jobNotBuilding: 'P5',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
