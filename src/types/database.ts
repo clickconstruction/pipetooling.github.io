@@ -15015,6 +15015,13 @@ export type Database = {
           pulled_back_by: string | null
           sent_at: string | null
           sent_filing_id: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_fields_hash: string | null
+          signed_on_device_of: string | null
+          signer_printed_name: string | null
+          signer_signature_mode: string | null
+          signer_signature_storage_path: string | null
           status: string
           submitted_at: string | null
           updated_at: string
@@ -15049,6 +15056,13 @@ export type Database = {
           pulled_back_by?: string | null
           sent_at?: string | null
           sent_filing_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_fields_hash?: string | null
+          signed_on_device_of?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           status?: string
           submitted_at?: string | null
           updated_at?: string
@@ -15083,6 +15097,13 @@ export type Database = {
           pulled_back_by?: string | null
           sent_at?: string | null
           sent_filing_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_fields_hash?: string | null
+          signed_on_device_of?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           status?: string
           submitted_at?: string | null
           updated_at?: string
@@ -15145,6 +15166,20 @@ export type Database = {
             columns: ["sent_filing_id"]
             isOneToOne: false
             referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_signed_on_device_of_fkey"
+            columns: ["signed_on_device_of"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -29410,6 +29445,10 @@ export type Database = {
         Args: { p_draft: Json; p_project_id: string }
         Returns: string
       }
+      gc_draft_change_order_from_request: {
+        Args: { p_draft: Json; p_request_id: string }
+        Returns: string
+      }
       gc_draft_time_extension: {
         Args: {
           p_days: number
@@ -29846,6 +29885,10 @@ export type Database = {
           p_submittal_id: string
         }
         Returns: string
+      }
+      gc_turn_down_change_request: {
+        Args: { p_note: string; p_request_id: string }
+        Returns: undefined
       }
       gc_vet_company: {
         Args: {
