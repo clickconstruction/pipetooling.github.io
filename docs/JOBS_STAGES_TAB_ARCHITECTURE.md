@@ -25,7 +25,7 @@ The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsSt
 | File | Lines | Shape |
 |---|---|---|
 | [`JobsStagesTab.tsx`](../src/components/jobs/JobsStagesTab.tsx) | 4,909 | `forwardRef(function JobsStagesTabInner)` 478–4907. Hook census: **114 useState** · 0 useReducer · **35 effects** (incl. `useImperativeHandle` 2339) · 48 useMemo · 28 useCallback · 3 useRef · 29 custom-hook calls. **60 props** (`JobsStagesTabProps` 358–430) + **11-method** `JobsStagesTabHandle` (333–356). 202 local imports; 68 distinct child elements in the render (3034–4906) |
-| [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) | 1,632 | 24 module functions, zero hooks, zero Supabase; **37-field** `StagesRowRenderContext` (80–145, 12 optional; `propertyKindByJobId` / `onPropertyKindSaved` since v2.4160, the contract-chip openers since v2.4342); `stagesOpenRowStyle` / `STAGES_OPEN_ROW_BAR` (v2.4131: the opened row and its thread row as one blue-barred card, under the amber flash); imported by 15 files |
+| [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) | 1,063 | 21 module functions since the three biggest became components (v2.5109, step 9), zero hooks, zero Supabase; **37-field** `StagesRowRenderContext` (80–145, 12 optional; `propertyKindByJobId` / `onPropertyKindSaved` since v2.4160, the contract-chip openers since v2.4342); `stagesOpenRowStyle` / `STAGES_OPEN_ROW_BAR` (v2.4131: the opened row and its thread row as one blue-barred card, under the amber flash); imported by 15 files |
 | [`JobsStagesTable.tsx`](../src/components/jobs/JobsStagesTable.tsx) | 529 | job-only sections (Waiting / Working / Paid in Full); 69 prop fields |
 | [`JobsStagesUnifiedTable.tsx`](../src/components/jobs/JobsStagesUnifiedTable.tsx) | 467 | job + invoice rows (Ready to Bill / Billed / Collections); 91 prop fields; row kinds in [`StagesUnifiedJobRow.tsx`](../src/components/jobs/StagesUnifiedJobRow.tsx) (420) / [`StagesUnifiedInvoiceRow.tsx`](../src/components/jobs/StagesUnifiedInvoiceRow.tsx) (376) |
 
@@ -220,7 +220,7 @@ None of the three v2.3530 dialogs has a render test.
 
 ### 9. [`jobsStagesRowShared.tsx`](../src/components/jobs/jobsStagesRowShared.tsx) (1,632 lines — shared renderers)
 
-Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase — side effects are `navigate` (1277), `tel:` (the call button in `renderStagesQuickActionsStack`), `showToast` (627, 767), and the context's openers.
+Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase — side effects are `showToast` (the property badge, the owner share chip) and the context's openers. The `navigate`, the `tel:` call button and the bill line's toast left with the three components of step 9 (v2.5109).
 
 | Lines | Export | Size | Consumers | Notes |
 |---|---|---|---|---|
@@ -235,7 +235,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | 363–414 | `renderStagesThreadFullscreenJobHeader` | 52 | CardList, JobCalendarModal, ActivityExpandModal, StagesExpandedThreadRow | narrow `JobCalendarJobIdentity` |
 | 417–426 | `stagesWhenForJob` | 10 | CardList (+ internal) | `deriveStagesWhen` |
 | 435–505 | `renderStagesScheduleStripCells` | 71 | CardList (+ internal) | two-week strip; ✓ / hollow cells from `stagesWorkedByJobId` |
-| 535–702 | `renderStagesFieldAndBillingLines` | 168 | Table, UnifiedTable | NEXT / ENDS / Not scheduled / Done, BILL / PAID (`stripBillParts`), man-hours; private `whenLine` 508–533 |
+| — | [`StagesFieldAndBillingLines`](../src/components/jobs/StagesFieldAndBillingLines.tsx) (was `renderStagesFieldAndBillingLines`; its own file since v2.5109) | 221 | Table, UnifiedTable | NEXT / ENDS / Not scheduled / Done, BILL / PAID (`stripBillParts`), man-hours; private `whenLine`; 5 render cases |
 | 712–773 | `renderJobAddressWithMap` | 62 | Table, both unified rows | `(ctx, job)` since v2.4160: the map link and `PropertyKindBadge` (C / R / ?, `lib/jobs/propertyKindBadge.ts`; `usePropertyKinds` runs in the tab) in one bottom-aligned row |
 | 780–805 / 811–815 | `renderAccountManChip` / `accountManOnlyStripeStyle` | 26 / 5 | chip: DetailJobModal (+ internal) · stripe: Table, CardList, both unified rows | |
 | 824–830 | `stagesInvoiceRowAccent{Row,Rail}Style` | — | CardList, UnifiedInvoiceRow | green = invoice |
@@ -243,14 +243,14 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | 972–1112 | `renderJobCustomerAndAddressLine` | 141 | CardList | card twin — **the GC / development / Account-Man block (891–936 vs 1043–1085) is duplicated** |
 | 1114–1118 / 1123–1158 | `shouldSuppressStagesRowJobThreadToggle` / `renderStagesThreadExpandButton` | 5 / 36 | Table, CardList, both unified rows | |
 | 1169–1204 | `renderStagesSeeAllButton` (was `renderStagesViewReportsButton` + the Sessions link, v2.4324) | 36 | CardList, UnifiedJobRow (+ footer) | the trail's door where no activity box draws; words from `lib/jobs/stagesRowDoors.ts` |
-| 1215–1388 | `renderStagesQuickActionsStack` | 174 | Table, UnifiedTable | schedule, week dispatch, call, Dispatch, task (`showTaskDispatchButton`) |
-| 1398–1577 | `renderStagesJobCellActivityFooter` | 180 | Table, UnifiedTable | inner `renderStagesInvoiceJumpChips` 1426–1473, `renderStagesStripeEmailedCustomerHint` 1475–1528, `renderStagesContractChip` 1425–1454 (contract + ⚖ legal chip; since v2.4342 its words and door come from `stagesContractChipFor` → `contractRowChip`, shared with the phone card and the phone row's chip) |
+| — | [`StagesQuickActionsStack`](../src/components/jobs/StagesQuickActionsStack.tsx) (was `renderStagesQuickActionsStack`; v2.5109) | 194 | Table, UnifiedTable | schedule, week dispatch, call, Dispatch, task (`showTaskDispatchButton`); 3 render cases |
+| — | [`StagesJobCellActivityFooter`](../src/components/jobs/StagesJobCellActivityFooter.tsx) (was `renderStagesJobCellActivityFooter`; v2.5109) | 211 | Table, UnifiedTable | 5 render cases; inner `renderStagesInvoiceJumpChips` 1426–1473, `renderStagesStripeEmailedCustomerHint` 1475–1528, `renderStagesContractChip` 1425–1454 (contract + ⚖ legal chip; since v2.4342 its words and door come from `stagesContractChipFor` → `contractRowChip`, shared with the phone card and the phone row's chip) |
 | 1579–1584 / 1586–1608 | `stagesRowHasProjectBanner` / `renderStagesProjectBannerRow` | 6 / 23 | Table, both unified rows | |
 | 1611–1629 | `renderStagesJobColumnEstimateFooter` | 19 | Table, CardList, both unified rows | |
 | 1632 | `stagesActionMoveStackStyle` | — | Table, CardList, both unified rows | the Send back / Collections stack under the icons (v2.4147) |
 
 - **Tests:** no direct test file. Covered indirectly by the render tests of `JobsStagesTable` (9), `JobsStagesUnifiedTable` (10), `JobsStagesCardList` (5), `JobsStagesActivityBox` (5); its kernels are tested — `stagesScheduleStrip` 24, `stagesJobReferenceDates` 11, `customerLinkHeuristics` 6, `accountMan` 4, `invoiceBilling` 42.
-- **Status:** extracted; the work is componentizing the three biggest renderers and deleting the dead export.
+- **Status:** extracted; the three biggest renderers are components since v2.5109 (step 9). Left: the duplicated GC / development / Account-Man block and the dead export.
 
 ---
 
@@ -298,7 +298,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | Modal tail (6) | 4132–4906 | 775 | med | low per item | inline dialogs all **extracted**; money group → host |
 | Job-only table | `JobsStagesTable.tsx` | 529 | high (prop fan-in) | low-med | extracted; single typed prop open |
 | Unified table | `JobsStagesUnifiedTable.tsx` + 2 row files | 467 + 796 | highest | — | **row kinds split** (v2.3548) |
-| Shared row renderers | `jobsStagesRowShared.tsx` | 1,632 | med (14 importers) | low-med | extracted; componentize 3 renderers |
+| Shared row renderers | `jobsStagesRowShared.tsx` | 1,063 | med (14 importers) | low-med | extracted; the 3 big renderers are components (**shipped v2.5109**); the customer-line block left |
 
 ---
 
@@ -356,7 +356,7 @@ Already-extracted lib (add tests only where missing): `buildJobsStagesBoardLists
 6. **Section action props, once** — **shipped v2.4117:** `stagesSectionActionProps` (waiting, working, readyToBill, billed, collections) built at tab scope by a script from the section sites and spread into both the §4 sites and `renderFollowupStageRow` (§4b); the ~100-line duplicate is gone.
 7. **GC Review send IO → lib** — **shipped v2.5099:** [`sendGcStatementEmail`](../src/lib/sendGcStatementEmail.ts) builds the function's body, invokes `send-gc-statement-email` and reads its answer (the function's own refusal ahead of the transport's error; the reply-to echo handed back for the toast). `onSendStatement` keeps the toast and `refreshGcLastSent`, so the IIFE only wires callbacks. 9 lib tests (8 mutants killed) and two tab render cases that send through GC Review (5 mutants); the [GC Review map](./GC_REVIEW_MODAL_ARCHITECTURE.md)'s transport lines say the same. The tab 4,869 → 4,845 lines.
 8. **Billed-money modal host** — **shipped v2.4991:** [`StagesBilledMoneyModals`](../src/components/jobs/StagesBilledMoneyModals.tsx) draws the nine windows (who owes what, the aging chart, the forecast and its Email… window, call mode, Fix bill lines, the promised pay date, the paid profit chart, the billed share), verbatim, with what only they read: the forecast's share flag, the two scope kicks, call mode's full queue and the forecast's work months. The open flags stay in the tab. 12 render cases, ten mutants killed; the tab 5,070 → 4,902 lines.
-9. **Row renderers → components** in `jobsStagesRowShared`: `renderStagesQuickActionsStack` (174), `renderStagesJobCellActivityFooter` (180), `renderStagesFieldAndBillingLines` (168); pull the duplicated GC / development / Account-Man block out of the two customer-line renderers.
+9. **Row renderers → components** — **shipped v2.5109:** [`StagesQuickActionsStack`](../src/components/jobs/StagesQuickActionsStack.tsx), [`StagesJobCellActivityFooter`](../src/components/jobs/StagesJobCellActivityFooter.tsx) and [`StagesFieldAndBillingLines`](../src/components/jobs/StagesFieldAndBillingLines.tsx) (with its private `whenLine`), cut by script on exact anchors, each body verbatim but for its props (`opts?.x` became `x`). The two tables' wrapper closures render them, so `StagesUnifiedJobRow` and `StagesUnifiedInvoiceRow` did not change. `jobsStagesRowShared` 1,661 → 1,063 lines. 13 render cases (18 mutants killed); the tables' render tests already pinned the five props the wrappers pass (5 mutants). Left from this step, its own PR: pull the duplicated GC / development / Account-Man block out of the two customer-line renderers.
 10. **Tables take the shared bundle as one typed prop** (§7 / §8).
 
 **What must STAY in `JobsStagesTab`:** the imperative handle and everything it writes (`stagesSectionOpen`, both focus / flash pairs, the modal flags the handle opens), `stagesBoardLists` / `unfilteredBoardLists` / `bankPaymentsModalBilledRows`, the search state and effects, the mode toggles, the section wiring, the confirm handlers and the partial-invoice IO (they call the page's mutation engine and write focus), and the prop plumbing for the parent-injected engines. **What stays in `Jobs.tsx`** (unchanged from the parent map): the URL router for the handle's params, the jobs cache, `customers` / `users`, the `useJobsStagesMutations` / `useJobThreadNotes` call sites, and the app modal contexts (`useJobFormModal`, `useJobDetailModal`, `useBillCustomerModal`; the tables and card list call `useDispatchTaskModal` / `useChecklistAddModal` themselves).

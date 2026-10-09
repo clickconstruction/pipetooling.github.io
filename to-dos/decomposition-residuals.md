@@ -35,10 +35,6 @@ Measured 2026-09-17: the `selectedBidForPricing &&` block is 1,975 lines of JSX 
 
 The Vehicle Travel and Lodging and Meals boxes are 253 lines behind 18 props (seven engine string pairs edited in place). Their duplicated formulas were the real cost and are one kernel since v2.3565; a component would carry more surface than it removes.
 
-## The Stages map's last optional item
-
-`renderStagesFieldAndBillingLines` as its own component — optional on the map, nothing waits on it.
-
 ## The Workflow page's leftovers — optional (2026-09-28)
 
 The Workflow page train (punch list #46 row 9, v2.3907–v2.4081) took `src/pages/Workflow.tsx` from 4,354 to 1,010 lines and closed all ten steps of [`docs/WORKFLOW_PAGE_ARCHITECTURE.md`](../docs/WORKFLOW_PAGE_ARCHITECTURE.md). What it left, on purpose:
