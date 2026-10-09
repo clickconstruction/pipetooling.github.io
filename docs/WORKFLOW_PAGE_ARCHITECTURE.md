@@ -8,7 +8,7 @@ covers:
   - src/pages/Workflow.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-27
+last_updated: 2026-10-09
 ---
 
 > **Line numbers are exact as of `a05cef4c4`** (from the `npm run map -- src/pages/Workflow.tsx` fact sheet) and rot with the next edit — search the symbol named beside each range; the range is only a hint. Re-run `npm run map` before trusting one.
@@ -67,7 +67,7 @@ Each section lists: render location (line range + JSX comment/symbol), **owned l
 | `StepCommitmentPanel` (sub work orders) | mount 3321–3339; loader 740–771 | **extracted** → [`StepCommitmentPanel.tsx`](../src/components/workflow/StepCommitmentPanel.tsx) | 7 (inside the component) | parent owns `commitmentsByStep`, `commitmentPaymentsByLaborJobId`, the loader, `roster` | `stepCommitments` (incl. `commitmentBalance`) + `workOrderNotifications` tested; no render test | med | loader joins the engine hook |
 | Step lifecycle modals | 3579–3898 | inline | 8 | opened only from stage cards; submit via engine | `planStepTransition` tested; expected-dates seeding + linkage tested since v2.3927 (the Forecast modal still carries its own copy) | med | move with (or just after) the cards |
 | Line-item + PO/Invoice modals | one mount before the contact modal (+ the page's handlers and the 200ms effect) | **JSX extracted v2.3975** → [`WorkflowLineItemModals.tsx`](../src/components/workflow/WorkflowLineItemModals.tsx); handlers on the lib since v2.3972 | 8 in the page (opened or read by the cards' Line Items section); 2 in the component | writes `lineItems` via reload; dev/master-only pickers | `WorkflowLineItemModals.render.test.tsx` (12), `projectsForecastStageLineItems.test.ts` (35), `parseWorkflowLineItemPaste.test.ts` (14), `isSupplyCredit` tested | med | done until the cards move (step 10), when the 8 opener states follow |
-| Contact modal | 4297–4351 | modal inline / `PersonDisplayWithContact` **extracted** | 1 (`personContactModal` — set by the cards: `onOpenContact={setPersonContactModal}` 2782) | the modal reads only its own state; the cards' `PersonDisplayWithContact` reads `personContacts`/`userNames` (roster effect) | `telHrefFor` tested | low | any time |
+| Contact modal | one mount after the line-item windows | **extracted v2.5094** → [`PersonContactModal.tsx`](../src/components/workflow/PersonContactModal.tsx); `PersonDisplayWithContact` **extracted** | 1 in the page (`personContactModal` — set by the cards through `setPersonContactModal`) | props-only (`contact`, `onClose`); the cards' `PersonDisplayWithContact` reads `personContacts`/`userNames` (roster hook) | `PersonContactModal.render.test.tsx` (4), `telHrefFor` tested | low | done |
 | Steps engine (parent core) | state 153–227 subset; 264–349, 420–503, 773–858, 1129–1153, 1237–1325, 1327–2076 | inline | `project`, `workflow`, `steps`, `lineItems`, `stepActions`, `userSubscriptions`, commitments pair, role/roster | is the substrate | kernels tested; runner + `saveStep`/`copyStep`/`deleteStep`/`createFromTemplate` IO untested | — | becomes `useWorkflowStepsEngine`; **stays in parent** |
 
 Role gates (229–234, derived per render, read by every region): `canManageStages` (dev / master_technician / assistant-like / superintendent), `isDevOrMaster`, `canSeePrivateNotesAndApprove` (same set as `canManageStages`), `canAssignSuperintendents` (excludes superintendent), `canCreateJobs = canCreateJobsLedgerRow(userRole)` (v2.2848 — the `jobs_ledger` INSERT policy refuses superintendents).
@@ -189,10 +189,10 @@ State by region (20 in the page since v2.4079; 51 at the map): engine 8 (`projec
 
 ### Contact modal
 
-- **Render location:** `{/* Person Contact Info Modal */}` 4297–4351 (`personContactModal`, 174) — name, "(not a user)" badge, `mailto:` and `telHrefFor(phone)` links (v2.3571).
+- **Render location:** `<PersonContactModal contact={personContactModal} onClose={…} />`, the page's last mount (v2.5094; inline at 4297–4351 at the map) — name, "Not a user" line, `mailto:` and `telHrefFor(phone)` links (v2.3571).
 - **Shared state:** none read by the modal (it renders `personContactModal` alone). `personContacts` + `userNames` (built in the roster effect) feed `PersonDisplayWithContact` in every card (2782), which opens the modal through the passed-down setter `onOpenContact={setPersonContactModal}`.
-- **Tests:** `phoneContact.test.ts` (`telHrefFor`).
-- **Extraction status:** trivial; can move to `src/components/workflow/PersonContactModal.tsx` any time. The state stays in the parent only because openers live in every card — once cards are extracted it can travel with the list.
+- **Tests:** `phoneContact.test.ts` (`telHrefFor`); `PersonContactModal.render.test.tsx` (4) — nothing drawn with no contact, the links, "Not a user" and the empty-contact line, Close and the backdrop close it and a click inside does not.
+- **Extraction status:** **extracted v2.5094** → [`PersonContactModal.tsx`](../src/components/workflow/PersonContactModal.tsx), JSX verbatim; props `contact` (draws nothing when null) and `onClose`. The open state stays in the page because the openers live in every card (`WorkflowStagesList` gets `setPersonContactModal`).
 
 ---
 
@@ -260,7 +260,7 @@ Supabase surface (fact sheet): tables `project_workflows`, `projects`, `project_
 
 ## Test coverage
 
-Test cases counted as `it(`/`test(` lines. `src/pages/Workflow.render.test.tsx` (v2.4062; 9 cases since v2.4079) mounts the page at `/workflows/:projectId` against a stateful Supabase stand-in — the header, the stage list per role, the `#step-` anchors, Hide Old Steps, the Projections bar, a subcontractor's filtered view and its access-denied error, what Approve does to the list, create-from-template on an empty workflow, the windows a card opens, and the ledger rail's margin card — the safety net for steps 9 and 10. **No e2e spec visits `/workflows`**; of `src/components/workflow/*`, the three header strips, the line-item windows and the financials panel have render smokes.
+Test cases counted as `it(`/`test(` lines. `src/pages/Workflow.render.test.tsx` (v2.4062; 9 cases since v2.4079) mounts the page at `/workflows/:projectId` against a stateful Supabase stand-in — the header, the stage list per role, the `#step-` anchors, Hide Old Steps, the Projections bar, a subcontractor's filtered view and its access-denied error, what Approve does to the list, create-from-template on an empty workflow, the windows a card opens, and the ledger rail's margin card — the safety net for steps 9 and 10. **No e2e spec visits `/workflows`**; of `src/components/workflow/*`, the three header strips, the line-item windows, the financials panel and the contact window have render smokes.
 
 | Region | Covered by | Gaps (risk) |
 |---|---|---|
@@ -271,7 +271,7 @@ Test cases counted as `it(`/`test(` lines. `src/pages/Workflow.render.test.tsx` 
 | `StepCommitmentPanel` | `stepCommitments.test.ts` (7, incl. `commitmentBalance`), `workOrderNotifications.test.ts` (2) | no render test; loader fail-soft path |
 | Lifecycle modals + engine | `stepLifecycle.test.ts` (11), `stepLifecycleNotifications.test.ts` (14), `stepAssignment.test.ts` (10), `datetimeLocal.test.ts` (8) | `executeLifecyclePlan`, `saveStep`/`copyStep` sequence bumps, `deleteStep` (`expectedDatesLinkage.test.ts`, 29, covers the expected-dates window's math) |
 | Line-item cluster | `supplyHouseDocument.test.ts` (4); `projectsForecastStageLineItems.test.ts` (35) — the lib every handler here calls since v2.3972; `WorkflowLineItemModals.render.test.tsx` (12) | the page's wrappers (`parseWorkflowLineItemPaste.test.ts`, 14, covers the bulk-insert parser) |
-| Contact modal | `phoneContact.test.ts` (5) | — |
+| Contact modal | `phoneContact.test.ts` (5), `PersonContactModal.render.test.tsx` (4) | — |
 
 ---
 
@@ -319,7 +319,7 @@ Re-ranked at `a05cef4c4`: money math without tests moves up; projections are now
 7. ~~**Line-item + PO/Invoice cluster → `WorkflowLineItemModals`**~~ — **done**: its IO on the lib (v2.3972), then the six windows' JSX and the 2 cluster-only states to the component (v2.3975). The 8 opener/visibility states the cards touch, and the 200ms effect that fills `availablePOs`/`availableInvoices`, stay in the parent until step 10; the parent keeps `lineItems` and its handlers do the reload. The page is 3,367 lines.
 8. ~~**`useWorkflowProjections` seam, then `WorkflowFinancialsPanel`**~~ — **done**: the hook (v2.4005) owns `projections`/`editingProjection`/CRUD and is called by the parent (the list reads them); the panel (v2.4009) takes them as props and owns only `expanded`; the edit modal stays page-level. The page is 3,083 lines.
 9. ~~**Engine seams**~~ — **done**: `useWorkflowRoster` (v2.4062, with the page render smoke), `useWorkflowStepsEngine` (v2.4077, the reads) and `useWorkflowStepWrites` (v2.4078, the window-free writes, with `onApproved`); the page is 2,384 lines. The writes bound to a window's state move with their windows in step 10.
-10. ~~**Stage cards — `WorkflowStagesList` + the step lifecycle modals + money markers/ledger rail**~~ — **done**: the six step windows (v2.4081, `WorkflowStepLifecycleModals`) and the list with its cards, markers and rail (v2.4079, `WorkflowStagesList`, one file; the template cluster is `useWorkflowTemplates`). The page is 1,010 lines, from 4,354 at the map. A separate `WorkflowStageCard` is left undone on purpose (see the dossier). The contact modal still sits in the page and can ride along any time.
+10. ~~**Stage cards — `WorkflowStagesList` + the step lifecycle modals + money markers/ledger rail**~~ — **done**: the six step windows (v2.4081, `WorkflowStepLifecycleModals`) and the list with its cards, markers and rail (v2.4079, `WorkflowStagesList`, one file; the template cluster is `useWorkflowTemplates`). The page is 1,010 lines, from 4,354 at the map. A separate `WorkflowStageCard` is left undone on purpose (see the dossier). The contact modal left on its own (v2.5094, `PersonContactModal`); the page is 976 lines.
 
 ### What must STAY in the parent
 
