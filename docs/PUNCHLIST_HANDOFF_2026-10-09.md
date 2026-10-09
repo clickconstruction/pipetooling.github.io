@@ -41,10 +41,81 @@ Merged today from the owner's two decision sittings: about fifty PRs (Helper 1 t
 The owner walked `to-dos/owner-decisions-pending.md` (45 rows, 41 answered) and the eight cards with their own blockers on 2026-10-09; the answers and the builds owed are recorded once in that file's dated block and on each card. What is left of the builds: items 1, 2, 5 above and the undo-whole-action follow-up on `to-dos/bid-history/README.md`.
 
 - **Done and retired today:** #2 Division 22 rules manager (five PRs, seed on prod: 1,264 → 1,244 uncoded names), #13 Stage Plan, #57 full screen, #88 help guides (13 of 13; #5194 deletes the card), #95, the owner's three office-data calls (Parts Book duplicates deleted; five Miguel sheet labels re-pointed by `20261010013000`; Edgar kept archived — see §4).
-- **#46 decomposition:** rows 4, 5, 7, 8, 9, 10 done; row 2's step 4 shipped (#5180 records it), steps 5 and 7 left; row 3 on a quiet day; row 1 on a Workbench train; row 6's Hours shell unscheduled.
-- **#73 bid history:** PR 5 is #5169; undo a whole action is the one follow-up.
-- **#102 burn against the bid:** pieces 1 and 2 shipped; the fourth footing waits for real stamps; "no price, no priced margin" is a residual for the next bids migration.
-- **Owner-gated or waiting (nothing to build):** #1 Wheels items 2–3 (vehicle records), #3, #4, #5 (four rows left), #6, #7, #8, #9, #11, #12 (sheet-row history), #15, #17, #21, #25, #27, #29, #35, #42, #45, #47, #49, #50, #52, #55, #60, #61, #62 (build (b) when a reviewer file is dropped on BP398's Rev 3), #64, #66 (measure 2026-10-23), #67 (the icon's candidate sheet is approved — a build for a helper), #72, #76 (fee shipped), #77, #82, #85, #86, #87 (A and M), #92 (item 4 waits on Taunya), #98, #99, #100, #101.
+
+What is left to build, as of the evening of 2026-10-09. Each row is read from the card's front matter and `npm run check:todos`. The board at Settings → *Punch list* stays the live view. Tonight's names come from PUNCHLIST. Row 2 of #46 is read from the card's own table, which is newer than its next line. #76's piece (2) shipped as v2.5033 and v2.5091, and #5197 records it on the card.
+
+**Pieces to build.** One row per piece.
+
+| Card | The piece | Size | Blocker or who holds it | Tonight |
+|---|---|---|---|---|
+| [#73 Bid history](../to-dos/bid-history/README.md) | PR 6, undo a whole action | S | None | Helper 11 |
+| [#67 Home-screen icon](../to-dos/app-icon-glass.md) | PR 2, the `TILE` option and a sheet of candidates at 180 px. The touch icons regenerate from the pick. | S | The owner picks from the sheet | Helper 12 |
+| [#62 See what they see](../to-dos/see-what-they-see.md) | Build (b). A revision joins the GC's record when it is shared, or when it holds a reviewer's answer and a package or a reviewer's file. Three function deploys, then a reviewer file on BP398's Rev 3. | Not sized | None. The owner picked (b) on 2026-10-09. | Helper 13 |
+| [#64 A second signer](../to-dos/contract-second-signer-names.md) | The mixed record, signed partly through the link and partly on paper. An edge change and a deploy. | S–M | None | Helper 14 |
+| [#76 Returned checks](../to-dos/ar-returned-checks.md) | The ② waterfall's words on the Final line, "$30 of $2,000 covered". Branch `claude/bill-tab-fee-not-covered`. | S | None | Helper 15 |
+| [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 2's step 7, the send IO, done with the GC Review map | S per PR | Check `npm run sessions` first. `JobsStagesTab` is the hottest file. | Helper 17 |
+| [#21 Decomposition residuals](../to-dos/decomposition-residuals.md) | The Workflow page's leftovers. The smallest is the message when a projection delete is refused. | XS–S each | None | Helper 18 |
+| [#5 Owner decisions pending](../to-dos/owner-decisions-pending.md) | The anon EXECUTE revoke, #5110 (v2.5040) | One migration | 23:00 UTC tonight | PUNCHLIST |
+| [#26 Team leads table](../to-dos/team-leads-table-retirement.md) | Drop the frozen table, #5183 (v2.5088, migration `20261010022000`). Seven function deploys go first. | S | A quiet window with crews clocked out | PUNCHLIST |
+| [#76 Returned checks](../to-dos/ar-returned-checks.md) | The types regen after migration `20261010023000`, #5196. The dev-mcp deploy follows it. | Types only | Armed | PUNCHLIST |
+| [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 2's last seam, the row-render context (step 5) | S per PR | After step 7 | Nobody |
+| [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 3's draft-persistence seam hook | S per PR | A quiet day. It sits on the autosave engine that Edit Job and Edit Bid share. | Nobody |
+| [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 1's solver strip and grid rows | S per PR | A Workbench feature train | Nobody |
+| [#46 Decomposition queue](../to-dos/decomposition-queue.md) | Row 6's `PeopleHoursTab` shell | S per PR | Unscheduled | Nobody |
+| [#21 Decomposition residuals](../to-dos/decomposition-residuals.md) | The Workbench block | L | Only as PR 1 of the next Workbench feature train | Nobody |
+| #103 Samples through their kernels | PR 1, the bid room sample through `buildBidRoomRevisionPayload`, then a `get-bid-proposal-room` deploy. The card is `to-dos/customer-samples-through-kernels.md`, in #5202. | S | None | Nobody |
+| #103 Samples through their kernels | PR 2, the portal's bills, waivers and checks through their kernels, then a `customer-portal` deploy | M | After PR 1 | Nobody |
+| #103 Samples through their kernels | PR 3, the portal sections the sample leaves out, then a `customer-portal` deploy | S–M | After PR 2 | Nobody |
+| [#15 Review folds into the Bridge](../to-dos/review-into-the-bridge.md) | Step 3, the redirect | M | First explain Tristen's $201 gap and run the Sep 13–19 and Sep 20–26 checks. Both weeks have closed. They are prod money reads. | Not tonight |
+| [#72 Job Parts Tally → Transactions](../to-dos/tally-transactions-refresh.md) | PR 3, undo per line | Not sized | None | Helper 12 |
+| [#72 Job Parts Tally → Transactions](../to-dos/tally-transactions-refresh.md) | PR 3, the pay bar | Not sized | An owner call | Nobody |
+| [#77 By Stage is retired](../to-dos/retire-by-stage-materials.md) | Item 2, one material slot in place of three. Item 3, the robots stop naming the picks table, with a twin-mcp deploy. | S each | A quiet week | Nobody |
+| [#49 GC Review for one operator](../to-dos/gc-review-one-operator/README.md) | Drop the `as never` casts and retire the two old statement-round functions | Not sized | Run a Wednesday on it first | Helper 13 reads it |
+| [#61 ZZ test jobs off the Pipeline](../to-dos/zz-test-jobs-hide.md) | The hide, as the mock-up shows | M | Read the Pipeline as an assistant first. Build it only if ZZ rows still reach the board. | Helper 13 reads it |
+| [#7 Per-GC bids](../to-dos/per-gc-bid-retirement.md) | One mechanical PR that retires `submitted_to` and `itb_links` | M | Real per-GC usage | Nobody |
+| [#102 Burn against the bid](../to-dos/burn-against-the-bid.md) | The fourth footing. A job whose bid has no usable estimate budgets at price × (1 − priced margin). | S | Priced-margin stamps on real bids | Nobody |
+| [#102 Burn against the bid](../to-dos/burn-against-the-bid.md) | "No price, no priced margin" | Not sized | The next bids migration | Nobody |
+
+#88 is retired by #5194. All thirteen guides are on `main`.
+
+**Waiting on someone or something.** Nothing to build until this happens.
+
+| Card | What it waits on |
+|---|---|
+| [#1 Crew P&L](../to-dos/crew-pnl-and-wheels.md) | Vehicle records for item 2. The audit footer's raw job # texts for item 3. |
+| [#3 Job Summary](../to-dos/job-summary-follow-ups.md) | Weekly hours per person and session start times in the day ledger. A Crew P&L sitting. |
+| [#4 Journey map](../to-dos/journey-map-tier-1.md) | The private repo's `_DRIFT-2` |
+| [#5 Owner decisions pending](../to-dos/owner-decisions-pending.md) | The owner. Pay codes on the GC's copy and the real scan test. The Ferguson rep's phone and email. Partnerships. Twins Phase 2. Edgar's back charge, with the office. The DNS steps for the clickplumbing.com sender. |
+| [#6 Partnerships](../to-dos/partnerships-off-toggles.md) | The owner and the attorney |
+| [#8 Person identity phase E](../to-dos/person-identity-phase-e.md) | A quiet quarter. Revisit in December. |
+| [#9 Robots residuals](../to-dos/robots-residuals.md) | CountTooling work. Nothing is left on the client. |
+| [#11 Weekly Money phase 6](../to-dos/weekly-money-later.md) | The owner's call. It is optional. |
+| [#12 Dispatch residuals](../to-dos/dispatch-residuals.md) | A per-sheet key in the feed or the email log |
+| [#17 Submittals](../to-dos/submittals/README.md) | A twin key for gate 6b's robot half. Wendi's schedule on one live bid. The SpaceX Rev 3 rebuild and Rev 4 on B375. Stage 3b when the owner says. |
+| [#25 PO code](../to-dos/po-generator-stated-need.md) | Nothing to build. The ledger read for the week from 2026-09-22 closes it. |
+| [#27 MCP servers](../to-dos/mcp-servers.md) | A `ptt_` key in the owner's hands for three live checks. PR 7 starts with the owner's KV namespace. |
+| [#29 People spine](../to-dos/people-spine-residuals.md) | The owner's data. Twin Estimator 2's flag, the Training Helper row and the archived "Kyle" row. |
+| [#35 Lien notices sent by hand](../to-dos/lien-notice-sent-by-hand/README.md) | Nothing to build — delete after the office records the Lenox paper on 273 and the owner answers the $350 call |
+| [#42 Lien windows](../to-dos/lien-windows/README.md) | Counsel's answers to three questions |
+| [#45 Owner's portal](../to-dos/owner-portal-property-view/README.md) | Nothing to build — delete after the first real owner's notices are recorded and the owner switch is on |
+| [#47 The owner is calling](../to-dos/owner-is-calling/README.md) | Counsel reads the script's words. Option 3 and the other doors wait until the office asks. |
+| [#50 Contracts & terms](../to-dos/contracts-and-terms/README.md) | Nothing to build — delete after the month of use ends on 2026-10-28 and the owner makes the card's two calls |
+| [#52 Fuel is a job cost](../to-dos/fuel-is-a-job-cost.md) | Nothing to build — delete after the owner enters the 2007 Ram 3500's costs on People → Vehicles. The follow-ups are the owner's pick. |
+| [#55 Where the checks went](../to-dos/where-the-checks-went-residuals.md) | Nothing to build. Print all only if someone asks for it. |
+| [#60 What the team sees](../to-dos/what-the-team-sees/README.md) | Nothing to build. Retire it after the owner looks at the live tab. |
+| [#66 Robot audits backlog](../to-dos/robot-audits-backlog.md) | Half an hour a week from each estimator. Measure on 2026-10-23. |
+| [#72 Job Parts Tally → Transactions](../to-dos/tally-transactions-refresh.md) | The owner's word on a few days of use for PR 2b, then 2c. The pending-charges call for PR 4. Five sample cases for the 48 charges. |
+| [#76 Returned checks](../to-dos/ar-returned-checks.md) | Grace's four Stripe endpoint events, then one test-mode dispute on a ZZ TEST Stripe bill |
+| [#77 By Stage is retired](../to-dos/retire-by-stage-materials.md) | The office's word on B82, B83 and B85. Item 4's drop waits on it. |
+| [#82 Lien desk Next up](../to-dos/lien-desk-next-up/README.md) | Nothing to build — delete after a week of use raises nothing |
+| [#85 Legal portal](../to-dos/legal-portal-firm-ready/README.md) | The owner swaps in the real firm and fills its particulars. The firm's answers for items 12–15 and 19. |
+| [#86 Records for an owner](../to-dos/owner-records-portal/README.md) | Nothing to build — delete after the first real owner signs |
+| [#87 Lien screens' stale words](../to-dos/lien-screens-stale-words.md) | Nothing to build — delete after the live look at M on a ZZ TEST job |
+| [#92 AIA G702-G703](../to-dos/aia-pay-application-follow-ups.md) | Taunya's look on a phone for item 4 |
+| [#98 A check on a Stripe bill](../to-dos/held-stripe-marks/README.md) | Nothing to build. Check that the sweep closed J904's test bill, then delete J904 and J907. Job 186 is the owner's press. |
+| [#99 Lien desk Rules window](../to-dos/lien-rules-window/README.md) | Nothing to build — delete after a week of use raises nothing |
+| [#100 Map residuals](../to-dos/map-residuals.md) | Item 1, a mock-up and a reason to build it. Item 2, a pick among the card's options. |
+| [#101 Lien desk printed run](../to-dos/lien-printed-run/README.md) | Nothing to build — delete after a week of use, to 2026-10-16 |
 
 ## 4. For the owner (filed today in `to-dos/owner-decisions-pending.md`)
 
