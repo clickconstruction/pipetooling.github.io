@@ -21,6 +21,8 @@ export function runEnvelopeHold(env: Pick<RunEnvelope, 'name' | 'address' | 'met
   if (noAddress && nothing) return `${env.method === 'email' ? 'No email on file' : 'No mailing address'}, and the claim is $0. Nothing to send. The notice stays on the desk.`
   if (noAddress) return env.method === 'email' ? 'No email on file. Set it on the customer, then send this one from the run.' : 'No mailing address. Set it on the customer, then print this envelope from the run.'
   if (nothing) return 'Nothing to send: the claim is $0. The notice stays on the desk.'
+  // Unsigned (v2.5086): a builder said the leader has not signed it (`signature: null`); a notice the builder said nothing about (undefined) is not held for it.
+  if (env.contents.some((c) => c.notice.signature === null)) return 'Unsigned: the leader signs it from his phone, or draws it here with Leader here, sign ▸.'
   return null
 }
 

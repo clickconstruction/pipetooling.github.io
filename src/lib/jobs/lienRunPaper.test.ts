@@ -108,3 +108,15 @@ describe('the sheet, the divider and the foot', () => {
     expect(foot).not.toMatch(/envelope/i)
   })
 })
+
+describe('an unsigned notice is held (v2.5086)', () => {
+  it('a builder that said the leader has not signed holds the envelope with the reason; a notice the builder said nothing about is not held for it; the address comes first', () => {
+    const run = runMailing(runEnvelopes([notice({ signature: null })]))
+    expect(run.mailed).toHaveLength(0)
+    expect(run.held).toHaveLength(2)
+    expect(run.held[0]!.why).toBe('Unsigned: the leader signs it from his phone, or draws it here with Leader here, sign ▸.')
+    expect(runMailing(runEnvelopes([notice()])).held).toHaveLength(0)
+    const noAddress = runMailing(runEnvelopes([notice({ signature: null, recipients: [owner({ address: '' }), gc()] })]))
+    expect(noAddress.held[0]!.why).toMatch(/^No mailing address/)
+  })
+})

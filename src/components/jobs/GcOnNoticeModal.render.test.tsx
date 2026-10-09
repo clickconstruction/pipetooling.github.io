@@ -418,7 +418,8 @@ describe('GcOnNoticeModal', () => {
   it('printing the packet from this window\u2019s run stamps the notices printed, as the Lien desk\u2019s run does (v2.4558)', async () => {
     const base = data()
     // One notice already approved and waiting in the run.
-    const approved = { id: 'it-994', job_id: 'j994', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, cover_note: false, printed_at: null } as never
+    // Signed (v2.5086): an unsigned notice is held and never prints.
+    const approved = { id: 'it-994', job_id: 'j994', kind: 'notice_53_056', status: 'approved', months: ['2026-08'], fields: {}, cover_note: false, printed_at: null, signed_at: '2026-10-09T19:14:00Z', signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type' } as never
     const queue = buildLienDeskQueue(base.rows, [approved], { harborline: 'ask' }, TODAY)
     // The owner has a mailing address, so both envelopes go out (v2.4971: an envelope with none is held, and a half-printed notice is never stamped).
     hookState.data = { ...base, desk: { ...base.desk, queue, items: [approved], ownerByJob: { j994: { owner_mode: 'building_owner', owner_name: 'D. & A. Miller', company_name: '', mailing_address: '212 Kettle Dr, Buda, TX 78610', owner_email: '' } }, gcsById: { harborline: base.gc! } } }
