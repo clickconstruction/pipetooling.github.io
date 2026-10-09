@@ -4,6 +4,7 @@ import { buildPhysicalInvoiceDocument, type PhysicalInvoiceDocument } from './ph
 import { jobBillingContextFromJob } from './jobBillingContext'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from './physicalInvoiceJobContext'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { billFeeLines } from './jobs/arReturnCaseFee'
 
 type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -49,5 +50,7 @@ export function buildPhysicalInvoiceDocumentForBilledInvoice(
     invoiceDateYmd,
     dueDateYmd: dueYmd,
     detailFromJob: buildPhysicalInvoiceDetailFromJob(job, 'invoice', inv.id),
+    // A fee put on the bill after it went out (v2.5033, a returned check's): its own row, inside the amount.
+    hazmatFeeLines: billFeeLines(inv),
   })
 }

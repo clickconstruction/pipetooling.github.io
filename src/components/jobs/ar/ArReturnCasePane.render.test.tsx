@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { ArReturnCasePane } from './ArReturnCasePane'
 import { arReturnCaseView, type ArReturnCaseRow } from '../../../lib/jobs/arReturnCase'
+import { arCaseFeeOffer, AR_RETURNED_CHECK_FEE_STATUTE, type ArCaseFeeRow } from '../../../lib/jobs/arReturnCaseFee'
 
 const TODAY = '2026-10-05'
 
@@ -132,5 +133,54 @@ describe('ArReturnCasePane — a card dispute on a Stripe bill (v2.4950)', () =>
     expect(onPutBack).not.toHaveBeenCalled()
     fireEvent.click(screen.getByTestId('ar-return-case-putback-confirm'))
     expect(onPutBack).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ArReturnCasePane — the returned-check fee (v2.5033)', () => {
+  const view = arReturnCaseView({ row, trail: [], todayYmd: TODAY })
+  const feeRow = (over: Partial<ArCaseFeeRow> = {}): ArCaseFeeRow => ({
+    case_id: 'tx-sp', fee_amount: null, fee_invoice_id: null, fee_added_at: null, fee_added_by: null,
+    bills: [{ invoice_id: 'b1', job_id: 'j878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Take 5- Seguin' }],
+    ...over,
+  })
+  const pane = (over: Partial<Parameters<typeof ArReturnCasePane>[0]> = {}) =>
+    render(<ArReturnCasePane view={view} todayYmd={TODAY} canApply replacement={null} busy={null} error={null} onTakeOff={noop} onTheySaid={noop} onUseReplacement={noop} onClose={noop} onTakeRecordedOff={noop} onNotBounced={noop} {...over} />)
+
+  it('one press adds the fee to the bill the check paid; the line names the $30 and the statute is on the hover', () => {
+    const onAddFee = vi.fn()
+    pane({ fee: arCaseFeeOffer(view, feeRow()), onAddFee })
+    const line = screen.getByTestId('ar-return-case-fee-line')
+    expect(line.textContent).toBe('$30 — the most Texas allows, Bus. & Com. Code § 3.506')
+    expect(line.getAttribute('title')).toBe(AR_RETURNED_CHECK_FEE_STATUTE)
+    fireEvent.click(screen.getByRole('button', { name: 'Add the $30 fee to bill 1' }))
+    expect(onAddFee).toHaveBeenCalledTimes(1)
+  })
+
+  it('while it goes it says so and takes no second press', () => {
+    pane({ fee: arCaseFeeOffer(view, feeRow()), onAddFee: vi.fn(), busy: 'fee' })
+    const press = screen.getByTestId('ar-return-case-fee-add') as HTMLButtonElement
+    expect(press.textContent).toBe('Adding the fee…')
+    expect(press.disabled).toBe(true)
+  })
+
+  it('once the fee is on, the case says where and who, with no button', () => {
+    pane({ fee: arCaseFeeOffer(view, feeRow({ fee_amount: 30, fee_invoice_id: 'b1', fee_added_at: '2026-10-09T15:00:00Z', fee_added_by: 'Taunya' })), onAddFee: vi.fn() })
+    expect(screen.getByTestId('ar-return-case-fee-words').textContent).toBe('The $30 fee is on bill 1, added Oct 9 by Taunya.')
+    expect(screen.queryByTestId('ar-return-case-fee-add')).toBeNull()
+  })
+
+  it('a check that paid only a Stripe bill says why there is no press', () => {
+    pane({ fee: arCaseFeeOffer(view, feeRow({ bills: [{ invoice_id: 'b2', job_id: 'j878', sequence_order: 1, status: 'billed', stripe: true, job_number: '878', job_name: null }] })), onAddFee: vi.fn() })
+    expect(screen.getByTestId('ar-return-case-fee-words').textContent).toBe('Bill 2 is a Stripe invoice, and a sent Stripe invoice cannot take a line.')
+    expect(screen.queryByTestId('ar-return-case-fee-add')).toBeNull()
+  })
+
+  it('someone who cannot apply reads the line and gets no press; with no fee read there is no box', () => {
+    pane({ fee: arCaseFeeOffer(view, feeRow()), onAddFee: vi.fn(), canApply: false })
+    expect(screen.getByTestId('ar-return-case-fee-line')).toBeTruthy()
+    expect(screen.queryByTestId('ar-return-case-fee-add')).toBeNull()
+    cleanup()
+    pane({ fee: null })
+    expect(screen.queryByTestId('ar-return-case-fee')).toBeNull()
   })
 })

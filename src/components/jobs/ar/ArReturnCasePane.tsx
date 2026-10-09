@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { AR_CAME_BACK_SENTENCE } from '../../../lib/jobs/arApplySentence'
 import { arCaseDay, arCaseMoney, type ArReplacementDeposit, type ArReturnCaseView } from '../../../lib/jobs/arReturnCase'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
+import type { ArCaseFeeOffer } from '../../../lib/jobs/arReturnCaseFee'
 
 export type ArCaseCloseReason = 'settled_other_way' | 'not_coming'
 
@@ -11,7 +12,7 @@ export type ArReturnCasePaneProps = {
   canApply: boolean
   /** A To match deposit that looks like the new check, when there is one. */
   replacement: ArReplacementDeposit | null
-  busy: 'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | null
+  busy: 'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | 'fee' | null
   error: string | null
   onTakeOff: () => void
   onTheySaid: () => void
@@ -21,6 +22,9 @@ export type ArReturnCasePaneProps = {
   onNotBounced: () => void
   /** v2.4950: a lost card dispute's one press. */
   onPutBack?: () => void
+  /** v2.5033: the returned-check fee — the press, the fee once it is on, or why there is none. */
+  fee?: ArCaseFeeOffer | null
+  onAddFee?: () => void
   onOpenJob?: (jobId: string) => void
   /** Narrow layout: the list is behind this. */
   onBack?: () => void
@@ -293,6 +297,28 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
           </div>
         ) : null}
       </div>
+
+      {props.fee ? (
+        <div data-testid="ar-return-case-fee" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Returned check fee</div>
+          <div data-testid="ar-return-case-fee-line" title={props.fee.title} style={{ alignSelf: 'flex-start', color: 'var(--text-700)', textDecoration: 'underline dotted', textUnderlineOffset: 3, cursor: 'help' }}>
+            {props.fee.line}
+          </div>
+          {props.fee.kind === 'offer' ? (
+            canApply && props.onAddFee ? (
+              <div>
+                <button type="button" data-testid="ar-return-case-fee-add" disabled={busy != null} onClick={props.onAddFee} title={props.fee.title} style={btn(false)}>
+                  {busy === 'fee' ? 'Adding the fee…' : props.fee.button}
+                </button>
+              </div>
+            ) : null
+          ) : (
+            <div data-testid="ar-return-case-fee-words" style={{ color: props.fee.kind === 'added' ? 'var(--text-green-700)' : 'var(--text-muted)' }}>
+              {props.fee.words}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {props.error ? <div style={{ color: 'var(--text-red-700)' }}>{props.error}</div> : null}
 
