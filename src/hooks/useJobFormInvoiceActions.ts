@@ -19,11 +19,13 @@ import { draftInvoiceErrorMessage, linkFixturesToInvoiceByPositions, writeDraftI
 import { isFullRemainingAmount, planTypedInvoice, segmentSelectionBillCheck } from '../lib/jobs/jobFormInvoiceClamps'
 import {
   exactSingleSegmentMatchForAmount,
+  fixtureSequencePositions,
   linkableSelectedIds,
   segmentSelectionNetSummary,
   selectedSegmentSequencePositions,
   type JobDollarCoverage,
 } from '../lib/jobs/jobSegmentsCoverage'
+import { finalDrawDiscountSweep } from '../lib/jobs/stagePlanForm'
 import { planPayerCarves } from '../lib/jobs/splitByPayer'
 import type { FixtureRow, PaymentRow } from '../lib/jobs/jobFormTypes'
 import type { BillToEditorInvoice } from '../components/jobs/JobFormBillToEditor'
@@ -172,19 +174,24 @@ export function useJobFormInvoiceActions(args: JobFormInvoiceActionsArgs): JobFo
     return createInvoiceFromSegmentIds(selectedSegmentIds)
   }
 
-  /** Stage Plan (PR 2): "Bill it" on one ready row — that row alone, through the segment-invoice path. */
+  /**
+   * Stage Plan (PR 2): "Bill it" on one ready row — that row alone, through the segment-invoice path.
+   * On the last Order stage it also takes the job's discounts (item 3, v2.5021): they link to the final bill.
+   */
   async function billStageRow(fixtureId: string) {
     const only = new Set([fixtureId])
+    const sweep = finalDrawDiscountSweep(autosaveFixturesRef.current, fixtureId)
     setSelectedSegmentIds(only)
     setBillingStageFixtureId(fixtureId)
     try {
-      await createInvoiceFromSegmentIds(only)
+      await createInvoiceFromSegmentIds(only, sweep)
     } finally {
       setBillingStageFixtureId(null)
     }
   }
 
-  async function createInvoiceFromSegmentIds(selection: ReadonlySet<string>): Promise<string | null> {
+  /** `alsoLink`: rows the bill takes with it though they add no dollars — the final draw's discounts. */
+  async function createInvoiceFromSegmentIds(selection: ReadonlySet<string>, alsoLink: readonly string[] = []): Promise<string | null> {
     if (!editing) return null
     const fixturesNow = autosaveFixturesRef.current
     // The invoice bills the selection NET of dollar coverage — money already
@@ -214,8 +221,8 @@ export function useJobFormInvoiceActions(args: JobFormInvoiceActionsArgs): JobFo
       // Flush so the DB rows match this exact fixtures array — the link
       // UPDATE below keys on the sequence_order positions the flush wrote.
       await flushBillingAutosave()
-      const positions = selectedSegmentSequencePositions(fixturesNow, selection)
-      const linkedRowIds = new Set(linkableSelectedIds(fixturesNow, selection))
+      const positions = [...selectedSegmentSequencePositions(fixturesNow, selection), ...fixtureSequencePositions(fixturesNow, alsoLink)].sort((a, b) => a - b)
+      const linkedRowIds = new Set([...linkableSelectedIds(fixturesNow, selection), ...alsoLink])
       const jobId = editing.id
       const nextOrder = (editing.invoices ?? []).length
       // The invoice is written before the re-sync runs — a failed remainder
@@ -250,7 +257,7 @@ export function useJobFormInvoiceActions(args: JobFormInvoiceActionsArgs): JobFo
         setError(`Invoice created, but the remainder draft did not re-sync: ${ensureFailure}`)
       } else {
         showToast(
-          `Invoice created for the remaining $${formatCurrency(netDollars)} on ${count} segment${count === 1 ? '' : 's'}${coveredDollars > 0 ? ` ($${formatCurrency(coveredDollars)} already covered was subtracted)` : ''}`,
+          `Invoice created for the remaining $${formatCurrency(netDollars)} on ${count} segment${count === 1 ? '' : 's'}${coveredDollars > 0 ? ` ($${formatCurrency(coveredDollars)} already covered was subtracted)` : ''}${alsoLink.length > 0 ? ` · ${alsoLink.length === 1 ? 'the discount closes' : `${alsoLink.length} discounts close`} on this final bill` : ''}`,
           'success',
         )
       }

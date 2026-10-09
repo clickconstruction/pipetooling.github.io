@@ -334,6 +334,35 @@ describe('useJobFormInvoiceActions — a selection and a stage row', () => {
   })
 })
 
+describe('useJobFormInvoiceActions — the final draw takes the discounts (Stage Plan item 3, the owner’s call of 2026-10-09)', () => {
+  // Rough-in billed on inv-0; Top-out the last Order stage; a $150 discount over both rows, so
+  // Rough-in's draw carried $100 of it and Top-out's carries $50.
+  const staged = [
+    fixture('f1', 'Rough-in', 1_000, { stage_kind: 'order', invoice_id: 'inv-0' }),
+    fixture('f2', 'Top-out', 500, { stage_kind: 'order' }),
+    fixture('d1', 'Negotiated discount', -150, { line_kind: 'discount', stage_kind: null }),
+  ]
+
+  it('Bill it on the last Order stage bills its share-net dollars and links the discount to that bill', async () => {
+    const { result, mirrored } = mount({ fixtures: staged })
+    await act(() => result.current.billStageRow('f2'))
+    expect(steps()).toEqual(['flush', 'insert', 'link'])
+    expect((db.writes[1]?.payload as { amount: number }).amount).toBe(450)
+    expect(db.writes[2]?.filters).toEqual(['job_id', 'job-1', 'sequence_order', [1, 2]])
+    expect(mirrored.rows.map((r) => [r.id, r.invoice_id])).toEqual([['f1', 'inv-0'], ['f2', 'inv-1'], ['d1', 'inv-1']])
+    expect(ui.showToast).toHaveBeenCalledWith('Invoice created for the remaining $450.00 on 1 segment · the discount closes on this final bill', 'success')
+  })
+
+  it('a draw that is not the final one leaves the discount open', async () => {
+    const open = staged.map((f) => (f.id === 'f1' ? { ...f, invoice_id: null } : f))
+    const { result, mirrored } = mount({ fixtures: open })
+    await act(() => result.current.billStageRow('f2'))
+    expect(db.writes[2]?.filters).toEqual(['job_id', 'job-1', 'sequence_order', [1]])
+    expect(mirrored.rows.find((r) => r.id === 'd1')?.invoice_id).toBeNull()
+    expect(ui.showToast).toHaveBeenCalledWith('Invoice created for the remaining $450.00 on 1 segment', 'success')
+  })
+})
+
 describe('useJobFormInvoiceActions — a draft per payer', () => {
   it('writes the GC’s draft, then the customer’s, stamps each with its party and refetches once', async () => {
     const split = [fixture('f1', 'Rough-in', 1_000, { bill_to_party: 'gc' } as Partial<FixtureRow>), fixture('f2', 'Fixtures', 500, { bill_to_party: 'customer' } as Partial<FixtureRow>)]

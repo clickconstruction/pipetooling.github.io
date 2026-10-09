@@ -4,7 +4,7 @@
  * position is the order — the save engine persists it as sequence_order).
  */
 import type { FixtureRow } from './jobFormTypes'
-import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents } from './discountLine'
+import { discountBasisRows, discountSharesByWorkRow, isDiscountRow, netWorkLineCents } from './discountLine'
 import type { JobDollarCoverage } from './jobSegmentsCoverage'
 import {
   buildStagePlan,
@@ -29,6 +29,22 @@ export function fixtureStageFields(f: unknown): { stage_kind: StageKind | null; 
 
 /** A form row's kind: `undefined` (never loaded / newly added) = Any time, the column default. */
 export const formFixtureKind = (f: Pick<FixtureRow, 'stage_kind'>): StageKind | null => (f.stage_kind === undefined ? 'any' : f.stage_kind)
+
+/**
+ * Stage Plan item 3 (v2.5021, the owner's call of 2026-10-09): Bill it on the last Order stage,
+ * the final draw, sweeps the job's discounts onto that bill. A discount's dollars already ride
+ * every draw that bills its basis rows, as shares (v2.3252), so the sweep moves no money. It links
+ * the discount row to the final bill, and the plan reads it billed with the final draw instead of
+ * "no draw". A discount sweeps only when this bill finishes its basis: a share still to ride a
+ * later bill keeps its row open. The ids, in list order; none when the row is not the final draw.
+ */
+export function finalDrawDiscountSweep(fixtures: readonly FixtureRow[], billingFixtureId: string): string[] {
+  const billing = fixtures.find((f) => f.id === billingFixtureId)
+  if (!billing || isDiscountRow(billing) || formFixtureKind(billing) !== 'order' || billing.invoice_id) return []
+  if (fixtures.some((f) => f.id !== billingFixtureId && !isDiscountRow(f) && formFixtureKind(f) === 'order' && !f.invoice_id)) return []
+  const billedAfter = (f: FixtureRow) => f.id === billingFixtureId || !!f.invoice_id
+  return fixtures.filter((d) => isDiscountRow(d) && !d.invoice_id && discountBasisRows(fixtures, d).every(billedAfter)).map((d) => d.id)
+}
 
 /**
  * Named rows only, in form order. Discount rows (v2.3252+) are never stages

@@ -108,7 +108,7 @@ The rule guides you, but it does not lock the door. You can tick several lines o
 - Re-ordering is always allowed, billed or not. The numbers follow the arrows.
 - The draft tagged **auto** in the Invoices list is the job's remainder keeping itself up to date. It shrinks as you break stages off. It disappears once every stage is on its own invoice. You never need to create it, resize it or delete it.
 - A job with no in-order rows works as before. Its line items bill whenever you like.
-- A **discount** row from {{button:green|− Add discount}} is never a stage. It follows the work it applies to. So each draw carries its share as a labeled line. See *give a customer a discount*.
+- A **discount** row from {{button:green|− Add discount}} is never a stage. It follows the work it applies to. So each draw carries its share as a labeled line. {{button:green|Bill it}} on the last in-order stage puts the discount on that final bill. Then the discount reads billed, not left open. See *give a customer a discount*.
 - What the GC sees of these stages is set on the **Edit** tab. See *show a GC the stages you plan*.
 
 ## Related
