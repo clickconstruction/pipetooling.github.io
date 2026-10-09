@@ -35,4 +35,12 @@ describe('CustomerPropertyRecordPanel', () => {
     renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={lookedUp} onChange={() => {}} />)
     expect(screen.queryByLabelText('Pasted CAD page')).toBeNull()
   })
+  it('names the kinds Residential and Commercial, as the lien screens do; Commercial writes non_residential and drops homestead', () => {
+    const onChange = vi.fn()
+    renderWithProviders(<CustomerPropertyRecordPanel address={lookedUp.address} fields={lookedUp} onChange={onChange} />)
+    expect(screen.getByRole('button', { name: 'Residential' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Non-residential' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Commercial' }))
+    expect(onChange).toHaveBeenCalledWith({ property_kind: 'non_residential', homestead: false })
+  })
 })

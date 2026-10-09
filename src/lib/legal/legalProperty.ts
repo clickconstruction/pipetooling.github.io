@@ -108,9 +108,9 @@ export function resolveLegalJobProperties(
   return { byJob, properties: [...lines.values()] }
 }
 
-/** The kind in the firm's words: `residential`, `non-residential`, or '' when unknown. */
+/** The kind in the firm's words: `residential`, `commercial` (the owner's call of 2026-10-09: one word everywhere), or '' when unknown. */
 export function propertyKindWords(kind: string | null | undefined): string {
-  return kind === 'residential' ? 'residential' : kind ? 'non-residential' : ''
+  return kind === 'residential' ? 'residential' : kind ? 'commercial' : ''
 }
 
 /**
@@ -119,7 +119,7 @@ export function propertyKindWords(kind: string | null | undefined): string {
  */
 export const PROPERTY_KIND_UNKNOWN_WORDS = 'kind unknown · commercial dates shown (a residential property is a month earlier)'
 
-/** The kind cell: `residential`, `non-residential`, or the unknown words. */
+/** The kind cell: `residential`, `commercial`, or the unknown words. */
 export function propertyKindCell(kind: string | null | undefined): string {
   return propertyKindWords(kind) || PROPERTY_KIND_UNKNOWN_WORDS
 }

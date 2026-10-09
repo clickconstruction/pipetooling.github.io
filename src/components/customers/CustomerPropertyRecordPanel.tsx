@@ -327,7 +327,7 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
       {/* kind + homestead */}
       <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
         {pill('Residential', fields.property_kind === 'residential', () => onChange({ property_kind: fields.property_kind === 'residential' ? '' : 'residential' }))}
-        {pill('Non-residential', fields.property_kind === 'non_residential', () => onChange({ property_kind: fields.property_kind === 'non_residential' ? '' : 'non_residential', homestead: false }))}
+        {pill('Commercial', fields.property_kind === 'non_residential', () => onChange({ property_kind: fields.property_kind === 'non_residential' ? '' : 'non_residential', homestead: false }))}
         {fields.property_kind === 'residential' ? (
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Owner-occupied homestead: lien rights need a recorded pre-work contract signed by both spouses (Tex. Prop. Code § 53.254)">
             <input type="checkbox" checked={fields.homestead} onChange={(e) => onChange({ homestead: e.target.checked })} />

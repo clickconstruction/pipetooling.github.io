@@ -327,7 +327,7 @@ describe('JobFormEditFactRows', () => {
     fireEvent.click(screen.getByLabelText('Homestead'))
     await waitFor(() => expect(savePropertyHomesteadMock).toHaveBeenCalledWith('addr-site', true))
     // the property sheet's word here, not the lien screens'
-    fireEvent.click(screen.getByRole('button', { name: 'Non-residential' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Commercial' }))
     await waitFor(() => expect(screen.getByTestId('property-kind-switch').dataset.kind).toBe('non_residential'))
     expect(screen.queryByLabelText('Homestead')).toBeNull()
   })
