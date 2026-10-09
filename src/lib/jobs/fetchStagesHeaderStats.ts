@@ -24,6 +24,12 @@
  * This fetch is the SPINE (journey Tier-1 #2(c)): the Pipeline strip, the
  * Dashboard AR card, the Billed pin and Quickfill's "who owes what" all read
  * `computeBillTruth` over rows shaped like these — see `lib/billing/billTruth.ts`.
+ *
+ * `excludeZzTestJobs` (punch list #61, v2.5116): the callers pass it for every
+ * role but dev, and the ZZ test jobs drop out with their bills and payments
+ * (`withoutZzTestJobMoney`). A fifth read names every ZZ job the caller can see
+ * by name on the server, so a paid one leaves the paid head-count and its
+ * payments leave collected-by-day, which never see job rows.
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -49,6 +55,8 @@ import {
 } from './stagesHeaderStats'
 import { computeBillTruth, type BillTruth } from '../billing/billTruth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { isZzTestJob, ZZ_TEST_JOBS_OR_FILTER } from './zzTestJobSweep'
+import { withoutZzTestJobMoney } from './zzTestJobVisibility'
 
 export type FetchStagesHeaderStatsResult =
   | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[]; billTruth: BillTruth }
@@ -92,9 +100,33 @@ async function addUnlinkedMoneyRows(
   }
 }
 
+export type FetchStagesHeaderStatsOptions = {
+  /** Leave ZZ test jobs out, with their bills and payments (every role but dev: `hidesZzTestJobs`). */
+  excludeZzTestJobs?: boolean
+}
+
+type ZzNamedJobRow = { id: string; status: string | null; job_name: string | null; customer_name: string | null }
+
+/** Every ZZ test job the caller can see, any status, by the name rule on the server, re-checked here. */
+async function fetchZzTestJobRows(customerFilter: string | null): Promise<ZzNamedJobRow[]> {
+  const rows = await fetchAllRows(
+    async (from, to) => ({
+      data: (await withSupabaseRetry(async () => {
+        let q = supabase.from('jobs_ledger').select('id, status, job_name, customer_name').or(ZZ_TEST_JOBS_OR_FILTER)
+        if (customerFilter) q = q.eq('customer_id', customerFilter)
+        return q.order('id').range(from, to)
+      }, 'stages header stats: zz test jobs')) as unknown as ZzNamedJobRow[] | null,
+      error: null,
+    }),
+    'stages header stats: zz test jobs',
+  )
+  return (rows ?? []).filter(isZzTestJob)
+}
+
 export async function fetchStagesHeaderStats(
   customerFilter: string | null,
   now = new Date(),
+  options: FetchStagesHeaderStatsOptions = {},
 ): Promise<FetchStagesHeaderStatsResult> {
   try {
     // Paged (Phase 4 #3(c)): these are bounded-but-unranged company-wide reads; the
@@ -111,7 +143,7 @@ export async function fetchStagesHeaderStats(
     }
     let paidQ = supabase.from('jobs_ledger').select('id', { count: 'exact', head: true }).eq('status', 'paid')
     if (customerFilter) paidQ = paidQ.eq('customer_id', customerFilter)
-    const [jobRows, paidCount, invoiceRows, paymentRows] = await Promise.all([
+    const [jobRows, paidCountAll, invoiceRows, paymentRows, zzRows] = await Promise.all([
       fetchAllRows(
         async (from, to) => ({
           data: (await withSupabaseRetry(async () => makeJobsQ().range(from, to), 'stages header stats: jobs')) as unknown as
@@ -157,12 +189,24 @@ export async function fetchStagesHeaderStats(
         }),
         'stages header stats: payments',
       ),
+      options.excludeZzTestJobs ? fetchZzTestJobRows(customerFilter) : Promise.resolve([] as ZzNamedJobRow[]),
     ])
-    const { invoices: invoicesAll, payments } = await addUnlinkedMoneyRows(
+    const withUnlinked = await addUnlinkedMoneyRows(
       (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
       (paymentRows ?? []) as unknown as LeanStatsPaymentRow[],
     )
-    const jobs = assembleLeanStatsJobs((jobRows ?? []) as unknown as LeanStatsJobRow[], invoicesAll, payments)
+    const allMoney = {
+      jobs: (jobRows ?? []) as unknown as LeanStatsJobRow[],
+      invoices: withUnlinked.invoices,
+      payments: withUnlinked.payments,
+    }
+    const {
+      jobs: leanJobRows,
+      invoices: invoicesAll,
+      payments,
+    } = options.excludeZzTestJobs ? withoutZzTestJobMoney(allMoney, zzRows.map((r) => r.id)) : allMoney
+    const paidCount = paidCountAll - zzRows.filter((r) => r.status === 'paid').length
+    const jobs = assembleLeanStatsJobs(leanJobRows, invoicesAll, payments)
     // v2.3809: the Working jobs' line items and stage-plan inputs, so a job
     // split into Order stages reads its plan for *capable to bill* exactly as
     // the Capable list does (Taunya, 2026-09-24: "$400 capable" over an empty
@@ -172,7 +216,7 @@ export async function fetchStagesHeaderStats(
     // Orphans (bills whose job the bound fetch never ships) are visible only
     // from the flat rows — the assembled jobs dropped them already.
     const billTruth = computeBillTruth({
-      jobs: (jobRows ?? []) as unknown as LeanStatsJobRow[],
+      jobs: leanJobRows,
       invoices: invoicesAll,
       payments,
     })
@@ -187,7 +231,8 @@ export async function fetchStagesHeaderStats(
       billTruth,
       // Lean billed rows for the chase-queue card (v2.2025): the same
       // assembled jobs the stats ran over, shaped by the board kernel. Lean
-      // rows lack names — the call-mode modal re-derives from full rows.
+      // rows carry only the two names the ZZ rule reads — the call-mode modal
+      // re-derives from full rows.
       leanBilledRows: buildJobsStagesBoardLists(jobs, '').billedActiveRows,
     }
   } catch (e) {

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -12,6 +13,7 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { fetchJobsLedgerStagesPrimary, fetchJobsLedgerWithDetailsForStages, fetchStagesEnrichment, primaryRowToJobWithDetails } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
+import { hidesZzTestJobs, withoutZzTestJobs } from '../lib/jobs/zzTestJobVisibility'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
 import { boardIsFreshForTab } from '../lib/jobs/boardRefetchTtl'
@@ -115,8 +117,16 @@ type JobsListCacheContextValue = {
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
 
 export function JobsListCacheProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  /**
+   * Punch list #61 (v2.5116): ZZ test jobs are hidden from every role but dev. State keeps every row
+   * the reads return; the rule runs where the cache hands rows out (`jobs` below and runFetchJobs'
+   * result), so the remembered board, each scope merge, the full fetch and the enrichment patch all
+   * pass it, and a dev whose role lands late still gets the rows.
+   */
+  const hideZz = hidesZzTestJobs(role)
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
+  const visibleJobs = useMemo(() => (hideZz ? withoutZzTestJobs(jobs) : jobs), [jobs, hideZz])
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListEnriching, setJobsListEnriching] = useState(false)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
@@ -365,14 +375,14 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       // Fresh-enough guard (v2.1917): the load/visibility piggyback callers
       // refire after every board fetch; stats only need to move when data
       // moved, so within the TTL only forced (post-mutation) refreshes run.
-      const key = `${user.id}|${customerFilter ?? ''}`
+      const key = `${user.id}|${customerFilter ?? ''}|${hideZz ? 'no-zz' : 'zz'}`
       const last = headerStatsLastFetchRef.current
       if (!options?.force && last != null && last.key === key && Date.now() - last.at < HEADER_STATS_TTL_MS) {
         return
       }
       headerStatsInFlightRef.current = true
       try {
-        const res = await fetchStagesHeaderStats(customerFilter)
+        const res = await fetchStagesHeaderStats(customerFilter, undefined, { excludeZzTestJobs: hideZz })
         if (res.ok) {
           headerStatsLastFetchRef.current = { key, at: Date.now() }
           setHeaderStats(res.stats)
@@ -382,7 +392,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         headerStatsInFlightRef.current = false
       }
     },
-    [user?.id],
+    [user?.id, hideZz],
   )
 
   const runFetchJobs = useCallback<RunFetchJobsFn>(
@@ -484,7 +494,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         // background of every successful board load.
         void refreshHeaderStatsRef.current?.(customerFilter)
 
-        return first.jobs
+        return hideZz ? withoutZzTestJobs(first.jobs) : first.jobs
       } finally {
         loadInFlightRef.current = false
         if (pendingRef.current) {
@@ -494,7 +504,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [user?.id, paintRememberedBoard],
+    [user?.id, hideZz, paintRememberedBoard],
   )
   runFetchJobsRef.current = runFetchJobs
   refreshHeaderStatsRef.current = refreshHeaderStats
@@ -533,7 +543,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   }, [user?.id])
 
   const value: JobsListCacheContextValue = {
-    jobs,
+    jobs: visibleJobs,
     setJobs,
     jobsListLoading,
     jobsListEnriching,
