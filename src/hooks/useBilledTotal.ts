@@ -4,15 +4,20 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { computeBillTruth, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../lib/billing/billTruth'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
 import { loadUnlinkedMoney } from '../lib/billing/loadUnlinkedMoney'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { withoutZzTestJobMoney } from '../lib/jobs/zzTestJobVisibility'
 
 // Intentionally ALL billed jobs, including those flagged into Collections — this total means
 // "billed and unpaid" = the bill-truth kernel's Owed (billed + collections), the same figure the
 // Pipeline strip, the AR card (ar + Collections) and Quickfill read. Bills on paid or deleted jobs
 // are excluded by the kernel (they used to pad this pin). A job the office gave up on (Uncollectible)
 // leaves Owed in the kernel, which needs `uncollectible_at` to see it.
+// `excludeZzTestJobs` (punch list #61, v2.5120): the caller passes `useZzTestJobsHidden(role)`, and ZZ test
+// jobs leave with their bills and payments, by the shared ids (this read carries no names).
 export function useBilledTotal(
   enabled: boolean,
-  refreshKey?: number
+  refreshKey?: number,
+  excludeZzTestJobs = false,
 ): { count: number | null; total: number | null; loading: boolean } {
   const [count, setCount] = useState<number | null>(null)
   const [total, setTotal] = useState<number | null>(null)
@@ -68,11 +73,14 @@ export function useBilledTotal(
           { paymentColumns: 'job_id, invoice_id, amount, paid_on, sequence_order', invoiceColumns: 'id, job_id, amount, status, sequence_order, billed_at', label: 'useBilledTotal', withPaidBillPayments: true },
         )
         if (cancelled) return
-        const truth = computeBillTruth({
+        const money = {
           jobs,
           invoices: [...invoices, ...extra.paidBills],
           payments: [...paymentsRows, ...extra.unlinkedPayments, ...extra.paidBillPayments],
-        })
+        }
+        const zzJobIds = excludeZzTestJobs ? await loadZzTestJobIds() : null
+        if (cancelled) return
+        const truth = computeBillTruth(zzJobIds ? withoutZzTestJobMoney(money, zzJobIds) : money)
         if (!cancelled) {
           setCount(truth.owed.count)
           setTotal(truth.owed.total)
@@ -90,7 +98,7 @@ export function useBilledTotal(
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey])
+  }, [enabled, refreshKey, excludeZzTestJobs])
 
   return { count, total, loading }
 }

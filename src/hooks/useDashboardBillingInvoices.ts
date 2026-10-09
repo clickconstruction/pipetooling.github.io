@@ -48,6 +48,9 @@ import {
 } from '../lib/dashboardTeamAssignedJobRow'
 import type { DetailJobModalAssignedJobRow } from '../components/jobs/DetailJobModal'
 import type { UserRole } from './useAuth'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { withoutZzTestJobRows } from '../lib/jobs/zzTestJobVisibility'
 
 export type UseDashboardBillingInvoicesInput = {
   authUserId: string | undefined
@@ -89,8 +92,39 @@ export function useDashboardBillingInvoices({
   resyncDashboardAfterUpdateJobStatusFailureRef,
 }: UseDashboardBillingInvoicesInput) {
   const { showToast } = useToastContext()
-  const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
-  const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
+  /**
+   * ZZ test jobs (punch list #61, v2.5120): the four lists below keep every row they read and hand out
+   * the rows without ZZ jobs for every role but a dev who shows them. A bill carries its job's names;
+   * the RPC's job rows carry only the job's name, so the shared ZZ ids catch a ZZ customer's job.
+   */
+  const hideZz = useZzTestJobsHidden(role)
+  const [zzJobIds, setZzJobIds] = useState<ReadonlySet<string> | null>(null)
+  useEffect(() => {
+    if (!hideZz || !authUserId) {
+      setZzJobIds(null)
+      return
+    }
+    let cancelled = false
+    loadZzTestJobIds().then(
+      (ids) => {
+        if (!cancelled) setZzJobIds(ids)
+      },
+      () => {},
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [hideZz, authUserId])
+  const [readyToBillInvoicesAll, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
+  const [readyToBillJobsAll, setReadyToBillJobs] = useState<JobForDashboard[]>([])
+  const readyToBillInvoices = useMemo(
+    () => (hideZz ? withoutZzTestJobRows(readyToBillInvoicesAll, (i) => i.job_id, zzJobIds) : readyToBillInvoicesAll),
+    [hideZz, readyToBillInvoicesAll, zzJobIds],
+  )
+  const readyToBillJobs = useMemo(
+    () => (hideZz ? withoutZzTestJobRows(readyToBillJobsAll, (j) => j.id, zzJobIds) : readyToBillJobsAll),
+    [hideZz, readyToBillJobsAll, zzJobIds],
+  )
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
   // True once both Ready to Bill reads have answered without error (v2.3801) — the Day
   // book's queue recorder must not write the empty pre-load list as "0 left to bill".
@@ -99,8 +133,16 @@ export function useDashboardBillingInvoices({
     () => buildReadyToBillDashboardUnits(readyToBillJobs, readyToBillInvoices),
     [readyToBillJobs, readyToBillInvoices],
   )
-  const [waitingForPaymentInvoices, setWaitingForPaymentInvoices] = useState<InvoiceForDashboard[]>([])
-  const [waitingForPaymentJobs, setWaitingForPaymentJobs] = useState<JobForDashboard[]>([])
+  const [waitingForPaymentInvoicesAll, setWaitingForPaymentInvoices] = useState<InvoiceForDashboard[]>([])
+  const [waitingForPaymentJobsAll, setWaitingForPaymentJobs] = useState<JobForDashboard[]>([])
+  const waitingForPaymentInvoices = useMemo(
+    () => (hideZz ? withoutZzTestJobRows(waitingForPaymentInvoicesAll, (i) => i.job_id, zzJobIds) : waitingForPaymentInvoicesAll),
+    [hideZz, waitingForPaymentInvoicesAll, zzJobIds],
+  )
+  const waitingForPaymentJobs = useMemo(
+    () => (hideZz ? withoutZzTestJobRows(waitingForPaymentJobsAll, (j) => j.id, zzJobIds) : waitingForPaymentJobsAll),
+    [hideZz, waitingForPaymentJobsAll, zzJobIds],
+  )
   const [waitingForPaymentLoading, setWaitingForPaymentLoading] = useState(false)
   const billedWaitingDashboardUnits = useMemo(
     () => buildBilledWaitingDashboardUnits(waitingForPaymentJobs, waitingForPaymentInvoices),

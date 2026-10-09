@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { computeBillTruth } from '../billing/billTruth'
-import { hidesZzTestJobs, withoutZzTestJobMoney, withoutZzTestJobs, zzTestJobIds } from './zzTestJobVisibility'
+import { buildArBuckets } from '../dashboardFinancials'
+import { hidesZzTestJobs, withoutZzTestJobMoney, withoutZzTestJobRows, withoutZzTestJobs, zzTestJobIds } from './zzTestJobVisibility'
 
 // Made-up jobs, customers and amounts.
 const job = (id: string, jobName: string, customerName: string | null) => ({
@@ -22,13 +23,19 @@ const ZZ_BY_NAME = job('Z', 'ZZ TEST billed', 'Ann Lee')
 const ZZ_BY_CUSTOMER = job('Y', 'Hill Street remodel', '  zz Test Customer')
 
 describe('hidesZzTestJobs', () => {
-  it('hides them from every role but dev, and while the role is still loading', () => {
+  it('hides them from every role but dev, whatever the switch says, and while the role is still loading', () => {
     for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'helper', 'subcontractor']) {
       expect(hidesZzTestJobs(role)).toBe(true)
+      expect(hidesZzTestJobs(role, true)).toBe(true)
     }
-    expect(hidesZzTestJobs(null)).toBe(true)
+    expect(hidesZzTestJobs(null, true)).toBe(true)
     expect(hidesZzTestJobs(undefined)).toBe(true)
-    expect(hidesZzTestJobs('dev')).toBe(false)
+  })
+
+  it('hides them from a dev by default, and shows them when the dev’s switch does (v2.5120)', () => {
+    expect(hidesZzTestJobs('dev')).toBe(true)
+    expect(hidesZzTestJobs('dev', false)).toBe(true)
+    expect(hidesZzTestJobs('dev', true)).toBe(false)
   })
 })
 
@@ -102,3 +109,61 @@ describe('withoutZzTestJobMoney', () => {
     expect(out.payments).toBe(plain.payments)
   })
 })
+
+describe('withoutZzTestJobRows (v2.5120)', () => {
+  type Bill = { id: string; job_id: string; job_name?: string; customer_name?: string | null }
+  const bills: Bill[] = [
+    { id: 'i1', job_id: 'A', job_name: '101 Hill Street', customer_name: 'Ann Lee' },
+    { id: 'iz', job_id: 'Z', job_name: 'ZZ TEST billed', customer_name: 'Ann Lee' },
+    { id: 'iy', job_id: 'Y', job_name: 'Hill Street remodel' },
+  ]
+
+  it('drops a row by its own ZZ name, and by the shared ids when it carries no customer name', () => {
+    expect(withoutZzTestJobRows(bills, (b) => b.job_id, null).map((b) => b.id)).toEqual(['i1', 'iy'])
+    expect(withoutZzTestJobRows(bills, (b) => b.job_id, new Set(['Y'])).map((b) => b.id)).toEqual(['i1'])
+  })
+
+  it('hands back the same array when nothing is dropped', () => {
+    const plain = [bills[0]!]
+    expect(withoutZzTestJobRows(plain, (b) => b.job_id, new Set(['Q']))).toBe(plain)
+  })
+})
+
+describe('withoutZzTestJobMoney · reads with no job id on a payment (v2.5120)', () => {
+  it('drops a payment with its bill when the read selected only the bill id', () => {
+    const out = withoutZzTestJobMoney(
+      {
+        jobs: [{ id: 'A' }, { id: 'Z' }],
+        invoices: [
+          { id: 'i1', job_id: 'A' },
+          { id: 'iz', job_id: 'Z' },
+        ],
+        payments: [
+          { invoice_id: 'i1', amount: 200 },
+          { invoice_id: 'iz', amount: 100 },
+        ],
+      },
+      ['Z'],
+    )
+    expect(out.payments).toEqual([{ invoice_id: 'i1', amount: 200 }])
+  })
+
+  it('the AR card’s buckets fall by exactly the test money, with nothing excluded', () => {
+    const job = (id: string, name: string, revenue: number) => ({
+      id, job_name: name, customer_name: 'Ann Lee', status: 'billed', revenue, payments_made: 0, collections_at: null,
+      hcp_number: id, click_number: null, customer_id: 'c1', gc_customer_id: null, job_address: '', last_work_date: null, pct_complete: 100,
+    })
+    const bill = (id: string, jobId: string, amount: number) => ({ id, job_id: jobId, amount, status: 'billed', billed_at: '2026-09-01', sequence_order: 1 })
+    const read = {
+      jobs: [job('A', '101 Hill Street', 500), job('Z', 'ZZ TEST billed', 2200)],
+      invoices: [bill('i1', 'A', 500), bill('iz', 'Z', 2200)],
+      payments: [] as Array<{ job_id: string }>,
+    }
+    const before = buildArBuckets(read.jobs as never, read.invoices as never, [])
+    const kept = withoutZzTestJobMoney(read, [])
+    const after = buildArBuckets(kept.jobs as never, kept.invoices as never, [])
+    expect(before.ar.total - after.ar.total).toBe(2200)
+    expect(after.ar.total).toBe(500)
+  })
+})
+

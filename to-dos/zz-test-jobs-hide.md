@@ -2,7 +2,7 @@
 name: "ZZ test jobs off the Pipeline for everyone but a dev"
 number: 61
 group: ready
-status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2 next
+status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2a shipped v2.5120 (the dev's switch, hidden by default, and the Dashboard's Billed pin, AR card and Ready to bill / Billed lists, by a shared ZZ id read) · PR 2b next
 summary: >
   Jobs → Pipeline shows every ZZ test job the live passes and robot runs leave behind — rows the
   office scrolls past, and $2,200 test bids inside "Ready to ask for", the stage counts and the
@@ -14,12 +14,11 @@ summary: >
   shown. The mockup beside this card shows the Ready to Bill section before, after for the
   office, and after for a dev.
 next: >
-  PR 2 (The build, below): the dev's switch in Hide groups… with its chips, the Dashboard's Billed
-  pin, AR / Unbilled card and Ready to bill / Billed lists, and the other office doors. Until it
-  ships, a non-dev's Pipeline strip and Quickfill read lower than those Dashboard cards by the ZZ
-  money. PR 3, the Lien desk, waits for a quiet lien lane.
+  PR 2b (The build, below): the other office doors, each dropping ZZ jobs by the shared ids
+  (`zzTestJobRows.ts`): header search, the Dashboard's job cards and the Needs you nudges, and
+  Customers. PR 3, the Lien desk, waits for a quiet lien lane.
 size: M–L (three PRs)
-ver: v2.5116 (PR 1)
+ver: v2.5116 (PR 1) · v2.5120 (PR 2a)
 blocker: None for PR 2. PR 3 waits for a quiet lien lane.
 opinion: build — the sweep did not keep the board clean, and PR 1 alone gives the office an honest Pipeline.
 ---
@@ -91,7 +90,7 @@ up jobs. A dev can still see the office's view through *View as*.
   - `JobsStagesTab.render.test.tsx`: as an assistant, no ZZ row and the section count without it,
     including from a snapshot that holds a ZZ row; as the dev, the row is there.
 
-### PR 2 — the dev's switch, the Dashboard's money and the other doors (M–L)
+### PR 2 — the dev's switch, the Dashboard's money and the other doors (M–L) — 2a shipped v2.5120
 
 - **The switch** (the mock-up's after-for-a-dev). One line, *ZZ test jobs*, in Hide groups… is
   checked by default. It lives in `JobsStagesHideGroupsModal.tsx` and `jobsStagesExcludeFilters.ts`,
@@ -120,10 +119,13 @@ up jobs. A dev can still see the office's view through *View as*.
   - The Needs you nudges that name jobs or sum their money: stale open jobs, lien releases owed,
     bank-returned payments and test reports ready.
   - Customers: a ZZ customer's row on the list, and a ZZ job on a real customer's page.
-  - If PR 2 runs long, ship the Dashboard's money and the switch first (2a) and the doors after (2b).
-  - The name rule disagrees by one case (review on #5226). The client trims a name before `/^zz/i`, but the
-    server's `ilike 'ZZ%'` does not, so a name with leading spaces is hidden on the board and missed by
-    the ZZ read. PR 2 makes the two agree, or a ZZ name is held to start at its first character.
+  - Split as planned. 2a (v2.5120) shipped the switch and the Dashboard's money. 2b is the doors.
+  - **The shared ZZ id read (2a).** PR 1's fifth read became `src/lib/jobs/zzTestJobRows.ts`, shared by every
+    reader. It answers once a minute, and the sweep clears it. A screen whose rows carry only ids, or no
+    customer name, drops ZZ jobs by these ids. That closed the `get_jobs_ledger_by_status` gap with no
+    migration.
+  - **The trim nit is settled (2a).** The read asks the server for any name containing *zz*, and the kernel
+    re-checks, so a leading-space name is caught on both sides. The sweep keeps its strict filter.
 - **Tests**: the switch's kernel and its localStorage default; a render smoke on the modal's line
   and both chips; `useBilledTotal` and `dashboardFinancials` kernels with a ZZ job in and out;
   render smokes on the header search and the Customers list as an assistant.

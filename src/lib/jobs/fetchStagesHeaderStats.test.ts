@@ -242,7 +242,8 @@ describe('fetchStagesHeaderStats · excludeZzTestJobs (punch list #61, v2.5116)'
     { id: 'pz', job_id: 'Z', invoice_id: 'iz', amount: 100, paid_on: '2026-09-04' },
     { id: 'pp', job_id: 'P', invoice_id: null, amount: 50, paid_on: '2026-09-05' },
   ]
-  const isZzRead = (steps: Step[]) => argsOf(steps, 'or').some(([f]) => f === 'job_name.ilike.ZZ%,customer_name.ilike.ZZ%')
+  // The shared ZZ read (`zzTestJobRows.ts`, v2.5120): any name containing zz, re-checked by the kernel.
+  const isZzRead = (steps: Step[]) => argsOf(steps, 'or').some(([f]) => f === 'job_name.ilike.*zz*,customer_name.ilike.*zz*')
   const zzScenario = (table: string, steps: Step[]) => {
     if (table === 'jobs_ledger') {
       if (isHead(steps)) return { count: 7, error: null }

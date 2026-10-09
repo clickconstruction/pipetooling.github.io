@@ -279,6 +279,7 @@ import {
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
+import { setDevShowsZzTestJobs, useDevShowsZzTestJobs } from '../../lib/jobs/zzTestJobSwitch'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
@@ -675,7 +676,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     headerStats: cacheHeaderStats,
     leanBilledRows: cacheLeanBilledRows,
     setJobs: cacheSetJobs,
+    zzTestJobCount: cacheZzTestJobCount,
   } = useJobsListCache()
+  /** A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. */
+  const devShowsZzTestJobs = useDevShowsZzTestJobs()
+  const zzTestJobsLine =
+    authRole === 'dev' && (cacheZzTestJobCount ?? 0) > 0 ? { count: cacheZzTestJobCount ?? 0, shown: devShowsZzTestJobs } : null
   // Fetch-on-expand: any open section whose scope isn't merged kicks its fetch
   // (idempotent; the context guards in-flight and merged states).
   useEffect(() => {
@@ -2773,6 +2779,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     accountMan: stagesAccountManFilter,
     accountManOptions: stagesAccountManFilterOptions,
     exclusionCount: stagesExclusionCount,
+    zzTestJobs: zzTestJobsLine,
   }
   /** The # jump chip: the loaded board first, then the lean lookup across every job (any status); the chip shows its checking state meanwhile. */
   const jumpToTypedNumber = (digits: string) => {
@@ -4376,6 +4383,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         jobs={jobs}
         filters={stagesExcludeFilters}
         onChange={setStagesExcludeFilters}
+        zzTestJobs={zzTestJobsLine ? { ...zzTestJobsLine, onChange: setDevShowsZzTestJobs } : null}
       />
       <JobsCombineSeparateModal
         open={combineSeparateModalOpen}

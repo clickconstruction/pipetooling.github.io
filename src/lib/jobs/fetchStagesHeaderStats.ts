@@ -28,7 +28,7 @@
  * `excludeZzTestJobs` (punch list #61, v2.5116): the callers pass it for every
  * role but dev, and the ZZ test jobs drop out with their bills and payments
  * (`withoutZzTestJobMoney`). A fifth read names every ZZ job the caller can see
- * by name on the server, so a paid one leaves the paid head-count and its
+ * by name on the server (`zzTestJobRows.ts`), so a paid one leaves the paid head-count and its
  * payments leave collected-by-day, which never see job rows. That read takes no
  * customer filter, like the invoice and payment reads it cleans: under a filter
  * collected-by-day still reads every customer's payments, so it must lose every
@@ -58,8 +58,8 @@ import {
 } from './stagesHeaderStats'
 import { computeBillTruth, type BillTruth } from '../billing/billTruth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { isZzTestJob, ZZ_TEST_JOBS_OR_FILTER } from './zzTestJobSweep'
 import { withoutZzTestJobMoney } from './zzTestJobVisibility'
+import { fetchZzTestJobRows, type ZzTestJobRow } from './zzTestJobRows'
 
 export type FetchStagesHeaderStatsResult =
   | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[]; billTruth: BillTruth }
@@ -106,38 +106,6 @@ async function addUnlinkedMoneyRows(
 export type FetchStagesHeaderStatsOptions = {
   /** Leave ZZ test jobs out, with their bills and payments (every role but dev: `hidesZzTestJobs`). */
   excludeZzTestJobs?: boolean
-}
-
-type ZzNamedJobRow = {
-  id: string
-  status: string | null
-  job_name: string | null
-  customer_name: string | null
-  customer_id: string | null
-}
-
-/**
- * Every ZZ test job the caller can see, any status and any customer, by the name rule on the
- * server, re-checked here. No customer filter: see the header.
- */
-async function fetchZzTestJobRows(): Promise<ZzNamedJobRow[]> {
-  const rows = await fetchAllRows(
-    async (from, to) => ({
-      data: (await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('jobs_ledger')
-            .select('id, status, job_name, customer_name, customer_id')
-            .or(ZZ_TEST_JOBS_OR_FILTER)
-            .order('id')
-            .range(from, to),
-        'stages header stats: zz test jobs',
-      )) as unknown as ZzNamedJobRow[] | null,
-      error: null,
-    }),
-    'stages header stats: zz test jobs',
-  )
-  return (rows ?? []).filter(isZzTestJob)
 }
 
 export async function fetchStagesHeaderStats(
@@ -206,7 +174,7 @@ export async function fetchStagesHeaderStats(
         }),
         'stages header stats: payments',
       ),
-      options.excludeZzTestJobs ? fetchZzTestJobRows() : Promise.resolve([] as ZzNamedJobRow[]),
+      options.excludeZzTestJobs ? fetchZzTestJobRows() : Promise.resolve([] as ZzTestJobRow[]),
     ])
     const withUnlinked = await addUnlinkedMoneyRows(
       (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],

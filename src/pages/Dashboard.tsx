@@ -44,6 +44,7 @@ import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useWeeklyTeamLaborTotal } from '../hooks/useWeeklyTeamLaborTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
@@ -145,6 +146,8 @@ const DASHBOARD_MODAL_OVERLAY_STYLE: CSSProperties = {
 export default function Dashboard() {
   const jobDetailModal = useJobDetailModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
+  /** ZZ test jobs off the Billed pin for every role but a dev who shows them (punch list #61, v2.5120). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -654,7 +657,7 @@ export default function Dashboard() {
     }, FINANCIAL_PINS_REALTIME_DEBOUNCE_MS)
   }, [isDocVisible])
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(hasCostMatrixPin)
-  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey)
+  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey, hideZzTestJobs)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 
