@@ -52,6 +52,7 @@
 | [`DB_FREEZE_RUNBOOK.md`](./DB_FREEZE_RUNBOOK.md) | App looks "database down": lock-pileup vs instance-stall triage (`/db-freeze` runs it). Read BEFORE restarting anything. |
 | [`runbooks/AGENT_APP_CRASH_INVESTIGATION.md`](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) | Ordered checklist for "why did the app crash" (503s, timeouts). |
 | [`runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) | Deep Supabase incident inspection (CLI + Dashboard logs). |
+| [`runbooks/CLICKPLUMBING_SENDER.md`](./runbooks/CLICKPLUMBING_SENDER.md) | Customer email from billing@clickplumbing.com, with replies to office@: the Resend DNS records, the Google Workspace alias, the order of steps, the checks and the flip PR with its 57-function deploy. |
 | [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) | White screen, RPC 404s, sign-in, load problems. |
 | [`REMOTE_SCHEMA_INSPECTION.md`](./REMOTE_SCHEMA_INSPECTION.md) | Obsolete incident snapshot; kept for its generic schema-inspection queries only. |
 | [`DOMAIN_CUTOVER.md`](./DOMAIN_CUTOVER.md) | The pipetooling.com → clicktooling.com cutover: exact steps, with the old domain kept as a path-preserving redirect. |
