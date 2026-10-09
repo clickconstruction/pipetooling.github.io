@@ -1,8 +1,6 @@
 ---
 name: "The home-screen icon reads crisp under iOS 26's glass"
 number: 67
-group: gated
-status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · waiting on the owner's home-screen photo to decide item 3
 summary: >
   On an iOS 26 home screen the ClickTooling tile looks rough: the gear's dark ink goes muddy grey
   and its edges soften, while the Add to Home Screen sheet shows the same file crisp. The served
@@ -10,16 +8,14 @@ summary: >
   Liquid Glass material over every flat web-clip icon; native apps ship layered icons, so the
   glass sits above their art instead of on it. A web clip cannot opt out, so the fix is art that
   survives the glass: exact-size renders, heavier ink, and possibly a dark tile.
-next: >
-  After v2.4227 deploys: remove the icon from the phone, Add to Home Screen again, and photograph
-  it next to a native icon (Reduce Transparency off). From that photo the owner decides item 3, the
-  dark tile — PR 2 is a `TILE` option in the generator and the touch icons regenerated — or closes
-  the card if the tile now reads crisp.
 size: S
 ver: v2.4227
-blocker: The owner's photo of the v2.4227 tile, then the call on item 3.
-opinion: your call — PR 1 shipped; the dark tile is a brand change and waits on a photo of PR 1's result.
 mockup: not required — the proof is a photo of the home screen; the generator renders the candidate PNGs to compare
+group: ready
+status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · the owner 2026-10-09: it still does not look great — PR 2 approved
+next: Build PR 2 (the owner, 2026-10-09: "it still does not look great, this needs to be improved"): the `TILE` option in the generator, and first a sheet of candidates rendered at 180 px with the glass approximated — the dark tile, heavier ink, a simpler mark, a lighter mark on dark — for the owner to pick from; then the touch icons regenerate from the pick.
+blocker: None until the candidate sheet; then the owner's pick.
+opinion: build — the owner said on 2026-10-09 the tile still reads rough.
 ---
 
 # The home-screen icon reads crisp under iOS 26's glass

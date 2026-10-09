@@ -1,22 +1,19 @@
 ---
 name: "Lien screens: the app's own words that are stale"
 number: 87
-group: gated
 status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; N added 2026-10-06 · shipped: E and F v2.4675, I v2.4659, J v2.4697, N v2.4698, M v2.4679 (waiting for a live look) · of the four held as the owner's decisions, C shipped v2.4661 and D v2.4674, A rides on the legal-portal train's #4637, and B shipped v2.4666 (the owner chose the tick on and the courtesy-copy wording)
 summary: >
   Three open places on the lien screens (G, H and K) where the app's own words promise something the
   app does not do or name a rule it no longer follows. The help guides were patched to say what the app
-  does today; these are the app's side, kept here so they are not lost. All three need the owner's call.
+  does today; these are the app's side, kept here so they are not lost. The owner answered all three on 2026-10-09: build G's list, keep H's tick and fix its guide, read a blank kind as residential everywhere (K).
   E, F, I, J and N shipped; L was built as option B (v2.4708); M is fixed and waits for a live look; A
   rides on the legal-portal train.
-next: >
-  G, H, K and L wait on the owner, L also on counsel. A lands with #4637. M: confirm it on a
-  waiting waiver live, then delete it. As each lands, the guide sentences held for it are made true
-  or rewritten (the guide PRs v2.4614, v2.4617, v2.4620 and v2.4623 list them).
 size: XS each
-blocker: G, H and K wait on the owner; A on #4637; M on a live look.
 opinion: G, H and K are your call — K has a deadline in it, and the earlier date is the safe one.
 mockup: not required — words and one focus on screens that exist
+group: ready
+next: G (the owner, 2026-10-09): build the list — Sent on your word also lists the notices a standing rule sent, marked as the rule's, so the hint and the guide's example come true. H (the owner, 2026-10-09): the office keeps the tick; the guide *read the Texas lien rules the app follows* stops saying the line waits on the attorney. K (the owner, 2026-10-09): a blank property kind reads residential — the earlier date — on every screen (the Lien window, the desk's gates and Timeline, the GC run, the timeline book, the Forecast panel), the "set the kind" warning kept; the guides follow. L was built as option B (v2.4708). A lands with #4637. M: confirm it on a waiting waiver live, then delete it.
+blocker: None on G, H and K; M waits on a live look; A on #4637.
 ---
 
 # Lien screens: the app's own words that are stale
