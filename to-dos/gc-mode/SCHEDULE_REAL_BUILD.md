@@ -656,12 +656,13 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
    history, a part's own move, and the version with its refusal (G-134). *Check:* two browsers move
    two bars. The second save is refused, naming the first's move, and saves on the next press.
 9. **The rest of the plan's writes on real data**: the walk, pulls, days got back, baselines,
-   splits, places, added bars, inspections, milestones and waits. The pulls and days got back come
-   by way 3 (`mockups/schedule-pr1b.md`): `planPull`, `pullBehind` and `recoveryOffers` take the
-   `GanttHold` list, and `chartHolds` and `pullHolds` become this PR's io, composing the holds on
-   main by then (the schedule's own waits, late notices and asks; RFIs and submittals with U2; the
-   not-ready papers with B2). *Check:* the prototype's walk on a real project, with one bar kept and
-   one moved.
+   splits, places, added bars, inspections, milestones and waits, cut in four
+   (`mockups/schedule-pr9.md`). 9a is inspections, the job's own work and its dates to meet. 9b is
+   waits, places, parts and baselines. 9c lifts the pull and days-back kernels whole. 9d is the
+   walk, pulls, days got back, the not-ready block and the holds' io, once B6-b-ii reads the papers.
+   No SQL beyond PR 5's. Way 3 (`mockups/schedule-pr1b.md`) is no longer needed, since what
+   `planPull`, `pullBehind` and `recoveryOffers` read is on main now. *Check:* the prototype's walk
+   on a real project, with one bar kept and one moved.
 10. **Open the schedule to the team (G-133)**: the migration that swaps every dev-only policy for
     `gc_on_schedule_team`, and the tab's gate to match. *Check:* a superintendent on the job moves a
     bar, and one not on it sees nothing. A subcontractor sees nothing, and a read-only user's move
@@ -718,9 +719,12 @@ two other kinds of link G-35 names, if the owner wants them.
   crew count, wait, part, place, what-if copy, rough schedule and schedule template.
 - **Help guides**, each with its share card (`docs/HELP_SHARE_CARDS.md`) and the plain-words test:
   - *move a bar on the schedule and say why* (PR 8)
-  - *walk the schedule each week* (PR 9)
-  - *set a new baseline after a change order* (PR 9)
-  - *split a line into parts* (PR 9)
+  - *record an inspection on the schedule* (PR 9a)
+  - *add the job's own work to the schedule* (PR 9a)
+  - *track what the work waits on* (PR 9b)
+  - *split a line into parts* (PR 9b)
+  - *set a new baseline after a change order* (PR 9b)
+  - *walk the schedule each week* (PR 9d)
   - *try moves on a copy first* (PR 11)
   - *start a schedule from a template* (PR 12)
   - *tell the trades their new dates* (PR 13)
