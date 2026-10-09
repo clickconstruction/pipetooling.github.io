@@ -375,10 +375,13 @@ Every migration, this one twice, then:
 
 ## B6-b-ii, after B6-b-i's types
 
-- The mapper: `msa`, `msaSentOn` and `msaSignedOn` from the company's agreement paper (the Book's master agreement by name); `w9` from a signed `w9` paper; `coiExpires` from the newest `coi` paper's `expires_at`; `paperSends` from `gc_paper_sends`.
+- The mapper:
+  - `msa` is `signed` when the company has a signed agreement paper of its own (`company_id`, `doc_type` `agreement`, status `signed`), and `msaSignedOn` is the newest one's day. That is the Portal's `msaFirst` gate in `gc_trade_sign_sow` (`portal-p2c.md`), so the window and the gate never disagree. It is not found by the Book entry's name.
+  - Otherwise `msa` is `sent` while an agreement paper of its own is `sent`, and `msaSentOn` is that one's day. Otherwise it is `none`.
+  - `w9` from a signed `w9` paper; `coiExpires` from the newest `coi` paper's `expires_at`; `paperSends` from `gc_paper_sends`.
 - The company window gains its Documents tab (`partnerDocuments`, `paperStep`'s verbs), and **Send a paper**, ported from the spike's `GcPaperSend.tsx`: Sign by with three days, Your line, the email as they get it, Send to sign or Send the reminder or Send the ask. The first master agreement calls `gc_company_paper`, then `send-contract-for-signature`, then `gc_send_paper`.
 - **Record their insurance**: the office files a certificate with its expiry and link, as `SubDocumentAddForm` does for a sub.
-- The Book entries by name and doc_type, no constant (call B): the Subs packet's sub-audience entries, the master agreement by its name and the W-9 by its form's doc_type.
+- The Book entries to send, by name and doc_type, no constant (call B): the Subs packet's sub-audience entries, the master agreement by its name and the W-9 by its form's doc_type. What is signed is read by `doc_type`, as above.
 
 ## Calls, answered
 
@@ -388,6 +391,8 @@ Every migration, this one twice, then:
 - **B.** By name and doc_type, no constant.
 
 ## Status
+
+**Amended 2026-10-09, on the lead's word after the Portal's P2c:** B6-b-ii's mapper reads `msa` as `gc_trade_sign_sow`'s `msaFirst` gate does: the newest signed agreement paper of the company's own, not the Book's entry by name.
 
 **Amended 2026-10-09 (afternoon), on the lead's call 1 to the B6-b-ii read-back:** sections 7 and 8 of the SQL, the promise kept by a trigger on a company's signed paper (the gap found while planning B6-b-ii: `accept-contract` is the person path and keeps no GC promise), and the office's certificate write. #5115 takes the same SQL after this merges.
 

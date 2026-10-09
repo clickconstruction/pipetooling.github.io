@@ -134,6 +134,9 @@ Each PR gets its guide (*award a trade on a GC project*, *send a trade its paper
 - **E. `esign_consents.record_type` gains `'gc_sow'`.** It is the one CHECK on a live table that B6-a widens. *My pick:* yes.
 - **G. The award gate re-checked in SQL** with a parity test against `leveledTotal`, instead of trusting the client's number. *My pick:* yes, since a statement of work is a contract.
 - **W. Who may award** after the door: estimators, masters and devs, as the plan says. **The owner's call**, since it decides who can commit our money to a trade.
+  - **When award's door opens `gc_sows` to the office** (the Portal's P2c, item 8), the signature stays the trade's. Only the service role writes `signed_on` and the signer's five fields (`signer_printed_name`, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), through `gc_trade_sign_sow`.
+  - The door does it with column grants, as P4a's tables do: `REVOKE INSERT, UPDATE` from `authenticated`, then a `GRANT` of only the columns the office writes.
+  - `status` is granted to no office role either. A column grant cannot hold a value, and a policy's `WITH CHECK` cannot see the old row, while the office writes `accepted_on` on a signed one at closeout. So the office's Send (draft to sent) moves into a function when the door opens, and `signed` stays the trade's.
 
 ## Is this the best we can do?
 
@@ -146,6 +149,8 @@ Each PR gets its guide (*award a trade on a GC project*, *send a trade its paper
 ## Status
 
 Plan written 2026-10-08 by Helper 2 at the lead's ask, on `spike/board-b6-plan`. The facts come from the reader audit of origin/main at a1137d746 (file:line in section 1; every reader in `board-b6-reader-audit.md` beside this plan), from `esign_consents`' CHECK (`20261006040000`), and from `gc_change_orders` (O1, `20261008010000:92`). B6-a was cut as #4973 the same day. The lead said yes to calls 6, E and G on 2026-10-08. Call 5 waits for B6-b, and W is the owner's, at its default (dev only) until award's door.
+
+**Amended 2026-10-09 by Helper 12**, on the lead's word after the Portal's P2c: call W says what award's door keeps the trade's.
 
 **Amended 2026-10-08, evening, by Helper 12** (the Board lane after the handoff), on the lead's calls from the byte-for-byte compare of #4973:
 
