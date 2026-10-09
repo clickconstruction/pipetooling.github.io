@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { GcPartsCard, GcPortalPartRows } from './GcSplitBars'
+import { GcPartsCard, GcPortalPartRows } from './GcSplitBars.proto'
 import { GcGantt } from './GcGantt'
 import { GcMoveExplain } from './GcScheduleMoves.proto'
 import { GcBuildingCrewCard } from './GcBuildingCrew'

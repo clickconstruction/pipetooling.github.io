@@ -67,7 +67,7 @@ import { GcPortalPlans } from './GcPortalPlans'
 import { GcPortalQuestions } from './GcPortalQuestions'
 import { PortalBlock as Block, PortalNote } from './GcPortalUi'
 import { PortalLangContext, usePortalLang } from './gcPortalLang'
-import { GcPortalPartRows } from './GcSplitBars'
+import { GcPortalPartRows } from './GcSplitBars.proto'
 import { splitActivityOf } from '../../lib/gcMode/gcSplitBars'
 
 /**

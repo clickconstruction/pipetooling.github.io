@@ -9,7 +9,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcBuildingScheduleTab } from './GcBuildingSchedule'
-import { GcPartsCard } from './GcSplitBars'
+import { GcPartsCard } from './GcSplitBars.proto'
 import { GcCrowdedLane } from './GcPlaces'
 import { GcCustomerSchedule } from './GcCustomerSchedule'
 import { initialGcState } from '../../lib/gcMode/gcFixture'

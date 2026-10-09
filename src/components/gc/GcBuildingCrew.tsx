@@ -1,7 +1,7 @@
 import type { Dispatch } from 'react'
 import { money, ownCrewWork, type GcAction, type GcProject, type TradePackage } from '../../lib/gcMode/gcModel'
 import { Card, Chip, Stat, input } from './gcUi'
-import { GcCrewPartRows } from './GcSplitBars'
+import { GcCrewPartRows } from './GcSplitBars.proto'
 import { splitActivityOf } from '../../lib/gcMode/gcSplitBars'
 
 /**

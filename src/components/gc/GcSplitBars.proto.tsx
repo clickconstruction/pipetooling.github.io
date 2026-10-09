@@ -3,6 +3,10 @@
  * The card under the opened activity, Parts of this line: split it, change a part's dates, make it
  * one bar again. And the split window. A part's move goes through Why it moved like any move. The
  * kernel is `gcSplitBars.ts`.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 9b ported the parts card and the split
+ * window to main at `GcSplitBars.tsx` (#5207); the prototype's schedule tab, crew rows, trade portal and
+ * phone pass read this one.
  */
 import { useEffect, useState, type Dispatch, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
