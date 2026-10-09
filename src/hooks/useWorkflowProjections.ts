@@ -12,6 +12,7 @@ import type { Database } from '../types/database'
 import {
   nextProjectionSequence,
   projectionSaveProblem,
+  projectionWriteError,
   projectionWriteFields,
   seedEditingProjection,
   type EditingProjection,
@@ -124,8 +125,9 @@ export function useWorkflowProjections({
     if (item) {
       // Update existing
       const { error } = await supabase.from('workflow_projections').update(fields).eq('id', item.id)
-      if (error) {
-        onError(`Failed to update projection: ${error.message}`)
+      const refused = projectionWriteError('update', error)
+      if (refused) {
+        onError(refused)
         return
       }
     } else {
@@ -133,8 +135,9 @@ export function useWorkflowProjections({
       const { error } = await supabase
         .from('workflow_projections')
         .insert({ workflow_id: workflowId, ...fields, sequence_order: nextProjectionSequence(projections) })
-      if (error) {
-        onError(`Failed to insert projection: ${error.message}`)
+      const refused = projectionWriteError('insert', error)
+      if (refused) {
+        onError(refused)
         return
       }
     }
@@ -142,11 +145,13 @@ export function useWorkflowProjections({
     await loadProjections(workflowId)
   }
 
-  /** The delete's own error is not checked — the re-read shows what is left. */
+  /** A refused delete goes to onError (v2.5103; it said nothing before); either way the re-read shows what is left. */
   async function deleteProjection(itemId: string) {
     const workflowId = await resolveWorkflowId()
     if (!workflowId) return
-    await supabase.from('workflow_projections').delete().eq('id', itemId)
+    const { error } = await supabase.from('workflow_projections').delete().eq('id', itemId)
+    const refused = projectionWriteError('delete', error)
+    if (refused) onError(refused)
     await loadProjections(workflowId)
   }
 

@@ -9,13 +9,13 @@ summary: >
   glass sits above their art instead of on it. A web clip cannot opt out, so the fix is art that
   survives the glass: exact-size renders, heavier ink, and possibly a dark tile.
 size: S
-ver: v2.4227
+ver: v2.4227 · 5097
 mockup: not required — the proof is a photo of the home screen; the generator renders the candidate PNGs to compare
-group: ready
-status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · the owner 2026-10-09: it still does not look great — PR 2 approved
-next: Build PR 2 (the owner, 2026-10-09: "it still does not look great, this needs to be improved"): the `TILE` option in the generator, and first a sheet of candidates rendered at 180 px with the glass approximated — the dark tile, heavier ink, a simpler mark, a lighter mark on dark — for the owner to pick from; then the touch icons regenerate from the pick.
-blocker: None until the candidate sheet; then the owner's pick.
-opinion: build — the owner said on 2026-10-09 the tile still reads rough.
+group: gated
+status: PR 1 shipped v2.4227 (exact-size renders, black ink, fatter wrench) · the owner 2026-10-09: it still does not look great · PR 2 v2.5097, the candidate sheet — nine icons under drawn glass at to-dos/app-icon-glass-candidates.html (a .png beside it) — awaits the owner's letter
+next: The owner picks a letter from `to-dos/app-icon-glass-candidates.html` (on a phone, `/to-dos/app-icon-glass-candidates.html` once deployed); then PR 3 runs `TILE=<tile> MARK=<mark> npm run gen-app-icon` with the pair printed under that letter and commits the five touch icons.
+blocker: The owner's letter from the sheet.
+opinion: your call — the sheet is built; the letter is yours.
 ---
 
 # The home-screen icon reads crisp under iOS 26's glass
@@ -60,8 +60,13 @@ here rather than build them that day.
 - **PR 1** (items 1 + 2) — shipped v2.4227: `scripts/generate-app-icon.mjs` (the sizes loop, the ink
   and wrench rewrites), `public/apple-touch-icon*.png` (five files), `index.html` (the sized links).
   Every render measured centred with the bottom teeth ≈17% out and the ink at 0.
-- **PR 2** (item 3, only if the owner picks it): a `TILE` option in the generator, the touch
-  icons regenerated; nothing else changes.
+- **PR 2** (item 3) — shipped v2.5097: `TILE` (`yellow` · `dark` · `dark-white`) and `MARK`
+  (`now` · `heavier` · `simpler`) in the generator, the default byte-identical to v2.4227's files,
+  and `--sheet`, which renders the nine pairs at 180 px with the glass approximated into
+  `to-dos/app-icon-glass-candidates.html` and `.png`. Candidate A is the live 180 px file. The
+  heavier pairs (B, E, H) put the bottom teeth 2 px nearer the edge at 180 (15.6% against 16.7%).
+- **PR 3** (the owner's letter): the touch icons regenerated with that letter's `TILE` and `MARK`;
+  nothing else changes.
 
 ## How to verify
 

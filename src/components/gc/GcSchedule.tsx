@@ -8,8 +8,10 @@
  * Redo (PR 8a), and the bar's form and a part's own move (PR 8b). Grouped by company on a job being
  * built, the chart draws who to call, with Call (`GcCallList`, 7c-ii). Since PR 9a, the same people
  * record an inspection passed or failed, put the job's own work on the chart and keep the dates to
- * meet (`GcScheduleCards`). The window frames it (`GcScheduleWindow`); a project page mounts it
- * unchanged the day the doors bring one.
+ * meet (`GcScheduleCards`). Since PR 9b, they keep what the work waits on and a new baseline
+ * (`GcScheduleCards`), where each bar's work is (`GcPlaces`), and a line in parts (`GcSplitBars`).
+ * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
+ * bring one.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
@@ -33,23 +35,32 @@ import { planMove } from '../../lib/gc/schedule/moves'
 import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { draftRefusal, draftStart, draftWords, ownWorkOffWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
-import type { InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleMove } from '../../lib/gc/schedule/types'
+import type { PlaceChange } from '../../lib/gc/schedule/places'
+import type { ActivityPart, InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleWait } from '../../lib/gc/schedule/types'
+import type { WaitStep } from '../../lib/gc/schedule/writes'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { waitRows } from '../../lib/gc/schedule/waits'
 import {
   addScheduleActivity,
+  addScheduleWait,
   drawSchedule,
   failScheduleInspection,
+  joinScheduleBar,
   loadSchedule,
   passScheduleInspection,
   redoScheduleMove,
   removeScheduleActivity,
   removeScheduleMilestone,
+  removeScheduleWait,
   saveScheduleMove,
   setActualDates,
   setOwnWorkDone,
+  setScheduleBaseline,
   setScheduleMilestone,
+  setSchedulePlaces,
+  setScheduleWaitStep,
+  splitScheduleBar,
   undoScheduleMove,
   type SchedulePress,
 } from '../../lib/gc/scheduleIo'
@@ -58,7 +69,9 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
 import { GcActivityEditor } from './GcActivityEditor'
 import { GcBarCaller, GcCallList } from './GcCallList'
-import { GcAddOwnWork, GcInspectionCheck, GcMilestones, GcOwnWorkButtons } from './GcScheduleCards'
+import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
+import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
+import { GcPartsCard } from './GcSplitBars'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
@@ -220,6 +233,13 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
                 fail: (lineId, failure, activities, words) => planWrite((st, press) => failScheduleInspection(st, projectId, press, lineId, failure, activities), words),
                 milestone: (m) => record((st) => setScheduleMilestone(st, projectId, m)),
                 removeMilestone: (id) => record((st) => removeScheduleMilestone(st, projectId, id)),
+                addWait: (wait) => record((st) => addScheduleWait(st, projectId, wait)),
+                waitStep: (waitId, step, on, note) => record((st) => setScheduleWaitStep(st, projectId, waitId, step, on, note)),
+                removeWait: (waitId) => record((st) => removeScheduleWait(st, projectId, waitId)),
+                places: (changes) => record((st) => setSchedulePlaces(st, projectId, changes)),
+                split: (lineId, parts, words) => planWrite((st, press) => splitScheduleBar(st, projectId, press, lineId, parts), words),
+                join: (lineId, words) => planWrite((st, press) => joinScheduleBar(st, projectId, press, lineId), words),
+                baseline: (name, why, words) => planWrite((st, press) => setScheduleBaseline(st, projectId, press, name, why), words),
               }
             : null
         }
@@ -238,7 +258,8 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
 
 /**
  * What a person who may move a bar presses (PR 8a): a move with why, reading again after a refusal, Undo and Redo. Since
- * 9a, the job's own work, an inspection passed or failed, and the dates to meet.
+ * 9a, the job's own work, an inspection passed or failed, and the dates to meet; since 9b, waits, places, parts and the
+ * baseline.
  */
 interface MovePresses {
   save: (move: ScheduleMove, activities: ScheduleActivity[], words: string) => Promise<void>
@@ -263,6 +284,17 @@ interface MovePresses {
   /** A date to meet set, new or changed, or taken off: records. */
   milestone: (m: ScheduleMilestone) => Promise<void>
   removeMilestone: (id: string) => Promise<void>
+  /** What the work waits on (G-73 to G-75, PR 9b): added, a step, taken off. Records. */
+  addWait: (wait: ScheduleWait) => Promise<void>
+  waitStep: (waitId: string, step: WaitStep, on: string, note?: string) => Promise<void>
+  removeWait: (waitId: string) => Promise<void>
+  /** Where bars' work is (G-83): a record, refused whole. */
+  places: (changes: PlaceChange[]) => Promise<void>
+  /** A line split into parts, or one bar again (G-39): plan writes. */
+  split: (lineId: string, parts: ActivityPart[], words: string) => Promise<void>
+  join: (lineId: string, words: string) => Promise<void>
+  /** A new baseline (G-41): a plan write. */
+  baseline: (name: string, why: string, words: string) => Promise<void>
 }
 
 /**
@@ -424,6 +456,10 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           today={state.today}
           onSave={(start, finish, after, limits) => setPending({ lineId: pickedBar.id, start, finish, after, limits })}
           onActual={(actualStart, actualFinish) => moves.actual(pickedBar.id, actualStart, actualFinish)}
+          place={
+            // Where its work is (G-83, PR 9b): a trade's line only.
+            pickedBar.item.pkg ? <GcPlaceLine project={project} lineId={pickedBar.id} trade={pickedBar.item.trade} label={pickedBar.item.label} onPlaces={moves.places} /> : undefined
+          }
           extra={
             // The job's own work's buttons (G-38, PR 9a): done, not done, off the schedule.
             pickedBar.item.activity.added ? (
@@ -456,6 +492,20 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           onClose={() => setPicked(null)}
         />
       )}
+      {/* The opened line's parts (G-39, PR 9b): split, a part's dates through Why it moved, one bar again. */}
+      {pickedBar && moves && !pickedBar.item.activity.inspection && !pickedBar.item.activity.added && (
+        <GcPartsCard
+          key={`parts:${pickedBar.id}`}
+          project={project}
+          activity={pickedBar.item.activity}
+          pct={pickedBar.item.actual}
+          by={by}
+          onSplit={(parts, words) => moves.split(pickedBar.id, parts, words)}
+          onJoin={(words) => moves.join(pickedBar.id, words)}
+          onMovePart={setPending}
+          onReload={moves.reload}
+        />
+      )}
       {pickedBar && (
         <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} caller={caller ? <GcBarCaller caller={caller} /> : undefined} onClose={() => setPicked(null)} />
       )}
@@ -464,11 +514,14 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
       ) : (
         <GcMoveHistory project={project} />
       )}
-      {/* The job's own work (G-38) and the dates to meet (PR 9a), for those who may move a bar. */}
+      {/* What the work waits on and where it is (PR 9b), the job's own work and the dates to meet (PR 9a), and the baseline (9b), for those who may move a bar. */}
       {moves && (
         <>
+          <GcWaits state={state} project={project} rows={waits} items={m.items} onAdd={moves.addWait} onStep={moves.waitStep} onRemove={moves.removeWait} />
+          <GcPlacesCard state={state} project={project} crowded={crowded} onPlaces={moves.places} />
           <GcAddOwnWork project={project} items={m.items} today={state.today} by={by} onAdd={moves.addOwn} onReload={moves.reload} />
           <GcMilestones project={project} milestones={schedule.milestones} onSave={moves.milestone} onRemove={moves.removeMilestone} />
+          {schedule.baseline && <GcBaseline project={project} today={state.today} by={by} onBaseline={moves.baseline} onReload={moves.reload} />}
         </>
       )}
       {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}

@@ -10,10 +10,13 @@ import { describe, expect, it } from 'vitest'
 import {
   changeOrderTradePct,
   drawApprovedLess,
+  drawLinesOf,
   drawMoney,
+  finalPayApplication,
   jobCloseout,
   newPayAppDraft,
   ownCrewWork,
+  payApplication,
   payApplicationForDraw,
   projectCloseout,
   resendPayAppDraft,
@@ -23,7 +26,7 @@ import {
   tradeCloseout,
   tradeRetainageOpensOn,
 } from './building'
-import type { ChangeOrder, GcProject, GcState } from './types'
+import type { ChangeOrder, GcProject, GcState, Sow } from './types'
 import { initialGcState } from './schedule/testState'
 
 const ID = 'fairoaksd'
@@ -58,6 +61,32 @@ describe('a draw’s money from its pay application', () => {
     const stored = { ...steel, draws: steel.draws.map((d) => (d.number === 2 ? { ...d, lines: d.lines.map((l) => ({ ...l, stored: 4000 })) } : d)) }
     expect(storedBefore(stored, 3)).toBe(8000)
     expect(storedBefore(stored, 2)).toBe(0)
+  })
+
+  it('keeps a credit’s line on the draw that takes it, so the next draw does not take it again', () => {
+    // A $2,000 credit signed into the statement of work, reported done at once (tradeSignChange).
+    const sow: Sow = {
+      status: 'signed',
+      price: 12000,
+      retainagePct: 10,
+      basedOnRev: 0,
+      signedOn: '2026-10-01',
+      draws: [],
+      sov: [
+        { id: 'L1', label: 'Footings', amount: 12000, pctReported: 100, pctBilled: 0 },
+        { id: 'L3', label: 'Change order 1: Leave out the curb', amount: -2000, pctReported: 100, pctBilled: 0, changeOrderId: 'co1' },
+      ],
+    }
+    const first = payApplication(sow, 1, { L1: 50, L3: 100 })
+    expect(drawMoney(sow, first)).toEqual({ gross: 4000, retainage: 400, net: 3600 })
+    expect(drawLinesOf(first)).toEqual([
+      { sovId: 'L1', toPct: 50 },
+      { sovId: 'L3', toPct: 100 },
+    ])
+    const paid: Sow = { ...sow, draws: [{ id: 'd1', number: 1, requestedOn: '2026-10-09', gross: 4000, retainage: 400, net: 3600, status: 'paid', waiver: 'conditional', lines: drawLinesOf(first) }] }
+    const second = payApplication(paid, 2, { L1: 100, L3: 100 })
+    expect(drawMoney(paid, second)).toEqual({ gross: 6000, retainage: 600, net: 5400 })
+    expect(drawLinesOf(second)).toEqual([{ sovId: 'L1', toPct: 100 }])
   })
 })
 
@@ -115,6 +144,29 @@ describe('what we hold, and our own crew', () => {
 })
 
 describe('closeout, by trade and for the job', () => {
+  it('releases the retainage held, never a back-charge taken off a draw', () => {
+    const sow: Sow = {
+      status: 'signed',
+      price: 30000,
+      retainagePct: 10,
+      basedOnRev: 0,
+      signedOn: '2026-08-01',
+      sov: [
+        { id: 'L1', label: 'Footings', amount: 12000, pctReported: 100, pctBilled: 100 },
+        { id: 'L2', label: 'Slab', amount: 18000, pctReported: 100, pctBilled: 100 },
+      ],
+      draws: [
+        { id: 'd1', number: 1, requestedOn: '2026-09-08', gross: 15000, retainage: 1500, net: 13500, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'L1', toPct: 50 }, { sovId: 'L2', toPct: 50 }] },
+        // A $500 back-charge came off draw 2: its net is what we paid (takeBackCharge).
+        { id: 'd2', number: 2, requestedOn: '2026-10-03', gross: 13200, retainage: 1320, net: 11380, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'L1', toPct: 100 }, { sovId: 'L2', toPct: 90 }], backCharges: [{ chargeId: 'c1', amount: 500 }] },
+        { id: 'd3', number: 3, requestedOn: '2026-10-09', gross: 1800, retainage: 180, net: 1620, status: 'paid', waiver: 'unconditional', lines: [{ sovId: 'L2', toPct: 100 }] },
+      ],
+    }
+    expect(finalPayApplication(sow).summary.previousCertificates).toBe(27000)
+    expect(finalPayApplication(sow).summary.currentDue).toBe(3000)
+    expect(retainageHeldNow(sow)).toBe(3000)
+  })
+
   it('walks each trade to its next step', () => {
     const s = initialGcState()
     const site = tradeCloseout(pkg(s, 'fsite').sow!, job(s), s.today)

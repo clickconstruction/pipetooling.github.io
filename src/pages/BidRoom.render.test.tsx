@@ -264,4 +264,41 @@ describe('Bid Room add-ons (v2.4197)', () => {
     expect(posted[0]).toMatchObject({ action: 'sign', optionKey: 'base', addOnKeys: ['group:break room'] })
     expect(await screen.findByText(/Signed by Dana Ruiz — “To Plans” with Alternate 1 — Break room/)).toBeTruthy()
   })
+
+  // v2.5111: the line after a reload reads the signed event as sign-bid-room saves it.
+  it('reopened after the signature, the room still names the add-on taken', async () => {
+    served.room = {
+      ...room,
+      payload: buildBidRoomRevisionPayload({
+        projectName: 'Sunridge Dental',
+        projectAddress: '4410 Stone Oak Pkwy',
+        gcName: 'Dana Ruiz',
+        serviceTypeName: 'Plumbing',
+        inclusions: '',
+        exclusions: '',
+        terms: 'Net 30.',
+        sections: [{ name: 'To Plans', isAlternate: false, revenueSum: 13580, fixtureRows: [{ fixture: 'WC', count: 4 }] }],
+        addOns: [{ tag: 'Break room', label: 'Alternate 1 — Break room', revenueSum: 3220, fixtureRows: [{ fixture: 'WC', count: 1 }] }],
+      }),
+      // The signed event's metadata, key for key as sign-bid-room writes it.
+      outcome: {
+        event_type: 'signed',
+        metadata: {
+          option_key: 'base',
+          option_name: 'To Plans',
+          total_cents: 1_680_000,
+          add_ons_taken: ['Alternate 1 — Break room'],
+          add_on_keys: ['group:break room'],
+          rev_number: 1,
+          estimate_id: 'est-1',
+          estimate_number: 512,
+          printed_name: 'Dana Ruiz',
+          auto_lost_gcs: [],
+        },
+        occurred_at: '2026-09-02T00:00:00Z',
+      },
+    }
+    renderRoom()
+    expect(await screen.findByText(/Signed by Dana Ruiz — “To Plans” with Alternate 1 — Break room · \$16,800\.00/)).toBeTruthy()
+  })
 })

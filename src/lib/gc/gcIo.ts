@@ -4,7 +4,6 @@
  * read back through `gcProjectFromRows`), sends the draft through `gc_create_project`, and saves
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
@@ -636,24 +635,18 @@ export async function recordCertificate(payAppId: string, amount: number, on: st
 
 /**
  * Bill the interest (O6b-2): what has built up and is not billed, as the job's next interest bill with its bill on the
- * billing job. Returns the interest bill's id, which gc-customer-email sends. Through the untyped client until the
- * types regenerate after 20261009220000's push.
+ * billing job. Returns the interest bill's id, which gc-customer-email sends.
  */
 export async function sendOwnerInterestBill(projectId: string, amount: number): Promise<string> {
-  const db = supabase as unknown as SupabaseClient
-  const result = await db.rpc('gc_send_owner_interest_bill', { p_project_id: projectId, p_amount: amount })
-  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'bill the interest')
+  return taken(await supabase.rpc('gc_send_owner_interest_bill', { p_project_id: projectId, p_amount: amount }), 'bill the interest')
 }
 
 /**
  * The customer accepted the work (O7a), recorded by our office: the day, who walked it, and a note. Refused until
- * every line is billed, and once an acceptance is on file. Through the untyped client until the types regenerate
- * after 20261009230000's push.
+ * every line is billed, and once an acceptance is on file.
  */
 export async function recordAcceptance(projectId: string, on: string, byName: string, note: string): Promise<void> {
-  const db = supabase as unknown as SupabaseClient
-  const result = await db.rpc('gc_record_acceptance', { p_project_id: projectId, p_on: on, p_by_name: byName, p_how: 'office', p_note: note })
-  taken(result as { data: null; error: SupabaseResultError | null }, 'record the acceptance')
+  taken(await supabase.rpc('gc_record_acceptance', { p_project_id: projectId, p_on: on, p_by_name: byName, p_how: 'office', p_note: note }), 'record the acceptance')
 }
 
 /** The contract's late fee a day past substantial completion, or null for none (O6b-3). The money team's to change. */
@@ -679,13 +672,13 @@ export async function setOwnerPayDays(projectId: string, days: number | null): P
 
 /**
  * Our reminder to pay a late bill (O5b): filed with the pay-by day, the office's line and the email as the window
- * drafted it, with one note on the chase list. Returns the reminder's id, which gc-customer-email sends. Through the
- * untyped client until the types regenerate after 20261009210000's push.
+ * drafted it, with one note on the chase list. Returns the reminder's id, which gc-customer-email sends.
  */
 export async function remindCustomerToPay(payAppId: string, on: string, payBy: string, note: string, subject: string, lines: string[]): Promise<string> {
-  const db = supabase as unknown as SupabaseClient
-  const result = await db.rpc('gc_remind_customer_to_pay', { p_pay_app_id: payAppId, p_on: on, p_pay_by: payBy, p_note: note, p_subject: subject, p_lines: lines })
-  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'file the reminder')
+  return taken(
+    await supabase.rpc('gc_remind_customer_to_pay', { p_pay_app_id: payAppId, p_on: on, p_pay_by: payBy, p_note: note, p_subject: subject, p_lines: lines }),
+    'file the reminder',
+  )
 }
 
 /** Our conditional waiver, minted on the billing job, linked to the pay application it went with. Once only. */
@@ -714,31 +707,30 @@ export async function setOwnerRetainage(projectId: string, pct: number, step: Ow
 // ---------------------------------------------------------------------------------------------
 // Owner Billing's O7b: the Monday money email (migration gc_money_monday_email). Its requests are plain rows under
 // the money team's policies, one weekly chain per weekday and recipient; gc-money-monday-email sends each one when
-// it falls due, and draws Preview and the test. Through the untyped client until the types regenerate after
-// 20261009233000's push.
+// it falls due, and draws Preview and the test.
 // ---------------------------------------------------------------------------------------------
 
 /** The pending sends the caller may see: the ones they asked for, the ones to them, and every one for a dev. */
 export async function listMoneyMondayRequests(): Promise<MoneyMondayRequestRow[]> {
-  const db = supabase as unknown as SupabaseClient
-  const result = await db
-    .from('gc_money_monday_email_requests')
-    .select('id, requested_by, recipient_user_id, send_at, repeat_weekly')
-    .is('sent_at', null)
-    .order('send_at', { ascending: true })
-  return taken(result as { data: MoneyMondayRequestRow[] | null; error: SupabaseResultError | null }, 'load the Monday emails') ?? []
+  return (
+    taken(
+      await supabase
+        .from('gc_money_monday_email_requests')
+        .select('id, requested_by, recipient_user_id, send_at, repeat_weekly')
+        .is('sent_at', null)
+        .order('send_at', { ascending: true }),
+      'load the Monday emails',
+    ) ?? []
+  )
 }
 
 /** A change to the weekly chains: the new ones first, then the stopped ones, so a failed insert leaves the old ones going. */
 export async function applyMoneyMondayPlan(plan: { inserts: Omit<MoneyMondayRequestRow, 'id'>[]; cancelIds: string[] }): Promise<void> {
-  const db = supabase as unknown as SupabaseClient
   if (plan.inserts.length > 0) {
-    const added = await db.from('gc_money_monday_email_requests').insert(plan.inserts).select('id')
-    taken(added as { data: unknown; error: SupabaseResultError | null }, 'save the Monday email')
+    taken(await supabase.from('gc_money_monday_email_requests').insert(plan.inserts).select('id'), 'save the Monday email')
   }
   if (plan.cancelIds.length > 0) {
-    const stopped = await db.from('gc_money_monday_email_requests').delete().in('id', plan.cancelIds).is('sent_at', null).select('id')
-    taken(stopped as { data: unknown; error: SupabaseResultError | null }, 'stop the Monday email')
+    taken(await supabase.from('gc_money_monday_email_requests').delete().in('id', plan.cancelIds).is('sent_at', null).select('id'), 'stop the Monday email')
   }
 }
 
@@ -961,20 +953,15 @@ export async function loadGcChangeRequestEmails(requestIds: string[]): Promise<{
 
 /**
  * Make a trade's ask a draft change order on its own trade and reason, at the words, cost, price and days the office
- * confirmed. Returns the change order's id. Through the untyped client until the types regenerate after 20261010014000's
- * push.
+ * confirmed. Returns the change order's id.
  */
 export async function draftChangeOrderFromRequest(requestId: string, draft: ChangeRequestDraft): Promise<string> {
-  const db = supabase as unknown as SupabaseClient
-  const result = await db.rpc('gc_draft_change_order_from_request', { p_request_id: requestId, p_draft: draft })
-  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'make the change order')
+  return taken(await supabase.rpc('gc_draft_change_order_from_request', { p_request_id: requestId, p_draft: draft as unknown as Json }), 'make the change order')
 }
 
-/** Turn a trade's ask down, with why, in words the company reads. Through the untyped client until the types regenerate. */
+/** Turn a trade's ask down, with why, in words the company reads. */
 export async function turnDownChangeRequest(requestId: string, note: string): Promise<void> {
-  const db = supabase as unknown as SupabaseClient
-  const result = await db.rpc('gc_turn_down_change_request', { p_request_id: requestId, p_note: note })
-  taken(result as { data: null; error: SupabaseResultError | null }, 'turn the ask down')
+  taken(await supabase.rpc('gc_turn_down_change_request', { p_request_id: requestId, p_note: note }), 'turn the ask down')
 }
 
 /**

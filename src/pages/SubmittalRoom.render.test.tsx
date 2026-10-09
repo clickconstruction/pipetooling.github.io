@@ -136,12 +136,12 @@ describe('SubmittalRoom', () => {
       lastUpdateAt: null,
     }
     /** The revisions get-submittal-room serves, by the one rule in `_shared/submittalRecord.ts`. */
-    const served = (rev4Shared: boolean) =>
+    const served = (rev4Shared: boolean, rev3By: 'package' | 'file' = 'package') =>
       onRecord(
         revisionStandings(
           [
             { id: 'r4', rev_number: 4, shared_at: rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: rev4Shared ? 'p4.pdf' : null },
-            { id: 'r3', rev_number: 3, shared_at: null, package_path: 'p3.pdf' },
+            { id: 'r3', rev_number: 3, shared_at: null, package_path: rev3By === 'package' ? 'p3.pdf' : null, reviewer_files: rev3By === 'file' ? [{ path: 'b398/r3/reviewer/0-Re_Submittal.eml', name: 'Re: Submittal.eml', kind: 'email' }] : [] },
             { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z', package_path: 'p2.pdf' },
           ],
           new Map([['r3', [{ decision_source: 'entered', review_decision: 'approved', reviewed_at: '2026-10-02T17:00:00Z' }]]]),
@@ -160,6 +160,20 @@ describe('SubmittalRoom', () => {
       const lines = cardLines()
       expect(lines.map((l) => l.match(/^[A-Z]+-\d/)?.[0])).toEqual(['KS-1', 'WC-1', 'WC-2'])
       expect(screen.getByTestId('room-procurement').textContent).not.toMatch(/Sent back/)
+    })
+
+    it('2026-10-09 · BP398 as it is: Rev 3 has no package, the GC’s email kept on it puts it on the page, and the footer says why there is no PDF', async () => {
+      mockFetch(200, payload({ revisions: served(false, 'file'), procurement }))
+      mount('/submittal?t=roomtoken')
+      expect((await screen.findByTestId('room-revisions')).textContent).toMatch(/Rev 3 · current · answered by email · Oct 2.*Rev 2 · Sep 16/)
+      expect(screen.getByTestId('room-emailed-line')).toBeTruthy()
+      expect(screen.queryByTestId('room-pdf')).toBeNull()
+      expect(screen.getByTestId('room-pdf-by-email').textContent).toBe('This revision went out by email. Its PDF is not here.')
+      expect(document.body.textContent).not.toMatch(/The PDF is on its way/)
+      expect(cardLines().map((l) => l.match(/^[A-Z]+-\d/)?.[0])).toEqual(['KS-1', 'WC-1', 'WC-2'])
+      // Rev 2, shared with its package, keeps its download.
+      fireEvent.click(screen.getByRole('button', { name: 'Rev 2 · Sep 16' }))
+      expect(screen.getByTestId('room-pdf')).toBeTruthy()
     })
 
     it('after Rev 4 is shared: Rev 4 current, Rev 3 under it as the record, and the card still keeps Kitchen sinks and Toilets', async () => {

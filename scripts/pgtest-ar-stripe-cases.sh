@@ -41,6 +41,8 @@ else
   command -v docker >/dev/null || { echo "docker not on PATH (or set PGTEST_PG_BIN)"; exit 2; }
   docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
   docker rm -f "$NAME" >/dev/null 2>&1 || true
+  . scripts/pgtest-pull.sh
+  pgtest_pull_postgres15
   docker run -d --name "$NAME" -e POSTGRES_PASSWORD=pg postgres:15 >/dev/null
   trap 'docker rm -f "$NAME" >/dev/null 2>&1; rm -rf "$TMP"' EXIT
   for _ in $(seq 1 60); do docker exec "$NAME" pg_isready -U postgres -h localhost >/dev/null 2>&1 && break; sleep 1; done

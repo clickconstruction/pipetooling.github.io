@@ -11,6 +11,7 @@
  * 2026-10-06: what the link shows is the newest revision on the GC's record, the one rule in
  * `_shared/submittalRecord.ts` the three room functions read. A revision answered by email with its
  * package built is on it, so BP398's link shows Rev 3, answered by email, until Rev 4 is shared.
+ * 2026-10-09: so is one answered by email with a reviewer's file kept on it in step 6 instead of a package.
  */
 import { roomCounts, roomHeadline, roomRowsFrom, roomSubline, type RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { answeredByEmailAt, linkShows, onRecord, type RecordStanding, type RevisionStanding } from '../../../supabase/functions/_shared/submittalRecord'
@@ -32,7 +33,7 @@ export type LinkView = {
   rev: number
   /** The revision the link shows now (`linkShowsRevOf`); null while nothing is on the GC's record. */
   linkShowsRev: number | null
-  /** That revision reached the record by email: answered by email, its package built (2026-10-06). */
+  /** That revision reached the record by email: answered by email, its package built or a reviewer's file kept (2026-10-06, 2026-10-09). */
   linkShowsByEmail?: boolean
   /** The room is closed: its link says only that the review is closed. */
   roomClosed: boolean
@@ -43,7 +44,7 @@ export type LinkRevision = Pick<RevisionStanding, 'id' | 'rev_number' | 'shared_
 
 /**
  * The revision the room's link shows now: the newest on the GC's record, by the one rule the three
- * functions read (`_shared/submittalRecord.ts`). Shared, or answered by email with its package built.
+ * functions read (`_shared/submittalRecord.ts`). Shared, or answered by email with its package built or a reviewer's file kept.
  */
 export function linkShowsRevOf(revisions: ReadonlyArray<Pick<RevisionStanding, 'rev_number' | 'standing' | 'typedAnswerAt'>>): number | null {
   return linkShows(revisions)?.rev ?? null
@@ -61,9 +62,10 @@ export type LinkChip = { id: string; rev: number; current: boolean; sharedAt: st
 /**
  * The revisions the GC's page will list once `rev` is shared (v2.4606, #62 PR 1b): `rev` as the
  * current one, then every other revision on the record, newest first, as get-submittal-room lists
- * them. A revision answered by email with its package built is on it (2026-10-06). `neverShared`
- * names the older revisions the list skips because nobody shared or answered them; `waitsForPackage`
- * the ones answered by email that go on once their package is built.
+ * them. A revision answered by email with its package built or a reviewer's file kept is on it
+ * (2026-10-06, 2026-10-09). `neverShared` names the older revisions the list skips because nobody
+ * shared or answered them; `waitsForPackage` the ones answered by email that go on once a package is
+ * built or a reviewer's file is dropped on them.
  */
 export function linkRevisionsAfterShare(revisions: ReadonlyArray<LinkRevision>, rev: number): { chips: LinkChip[]; neverShared: number[]; waitsForPackage: number[] } {
   const self = revisions.find((r) => r.rev_number === rev)
@@ -88,20 +90,22 @@ export function linkListLine(list: { chips: ReadonlyArray<LinkChip>; neverShared
   if (list.neverShared.length === 1) bits.push(`${revList(list.neverShared)} is not on their page, because it was never shared.`)
   else if (list.neverShared.length > 1) bits.push(`${revList(list.neverShared)} are not on their page, because they were never shared.`)
   const waits = list.waitsForPackage ?? []
-  if (waits.length === 1) bits.push(`${revList(waits)} goes on their page once it has a package.`)
-  else if (waits.length > 1) bits.push(`${revList(waits)} go on their page once each has a package.`)
+  if (waits.length === 1) bits.push(`${revList(waits)} goes on their page once it has a package or a reviewer’s file.`)
+  else if (waits.length > 1) bits.push(`${revList(waits)} go on their page once each has a package or a reviewer’s file.`)
   return bits.join(' ')
 }
 
 /**
  * The heads-up in Their call (2026-10-06): typing a reviewer's answer onto a revision nobody shared
- * puts it on the GC's page as the record, once it has a package (`_shared/submittalRecord.ts`). It
- * says so before the first answer is typed, and after. Empty for a shared revision.
+ * puts it on the GC's page as the record, once it has a package or a reviewer's file kept on it
+ * (`_shared/submittalRecord.ts`, 2026-10-09). It says so before the first answer is typed, and after.
+ * Empty for a shared revision.
  */
-export function emailedRecordLine(r: { rev: number; shared: boolean; hasPackage: boolean; hasAnswer: boolean }): string {
+export function emailedRecordLine(r: { rev: number; shared: boolean; hasPackage: boolean; hasReviewerFile?: boolean; hasAnswer: boolean }): string {
   if (r.shared) return ''
-  if (r.hasAnswer) return r.hasPackage ? `Rev ${r.rev} is on the GC’s page as the record, answered by email.` : `Rev ${r.rev} goes on the GC’s page as the record once it has a package.`
-  return r.hasPackage ? `Typing their answer puts Rev ${r.rev} on the GC’s page as the record.` : `Typing their answer will put Rev ${r.rev} on the GC’s page once it has a package.`
+  const kept = r.hasPackage || r.hasReviewerFile === true
+  if (r.hasAnswer) return kept ? `Rev ${r.rev} is on the GC’s page as the record, answered by email.` : `Rev ${r.rev} goes on the GC’s page as the record once it has a package or a reviewer’s file.`
+  return kept ? `Typing their answer puts Rev ${r.rev} on the GC’s page as the record.` : `Typing their answer will put Rev ${r.rev} on the GC’s page once it has a package or a reviewer’s file.`
 }
 
 /** The room is closed for everyone on the link, by get-submittal-room's own test. */

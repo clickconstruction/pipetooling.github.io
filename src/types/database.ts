@@ -30337,6 +30337,7 @@ export type Database = {
           work: string
         }[]
       }
+      job_rider_fees: { Args: { p_job_id: string }; Returns: number }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean

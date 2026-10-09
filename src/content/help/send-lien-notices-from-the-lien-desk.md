@@ -210,7 +210,7 @@ After the gates come the months with the claim and the line that says who gets t
 
 While the notice is a draft, the four yellow values are boxes in the preview's side list. Type there, and both the page and the desk change as you go. {{button:blue|Save draft}} in the preview keeps them. Once the notice has gone for approval, the boxes are read only. Pull it back to a draft to change the wording.
 
-**The claim is what is billed.** The notice claims what the job's sent bills still owe. It never claims the job's price. Work not billed yet is not claimed until it is billed. Under the claim box, **The bills behind the claim** lists each sent bill. Each line shows what was billed, what is paid and what is still owed. The owed column adds up to the claim. A last line in amber names the part of the job no sent bill carries.
+**The claim is what is billed.** The notice claims what the job's sent bills still owe. It never claims the job's price. A payment with no bill picked counts too. It pays the work not billed first, then the oldest bill. Work not billed yet is not claimed until it is billed. Under the claim box, **The bills behind the claim** lists each sent bill. Each line shows what was billed, what is paid and what is still owed. The owed column adds up to the claim. A last line in amber names the part of the job no sent bill carries.
 
 - Press {{button:outline|Bill it from here ›}} on that line to bill it without leaving the desk. The Bill Customer window opens over the desk. Bill only work that is done.
 - When the bill goes, the desk reads the job again. The claim, the row and the pay page fill in by themselves.

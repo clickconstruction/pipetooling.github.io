@@ -167,7 +167,7 @@ export function RoomRevisionBody({
   return (
     <>
       {rev.answeredByEmailAt ? (
-        // 2026-10-06 · a revision answered by email is on the record with its package; the answers are theirs, typed in by the office.
+        // 2026-10-06 · a revision answered by email is on the record with its package (or, since 2026-10-09, a reviewer's file); the answers are theirs, typed in by the office.
         <p style={{ ...roomQuiet, margin: '0 0 0.5rem' }} data-testid="room-emailed-line">
           You answered this revision by email. Our office typed your answers in here, as the record.
         </p>

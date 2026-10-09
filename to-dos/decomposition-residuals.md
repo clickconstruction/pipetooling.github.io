@@ -2,7 +2,7 @@
 name: "Decomposition residuals: the Workbench block, the Workflow page's leftovers"
 number: 21
 group: residual
-status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · the picker sweep shipped v2.4034 · the Workflow train (#46 row 9, v2.3907–v2.4081) closed 2026-09-28 with four leftovers added here · re-checked 2026-09-29: the queue card's roll-up is done (this sweep), the other three leftovers and both behaviour fixes are still open · what is left is by decision, not by shortfall
+status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · the picker sweep shipped v2.4034 · the Workflow train (#46 row 9, v2.3907–v2.4081) closed 2026-09-28 with four leftovers added here · re-checked 2026-09-29: the queue card's roll-up is done (this sweep) · the contact modal moved v2.5094; the WorkflowStageCard and both behaviour fixes are still open · what is left is by decision, not by shortfall
 summary: >
   What the two decomposition trains left on purpose: the Pricing tab's Workbench block (P2 —
   1,975 lines over 77 state values, re-mapped into nine blocks in the architecture map, not
@@ -44,8 +44,8 @@ The Vehicle Travel and Lodging and Meals boxes are 253 lines behind 18 props (se
 The Workflow page train (punch list #46 row 9, v2.3907–v2.4081) took `src/pages/Workflow.tsx` from 4,354 to 1,010 lines and closed all ten steps of [`docs/WORKFLOW_PAGE_ARCHITECTURE.md`](../docs/WORKFLOW_PAGE_ARCHITECTURE.md). What it left, on purpose:
 
 - **A separate `WorkflowStageCard`** — optional. The stage list (`src/components/workflow/WorkflowStagesList.tsx`, 1,193 lines) holds every card inline. The card body reads the list's rail helpers (`railRow`, `renderMoneyMarker`, `moneyFlow`, `showLedgerRail`) and its open-section state, so a card component would take most of the list's props again. Worth cutting when a feature on the cards needs a smaller file; the map's "Stage cards list" dossier says so.
-- **The contact modal** — optional, XS. The person-contact window (name, email, phone) still sits in the page; it reads only its own state and can move to `src/components/workflow/` any time.
+- ~~**The contact modal**~~ — done v2.5094: the person-contact window (name, email, phone) is `src/components/workflow/PersonContactModal.tsx`, moved verbatim with a render smoke; the page keeps only its open state.
 - ~~**The queue card's roll-up**~~ — done 2026-09-29: the punch-list sweep rolled row 9's versions (and rows 1, 2, 5, 8 and 10's) into [#46](./decomposition-queue.md)'s `status` and `ver` lines.
 - **Two behaviours the move pinned but did not change** — small fixes, each its own PR (a move never changes behaviour); both still there 2026-09-29 (`deleteProjection`'s comment says the error is not checked; the page's early return is on its line 631):
-  - *A refused projection delete says nothing.* `deleteProjection` in `src/hooks/useWorkflowProjections.ts` does not check the delete's error; the re-read then shows the row still there, with no message. `useWorkflowProjections.render.test.tsx` pins today's silence — the fix flips that case. The map's quirk 24.
+  - ~~*A refused projection delete says nothing.*~~ — done v2.5103: `deleteProjection` hands a refused delete to `onError` in the kernel's words (`projectionWriteError`, `src/lib/workflow/projectionEdit.ts`), and `useWorkflowProjections.render.test.tsx` now pins the message. The map's quirk 24.
   - *Any error blanks the whole page.* The page's `if (error) return <p>{error}</p>` replaces everything, so a refused invoice attach, a failed line-item save or a sub work order error leaves only the message until a reload. The fix is a banner above the page instead of the early return. The map's quirk 21.

@@ -2,7 +2,7 @@
 name: "Job Parts Tally → Transactions: the team's queue, sorted where it is"
 number: 72
 group: waiting
-status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · PR 1, the suggestion kernel, v2.4591 on `feat/tally-sort-suggestion-kernel` 2026-10-05; its replay of 90 days found no rule sure enough to sort a day in one press · the owner's go 2026-10-06 on a faster queue, the likely chip first and never pre-selected · PR 2a, the team queue, v2.4654 on `feat/tally-team-queue`, keyed on the day of the swipe · v2.4668 moves the Assign window, Sort mode and the Posted button to the swipe day · v2.4683 keys the queue's history on it too · next: the owner's word that the office has used the queue (2b)
+status: asked 2026-09-30 · read against 90 days of prod · drawn as before / after, redrawn the same day as pass 2 (a person's day is the unit; the real Before is the Team purchases modal) · the row-cap defect it found shipped as v2.4259 · the owner's go 2026-10-01 ("I like it — build to spec later") · PR 1, the suggestion kernel, v2.4591 on `feat/tally-sort-suggestion-kernel` 2026-10-05; its replay of 90 days found no rule sure enough to sort a day in one press · the owner's go 2026-10-06 on a faster queue, the likely chip first and never pre-selected · PR 2a, the team queue, v2.4654 on `feat/tally-team-queue`, keyed on the day of the swipe · v2.4668 moves the Assign window, Sort mode and the Posted button to the swipe day · v2.4683 keys the queue's history on it too · PR 3's undo per line shipped v2.5107 (the message after Sort the day, a card's sorted line, a row of Sorted) · the pay bar waits on the owner's call on who may mark payroll and widen a rule from the queue · next: the owner's word that the office has used the queue (2b)
 summary: >
   The Transactions tab was built for the card holder to sort their own purchases, with a phone
   Sort mode and a clock-out nudge. Ninety days of production say the field does not: one assistant
@@ -19,13 +19,13 @@ summary: >
 next: >
   The owner's word that the office has sorted on the Team queue for a few days, then PR 2b (the
   Dashboard and Quickfill doors open the tab and the Team purchases window retires), PR 2c (the
-  keyboard path) after one real session, then the own-card block's extraction. PR 3 (the pay bar,
-  undo per line) can go any time. PR 4 waits on the owner's pending-charges call, and PR 5 comes
-  last. The about 48 charges already on the next day's job wait on his answer to five sample cases
+  keyboard path) after one real session, then the own-card block's extraction. PR 3's pay bar
+  waits on the owner's access call (undo per line shipped v2.5107). PR 4 waits on the owner's
+  pending-charges call, and PR 5 comes last. The about 48 charges already on the next day's job wait on his answer to five sample cases
   (Where it stands), then go to the office as a read-only list, with no code.
 size: M (five PRs; the kernel and the queue are the two real ones)
-blocker: The owner: a few days of real use before 2b, the five sample cases before the 48, and the pending-charges call before PR 4.
-ver: v2.4591 (PR 1) · v2.4654 (PR 2a) · v2.4668 (the swipe day) · v2.4683 (history on the swipe day)
+blocker: The owner: a few days of real use before 2b, the five sample cases before the 48, who may mark payroll and widen a rule from the queue before the pay bar, and the pending-charges call before PR 4.
+ver: v2.4591 (PR 1) · v2.4654 (PR 2a) · v2.4668 (the swipe day) · v2.4683 (history on the swipe day) · v2.5107 (PR 3, undo per line)
 opinion: build — the sorter's minute per charge becomes a glance and a tap, and the page can prove its rules before any of them runs on its own.
 mockup: tally-transactions-refresh-before-after.html
 ---
@@ -181,7 +181,13 @@ Assign window, which is what the After replaces.
 3. **PR 3 — the pay bar**: the pay-send bar that marks and widens the matching payroll rule, and
    undo per line. The obvious bar (sort-all for ✓ days) waits until PR 5 promotes a rule to sure;
    with the levels the replay found, it would have written a wrong charge on about 4 obvious days
-   in 10.
+   in 10. **Undo per line shipped v2.5107**: a charge that went to jobs and nothing else goes back
+   through the staff split write with no rows, from the message after *Sort the day*, a card's
+   sorted line and a row of Sorted (`tallyUndoLine.ts`). **The pay bar waits on the owner**: marking
+   payroll takes `has_payroll_access()` (dev, controller, a pay-approved master; assistants left out
+   on purpose by `20260714120000`) and the rules table is dev-only (`20260906130000`), so as drawn it
+   fails for the assistant who sorts the queue. His call: a migration that lets the assistant mark
+   payroll and widen a rule, or the bar shown to payroll-access roles only.
 4. **PR 4 — the holder's card gains the day's chip**: phone cards, Sort mode, the pre-clock-out
    sheet, one component over the same kernel. Found 2026-10-06 while building 2a: Mercury keeps a
    card charge `pending`, with no `posted_at`, until it settles, and the date floor drops a row
