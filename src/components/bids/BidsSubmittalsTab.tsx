@@ -72,6 +72,7 @@ import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
 import { SubmittalShareModal } from './SubmittalShareModal'
+import { roomHasSentLink, roomLinkRefusalWords, sendRoomLink } from '../../lib/submittals/sendRoomLink'
 import { SubmittalResubmitChooser } from './SubmittalResubmitChooser'
 import { describeRoomLine, roomLink, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, parseRoomMessage, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
@@ -1793,6 +1794,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** v2.5026 · Send the link: one person's own link by email, from the company; the step reads it back from the events. */
+  async function sendLinkTo(personId: string, note: string): Promise<boolean> {
+    const p = people.find((x) => x.id === personId)
+    const a = await sendRoomLink(personId, note)
+    if (!a.ok) {
+      showToast(roomLinkRefusalWords(a.key), 'error')
+      return false
+    }
+    showToast(`Link sent to ${p?.name ?? 'them'} at ${a.to}.${a.recorded ? '' : ' This step will not show it.'}`, a.recorded ? 'success' : 'info')
+    if (bidId) await loadRoom(bidId)
+    return true
+  }
+
   async function closeRoom() {
     if (!room || !bidId) return
     const ok = await confirm({ title: 'Close the review room', message: 'Every link to this bid\'s submittals reads "this review is closed". The decisions and the packages stay on the record. Reopen from here if you need to.', confirmLabel: 'Close the room', danger: true })
@@ -2563,6 +2577,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onReopenRoom={() => void reopenRoom()}
                     onSetMayDecide={(personId, mayDecide) => void setMayDecide(personId, mayDecide)}
                     onClosePerson={(personId) => void closePerson(personId)}
+                    onSendLink={sendLinkTo}
                   />
                 ) : null}
               </RoadSection>
@@ -2754,6 +2769,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           bidId={bidId}
           revision={selectedRev}
           room={room}
+          people={people}
+          sentLinkBefore={roomHasSentLink(events)}
           untrimmedFiles={sourceFiles.filter((f, i) => !f.trimmedAt && keptPages(assignmentsFromItems(items), i).length > 0).length}
           onClose={() => setSharing(false)}
           onDoneWithFiles={doneWithAllFiles}

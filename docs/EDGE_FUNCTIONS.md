@@ -122,6 +122,7 @@ when_to_read:
    - [remind-bid-followups](#remind-bid-followups)
    - [share-job-contract](#share-job-contract)
    - [send-submittal-reply-email](#send-submittal-reply-email)
+   - [send-submittal-room-link](#send-submittal-room-link)
    - [file-submittal-package](#file-submittal-package)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
@@ -1838,6 +1839,21 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Gateway**: `verify_jwt = false` (JWT validated in-body; the reply row is read as the caller, so RLS admits only pricing sharers on bids they can price).
 
 **Behavior**: The row must be an `office` `reply` whose `metadata.answers_message_id` names the ask; the ask's person gets one letterhead email (`_shared/submittalReplyEmail.ts`: the subject names the bid and the tags, the body is the reply with the question quoted, the button is the person's **personal** room link — minted here if they never had one; never a staff name; reply-to is the sender's address). Writes a `reply` event with the Resend id. The client calls it from `src/lib/submittals/replyToRoom.ts` after inserting the reply; a failed email leaves the reply on the thread and says so.
+
+
+### send-submittal-room-link
+
+**Purpose** (v2.5026, Submittals decision 11, the owner's call of 2026-10-09): the app may send the review room link. One named reviewer gets their own link by email: from the Share step's **Send the link** door beside the person, and from the Share window's **Email each person their link** box, once per person after the share. The box starts unticked on a bid until the office has sent a link there once (a `link_sent` event on the room), and ticked after. Nothing is emailed unless it is ticked when Share is pressed.
+
+**Endpoint**: `POST /functions/v1/send-submittal-room-link` — `{ person_id, note? }` (the office's own line, at most 1,000 characters); staff user JWT in `Authorization`. → `{ ok: true, to, sentAt }`, with `recorded: false` when the email went but its event did not land; a refusal is `{ error: key, detail? }` with `ROOM_LINK_ERRORS`' status (`badRequest` 400, `signIn` 401, `readOnly` 403, `notFound` 404, `personClosed` / `roomClosed` / `notShared` 409, `noEmail` 422, `sendFailed` 502, `failed` 500).
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false` (JWT validated in-body, like gc-trade-email; the person is read as the caller, so RLS admits only the pricing sharers on bids they can price).
+
+**Behavior**: in order, the caller (a training account or a digital twin is refused), the shape, the person (read as the caller), the room, then the refusals in `roomLinkRefusal`: a closed link, a closed room, a room nobody shared, no address. A person with no token gets one, as send-submittal-reply-email mints one. The email is `buildSubmittalRoomLinkEmail` (`_shared/submittalRoomLinkEmail.ts`): the subject names the newest shared revision and the bid (*Click Plumbing and Electrical shared Rev 2 of the submittal for B375 SpaceX BA-02N*), the greeting their first name, the office's line, what they can do on the page (deciding or watching), the button to their own link on `APP_ORIGIN` (never an origin from the body), and the company's phone. It goes through the one sender (`sendEmailViaResend`, as gc-trade-email sends) as `COMPANY_EMAIL_FROM`, reply-to the sender's address, `email_type` `submittal_room_link`. Then the sent copy, filed by the function itself (kind `submittal_room_link`, keyed to the bid, the person's row as its source) with the token kept as `?t=…` (`roomLinkKeptHtml`; done here because `sentCopyKeptHtml` is bundled by every email function). Then the `link_sent` event on the person, which the Share step reads as *link sent Oct 9*. A failed send writes nothing. Tests: `src/lib/submittals/submittalRoomLinkEmail.test.ts` (the request, the refusals in order, the email, the kept copy, and the function's own order of steps read from its source).
+
+**Used by**: [`SubmittalRoomPanel.tsx`](../src/components/bids/SubmittalRoomPanel.tsx) and [`SubmittalShareModal.tsx`](../src/components/bids/SubmittalShareModal.tsx), through `sendRoomLink` in [`sendRoomLink.ts`](../src/lib/submittals/sendRoomLink.ts). **Deploy**: `supabase functions deploy send-submittal-room-link` after `20261009235500` is pushed: the event's type is refused until then, and the email would go unrecorded.
 
 ---
 

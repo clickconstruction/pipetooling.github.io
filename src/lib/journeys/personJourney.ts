@@ -445,13 +445,17 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     steps['pricing-package-email'] = na('Not recorded per builder')
     const sr = latestBy(rows.submittalRooms, (r) => r.shared_at) ?? rows.submittalRooms[0] ?? null
     if (!sr) {
+      steps['submittal-room-email'] = never('No submittals shared')
       steps['submittal-room'] = never('No submittals shared')
       steps['submittal-decided'] = never('—')
     } else {
       const ev = rows.submittalEvents.filter((e) => e.room_id === sr.id)
       const lastView = latestBy(ev.filter((e) => e.event_type === 'view'), (e) => e.occurred_at)
       const decided = latestBy(ev.filter((e) => e.event_type === 'decided'), (e) => e.occurred_at)
+      // v2.5026 · the newest link the app emailed a reviewer on this room.
+      const emailed = latestBy(ev.filter((e) => e.event_type === 'link_sent'), (e) => e.occurred_at)
       const link = sr.token ? `/submittal?t=${encodeURIComponent(sr.token)}` : null
+      steps['submittal-room-email'] = emailed ? { state: 'sent', headline: `Link emailed ${dayWord(emailed.occurred_at, now)}`, at: emailed.occurred_at, link: null, action: null } : never('Not emailed from the app')
       steps['submittal-room'] = sr.shared_at
         ? { state: lastView ? 'opened' : 'sent', headline: lastView ? `Shared ${dayWord(sr.shared_at, now)} · opened ${dayWord(lastView.occurred_at, now)}` : `Shared ${dayWord(sr.shared_at, now)} · never opened`, at: lastView?.occurred_at ?? sr.shared_at, link, action: null }
         : never('Room made, not shared', { label: 'Open Bids', to: '/bids' })

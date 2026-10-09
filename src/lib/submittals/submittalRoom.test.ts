@@ -29,6 +29,17 @@ describe('the trail', () => {
     expect(describeTrail(personTrail('p9', events, 0), TZ)).toBe('not opened yet')
     expect(anonymousOpens(events)).toBe(1)
   })
+  it('v2.5026 · the trail leads with the newest day the app emailed their link', () => {
+    const sends = [
+      { person_id: 'p1', event_type: 'link_sent', occurred_at: '2026-09-15T15:00:00Z', metadata: {} },
+      { person_id: 'p1', event_type: 'link_sent', occurred_at: '2026-09-20T15:00:00Z', metadata: {} },
+      { person_id: 'p2', event_type: 'link_sent', occurred_at: '2026-09-22T15:00:00Z', metadata: {} },
+    ]
+    const t = personTrail('p1', sends, 0)
+    expect(t.linkSentAt).toBe('2026-09-20T15:00:00Z')
+    expect(describeTrail(t, TZ)).toBe('link sent Sep 20 · not opened yet')
+    expect('linkSentAt' in personTrail('p9', sends, 0)).toBe(false)
+  })
   it('words how someone arrived and the room line', () => {
     expect(describeHow('named')).toBe('named by you')
     expect(describeHow('identified')).toBe('identified via the room link')

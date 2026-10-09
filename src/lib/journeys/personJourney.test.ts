@@ -211,7 +211,11 @@ describe('personJourney — a real person on the strips', () => {
       { room_id: 'room1', event_type: 'signed', occurred_at: '2026-08-05T10:00:00Z' },
     ]
     rows.submittalRooms = [{ id: 's1', bid_id: 'b1', token: 'stok', shared_at: '2026-08-10T10:00:00Z', status: 'open' }]
-    rows.submittalEvents = [{ room_id: 's1', event_type: 'view', occurred_at: '2026-08-11T10:00:00Z' }]
+    rows.submittalEvents = [
+      { room_id: 's1', event_type: 'view', occurred_at: '2026-08-11T10:00:00Z' },
+      { room_id: 's1', event_type: 'link_sent', occurred_at: '2026-08-10T11:00:00Z' },
+      { room_id: 's1', event_type: 'link_sent', occurred_at: '2026-08-10T09:00:00Z' },
+    ]
     rows.testReports = [{ id: 't1', job_id: 'j804', sent_at: '2026-09-01T10:00:00Z', status: 'sent', test_type: 'hydrostatic' }]
     rows.gcStatements = [{ sent_at: '2026-09-02T10:00:00Z', total: 151979, sent_to: 'ap@summit.example' }]
     rows.lienFilings = [{ job_id: 'j804', kind: 'notice_53_056', filed_at: '2026-09-15T10:00:00Z', served_at: null, sends: [], voided_at: null }]
@@ -222,6 +226,8 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.steps['bid-room-signed']?.state).toBe('signed')
     expect(j.steps['submittal-room']).toMatchObject({ state: 'opened', headline: 'Shared Aug 10 · opened Aug 11', link: '/submittal?t=stok' })
     expect(j.steps['submittal-decided']?.state).toBe('never')
+    // v2.5026 · the newest link the app emailed on the room.
+    expect(j.steps['submittal-room-email']).toMatchObject({ state: 'sent', headline: 'Link emailed Aug 10', at: '2026-08-10T11:00:00Z' })
     expect(j.steps['test-report-email']).toMatchObject({ state: 'sent', headline: 'Sent Sep 1', detail: '1 report · hydrostatic' })
     expect(j.steps['gc-statement-email']).toMatchObject({ state: 'sent', detail: '1 statement · $151,979' })
     expect(j.steps['owner-notice']).toMatchObject({ state: 'sent', headline: 'Sent Sep 15', detail: '1 notice' })
