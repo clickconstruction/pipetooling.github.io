@@ -166,9 +166,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   paragraph, the v2.2967 note.
 - **Split:** *Starting from Bids* becomes its own short guide.
 
-### get started as a sub or helper
+### ~~get started as a sub or helper~~ — shipped v2.5069
 
-`start-here-as-a-sub` · 1,143 words · #4589
+`start-here-as-a-sub` · 1,143 words · #4589 · the opening stays. *Say how far along you are*, *Pick your days* and *Your days* are now one line each under *On your portal*, each linking to its section, moved whole below a *Reference* heading. No sub-facing guide holds them, so they stay in this guide. Nothing cut.
 
 - A map, so no split; its opening stays.
 - **Cut:** *Say how far along you are*, *Pick your days* and *Your days* each become one line
