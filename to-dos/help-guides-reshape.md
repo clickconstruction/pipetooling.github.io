@@ -119,9 +119,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   today's live counts, past approvals rebuilt from timestamps, the Dashboard's daily snapshots,
   and amber needing a known waiting count.
 
-### stage a takeoff for a schedule of values
+### ~~stage a takeoff for a schedule of values~~ — shipped v2.5064
 
-`stage-a-takeoff-for-a-schedule-of-values` · 1,277 words · #4589
+`stage-a-takeoff-for-a-schedule-of-values` · 1,277 words · #4589 · now the opening and two guides: the core (the boxes, the rules and the book, the Stages panel, printing) and *put a schedule of values in the cover letter* (the pill, labor and material, My lines, scaling to the contract). *Use stage shares* went with the letter half, under its own heading, since no payment-schedule guide exists. Nothing cut.
 
 - **Opening:** "Every fixture on Bids → Takeoffs carries a stage, and the rail adds its material up
   by stage. You set each fixture's stage with its three boxes, then print the schedule or put it
