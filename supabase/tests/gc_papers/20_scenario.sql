@@ -155,6 +155,54 @@ SELECT gpt.same('gc_paper_sends carries its policy and blocks', (
 SELECT gpt.same('the person trigger fires on the company too', (
   SELECT pg_get_triggerdef(oid) LIKE '%UPDATE OF person_name, company_id%' FROM pg_trigger WHERE tgname = 'set_person_id_on_write' AND tgrelid = 'public.person_contract_documents'::regclass)::text, 'true');
 
+-- 5b · A company's paper signed or filed keeps its promise in the same transaction; a person's paper never does.
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d1');
+SET LOCAL ROLE authenticated;
+SELECT public.gc_send_paper('{"companyId": "00000000-0000-0000-0000-000000000711", "paper": "w9", "dueOn": "2026-10-17", "what": "their W-9"}') IS NOT NULL AS asked_w9;
+SELECT public.gc_send_paper('{"companyId": "00000000-0000-0000-0000-000000000711", "paper": "insurance", "dueOn": "2026-10-19", "what": "their insurance certificate"}') IS NOT NULL AS asked_coi;
+RESET ROLE;
+SELECT gpt.same('three promises open before any paper is in', (
+  SELECT string_agg(kind, ',' ORDER BY kind) FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-000000000711' AND project_id IS NULL AND kept_on IS NULL),
+  'insurance,msa,w9');
+-- A person's paper signed keeps nothing (its row has no company: the trigger's WHEN never lets it through).
+UPDATE public.person_contract_documents SET status = 'signed', signed_at = public.app_today() WHERE person_name = 'Bed Sub Dana';
+SELECT gpt.same('a person''s signing keeps no promise', (
+  SELECT count(*)::text FROM public.gc_trade_promises WHERE kept_on IS NOT NULL), '0');
+-- The company signs its master agreement and its W-9 (as accept-contract writes it).
+UPDATE public.person_contract_documents SET status = 'signed', signed_at = public.app_today()
+WHERE company_id = '00000000-0000-0000-0000-000000000711' AND document_name IN ('Master Subcontract Agreement', 'W-9');
+SELECT gpt.same('the master agreement and the W-9 signed keep theirs', (
+  SELECT string_agg(kind || ' ' || (kept_on IS NOT NULL), ',' ORDER BY kind) FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-000000000711' AND project_id IS NULL),
+  'insurance false,msa true,w9 true');
+-- The office files their certificate: the insurance promise is kept.
+SET LOCAL ROLE authenticated;
+SELECT public.gc_record_company_coi('00000000-0000-0000-0000-000000000711', DATE '2027-10-09', 'https://example.test/coi.pdf') IS NOT NULL AS filed;
+RESET ROLE;
+SELECT gpt.same('the certificate is a signed company paper with its expiry', (
+  SELECT document_name || ' ' || doc_type || ' ' || status || ' ' || expires_at || ' ' || url FROM public.person_contract_documents WHERE company_id = '00000000-0000-0000-0000-000000000711' AND doc_type = 'coi'),
+  'COI (filed) coi signed 2027-10-09 https://example.test/coi.pdf');
+SELECT gpt.same('and keeps the insurance promise', (
+  SELECT (kept_on IS NOT NULL)::text FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-000000000711' AND kind = 'insurance'), 'true');
+-- A new master agreement promise, then a second update of the signed paper: nothing is kept twice.
+SET LOCAL ROLE authenticated;
+SELECT public.gc_send_paper('{"companyId": "00000000-0000-0000-0000-000000000711", "paper": "msa", "dueOn": "2026-10-30", "what": "the signed master agreement"}') IS NOT NULL AS asked_again;
+RESET ROLE;
+UPDATE public.person_contract_documents SET status = 'signed' WHERE company_id = '00000000-0000-0000-0000-000000000711' AND document_name = 'Master Subcontract Agreement';
+SELECT gpt.same('a signed paper updated again keeps nothing', (
+  SELECT count(*)::text FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-000000000711' AND kind = 'msa' AND kept_on IS NULL), '1');
+-- gc_record_company_coi's refusals, in words.
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d2');
+SET LOCAL ROLE authenticated;
+SELECT gpt.refused('an estimator files no certificate', $q$SELECT public.gc_record_company_coi('00000000-0000-0000-0000-000000000711', DATE '2027-10-09', 'https://example.test/coi.pdf')$q$,
+  'Only a dev sends a trade its papers while GC mode is built.');
+RESET ROLE;
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d1');
+SET LOCAL ROLE authenticated;
+SELECT gpt.refused('no certificate for a company that is not there', $q$SELECT public.gc_record_company_coi('00000000-0000-0000-0000-000000000799', DATE '2027-10-09', 'https://example.test/coi.pdf')$q$, 'No company with that id.');
+SELECT gpt.refused('a certificate needs its expiry', $q$SELECT public.gc_record_company_coi('00000000-0000-0000-0000-000000000711', NULL, 'https://example.test/coi.pdf')$q$, 'Say the day their insurance runs out.');
+SELECT gpt.refused('a certificate''s link is https', $q$SELECT public.gc_record_company_coi('00000000-0000-0000-0000-000000000711', DATE '2027-10-09', 'http://example.test/coi.pdf')$q$, 'Paste the link to their certificate. It starts with https.');
+RESET ROLE;
+
 -- 6 · Deletes: a project's sends go with it; a company with papers stays (its signed papers are kept).
 DELETE FROM public.projects WHERE id = '00000000-0000-0000-0000-0000000007a9';
 SELECT gpt.same('a project''s delete takes its sends, and the company''s own stay', (

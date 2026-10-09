@@ -208,7 +208,71 @@ REVOKE ALL ON FUNCTION public.gc_company_paper(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.gc_send_paper(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gc_company_paper(uuid, uuid) TO authenticated;
 
--- 7) Training mode and digital twins: gc_paper_sends gets its blocks; the three create only what is missing.
+-- 7) A company's paper, signed or filed, keeps its promise in the same transaction (the prototype's promisesKeptBy:
+-- tradeSignMsa keeps msa, tradeSignW9 w9, tradeUploadCoi insurance). The WHEN lets only a company's paper through, so a
+-- person's signing (accept-contract, the person path) never reaches it and accept-contract is untouched.
+CREATE OR REPLACE FUNCTION public.gc_company_paper_kept()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.status = 'signed' THEN
+    RETURN NULL;
+  END IF;
+  PERFORM public.gc_keep_promises(NEW.company_id, CASE NEW.doc_type WHEN 'w9' THEN 'w9' WHEN 'coi' THEN 'insurance' ELSE 'msa' END);
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER gc_company_paper_kept
+  AFTER INSERT OR UPDATE OF status ON public.person_contract_documents
+  FOR EACH ROW
+  WHEN (NEW.company_id IS NOT NULL AND NEW.status = 'signed')
+  EXECUTE FUNCTION public.gc_company_paper_kept();
+
+-- 8) The office files a company's insurance certificate, as SubDocumentAddForm files a sub's: a company paper, signed, with
+-- its expiry and its https link. The trigger above keeps the insurance promise.
+CREATE OR REPLACE FUNCTION public.gc_record_company_coi(p_company_id uuid, p_expires_on date, p_url text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_url text := btrim(coalesce(p_url, ''));
+  v_id uuid;
+BEGIN
+  IF NOT public.is_dev() THEN
+    RAISE EXCEPTION 'Only a dev sends a trade its papers while GC mode is built.' USING ERRCODE = 'P0001';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.gc_companies WHERE id = p_company_id) THEN
+    RAISE EXCEPTION 'No company with that id.' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_expires_on IS NULL THEN
+    RAISE EXCEPTION 'Say the day their insurance runs out.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_url !~ '^https://' THEN
+    RAISE EXCEPTION 'Paste the link to their certificate. It starts with https.' USING ERRCODE = 'P0001';
+  END IF;
+  INSERT INTO public.person_contract_documents (
+    person_name, company_id, document_name, doc_type, expires_at, url, status, signed_at, contract_lineage_id, lineage_version
+  ) VALUES (
+    'gc-company:' || p_company_id::text, p_company_id, 'COI (filed)', 'coi', p_expires_on, v_url, 'signed', public.app_today(), gen_random_uuid(), 1
+  )
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_record_company_coi(uuid, date, text) IS
+  'GC mode (B6-b-i): the office files a trade partner company''s insurance certificate (a signed coi paper with its expiry and link); gc_company_paper_kept keeps the insurance promise. Dev only until the papers'' door. SECURITY INVOKER.';
+
+REVOKE ALL ON FUNCTION public.gc_record_company_coi(uuid, date, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_record_company_coi(uuid, date, text) TO authenticated;
+
+-- 9) Training mode and digital twins: gc_paper_sends gets its blocks; the three create only what is missing.
 SELECT public.apply_read_only_write_blocks();
 SELECT public.apply_read_only_stmt_blocks();
 SELECT public.apply_digital_twin_write_blocks();
