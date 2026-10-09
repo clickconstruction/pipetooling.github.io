@@ -3,7 +3,7 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
-import { lienFilingAttachmentName, lienFilingEmailHtml } from '../_shared/lienFilingEmail.ts'
+import { LIEN_FILING_REPLY_TO, lienFilingAttachmentName, lienFilingEmailHtml } from '../_shared/lienFilingEmail.ts'
 
 // Email a lien-instrument PDF (v2.2645 — the § 53.056 notice; v2.3436 — the
 // final demand letter packet, `email_type: 'demand_letter'`) to a named
@@ -111,6 +111,8 @@ serve(async (req) => {
       body: JSON.stringify({
         from: COMPANY_EMAIL_FROM,
         to: [toEmail],
+        // A reply reaches the office (v2.5092): the sender itself is a no-reply address.
+        reply_to: LIEN_FILING_REPLY_TO,
         subject,
         html: htmlBody,
         text: textPlain,
