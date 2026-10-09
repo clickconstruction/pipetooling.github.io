@@ -22,24 +22,26 @@ and when it closes. `control` is `gc_new_here`. `target` is `opened?by=first-vis
 closes. The morning triage reads the night's walks with this, read only, against prod:
 
 ```sql
--- Each tester's walks since yesterday morning, devs left out.
+-- Each tester's walks since yesterday morning, devs and sample accounts left out.
 select u.name, n.role, n.target, n.occurred_at at time zone 'America/Chicago' as at
 from public.ui_nav_clicks n
 join public.users u on u.id = n.user_id
 where n.control = 'gc_new_here'
   and n.role <> 'dev'
+  and not u.is_sample
   and n.occurred_at > now() - interval '1 day'
 order by u.name, n.occurred_at;
 
 -- Where walks stop, all time: a pile-up on one stop is the stop to rewrite.
-select split_part(split_part(n.target, 'stop=', 2), '&', 1)::int as stop, count(*)
+select nullif(split_part(split_part(n.target, 'stop=', 2), '&', 1), '')::int as stop, count(*)
 from public.ui_nav_clicks n
-where n.control = 'gc_new_here' and n.target like 'closed?%' and n.role <> 'dev'
+join public.users u on u.id = n.user_id
+where n.control = 'gc_new_here' and n.target like 'closed?%' and n.role <> 'dev' and not u.is_sample
 group by 1
 order by 1;
 ```
 
-A walk that opened and has no close means the tester left the page or closed the tab mid-walk. The
+A dev who walks a role from Settings records that sample account's role, so both queries leave samples out. A walk that opened and has no close means the tester left the page or closed the tab mid-walk. The
 ten stops, in order: the switch, New project, a project's card, its Drive line, The plans, A new
 set of plans came in, Questions about the plans, the gaps, the scope book, New here?
 (`src/lib/gc/tour.ts`). A row lands in *The notes* only when a stop count says something a helper
@@ -146,4 +148,4 @@ that blocks a tester from going on is at the top of the list.
 
 ## Status
 
-Started 2026-10-07. No notes yet.
+Started 2026-10-07. One note so far, the ring, live on the spike. The morning triage of 2026-10-09 found no new notes and no walks by a tester. The only walk not by a dev was the sample controller's, a dev's view-as on 2026-10-08, which closed at stop 1.
