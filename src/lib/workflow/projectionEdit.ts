@@ -1,6 +1,6 @@
 /**
  * The Workflow page's Add / Edit Projection window: what it opens with, what
- * it refuses, and the fields a save writes.
+ * it refuses, the fields a save writes, and what a refused write says.
  */
 
 export type ProjectionPlacement = 'before' | 'after'
@@ -79,4 +79,13 @@ export function projectionWriteFields(
 /** One past the highest sequence among the projections in hand; 1 for the first. */
 export function nextProjectionSequence(projections: ReadonlyArray<{ sequence_order: number }>): number {
   return Math.max(0, ...projections.map((p) => p.sequence_order)) + 1
+}
+
+/** What a refused insert, update or delete says, in the database's own words. Null when the write went through. */
+export function projectionWriteError(
+  action: 'insert' | 'update' | 'delete',
+  error: { message: string } | null,
+): string | null {
+  if (!error) return null
+  return `Failed to ${action} projection: ${error.message}`
 }
