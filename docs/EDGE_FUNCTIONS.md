@@ -877,6 +877,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### twin-mcp
 
+> **v2.5034 — travel at the owner's rate**: `briefs.ts` regenerated. `get_placement_guide` now says travel is the book's `Travel & Rentals (per mile from office)` entry rowed once at count = miles from the office × job days, $1.40 a count ($0.70 a mile, round trip, the owner's call of 2026-10-09), replacing the lesser of $80 × miles and 10% of the building. The entry's price moves in migration `20261010004000_robot_book_travel_rate.sql`; push it first. The run also carries `APP_DIRECTORY.md`'s unregenerated GC-mode lines. **Redeploy after merge.**
+
 > **v2.5020 (server 1.4.6) — no dollar figures on a sealed shadow**: `ask_question` loads the unscored shadow runs (a failed read counts as sealed); a question whose bid is a shell or a reference of one, or whose words name one's number, has its `$` amounts and spelled-out sums scrubbed from the question, the choices and the pick before it is filed (`scrubMoney`, `_shared/twinQuestionShape.ts`) — b499's *an $800k restroom fit-out* about the unsent b494 reads *a restroom fit-out*. The owner's call of 2026-10-09. **Redeploy after merge.**
 
 > **v2.4470 — a reference's age reads its day in the company zone**: `score_backtest`'s `stale` flag, on the first score and on an amend, dates the reference from `bid_date_sent` (a `date`), else its `created_at` read as `todayYmdInAppTz(new Date(iso))`, not as its UTC date, as the app's Reference grade window now does. Redeploy after merge.
