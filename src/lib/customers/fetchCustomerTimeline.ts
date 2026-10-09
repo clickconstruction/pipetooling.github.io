@@ -148,7 +148,7 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
     uncollectibleReason: j.uncollectible_reason,
   }))
 
-  type InvoiceRow = { id: string; job_id: string; status: string | null; amount: number | string | null; billed_at: string | null; sent_to_customer_at: string | null; external_send_channel: string | null }
+  type InvoiceRow = { id: string; job_id: string; status: string | null; amount: number | string | null; sequence_order: number | null; billed_at: string | null; sent_to_customer_at: string | null; external_send_channel: string | null }
   type PaymentRow = { id: string; job_id: string; invoice_id: string | null; amount: number | string | null; paid_on: string | null; payment_type: string | null; reference_number: string | null; mercury_transaction_id: string | null }
   type EventRow = { job_id: string; from_status: string | null; to_status: string | null; changed_at: string }
   type NoteRow = { id: string; job_id: string; body: string | null; created_at: string; author_user_id: string | null }
@@ -162,7 +162,7 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
 
   const [invoices, payments, events, notes, clock, reports, tests, allocs, promises, filings, statements] = await Promise.all([
     readPart<InvoiceRow>('bills', ids, (b) =>
-      supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount, billed_at, sent_to_customer_at, external_send_channel').in('job_id', b).limit(CUSTOMER_TIMELINE_ROW_CAP),
+      supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount, sequence_order, billed_at, sent_to_customer_at, external_send_channel').in('job_id', b).limit(CUSTOMER_TIMELINE_ROW_CAP),
     ),
     readPart<PaymentRow>('payments', ids, (b) =>
       supabase.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, payment_type, reference_number, mercury_transaction_id').in('job_id', b).limit(CUSTOMER_TIMELINE_ROW_CAP),
@@ -240,6 +240,7 @@ export async function fetchCustomerTimeline(customerId: string): Promise<Custome
         jobId: i.job_id,
         status: i.status,
         amount: num(i.amount),
+        sequenceOrder: i.sequence_order ?? null,
         billedAt: i.billed_at,
         sentToCustomerAt: i.sent_to_customer_at,
         channel: i.external_send_channel,

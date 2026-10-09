@@ -21,7 +21,7 @@
 
 import { todayYmdInAppTz } from './appTimeZone.ts'
 import {
-  appliedByInvoiceId,
+  appliedByInvoiceUnderRule,
   jobBilledContribution,
   lifetimeCollected,
   openBillRowsForJob,
@@ -34,6 +34,8 @@ export type ProfileInvoice = {
   amount: number | null
   billed_at: string | null
   estimated_bill_date: string | null
+  /** Bill order for the payment rule (v2.5010); billed_at, then id, break ties without it. */
+  sequence_order?: number | null
 }
 
 export type ProfilePayment = {
@@ -82,6 +84,19 @@ function ymdOf(iso: string): string {
   return iso.slice(0, 10)
 }
 
+/**
+ * What each of the job's bills has been paid under the one rule (v2.5010; the owner's call of
+ * 2026-10-09): linked payments in full, then the job's unlinked money to the part of the job on no
+ * bill and the sent bills oldest first (`appliedByInvoiceUnderRule`) — as the Pipeline board reads it.
+ */
+function appliedOnJob(job: ProfileJob): Map<string, number> {
+  return appliedByInvoiceUnderRule(
+    [{ id: job.id, revenue: job.revenue }],
+    job.invoices.map((i) => ({ id: i.id, job_id: job.id, status: i.status, amount: i.amount, sequence_order: i.sequence_order ?? undefined, billed_at: i.billed_at ?? undefined })),
+    job.payments.map((p) => ({ invoice_id: p.invoice_id, amount: p.amount, job_id: job.id, paid_on: p.paid_on ?? undefined })),
+  )
+}
+
 export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): CustomerMoneyStats {
   let open = 0
   let lifetime = 0
@@ -89,7 +104,7 @@ export function customerMoneyStats(jobs: ProfileJob[], todayYmd: string): Custom
   const aging: CustomerAging = { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 }
   for (const job of jobs) {
     lifetime += lifetimeCollected(job.payments)
-    const appliedByInvoice = appliedByInvoiceId(job.payments)
+    const appliedByInvoice = appliedOnJob(job)
     billedTotal += jobBilledContribution(job, job.invoices)
     const rows = openBillRowsForJob(
       job,
@@ -188,7 +203,7 @@ export function profileJobRowMoney(job: ProfileJob, todayYmd: string): ProfileJo
   const status = (job.status ?? 'working') as string
   const out: ProfileJobRowMoney = { openBilled: 0, unbilled: 0, ageDays: null, oldestOpenBillYmd: null, noBillDate: false }
   if (status === 'paid') return out
-  const rows = openBillRowsForJob(job, job.invoices.map((i) => ({ ...i, job_id: job.id })), appliedByInvoiceId(job.payments))
+  const rows = openBillRowsForJob(job, job.invoices.map((i) => ({ ...i, job_id: job.id })), appliedOnJob(job))
   const shell = rows.find((r) => r.kind === 'shell')
   if (shell) {
     out.openBilled = shell.remaining

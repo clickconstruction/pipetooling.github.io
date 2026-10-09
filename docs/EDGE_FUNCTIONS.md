@@ -835,6 +835,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### dev-mcp
 
+> **v2.5010 — `get_customer` and `get_job` read the one payment rule**: `customerProfileStats` (`customerMoneyStats`, `profileJobRowMoney`) nets each bill with `appliedByInvoiceUnderRule` — money put on the job with no bill picked pays the part of the job on no bill, then the sent bills oldest first — as the Customer Hub and the Pipeline board read it (the owner's call of 2026-10-09). The composite reads carry `sequence_order`. **Redeploy after merge.**
+
 > **v2.4624 — catalog regenerated**: `dev-mcp/catalog.ts` lists the new `legal-send-firm-link` in `EDGE_FUNCTIONS`, so `check_edge_boot` probes it. **Redeploy required** after merge.
 
 > **v2.4459 — a bill's day from `billed_at`**: `get_customer`'s money comes from [`_shared/customerProfileStats.ts`](../supabase/functions/_shared/customerProfileStats.ts), which now reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` for the days-to-pay median and a job row's oldest open bill, as the profile screen does. Redeploy after merge.

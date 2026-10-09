@@ -12,7 +12,7 @@
  *   rows is never negative.
  * Pure — flat arrays in, a customer_id → rollup map out.
  */
-import { appliedByInvoiceId, jobBilledContribution, openBillRowsForJob, sumRemaining } from './billTruth.ts'
+import { appliedByInvoiceUnderRule, jobBilledContribution, openBillRowsForJob, sumRemaining } from './billTruth.ts'
 
 export type LcvJobRow = {
   id: string
@@ -50,7 +50,14 @@ export function customersListRollup(
     if (list) list.push(inv)
     else invoicesByJob.set(inv.job_id, [inv])
   }
-  const appliedByInvoice = appliedByInvoiceId(payments)
+  // The one payment rule (v2.5010; the owner's call of 2026-10-09): money put on a job with no bill
+  // picked pays its bills too. The list shows totals only, and a job's open total does not depend on
+  // which of its bills the money lands on, so the rows need no bill order.
+  const appliedByInvoice = appliedByInvoiceUnderRule(
+    jobs,
+    invoices.filter((i) => i.id).map((i) => ({ id: i.id as string, job_id: i.job_id, status: i.status, amount: i.amount })),
+    payments,
+  )
   const paymentsByJob = new Map<string, LcvPaymentRow[]>()
   for (const p of payments) {
     const list = paymentsByJob.get(p.job_id)

@@ -90,12 +90,14 @@ export type FinancialInvoiceRow = {
   amount: number | null
   status: string | null
   billed_at: string | null
+  /** Bill order for the payment rule (v2.5010). */
+  sequence_order?: number | null
   /** The invoice's own payer pick and typed recipient (v2.4367, `listPayer`). */
   bill_to_party?: string | null
   bill_to_email?: string | null
 }
 
-export type FinancialInvoicePaymentRow = { invoice_id: string | null; amount: number | null }
+export type FinancialInvoicePaymentRow = { invoice_id: string | null; amount: number | null; job_id?: string | null; paid_on?: string | null; sequence_order?: number | null }
 
 export type FinancialSupplyInvoiceRow = {
   id: string

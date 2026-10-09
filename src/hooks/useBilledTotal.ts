@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { computeBillTruth, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../lib/billing/billTruth'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
+import { loadUnlinkedMoney } from '../lib/billing/loadUnlinkedMoney'
 
 // Intentionally ALL billed jobs, including those flagged into Collections — this total means
 // "billed and unpaid" = the bill-truth kernel's Owed (billed + collections), the same figure the
@@ -44,7 +45,7 @@ export function useBilledTotal(
           ),
           withSupabaseRetry(
             async () =>
-              supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status').eq('status', 'billed'),
+              supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, sequence_order, billed_at').eq('status', 'billed'),
             'useBilledTotal invoices',
           ),
         ])
@@ -61,7 +62,17 @@ export function useBilledTotal(
               'useBilledTotal payments',
             )) ?? []) as BillTruthPayment[]
         }
-        const truth = computeBillTruth({ jobs, invoices, payments: paymentsRows })
+        // v2.5010: a payment put on the job with no bill picked pays its bills oldest first (the owner's call of 2026-10-09).
+        const extra = await loadUnlinkedMoney<BillTruthPayment & { job_id: string }, BillTruthInvoice>(
+          invoices.map((i) => i.job_id),
+          { paymentColumns: 'job_id, invoice_id, amount, paid_on, sequence_order', invoiceColumns: 'id, job_id, amount, status, sequence_order, billed_at', label: 'useBilledTotal', withPaidBillPayments: true },
+        )
+        if (cancelled) return
+        const truth = computeBillTruth({
+          jobs,
+          invoices: [...invoices, ...extra.paidBills],
+          payments: [...paymentsRows, ...extra.unlinkedPayments, ...extra.paidBillPayments],
+        })
         if (!cancelled) {
           setCount(truth.owed.count)
           setTotal(truth.owed.total)
