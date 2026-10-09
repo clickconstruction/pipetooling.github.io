@@ -13,10 +13,9 @@ const schedules = [
   { id: 's-last', name: 'Last week recap' },
   { id: 's-yest', name: 'Yesterday recap' },
 ]
-const sub = (over: Partial<SubscriptionWithAuthors['subscription']>, authorUserIds: string[] = [], teamLeadUserIds: string[] = []): SubscriptionWithAuthors => ({
+const sub = (over: Partial<SubscriptionWithAuthors['subscription']>, authorUserIds: string[] = []): SubscriptionWithAuthors => ({
   subscription: { id: 'sub', recipient_user_id: null, recipient_email: null, label: null, all_authors: true, auto_send: true, enabled: true, created_by: null, created_at: null, updated_at: null, ...over },
   authorUserIds,
-  teamLeadUserIds,
 })
 
 describe('buildEmailReportPeople (v2.3595)', () => {
@@ -26,20 +25,20 @@ describe('buildEmailReportPeople (v2.3595)', () => {
       schedules,
       digestRecipients: [
         { id: 'r1', schedule_id: 's-yest', recipient_user_id: 'u-rob', activity_scope: 'calendar_yesterday', crew_filter: 'all_users', include_costs: false },
-        { id: 'r2', schedule_id: 's-last', recipient_user_id: 'u-wen', activity_scope: 'calendar_last_week', crew_filter: 'my_team', include_costs: true },
+        { id: 'r2', schedule_id: 's-last', recipient_user_id: 'u-wen', activity_scope: 'calendar_last_week', crew_filter: 'all_users', include_costs: true },
       ],
       subscriptions: [
         sub({ id: 'sub-mal', recipient_user_id: 'u-mal' }),
-        sub({ id: 'sub-rob', recipient_user_id: 'u-rob', all_authors: false }, [], ['u-abe']),
+        sub({ id: 'sub-rob', recipient_user_id: 'u-rob', all_authors: false }, ['u-abe', 'u-dar']),
         sub({ id: 'sub-owner', recipient_email: 'Owner@Example.com', label: 'Owner', all_authors: false }, ['u-dar']),
       ],
     })
     expect(people.map((p) => p.name)).toEqual(['Malachi', 'Owner', 'Robert', 'Wendi'])
     const rob = people.find((p) => p.userId === 'u-rob')!
     expect(rob.digests.map((d) => `${d.scheduleName} · ${d.text}`)).toEqual(['Yesterday recap · jobs yesterday · all users'])
-    expect(rob.everyReport?.text).toBe('reports from everyone Abraham leads')
+    expect(rob.everyReport?.text).toBe('reports from Abraham and Darren')
     const wen = people.find((p) => p.userId === 'u-wen')!
-    expect(wen.digests[0]?.text).toBe('jobs last week · my team · with costs')
+    expect(wen.digests[0]?.text).toBe('jobs last week · all users · with costs')
     expect(wen.everyReport).toBeNull()
     const mal = people.find((p) => p.userId === 'u-mal')!
     expect(mal.digests).toEqual([])

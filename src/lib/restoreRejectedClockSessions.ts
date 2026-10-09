@@ -7,7 +7,7 @@ export type RestoreRejectedClockSessionsResult = Array<{
 }>
 
 /**
- * Clear rejection on clock sessions (return to Pending). Pay access, dev, or team lead for member.
+ * Clear rejection on clock sessions (return to Pending). Pay access or dev.
  */
 export async function restoreRejectedClockSessions(sessionIds: string[]): Promise<RestoreRejectedClockSessionsResult> {
   const data = await withSupabaseRetry(

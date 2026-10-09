@@ -284,8 +284,6 @@ export function useDashboardMyTeamSectionState(
   const [teamMemberRoster, setTeamMemberRoster] = useState<TeamMemberRosterRow[]>([])
   const [hoursSummaryByUserId, setHoursSummaryByUserId] = useState<Record<string, TeamHoursSummary>>({})
   const [loadingHours, setLoadingHours] = useState(false)
-  const [notifyByAssignment, setNotifyByAssignment] = useState<Record<string, boolean>>({})
-  const [notifySavingId, setNotifySavingId] = useState<string | null>(null)
   const [clockActivityExpanded, setClockActivityExpanded] = useState(false)
   const [clockActivitySimpleView, setClockActivitySimpleView] = useState(readClockActivitySimplePreference)
   const [clockActivityListMode, setClockActivityListMode] = useState<ClockActivityListMode>(readClockActivityListMode)
@@ -313,7 +311,7 @@ export function useDashboardMyTeamSectionState(
   const [error, setError] = useState<string | null>(null)
   const [myTeamExpanded, setMyTeamExpanded] = useState(false)
 
-  /** Team strip: members plus viewer (leader is not in `team_leader_assignments` as member). */
+  /** Team strip: members plus viewer (the roster is read off the schedule since v2.3616 Supervision and need not list the viewer). */
   const stripTeamUserIds = useMemo(
     () => [...new Set([...memberUserIds, ...(authUserId ? [authUserId] : [])])],
     [memberUserIds, authUserId],
@@ -328,7 +326,6 @@ export function useDashboardMyTeamSectionState(
     if (!authUserId) {
       setMemberUserIds([])
       setTeamMemberRoster([])
-      setNotifyByAssignment({})
       setHoursSummaryByUserId({})
       setTodaySessionsRows([])
       setOrgWidePendingSessions([])
@@ -346,7 +343,6 @@ export function useDashboardMyTeamSectionState(
       if (!supervisedMembershipEnabled) {
         setTeamMemberRoster([])
         setMemberUserIds([])
-        setNotifyByAssignment({})
       } else {
         const week = dayBookWeekOf(todayYmdInAppTz())
         const data = await withSupabaseRetry(
@@ -363,13 +359,11 @@ export function useDashboardMyTeamSectionState(
           .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
         setTeamMemberRoster(roster)
         setMemberUserIds(roster.map((x) => x.userId))
-        setNotifyByAssignment({})
       }
     } catch (e) {
       setError(formatErrorMessage(e))
       setMemberUserIds([])
       setTeamMemberRoster([])
-      setNotifyByAssignment({})
       setHoursSummaryByUserId({})
       setTodaySessionsRows([])
       setOrgWidePendingSessions([])
@@ -1013,31 +1007,6 @@ export function useDashboardMyTeamSectionState(
     })
   }, [])
 
-  const setNotifyPreference = useCallback(async (assignmentId: string, enabled: boolean) => {
-    setNotifySavingId(assignmentId)
-    setNotifyByAssignment((prev) => ({ ...prev, [assignmentId]: enabled }))
-    setError(null)
-    try {
-      await withSupabaseRetry(
-        async () =>
-          supabase.from('team_leader_clock_notify_prefs').upsert(
-            {
-              team_leader_assignment_id: assignmentId,
-              notify_enabled: enabled,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: 'team_leader_assignment_id' },
-          ),
-        'save team leader clock notify pref',
-      )
-    } catch (e) {
-      setNotifyByAssignment((prev) => ({ ...prev, [assignmentId]: !enabled }))
-      setError(formatErrorMessage(e))
-    } finally {
-      setNotifySavingId(null)
-    }
-  }, [])
-
   const shiftWeek = useCallback((delta: number) => {
     setDateRange((prev) => {
       const s = new Date(prev.start + 'T12:00:00')
@@ -1419,8 +1388,6 @@ export function useDashboardMyTeamSectionState(
     teamMemberRoster,
     hoursSummaryByUserId,
     loadingHours,
-    notifyByAssignment,
-    notifySavingId,
     clockActivityExpanded,
     setClockActivityExpanded,
     clockActivitySimpleView,
@@ -1457,7 +1424,6 @@ export function useDashboardMyTeamSectionState(
     loadPending,
     applyOptimisticClockSessionAssign,
     removePendingSessionFromState,
-    setNotifyPreference,
     orderedLedgerSessions,
     ledgerPeopleForFilter,
     simpleLedgerGroups,

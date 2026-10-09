@@ -21,7 +21,7 @@ const roster = [{ id: 'u-rob', name: 'Robert', email: 'robert@x.com' }]
 const robert: EmailReportPerson = { key: 'user:u-rob', userId: 'u-rob', email: 'robert@x.com', name: 'Robert', outside: false, digests: [{ rowId: 'r1', scheduleId: 's-yest', scheduleName: 'Yesterday recap', text: 'jobs yesterday · all users', activityScope: 'calendar_yesterday', crewFilter: 'all_users', includeCosts: false }], everyReport: null }
 
 function editor(person: EmailReportPerson | null, onCancel = vi.fn()) {
-  return <EmailReportPersonEditor person={person} roster={roster} schedules={schedules} subscriptions={[]} teamLeads={[]} people={person ? [person] : []} authUserId="u1" onDone={() => {}} onCancel={onCancel} />
+  return <EmailReportPersonEditor person={person} roster={roster} schedules={schedules} subscriptions={[]} people={person ? [person] : []} authUserId="u1" onDone={() => {}} onCancel={onCancel} />
 }
 
 describe('EmailReportPersonEditor · the Save row', () => {

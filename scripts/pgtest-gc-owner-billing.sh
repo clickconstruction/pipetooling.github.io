@@ -8,9 +8,10 @@
 #   npm run test:pg:gc-owner-billing
 #
 # The same bed as scripts/pgtest-gc-schedule.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order (about a minute). O4a-1's, O5b's, O6b-2's, O7a's, O7b's, O7c's, O5e's, O3b's and O8a's migrations are then
-# applied a second time in their order, which must change nothing (one service type, one trigger, one function each, and
-# O6b-2's restated send and certificate last). 20_scenario
+# supabase/migrations applied in order (about a minute). O4a-1's, O5b's, O6b-2's, O7a's, O7b's, O7c's, O5e's, O3b's and O8a's migrations each
+# run a second time where they stand in that order, which must change nothing (one service type, one trigger, one function
+# each, and O6b-2's restated send and certificate last). A later migration that restates one of their functions keeps the
+# last word: the Team leads drop (v2.5088) restates O7b's two email schedules without the table it drops. 20_scenario
 # sends pay applications, records certificates and reminds the customer to pay through RLS as a dev, the
 # controller, an estimator and a dev in training mode, inside one transaction that rolls back: the billing
 # job the first send opens, the bill each certificate makes, the links that stay once written, a reminder
@@ -53,13 +54,15 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
+# A second run of each of the nine must change nothing: the service type's insert skips the row it made, the
+# columns and the index are there, and every function and the trigger are replaced as they were. It runs right
+# after the first, so a later migration's restatement is never undone, nor its dropped tables named again.
+TWICE=" $SEND $REMIND $INTEREST $ACCEPT $MONDAY $PORTAL $CONTROLLER $CHANGEREQ $CARD "
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
-done
-# A second run must change nothing: the service type's insert skips the row it made, the columns and
-# the index are there, and every function and the trigger are replaced as they were.
-for f in "$SEND" "$REMIND" "$INTEREST" "$ACCEPT" "$MONDAY" "$PORTAL" "$CONTROLLER" "$CHANGEREQ" "$CARD"; do
-  psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
+  case "$TWICE" in *" $f "*)
+    psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; } ;;
+  esac
 done
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_owner_billing PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi

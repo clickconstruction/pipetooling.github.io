@@ -692,8 +692,8 @@ export default function People() {
       }, { replace: true })
       setActiveTab('hours')
     } else if (tab === 'teams') {
-      // Legacy: the Teams tab was removed (v2.1292) — team leads live in the
-      // Users tab's Team leads modal. Old links land on Users.
+      // Legacy: the Teams tab was removed (v2.1292) and the Team leads list with it
+      // (v2.5088). Old links land on Users.
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'users')

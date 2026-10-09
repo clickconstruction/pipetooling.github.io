@@ -2,15 +2,13 @@ import { supabase } from './supabase'
 
 /**
  * Report email subscriptions — types, pure helpers, and the data-access boundary
- * for the four backing tables (report_email_subscriptions,
- * report_email_subscription_authors, report_email_subscription_team_leads —
- * v2.3480, report_email_dispatch_log), added in migrations 20260718180000 and
- * 20260915180000 and present in the generated database types.
+ * for the three backing tables (report_email_subscriptions,
+ * report_email_subscription_authors, report_email_dispatch_log), added in
+ * migration 20260718180000 and present in the generated database types.
  *
  * Scope rule (mirrored by supabase/functions/send-report-email): a report is
  * in scope when the subscription covers all authors, or its author is a named
- * author, or its author is (or is led by) a named team lead — team membership
- * is team_leader_assignments, read at send time.
+ * author — the team-lead scope was retired in v2.5088.
  */
 
 export interface ReportEmailSubscriptionRow {
@@ -33,20 +31,6 @@ export interface ReportEmailSubscriptionAuthorRow {
   created_at: string | null
 }
 
-export interface ReportEmailSubscriptionTeamLeadRow {
-  id: string
-  subscription_id: string
-  leader_user_id: string
-  created_at: string | null
-}
-
-/** One row of list_report_email_team_leads(): a leader with at least one member. */
-export interface TeamLeadOption {
-  user_id: string
-  name: string
-  member_count: number
-}
-
 export type RecipientKind = 'user' | 'email'
 
 /** Editable shape used by the settings modal before it is persisted. */
@@ -57,8 +41,6 @@ export interface SubscriptionDraft {
   label: string
   allAuthors: boolean
   authorUserIds: string[]
-  /** Team leads (v2.3480): everyone they lead, plus themselves, resolved at send time. */
-  teamLeadUserIds: string[]
   autoSend: boolean
   enabled: boolean
 }
@@ -69,7 +51,6 @@ export type DraftValidation = { ok: true } | { ok: false; error: string }
 export interface SubscriptionWithAuthors {
   subscription: ReportEmailSubscriptionRow
   authorUserIds: string[]
-  teamLeadUserIds: string[]
 }
 
 // ---------------------------------------------------------------------------
@@ -95,8 +76,8 @@ export function validateSubscriptionDraft(draft: SubscriptionDraft): DraftValida
       return { ok: false, error: 'Enter a valid email address.' }
     }
   }
-  if (!draft.allAuthors && draft.authorUserIds.length === 0 && draft.teamLeadUserIds.length === 0) {
-    return { ok: false, error: 'Pick at least one person or team lead, or choose “All reports”.' }
+  if (!draft.allAuthors && draft.authorUserIds.length === 0) {
+    return { ok: false, error: 'Pick at least one person, or choose “All reports”.' }
   }
   return { ok: true }
 }
@@ -112,29 +93,18 @@ export function subscriptionMatchesAuthor(
   authorUserIds: readonly string[],
   reportAuthorUserId: string,
 ): boolean {
-  return subscriptionMatchesReport(
-    sub,
-    { authorUserIds, teamLeadUserIds: [] },
-    { authorUserId: reportAuthorUserId, leaderUserIds: [] },
-  )
+  return subscriptionMatchesReport(sub, { authorUserIds }, { authorUserId: reportAuthorUserId })
 }
 
-/**
- * The full scope rule (v2.3480): all authors, or the author is named, or the
- * author is — or is led by — a named team lead. `leaderUserIds` is the
- * report author's leaders from team_leader_assignments.
- */
+/** The scope rule send-report-email mirrors: all authors, or the report's author is named. */
 export function subscriptionMatchesReport(
   sub: Pick<ReportEmailSubscriptionRow, 'enabled' | 'all_authors'>,
-  scope: { authorUserIds: readonly string[]; teamLeadUserIds: readonly string[] },
-  report: { authorUserId: string; leaderUserIds: readonly string[] },
+  scope: { authorUserIds: readonly string[] },
+  report: { authorUserId: string },
 ): boolean {
   if (!sub.enabled) return false
   if (sub.all_authors) return true
-  if (scope.authorUserIds.includes(report.authorUserId)) return true
-  if (scope.teamLeadUserIds.length === 0) return false
-  if (scope.teamLeadUserIds.includes(report.authorUserId)) return true
-  return report.leaderUserIds.some((leader) => scope.teamLeadUserIds.includes(leader))
+  return scope.authorUserIds.includes(report.authorUserId)
 }
 
 /** Human label for a subscription row: explicit label, else the recipient's name/email. */
@@ -155,14 +125,10 @@ export function scopeSummary(
   sub: Pick<ReportEmailSubscriptionRow, 'all_authors'>,
   authorUserIds: readonly string[],
   userNameById: ReadonlyMap<string, string>,
-  teamLeadUserIds: readonly string[] = [],
 ): string {
   if (sub.all_authors) return 'All reports'
-  if (authorUserIds.length === 0 && teamLeadUserIds.length === 0) return 'No authors selected'
-  const names = [
-    ...authorUserIds.map((id) => userNameById.get(id)?.trim() || 'Unknown'),
-    ...teamLeadUserIds.map((id) => `${userNameById.get(id)?.trim() || 'Unknown'}'s team`),
-  ]
+  if (authorUserIds.length === 0) return 'No authors selected'
+  const names = authorUserIds.map((id) => userNameById.get(id)?.trim() || 'Unknown')
   if (names.length <= 2) return `Reports from ${names.join(' & ')}`
   return `Reports from ${names[0]}, ${names[1]} +${names.length - 2} more`
 }
@@ -175,20 +141,15 @@ export async function loadReportEmailSubscriptions(): Promise<SubscriptionWithAu
   const [
     { data: subsData, error: subsErr },
     { data: authorsData, error: authorsErr },
-    { data: leadsData, error: leadsErr },
   ] = await Promise.all([
     supabase
       .from('report_email_subscriptions')
       .select('*')
       .order('created_at', { ascending: true }),
     supabase.from('report_email_subscription_authors').select('subscription_id, author_user_id'),
-    supabase.from('report_email_subscription_team_leads').select('subscription_id, leader_user_id'),
   ])
   if (subsErr) throw subsErr
   if (authorsErr) throw authorsErr
-  // The team-leads table arrives with migration 20260915180000; a checkout ahead
-  // of the push reads it as "no team leads" so the modal keeps working.
-  if (leadsErr) console.warn('report_email_subscription_team_leads unavailable:', leadsErr.message)
   const subs: ReportEmailSubscriptionRow[] = subsData ?? []
   const authorsBySub = new Map<string, string[]>()
   for (const r of authorsData ?? []) {
@@ -196,28 +157,10 @@ export async function loadReportEmailSubscriptions(): Promise<SubscriptionWithAu
     list.push(r.author_user_id)
     authorsBySub.set(r.subscription_id, list)
   }
-  const leadsBySub = new Map<string, string[]>()
-  for (const r of leadsErr ? [] : (leadsData ?? [])) {
-    const list = leadsBySub.get(r.subscription_id) ?? []
-    list.push(r.leader_user_id)
-    leadsBySub.set(r.subscription_id, list)
-  }
   return subs.map((subscription) => ({
     subscription,
     authorUserIds: authorsBySub.get(subscription.id) ?? [],
-    teamLeadUserIds: leadsBySub.get(subscription.id) ?? [],
   }))
-}
-
-/** The team-lead picker's options (report-email managers; empty for anyone else). */
-export async function loadReportEmailTeamLeadOptions(): Promise<TeamLeadOption[]> {
-  const { data, error } = await supabase.rpc('list_report_email_team_leads')
-  if (error) throw error
-  const rows = Array.isArray(data) ? (data as unknown[]) : []
-  return rows
-    .map((r) => r as Partial<TeamLeadOption>)
-    .filter((r): r is TeamLeadOption => typeof r.user_id === 'string' && typeof r.name === 'string')
-    .map((r) => ({ user_id: r.user_id, name: r.name, member_count: Number(r.member_count) || 0 }))
 }
 
 /**
@@ -259,11 +202,10 @@ export async function saveReportEmailSubscription(
   }
 
   await reconcileSubscriptionAuthors(subscriptionId, draft.allAuthors ? [] : draft.authorUserIds)
-  await reconcileSubscriptionTeamLeads(subscriptionId, draft.allAuthors ? [] : draft.teamLeadUserIds)
   return subscriptionId
 }
 
-/** Diff a subscription's sidecar rows (authors or team leads) to exactly `wantedIds`. */
+/** Diff a subscription's author rows to exactly `wantedIds`. */
 function diffIds(existingIds: readonly string[], wantedIds: readonly string[]): { toAdd: string[]; toRemove: string[] } {
   const existing = new Set(existingIds)
   const wanted = new Set(wantedIds)
@@ -297,38 +239,6 @@ export async function reconcileSubscriptionAuthors(
       .delete()
       .eq('subscription_id', subscriptionId)
       .in('author_user_id', toRemove)
-    if (error) throw error
-  }
-}
-
-/** Replace a subscription's team-lead rows with exactly `leaderUserIds` (v2.3480). */
-export async function reconcileSubscriptionTeamLeads(
-  subscriptionId: string,
-  leaderUserIds: string[],
-): Promise<void> {
-  const { data: existingData, error: readErr } = await supabase
-    .from('report_email_subscription_team_leads')
-    .select('leader_user_id')
-    .eq('subscription_id', subscriptionId)
-  if (readErr) {
-    // Pre-migration checkout: nothing to reconcile unless leads were picked.
-    if (leaderUserIds.length === 0) return
-    throw new Error('Team leads need the database update (migration 20260915180000) before they can be saved.')
-  }
-  const { toAdd, toRemove } = diffIds((existingData ?? []).map((r) => r.leader_user_id), leaderUserIds)
-
-  if (toAdd.length > 0) {
-    const { error } = await supabase
-      .from('report_email_subscription_team_leads')
-      .insert(toAdd.map((leader_user_id) => ({ subscription_id: subscriptionId, leader_user_id })))
-    if (error) throw error
-  }
-  if (toRemove.length > 0) {
-    const { error } = await supabase
-      .from('report_email_subscription_team_leads')
-      .delete()
-      .eq('subscription_id', subscriptionId)
-      .in('leader_user_id', toRemove)
     if (error) throw error
   }
 }
