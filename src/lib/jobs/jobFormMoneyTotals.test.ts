@@ -22,6 +22,12 @@ describe('jobFormRiderFeesDollars (v2.5091)', () => {
     expect(jobFormRiderFeesDollars(0, [{ id: 'b1', fee_lines: [{ description: 'Some other fee', amount: 45 }] }])).toBe(0)
   })
 
+  it('a GC card fee rides too (v2.5113): the entry gc_card_bill_finish writes, beside a returned check fee', () => {
+    const cardBill = { id: 'b9', amount: 44_032.5, fee_lines: [{ description: 'Credit card fee (3%)', amount: 1_282.5, card_bill: 'b9', added_at: '2026-10-09T20:00:00Z' }] }
+    expect(jobFormRiderFeesDollars(0, [cardBill])).toBe(1_282.5)
+    expect(jobFormRiderFeesDollars(0, [cardBill, billWithFees(30)])).toBe(1_312.5)
+  })
+
   it('adds in cents, and an unreadable hazmat figure counts as nothing', () => {
     expect(jobFormRiderFeesDollars(0.1, [billWithFees(0.2)])).toBe(0.3)
     expect(jobFormRiderFeesDollars(Number.NaN, [billWithFees(30)])).toBe(30)
