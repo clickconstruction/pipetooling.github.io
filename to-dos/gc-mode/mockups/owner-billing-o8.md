@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O8: the customer pays a certified bill by card, with a 3% card fee"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 11, O8, after O7c)
-status: planned 2026-10-09 by Helper 5 at the lead's ask, from the owner's answer to the Stripe Pay question · amended the same evening: the fee is a rider on its bill, out of every GC figure (the lead's call) · counsel's okay on the 3% surcharge 2026-10-09, the owner kept (a), card only · O8a's SQL below, byte for byte, passed in the Owner Billing bed (90_card_bills.sql, 41 checks) · O8b and O8c not built
+status: planned 2026-10-09 by Helper 5 at the lead's ask, from the owner's answer to the Stripe Pay question · amended the same evening: the fee is a rider on its bill, out of every GC figure (the lead's call) · counsel's okay on the 3% surcharge 2026-10-09, the owner kept (a), card only · O8a's SQL below, byte for byte, passed in the Owner Billing bed (90_card_bills.sql, 42 checks; five mutants each caught) · O8b and O8c not built
 ---
 
 # O8: the customer pays a certified bill by card
@@ -268,8 +268,9 @@ you will pay." and the portal's *see* line.
   `apply_digital_twin_write_blocks`).
 - **`gc_card_bill_begin` and `gc_card_bill_finish`**: the service role only. The grant stops anyone signed in
   before the function's own words do.
-- **`gc_card_bill_undo`**: the money team, signed in. As the service role it clears a pending row whose Stripe
-  invoice was never made, and nothing else.
+- **`gc_card_bill_undo`**: the money team, signed in. It refuses in words a training account, a digital twin and
+  anyone off the money team before it reads the bill, as O3b's functions do. As the service role it clears a
+  pending row whose Stripe invoice was never made, and nothing else.
 - **The service role lays the revenue** in finish, so `gc_owner_billing_revenue` and `gc_owner_contract_now` gain
   its EXECUTE grant.
 - **`job_rider_fees`** restated byte for byte from `20261010023000` but for one more kind of `fee_lines` entry it
@@ -282,7 +283,7 @@ you will pay." and the portal's *see* line.
   - The three functions that lay revenue call it, so none of them changes.
   - Its comment says what it is: the billing job's Pipeline total, which decides when the job reads paid. No GC
     figure reads it.
-- **The bed**, `supabase/tests/gc_owner_billing/90_card_bills.sql`, 41 checks. A $100,000 contract is billed in five
+- **The bed**, `supabase/tests/gc_owner_billing/90_card_bills.sql`, 42 checks. A $100,000 contract is billed in five
   certified bills, with one interest bill of $100:
   - the migration's shape: row security, the two policies, the fences, who may run what;
   - begin refused as a signed-in dev, on an interest bill, on a bill that is not there, on a bill on Stripe already,
@@ -294,8 +295,8 @@ you will pay." and the portal's *see* line.
     revenue reads the contract, the interest and the fee;
   - a second press opens the card page it has;
   - the controller's certificate keeps the riders in the revenue, read through the controller's own rights;
-  - back to a check bill: refused for the service role, an estimator and a dev in training mode, then done by the
-    controller. The base, no Stripe, the rider off, the fee out of the revenue, the row kept undone;
+  - back to a check bill: refused for the service role, and in words for an estimator, a dev in training mode and a
+    digital twin, then done by the controller. The base, no Stripe, the rider off, the fee out of the revenue, the row kept undone;
   - their portal cannot turn that bill again (call 4);
   - **the early-paid case**: every bill paid but bill 2's fee. Without the riders the revenue would be $100,100.00,
     under the $101,382.50 paid, and the job would read paid. With them it keeps its status, `working`, and $370.37 is
@@ -516,8 +517,8 @@ GRANT EXECUTE ON FUNCTION public.gc_card_bill_finish(uuid, text, text, text, tex
 
 -- 3 ---------------------------------------------------------------------------------------------------------
 
--- Back to a check bill: the money team, once gc-card-bill has voided the Stripe invoice, while no payment is on the
--- bill. The bill goes back to its base, the Stripe columns are cleared, the rider comes off, and the revenue is laid
+-- Back to a check bill: the money team (never a training account or a digital twin, each told in words), once
+-- gc-card-bill has voided the Stripe invoice, while no payment is on the bill. The bill goes back to its base, the Stripe columns are cleared, the rider comes off, and the revenue is laid
 -- again. The row stays, undone, so the offer does not come back on that bill. As the service role it clears a
 -- pending row whose Stripe invoice was never made, and nothing else.
 CREATE OR REPLACE FUNCTION public.gc_card_bill_undo(p_invoice_id uuid)
@@ -540,6 +541,15 @@ BEGIN
   END IF;
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Sign in to take a bill off card.';
+  END IF;
+  IF public.is_read_only() THEN
+    RAISE EXCEPTION 'A training account cannot take a bill off card.' USING ERRCODE = '42501';
+  END IF;
+  IF public.is_digital_twin() THEN
+    RAISE EXCEPTION 'A digital twin cannot take a bill off card.' USING ERRCODE = '42501';
+  END IF;
+  IF NOT public.gc_money_team() THEN
+    RAISE EXCEPTION 'Only the money team takes a bill off card.' USING ERRCODE = '42501';
   END IF;
   SELECT * INTO v_card FROM public.gc_owner_card_bills WHERE invoice_id = p_invoice_id FOR UPDATE;
   IF NOT FOUND OR v_card.status <> 'on_card' THEN
