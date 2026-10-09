@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import type { SentEmailFiling } from '../_shared/fileSentCopy.ts'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { officeYmd } from '../_shared/bidFollowupReminder.ts'
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../_shared/gcArchitectEmail.ts'
@@ -131,7 +132,7 @@ serve(async (req) => {
 
     let email: { subject: string; text: string; html: string }
     // Sent copies (docs/SENT_COPIES.md): what went to the architect, on the architect's customer record and its own row.
-    let copy: { kind: string; title: string; source: { table: string; id: string } }
+    let filed: { file: SentEmailFiling }
     if (item.kind === 'submittal') {
       const { s, round } = item
       // The day we need the answer (submittalNeededBy): the first start of the work it holds less its lead days, else
@@ -156,7 +157,7 @@ serve(async (req) => {
         signer,
         companyName: 'Click Construction',
       })
-      copy = { kind: 'gc_submittal', title: `Submittal ${s.number}: ${project.name}`, source: { table: 'gc_submittal_rounds', id: round.id } }
+      filed = { file: { kind: 'gc_submittal', title: `Submittal ${s.number}: ${project.name}`, recipientName: architect.name, customerId: architect.id, source: { table: 'gc_submittal_rounds', id: round.id }, sentBy: u.user.id } }
     } else {
       const { r } = item
       // Who asked: the company that phoned it in, with its trade, else our own people.
@@ -189,14 +190,14 @@ serve(async (req) => {
         signer,
         companyName: 'Click Construction',
       })
-      copy = { kind: 'gc_rfi', title: `${label}: ${project.name}`, source: { table: 'gc_rfis', id: r.id } }
+      filed = { file: { kind: 'gc_rfi', title: `${label}: ${project.name}`, recipientName: architect.name, customerId: architect.id, source: { table: 'gc_rfis', id: r.id }, sentBy: u.user.id } }
     }
 
     const sent = await sendEmailViaResend(to, email.subject, email.text, email.html, resendApiKey, {
       ...(replyTo ? { replyTo } : {}),
       from: COMPANY_EMAIL_FROM,
-      emailType: copy.kind,
-      file: { kind: copy.kind, title: copy.title, recipientName: architect.name, customerId: architect.id, source: copy.source, sentBy: u.user.id },
+      emailType: filed.file.kind,
+      ...filed,
     })
     if (!sent.success) return json({ error: `The email was not sent: ${sent.error ?? 'Resend said no'}` }, 502)
 
