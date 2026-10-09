@@ -58,9 +58,11 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_sows: dev('Board', AWARD_OPENS),
   gc_sow_lines: dev('Board', AWARD_OPENS),
 
-  // The trade's portal.
+  // The trade's portal, and its two records on a trade's signed work (P4a).
   gc_trade_portal_links: dev('Portal', PORTAL_OPENS),
   gc_trade_messages: dev('Portal', PORTAL_OPENS),
+  gc_back_charges: dev('Portal', PORTAL_OPENS),
+  gc_trade_change_requests: dev('Portal', PORTAL_OPENS),
 
   // The schedule.
   gc_schedules: dev('Schedule', SCHEDULE_OPENS),
