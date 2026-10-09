@@ -86,7 +86,7 @@ describe('fetchCustomerProfile', () => {
     expect(q('customers').steps.some((s) => s.method === 'single')).toBe(true)
     expect(argsOf(q('customer_contact_persons').steps, 'order')).toEqual([['name']])
     const jobs = q('jobs_ledger')
-    expect(String(argsOf(jobs.steps, 'select')[0]![0])).toContain('invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date), payments:jobs_ledger_payments(invoice_id, amount, paid_on)')
+    expect(String(argsOf(jobs.steps, 'select')[0]![0])).toContain('invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date, sequence_order), payments:jobs_ledger_payments(invoice_id, amount, paid_on)')
     expect(argsOf(jobs.steps, 'eq')).toEqual([['customer_id', 'c1']])
     expect(argsOf(jobs.steps, 'order')).toEqual([['created_at', { ascending: false }]])
     expect(String(argsOf(q('projects').steps, 'select')[0]![0])).toContain('workflows:project_workflows(id, project_workflow_steps(')

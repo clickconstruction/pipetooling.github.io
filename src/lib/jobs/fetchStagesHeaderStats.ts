@@ -28,6 +28,7 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
+import { loadUnlinkedMoney } from '../billing/loadUnlinkedMoney'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { fetchWorkingStagePlanInputs } from './fetchWorkingStagePlanInputs'
 import type { WorkingStageInputs } from './capableToBillPlan'
@@ -70,47 +71,25 @@ export function collectedWindowStartYmd(now = new Date()): string {
 }
 
 /**
- * The money the payment rule needs (v2.5006; the owner's call of 2026-10-09): a payment put on the
- * job with no bill picked pays the job's bills oldest first. The reads above hold linked payments and
- * the last 30 days only, and open bills only — so for every job with a billed bill, add its unlinked
- * payments; and for each job that has unlinked money, its paid bills, because the rule walks every
- * sent bill (`appliedByInvoiceUnderRule`). A job with no unlinked money reads as before.
+ * The money the payment rule needs (v2.5006): the unlinked payments of every job with a billed bill,
+ * and the paid bills of each job that has unlinked money (`loadUnlinkedMoney`, shared v2.5010).
+ * Payments read twice (a recent unlinked payment is in the window read too) are kept once.
  */
 async function addUnlinkedMoneyRows(
   invoiceRows: LeanStatsInvoiceRow[],
   paymentRows: LeanStatsPaymentRow[],
 ): Promise<{ invoices: LeanStatsInvoiceRow[]; payments: LeanStatsPaymentRow[] }> {
-  const billedJobIds = [...new Set(invoiceRows.filter((i) => i.status === 'billed').map((i) => i.job_id))]
-  if (billedJobIds.length === 0) return { invoices: invoiceRows, payments: paymentRows }
-  const unlinked = (await fetchAllRowsChunkedIn(
-    billedJobIds,
-    async (chunk, from, to) => ({
-      data: (await withSupabaseRetry(
-        async () =>
-          supabase.from('jobs_ledger_payments').select(LEAN_STATS_PAYMENT_COLUMNS).is('invoice_id', null).in('job_id', chunk).order('id').range(from, to),
-        'stages header stats: unlinked payments',
-      )) as unknown as LeanStatsPaymentRow[] | null,
-      error: null,
-    }),
-    'stages header stats: unlinked payments',
-  )).filter((p) => !p.invoice_id) as LeanStatsPaymentRow[]
+  const billedJobIds = invoiceRows.filter((i) => i.status === 'billed').map((i) => i.job_id)
+  const { unlinkedPayments, paidBills } = await loadUnlinkedMoney<LeanStatsPaymentRow, LeanStatsInvoiceRow>(billedJobIds, {
+    paymentColumns: LEAN_STATS_PAYMENT_COLUMNS,
+    invoiceColumns: LEAN_STATS_INVOICE_COLUMNS,
+    label: 'stages header stats',
+  })
   const seen = new Set(paymentRows.map((p) => p.id).filter(Boolean))
-  const payments = [...paymentRows, ...unlinked.filter((p) => !p.id || !seen.has(p.id))]
-  const unlinkedJobIds = [...new Set(unlinked.filter((p) => Number(p.amount ?? 0) > 0).map((p) => p.job_id))]
-  if (unlinkedJobIds.length === 0) return { invoices: invoiceRows, payments }
-  const paidBills = (await fetchAllRowsChunkedIn(
-    unlinkedJobIds,
-    async (chunk, from, to) => ({
-      data: (await withSupabaseRetry(
-        async () =>
-          supabase.from('jobs_ledger_invoices').select(LEAN_STATS_INVOICE_COLUMNS).eq('status', 'paid').in('job_id', chunk).order('id').range(from, to),
-        'stages header stats: paid bills',
-      )) as unknown as LeanStatsInvoiceRow[] | null,
-      error: null,
-    }),
-    'stages header stats: paid bills',
-  )).filter((i) => i.status === 'paid') as LeanStatsInvoiceRow[]
-  return { invoices: [...invoiceRows, ...paidBills], payments }
+  return {
+    invoices: [...invoiceRows, ...paidBills],
+    payments: [...paymentRows, ...unlinkedPayments.filter((p) => !p.id || !seen.has(p.id))],
+  }
 }
 
 export async function fetchStagesHeaderStats(

@@ -60,7 +60,7 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
         supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, click_number, job_name, status, revenue, payments_made, created_at, invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date), payments:jobs_ledger_payments(invoice_id, amount, paid_on)',
+            'id, hcp_number, click_number, job_name, status, revenue, payments_made, created_at, invoices:jobs_ledger_invoices(id, status, amount, billed_at, estimated_bill_date, sequence_order), payments:jobs_ledger_payments(invoice_id, amount, paid_on)',
           )
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false }),

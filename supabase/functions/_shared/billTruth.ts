@@ -224,8 +224,8 @@ export function appliedByInvoiceId(payments: ReadonlyArray<BillTruthPayment>): M
  * job's unlinked money pays the part of the job on no sent bill first (given its `revenue`), then
  * its sent bills oldest first (`attributeJobPayments`). A job with no unlinked money reads exactly
  * as `appliedByInvoiceId`, so a caller that loads only linked payments sees no change; a job with
- * unlinked money needs every sent bill (billed and paid) and every payment, each payment carrying
- * its `job_id`.
+ * unlinked money needs every sent bill (billed and paid) and every payment. An unlinked payment
+ * needs its `job_id`; a linked one finds its job through its bill when it carries none (v2.5010).
  */
 export function appliedByInvoiceUnderRule(
   jobs: ReadonlyArray<Pick<BillTruthJob, 'id' | 'revenue'>>,
@@ -236,6 +236,10 @@ export function appliedByInvoiceUnderRule(
   const unlinkedJobs = new Set<string>()
   for (const p of payments) if (!p.invoice_id && p.job_id && Number(p.amount ?? 0) > 0) unlinkedJobs.add(p.job_id)
   if (unlinkedJobs.size === 0) return out
+  // A linked payment read without its job (a bill-keyed read) still belongs to that bill's job.
+  const jobOfInvoice = new Map<string, string>()
+  for (const inv of invoices) jobOfInvoice.set(inv.id, inv.job_id)
+  const jobOf = (p: BillTruthPayment): string | null => p.job_id ?? (p.invoice_id ? jobOfInvoice.get(p.invoice_id) ?? null : null)
   const invoicesByJob = new Map<string, BillTruthInvoice[]>()
   for (const inv of invoices) {
     if (!unlinkedJobs.has(inv.job_id)) continue
@@ -245,10 +249,11 @@ export function appliedByInvoiceUnderRule(
   }
   const paymentsByJob = new Map<string, BillTruthPayment[]>()
   for (const p of payments) {
-    if (!p.job_id || !unlinkedJobs.has(p.job_id)) continue
-    const list = paymentsByJob.get(p.job_id)
+    const jobId = jobOf(p)
+    if (!jobId || !unlinkedJobs.has(jobId)) continue
+    const list = paymentsByJob.get(jobId)
     if (list) list.push(p)
-    else paymentsByJob.set(p.job_id, [p])
+    else paymentsByJob.set(jobId, [p])
   }
   for (const job of jobs) {
     if (!unlinkedJobs.has(job.id)) continue
