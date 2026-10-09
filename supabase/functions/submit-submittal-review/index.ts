@@ -16,7 +16,7 @@
  *     row carries the roll-up (`rollUpPartDecisions`); refused when the
  *     room or the person's link is closed (410), the person is marked watching (403), the
  *     revision is not the newest on the GC's record (409 stale_revision; shared, or answered by email
- *     with its package, `_shared/submittalRecord.ts`), or the rows are not on
+ *     with its package or a reviewer's file, `_shared/submittalRecord.ts`), or the rows are not on
  *     that revision (404). A `decided` event with the counts.
  * No JWT — the token is the credential; service role behind it (the sign-bid-room pattern).
  * v2.4599: identify, message and decide are refused (403, `code: 'office' | 'preview'`) when the
@@ -135,7 +135,7 @@ serve(async (req) => {
       if (!room || !person) return json({ error: 'Tell us who you are first.', code: 'identify' }, 401)
       const { data: sub } = await admin.from('bid_submittals').select('id, bid_id, rev_number').eq('id', v.submittalId).maybeSingle()
       const s = sub as { id: string; bid_id: string; rev_number: number } | null
-      // The GC's record (2026-10-06): shared, or answered by email with its package. The newest on it is current.
+      // The GC's record (2026-10-06): shared, or answered by email with its package or a reviewer's file. The newest on it is current.
       const record = onRecord(await loadRevisionStandings(admin, room.bid_id))
       const verdict = decideVerdict({
         roomStatus: room.closed_at ? 'closed' : room.status,
