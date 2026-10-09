@@ -1,0 +1,4 @@
+import { q, asRole } from './verify-lib.mjs'
+await q('1 the three gates name the controller', `SELECT p.proname, pg_get_functiondef(p.oid) LIKE '%controller%' AS names_controller FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname='public' WHERE p.proname IN ('can_write_payment_promises','can_read_payment_promises','get_billed_customer_pay_speeds') ORDER BY 1;`)
+await q('2 a controller reads promises and pay speeds (rolled back)', `BEGIN; ${asRole('controller')} SELECT public.can_read_payment_promises() AS reads, public.can_write_payment_promises() AS writes, (public.get_billed_customer_pay_speeds() IS NOT NULL) AS speeds_not_null; ROLLBACK;`)
+await q('3 an estimator still reads neither (rolled back)', `BEGIN; ${asRole('estimator')} SELECT public.can_read_payment_promises() AS reads, public.can_write_payment_promises() AS writes; ROLLBACK;`)
