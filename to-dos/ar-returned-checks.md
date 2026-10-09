@@ -24,7 +24,7 @@ next: >
   goes out, Put the bill back). Delete this card once those are done.
 size: XS (two live steps, no code)
 blocker: The office's and the owner's — a Stripe Dashboard setting and one test dispute.
-ver: v2.4950 · 5033 · 5091
+ver: v2.4902 · 4950 · 5033 · 5091
 opinion: your call — the code is done; the two live steps are the office's and the owner's.
 mockup: not required — each piece copies the case and its words, which exist
 ---
