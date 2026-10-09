@@ -29,7 +29,8 @@ const one = (over: Partial<LienNextUpInput>) => {
 
 describe('buildLienNextUp — notices', () => {
   it('an approved notice with a pay offer (v2.4713) says so in its words', () => {
-    const item = { id: 'i-offer', status: 'approved', offer_pct: 10, offer_by: '2026-11-15' } as unknown as LienDeskEntry['item']
+    // Signed (v2.5087): an unsigned approved notice is the leader's Sign row, and the office's row says it waits.
+    const item = { id: 'i-offer', status: 'approved', offer_pct: 10, offer_by: '2026-11-15', fields: {}, signed_at: '2026-10-05T19:14:00Z', signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type' } as unknown as LienDeskEntry['item']
     const r = one({ notices: [notice('j1', 'ready', { item })] })
     expect(r.sub).toBe('Approved · offer 10% by Nov 15 · ready to send')
     expect(one({ notices: [notice('j1', 'ready')] }).sub).toBe('Approved · ready to send')
@@ -236,5 +237,30 @@ describe('groupLienNextUp — only you can approve, first (punch list #101 PR 3)
   it('an affidavit or retainage notice waiting on the leader names him too', () => {
     const rows = build({ affidavits: [affidavit('j5', 'awaiting')], retainage: [retainage('j6', 'awaiting')], role: 'assistant', leaderName: () => 'Sam' })
     expect(rows.map((r) => r.sub).sort()).toEqual(['Affidavit · waiting on Sam', 'Retainage · waiting on Sam'])
+  })
+})
+
+describe('Only you can sign (v2.5087)', () => {
+  it('an approved notice the leader has not signed is his own Sign row, first on the list and in his count; the office’s row says it waits on him', () => {
+    const unsigned = { id: 'i-word', status: 'approved', approval_mode: 'word', fields: {}, signed_at: null } as unknown as LienDeskEntry['item']
+    const signed = { id: 'i-signed', status: 'approved', approval_mode: 'leader', fields: {}, signed_at: '2026-10-05T19:14:00Z', signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type' } as unknown as LienDeskEntry['item']
+    const leaderRows = build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: unsigned }), notice('j2', 'ready', { item: signed, gcCustomerId: 'gc2' })] })
+    const sign = leaderRows.find((r) => r.jobId === 'j1')!
+    expect(sign.action).toBe('sign')
+    expect(sign.button).toBe('Sign')
+    expect(sign.sub).toBe('Approved on your word · unsigned')
+    expect(sign.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
+    expect(leaderRows.find((r) => r.jobId === 'j2')!.action).toBe('send')
+    const groups = groupLienNextUp(leaderRows)
+    expect(groups[0]!.group).toBe('sign')
+    expect(groups[0]!.label).toBe('Only you can sign')
+    expect(groups[0]!.rows.map((r) => r.jobId)).toEqual(['j1'])
+    expect(lienNextUpCount(leaderRows)).toBe(2)
+    // Two unsigned for one GC are two Sign rows, never one run row.
+    const twoUnsigned = build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: unsigned }), notice('j3', 'ready', { item: unsigned })] })
+    expect(twoUnsigned.filter((r) => r.action === 'sign')).toHaveLength(2)
+    const officeRow = one({ role: 'assistant', notices: [notice('j1', 'ready', { item: unsigned })], leaderName: () => 'Robert' })
+    expect(officeRow.action).toBe('send')
+    expect(officeRow.sub).toBe('Approved · ready to send · unsigned, waits on Robert')
   })
 })

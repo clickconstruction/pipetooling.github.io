@@ -222,7 +222,10 @@ export function QuickfillNeedsYouSection({
           } else if (item.key === 'lien-notice-batch') {
             const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
             navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
-          } else if (item.key === 'lien-window-missed') {
+          } else if (item.key === 'lien-notice-sign') {
+              // The leader's signatures (v2.5087): the Ready pile, where each notice's footer offers Sign ▸.
+              navigate('/jobs?tab=stages&liendesk=1&liendeskPile=ready')
+            } else if (item.key === 'lien-window-missed') {
             navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
           } else if (item.key === 'lien-notice-approve') {
             // The leader's card lands on what waits on him (punch list #82).

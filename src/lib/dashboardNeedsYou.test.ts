@@ -1276,3 +1276,28 @@ describe('vehicle-records-missing (v2.4700)', () => {
     expect(buildNeedsYouItems(inputs({ vehicleRecordGapsEnabled: true, vehicleRecordGaps: [] })).some((i) => i.key === 'vehicle-records-missing')).toBe(false)
   })
 })
+
+describe('lien-notice-sign (v2.5087)', () => {
+  it('the leader’s signatures on approved notices: one line with the count, ranked above his approvals; quiet for the office, at zero, and for a summary without the count', () => {
+    const base = {
+      office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 3, next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0 } },
+      leader: { jobs: 0, dollars: 0, earliestDeadline: null, toSign: 3 },
+      held: 0,
+      missed: { jobs: 0, months: 0, dollars: 0, lines: [] },
+    }
+    const leader = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: base, lienDeskLeader: true }))
+    expect(leader.map((i) => i.key)).toEqual(['lien-notice-sign'])
+    expect(leader[0]?.title).toBe('Sign 3 lien notices before the run')
+    expect(leader[0]?.figure).toBe('3')
+    expect(leader[0]?.actionLabel).toBe('Sign them')
+    expect(leader[0]?.severity).toBe('blue')
+    const one = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: { ...base, leader: { ...base.leader, toSign: 1 } }, lienDeskLeader: true }))
+    expect(one[0]?.title).toBe('Sign a lien notice before the run')
+    expect(one[0]?.actionLabel).toBe('Sign it')
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: base, lienDeskLeader: false })).map((i) => i.key)).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: { ...base, leader: { ...base.leader, toSign: 0 } }, lienDeskLeader: true }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: { ...base, leader: { jobs: 0, dollars: 0, earliestDeadline: null } }, lienDeskLeader: true }))).toEqual([])
+    // Signing ranks above approving: a quick press that unblocks the run.
+    expect(NEEDS_YOU_RANK['lien-notice-sign']).toBeLessThan(NEEDS_YOU_RANK['lien-notice-approve'])
+  })
+})

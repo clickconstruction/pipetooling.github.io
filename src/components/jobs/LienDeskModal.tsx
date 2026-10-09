@@ -1512,11 +1512,13 @@ export default function LienDeskModal({
                 e.pile === 'awaiting'
                   ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.submitted_at)) : ''}`
                   : e.pile === 'ready'
-                    ? e.item?.approval_mode === 'word'
-                      ? wordRecordWords(e.item, leaderNameFor?.(data?.jobsById[e.jobId]?.master_user_id ?? null))
-                      : e.item?.approval_mode === 'rule'
-                        ? 'standing rule'
-                        : 'approved'
+                    ? `${
+                        e.item?.approval_mode === 'word'
+                          ? wordRecordWords(e.item, leaderNameFor?.(data?.jobsById[e.jobId]?.master_user_id ?? null))
+                          : e.item?.approval_mode === 'rule'
+                            ? 'standing rule'
+                            : 'approved'
+                      }${e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' ? ' · unsigned' : ''}`
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
                       : e.pile === 'sent'
