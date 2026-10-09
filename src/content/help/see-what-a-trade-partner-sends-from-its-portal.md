@@ -2,7 +2,7 @@
 title: see what a trade partner sends from its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes
+keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request
 order: 97
 ---
 A trade partner can answer us from its portal. This guide shows where each thing it sends lands for the office.
@@ -43,6 +43,10 @@ The company can ask about the plans until questions close. The question shows in
 
 The company can add people and tick the kinds of email each one gets. Every kind always keeps someone. The people show in the company's window. [Look up a trade partner](/help/look-up-a-trade-partner) says where.
 
+## A charge's answer, or a change it asks for
+
+On a job of ours, the company can press **Agree** on a charge from us. It can also press **Dispute it** and say why. It can press **Ask for a change** to the work it signed for. Each one is saved with the job. No office screen shows them yet.
+
 ## What the company cannot send yet
 
-Its own quote file still goes by email to our project manager. The portal says so under the quote.
+Its own quote file still goes by email to our project manager. The portal says so under the quote. A photo or a ticket for a change goes by email too. The change form says so.

@@ -7,7 +7,7 @@ import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../../supabase/f
 import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { portalAsks } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
-import { askChips, askWhen, pastWords, portalHomeGroups, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
+import { askChips, askWhen, changeFileByEmailWords, pastWords, portalHomeGroups, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
 import { tradePortalState } from './tradePortalState'
 
 const TODAY = '2026-10-08'
@@ -104,5 +104,15 @@ describe('the words for every refusal a press can get (P2b-i)', () => {
     expect(tradeErrorWords('projectLost', 'en')).toBe('Click Construction did not win this project, so nothing more is needed on it.')
     expect(tradeErrorWords('openFirst', 'es')).toBe('Primero abra los planos.')
     expect(tradeErrorWords('somethingNew', 'en')).toBe('That did not save. Try again in a minute.')
+  })
+})
+
+describe('a change’s photo or ticket, by email until P5a (P4b-ii)', () => {
+  it('goes to our project manager on the job, or to us', () => {
+    const job = state.projects.find((p) => p.id === ID.job)!
+    expect(changeFileByEmailWords(job, 'en')).toBe('Have a photo or a ticket? Email it to Click Construction.')
+    const withPm = { ...job, team: [...(job.team ?? []), { role: 'projectManager' as const, name: 'Avery Lin', phone: '', email: 'avery@example.com' }] }
+    expect(changeFileByEmailWords(withPm, 'en')).toBe('Have a photo or a ticket? Email it to Avery Lin (avery@example.com).')
+    expect(changeFileByEmailWords(withPm, 'es')).toBe('¿Tiene una foto o una boleta? Envíela por correo a Avery Lin (avery@example.com).')
   })
 })

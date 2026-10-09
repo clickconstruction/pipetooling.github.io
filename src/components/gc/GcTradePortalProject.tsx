@@ -12,6 +12,8 @@ import { COPPER, HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
+import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
+import { GcTradePortalChanges } from './GcTradePortalChanges'
 import { AnswerLines, AskQuestion, ConfirmQuote, PassOnAsk, QuoteDay } from './GcTradePortalPresses'
 import { QuoteForm } from './GcTradePortalQuoteForm'
 import { PortalBlock, PortalNote } from './GcTradePortalUi'
@@ -90,6 +92,9 @@ function TradeBlocks({
   // We lost the project: the plans stay to look at, nothing else asks for anything.
   const closed = Boolean(project.lostOn) && invite.status !== 'declined'
   const closedWords = closed ? portalClosedWords(project, Boolean(invite.bid), lang) : null
+  // The award (P4b-i): its own job, or a trade we gave another company, as the prototype's PackageBlock reads it.
+  const awardedToMe = pkg.awardedInviteId === invite.id
+  const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
   const questions = portalQuestions(project, pkg.id, partner.id)
   const closeOn = questionsCloseOn(project)
   // The prototype's closing rule on its own shape (main's questionsOpen reads the row's 'bidding'): never on a bid we lost.
@@ -134,7 +139,7 @@ function TradeBlocks({
         )}
       </PortalBlock>
 
-      {!closed && invite.status !== 'declined' && (questions.length > 0 || closeOn || (press && canAsk)) && (
+      {!closed && !awardedElsewhere && invite.status !== 'declined' && (questions.length > 0 || closeOn || (press && canAsk)) && (
         <PortalBlock title={t('questionsTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.55rem', fontSize: '0.9rem' }}>
             {press && canAsk ? (
@@ -162,6 +167,7 @@ function TradeBlocks({
         </PortalBlock>
       )}
 
+      {/* On its own job the quote asks nothing more; its statement of work's block comes with P2c. */}
       {closedWords ? (
         <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
@@ -169,11 +175,17 @@ function TradeBlocks({
             <span>{closedWords.next}</span>
           </div>
         </PortalBlock>
-      ) : invite.status === 'declined' ? (
+      ) : awardedElsewhere ? (
+        <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</PortalBlock>
+      ) : awardedToMe ? null : invite.status === 'declined' ? (
         <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</PortalBlock>
       ) : (
         <AskBlock project={project} pkg={pkg} invite={invite} today={today} openedNewest={!news.behind} notVetted={portalVetting(partner).state === 'send' || portalVetting(partner).state === 'checking'} />
       )}
+
+      {/* Its job (P4b-ii): the charges to it and the changes it asked for, each on a trade that is its own only. */}
+      <GcTradePortalBackCharges project={project} pkg={pkg} partnerId={partner.id} today={today} />
+      <GcTradePortalChanges project={project} pkg={pkg} partnerId={partner.id} />
     </>
   )
 }
