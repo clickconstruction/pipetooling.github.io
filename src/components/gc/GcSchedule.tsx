@@ -24,21 +24,27 @@ import { peopleOnSite } from '../../lib/gc/schedule/peopleOnSite'
 import { crowdedWeeks } from '../../lib/gc/schedule/places'
 import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gc/schedule/rough'
 import type { ScheduleRead } from '../../lib/gc/schedule/rows'
+import { planMove } from '../../lib/gc/schedule/moves'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
-import { draftRefusal, draftStart, draftWords } from '../../lib/gc/schedule/scheduleWindow'
+import { draftRefusal, draftStart, draftWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
+import type { ScheduleActivity, ScheduleMove } from '../../lib/gc/schedule/types'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
-import { scheduleChangedRefusal } from '../../lib/gc/schedule/versionRefusal'
+import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { waitRows } from '../../lib/gc/schedule/waits'
-import { drawSchedule, loadSchedule } from '../../lib/gc/scheduleIo'
+import { drawSchedule, loadSchedule, redoScheduleMove, saveScheduleMove, undoScheduleMove } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
 import { GcScheduleBar } from './GcScheduleBar'
+import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
 import { Btn, Card, input } from './gcUi'
 
-/** The board's state (`boardStateFromRows`), the job to read, and who prints, for the paper's foot. */
-export function GcSchedule({ state, projectId, by }: { state: GcState; projectId: string; by: string }) {
+/**
+ * The board's state (`boardStateFromRows`), the job to read, who prints and moves (the paper's foot, the move's name),
+ * and whether this person may move a bar (a dev's until the schedule's PR 10).
+ */
+export function GcSchedule({ state, projectId, by, canMove = false }: { state: GcState; projectId: string; by: string; canMove?: boolean }) {
   const [read, setRead] = useState<ScheduleRead | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'gone' | 'failed'>('loading')
   const [problem, setProblem] = useState<string | null>(null)
@@ -87,8 +93,71 @@ export function GcSchedule({ state, projectId, by }: { state: GcState; projectId
     [state, projectId],
   )
 
+  /**
+   * A move with why (PR 8a): the kernel's record and the bars it leaves, against the version this window read.
+   * It throws the database's refusal, which the move's window shows. `read.state` carries the bars the move
+   * was worked out from, which the io measures the answer against.
+   */
+  const saveMove = useCallback(
+    async (move: ScheduleMove, activities: ScheduleActivity[], words: string) => {
+      if (!read || read.version === null) throw new Error('Nothing is drawn yet.')
+      const next = await saveScheduleMove(read.state, projectId, { version: read.version, words }, move, activities)
+      if (next) setRead(next)
+    },
+    [read, projectId],
+  )
+  // Undo and Redo (G-40): replayed on the server from the move's own record, against the version read.
+  const [replaying, setReplaying] = useState(false)
+  const [replayRefused, setReplayRefused] = useState<ScheduleChange[] | null>(null)
+  const [replayProblem, setReplayProblem] = useState<string | null>(null)
+  const replay = useCallback(
+    async (kind: 'undo' | 'redo', move: ScheduleMove) => {
+      if (!read || read.version === null) return
+      setReplaying(true)
+      setReplayRefused(null)
+      setReplayProblem(null)
+      try {
+        const press = { version: read.version, words: kind === 'undo' ? undoWords(read.project, move, by) : redoWords(read.project, move, by) }
+        const next = await (kind === 'undo' ? undoScheduleMove : redoScheduleMove)(read.state, projectId, press, move.id)
+        if (next) setRead(next)
+      } catch (e) {
+        const refusal = scheduleChangedRefusal(e)
+        if (refusal) {
+          // Someone saved first: say what, and read the schedule again.
+          setReplayRefused(refusal.changes)
+          setReads((n) => n + 1)
+        } else setReplayProblem(formatErrorMessage(e, kind === 'undo' ? 'The undo did not save.' : 'The redo did not save.'))
+      } finally {
+        setReplaying(false)
+      }
+    },
+    [read, projectId, by],
+  )
+
   // What it last read stays on screen while it reads again.
-  if (read) return <ScheduleView read={read} by={by} drawing={drawing} drawProblem={drawProblem} onDraw={(start) => void draw(read.project, start)} />
+  if (read)
+    return (
+      <ScheduleView
+        read={read}
+        by={by}
+        drawing={drawing}
+        drawProblem={drawProblem}
+        onDraw={(start) => void draw(read.project, start)}
+        moves={
+          canMove
+            ? {
+                save: saveMove,
+                reload: () => setReads((n) => n + 1),
+                undo: (move) => void replay('undo', move),
+                redo: (move) => void replay('redo', move),
+                busy: replaying,
+                refused: replayRefused,
+                problem: replayProblem,
+              }
+            : null
+        }
+      />
+    )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
   if (status === 'failed')
     return (
@@ -100,8 +169,22 @@ export function GcSchedule({ state, projectId, by }: { state: GcState; projectId
   return <div style={{ fontSize: '0.875rem' }}>Loading the schedule…</div>
 }
 
-/** The schedule as read: the first draft's card while nothing is drawn, else the measures, the chart and the bar pressed. */
-function ScheduleView({ read, by, drawing, drawProblem, onDraw }: { read: ScheduleRead; by: string; drawing: boolean; drawProblem: string | null; onDraw: (start: string) => void }) {
+/** What a person who may move a bar presses (PR 8a): a move with why, reading again after a refusal, Undo and Redo. */
+interface MovePresses {
+  save: (move: ScheduleMove, activities: ScheduleActivity[], words: string) => Promise<void>
+  reload: () => void
+  undo: (move: ScheduleMove) => void
+  redo: (move: ScheduleMove) => void
+  busy: boolean
+  refused: ScheduleChange[] | null
+  problem: string | null
+}
+
+/**
+ * The schedule as read: the first draft's card while nothing is drawn, else the measures, the chart, the bar pressed
+ * and the record of moves. With `moves`, a bar dragged, pulled at an end or linked opens Why it moved.
+ */
+function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read: ScheduleRead; by: string; drawing: boolean; drawProblem: string | null; onDraw: (start: string) => void; moves: MovePresses | null }) {
   const { state, project } = read
   const building = project.stage === 'building'
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
@@ -126,6 +209,16 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw }: { read: Schedu
   const [picked, setPicked] = useState<string | null>(null)
   // The chart's one company (G-13), held here so the call list (7c) can pick it.
   const [company, setCompany] = useState<string | undefined>(undefined)
+  // A move waiting on why it moved (PR 8a): every drag, pulled end and link goes through the window first.
+  const [pending, setPending] = useState<PendingMove | null>(null)
+  // What a dragged bar would push and do to the finish, drawn while it is dragged.
+  const planOf = useCallback(
+    (lineId: string, start: string, finish: string) => {
+      const plan = planMove(project, lineId, start, finish)
+      return plan && !plan.problem ? { pushed: plan.pushed.map((p) => ({ lineId: p.lineId, start: p.to.start, finish: p.to.finish })), words: plan.words } : null
+    },
+    [project],
+  )
   useEffect(() => {
     if (picked) window.setTimeout(() => document.querySelector('[data-gc-opened-activity]')?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }), 0)
   }, [picked])
@@ -200,9 +293,32 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw }: { read: Schedu
           building={building}
           picked={picked}
           onPick={setPicked}
+          {...(moves && project.schedule
+            ? {
+                onMove: (lineId: string, start: string, finish: string) => setPending({ lineId, start, finish, after: project.schedule?.activities.find((a) => a.lineId === lineId)?.after ?? [] }),
+                planOf,
+                onLink: (from: string, to: string) => {
+                  const a = project.schedule?.activities.find((x) => x.lineId === to)
+                  if (a && !a.after.includes(from)) setPending({ lineId: to, start: a.start, finish: a.finish, after: [...a.after, from] })
+                },
+                onUnlink: (from: string, to: string) => {
+                  const a = project.schedule?.activities.find((x) => x.lineId === to)
+                  if (a) setPending({ lineId: to, start: a.start, finish: a.finish, after: a.after.filter((id) => id !== from) })
+                },
+              }
+            : {})}
         />
       </Card>
       {pickedBar && <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} onClose={() => setPicked(null)} />}
+      {moves ? (
+        <GcMoveHistory project={project} onUndo={moves.undo} onRedo={moves.redo} busy={moves.busy} refused={moves.refused} problem={moves.problem} />
+      ) : (
+        <GcMoveHistory project={project} />
+      )}
+      {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}
+      {moves && pending && (
+        <GcMoveExplain key={pending.lineId} state={state} project={project} pending={pending} by={by} today={state.today} onSave={moves.save} onReload={moves.reload} onClose={() => setPending(null)} />
+      )}
       {building && <LookAhead weeks={m.lookAhead} />}
     </div>
   )

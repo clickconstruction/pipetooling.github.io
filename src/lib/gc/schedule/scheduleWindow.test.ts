@@ -8,7 +8,9 @@ import type { GcProject, GcState } from '../types'
 import { chartHolds } from './chartHolds'
 import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
-import { barCardRows, draftRefusal, draftStart, draftWords } from './scheduleWindow'
+import { addDays } from '../building'
+import { planMove } from './moves'
+import { barCardRows, changeTimeWords, draftRefusal, draftStart, draftWords, moveWords, redoWords, undoWords } from './scheduleWindow'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 
@@ -122,5 +124,39 @@ describe('the opened bar’s card', () => {
     expect(words(rows, 'Spare')).toEqual([])
     expect(words(rows, 'Held')).toEqual([])
     expect(words(rows, 'Done')).toEqual(['100%'])
+  })
+})
+
+describe('a move’s, an undo’s and a redo’s line in the log (PR 8a)', () => {
+  const p = job(s, 'fairoaksd')
+  const a = p.schedule!.activities.find((x) => x.lineId === 'froof-1')!
+
+  it('says the bar’s new days, what it pushed and who said why, as the prototype’s reducer did', () => {
+    const plan = planMove(p, a.lineId, addDays(a.start, 7), addDays(a.finish, 7))!
+    expect(plan.problem).toBeNull()
+    const words = moveWords(p, a.lineId, plan, { by: 'Robert', note: '  Rain kept the roof open a week.  ' })
+    expect(words.startsWith(`Roofing · TPO membrane now runs Mon Sep 28 to Fri Oct 16.`)).toBe(true)
+    expect(words.endsWith(' Robert: Rain kept the roof open a week.')).toBe(true)
+    // What it pushed is said between, in the chart's words.
+    if (plan.pushed.length > 0) expect(words).toMatch(/now runs Mon Sep 28 to Fri Oct 16\. .+ Robert: /)
+  })
+
+  it('says a move that pushes nothing with no line between', () => {
+    const plan = { to: { start: '2026-11-02', finish: '2026-11-06' }, pushed: [] }
+    expect(moveWords(p, a.lineId, plan, { by: 'Ann', note: 'The tile came early.' })).toBe('Roofing · TPO membrane now runs Mon Nov 2 to Fri Nov 6. Ann: The tile came early.')
+  })
+
+  it('says Undo and Redo as the prototype’s reducer did', () => {
+    const move = { lineId: a.lineId, from: { start: '2026-09-21', finish: '2026-10-09' }, to: { start: '2026-09-28', finish: '2026-10-16' } }
+    expect(undoWords(p, move, 'Robert')).toBe('Robert undid a move: Roofing · TPO membrane is back to Sep 21 to Oct 9.')
+    expect(redoWords(p, move, 'Robert')).toBe('Robert put a move back: Roofing · TPO membrane is Sep 28 to Oct 16 again.')
+  })
+
+  it('says when a change was saved on the company’s clock, in the refusal’s words', () => {
+    // 20:14 UTC on Nov 2 is 2:14 pm in Texas (CST); in October it is 3:14 pm (CDT).
+    expect(changeTimeWords('2026-11-02T20:14:00+00:00')).toBe('2:14 pm')
+    expect(changeTimeWords('2026-10-08T20:14:00Z')).toBe('3:14 pm')
+    expect(changeTimeWords('2026-10-08T14:05:00Z')).toBe('9:05 am')
+    expect(changeTimeWords('no time')).toBe('')
   })
 })

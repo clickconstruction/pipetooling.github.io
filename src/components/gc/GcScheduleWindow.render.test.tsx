@@ -8,7 +8,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcScheduleWindow } from './GcScheduleWindow'
-import { drawSchedule, loadSchedule } from '../../lib/gc/scheduleIo'
+import { drawSchedule, loadSchedule, saveScheduleMove, undoScheduleMove } from '../../lib/gc/scheduleIo'
+import { addDays } from '../../lib/gc/building'
+import { moveRecord, planMove } from '../../lib/gc/schedule/moves'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
@@ -16,7 +18,7 @@ import type { ProjectSchedule } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { checkSupabaseError } from '../../utils/errorHandling'
 
-vi.mock('../../lib/gc/scheduleIo', () => ({ loadSchedule: vi.fn(), drawSchedule: vi.fn() }))
+vi.mock('../../lib/gc/scheduleIo', () => ({ loadSchedule: vi.fn(), drawSchedule: vi.fn(), saveScheduleMove: vi.fn(), undoScheduleMove: vi.fn(), redoScheduleMove: vi.fn() }))
 
 const realMatchMedia = window.matchMedia
 const asPhone = (phone: boolean) => {
@@ -28,6 +30,8 @@ afterEach(() => {
   window.matchMedia = realMatchMedia
   vi.mocked(loadSchedule).mockReset()
   vi.mocked(drawSchedule).mockReset()
+  vi.mocked(saveScheduleMove).mockReset()
+  vi.mocked(undoScheduleMove).mockReset()
 })
 
 const s = initialGcState()
@@ -37,8 +41,8 @@ const withJob = (id: string, change: (p: GcProject) => GcProject): GcState => ({
 /** `loadSchedule`'s answer for one job of a state. */
 const readOf = (st: GcState, id: string, version: number | null = 3) => ({ state: st, project: job(st, id), version })
 
-function openWindow(project: GcProject, onClose = vi.fn()) {
-  const view = render(<GcScheduleWindow state={s} project={project} by="Robert Douglas" onClose={onClose} />)
+function openWindow(project: GcProject, onClose = vi.fn(), canMove = false) {
+  const view = render(<GcScheduleWindow state={s} project={project} by="Robert Douglas" canMove={canMove} onClose={onClose} />)
   return { ...view, onClose, dialog: () => screen.getByRole('dialog', { name: `${project.name}: the schedule` }) }
 }
 const toolbar = () => document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement
@@ -149,5 +153,91 @@ describe('the Schedule window', () => {
     fireEvent.click(dialog().parentElement as HTMLElement)
     fireEvent.click(dialog())
     expect(onClose).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe('moving a bar in the window (PR 8a)', () => {
+  /** A drag on a bar of the chart a week later, played with mouse events of the pointer's names (jsdom's carry no coordinates). */
+  function dragWeekLater(container: HTMLElement, name: string) {
+    fireEvent.click(screen.getByText('Open all'))
+    const bar = [...container.querySelectorAll('[data-gantt-bar]')].find((el) => el.getAttribute('aria-label')?.startsWith(name)) as HTMLElement
+    const pointer = (type: string, clientX: number) => fireEvent(bar, new MouseEvent(type, { bubbles: true, clientX, button: 0 }))
+    pointer('pointerdown', 100)
+    pointer('pointermove', 163)
+    pointer('pointerup', 163)
+    fireEvent.click(bar)
+  }
+  const whyIt = async () => {
+    const dialog = await screen.findByRole('dialog', { name: 'Why it moved' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Weather' }))
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Rain kept the roof open a week.' } })
+    return dialog
+  }
+
+  it('a dev drags a bar, says why, and it saves with the version read and the log’s words', async () => {
+    const read = readOf(s, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(saveScheduleMove).mockImplementation(async (_state, _id, _press, _move, activities) => readOf(withJob('fairoaksd', (p) => ({ ...p, schedule: { ...p.schedule!, activities } })), 'fairoaksd', 4))
+    const { container } = openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    dragWeekLater(container, 'TPO membrane')
+    const dialog = await whyIt()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the move' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Why it moved' })).toBeNull())
+    expect(saveScheduleMove).toHaveBeenCalledTimes(1)
+    const [state, id, press, move] = vi.mocked(saveScheduleMove).mock.calls[0]!
+    // The state the move was worked out on, with its bars: the io measures the answer against them.
+    expect(state).toBe(read.state)
+    expect(id).toBe('fairoaksd')
+    expect(press.version).toBe(3)
+    expect(press.words).toMatch(/^Roofing · TPO membrane now runs Mon Sep 28 to Fri Oct 16\..* Robert Douglas: Rain kept the roof open a week\.$/)
+    expect(move).toMatchObject({ lineId: 'froof-1', reason: 'weather', by: 'Robert Douglas' })
+  })
+
+  it('a save someone else beat stays open, reads the schedule again, and saves on the next press', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const details = JSON.stringify({ read: 3, version: 4, changes: [{ version: 4, at: '2026-11-02T20:14:00+00:00', by: null, name: 'Ann', words: 'Electrical · Lighting now runs Mon Sep 14 to Fri Oct 30. Ann: The fixtures ship a week late.' }] })
+    let stale: unknown = null
+    try {
+      checkSupabaseError({ data: null, status: 400, error: { code: 'P0001', message: SCHEDULE_CHANGED, details, hint: null } }, 'save the move')
+    } catch (e) {
+      stale = e
+    }
+    vi.mocked(saveScheduleMove).mockRejectedValueOnce(stale).mockResolvedValueOnce(readOf(s, 'fairoaksd', 5))
+    const { container } = openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    dragWeekLater(container, 'TPO membrane')
+    const dialog = await whyIt()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the move' }))
+    expect((await within(dialog).findByRole('alert')).textContent).toContain('2:14 pm Electrical · Lighting now runs Mon Sep 14 to Fri Oct 30.')
+    await waitFor(() => expect(loadSchedule).toHaveBeenCalledTimes(2))
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Why it moved' })).getByRole('button', { name: 'Save the move' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Why it moved' })).toBeNull())
+    expect(saveScheduleMove).toHaveBeenCalledTimes(2)
+  })
+
+  it('Undo sends the move with the version read and the log’s words', async () => {
+    const p = job(s, 'fairoaksd')
+    const a = p.schedule!.activities.find((x) => x.lineId === 'froof-1')!
+    const plan = planMove(p, a.lineId, addDays(a.start, 7), addDays(a.finish, 7))!
+    const move = { ...moveRecord(p.schedule!, a.lineId, plan, { reason: 'weather', note: 'Rain kept the roof open a week.', by: 'Robert' }, s.today), id: 'move-row-1' }
+    const movedState = withJob('fairoaksd', (x) => ({ ...x, schedule: { ...x.schedule!, activities: plan.activities, moves: [move, ...(x.schedule!.moves ?? [])] } }))
+    const read = readOf(movedState, 'fairoaksd', 7)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(undoScheduleMove).mockResolvedValue(readOf(s, 'fairoaksd', 8))
+    openWindow(job(movedState, 'fairoaksd'), vi.fn(), true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo' }))
+    await waitFor(() => expect(undoScheduleMove).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(undoScheduleMove).mock.calls[0]).toEqual([read.state, 'fairoaksd', { version: 7, words: 'Robert Douglas undid a move: Roofing · TPO membrane is back to Sep 21 to Oct 9.' }, 'move-row-1'])
+  })
+
+  it('someone who may not move a bar drags nothing and has no Undo', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { container } = openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    dragWeekLater(container, 'TPO membrane')
+    expect(screen.queryByRole('dialog', { name: 'Why it moved' })).toBeNull()
+    expect(screen.getByText(/Changes to the schedule/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
   })
 })
