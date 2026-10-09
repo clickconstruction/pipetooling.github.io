@@ -65,6 +65,16 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
     expect(body).toMatch(/WHERE i\.job_id = p_job_id/)
   })
 
+  it('job_rider_fees counts a GC card fee too, and the GC billing job\'s revenue adds the riders (v2.5113)', () => {
+    const riders = newestBodies.get('job_rider_fees')!
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'card_bill'\) = 'string' AND btrim\(l->>'card_bill'\) <> ''/)
+    const revenue = newestBodies.get('gc_owner_billing_revenue')!
+    expect(revenue.body).toMatch(/public\.job_rider_fees\(g\.billing_job_id\)/)
+    // The card fee goes on its bill as the rider job_rider_fees reads.
+    const finish = newestBodies.get('gc_card_bill_finish')!
+    expect(finish.body).toMatch(/'card_bill', p_invoice_id/)
+  })
+
   it('the returned check fee still raises the revenue with its bill, so the riders have something to keep', () => {
     const { body } = newestBodies.get('add_ar_return_case_fee')!
     expect(body).toMatch(/SET revenue = coalesce\(revenue, 0\) \+ v_fee/)
