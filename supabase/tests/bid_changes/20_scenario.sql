@@ -550,6 +550,10 @@ SELECT bct.same('removed rows: the estimator lists the drain, its price and its 
 SELECT bct.refused('removed rows: the price alone waits for its count row',
   format('SELECT public.restore_bid_removed_row(%L)', (SELECT archive_id FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1') WHERE record_id = '00000000-0000-0000-0000-00000000c791')),
   'Its count row was removed too. Put that back first.');
+-- The drain's archive row, as the estimator's list names it: the archive itself is a dev's read, so a
+-- lookup made as anyone else finds nothing and every refusal below would be "not waiting".
+INSERT INTO ids SELECT 'drain archive', archive_id FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1') WHERE record_id = '00000000-0000-0000-0000-00000000c790';
+SELECT bct.same('removed rows: the drain has one archive row waiting', (SELECT count(id)::text FROM ids WHERE k = 'drain archive'), '1');
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e4","role":"authenticated"}', true);
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e4', true);
 SELECT bct.refused('removed rows: a superintendent cannot list them',
@@ -557,7 +561,7 @@ SELECT bct.refused('removed rows: a superintendent cannot list them',
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e6","role":"authenticated"}', true);
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e6', true);
 SELECT bct.refused('removed rows: a trainee (read only) cannot put one back',
-  format('SELECT public.restore_bid_removed_row(%L)', (SELECT id FROM public.deleted_records_archive WHERE record_id = '00000000-0000-0000-0000-00000000c790' AND restored_at IS NULL)),
+  format('SELECT public.restore_bid_removed_row(%L)', (SELECT id FROM ids WHERE k = 'drain archive')),
   'Only someone who can edit this bid');
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
 SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
@@ -581,7 +585,7 @@ SELECT bct.same('removed rows: the three leave the list',
     WHERE record_id IN ('00000000-0000-0000-0000-00000000c790', '00000000-0000-0000-0000-00000000c791', '00000000-0000-0000-0000-00000000c792')),
   '0');
 SELECT bct.refused('removed rows: a row already put back is not waiting',
-  format('SELECT public.restore_bid_removed_row(%L)', (SELECT id FROM public.deleted_records_archive WHERE record_id = '00000000-0000-0000-0000-00000000c790' ORDER BY deleted_at DESC LIMIT 1)),
+  format('SELECT public.restore_bid_removed_row(%L)', (SELECT id FROM ids WHERE k = 'drain archive')),
   'not waiting to be put back');
 RESET ROLE;
 UPDATE mark SET id = bct.last();
