@@ -1,5 +1,6 @@
 import { AGING_BUCKETS, daysPastDue, type AgingBucketKey, type SupplyHouseAgingRow } from '../supplyHouseAging'
 import { isSupplyCredit } from '../supplyHouseDocument'
+import { creditPairingLine } from './supplyHouseInvoiceForm'
 
 /**
  * Supply houses on a phone (punch list #30, PR 5c). Pure: the balance per
@@ -78,6 +79,9 @@ export interface SupplyHousePhoneInvoice {
   is_paid: boolean
   on_job_account?: boolean | null
   job_allocations?: { job_id: string; pct: number }[]
+  /** v2.5035 · the kind and the pair, for the pair's words; optional until the types regenerate. */
+  document_kind?: string | null
+  credits_invoice_id?: string | null
 }
 
 const tabOf = (inv: SupplyHousePhoneInvoice): SupplyHouseInvoiceTab => (inv.is_paid ? 'paid' : isSupplyCredit(inv.amount) ? 'credits' : 'unpaid')
@@ -121,6 +125,9 @@ export function supplyHousePhoneInvoiceRows(
       else if (!inv.is_paid && !credit) parts.push('no due date')
       if (inv.on_job_account) parts.push('job account')
       parts.push(...jobs)
+      // v2.5035 · a credit and the invoice it credits name each other.
+      const pair = creditPairingLine(inv, invoices)
+      if (pair) parts.push(pair.charAt(0).toLowerCase() + pair.slice(1))
       const past = !inv.is_paid && !credit && inv.due_date ? Math.max(0, daysPastDue(inv.due_date, opts.todayYmd)) : 0
       return {
         id: inv.id,
