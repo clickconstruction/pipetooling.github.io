@@ -9,9 +9,12 @@
  */
 import { isAssistantLike } from './subcontractorLikeRole'
 
-/** Roles that may see the PO tab at all (mirrors Layout's gate). */
+/**
+ * Roles that may see the PO tab at all: the roles the PO-minting RPC allows, the same as Layout's
+ * Dispatch Mode gate. The controller joined the assistant on the owner's call of 2026-10-09 (v2.5011).
+ */
 export function dispatchModePoRoleAllowed(role: string | null | undefined): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant'
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 }
 
 /** What the tab does before the user ever touches the gear item. */

@@ -6,10 +6,13 @@ import {
 } from './dispatchModePoToggle'
 
 describe('dispatchModePoToggle role defaults (v2.2903, J29-F7)', () => {
-  it('the tab is offered to dev, master technicians and assistants only', () => {
+  it('the tab is offered to dev, master technicians, assistants and controllers only (controller since v2.5011)', () => {
     expect(dispatchModePoRoleAllowed('dev')).toBe(true)
     expect(dispatchModePoRoleAllowed('master_technician')).toBe(true)
     expect(dispatchModePoRoleAllowed('assistant')).toBe(true)
+    expect(dispatchModePoRoleAllowed('controller')).toBe(true)
+    expect(dispatchModePoRoleAllowed('primary')).toBe(false)
+    expect(dispatchModePoRoleAllowed('superintendent')).toBe(false)
     expect(dispatchModePoRoleAllowed('estimator')).toBe(false)
     expect(dispatchModePoRoleAllowed('subcontractor')).toBe(false)
     expect(dispatchModePoRoleAllowed(null)).toBe(false)
