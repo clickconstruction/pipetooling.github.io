@@ -5,7 +5,9 @@
  * Sort the day writes one call per picked charge with the exact rows, a refused charge stays
  * picked with its error, and the line's buttons open their windows. PR 3's undo: the message after
  * Sort the day, a card's sorted line and a Sorted row each clear a charge's splits through the same
- * write with no rows, and only for a charge that went to jobs. Made-up names and amounts.
+ * write with no rows, and only for a charge that went to jobs. PR 3's pay bar: only for a role that may
+ * mark payroll, a card's Cash App sends get one bar that marks them through `set_tally_payroll_flag`,
+ * and the message's Undo unmarks them. Made-up names and amounts.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -228,5 +230,44 @@ describe('TallyTeamQueue', () => {
     expect(undos).toHaveLength(1)
     fireEvent.click(undos[0]!)
     await waitFor(() => expect(undoWrites()).toEqual([{ p_for_user_id: 'u-ann', p_mercury_transaction_id: 't-job', p_rows: [] }]))
+  })
+
+  describe('the pay bar', () => {
+    const cashRow: StaleStaffRow = {
+      ...staffRow('t-cash', '12:05', -500, 'Cash App', 'Other'),
+      raw: { mercuryCategory: 'Other', createdAt: new Date(at('12:05')).toISOString(), bankDescription: 'CASH APP*ISAIAH WHITES' },
+    }
+
+    it('is not shown to a role that may not mark payroll', async () => {
+      reads = { ...READS, queue: [...READS.queue, cashRow] }
+      renderWithProviders(<TallyTeamQueue />)
+      await screen.findByTestId('tally-team-day-card')
+      await settle()
+      expect(screen.queryByTestId('tally-pay-bar')).toBeNull()
+    })
+
+    it('marks a card’s Cash App sends payroll in one press, and the message’s Undo unmarks them', async () => {
+      rpc.mockResolvedValue({ data: null, error: null })
+      reads = { ...READS, queue: [...READS.queue, cashRow] }
+      renderWithProviders(<TallyTeamQueue canMarkPayroll />)
+      const bar = await screen.findByTestId('tally-pay-bar')
+      expect(bar.textContent).toContain('1 Cash App pay send on Ann’s card · $500.00')
+      expect(bar.textContent).toContain('To Isaiah Whites. Pay goes to payroll, not to a job.')
+      fireEvent.click(within(bar).getByTestId('tally-pay-bar-mark'))
+      const flagWrites = () => rpc.mock.calls.filter(([name]) => name === 'set_tally_payroll_flag').map(([, a]) => a)
+      await waitFor(() => expect(flagWrites()).toEqual([{ p_mercury_transaction_id: 't-cash', p_is_payroll: true }]))
+      expect(await screen.findByText('Marked 1 Cash App pay send as payroll.')).toBeTruthy()
+      fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
+      await waitFor(() => expect(flagWrites()).toHaveLength(2))
+      expect(flagWrites()[1]).toEqual({ p_mercury_transaction_id: 't-cash', p_is_payroll: false })
+      expect(await screen.findByText('1 pay send is back to sort.')).toBeTruthy()
+    })
+
+    it('a card with no Cash App send has no bar', async () => {
+      renderWithProviders(<TallyTeamQueue canMarkPayroll />)
+      await screen.findByTestId('tally-team-day-card')
+      await settle()
+      expect(screen.queryByTestId('tally-pay-bar')).toBeNull()
+    })
   })
 })

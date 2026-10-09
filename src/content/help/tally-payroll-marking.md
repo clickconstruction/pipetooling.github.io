@@ -2,7 +2,7 @@
 title: mark payroll transactions in the tally
 category: Office
 roles: dev, master_technician, controller
-keywords: payroll, tally, mercury, transactions, rules, auto-mark
+keywords: payroll, tally, mercury, transactions, rules, auto-mark, cash app, pay sends, team queue
 order: 60
 ---
 Payroll runs show up in the Job Parts Tally like any other bank transaction. But payroll runs should never be split to jobs.
@@ -22,6 +22,24 @@ This resolves the transaction without allocating it to any job.
 :::
 
 Confirming marks the row {{chip:blue|Payroll ✓}}, and it counts as linked everywhere. The row drops out of the unlinked queue, the Dashboard unlinked banner, and the stale-tally warnings. Made a mistake? **Unmark** is one click on the row. An unmark is remembered, so rules will never re-mark that transaction.
+
+## Cash App pay sends on the team's cards
+
+Open [Job Parts Tally](/tally?tab=transactions) under {{chip:blue|Team}}. A purple bar sits above the cards when a card has Cash App pay sends. One bar shows for each card. It says how many, how much and who the money went to.
+
+:::example A pay bar
+**2 Cash App pay sends on Rob's card · $750.50**
+
+To Isaiah Whites and Paige Doe. Pay goes to payroll, not to a job.
+
+{{button:purple|Mark 2 payroll}}
+:::
+
+1. Read the names on the bar. Each one should be someone you paid.
+2. Press {{button:purple|Mark 2 payroll}}. The button counts the sends. They leave the list.
+3. Marked the wrong ones? Press **Undo** on the message. The sends go back to sort.
+
+The bar marks the sends. It does not change a rule. Only people who can mark payroll see the bar. Everyone else sorts the sends one at a time.
 
 ## Turning one mark into a rule
 
