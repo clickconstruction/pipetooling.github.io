@@ -37,3 +37,9 @@ With the tick off, copy the words the window shows. Send them from your own emai
 2. Press {{button:blue|They signed}} or {{button:outline|They declined}}.
 
 A signed change order adds its price and its days. Pick how much of its work is done. Its line on the bill follows that.
+
+## When the customer answers in their portal
+
+A change order waiting on the customer shows in their portal, under the job. The customer can sign it or decline it there. A decline can say why in one line, or say nothing.
+
+The answer shows here right away. The chip says {{chip:green|signed Oct 7 in their portal}} or {{chip:red|declined Oct 7 in their portal}}. A reason they gave shows beside a decline.

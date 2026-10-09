@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
+import { PortalGcJobs } from '../components/portal/PortalGcJobs'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
 import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
@@ -405,6 +406,9 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {promiseAskVisible(owedBills, todayYmd) && (
         <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={payload.promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} />
       )}
+
+      {/* GC mode (O7c): the GC jobs we build for them, with the change orders waiting on them and the work to accept. Screen only. */}
+      <PortalGcJobs token={requestToken} jobs={payload.gcJobs} formatUsd={formatPortalUsd} />
 
       {groups.length > 0 && (
         <>

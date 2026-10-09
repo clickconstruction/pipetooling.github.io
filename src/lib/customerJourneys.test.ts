@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { customerJourneys, findStep, firstRenderableStep, SAMPLE_EMAIL_IDS } from './customerJourneys'
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 
 describe('customerJourneys (What customers see)', () => {
   const journeys = customerJourneys()
@@ -20,7 +20,7 @@ describe('customerJourneys (What customers see)', () => {
     for (const s of pages) {
       const { path, absolute } = s.render as { path: string; absolute?: boolean }
       expect(absolute ? /^(https?:)?\/\//.test(path) || path.startsWith('/functions/v1/') : path.startsWith('/')).toBe(true)
-      expect([SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC].some((tok) => path.endsWith(`=${tok}`) || path.endsWith(`/${tok}`)), path).toBe(true)
+      expect([SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER].some((tok) => path.endsWith(`=${tok}`) || path.endsWith(`/${tok}`)), path).toBe(true)
     }
     expect(findStep(journeys, 'homeowner', 'estimate-thankyou')?.render).toEqual({ kind: 'page', path: `/estimate/accept?t=${SAMPLE_TOKEN_DONE}` })
     expect(findStep(journeys, 'gc', 'gc-portal')?.render).toEqual({ kind: 'page', path: `/portal?t=${SAMPLE_TOKEN_GC}` })

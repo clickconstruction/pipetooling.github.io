@@ -9,6 +9,7 @@ import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { statementRoleFor } from '../_shared/billVisibility.ts'
 import { PROMISE_MAX_PER_HOUR, promiseDateProblem } from '../_shared/portalPromise.ts'
+import { gcPortalOwns, gcPortalRefusalWords } from '../_shared/gcPortal.ts'
 
 /**
  * Portal request intake (portal train PR 2): a customer/GC submits a
@@ -81,6 +82,8 @@ serve(async (req) => {
       : body.kind === 'stage_window' ? 'stage_window'
       : body.kind === 'payment_promise' ? 'payment_promise'
       : body.kind === 'share_bill_ask' ? 'share_bill_ask'
+      : body.kind === 'gc_change_order_answer' ? 'gc_change_order_answer'
+      : body.kind === 'gc_accept_work' ? 'gc_accept_work'
       : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
@@ -91,7 +94,8 @@ serve(async (req) => {
     if (!token || token.length < 16 || token.length > 128 || !kind) {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
-    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && (description.length < 5 || description.length > 2000)) {
+    const gcPress = kind === 'gc_change_order_answer' || kind === 'gc_accept_work'
+    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && !gcPress && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -185,6 +189,43 @@ serve(async (req) => {
       const jobsPromised = (result as { jobs?: number } | null)?.jobs ?? promiseJobIds.length
       console.log(JSON.stringify({ event: 'portal_payment_promise', customer_id: link.customer_id, jobs: jobsPromised, date }))
       return jsonResponse({ ok: true, promisedYmd: date, jobs: jobsPromised })
+    }
+
+    // ── GC mode, Owner Billing O7c (v2.5025): the customer of a GC job we build answers a change order, or accepts the
+    // work. Each is the link's customer's own project, and each goes through the database's function as the service
+    // role with how = 'portal', on today. A change order is answered once and the work accepted once, so the database
+    // limits them. No inbox row: the office sees the answer in Change orders and Closeout.
+    if (kind === 'gc_change_order_answer' || kind === 'gc_accept_work') {
+      const uuid = (v: unknown) => (typeof v === 'string' && /^[0-9a-f-]{36}$/.test(v) ? v : null)
+      const note = typeof body.note === 'string' ? body.note.trim() : ''
+      if (note.length > 300 || note.includes('\n')) return jsonResponse({ error: 'Keep the reason to one short line.' }, 400)
+      const todayYmd = todayYmdInAppTz()
+      if (kind === 'gc_change_order_answer') {
+        const changeOrderId = uuid(body.changeOrderId)
+        const signed = body.signed === true ? true : body.signed === false ? false : null
+        if (!changeOrderId || signed === null) return jsonResponse({ error: 'Bad request' }, 400)
+        const { data: co } = await admin.from('gc_change_orders').select('id, project_id').eq('id', changeOrderId).maybeSingle()
+        const { data: project } = co ? await admin.from('projects').select('customer_id').eq('id', (co as { project_id: string }).project_id).maybeSingle() : { data: null }
+        if (!co || !gcPortalOwns(project as { customer_id: string | null } | null, link.customer_id)) {
+          return jsonResponse({ error: 'That change order is not on your account.' }, 404)
+        }
+        const { error: rpcErr } = await admin.rpc('gc_answer_change_order', { p_id: changeOrderId, p_signed: signed, p_on: todayYmd, p_how: 'portal', p_note: signed ? '' : note })
+        if (rpcErr) return jsonResponse({ error: gcPortalRefusalWords(rpcErr.message ?? '') }, 409)
+        console.log(JSON.stringify({ event: 'portal_gc_change_order_answer', customer_id: link.customer_id, change_order_id: changeOrderId, signed }))
+        return jsonResponse({ ok: true, signed })
+      }
+      const projectId = uuid(body.projectId)
+      const byName = typeof body.byName === 'string' ? body.byName.trim().slice(0, 120) : ''
+      if (!projectId) return jsonResponse({ error: 'Bad request' }, 400)
+      if (!byName) return jsonResponse({ error: 'Type your name, as the one who walked the job.' }, 400)
+      const { data: project } = await admin.from('projects').select('customer_id').eq('id', projectId).maybeSingle()
+      if (!gcPortalOwns(project as { customer_id: string | null } | null, link.customer_id)) {
+        return jsonResponse({ error: 'That job is not on your account.' }, 404)
+      }
+      const { error: rpcErr } = await admin.rpc('gc_record_acceptance', { p_project_id: projectId, p_on: todayYmd, p_by_name: byName, p_how: 'portal', p_note: note })
+      if (rpcErr) return jsonResponse({ error: gcPortalRefusalWords(rpcErr.message ?? '') }, 409)
+      console.log(JSON.stringify({ event: 'portal_gc_accept_work', customer_id: link.customer_id, project_id: projectId }))
+      return jsonResponse({ ok: true, acceptedOn: todayYmd })
     }
 
     // Rate limit per link.

@@ -16,7 +16,7 @@
  * Five audiences since v2.3505: homeowner, general contractor, subcontractor, supply house, and
  * the collections law firm. Collections paper sits at the end of the journey it belongs to.
  */
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'submittal-room-link'
@@ -61,6 +61,8 @@ export const BID_ROOM_SAMPLE_PATH = `/bid-room?t=${SAMPLE_TOKEN}`
 export const BID_ROOM_SAMPLE_DONE_PATH = `/bid-room?t=${SAMPLE_TOKEN_DONE}`
 export const CUSTOMER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN}`
 export const GC_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_GC}`
+/** GC mode (O7c): the portal as the customer of a GC job we build sees it, with a change order and the work to accept. */
+export const OWNER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_OWNER}`
 export const SUB_PORTAL_SAMPLE_PATH = `/sub?t=${SAMPLE_TOKEN}`
 /** GC mode's trade partner portal (P1b-ii-b): `gc-trade-portal` answers the sample token with a made-up company. */
 export const TRADE_PORTAL_SAMPLE_PATH = `/t/${SAMPLE_TOKEN}`
@@ -443,6 +445,26 @@ export function customerJourneys(): Journey[] {
           guide: 'bill-the-customer-on-a-gc-job',
           reflects: ['The job’s rate and the contract’s days to pay', 'What built up and was not billed yet', 'The customer’s portal link, when one is on'],
           render: { kind: 'email', email: 'gc-interest-bill' },
+        },
+        {
+          id: 'gc-portal-change-order',
+          label: 'GC mode: sign a change order in their portal',
+          sublabel: 'Their portal, under the GC job, while a change order waits on them',
+          when: 'When we send a change order',
+          customerCan: 'Sign or decline a change order we sent. A decline can say why in one line, or not at all.',
+          guide: 'change-our-contract-with-the-customer',
+          reflects: ['The change order as it went', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-portal-accept-work',
+          label: 'GC mode: accept the work in their portal',
+          sublabel: 'Their portal, under the GC job, once every line is billed',
+          when: 'At the end of the job',
+          customerCan: 'Accept the work after walking the job, with their name and a note. Our final pay application waits for it.',
+          guide: 'close-out-a-gc-job-with-the-customer',
+          reflects: ['Every line billed on the job', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
         },
         {
           id: 'owner-notice',

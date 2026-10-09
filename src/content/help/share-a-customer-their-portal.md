@@ -8,6 +8,8 @@ Every customer and GC can have a private, no-login **portal page**. The page is 
 
 The statement covers their own jobs *and* the properties where they are the GC. Each job where they are the GC carries an {{chip:yellow|AS GC}} tag, with the owner named beside it. A visit request lands in the Dispatch inbox. An "ask us to bid" request lands in the Estimator inbox.
 
+A customer whose job we build as the general contractor also sees that job. The change orders waiting on the customer can be signed or declined there. At the end, the customer can accept the work there too. See [close out a GC job with the customer](/help/close-out-a-gc-job-with-the-customer).
+
 Once a customer has a portal, every new Stripe bill's footer ends with *See your updated statement any time at https://my.clickplumbing.com/…*. The line is left off a bill sent to a typed email. The line is also left off when the footer would run too long for Stripe. So after paying on Stripe's page, they have one tap back to their statement. The statement refreshes itself. The statement shows ***Payment received — statement updated*** when the bill has cleared. Your own footer text stays exactly as you typed it. The line is added after your text. The bill email carries the same address with a **QR code**. If the customer has no short address yet, their first bill gives them one. The address is their name plus a random tail. The address is already locked, since it has gone out. You can still change it from the gear.
 
 ## The portal address

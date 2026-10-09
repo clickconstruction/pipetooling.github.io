@@ -162,7 +162,7 @@ export function ownerBillingFromRows(rows: OwnerBillingRows): OwnerBilling | nul
     paid: payApps.reduce((s, app) => s + (app.payments ?? []).reduce((t, p) => t + p.amount, 0), 0),
     retainageHeld: lastProgress?.retainage ?? 0,
     ...(payApps.length > 0 ? { payApps } : {}),
-    ...(rows.acceptance ? { acceptedOn: rows.acceptance.accepted_on } : {}),
+    ...(rows.acceptance ? { acceptedOn: rows.acceptance.accepted_on, ...(rows.acceptance.how === 'portal' ? { acceptedInPortal: true } : {}) } : {}),
     ...(interestBills.length > 0 ? { interestBills } : {}),
   }
 }

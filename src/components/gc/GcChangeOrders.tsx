@@ -219,8 +219,9 @@ function ChangeOrderRow({
             </Btn>
           </>
         )}
-        {co.status === 'declined' && <Chip tone="red">{`declined ${shortDate(co.answeredOn)}`}</Chip>}
-        {co.status === 'signed' && <Chip tone="green">{`signed ${shortDate(co.answeredOn)}`}</Chip>}
+        {co.status === 'declined' && <Chip tone="red">{`declined ${shortDate(co.answeredOn)}${co.answeredInPortal ? ' in their portal' : ''}`}</Chip>}
+        {co.status === 'declined' && co.declinedNote && <span>{`Their reason: ${co.declinedNote}`}</span>}
+        {co.status === 'signed' && <Chip tone="green">{`signed ${shortDate(co.answeredOn)}${co.answeredInPortal ? ' in their portal' : ''}`}</Chip>}
         {co.status === 'signed' && !timeOnly && pct.fromTrade && (
           <span>{`${changeOrderWho(state, project, co).replace(/ on .*$/, '')} reported ${pct.pct}% done in their portal. Its line on the bill follows their report.`}</span>
         )}

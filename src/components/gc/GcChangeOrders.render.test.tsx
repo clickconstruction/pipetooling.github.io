@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcChangeOrdersWindow } from './GcChangeOrders'
 import { changeOrderPrice } from '../../lib/gc/ownerBilling'
 import { initialGcState } from '../../lib/gc/schedule/testState'
@@ -37,6 +37,26 @@ function setup(emailed: Record<string, { to: string; on: string }[]> = {}) {
 }
 
 describe('GcChangeOrdersWindow', () => {
+  it('says an answer came from their portal, and a decline’s reason (O7c)', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const project = {
+      ...fairOaks,
+      changeOrders: [
+        { ...base, id: 'co-4', number: 4, status: 'declined' as const, sentOn: '2026-10-01', answeredOn: '2026-10-02', answeredInPortal: true, declinedNote: 'Over our budget this year' },
+        { ...base, id: 'co-5', number: 5, status: 'signed' as const, sentOn: '2026-10-01', answeredOn: '2026-10-02', answeredInPortal: true },
+        { ...base, id: 'co-6', number: 6, status: 'declined' as const, sentOn: '2026-10-01', answeredOn: '2026-10-02' },
+      ],
+    }
+    const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn() }
+    render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} emailed={{}} onClose={() => undefined} />)
+    expect(screen.getAllByText('declined Oct 2 in their portal')).toHaveLength(1)
+    expect(screen.getByText('Their reason: Over our budget this year')).toBeTruthy()
+    expect(screen.getByText('signed Oct 2 in their portal')).toBeTruthy()
+    expect(screen.getByText('declined Oct 2')).toBeTruthy()
+    cleanup()
+  })
+
   it('sends or deletes a draft, records the answer to a sent one, and marks how much of a signed one is done', () => {
     const { writes } = setup()
     expect(screen.getByText('+$1,100 signed')).toBeTruthy()

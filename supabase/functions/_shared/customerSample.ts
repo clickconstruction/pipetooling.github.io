@@ -17,14 +17,17 @@ export const SAMPLE_TOKEN = 'sample'
 export const SAMPLE_TOKEN_DONE = 'sample-done'
 /** `?t=sample-gc` — the portal as a general contractor sees it (properties they GC, tagged). */
 export const SAMPLE_TOKEN_GC = 'sample-gc'
+/** `?t=sample-owner` — the portal as the customer of a GC job we build sees it (GC mode, O7c): its change order and the work to accept. */
+export const SAMPLE_TOKEN_OWNER = 'sample-owner'
 
-export type SampleState = 'live' | 'done' | 'gc'
+export type SampleState = 'live' | 'done' | 'gc' | 'owner'
 
 export function sampleStateFromToken(token: string | null | undefined): SampleState | null {
   const t = (token ?? '').trim()
   if (t === SAMPLE_TOKEN) return 'live'
   if (t === SAMPLE_TOKEN_DONE) return 'done'
   if (t === SAMPLE_TOKEN_GC) return 'gc'
+  if (t === SAMPLE_TOKEN_OWNER) return 'owner'
   return null
 }
 
@@ -41,6 +44,15 @@ export const SAMPLE_GC = {
   contact: 'Pat Sample',
   email: 'pat@samplecontracting.example.com',
   portalSlug: 'sample-contracting',
+} as const
+
+/** GC mode's sample customer: the owner of a job we build as the general contractor (the GC customer emails' words). */
+export const SAMPLE_OWNER = {
+  company: 'Sample Owner LLC',
+  contact: 'Elena',
+  job: 'Sample Retail Shell',
+  address: '400 Sample Pkwy, Kyle, TX 78640',
+  portalSlug: 'sample-owner',
 } as const
 
 export const SAMPLE_SUB = {

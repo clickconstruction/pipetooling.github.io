@@ -764,7 +764,9 @@ export function ownerCloseout(state: GcState, project: GcProject): OwnerCloseout
       label: 'The customer accepts the work',
       who: 'owner',
       done: acceptedOn !== null,
-      detail: acceptedOn ? `Accepted ${shortDate(acceptedOn)}.` : 'They walk the job and accept it.',
+      detail: acceptedOn
+        ? `Accepted ${shortDate(acceptedOn)}${project.ownerBilling?.acceptedInPortal ? ' in their portal' : ''}.`
+        : 'They walk the job and accept it, here or in their portal.',
     },
     {
       key: 'finalApp',
