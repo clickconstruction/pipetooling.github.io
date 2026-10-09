@@ -27,7 +27,21 @@ import { gcTradePortalSample } from '../../../supabase/functions/_shared/gcTrade
 import { GC_COMPANY } from './company'
 import { inviteMessage, mailRecipients, portalMailGroup, type PortalMessage } from './portal'
 import { PORTAL_SPANISH_ON, portalString } from './portalI18n'
-import { answerEmail, answerEmailKey, answerRecipients, answerSentWords, GC_TRADE_EMAIL_REFUSALS, gcTradeEmailRefusal, inviteEmailLines, readTradeEmailAnswer, tradeMailLang } from './tradeEmail'
+import {
+  answerEmail,
+  answerEmailKey,
+  answerRecipients,
+  answerSentWords,
+  backChargeEmail,
+  backChargeEmailKey,
+  changeAskEmail,
+  changeAskEmailKey,
+  GC_TRADE_EMAIL_REFUSALS,
+  gcTradeEmailRefusal,
+  inviteEmailLines,
+  readTradeEmailAnswer,
+  tradeMailLang,
+} from './tradeEmail'
 import { stageOf, tradePortalState } from './tradePortalState'
 import type { GcState, Partner } from './types'
 
@@ -371,5 +385,64 @@ describe('an answer about the plans (P3-b)', () => {
     expect(answerSentWords(['Pecan Valley Electric', 'Sample Electric Co.'], [])).toEqual({ done: 'The answer went to Pecan Valley Electric and Sample Electric Co.', problem: null })
     expect(answerSentWords(['Hill Country Power'], []).done).toBe('The answer went to Hill Country Power.')
     expect(answerSentWords([], [{ company: 'Hill Country Power', key: 'noEmail' }])).toEqual({ done: null, problem: `Hill Country Power: ${GC_TRADE_EMAIL_REFUSALS.noEmail}` })
+  })
+})
+
+describe('a back-charge’s emails (P4b-iii)', () => {
+  const charge = { id: 'bc1', amount: 1250, reason: 'Cleanup after the rough-in', photo: null, sentOn: '2026-10-01', answerBy: '2026-10-06', status: 'open' as const }
+  const on = { project: 'Fair Oaks Shops', trade: 'Drywall' }
+
+  it('sends the charge with its answer day, keyed once per charge', () => {
+    expect(backChargeEmail('sent', { ...on, charge }, 'en')).toEqual({
+      subject: 'A charge on Fair Oaks Shops: $1,250',
+      lines: [
+        'We are charging you $1,250 on your Drywall work: Cleanup after the rough-in.',
+        'Agree or dispute it in your portal by Tue Oct 6. With no answer, it can come off your next draw.',
+        'Open your portal to see it.',
+      ],
+    })
+    expect(backChargeEmailKey('bc1', 'sent')).toBe('bc1:sent')
+  })
+
+  it('sends the office’s keep or drop with its note, and nothing before it', () => {
+    expect(backChargeEmail('settled', { ...on, charge }, 'en')).toBeNull()
+    expect(backChargeEmail('settled', { ...on, charge: { ...charge, status: 'kept', settled: { on: '2026-10-08', note: 'Our photos show it' } } }, 'en')).toEqual({
+      subject: 'We are keeping the charge on Fair Oaks Shops',
+      lines: ['We read your reason and are keeping the $1,250 charge: Our photos show it.', 'Open your portal to see it.'],
+    })
+    expect(backChargeEmail('settled', { ...on, charge: { ...charge, status: 'dropped', settled: { on: '2026-10-08', note: 'Fair point.' } } }, 'es')?.subject).toBe('Cancelamos el cargo en Fair Oaks Shops')
+  })
+
+  it('sends the draw it came off once U6 takes it', () => {
+    expect(backChargeEmail('taken', { ...on, charge: { ...charge, status: 'agreed' } }, 'en')).toBeNull()
+    expect(backChargeEmail('taken', { ...on, charge: { ...charge, status: 'agreed', taken: { drawId: 'd2', on: '2026-10-09' } }, drawNumber: 2 }, 'en')).toEqual({
+      subject: 'Draw 2 on Fair Oaks Shops is $1,250 less',
+      lines: ['We took the $1,250 charge off draw 2: Cleanup after the rough-in.', 'Open your portal to see it.'],
+    })
+  })
+})
+
+describe('the office’s answers to a change request (P4b-iii)', () => {
+  const request = { id: 'cr1', packageId: 'site', partnerId: 'p1', askedOn: '2026-10-05', description: 'Rock in the pad.', reason: 'field' as const, amount: 14820, days: 2, file: null, changeOrderId: null, turnedDown: null }
+  const on = { project: 'Fair Oaks Shops', trade: 'Sitework' }
+
+  it('turns it down with the office’s note', () => {
+    expect(changeAskEmail('down', { ...on, request }, 'en')).toBeNull()
+    expect(changeAskEmail('down', { ...on, request: { ...request, turnedDown: { on: '2026-10-07', note: 'It was in the geotech report.' } } }, 'en')).toEqual({
+      subject: 'About the change you asked for on Fair Oaks Shops',
+      lines: ['You asked for a change to your Sitework work: Rock in the pad, $14,820.', 'We are not making it a change order: It was in the geotech report.', 'Open your portal to see where it stands.'],
+    })
+    expect(changeAskEmailKey('cr1', 'down')).toBe('cr1:down')
+  })
+
+  it('sends its part of the change order, never our price to the customer, and the customer’s no', () => {
+    const changeOrder = { number: 4, cost: 14820 }
+    const sent = changeAskEmail('sent', { ...on, request, changeOrder }, 'en')
+    expect(sent).toEqual({
+      subject: 'Your change on Fair Oaks Shops went to the customer',
+      lines: ['You asked for a change to your Sitework work: Rock in the pad, $14,820.', 'We sent it to the customer as change order 4. Your part: $14,820.', 'Open your portal to see where it stands.'],
+    })
+    expect(changeAskEmail('no', { ...on, request, changeOrder }, 'en')?.lines[0]).toBe('The customer said no to change order 4 on Fair Oaks Shops. We will call you about what comes next.')
+    expect(changeAskEmail('sent', { ...on, request }, 'en')).toBeNull()
   })
 })

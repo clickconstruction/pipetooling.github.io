@@ -35,6 +35,7 @@ on:
       - 'supabase/migrations/*gc_record_acceptance*'
       - 'supabase/migrations/*gc_money_monday*'
       - 'supabase/migrations/*gc_change_order_portal*'
+      - 'supabase/migrations/*gc_controller_pay_speeds*'
       - 'supabase/tests/gc_owner_billing/**'
       - 'scripts/pgtest-gc-owner-billing.sh'
       - 'supabase/migrations/*gc_award*'
