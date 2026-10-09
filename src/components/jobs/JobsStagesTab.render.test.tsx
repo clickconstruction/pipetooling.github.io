@@ -10,7 +10,7 @@
  * in Jobs.tsx.
  */
 import { act, createRef } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
 
 // v2.1824: the tab reads the scope API straight from the cache context; the
@@ -18,7 +18,7 @@ import { fireEvent, screen, within } from '@testing-library/react'
 // headers and bodies, exactly the pre-scoping behavior these tests pin). A test
 // may narrow `merged` and read which scopes the tab `asked` for (v2.4321).
 const ALL_SCOPES = ['waiting', 'working', 'ready_to_bill', 'billed_all', 'paid']
-const cache = vi.hoisted(() => ({ merged: [] as string[], asked: [] as string[] }))
+const cache = vi.hoisted(() => ({ merged: [] as string[], asked: [] as string[], headerStats: null as unknown }))
 vi.mock('../../contexts/JobsListCacheContext', async () => {
   const actual = await vi.importActual<typeof import('../../contexts/JobsListCacheContext')>(
     '../../contexts/JobsListCacheContext',
@@ -31,7 +31,7 @@ vi.mock('../../contexts/JobsListCacheContext', async () => {
       fetchScopeIfNeeded: async (scope: string) => {
         cache.asked.push(scope)
       },
-      headerStats: null,
+      headerStats: cache.headerStats,
     }),
   }
 })
@@ -52,6 +52,18 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The week's GC statement round (v2.5075): read through useGcStatementRound, by the board and by GC Review.
+const round = vi.hoisted(() => ({ certs: [] as unknown[], marks: [] as unknown[], since: [] as unknown[], senders: new Map<string, string>() }))
+vi.mock('../../lib/gcReviewCertifications', async (original) => ({
+  ...(await original<typeof import('../../lib/gcReviewCertifications')>()),
+  listGcReviewCertifications: vi.fn(async () => round.certs),
+}))
+vi.mock('../../lib/gcStatementRoundIo', async (original) => ({
+  ...(await original<typeof import('../../lib/gcStatementRoundIo')>()),
+  listGcStatementRoundMarks: vi.fn(async () => round.marks),
+  listGcStatementRoundMarksSince: vi.fn(async () => round.since),
+  listGcStatementSenders: vi.fn(async () => round.senders),
+}))
 // Children in the always-rendered modal tail (ManageJobPeopleModal,
 // BilledBillViewModal, AiaG702G703Modal) call useAuth() unconditionally;
 // there is no AuthProvider in the smoke harness.
@@ -65,6 +77,11 @@ import JobsStagesTab, {
   type JobsStagesTabProps,
 } from './JobsStagesTab'
 import { makeJob, makeUseAuthValue, renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
+import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
+import { gcReviewWeekStartYmd } from '../../lib/jobs/gcReviewCertification'
+import { trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
+import { emptyBillTruth } from '../../lib/billing/billTruth'
 
 const authValue = makeUseAuthValue()
 
@@ -662,5 +679,89 @@ describe('JobsStagesTab render smoke', () => {
       expect(screen.queryByText('878 · Working Duplex')).toBeNull()
       localStorage.removeItem('jobs-stages-ham-mode')
     })
+  })
+})
+
+describe('JobsStagesTab — the round cards read through useGcStatementRound (v2.5075)', () => {
+  const WEEK = gcReviewWeekStartYmd()
+  const SIX_WEEKS_BACK = trailingWeekStarts(WEEK, 6)[0]!
+  const KNIGHT = { id: 'gc-knight', name: 'Knight Contracting' }
+  const knightJob = () => {
+    const j = makeJob({ job_name: 'Palomino Trail', status: 'billed', revenue: 26000, gcCustomer: KNIGHT, gc_customer_id: KNIGHT.id, bill_to_party: 'gc' })
+    return { ...j, invoices: [{ id: 'inv-knight', job_id: j.id, amount: 26000, status: 'billed', sequence_order: 0, billed_at: '2026-07-01T00:00:00Z', estimated_bill_date: null }] } as typeof j
+  }
+  const checkedThisWeek = { week_start: WEEK, gc_customer_id: KNIGHT.id, certified_by_name: 'Taunya', certified_at: `${WEEK}T15:00:00Z`, job_count: 1, total: 26000, snapshot: null, note: '' }
+  const mark = (week: string, over: Record<string, unknown>) => ({ gc_customer_id: KNIGHT.id, week_start: week, acted_by: 'u-taunya', acted_by_name: 'Taunya', acted_at: `${week}T16:00:00Z`, channel: 'call', note: null, temperature: null, expected_pay_by: null, ...over })
+  /** A word weeks ago with a pay date already past: only the six weeks of marks carry it. */
+  const brokenPromise = mark(SIX_WEEKS_BACK, { action: 'contacted', note: 'Said the 25th', temperature: 'warm', expected_pay_by: '2026-09-25' })
+  const READS = [listGcReviewCertifications, listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders]
+  const reads = () => READS.map((fn) => vi.mocked(fn).mock.calls.length)
+
+  beforeEach(() => {
+    localStorage.setItem(
+      'pipetooling_stages_sections_v2',
+      JSON.stringify({ waiting: false, working: true, readyToBill: true, billed: true, collections: true, paid: false }),
+    )
+    cache.merged = [...ALL_SCOPES]
+    cache.asked = []
+    // The money story draws once the header stats are in; the round cards sit in it.
+    cache.headerStats = {
+      waiting: { count: 0, total: 0 },
+      working: { count: 0, total: 0 },
+      readyToBill: { count: 0, total: 0 },
+      billed: { count: 1, total: 26000 },
+      collections: { count: 0, total: 0 },
+      uncollectible: { count: 0, total: 0 },
+      paid: { count: 0 },
+      capableToBill: 0,
+      billedAging: { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 },
+      collectedByDay: [],
+      billedNoDate: 0,
+      billTruth: emptyBillTruth(),
+    }
+    round.certs = [checkedThisWeek]
+    round.marks = []
+    round.since = [brokenPromise]
+    round.senders = new Map()
+    for (const fn of READS) vi.mocked(fn).mockClear()
+  })
+  afterEach(() => {
+    cache.headerStats = null
+  })
+
+  it('an office role reads the week, six weeks of marks and the GCs’ senders, and the card counts from them', async () => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()] })} />)
+    const card = await screen.findByTestId('pipeline-round-ready-card')
+    expect(card.textContent).toContain('Statements to send — 1 GC, $26,000')
+    // The broken promise rides on the six weeks of marks, not on this week's.
+    expect(card.textContent).toContain('1 broke a promise')
+    expect(vi.mocked(listGcReviewCertifications)).toHaveBeenCalledWith(WEEK)
+    expect(vi.mocked(listGcStatementRoundMarks)).toHaveBeenCalledWith(WEEK)
+    expect(vi.mocked(listGcStatementRoundMarksSince)).toHaveBeenCalledWith(SIX_WEEKS_BACK)
+    expect(vi.mocked(listGcStatementSenders)).toHaveBeenCalledWith([KNIGHT.id])
+  })
+
+  it('a role outside the office reads none of it and gets no card', async () => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()], authRole: 'superintendent', myRole: 'superintendent' })} />)
+    await settle()
+    expect(reads()).toEqual([0, 0, 0, 0])
+    expect(screen.queryByTestId('pipeline-round-ready-card')).toBeNull()
+  })
+
+  it('closing GC Review reads the round again, so a GC sent inside it leaves the card', async () => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()] })} />)
+    const card = await screen.findByTestId('pipeline-round-ready-card')
+    await settle()
+    const before = reads()
+    fireEvent.click(within(card).getByRole('button', { name: 'Open the list →' }))
+    const review = await screen.findByRole('dialog', { name: /^GC Review/ })
+    await settle()
+    // The window reads the round for itself while it is open; the board waits.
+    expect(reads()).toEqual(before.map((n) => n + 1))
+    round.marks = [mark(WEEK, { action: 'sent', channel: 'email' })]
+    fireEvent.click(within(review).getByRole('button', { name: 'Close' }))
+    await settle()
+    expect(reads()).toEqual(before.map((n) => n + 2))
+    expect(screen.queryByTestId('pipeline-round-ready-card')).toBeNull()
   })
 })
